@@ -225,7 +225,8 @@ namespace OcctOcafInternal
     {
         const int length = value.LengthOfCString();
         std::vector<char> buffer(static_cast<std::size_t>(std::max(length, 0)) + 1, '\0');
-        value.ToUTF8CString(buffer.data());
+        Standard_PCharacter output = buffer.data();
+        value.ToUTF8CString(output);
         return buffer.data();
     }
 
