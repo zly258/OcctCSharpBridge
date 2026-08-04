@@ -6,10 +6,15 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS OFF)
 
-set(OCCT_ROOT "D:/tools/occt-vc144-64")
-set(OCCT_INCLUDE_DIR "D:/tools/occt-vc144-64/inc")
-set(OCCT_LIB_DIR "D:/tools/occt-vc144-64/win64/vc14/lib")
-set(OCCT_BIN_DIR "D:/tools/occt-vc144-64/win64/vc14/bin")
+set(_occt_default_root "$ENV{OCCT_ROOT}")
+if(NOT _occt_default_root)
+    set(_occt_default_root "D:/tools/occt-vc144-64")
+endif()
+
+set(OCCT_ROOT "${_occt_default_root}" CACHE PATH "OCCT installation root")
+set(OCCT_INCLUDE_DIR "${OCCT_ROOT}/inc" CACHE PATH "OCCT include directory")
+set(OCCT_LIB_DIR "${OCCT_ROOT}/win64/vc14/lib" CACHE PATH "OCCT library directory")
+set(OCCT_BIN_DIR "${OCCT_ROOT}/win64/vc14/bin" CACHE PATH "OCCT runtime directory")
 set(OCCT_CASROOT "${OCCT_ROOT}")
 
 if(NOT EXISTS "${OCCT_INCLUDE_DIR}/Standard.hxx")
@@ -31,8 +36,14 @@ add_library(OcctNative SHARED
     OcctFeatures.cpp
     OcctAnnotations.cpp
     OcctIO.cpp
+    OcctModelingCore.cpp
+    OcctModelingGeometry.cpp
+    OcctModelingAlgorithms.cpp
+    OcctModelingAnalysis.cpp
     OcctInternal.hxx
-    OcctNative.h)
+    OcctModelingInternal.hxx
+    OcctNative.h
+    OcctModeling.h)
 
 target_compile_definitions(OcctNative PRIVATE NOMINMAX _CRT_SECURE_NO_WARNINGS)
 if(MSVC)
