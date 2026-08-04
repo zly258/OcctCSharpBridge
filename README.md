@@ -1,60 +1,107 @@
-﻿# OCCT 7.9.0 C# Bridge
+﻿# OCCT 7.9.0 C# Engineering Bridge
 
 [简体中文](README.zh-CN.md)
 
-A focused Windows x64 wrapper for Open CASCADE Technology 7.9.0:
+This repository wraps Open CASCADE Technology 7.9.0 through a **C++17 native DLL, stable C ABI, and .NET 8 P/Invoke**. The `main` branch contains only the reusable bridge; complete WinForms and WPF applications are preserved in the [`demo`](https://github.com/zly258/OcctCSharpBridge/tree/demo) branch.
+
+## Architecture
 
 ```text
-C# application
-    ↓ ProjectReference
-OcctNet (.NET 8)
-    ↓ P/Invoke / stable C ABI
-OcctNative (C++17 DLL)
-    ↓
+Consumer application
+├─ OcctModelingSession      Headless modeling, topology, healing, mesh and exchange
+└─ OcctEngine               AIS / V3d viewer, selection, presentation and annotations
+          ↓
+OcctNet (.NET 8, x64)
+          ↓ P/Invoke / C ABI
+OcctNative (C++17)
+          ↓
 OCCT 7.9.0
 ```
 
-The `main` branch contains only the reusable wrapper. Complete WinForms and WPF CAD demonstrations are preserved in the [`demo`](../../tree/demo) branch.
+`OcctModelingSession` requires no HWND and creates no `AIS_InteractiveContext`, so it can be used by batch jobs, services and unit tests. A headless shape can be copied into an existing viewer when presentation is required:
 
-## Repository layout
+```csharp
+using var model = new OcctModelingSession();
+var box = model.MakeBox(100, 80, 60);
 
-| Path | Purpose |
+using var viewer = new OcctEngine();
+viewer.Initialize(hwnd);
+var displayed = viewer.Display(model, box, fit: true);
+```
+
+The sessions own independent registries. Display interop copies the `TopoDS_Shape`; the viewer does not retain pointers into the modeling registry.
+
+## Coverage
+
+| Area | Main capabilities |
 |---|---|
-| `src/OcctNative` | Native C++ bridge, C ABI, OCCT geometry, topology, AIS, view, annotations, and data exchange |
-| `src/OcctNet` | Type-safe C# API, native lifetime management, runtime discovery, and WinForms viewport host |
-| `build.ps1` | Builds the native bridge, managed wrapper, or both |
+| Headless core | Shape registry, lifecycle, location, orientation, hash, bounds and mass properties |
+| Geometry | Points, lines, polylines, circles, arcs, ellipses, Bezier, interpolated BSpline, polygons and planar profiles |
+| Primitives | Box, cylinder, cone, sphere, torus, wedge, compound, wire, sewing and shell-to-solid |
+| Topology | Subshapes, outer/inner wires, ancestor relationships, edge/face evaluation and geometry types |
+| Modeling | Boolean operations, splitter, extrude, revolve, sweep, loft, fillet, chamfer, offset, thick solid and same-domain unification |
+| Boolean controls | Fuzzy value, parallel mode, non-destructive mode, glue, inverted-solid checks and result simplification |
+| History | Generated, modified and removed topology plus operation reports, without OCAF/TNaming |
+| Healing | Detailed validity report and `ShapeFix_Shape` with tolerance controls |
+| Analysis | Distance, point projection, ray intersections and solid point classification |
+| Mesh | Explicit meshing, triangulation cleanup and face nodes/triangles/UV/normals |
+| Exchange | Headless STEP, IGES, BREP and STL import/export |
+| Viewer | HWND viewer, AIS presentation, selection, camera, materials, lighting, text and basic dimensions |
 
-## Requirements
+See [API coverage](docs/API_COVERAGE.md) for the detailed boundary.
 
-- Windows x64
-- Visual Studio 2022 with Desktop development with C++
-- .NET 8 SDK
-- CMake 3.21 or later
-- OCCT 7.9.0 built for Visual C++ x64
+## Headless example
 
-The conventional development path is `D:\tools\occt-vc144-64`. A different installation can be supplied through `-OcctRoot` or the `OCCT_ROOT` environment variable.
+```csharp
+using OcctNet;
 
-## Build
+OcctRuntime.Configure(
+    occtRoot: @"D:\tools\occt-vc144-64",
+    nativeBridgeDirectory: @"D:\libs\OcctBridge");
+
+using var model = new OcctModelingSession();
+
+var body = model.MakeBox(100, 80, 60);
+var hole = model.MakeCylinder(
+    new OcctPoint3d(50, 40, -10),
+    OcctVector3d.UnitZ,
+    radius: 12,
+    height: 80);
+
+var cut = model.Cut(body, hole);
+var faces = model.GetSubshapes(cut.Shape, OcctShapeType.Face);
+
+model.Mesh(cut.Shape);
+var mesh = model.GetFaceMesh(faces[0]);
+
+var generated = model.GetGeneratedShapes(cut.OperationId, body);
+model.ExportStep(cut.Shape, @"D:\output\result.step");
+```
+
+## Build and smoke test
+
+Requirements:
+
+- Windows x64;
+- Visual Studio 2022 with Desktop development with C++;
+- .NET 8 SDK;
+- CMake 3.21 or later;
+- OCCT 7.9.0 built for Visual C++ x64.
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
 
-.\build.ps1 all Release
-.\build.ps1 native Debug
+.\build.ps1 native Release
 .\build.ps1 managed Release
-.\build.ps1 all Release -OcctRoot "D:\SDK\occt-vc144-64"
+.\build.ps1 all Release
+.\build.ps1 smoke Release
+
+.\build.ps1 smoke Debug -OcctRoot "D:\SDK\occt-vc144-64"
 ```
 
-Outputs:
+The smoke target exercises headless Boolean operations, topology, mesh extraction, ray intersections, loft, healing, same-domain unification and a BREP round trip.
 
-```text
-build\native\bin\<Configuration>\OcctNative.dll
-src\OcctNet\bin\x64\<Configuration>\net8.0-windows\OcctNet.dll
-```
-
-When target `all` is used, `OcctNative.dll` is also copied beside `OcctNet.dll`.
-
-## Reference from another project
+## Reference
 
 ```xml
 <ItemGroup>
@@ -62,35 +109,14 @@ When target `all` is used, `OcctNative.dll` is also copied beside `OcctNet.dll`.
 </ItemGroup>
 ```
 
-Configure non-default runtime locations before creating the first engine:
+Deploy `OcctNative.dll` beside the application or configure `OCCT_BRIDGE_NATIVE_DIR`. OCCT and third-party runtime DLLs must be discoverable through `PATH`.
 
-```csharp
-using OcctNet;
+## Intentional exclusions
 
-OcctRuntime.Configure(
-    occtRoot: @"D:\SDK\occt-vc144-64",
-    nativeBridgeDirectory: @"D:\Libraries\OcctBridge");
+The bridge does not wrap OCAF documents, labels, attributes, OCAF undo/redo, TNaming or XDE document tools. STEP and IGES therefore provide pure `TopoDS_Shape` geometry exchange and do not promise XDE assembly hierarchy, instances, names, colors or layers.
 
-using var engine = new OcctEngine();
-```
-
-Deploy `OcctNative.dll` with the application. OCCT runtime DLLs and required third-party runtime directories must be available through `PATH`; `OcctRuntime` configures them automatically when a valid OCCT root is found.
-
-## API coverage
-
-- Geometry and topology creation
-- Extrude, revolve, sweep, loft, fillet, chamfer, offset, shelling, and drilling
-- Boolean operations and section curves
-- AIS display, selection, highlighting, camera, standard views, and ViewCube
-- Linear, angular, radius, and diameter dimensions
-- STEP, IGES, BREP, and STL import/export
-- Bounding boxes, mass properties, centroids, distances, topology counts, and validation
-
-## Branch policy
-
-- `main`: reusable native and managed wrapper only
-- `demo`: full CAD sample applications and shared demo infrastructure
+The project also does not attempt a one-to-one mapping of every OCCT C++ class. Specialized surface filling, variable fillets, PipeShell, every curve/surface intersection combination, and glTF/OBJ providers remain modular extension points rather than dependencies of the core ABI.
 
 ## License
 
-This project uses the [PolyForm Noncommercial License 1.0.0](LICENSE). OCCT and third-party components remain subject to their own licenses.
+The project is provided under the [PolyForm Noncommercial License 1.0.0](LICENSE). OCCT and third-party components remain subject to their own licenses.
