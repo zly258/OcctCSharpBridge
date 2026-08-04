@@ -1,19 +1,36 @@
 ﻿namespace OcctNet;
 
 /// <summary>
-/// Configures the fixed OCCT 7.9.0 runtime before the native bridge is loaded.
+/// Configures the OCCT runtime before the native bridge is loaded.
 /// </summary>
 public static class OcctRuntime
 {
     private const string NativeLibraryFileName = "OcctNative.dll";
-    private const string OcctRoot = @"D:\tools\occt-vc144-64";
-    private const string OcctBinDirectory = @"D:\tools\occt-vc144-64\win64\vc14\bin";
-    private const string OcctThirdPartyDirectory = @"D:\tools\occt-vc144-64\3rdparty-vc14-64";
+    private const string DefaultOcctRoot = @"D:\tools\occt-vc144-64";
 
     private static readonly object SyncRoot = new();
     private static bool _configured;
 
+    /// <summary>
+    /// Gets the OCCT root selected during runtime configuration.
+    /// </summary>
+    public static string? ConfiguredRoot { get; private set; }
+
+    /// <summary>
+    /// Configures the runtime using OCCT_ROOT, CASROOT, or the conventional development path.
+    /// </summary>
     public static void Configure()
+    {
+        Configure(null, null);
+    }
+
+    /// <summary>
+    /// Configures the runtime using explicit locations.
+    /// Call this before creating the first <see cref="OcctEngine"/> instance.
+    /// </summary>
+    /// <param name="occtRoot">OCCT installation root. When omitted, environment variables are used.</param>
+    /// <param name="nativeBridgeDirectory">Directory containing OcctNative.dll.</param>
+    public static void Configure(string? occtRoot, string? nativeBridgeDirectory = null)
     {
         lock (SyncRoot)
         {
@@ -23,10 +40,26 @@ public static class OcctRuntime
             }
 
             PrependPath(AppContext.BaseDirectory);
-            PrependPath(OcctBinDirectory);
-            AddThirdPartyRuntimePaths();
-            SetIfMissing("CASROOT", OcctRoot);
-            ConfigureResources(FindResourceDirectory(OcctRoot));
+
+            if (!string.IsNullOrWhiteSpace(nativeBridgeDirectory))
+            {
+                var fullNativeDirectory = Path.GetFullPath(nativeBridgeDirectory);
+                Environment.SetEnvironmentVariable("OCCT_BRIDGE_NATIVE_DIR", fullNativeDirectory);
+                PrependPath(fullNativeDirectory);
+            }
+
+            ConfiguredRoot = ResolveOcctRoot(occtRoot);
+            if (!string.IsNullOrWhiteSpace(ConfiguredRoot))
+            {
+                var occtBinDirectory = Path.Combine(ConfiguredRoot, "win64", "vc14", "bin");
+                var thirdPartyDirectory = Path.Combine(ConfiguredRoot, "3rdparty-vc14-64");
+
+                PrependPath(occtBinDirectory);
+                AddThirdPartyRuntimePaths(thirdPartyDirectory);
+                SetIfMissing("CASROOT", ConfiguredRoot);
+                ConfigureResources(FindResourceDirectory(ConfiguredRoot));
+            }
+
             _configured = true;
         }
     }
@@ -58,14 +91,39 @@ public static class OcctRuntime
         return candidates.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
-    private static void AddThirdPartyRuntimePaths()
+    private static string? ResolveOcctRoot(string? explicitRoot)
     {
-        if (!Directory.Exists(OcctThirdPartyDirectory))
+        foreach (var candidate in new[]
+                 {
+                     explicitRoot,
+                     Environment.GetEnvironmentVariable("OCCT_ROOT"),
+                     Environment.GetEnvironmentVariable("CASROOT"),
+                     DefaultOcctRoot
+                 })
+        {
+            if (string.IsNullOrWhiteSpace(candidate))
+            {
+                continue;
+            }
+
+            var fullPath = Path.GetFullPath(candidate);
+            if (Directory.Exists(fullPath))
+            {
+                return fullPath;
+            }
+        }
+
+        return null;
+    }
+
+    private static void AddThirdPartyRuntimePaths(string thirdPartyDirectory)
+    {
+        if (!Directory.Exists(thirdPartyDirectory))
         {
             return;
         }
 
-        foreach (var componentDirectory in Directory.EnumerateDirectories(OcctThirdPartyDirectory)
+        foreach (var componentDirectory in Directory.EnumerateDirectories(thirdPartyDirectory)
                      .OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
         {
             PrependPath(Path.Combine(componentDirectory, "bin", "x64"));
