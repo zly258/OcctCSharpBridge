@@ -1,6 +1,6 @@
 ﻿param(
     [Parameter(Position = 0)]
-    [ValidateSet("native", "managed", "all")]
+    [ValidateSet("native", "managed", "smoke", "all")]
     [string]$Target = "all",
 
     [Parameter(Position = 1)]
@@ -31,6 +31,8 @@ $NativeBuild = Join-Path $RepoRoot "build\native"
 $NativeDll = Join-Path $NativeBuild "bin\$Configuration\OcctNative.dll"
 $ManagedProject = Join-Path $RepoRoot "src\OcctNet\OcctNet.csproj"
 $ManagedOutput = Join-Path $RepoRoot "src\OcctNet\bin\x64\$Configuration\net8.0-windows"
+$SmokeProject = Join-Path $RepoRoot "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
+$SmokeOutput = Join-Path $RepoRoot "tests\OcctNet.Smoke\bin\x64\$Configuration\net8.0-windows"
 
 $OcctIncludeDir = Join-Path $OcctRoot "inc"
 $OcctLibDir = Join-Path $OcctRoot "win64\vc14\lib"
@@ -127,6 +129,39 @@ function Build-Managed {
     Write-Host "Managed: $ManagedOutput" -ForegroundColor Green
 }
 
+function Run-Smoke {
+    Assert-Command "dotnet"
+    Assert-Path $NativeDll
+
+    Remove-Item (Join-Path (Split-Path -Parent $SmokeProject) "bin") -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item (Join-Path (Split-Path -Parent $SmokeProject) "obj") -Recurse -Force -ErrorAction SilentlyContinue
+
+    Write-Host "[smoke] Building $Configuration..." -ForegroundColor Cyan
+    Invoke-Checked "dotnet" @(
+        "build", $SmokeProject,
+        "-c", $Configuration,
+        "-p:Platform=x64",
+        "--nologo"
+    ) "Smoke test build failed."
+
+    Copy-Item $NativeDll (Join-Path $SmokeOutput "OcctNative.dll") -Force
+    $previousNativeDirectory = $env:OCCT_BRIDGE_NATIVE_DIR
+    try {
+        $env:OCCT_BRIDGE_NATIVE_DIR = $SmokeOutput
+        Write-Host "[smoke] Running..." -ForegroundColor Cyan
+        Invoke-Checked "dotnet" @(
+            "run",
+            "--project", $SmokeProject,
+            "-c", $Configuration,
+            "-p:Platform=x64",
+            "--no-build"
+        ) "Smoke test failed."
+    }
+    finally {
+        $env:OCCT_BRIDGE_NATIVE_DIR = $previousNativeDirectory
+    }
+}
+
 Write-Host "Target:        $Target"
 Write-Host "Configuration: $Configuration"
 Write-Host "OCCT root:     $OcctRoot" -ForegroundColor DarkGray
@@ -137,6 +172,11 @@ switch ($Target) {
     }
     "managed" {
         Build-Managed
+    }
+    "smoke" {
+        Build-Native
+        Build-Managed
+        Run-Smoke
     }
     "all" {
         Build-Native
