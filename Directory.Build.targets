@@ -1,0 +1,13 @@
+﻿<Project>
+  <PropertyGroup>
+    <OcctNativeBridge>$(MSBuildThisFileDirectory)build\native\bin\$(Configuration)\OcctNative.dll</OcctNativeBridge>
+  </PropertyGroup>
+
+  <Target Name="CopyOcctNativeBridge"
+          AfterTargets="Build"
+          Condition="('$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe') and Exists('$(OcctNativeBridge)')">
+    <Copy SourceFiles="$(OcctNativeBridge)"
+          DestinationFolder="$(TargetDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+</Project>

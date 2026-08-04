@@ -1,0 +1,79 @@
+﻿# Build output
+build/
+artifacts/
+publish/
+[Bb]in/
+[Oo]bj/
+TestResults/
+*.log
+
+# Visual Studio / MSBuild
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.VC.db
+*.VC.VC.opendb
+*.opendb
+*.opensdf
+*.sdf
+ipch/
+
+# JetBrains Rider / ReSharper
+.idea/
+_ReSharper*/
+*.DotSettings.user
+*.sln.iml
+
+# Visual Studio Code
+.vscode/
+
+# CMake / native compiler
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+Makefile
+*.obj
+*.o
+*.pch
+*.pdb
+*.ilk
+*.exp
+*.idb
+*.tlog
+
+# .NET / NuGet
+packages/
+*.nupkg
+*.snupkg
+project.assets.json
+
+
+
+# Runtime binaries
+*.dll
+*.exe
+*.so
+*.dylib
+
+# CAD test and generated files
+*.brep
+*.rle
+*.step
+*.stp
+*.iges
+*.igs
+*.stl
+*.obj
+*.ply
+*.gltf
+*.glb
+*.png
+*.bmp
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
