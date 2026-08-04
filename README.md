@@ -2,91 +2,77 @@
 
 [简体中文](README.zh-CN.md)
 
-This repository wraps Open CASCADE Technology 7.9.0 through a **C++17 native DLL, stable C ABI, and .NET 8 P/Invoke**. The `main` branch contains only the reusable bridge; complete WinForms and WPF applications are preserved in the [`demo`](https://github.com/zly258/OcctCSharpBridge/tree/demo) branch.
+This repository wraps Open CASCADE Technology **7.9.0** through a **C++17 native DLL, stable C ABI, and .NET 8 P/Invoke**. The `main` branch contains the reusable bridge; complete WinForms/WPF applications are preserved in the [`demo`](https://github.com/zly258/OcctCSharpBridge/tree/demo) branch.
 
 ## Architecture
 
 ```text
 Consumer application
-├─ OcctModelingSession      Headless modeling, topology, healing, mesh and exchange
-└─ OcctEngine               AIS / V3d viewer, selection, presentation and annotations
+├─ OcctModelingSession      Headless modeling, topology, healing, mesh and pure-shape exchange
+├─ OcafDocument             OCAF/TDF/TNaming/XDE, assemblies, metadata and persistence
+└─ OcctEngine               AIS/V3d viewer, selection, presentation and annotations
           ↓
 OcctNet (.NET 8, x64)
-          ↓ P/Invoke / C ABI
+          ↓ P/Invoke / stable C ABI
 OcctNative (C++17)
           ↓
 OCCT 7.9.0
 ```
 
-`OcctModelingSession` requires no HWND and creates no `AIS_InteractiveContext`, so it can be used by batch jobs, services and unit tests. A headless shape can be copied into an existing viewer when presentation is required:
+The three sessions own independent native lifetimes. Shapes are copied between the headless registry, OCAF/XDE documents and the Viewer; no OCCT C++ handle or label pointer is exposed to managed code.
 
-```csharp
-using var model = new OcctModelingSession();
-var box = model.MakeBox(100, 80, 60);
+## Exact version contract
 
-using var viewer = new OcctEngine();
-viewer.Initialize(hwnd);
-var displayed = viewer.Display(model, box, fit: true);
-```
+OCAF, TNaming, persistence and XDE APIs are version-sensitive. The bridge therefore requires **exactly OCCT 7.9.0**:
 
-The sessions own independent registries. Display interop copies the `TopoDS_Shape`; the viewer does not retain pointers into the modeling registry.
+- CMake parses `Standard_Version.hxx` and rejects another version;
+- native code contains a compile-time version assertion;
+- `OcafDocument` verifies the loaded native DLL at runtime.
 
 ## Coverage
 
 | Area | Main capabilities |
 |---|---|
-| Headless core | Shape registry, lifecycle, location, orientation, hash, bounds and mass properties |
-| Geometry | Points, lines, polylines, circles, arcs, ellipses, Bezier, interpolated BSpline, polygons and planar profiles |
-| Primitives | Box, cylinder, cone, sphere, torus, wedge, compound, wire, sewing and shell-to-solid |
-| Topology | Subshapes, outer/inner wires, ancestor relationships, edge/face evaluation and geometry types |
-| Modeling | Boolean operations, splitter, extrude, revolve, sweep, loft, fillet, chamfer, offset, thick solid and same-domain unification |
-| Boolean controls | Fuzzy value, parallel mode, non-destructive mode, glue, inverted-solid checks and result simplification |
-| History | Generated, modified and removed topology plus operation reports, without OCAF/TNaming |
-| Healing | Detailed validity report and `ShapeFix_Shape` with tolerance controls |
-| Analysis | Distance, point projection, ray intersections and solid point classification |
-| Mesh | Explicit meshing, triangulation cleanup and face nodes/triangles/UV/normals |
-| Exchange | Headless STEP, IGES, BREP and STL import/export |
-| Viewer | HWND viewer, AIS presentation, selection, camera, materials, lighting, text and basic dimensions |
+| Headless modeling | Shape lifecycle, geometry, primitives, topology, Booleans, features, healing, analysis and mesh |
+| OCAF document | Create/open/save, BinXCAF/XmlXCAF/BinOcaf/XmlOcaf, transactions and undo/redo |
+| TDF/TData | Label hierarchy, generic attribute inspection, common scalar/reference/array/position/shape attributes |
+| TNaming | Evolution records, current named shape, old/new history pairs and selector workflows |
+| XDE assemblies | Shapes, free shapes, assemblies, components, references, locations and assembly updates |
+| XDE metadata | RGBA colors, visibility, layers, physical materials, area, volume, centroid and length units |
+| Exchange | Pure-shape STEP/IGES/BREP/STL plus metadata-preserving STEPCAF/IGESCAF |
+| Viewer | HWND viewer, AIS presentation, selection, camera, materials, lighting, text and dimensions |
 
-See [API coverage](docs/API_COVERAGE.md) for the detailed boundary.
+See [API coverage](docs/API_COVERAGE.md) and [OCAF/XDE coverage](docs/OCAF_COVERAGE.md).
 
-## Headless example
+## OCAF/XDE example
 
 ```csharp
-using OcctNet;
-
-OcctRuntime.Configure(
-    occtRoot: @"D:\tools\occt-vc144-64",
-    nativeBridgeDirectory: @"D:\libs\OcctBridge");
-
 using var model = new OcctModelingSession();
-
 var body = model.MakeBox(100, 80, 60);
-var hole = model.MakeCylinder(
-    new OcctPoint3d(50, 40, -10),
-    OcctVector3d.UnitZ,
-    radius: 12,
-    height: 80);
 
-var cut = model.Cut(body, hole);
-var faces = model.GetSubshapes(cut.Shape, OcctShapeType.Face);
+using var document = new OcafDocument(OcafDocumentFormats.BinaryXde)
+{
+    UndoLimit = 20
+};
 
-model.Mesh(cut.Shape);
-var mesh = model.GetFaceMesh(faces[0]);
+using (var command = document.BeginCommand())
+{
+    var product = document.AddShape(model, body);
+    document.SetName(product, "Housing");
+    document.SetColor(product, OcafColorType.Surface, new OcafColor(0.2, 0.45, 0.8));
+    var layer = document.AddLayer("Equipment");
+    document.SetLayer(product, layer);
+    document.SetMaterial(product, "Steel", "Structural steel", 7.85);
+    command.Commit();
+}
 
-var generated = model.GetGeneratedShapes(cut.OperationId, body);
-model.ExportStep(cut.Shape, @"D:\output\result.step");
+document.SaveAs(@"D:\output\assembly.xbf");
+document.ExportStep(@"D:\output\assembly.step");
 ```
 
 ## Build and smoke test
 
-Requirements:
-
-- Windows x64;
-- Visual Studio 2022 with Desktop development with C++;
-- .NET 8 SDK;
-- CMake 3.21 or later;
-- OCCT 7.9.0 built for Visual C++ x64.
+Requirements: Windows x64, Visual Studio 2022 with Desktop development with C++, .NET 8 SDK, CMake 3.21+, and **OCCT 7.9.0 VC++ x64**.
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
@@ -94,12 +80,10 @@ Set-ExecutionPolicy -Scope Process Bypass
 .\build.ps1 native Release
 .\build.ps1 managed Release
 .\build.ps1 all Release
-.\build.ps1 smoke Release
-
-.\build.ps1 smoke Debug -OcctRoot "D:\SDK\occt-vc144-64"
+.\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-The smoke target exercises headless Boolean operations, topology, mesh extraction, ray intersections, loft, healing, same-domain unification and a BREP round trip.
+The smoke target covers headless modeling plus OCAF transactions, undo/redo, TDF attributes, XDE shape/name/color/layer/material data, BinXCAF persistence/reopen, and shape transfer back to `OcctModelingSession`.
 
 ## Reference
 
@@ -111,11 +95,9 @@ The smoke target exercises headless Boolean operations, topology, mesh extractio
 
 Deploy `OcctNative.dll` beside the application or configure `OCCT_BRIDGE_NATIVE_DIR`. OCCT and third-party runtime DLLs must be discoverable through `PATH`.
 
-## Intentional exclusions
+## Boundary
 
-The bridge does not wrap OCAF documents, labels, attributes, OCAF undo/redo, TNaming or XDE document tools. STEP and IGES therefore provide pure `TopoDS_Shape` geometry exchange and do not promise XDE assembly hierarchy, instances, names, colors or layers.
-
-The project also does not attempt a one-to-one mapping of every OCCT C++ class. Specialized surface filling, variable fillets, PipeShell, every curve/surface intersection combination, and glTF/OBJ providers remain modular extension points rather than dependencies of the core ABI.
+The bridge provides stable engineering workflows rather than a one-to-one projection of every OCCT implementation class. Raw handles, label/attribute pointers, persistence-driver internals, concrete TDF delta classes and custom TFunction driver callbacks do not cross the C ABI. Advanced GD&T, view, note, clipping-plane and PBR visual-material sections remain available through section labels and generic attribute JSON inspection; dedicated typed CRUD modules can be added without breaking the core ABI.
 
 ## License
 

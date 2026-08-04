@@ -17,14 +17,21 @@ set(OCCT_LIB_DIR "${OCCT_ROOT}/win64/vc14/lib" CACHE PATH "OCCT library director
 set(OCCT_BIN_DIR "${OCCT_ROOT}/win64/vc14/bin" CACHE PATH "OCCT runtime directory")
 set(OCCT_CASROOT "${OCCT_ROOT}")
 
-if(NOT EXISTS "${OCCT_INCLUDE_DIR}/Standard.hxx")
-    message(FATAL_ERROR "OCCT header was not found: ${OCCT_INCLUDE_DIR}/Standard.hxx")
-endif()
-if(NOT EXISTS "${OCCT_LIB_DIR}/TKernel.lib")
-    message(FATAL_ERROR "OCCT library was not found: ${OCCT_LIB_DIR}/TKernel.lib")
-endif()
-if(NOT EXISTS "${OCCT_BIN_DIR}/TKernel.dll")
-    message(FATAL_ERROR "OCCT runtime was not found: ${OCCT_BIN_DIR}/TKernel.dll")
+foreach(required_path
+    "${OCCT_INCLUDE_DIR}/Standard.hxx"
+    "${OCCT_INCLUDE_DIR}/Standard_Version.hxx"
+    "${OCCT_LIB_DIR}/TKernel.lib"
+    "${OCCT_BIN_DIR}/TKernel.dll")
+    if(NOT EXISTS "${required_path}")
+        message(FATAL_ERROR "Required OCCT file was not found: ${required_path}")
+    endif()
+endforeach()
+
+file(READ "${OCCT_INCLUDE_DIR}/Standard_Version.hxx" _occt_version_header)
+if(NOT _occt_version_header MATCHES "#define[ \t]+OCC_VERSION_MAJOR[ \t]+7([^0-9]|$)" OR
+   NOT _occt_version_header MATCHES "#define[ \t]+OCC_VERSION_MINOR[ \t]+9([^0-9]|$)" OR
+   NOT _occt_version_header MATCHES "#define[ \t]+OCC_VERSION_MAINTENANCE[ \t]+0([^0-9]|$)")
+    message(FATAL_ERROR "OcctCSharpBridge requires exactly OCCT 7.9.0.")
 endif()
 
 add_library(OcctNative SHARED
@@ -40,10 +47,19 @@ add_library(OcctNative SHARED
     OcctModelingGeometry.cpp
     OcctModelingAlgorithms.cpp
     OcctModelingAnalysis.cpp
+    OcctOcafCore.cpp
+    OcctOcafAttributes.cpp
+    OcctOcafNaming.cpp
+    OcctOcafXde.cpp
+    OcctOcafXdeAppearance.cpp
+    OcctOcafXdeProperties.cpp
+    OcctOcafExchange.cpp
     OcctInternal.hxx
     OcctModelingInternal.hxx
+    OcctOcafInternal.hxx
     OcctNative.h
-    OcctModeling.h)
+    OcctModeling.h
+    OcctOcaf.h)
 
 target_compile_definitions(OcctNative PRIVATE NOMINMAX _CRT_SECURE_NO_WARNINGS)
 if(MSVC)
@@ -66,6 +82,20 @@ foreach(library_name IN LISTS occt_candidate_libraries)
     endif()
 endforeach()
 
+# These toolkits are directly referenced by the OCAF/XDE bridge and are mandatory.
+set(ocaf_required_libraries
+    TKCDF TKLCAF TKCAF TKXCAF
+    TKBinL TKXmlL TKBin TKXml TKBinXCAF TKXmlXCAF
+    TKDESTEP TKDEIGES)
+foreach(library_name IN LISTS ocaf_required_libraries)
+    if(NOT EXISTS "${OCCT_LIB_DIR}/${library_name}.lib")
+        message(FATAL_ERROR "Required OCCT 7.9.0 OCAF library was not found: ${OCCT_LIB_DIR}/${library_name}.lib")
+    endif()
+    list(APPEND occt_libraries "${library_name}")
+endforeach()
+list(REMOVE_DUPLICATES occt_libraries)
+
+message(STATUS "OCCT version: 7.9.0 (required exactly)")
 message(STATUS "OCCT CASROOT: ${OCCT_CASROOT}")
 message(STATUS "OCCT include: ${OCCT_INCLUDE_DIR}")
 message(STATUS "OCCT lib: ${OCCT_LIB_DIR}")
@@ -86,4 +116,4 @@ foreach(configuration Debug Release RelWithDebInfo MinSizeRel)
 endforeach()
 
 file(WRITE "${CMAKE_BINARY_DIR}/occt_paths.txt"
-    "OCCT_CASROOT=${OCCT_CASROOT}\nOCCT_INCLUDE_DIR=${OCCT_INCLUDE_DIR}\nOCCT_LIB_DIR=${OCCT_LIB_DIR}\nOCCT_BIN_DIR=${OCCT_BIN_DIR}\n")
+    "OCCT_CASROOT=${OCCT_CASROOT}\nOCCT_INCLUDE_DIR=${OCCT_INCLUDE_DIR}\nOCCT_LIB_DIR=${OCCT_LIB_DIR}\nOCCT_BIN_DIR=${OCCT_BIN_DIR}\nOCCT_VERSION=7.9.0\n")
