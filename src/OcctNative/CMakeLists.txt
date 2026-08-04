@@ -36,8 +36,10 @@ add_library(OcctNative SHARED
     OcctFeatures.cpp
     OcctAnnotations.cpp
     OcctIO.cpp
+    OcctModeling.cpp
     OcctInternal.hxx
-    OcctNative.h)
+    OcctNative.h
+    OcctModeling.h)
 
 target_compile_definitions(OcctNative PRIVATE NOMINMAX _CRT_SECURE_NO_WARNINGS)
 if(MSVC)
