@@ -7,7 +7,7 @@ Project("{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") = "Solution Items", "Solution 
         .gitignore = .gitignore
         build.ps1 = build.ps1
         LICENSE = LICENSE
-        README.en-US.md = README.en-US.md
+        README.zh-CN.md = README.zh-CN.md
         README.md = README.md
         run.ps1 = run.ps1
     EndProjectSection
