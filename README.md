@@ -1,166 +1,96 @@
-﻿# OCCT 7.9.0 C# CAD Bridge
+﻿# OCCT 7.9.0 C# Bridge
 
 [简体中文](README.zh-CN.md)
 
-This project wraps Open CASCADE Technology 7.9.0 through a **native C++ DLL, a stable C ABI, and C# P/Invoke**. It provides two compact CAD applications for WinForms and WPF. English is the default UI language; Simplified Chinese can be selected from the `Language` menu.
+A focused Windows x64 wrapper for Open CASCADE Technology 7.9.0:
 
-## Architecture
-
-```mermaid
-flowchart LR
-    WF[CAD-Winform] --> COMMON[CadCommon]
-    WPF[CAD-WPF] --> COMMON
-    COMMON --> NET[OcctNet]
-    NET --> ABI[OcctNative C ABI]
-    ABI --> OCCT[OCCT 7.9.0]
+```text
+C# application
+    ↓ ProjectReference
+OcctNet (.NET 8)
+    ↓ P/Invoke / stable C ABI
+OcctNative (C++17 DLL)
+    ↓
+OCCT 7.9.0
 ```
 
-| Project | Purpose |
+The `main` branch contains only the reusable wrapper. Complete WinForms and WPF CAD demonstrations are preserved in the [`demo`](../../tree/demo) branch.
+
+## Repository layout
+
+| Path | Purpose |
 |---|---|
-| `OcctNative` | OCCT geometry, topology, features, AIS, Viewer, annotations, and data exchange |
-| `OcctNet` | Type-safe C# API, P/Invoke, object lifetime, and the WinForms viewport control |
-| `CadCommon` | Shared commands, session, undo/redo, localization, and advanced samples |
-| `CadWinForms` | WinForms CAD application using the standard `Form / Designer / resx` structure |
-| `CadWpf` | WPF CAD application reusing the OCCT viewport through `WindowsFormsHost` |
+| `src/OcctNative` | Native C++ bridge, C ABI, OCCT geometry, topology, AIS, view, annotations, and data exchange |
+| `src/OcctNet` | Type-safe C# API, native lifetime management, runtime discovery, and WinForms viewport host |
+| `build.ps1` | Builds the native bridge, managed wrapper, or both |
 
-## Fixed development environment
+## Requirements
 
-| Item | Path or version |
-|---|---|
-| OCCT root | `D:\tools\occt-vc144-64` |
-| Headers | `D:\tools\occt-vc144-64\inc` |
-| Libraries | `D:\tools\occt-vc144-64\win64\vc14\lib` |
-| OCCT runtime | `D:\tools\occt-vc144-64\win64\vc14\bin` |
-| Third-party runtime | `D:\tools\occt-vc144-64\3rdparty-vc14-64` |
-| .NET | 8.0 Windows Desktop |
-| CMake | 3.21 or later |
-| Compiler | Visual Studio 2022 x64 |
+- Windows x64
+- Visual Studio 2022 with Desktop development with C++
+- .NET 8 SDK
+- CMake 3.21 or later
+- OCCT 7.9.0 built for Visual C++ x64
 
-Install the Visual Studio workloads **Desktop development with C++** and **.NET desktop development**.
+The conventional development path is `D:\tools\occt-vc144-64`. A different installation can be supplied through `-OcctRoot` or the `OCCT_ROOT` environment variable.
 
-## Build and run
-
-Arguments are `target configuration`. The default configuration is `Release`.
+## Build
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
 
-.\build.ps1 native
-.\build.ps1 winform
-.\build.ps1 wpf
-.\build.ps1 all
-
-.\build.ps1 wpf Debug
-.\build.ps1 all RelWithDebInfo
+.\build.ps1 all Release
+.\build.ps1 native Debug
+.\build.ps1 managed Release
+.\build.ps1 all Release -OcctRoot "D:\SDK\occt-vc144-64"
 ```
 
-| Target | Result |
-|---|---|
-| `native` | Build only `OcctNative.dll` |
-| `winform` | Build Native and WinForms |
-| `wpf` | Build Native and WPF |
-| `all` | Build Native, WinForms, and WPF |
-
-Run:
-
-```powershell
-.\run.ps1 winform
-.\run.ps1 wpf
-
-.\run.ps1 winform Debug
-```
-
-`run.ps1` adds only the fixed OCCT runtime and the component `bin`, `bin\win64`, and `bin\x64` directories under `3rdparty-vc14-64` to the current process `PATH`. It does not scan unrelated FreeCAD, DBeaver, OSG, or other software directories.
-
-## CAD shell
-
-Both applications use the same conventional CAD layout:
+Outputs:
 
 ```text
-Menu bar
-Toolbar
-├─ Left: Model Explorer
-├─ Center: OCCT Viewport + ViewCube
-└─ Right: Properties / Command Line
-Status bar: command state, selection state, and world coordinates
+build\native\bin\<Configuration>\OcctNative.dll
+src\OcctNet\bin\x64\<Configuration>\net8.0-windows\OcctNet.dll
 ```
 
-Top-level menus:
+When target `all` is used, `OcctNative.dll` is also copied beside `OcctNet.dll`.
 
-```text
-File  Edit  Draw  Solid  Annotate  View  Tools  Samples  Language  Help
+## Reference from another project
+
+```xml
+<ItemGroup>
+  <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet\OcctNet.csproj" />
+</ItemGroup>
 ```
 
-English is the default language. Selecting `Language > 简体中文` updates menus, toolbars, parameter dialogs, status messages, object properties, and command names.
+Configure non-default runtime locations before creating the first engine:
 
-## Interaction
+```csharp
+using OcctNet;
 
-| Input | Action |
-|---|---|
-| Left click | Select an object or subshape |
-| Left drag | Rectangle/window selection |
-| `Ctrl` + selection | Add to the selection set |
-| Right drag | Orbit |
-| Middle drag | Pan |
-| Mouse wheel | Zoom |
-| `Esc` | Deselect all |
-| `Ctrl+Z` / `Ctrl+Y` | Undo / Redo |
+OcctRuntime.Configure(
+    occtRoot: @"D:\SDK\occt-vc144-64",
+    nativeBridgeDirectory: @"D:\Libraries\OcctBridge");
 
-Selection filters include Object, Vertex, Edge, Wire, Face, Shell, and Solid.
+using var engine = new OcctEngine();
+```
 
-## Undo and redo
-
-The current implementation uses **command replay**, not an OCAF parametric feature tree.
-
-Tracked operations include:
-
-- 2D, 3D, feature, and Boolean commands;
-- move, rotate, scale, mirror, copy, and erase;
-- 3D text and advanced samples;
-- import operations;
-- multi-step undo and redo, with redo truncation after a new command.
-
-Boundaries:
-
-- `Open` establishes a new history baseline. Replay reloads the original file, so that file must remain accessible;
-- direct linear, angular, radius, and diameter dimensions based on temporary subshape selection clear and disable the current undo history; `New` or `Open` enables it again;
-- view orientation, visual style, material, lighting, background, and selection preferences are not part of modeling history;
-- this is a wrapper demonstration and is not a replacement for persistent OCAF/XDE feature history.
+Deploy `OcctNative.dll` with the application. OCCT runtime DLLs and required third-party runtime directories must be available through `PATH`; `OcctRuntime` configures them automatically when a valid OCCT root is found.
 
 ## API coverage
 
-| Module | Main features |
-|---|---|
-| Core and queries | Points, vectors, bounding boxes, mass properties, centroid, distance, topology counts, validation |
-| 2D | Point, line, polyline, circle, arc, ellipse, Bezier, B-spline, rectangle, polygon, planar face |
-| 3D | Box, cylinder, frustum, cone, sphere, torus, wedge, tube, compound, wire, shell, solid |
-| Features | Extrude, revolve, sweep, loft, fillet, chamfer, offset, shelling, drilling |
-| Boolean | Union, subtract, intersect, section curves |
-| AIS and view | Display, selection, highlighting, window selection, camera, standard views, ViewCube, projection, resolution, materials, lighting, background |
-| Annotations | 3D text, linear, angular, radius, and diameter dimensions |
-| IO | STEP, IGES, BREP, STL import/export and viewport capture |
+- Geometry and topology creation
+- Extrude, revolve, sweep, loft, fillet, chamfer, offset, shelling, and drilling
+- Boolean operations and section curves
+- AIS display, selection, highlighting, camera, standard views, and ViewCube
+- Linear, angular, radius, and diameter dimensions
+- STEP, IGES, BREP, and STL import/export
+- Bounding boxes, mass properties, centroids, distances, topology counts, and validation
 
-## Exception logs
+## Branch policy
 
-WinForms and WPF install global exception handlers. Logs are written to:
-
-```text
-%LOCALAPPDATA%\OcctCSharpBridge\Logs
-```
+- `main`: reusable native and managed wrapper only
+- `demo`: full CAD sample applications and shared demo infrastructure
 
 ## License
 
-The project is provided under the [PolyForm Noncommercial License 1.0.0](LICENSE):
-
-- personal study, research, testing, and other permitted noncommercial uses are allowed;
-- modification and distribution are allowed under the license terms;
-- commercial use is outside this license and requires a separate commercial license;
-- this is a source-available noncommercial license, not an OSI open-source license.
-
-OCCT and all third-party dependencies remain subject to their own licenses.
-
-## Current limits
-
-- STEP and IGES currently use plain `TopoDS_Shape` exchange and do not preserve full XDE assembly instances, names, colors, or layers;
-- topology traversal indices are not persistent identifiers after Boolean or feature reconstruction;
-- the current binaries, viewport, and build scripts target Windows x64 only.
+This project uses the [PolyForm Noncommercial License 1.0.0](LICENSE). OCCT and third-party components remain subject to their own licenses.

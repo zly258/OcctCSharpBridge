@@ -1,166 +1,96 @@
-﻿# OCCT 7.9.0 C# CAD 封装
+﻿# OCCT 7.9.0 C# 封装
 
 [English](README.md)
 
-本项目通过 **C++ 原生 DLL + 稳定 C ABI + C# P/Invoke** 封装 Open CASCADE Technology 7.9.0，提供 WinForms 和 WPF 两个简易 CAD 应用。界面默认英文，可在 `Language` 菜单切换为简体中文。
+这是面向 Windows x64 的精简 OCCT 7.9.0 C# 封装：
 
-## 项目结构
-
-```mermaid
-flowchart LR
-    WF[CAD-Winform] --> COMMON[CadCommon]
-    WPF[CAD-WPF] --> COMMON
-    COMMON --> NET[OcctNet]
-    NET --> ABI[OcctNative C ABI]
-    ABI --> OCCT[OCCT 7.9.0]
+```text
+C# 业务项目
+    ↓ ProjectReference
+OcctNet（.NET 8）
+    ↓ P/Invoke / 稳定 C ABI
+OcctNative（C++17 DLL）
+    ↓
+OCCT 7.9.0
 ```
 
-| 项目 | 说明 |
+`main` 分支仅保留可复用封装。完整 WinForms、WPF CAD 示例已原样保存在 [`demo`](../../tree/demo) 分支。
+
+## 仓库结构
+
+| 路径 | 说明 |
 |---|---|
-| `OcctNative` | OCCT 几何、拓扑、特征、AIS、Viewer、注释与文件交换 |
-| `OcctNet` | C# 类型安全 API、P/Invoke、对象生命周期和 WinForms 视口控件 |
-| `CadCommon` | 公共命令、会话、撤销重做、国际化和复杂示例 |
-| `CadWinForms` | WinForms CAD 应用，使用 `Form / Designer / resx` 传统结构 |
-| `CadWpf` | WPF CAD 应用，通过 `WindowsFormsHost` 复用 OCCT 视口 |
+| `src/OcctNative` | C++ 原生桥接层、稳定 C ABI、几何拓扑、AIS、视图、注释与文件交换 |
+| `src/OcctNet` | C# 类型安全 API、原生对象生命周期、运行库定位和 WinForms 视口宿主 |
+| `build.ps1` | 构建原生封装、托管封装或全部内容 |
 
-## 固定开发环境
+## 环境要求
 
-| 项目 | 路径或版本 |
-|---|---|
-| OCCT 根目录 | `D:\tools\occt-vc144-64` |
-| 头文件 | `D:\tools\occt-vc144-64\inc` |
-| 库文件 | `D:\tools\occt-vc144-64\win64\vc14\lib` |
-| OCCT 运行库 | `D:\tools\occt-vc144-64\win64\vc14\bin` |
-| 第三方运行库 | `D:\tools\occt-vc144-64\3rdparty-vc14-64` |
-| .NET | 8.0 Windows Desktop |
-| CMake | 3.21 或更高版本 |
-| 编译器 | Visual Studio 2022 x64 |
+- Windows x64
+- Visual Studio 2022，并安装“使用 C++ 的桌面开发”
+- .NET 8 SDK
+- CMake 3.21 或更高版本
+- 使用 Visual C++ x64 编译的 OCCT 7.9.0
 
-Visual Studio 需安装“使用 C++ 的桌面开发”和“.NET 桌面开发”。
+默认开发路径为 `D:\tools\occt-vc144-64`。其他安装位置可通过 `-OcctRoot` 参数或 `OCCT_ROOT` 环境变量指定。
 
-## 构建与运行
-
-参数顺序为 `目标 配置`，配置默认为 `Release`。
+## 构建
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
 
-.\build.ps1 native
-.\build.ps1 winform
-.\build.ps1 wpf
-.\build.ps1 all
-
-.\build.ps1 wpf Debug
-.\build.ps1 all RelWithDebInfo
+.\build.ps1 all Release
+.\build.ps1 native Debug
+.\build.ps1 managed Release
+.\build.ps1 all Release -OcctRoot "D:\SDK\occt-vc144-64"
 ```
 
-| 目标 | 构建内容 |
-|---|---|
-| `native` | 仅构建 `OcctNative.dll` |
-| `winform` | 构建 Native 和 WinForms |
-| `wpf` | 构建 Native 和 WPF |
-| `all` | 构建 Native、WinForms 和 WPF |
-
-运行：
-
-```powershell
-.\run.ps1 winform
-.\run.ps1 wpf
-
-.\run.ps1 winform Debug
-```
-
-`run.ps1` 仅将固定 OCCT 目录及 `3rdparty-vc14-64` 下组件的 `bin`、`bin\win64`、`bin\x64` 加入当前进程 `PATH`，不会扫描 FreeCAD、DBeaver、OSG 等其他软件目录。
-
-## CAD 界面
-
-两个应用采用统一的传统 CAD 布局：
+输出目录：
 
 ```text
-菜单栏
-工具栏
-├─ 左侧：Model Explorer
-├─ 中间：OCCT Viewport + ViewCube
-└─ 右侧：Properties / Command Line
-状态栏：命令状态、选择状态、世界坐标
+build\native\bin\<Configuration>\OcctNative.dll
+src\OcctNet\bin\x64\<Configuration>\net8.0-windows\OcctNet.dll
 ```
 
-一级菜单：
+使用 `all` 目标时，脚本还会将 `OcctNative.dll` 复制到 `OcctNet.dll` 同目录。
 
-```text
-File  Edit  Draw  Solid  Annotate  View  Tools  Samples  Language  Help
+## 在其他项目中引用
+
+```xml
+<ItemGroup>
+  <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet\OcctNet.csproj" />
+</ItemGroup>
 ```
 
-默认语言为英文。选择 `Language > 简体中文` 后，菜单、工具栏、参数窗口、状态信息、对象属性和命令名称同步切换。
+使用非默认运行库路径时，应在创建第一个引擎实例前完成配置：
 
-## 交互
+```csharp
+using OcctNet;
 
-| 操作 | 行为 |
-|---|---|
-| 左键单击 | 选择对象或子拓扑 |
-| 左键拖动 | 矩形框选 |
-| `Ctrl` + 选择 | 追加到选择集 |
-| 右键拖动 | 三维旋转 |
-| 中键拖动 | 平移 |
-| 滚轮 | 缩放 |
-| `Esc` | 取消选择 |
-| `Ctrl+Z` / `Ctrl+Y` | 撤销 / 重做 |
+OcctRuntime.Configure(
+    occtRoot: @"D:\SDK\occt-vc144-64",
+    nativeBridgeDirectory: @"D:\Libraries\OcctBridge");
 
-选择过滤器支持 Object、Vertex、Edge、Wire、Face、Shell 和 Solid。
-
-## 撤销与重做
-
-当前实现采用**命令重放**，不是 OCAF 参数化特征树。
-
-支持记录：
-
-- 二维、三维、特征和布尔命令；
-- 移动、旋转、缩放、镜像、复制和删除；
-- 三维文字与复杂示例；
-- 导入操作；
-- 多步撤销和重做，执行新命令后自动清除重做分支。
-
-边界：
-
-- `Open` 建立新的历史基线；撤销重建时会重新读取原文件，因此原文件必须保持可访问；
-- 直接基于临时子拓扑选择创建的线性、角度、半径和直径尺寸会清空并停用当前撤销历史，执行 `New` 或 `Open` 后重新启用；
-- 视图方向、显示模式、材质、光照、背景和选择设置不写入建模历史；
-- 本实现用于封装演示，不替代 OCAF/XDE 的持久化特征历史。
-
-## 功能范围
-
-| 模块 | 主要功能 |
-|---|---|
-| 基础与查询 | 点、向量、包围盒、质量属性、重心、距离、拓扑统计、有效性检查 |
-| 二维 | 点、直线、多段线、圆、圆弧、椭圆、Bezier、B 样条、矩形、正多边形、平面 |
-| 三维 | 长方体、圆柱、圆台、圆锥、球、圆环、楔体、圆管、Compound、Wire、Shell、Solid |
-| 特征 | 拉伸、旋转、扫掠、放样、圆角、倒角、偏移、抽壳、钻孔 |
-| 布尔 | 并集、差集、交集、截交线 |
-| AIS 与视图 | 显示、选择、高亮、框选、相机、标准视图、ViewCube、投影、精度、材质、光照、背景 |
-| 注释 | 三维文字、线性尺寸、角度尺寸、半径尺寸、直径尺寸 |
-| IO | STEP、IGES、BREP、STL 导入导出和视图截图 |
-
-## 异常日志
-
-WinForms 和 WPF 均安装全局异常捕获，日志目录：
-
-```text
-%LOCALAPPDATA%\OcctCSharpBridge\Logs
+using var engine = new OcctEngine();
 ```
+
+应用发布时需要携带 `OcctNative.dll`。OCCT 运行库及第三方运行库目录必须可通过 `PATH` 访问；找到有效 OCCT 根目录后，`OcctRuntime` 会自动完成配置。
+
+## 封装范围
+
+- 几何与拓扑创建
+- 拉伸、旋转、扫掠、放样、圆角、倒角、偏移、抽壳和钻孔
+- 布尔运算与截交线
+- AIS 显示、选择、高亮、相机、标准视图和 ViewCube
+- 线性、角度、半径和直径尺寸
+- STEP、IGES、BREP、STL 导入导出
+- 包围盒、质量属性、重心、距离、拓扑统计和有效性检查
+
+## 分支职责
+
+- `main`：仅包含可复用的原生封装和 C# 封装
+- `demo`：包含完整 CAD 示例程序及示例公共层
 
 ## 许可证
 
-本项目采用 [PolyForm Noncommercial License 1.0.0](LICENSE)：
-
-- 允许个人学习、研究、测试和其他许可范围内的非商业使用；
-- 允许在许可证条件下修改和分发；
-- 商业使用不在该许可证授权范围内，需要另行取得商业许可；
-- 该许可证属于 source-available 非商业许可证，不是 OSI 开源许可证。
-
-OCCT 及其第三方依赖仍适用各自许可证。
-
-## 当前边界
-
-- STEP/IGES 当前使用普通 `TopoDS_Shape`，不保留完整 XDE 装配实例、名称、颜色和图层；
-- 布尔或特征重建后，拓扑遍历索引不能作为永久稳定标识；
-- 当前二进制、视口和构建脚本仅面向 Windows x64。
+本项目采用 [PolyForm Noncommercial License 1.0.0](LICENSE)。OCCT 与第三方组件仍适用各自许可证。
