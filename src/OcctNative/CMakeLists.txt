@@ -36,8 +36,12 @@ add_library(OcctNative SHARED
     OcctFeatures.cpp
     OcctAnnotations.cpp
     OcctIO.cpp
-    OcctModeling.cpp
+    OcctModelingCore.cpp
+    OcctModelingGeometry.cpp
+    OcctModelingAlgorithms.cpp
+    OcctModelingAnalysis.cpp
     OcctInternal.hxx
+    OcctModelingInternal.hxx
     OcctNative.h
     OcctModeling.h)
 
