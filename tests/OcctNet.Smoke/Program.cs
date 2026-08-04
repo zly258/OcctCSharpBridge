@@ -52,11 +52,69 @@ var unified = model.UnifySameDomain(healed.Shape);
 if (!model.IsValid(unified.Shape))
     throw new InvalidOperationException("Healed and unified shape is invalid.");
 
+var xbfPath = Path.Combine(Path.GetTempPath(), $"occt-ocaf-{Guid.NewGuid():N}.xbf");
+try
+{
+    using (var document = new OcafDocument())
+    {
+        if (OcafDocument.NativeVersion != "7.9.0")
+            throw new InvalidOperationException($"Unexpected OCAF runtime: {OcafDocument.NativeVersion}");
+
+        document.UndoLimit = 10;
+        using (var command = document.BeginCommand())
+        {
+            var dataLabel = document.NewChild(document.Main);
+            document.SetName(dataLabel, "Smoke metadata");
+            document.SetInteger(dataLabel, 42);
+            document.SetRealArray(dataLabel, new[] { 1.25, 2.5, 5.0 }, lower: -1);
+
+            var shapeLabel = document.AddShape(model, cut.Shape, makeAssembly: false);
+            document.SetName(shapeLabel, "Cut body");
+            document.SetColor(shapeLabel, OcafColorType.Surface, new OcafColor(0.2, 0.4, 0.8));
+            var layer = document.AddLayer("Machined");
+            document.SetLayer(shapeLabel, layer, oneLayerOnly: true);
+            document.SetMaterial(shapeLabel, "Steel", "Smoke-test material", 7850.0, "density", "kg/m3");
+            document.SetArea(shapeLabel, model.GetSurfaceProperties(cut.Shape).Mass);
+            document.SetVolume(shapeLabel, model.GetVolumeProperties(cut.Shape).Mass);
+            document.SetCentroid(shapeLabel, model.GetVolumeProperties(cut.Shape).CenterOfMass);
+
+            _ = command.Commit();
+        }
+
+        if (document.AvailableUndos <= 0 || !document.Undo() || !document.Redo())
+            throw new InvalidOperationException("OCAF undo/redo failed.");
+
+        document.SaveAs(xbfPath);
+    }
+
+    using var reopened = OcafDocument.Open(xbfPath);
+    var reopenedShapes = reopened.GetShapes(freeOnly: true);
+    if (reopenedShapes.Count != 1)
+        throw new InvalidOperationException("XBF round trip lost the XDE shape.");
+    if (reopened.GetName(reopenedShapes[0]) != "Cut body")
+        throw new InvalidOperationException("XBF round trip lost the XDE name.");
+    if (!reopened.TryGetColor(reopenedShapes[0], OcafColorType.Surface, out _))
+        throw new InvalidOperationException("XBF round trip lost the XDE color.");
+    if (reopened.GetLayers(reopenedShapes[0]).Count != 1)
+        throw new InvalidOperationException("XBF round trip lost the XDE layer.");
+    if (reopened.GetMaterialLabel(reopenedShapes[0]) is null)
+        throw new InvalidOperationException("XBF round trip lost the XDE material.");
+
+    var extracted = reopened.GetShape(reopenedShapes[0], model);
+    if (!model.IsValid(extracted))
+        throw new InvalidOperationException("XDE-to-modeling shape interop failed.");
+}
+finally
+{
+    if (File.Exists(xbfPath)) File.Delete(xbfPath);
+}
+
 Console.WriteLine($"OCCT {OcctEngine.OcctVersion}");
-Console.WriteLine($"Capabilities: {OcctModelingSession.Capabilities}");
+Console.WriteLine($"Modeling capabilities: {OcctModelingSession.Capabilities}");
+Console.WriteLine($"OCAF capabilities: {OcafDocument.Capabilities}");
 Console.WriteLine($"Shapes: {model.ShapeCount}");
 Console.WriteLine($"Faces: {faceCount}");
 Console.WriteLine($"Mesh: {faceMesh.Nodes.Count} nodes, {faceMesh.Triangles.Count} triangles");
 Console.WriteLine($"Ray hits: {rayHits.Count}");
 Console.WriteLine($"Loft operation: {loft.OperationId}");
-Console.WriteLine("Smoke test passed.");
+Console.WriteLine("Modeling and OCAF smoke tests passed.");
