@@ -20,28 +20,21 @@ OcctCSharpBridge 通过原生 C++ DLL、稳定 C ABI 和类型安全的 .NET 8 A
 - OCAF、TNaming 和 XDE 封装示例
 - 简体中文与英文界面
 
-## 构建
+## 构建与运行
 
 ```powershell
 .\build.ps1 all Release
-```
-
-## 运行
-
-```powershell
 .\run.ps1 winform
 .\run.ps1 wpf
 ```
 
 ## 发布
 
-默认生成精简的框架依赖 WinForms 发布包：
-
 ```powershell
 .\publish.ps1 winform Release
 ```
 
-可通过发布脚本参数选择 WPF、自包含运行时、完整 OCCT 资源、诊断文件或 ZIP 输出。
+发布脚本还可选择 WPF、自包含运行时、完整 OCCT 资源、诊断文件或 ZIP 输出。
 
 ## 接口清单
 
