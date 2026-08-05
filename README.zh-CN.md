@@ -23,7 +23,7 @@ OcctCSharpBridge 通过原生 C++ DLL、稳定 C ABI 和类型安全的 .NET 8 A
 ## 构建
 
 ```powershell
-.\build.ps1 Release
+.\build.ps1 all Release
 ```
 
 ## 运行
