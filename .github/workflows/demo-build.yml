@@ -33,6 +33,10 @@ jobs:
         shell: pwsh
         run: dotnet build .\src\CadCommon\CadCommon.csproj -c Release -p:Platform=x64 --nologo
 
+      - name: Verify complete public API catalog
+        shell: pwsh
+        run: dotnet run --project .\tests\OcctNet.ApiCatalog\OcctNet.ApiCatalog.csproj -c Release -p:Platform=x64 --nologo
+
       - name: Build WinForms demo
         shell: pwsh
         run: dotnet build .\src\CadWinForms\CadWinForms.csproj -c Release -p:Platform=x64 --nologo
