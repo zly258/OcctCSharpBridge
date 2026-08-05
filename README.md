@@ -19,28 +19,21 @@ The `demo` branch contains WinForms and WPF reference applications. The reusable
 - OCAF, TNaming, and XDE wrapper examples
 - English and Simplified Chinese UI
 
-## Build
+## Build and run
 
 ```powershell
 .\build.ps1 all Release
-```
-
-## Run
-
-```powershell
 .\run.ps1 winform
 .\run.ps1 wpf
 ```
 
 ## Publish
 
-The default package is lean, framework-dependent, and WinForms-first:
-
 ```powershell
 .\publish.ps1 winform Release
 ```
 
-Use the publish script options for WPF, self-contained runtime, full OCCT resources, diagnostics, or ZIP output.
+The publisher can also include WPF, a self-contained runtime, full OCCT resources, diagnostics, or ZIP output.
 
 ## API inventory
 
