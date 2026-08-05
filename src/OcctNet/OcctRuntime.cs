@@ -1,4 +1,6 @@
-﻿namespace OcctNet;
+﻿using System.Runtime.InteropServices;
+
+namespace OcctNet;
 
 /// <summary>
 /// Configures the OCCT runtime before the native bridge is loaded.
@@ -7,14 +9,21 @@ public static class OcctRuntime
 {
     private const string NativeLibraryFileName = "OcctNative.dll";
     private const string DefaultOcctRoot = @"D:\tools\occt-vc144-64";
+    private const uint LoadLibrarySearchDefaultDirs = 0x00001000;
 
     private static readonly object SyncRoot = new();
     private static bool _configured;
+    private static IntPtr _nativeDirectoryCookie;
 
     /// <summary>
     /// Gets the OCCT root selected during runtime configuration.
     /// </summary>
     public static string? ConfiguredRoot { get; private set; }
+
+    /// <summary>
+    /// Gets the directory containing the configured native bridge.
+    /// </summary>
+    public static string? ConfiguredNativeDirectory { get; private set; }
 
     /// <summary>
     /// Configures the runtime using OCCT_ROOT, CASROOT, or the conventional development path.
@@ -41,11 +50,12 @@ public static class OcctRuntime
 
             PrependPath(AppContext.BaseDirectory);
 
-            if (!string.IsNullOrWhiteSpace(nativeBridgeDirectory))
+            ConfiguredNativeDirectory = ResolveNativeBridgeDirectory(nativeBridgeDirectory);
+            if (!string.IsNullOrWhiteSpace(ConfiguredNativeDirectory))
             {
-                var fullNativeDirectory = Path.GetFullPath(nativeBridgeDirectory);
-                Environment.SetEnvironmentVariable("OCCT_BRIDGE_NATIVE_DIR", fullNativeDirectory);
-                PrependPath(fullNativeDirectory);
+                Environment.SetEnvironmentVariable("OCCT_BRIDGE_NATIVE_DIR", ConfiguredNativeDirectory);
+                PrependPath(ConfiguredNativeDirectory);
+                RegisterNativeSearchDirectory(ConfiguredNativeDirectory);
             }
 
             ConfiguredRoot = ResolveOcctRoot(occtRoot);
@@ -56,6 +66,7 @@ public static class OcctRuntime
 
                 PrependPath(occtBinDirectory);
                 AddThirdPartyRuntimePaths(thirdPartyDirectory);
+                SetIfMissing("OCCT_ROOT", ConfiguredRoot);
                 SetIfMissing("CASROOT", ConfiguredRoot);
                 ConfigureResources(FindResourceDirectory(ConfiguredRoot));
             }
@@ -74,6 +85,11 @@ public static class OcctRuntime
             Path.Combine(AppContext.BaseDirectory, "runtimes", "win-x64", "native", NativeLibraryFileName)
         };
 
+        if (!string.IsNullOrWhiteSpace(ConfiguredNativeDirectory))
+        {
+            candidates.Insert(0, Path.Combine(ConfiguredNativeDirectory, NativeLibraryFileName));
+        }
+
         var configuredDirectory = Environment.GetEnvironmentVariable("OCCT_BRIDGE_NATIVE_DIR");
         if (!string.IsNullOrWhiteSpace(configuredDirectory))
         {
@@ -91,13 +107,46 @@ public static class OcctRuntime
         return candidates.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
+    private static string? ResolveNativeBridgeDirectory(string? explicitDirectory)
+    {
+        var portableRuntimeDirectory = Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "runtime"));
+
+        foreach (var candidate in new[]
+                 {
+                     explicitDirectory,
+                     Environment.GetEnvironmentVariable("OCCT_BRIDGE_NATIVE_DIR"),
+                     AppContext.BaseDirectory,
+                     Path.Combine(AppContext.BaseDirectory, "runtimes", "win-x64", "native"),
+                     portableRuntimeDirectory
+                 })
+        {
+            if (string.IsNullOrWhiteSpace(candidate))
+            {
+                continue;
+            }
+
+            var fullPath = Path.GetFullPath(candidate);
+            if (File.Exists(Path.Combine(fullPath, NativeLibraryFileName)))
+            {
+                return fullPath;
+            }
+        }
+
+        return null;
+    }
+
     private static string? ResolveOcctRoot(string? explicitRoot)
     {
+        var portableOcctRoot = Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "occt"));
+
         foreach (var candidate in new[]
                  {
                      explicitRoot,
                      Environment.GetEnvironmentVariable("OCCT_ROOT"),
                      Environment.GetEnvironmentVariable("CASROOT"),
+                     portableOcctRoot,
                      DefaultOcctRoot
                  })
         {
@@ -114,6 +163,26 @@ public static class OcctRuntime
         }
 
         return null;
+    }
+
+    private static void RegisterNativeSearchDirectory(string directory)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        if (SetDefaultDllDirectories(LoadLibrarySearchDefaultDirs))
+        {
+            var cookie = AddDllDirectory(directory);
+            if (cookie != IntPtr.Zero)
+            {
+                _nativeDirectoryCookie = cookie;
+                return;
+            }
+        }
+
+        SetDllDirectory(directory);
     }
 
     private static void AddThirdPartyRuntimePaths(string thirdPartyDirectory)
@@ -228,4 +297,15 @@ public static class OcctRuntime
 
         Environment.SetEnvironmentVariable("PATH", directory + Path.PathSeparator + currentPath);
     }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetDefaultDllDirectories(uint directoryFlags);
+
+    [DllImport("kernel32.dll", EntryPoint = "AddDllDirectory", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr AddDllDirectory(string newDirectory);
+
+    [DllImport("kernel32.dll", EntryPoint = "SetDllDirectoryW", CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetDllDirectory(string pathName);
 }
