@@ -1,0 +1,58 @@
+name: Apply Publish Runtime Cleanup
+
+on:
+  push:
+    branches:
+      - fix/publish-runtime-dependency-closure
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: ${{ !contains(github.event.head_commit.message, '[publish-runtime-cleanup-applied]') }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/publish-runtime-dependency-closure
+          fetch-depth: 0
+      - name: Remove duplicate resolver functions
+        run: python tools/cleanup-publish-runtime-closure.py
+      - name: Parse and validate publish script
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path .\publish.ps1),
+              [ref]$tokens,
+              [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+              $errors | Format-List
+              exit 1
+          }
+          $text = Get-Content .\publish.ps1 -Raw
+          foreach ($name in @(
+              'Resolve-Dumpbin',
+              'Get-PeDependencies',
+              'Test-SystemDependency',
+              'Test-RuntimeCandidate',
+              'Get-RuntimeCandidateScore',
+              'New-RuntimeCandidateIndex',
+              'Resolve-RuntimeDependency',
+              'Copy-OcctRuntime')) {
+              $count = ([regex]::Matches($text, "function\s+$([regex]::Escape($name))\s*\{")).Count
+              if ($count -ne 1) { throw "Expected one $name definition, found $count." }
+          }
+      - name: Commit cleaned source
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add publish.ps1
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Clean native publish dependency resolver [publish-runtime-cleanup-applied]"
+          git push
