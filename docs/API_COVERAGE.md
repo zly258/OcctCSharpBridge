@@ -2,21 +2,29 @@
 
 ## Session separation
 
-`OcctModelingSession` is the authoritative headless modeling API. It owns a native registry of `TopoDS_Shape` values and operation-history objects. `OcctEngine` remains the AIS/V3d presentation API. The two registries are deliberately independent.
+The bridge has three independent high-level sessions:
+
+- `OcctModelingSession`: headless `TopoDS_Shape` construction, algorithms, analysis, healing, mesh and pure-shape exchange;
+- `OcafDocument`: OCAF/TDF/TNaming/XDE document, metadata, assembly, persistence and STEPCAF/IGESCAF exchange;
+- `OcctEngine`: AIS/V3d presentation, selection and annotations.
+
+Native registries are deliberately independent. Shapes are copied between the modeling registry, OCAF/XDE documents and the Viewer; no C++ pointer or lifetime dependency crosses the stable C ABI.
 
 ## Native modules
 
 | File | Responsibility |
 |---|---|
-| `OcctModeling.h/.cpp` | Headless C ABI, shape registry, topology, algorithms, history, healing, mesh and data exchange |
-| `OcctNative.h` and existing `.cpp` files | Viewer/AIS-compatible legacy C ABI |
-| `OcctInternal.hxx` | Existing Viewer internals and shared runtime helpers |
+| `OcctModeling.h` and `OcctModeling*.cpp` | Headless C ABI, shape registry, topology, algorithms, history, healing, mesh and pure-shape exchange |
+| `OcctOcaf.h` and `OcctOcaf*.cpp` | OCCT 7.9.0 OCAF documents, TDF/TDataStd/TDataXtd, TNaming, XDE and metadata-preserving exchange |
+| `OcctNative.h` and existing `.cpp` files | Viewer/AIS-compatible C ABI |
+| `OcctInternal.hxx`, `OcctModelingInternal.hxx`, `OcctOcafInternal.hxx` | Private native state and runtime helpers |
 
 ## Managed modules
 
 | Type | Responsibility |
 |---|---|
-| `OcctModelingSession` | Headless public API and native lifetime |
+| `OcctModelingSession` | Headless public modeling API and native shape lifetime |
+| `OcafDocument` | OCAF/XDE document, labels, attributes, TNaming, assemblies, metadata and persistence |
 | `OcctModelShape` | Session-local shape ID |
 | `OcctModelAlgorithmResult` | Result shape, operation ID, warning/error flags and report |
 | `OcctFaceMesh` | Face triangulation nodes and triangles |
@@ -37,18 +45,24 @@
 - STEP, IGES, BREP and STL pure-shape exchange;
 - copy-to-viewer interoperability.
 
-## Deliberately excluded
+## Implemented OCAF/XDE groups
 
-- OCAF/TDF/TDocStd/TDataStd;
-- TNaming and OCAF feature naming;
-- OCAF command transactions and undo/redo;
-- XDE document tools and assembly metadata persistence;
-- a direct one-to-one projection of every OCCT class into C#.
+- exact OCCT 7.9.0 version enforcement;
+- `TDocStd_Document` lifecycle, persistence, transactions and undo/redo;
+- TDF label hierarchy and generic attribute inspection;
+- common TDataStd/TDataXtd scalar, reference, array, position and shape attributes;
+- TNaming evolution and selector workflows;
+- XDE shapes, assemblies, components and locations;
+- XDE colors, visibility, layers, physical materials and validation properties;
+- BinXCAF/XmlXCAF/BinOcaf/XmlOcaf persistence;
+- STEPCAF and IGESCAF metadata-preserving exchange.
+
+See [OCAF/XDE coverage](OCAF_COVERAGE.md) for the detailed contract and advanced boundaries.
 
 ## Stable topology guidance
 
-Do not persist traversal indices as long-term references across reconstruction. Use the `OperationId` returned by modeling algorithms and query generated/modified/removed relations while the source shapes and operation remain in the same `OcctModelingSession`.
+Do not persist traversal indices as long-term references across reconstruction. For transient modeling, use the `OperationId` history in `OcctModelingSession`. For document-backed identity and regeneration, store shapes and selections through `OcafDocument` TNaming APIs inside OCAF command transactions.
 
 ## Extension policy
 
-New native functionality should be added as a narrow C ABI workflow rather than exposing OCCT C++ handles. Structures crossing the ABI must remain blittable, versionable and free of C++ standard-library ownership.
+New native functionality must be exposed as a narrow, versioned C ABI workflow. Structures crossing the ABI must remain blittable and free of C++ standard-library ownership. Raw OCCT handles, labels, attributes, drivers and callback objects must remain native implementation details.
