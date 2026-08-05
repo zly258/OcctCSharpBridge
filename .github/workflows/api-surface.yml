@@ -26,3 +26,7 @@ jobs:
       - name: Build managed wrapper
         shell: pwsh
         run: dotnet build .\src\OcctNet\OcctNet.csproj -c Release -p:Platform=x64 --nologo
+
+      - name: Compile smoke test
+        shell: pwsh
+        run: dotnet build .\tests\OcctNet.Smoke\OcctNet.Smoke.csproj -c Release -p:Platform=x64 --nologo
