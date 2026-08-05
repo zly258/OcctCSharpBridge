@@ -1,13 +1,13 @@
-﻿# OCCT Bridge API Inventory
+﻿# OCCT 封装接口详细清单
 
-This source-derived inventory lists the current native C ABI, C# P/Invoke mapping, and public .NET types.
+本文件由源码接口声明整理，列出当前原生 C ABI、C# P/Invoke 映射及公开 .NET 类型。
 
 - OCCT: `7.9.0`
 - Native exports: `509`
 - Managed P/Invoke declarations: `509`
 - Public .NET types: `62`
 
-## Native C ABI
+## 原生 C ABI
 
 ### OcctNative.h (4)
 
@@ -599,7 +599,7 @@ This source-derived inventory lists the current native C ABI, C# P/Invoke mappin
 - `occt_ocaf_xde_layer_shape_at`
 - `occt_ocaf_xde_layer_shape_snapshot`
 
-## Native data types
+## 原生数据类型
 
 - `OcctAutoZFitSettings`
 - `OcctBooleanOperation`
@@ -638,7 +638,7 @@ This source-derived inventory lists the current native C ABI, C# P/Invoke mappin
 - `OcctVector3d`
 - `OcctViewOrientation`
 
-## Public .NET types
+## 公开 .NET 类型
 
 - `IOcctObject`
 - `OcafColor`
@@ -703,6 +703,6 @@ This source-derived inventory lists the current native C ABI, C# P/Invoke mappin
 - `OcctViewportSelectionEventArgs`
 - `OcctViewportWorldPointEventArgs`
 
-## Consistency rule
+## 一致性规则
 
-`tests/check-api-surface.ps1` verifies that every native declaration has both a C++ definition and a C# P/Invoke declaration.
+`tests/check-api-surface.ps1` 校验每个原生声明均存在 C++ 定义和 C# P/Invoke 声明。
