@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+using System.Drawing;
 using System.Windows.Forms;
 
 namespace OcctNet;
@@ -37,10 +37,13 @@ public sealed class OcctViewportControl : Control
     private bool _rotating;
     private bool _panning;
     private bool _selectingRectangle;
-    private Rectangle? _selectionFrameScreen;
+    private bool _releasingMouseCapture;
+    private Rectangle? _selectionFrameClient;
 
     public OcctViewportControl()
     {
+        // OCCT renders directly into this HWND. WinForms UserPaint/double buffering must stay disabled;
+        // the selection rectangle is rendered by OCCT as a top-layer AIS_RubberBand instead.
         SetStyle(ControlStyles.UserPaint, false);
         SetStyle(ControlStyles.AllPaintingInWmPaint, false);
         SetStyle(ControlStyles.OptimizedDoubleBuffer, false);
@@ -51,6 +54,10 @@ public sealed class OcctViewportControl : Control
     public OcctEngine Engine => _engine ?? throw new InvalidOperationException("The OCCT viewport handle has not been created yet.");
     public bool EnableRectangleSelection { get; set; } = true;
     public int RectangleSelectionThreshold { get; set; } = 5;
+    public Color RectangleSelectionLineColor { get; set; } = Color.FromArgb(35, 120, 210);
+    public Color RectangleSelectionFillColor { get; set; } = Color.FromArgb(95, 165, 230);
+    public double RectangleSelectionFillTransparency { get; set; } = 0.82;
+    public double RectangleSelectionLineWidth { get; set; } = 1.0;
 
     public event EventHandler<OcctShape?>? SelectionChanged;
     public event EventHandler<OcctViewportSelectionEventArgs>? ObjectSelectionChanged;
@@ -68,6 +75,7 @@ public sealed class OcctViewportControl : Control
 
     protected override void OnHandleDestroyed(EventArgs e)
     {
+        HideSelectionFrame();
         _engine?.Dispose();
         _engine = null;
         base.OnHandleDestroyed(e);
@@ -76,7 +84,11 @@ public sealed class OcctViewportControl : Control
     protected override void OnResize(EventArgs e)
     {
         base.OnResize(e);
-        if (_engine?.IsInitialized == true && Width > 0 && Height > 0) TryInvoke(() => _engine.Resize());
+        if (_engine?.IsInitialized == true && Width > 0 && Height > 0)
+        {
+            CancelRectangleSelection();
+            TryInvoke(() => _engine.Resize());
+        }
     }
 
     protected override void OnPaintBackground(PaintEventArgs pevent)
@@ -93,16 +105,18 @@ public sealed class OcctViewportControl : Control
 
         if (e.Button == MouseButtons.Right)
         {
+            CancelRectangleSelection();
             _rotating = true;
             TryInvoke(() => _engine.StartRotation(e.X, e.Y));
         }
         else if (e.Button == MouseButtons.Middle)
         {
+            CancelRectangleSelection();
             _panning = true;
         }
         else if (e.Button == MouseButtons.Left)
         {
-            EraseSelectionFrame();
+            CancelRectangleSelection();
             _selectionStart = e.Location;
             _selectingRectangle = EnableRectangleSelection;
             Capture = true;
@@ -131,7 +145,9 @@ public sealed class OcctViewportControl : Control
         else
         {
             TryInvoke(() => _engine.MoveTo(e.X, e.Y));
-            TryInvoke(() => WorldPointChanged?.Invoke(this, new OcctViewportWorldPointEventArgs(e.X, e.Y, _engine.ScreenToWorld(e.X, e.Y))));
+            TryInvoke(() => WorldPointChanged?.Invoke(
+                this,
+                new OcctViewportWorldPointEventArgs(e.X, e.Y, _engine.ScreenToWorld(e.X, e.Y))));
         }
         _lastMouse = e.Location;
     }
@@ -139,26 +155,40 @@ public sealed class OcctViewportControl : Control
     protected override void OnMouseUp(MouseEventArgs e)
     {
         base.OnMouseUp(e);
-        if (_engine?.IsInitialized != true) return;
-        if (e.Button == MouseButtons.Right) _rotating = false;
-        else if (e.Button == MouseButtons.Middle) _panning = false;
-        else if (e.Button == MouseButtons.Left)
+        if (e.Button == MouseButtons.Right)
         {
-            EraseSelectionFrame();
-            Capture = false;
-            var dx = Math.Abs(e.X - _selectionStart.X);
-            var dy = Math.Abs(e.Y - _selectionStart.Y);
-            var append = ModifierKeys.HasFlag(Keys.Control);
-            TryInvoke(() =>
-            {
-                if (_selectingRectangle && (dx >= RectangleSelectionThreshold || dy >= RectangleSelectionThreshold))
-                    _engine.SelectRectangle(_selectionStart.X, _selectionStart.Y, e.X, e.Y, append);
-                else
-                    _engine.Select(e.X, e.Y, append);
-                RaiseSelectionChanged();
-            });
-            _selectingRectangle = false;
+            _rotating = false;
+            return;
         }
+        if (e.Button == MouseButtons.Middle)
+        {
+            _panning = false;
+            return;
+        }
+        if (e.Button != MouseButtons.Left) return;
+
+        var dx = Math.Abs(e.X - _selectionStart.X);
+        var dy = Math.Abs(e.Y - _selectionStart.Y);
+        var useRectangle = _selectingRectangle
+                           && (dx >= RectangleSelectionThreshold || dy >= RectangleSelectionThreshold);
+        var append = ModifierKeys.HasFlag(Keys.Control);
+
+        // Preserve the gesture result before releasing capture. CaptureChanged is raised synchronously
+        // by WinForms; the previous implementation cleared _selectingRectangle here and therefore
+        // every box gesture incorrectly fell back to point selection.
+        _selectingRectangle = false;
+        HideSelectionFrame();
+        ReleaseMouseCapture();
+
+        if (_engine?.IsInitialized != true) return;
+        TryInvoke(() =>
+        {
+            if (useRectangle)
+                _engine.SelectRectangle(_selectionStart.X, _selectionStart.Y, e.X, e.Y, append);
+            else
+                _engine.Select(e.X, e.Y, append);
+            RaiseSelectionChanged();
+        });
     }
 
     protected override void OnMouseWheel(MouseEventArgs e)
@@ -169,40 +199,69 @@ public sealed class OcctViewportControl : Control
 
     protected override void OnMouseCaptureChanged(EventArgs e)
     {
-        if (!Capture)
-        {
-            EraseSelectionFrame();
-            _selectingRectangle = false;
-        }
+        if (!Capture && !_releasingMouseCapture)
+            CancelRectangleSelection();
         base.OnMouseCaptureChanged(e);
     }
 
     private void UpdateSelectionFrame(Point current)
     {
+        if (_engine?.IsInitialized != true) return;
+
         var dx = Math.Abs(current.X - _selectionStart.X);
         var dy = Math.Abs(current.Y - _selectionStart.Y);
         if (dx < RectangleSelectionThreshold && dy < RectangleSelectionThreshold)
         {
-            EraseSelectionFrame();
+            HideSelectionFrame();
             return;
         }
 
-        EraseSelectionFrame();
-        var clientRectangle = Rectangle.FromLTRB(
+        var rectangle = Rectangle.FromLTRB(
             Math.Min(_selectionStart.X, current.X),
             Math.Min(_selectionStart.Y, current.Y),
             Math.Max(_selectionStart.X, current.X),
             Math.Max(_selectionStart.Y, current.Y));
-        var screenRectangle = RectangleToScreen(clientRectangle);
-        ControlPaint.DrawReversibleFrame(screenRectangle, Color.DodgerBlue, FrameStyle.Dashed);
-        _selectionFrameScreen = screenRectangle;
+        if (_selectionFrameClient == rectangle) return;
+
+        TryInvoke(() => _engine.ShowSelectionRectangle(
+            rectangle.Left,
+            rectangle.Top,
+            rectangle.Right,
+            rectangle.Bottom,
+            RectangleSelectionLineColor,
+            RectangleSelectionFillColor,
+            RectangleSelectionFillTransparency,
+            RectangleSelectionLineWidth));
+        _selectionFrameClient = rectangle;
     }
 
-    private void EraseSelectionFrame()
+    private void HideSelectionFrame()
     {
-        if (_selectionFrameScreen is not { } rectangle) return;
-        ControlPaint.DrawReversibleFrame(rectangle, Color.DodgerBlue, FrameStyle.Dashed);
-        _selectionFrameScreen = null;
+        if (_selectionFrameClient is null) return;
+        if (_engine?.IsInitialized == true)
+            TryInvoke(() => _engine.HideSelectionRectangle());
+        _selectionFrameClient = null;
+    }
+
+    private void CancelRectangleSelection()
+    {
+        _selectingRectangle = false;
+        HideSelectionFrame();
+        if (Capture) ReleaseMouseCapture();
+    }
+
+    private void ReleaseMouseCapture()
+    {
+        if (!Capture) return;
+        _releasingMouseCapture = true;
+        try
+        {
+            Capture = false;
+        }
+        finally
+        {
+            _releasingMouseCapture = false;
+        }
     }
 
     public void RaiseSelectionChanged()
