@@ -1,7 +1,7 @@
 ﻿param(
     [Parameter(Position = 0)]
     [ValidateSet("all", "winform", "wpf")]
-    [string]$Target = "all",
+    [string]$Target = "winform",
 
     [Parameter(Position = 1)]
     [ValidateSet("Debug", "Release", "RelWithDebInfo")]
@@ -11,7 +11,11 @@
 
     [string]$OutputDirectory = "",
 
-    [switch]$FrameworkDependent,
+    [switch]$SelfContained,
+
+    [switch]$FullResources,
+
+    [switch]$Diagnostics,
 
     [switch]$Zip,
 
@@ -22,6 +26,7 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $utf8 = [System.Text.UTF8Encoding]::new($false)
+$utf8Bom = [System.Text.UTF8Encoding]::new($true)
 [Console]::InputEncoding = $utf8
 [Console]::OutputEncoding = $utf8
 $OutputEncoding = $utf8
@@ -42,12 +47,13 @@ $OutputDirectory = [System.IO.Path]::GetFullPath($OutputDirectory)
 $OcctBinDir = Join-Path $OcctRoot "win64\vc14\bin"
 $OcctThirdPartyDir = Join-Path $OcctRoot "3rdparty-vc14-64"
 $NativeDll = Join-Path $RepoRoot "build\native\bin\$Configuration\OcctNative.dll"
-$PackageName = "OcctCSharpBridge-Demo-win-x64"
+$PackageName = "OcctCSharpBridge-Demo-$Target-win-x64"
 $PackageRoot = Join-Path $OutputDirectory $PackageName
 $AppsRoot = Join-Path $PackageRoot "apps"
 $RuntimeRoot = Join-Path $PackageRoot "runtime"
 $OcctPackageRoot = Join-Path $PackageRoot "occt"
 $LicenseRoot = Join-Path $PackageRoot "licenses"
+$TemporaryRoot = Join-Path $OutputDirectory ".publish-temp-$Target"
 
 $Projects = [ordered]@{
     winform = @{
@@ -55,14 +61,12 @@ $Projects = [ordered]@{
         Project = "src\CadWinForms\CadWinForms.csproj"
         Folder = "winform"
         Executable = "CAD-Winform.exe"
-        Launcher = "Start-WinForms.cmd"
     }
     wpf = @{
         Name = "WPF"
         Project = "src\CadWpf\CadWpf.csproj"
         Folder = "wpf"
         Executable = "CAD-WPF.exe"
-        Launcher = "Start-WPF.cmd"
     }
 }
 
@@ -116,7 +120,7 @@ function Copy-RuntimeDll {
         if ($sourceHash -eq $destinationHash) {
             return
         }
-        throw "Conflicting runtime DLL '$($Source.Name)' was found while copying $Category.`nExisting: $destination`nIncoming: $($Source.FullName)"
+        throw "Conflicting runtime DLL '$($Source.Name)' was found while copying $Category."
     }
 
     Copy-Item -LiteralPath $Source.FullName -Destination $destination -Force
@@ -128,30 +132,47 @@ function Publish-Application {
     $application = $Projects[$Key]
     $projectPath = Join-Path $RepoRoot $application.Project
     $destination = Join-Path $AppsRoot $application.Folder
+    $temporaryDestination = Join-Path $TemporaryRoot $application.Folder
     Assert-Path $projectPath "$($application.Name) project"
 
     if (Test-Path $destination) {
         Remove-Item $destination -Recurse -Force
     }
+    if (Test-Path $temporaryDestination) {
+        Remove-Item $temporaryDestination -Recurse -Force
+    }
     New-Item $destination -ItemType Directory -Force | Out-Null
+    New-Item $temporaryDestination -ItemType Directory -Force | Out-Null
 
     $arguments = @(
         "publish", $projectPath,
         "-c", $Configuration,
         "-r", "win-x64",
         "-p:Platform=x64",
-        "-p:PublishSingleFile=false",
+        "-p:PublishSingleFile=true",
+        "-p:EnableCompressionInSingleFile=true",
+        "-p:IncludeNativeLibrariesForSelfExtract=true",
         "-p:PublishReadyToRun=false",
         "-p:DebugType=None",
         "-p:DebugSymbols=false",
-        "--self-contained", $(if ($FrameworkDependent) { "false" } else { "true" }),
+        "--self-contained", $SelfContained.IsPresent.ToString().ToLowerInvariant(),
         "--nologo",
-        "-o", $destination
+        "-o", $temporaryDestination
     )
 
-    Write-Host "[publish] $($application.Name)..." -ForegroundColor Cyan
+    Write-Host "[publish] $($application.Name) single-file executable..." -ForegroundColor Cyan
     Invoke-Checked "dotnet" $arguments "$($application.Name) publish failed."
-    Assert-Path (Join-Path $destination $application.Executable) "$($application.Name) executable"
+
+    $executablePath = Join-Path $temporaryDestination $application.Executable
+    Assert-Path $executablePath "$($application.Name) executable"
+    Copy-Item $executablePath (Join-Path $destination $application.Executable) -Force
+
+    Get-ChildItem $temporaryDestination -File | Where-Object {
+        $_.Name -ne $application.Executable -and
+        $_.Extension -notin @(".pdb", ".xml")
+    } | ForEach-Object {
+        Copy-Item $_.FullName (Join-Path $destination $_.Name) -Force
+    }
 }
 
 function Resolve-Dumpbin {
@@ -174,7 +195,7 @@ function Resolve-Dumpbin {
         }
     }
 
-    throw "dumpbin.exe was not found. Install the Visual Studio C++ x64 build tools used to build OcctNative.dll."
+    throw "dumpbin.exe was not found. Install the Visual Studio C++ x64 build tools."
 }
 
 function Get-PeDependencies {
@@ -230,9 +251,6 @@ function Test-RuntimeCandidate {
     if ($path -match "[\\/](?:x86|win32)[\\/]") {
         return $false
     }
-
-    # The PE import table is the source of truth. A Release OCCT distribution
-    # can still import a debug-named third-party DLL, so do not filter it out.
     return $true
 }
 
@@ -248,17 +266,14 @@ function Get-RuntimeCandidateScore {
     if ($path -match "[\\/](?:vc2022|vc143|vc14\.4)[\\/]") { $score += 4000 }
     elseif ($path -match "[\\/](?:vc2019|vc142)[\\/]") { $score += 3000 }
     elseif ($path -match "[\\/](?:vc2017|vc141)[\\/]") { $score += 2000 }
-    elseif ($path -match "[\\/](?:vc2015|vc140)[\\/]") { $score += 1000 }
-    elseif ($path -match "[\\/]vc2013[\\/]") { $score += 500 }
     if ($path -match "(?:x64|amd64|win64)") { $score += 300 }
-    if ($path -match "ucrt") { $score += 100 }
     if ($Configuration -eq "Debug") {
         if ($path -match "[\\/]debug[\\/]" -or $File.Name -match "(?i)(?:_debug|debug|d)\.dll$") {
             $score += 500
         }
     }
-    else {
-        if ($path -notmatch "[\\/]debug[\\/]") { $score += 200 }
+    elseif ($path -notmatch "[\\/]debug[\\/]") {
+        $score += 200
     }
     return $score
 }
@@ -312,7 +327,7 @@ function Resolve-RuntimeDependency {
         $hashGroups = @($top | Group-Object { Get-FileHashValue $_.File.FullName })
         if ($hashGroups.Count -gt 1) {
             $paths = ($top | ForEach-Object { "  $($_.File.FullName)" }) -join "`n"
-            throw "Ambiguous required runtime DLL '$Name'. Multiple equally ranked binaries were found:`n$paths"
+            throw "Ambiguous required runtime DLL '$Name':`n$paths"
         }
     }
 
@@ -329,10 +344,9 @@ function Copy-OcctRuntime {
     $queue = [System.Collections.Generic.Queue[string]]::new()
     $processed = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $records = [System.Collections.Generic.List[string]]::new()
-    $reportedDebugDependencies = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $queue.Enqueue($rootBinary)
 
-    Write-Host "[runtime] Resolving native dependency closure from OcctNative.dll..." -ForegroundColor Cyan
+    Write-Host "[runtime] Resolving required native DLLs..." -ForegroundColor Cyan
     while ($queue.Count -gt 0) {
         $binary = [System.IO.Path]::GetFullPath($queue.Dequeue())
         if (-not $processed.Add($binary)) {
@@ -344,17 +358,11 @@ function Copy-OcctRuntime {
                 continue
             }
 
-            if ($Configuration -ne "Debug" -and
-                $dependency -match "(?i)(?:_debug|debug)\.dll$" -and
-                $reportedDebugDependencies.Add($dependency)) {
-                Write-Warning "Release dependency closure imports debug-named runtime '$dependency'. It will be packaged because the binary imports it directly."
-            }
-
             $destination = Join-Path $RuntimeRoot $dependency
             if (-not (Test-Path $destination -PathType Leaf)) {
                 $source = Resolve-RuntimeDependency $dependency $candidateIndex
                 if ($null -eq $source) {
-                    throw "Required native dependency '$dependency' imported by '$binary' was not found in:`n  $OcctBinDir`n  $OcctThirdPartyDir"
+                    throw "Required native dependency '$dependency' imported by '$binary' was not found."
                 }
                 Copy-RuntimeDll $source "required native dependency"
                 $records.Add("$([System.IO.Path]::GetFileName($binary)) -> $dependency <- $($source.FullName)")
@@ -366,28 +374,27 @@ function Copy-OcctRuntime {
         }
     }
 
-    $reportPath = Join-Path $PackageRoot "native-dependencies.txt"
-    [System.IO.File]::WriteAllLines($reportPath, @($records | Sort-Object -Unique), $utf8)
-    Write-Host "[runtime] Native dependency closure contains $($processed.Count) binaries." -ForegroundColor Green
+    if ($Diagnostics) {
+        [System.IO.File]::WriteAllLines(
+            (Join-Path $PackageRoot "native-dependencies.txt"),
+            @($records | Sort-Object -Unique),
+            $utf8Bom)
+    }
+    Write-Host "[runtime] Packaged $($processed.Count) native binaries." -ForegroundColor Green
 }
 
 function Copy-VisualCppRuntime {
-    Write-Host "[runtime] Copying available Visual C++ runtime DLLs..." -ForegroundColor Cyan
     $names = @(
         "concrt140.dll",
         "msvcp140.dll",
         "msvcp140_1.dll",
         "msvcp140_2.dll",
-        "msvcp140_atomic_wait.dll",
-        "msvcp140_codecvt_ids.dll",
-        "vcomp140.dll",
         "vcruntime140.dll",
         "vcruntime140_1.dll"
     )
 
-    $systemDirectory = [Environment]::SystemDirectory
     foreach ($name in $names) {
-        $candidate = Join-Path $systemDirectory $name
+        $candidate = Join-Path ([Environment]::SystemDirectory) $name
         if (Test-Path $candidate -PathType Leaf) {
             Copy-RuntimeDll (Get-Item $candidate) "Visual C++ runtime"
         }
@@ -396,27 +403,21 @@ function Copy-VisualCppRuntime {
 
 function Copy-OcctResources {
     $sourceRoot = Join-Path $OcctRoot "src"
-    if (-not (Test-Path $sourceRoot -PathType Container)) {
-        Write-Warning "OCCT resource source directory was not found: $sourceRoot"
-        return
-    }
+    Assert-Path $sourceRoot "OCCT resource directory"
 
-    $resourceNames = @(
-        "Shaders",
-        "Textures",
-        "StdResource",
-        "UnitsAPI",
-        "SHMessage",
-        "XSMessage",
-        "XSTEPResource",
-        "XmlOcafResource",
-        "TObj"
-    )
+    $resourceNames = [System.Collections.Generic.List[string]]::new()
+    foreach ($name in @("Shaders", "StdResource", "UnitsAPI", "SHMessage", "XSMessage", "XSTEPResource")) {
+        $resourceNames.Add($name)
+    }
+    if ($FullResources) {
+        foreach ($name in @("Textures", "XmlOcafResource", "TObj", "XCAFResources")) {
+            $resourceNames.Add($name)
+        }
+    }
 
     $destinationRoot = Join-Path $OcctPackageRoot "src"
     New-Item $destinationRoot -ItemType Directory -Force | Out-Null
 
-    Write-Host "[resources] Copying OCCT resource directories..." -ForegroundColor Cyan
     foreach ($name in $resourceNames) {
         $source = Join-Path $sourceRoot $name
         if (Test-Path $source -PathType Container) {
@@ -425,7 +426,26 @@ function Copy-OcctResources {
     }
 }
 
-function Copy-LicenseFiles {
+function Add-LicenseSection {
+    param(
+        [Parameter(Mandatory = $true)][System.Text.StringBuilder]$Builder,
+        [Parameter(Mandatory = $true)][string]$Title,
+        [Parameter(Mandatory = $true)][string]$Path
+    )
+
+    if (-not (Test-Path $Path -PathType Leaf)) {
+        return
+    }
+
+    [void]$Builder.AppendLine("================================================================================")
+    [void]$Builder.AppendLine($Title)
+    [void]$Builder.AppendLine("Source: $Path")
+    [void]$Builder.AppendLine("================================================================================")
+    [void]$Builder.AppendLine((Get-Content $Path -Raw -ErrorAction Stop))
+    [void]$Builder.AppendLine()
+}
+
+function Write-LicenseFiles {
     New-Item $LicenseRoot -ItemType Directory -Force | Out-Null
 
     $projectLicense = Join-Path $RepoRoot "LICENSE"
@@ -433,110 +453,79 @@ function Copy-LicenseFiles {
         Copy-Item $projectLicense (Join-Path $LicenseRoot "OcctCSharpBridge-LICENSE.txt") -Force
     }
 
-    $occtLicenseRoot = Join-Path $LicenseRoot "occt"
-    New-Item $occtLicenseRoot -ItemType Directory -Force | Out-Null
+    $occtBuilder = [System.Text.StringBuilder]::new()
     Get-ChildItem $OcctRoot -File -ErrorAction SilentlyContinue | Where-Object {
         $_.Name -match "(?i)license|copying|notice|exception"
-    } | ForEach-Object {
-        Copy-Item $_.FullName (Join-Path $occtLicenseRoot $_.Name) -Force
+    } | Sort-Object FullName | ForEach-Object {
+        Add-LicenseSection $occtBuilder $_.Name $_.FullName
+    }
+    if ($occtBuilder.Length -gt 0) {
+        [System.IO.File]::WriteAllText(
+            (Join-Path $LicenseRoot "OCCT-LICENSES.txt"),
+            $occtBuilder.ToString(),
+            $utf8Bom)
     }
 
     if (Test-Path $OcctThirdPartyDir -PathType Container) {
-        $thirdPartyLicenseRoot = Join-Path $LicenseRoot "thirdparty"
-        New-Item $thirdPartyLicenseRoot -ItemType Directory -Force | Out-Null
+        $thirdPartyBuilder = [System.Text.StringBuilder]::new()
         Get-ChildItem $OcctThirdPartyDir -Recurse -File -ErrorAction SilentlyContinue | Where-Object {
-            $_.Name -match "(?i)^(license|copying|notice|readme)(\.|$)"
-        } | ForEach-Object {
+            $_.Name -match "(?i)^(license|copying|notice)(\.|$)"
+        } | Sort-Object FullName | ForEach-Object {
             $relative = $_.FullName.Substring($OcctThirdPartyDir.Length).TrimStart('\', '/')
-            $safeName = $relative -replace '[\\/:*?"<>|]', '_'
-            Copy-Item $_.FullName (Join-Path $thirdPartyLicenseRoot $safeName) -Force
+            Add-LicenseSection $thirdPartyBuilder $relative $_.FullName
+        }
+        if ($thirdPartyBuilder.Length -gt 0) {
+            [System.IO.File]::WriteAllText(
+                (Join-Path $LicenseRoot "THIRD-PARTY-NOTICES.txt"),
+                $thirdPartyBuilder.ToString(),
+                $utf8Bom)
         }
     }
-}
-
-function Write-Launcher {
-    param([Parameter(Mandatory = $true)][string]$Key)
-
-    $application = $Projects[$Key]
-    $launcherPath = Join-Path $PackageRoot $application.Launcher
-    $content = @"
-@echo off
-setlocal
-set "PACKAGE_ROOT=%~dp0"
-set "OCCT_ROOT=%~dp0occt"
-set "CASROOT=%~dp0occt"
-set "OCCT_BRIDGE_NATIVE_DIR=%~dp0runtime"
-set "PATH=%~dp0runtime;%PATH%"
-pushd "%~dp0apps\$($application.Folder)"
-start "" "$($application.Executable)"
-popd
-endlocal
-"@
-    [System.IO.File]::WriteAllText($launcherPath, $content, $utf8)
 }
 
 function Write-PackageReadme {
-    $mode = if ($FrameworkDependent) {
-        "Framework-dependent: install the matching .NET 8 Desktop Runtime on the target computer."
+    $runtimeMode = if ($SelfContained) {
+        "Self-contained single-file application."
     }
     else {
-        "Self-contained: the .NET runtime is included."
+        "Framework-dependent single-file application; install the .NET 8 Desktop Runtime."
     }
 
     $lines = @(
-        "OcctCSharpBridge WinForms/WPF Demo",
-        "=================================",
+        "OcctCSharpBridge Demo",
+        "=====================",
         "",
         "Platform: Windows x64",
-        "OCCT: 7.9.0",
-        $mode,
+        "Target: $Target",
+        "Runtime: $runtimeMode",
         "",
-        "Run the generated Start-WinForms.cmd or Start-WPF.cmd file.",
-        "Do not move only the EXE; keep the package directory structure together.",
+        "Run the executable in apps\winform or apps\wpf directly.",
+        "Keep the apps, runtime and occt directories together.",
         "",
-        "The launchers configure PATH, OCCT_BRIDGE_NATIVE_DIR, OCCT_ROOT and CASROOT",
-        "relative to the extracted package. No OCCT SDK configuration is required on the target computer.",
+        "The package contains only the selected demo executable, the native dependency closure,",
+        "the required OCCT resources and consolidated license notices.",
         "",
-        "Native DLLs are selected from the actual dependency closure of OcctNative.dll;",
-        "unused SDK, sample, static-library and alternate-toolset DLLs are intentionally excluded.",
-        "",
-        "Native DLLs are selected from the actual dependency closure of OcctNative.dll;",
-        "unused SDK, sample, static-library and alternate-toolset DLLs are intentionally excluded.",
-        "",
-        "Before redistribution, review all license files in the licenses directory."
+        "Use -SelfContained for machines without the .NET 8 Desktop Runtime.",
+        "Use -FullResources only when OCAF/XCAF or texture resources are needed.",
+        "Use -Diagnostics to add dependency and file manifests."
     )
-    [System.IO.File]::WriteAllLines((Join-Path $PackageRoot "README.txt"), $lines, $utf8)
+    [System.IO.File]::WriteAllLines((Join-Path $PackageRoot "README.txt"), $lines, $utf8Bom)
 }
 
 function Write-Manifest {
-    $manifestPath = Join-Path $PackageRoot "runtime-manifest.txt"
-    $header = @(
-        "Package=$PackageName",
-        "GeneratedUtc=$([DateTime]::UtcNow.ToString('O'))",
-        "Configuration=$Configuration",
-        "Target=$Target",
-        "RuntimeIdentifier=win-x64",
-        "SelfContained=$(-not $FrameworkDependent)",
-        "OcctRootSource=$OcctRoot",
-        ""
-    )
+    if (-not $Diagnostics) {
+        return
+    }
 
     $entries = Get-ChildItem $PackageRoot -Recurse -File | Sort-Object FullName | ForEach-Object {
         $relative = $_.FullName.Substring($PackageRoot.Length).TrimStart('\', '/')
-        $version = ""
-        if ($_.Extension -match "(?i)^\.(dll|exe)$") {
-            try {
-                $version = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($_.FullName).FileVersion
-            }
-            catch {
-                $version = ""
-            }
-        }
         $hash = Get-FileHashValue $_.FullName
-        "{0}`t{1}`t{2}`t{3}" -f $relative, $_.Length, $version, $hash
+        "{0}`t{1}`t{2}" -f $relative, $_.Length, $hash
     }
-
-    [System.IO.File]::WriteAllLines($manifestPath, @($header + "RelativePath`tBytes`tFileVersion`tSHA256" + $entries), $utf8)
+    [System.IO.File]::WriteAllLines(
+        (Join-Path $PackageRoot "runtime-manifest.txt"),
+        @("RelativePath`tBytes`tSHA256" + $entries),
+        $utf8Bom)
 }
 
 Assert-Command "dotnet"
@@ -548,57 +537,61 @@ Write-Host "Target:             $Target"
 Write-Host "Configuration:      $Configuration"
 Write-Host "OCCT root:          $OcctRoot"
 Write-Host "Output directory:   $OutputDirectory"
-Write-Host "Self-contained:     $(-not $FrameworkDependent)"
+Write-Host "Self-contained:     $($SelfContained.IsPresent)"
+Write-Host "Full resources:     $($FullResources.IsPresent)"
 
 if ((Test-Path $PackageRoot) -and -not $KeepExisting) {
     Remove-Item $PackageRoot -Recurse -Force
 }
+if (Test-Path $TemporaryRoot) {
+    Remove-Item $TemporaryRoot -Recurse -Force
+}
 New-Item $AppsRoot -ItemType Directory -Force | Out-Null
 New-Item $RuntimeRoot -ItemType Directory -Force | Out-Null
 New-Item $OcctPackageRoot -ItemType Directory -Force | Out-Null
-New-Item $LicenseRoot -ItemType Directory -Force | Out-Null
 
-Write-Host "[build] Building the native bridge..." -ForegroundColor Cyan
-& (Join-Path $RepoRoot "build.ps1") native $Configuration -OcctRoot $OcctRoot
-if (-not $?) {
-    throw "Native bridge build failed."
+try {
+    Write-Host "[build] Building native bridge..." -ForegroundColor Cyan
+    & (Join-Path $RepoRoot "build.ps1") native $Configuration -OcctRoot $OcctRoot
+    if (-not $?) {
+        throw "Native bridge build failed."
+    }
+    Assert-Path $NativeDll "OcctNative.dll"
+    Copy-Item $NativeDll (Join-Path $RuntimeRoot "OcctNative.dll") -Force
+
+    switch ($Target) {
+        "winform" { Publish-Application "winform" }
+        "wpf" { Publish-Application "wpf" }
+        "all" {
+            Publish-Application "winform"
+            Publish-Application "wpf"
+        }
+    }
+
+    Copy-OcctRuntime
+    Copy-VisualCppRuntime
+    Copy-OcctResources
+    Write-LicenseFiles
+    Write-PackageReadme
+    Write-Manifest
+
+    if ($Zip) {
+        $zipPath = Join-Path $OutputDirectory "$PackageName.zip"
+        if (Test-Path $zipPath) {
+            Remove-Item $zipPath -Force
+        }
+        Compress-Archive -Path (Join-Path $PackageRoot "*") -DestinationPath $zipPath -CompressionLevel Optimal
+        Write-Host "ZIP: $zipPath" -ForegroundColor Green
+    }
+
+    $fileCount = @(Get-ChildItem $PackageRoot -Recurse -File).Count
+    $totalBytes = (Get-ChildItem $PackageRoot -Recurse -File | Measure-Object Length -Sum).Sum
+    Write-Host "Package: $PackageRoot" -ForegroundColor Green
+    Write-Host "Files:   $fileCount" -ForegroundColor Green
+    Write-Host ("Size:    {0:N2} MB" -f ($totalBytes / 1MB)) -ForegroundColor Green
 }
-Assert-Path $NativeDll "OcctNative.dll"
-Copy-Item $NativeDll (Join-Path $RuntimeRoot "OcctNative.dll") -Force
-
-switch ($Target) {
-    "winform" { Publish-Application "winform" }
-    "wpf" { Publish-Application "wpf" }
-    "all" {
-        Publish-Application "winform"
-        Publish-Application "wpf"
+finally {
+    if (Test-Path $TemporaryRoot) {
+        Remove-Item $TemporaryRoot -Recurse -Force
     }
 }
-
-Copy-OcctRuntime
-Copy-VisualCppRuntime
-Copy-OcctResources
-Copy-LicenseFiles
-
-if ($Target -in @("winform", "all")) {
-    Write-Launcher "winform"
-}
-if ($Target -in @("wpf", "all")) {
-    Write-Launcher "wpf"
-}
-
-Write-PackageReadme
-Write-Manifest
-
-if ($Zip) {
-    $zipPath = Join-Path $OutputDirectory "$PackageName.zip"
-    if (Test-Path $zipPath) {
-        Remove-Item $zipPath -Force
-    }
-    Write-Host "[zip] Creating $zipPath..." -ForegroundColor Cyan
-    Compress-Archive -Path (Join-Path $PackageRoot "*") -DestinationPath $zipPath -CompressionLevel Optimal
-    Write-Host "ZIP: $zipPath" -ForegroundColor Green
-}
-
-Write-Host "Package: $PackageRoot" -ForegroundColor Green
-Write-Host "Publish completed." -ForegroundColor Green
