@@ -37,7 +37,7 @@ The `demo` branch contains WinForms and WPF reference applications. The reusable
 The default package is lean, framework-dependent, and WinForms-first:
 
 ```powershell
-.\publish.ps1
+.\publish.ps1 winform Release
 ```
 
 Use the publish script options for WPF, self-contained runtime, full OCCT resources, diagnostics, or ZIP output.
