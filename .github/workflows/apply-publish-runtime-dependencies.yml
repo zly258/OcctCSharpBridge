@@ -53,11 +53,11 @@ jobs:
       - name: Commit patched source
         shell: bash
         run: |
-          if git diff --quiet; then
-            exit 0
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add publish.ps1 docs/PUBLISHING_DEMO.md docs/PUBLISHING_DEMO.zh-CN.md .github/workflows/publish-script-check.yml
+          git add publish.ps1 docs/PUBLISHING_DEMO.md docs/PUBLISHING_DEMO.zh-CN.md
+          if git diff --cached --quiet; then
+            exit 0
+          fi
           git commit -m "Resolve only required native publish dependencies [publish-runtime-closure-applied]"
           git push
