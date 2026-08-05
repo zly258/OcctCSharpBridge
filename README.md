@@ -1,4 +1,4 @@
-# OcctCSharpBridge Demo
+﻿# OcctCSharpBridge Demo
 
 OcctCSharpBridge wraps Open CASCADE Technology 7.9.0 through a native C++ DLL, a stable C ABI, and a type-safe .NET 8 API.
 
@@ -28,7 +28,7 @@ The `demo` branch contains WinForms and WPF reference applications. The reusable
 ## Run
 
 ```powershell
-.\run.ps1 winforms
+.\run.ps1 winform
 .\run.ps1 wpf
 ```
 
