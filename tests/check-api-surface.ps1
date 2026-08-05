@@ -60,16 +60,16 @@ function Assert-SetEqual {
     $missing = @($Expected | Where-Object { $_ -notin $Actual })
     $extra = @($Actual | Where-Object { $_ -notin $Expected })
     if ($missing.Count -eq 0 -and $extra.Count -eq 0) {
-        Write-Host "[api] $Name: $($Expected.Count) entries matched." -ForegroundColor Green
+        Write-Host "[api] ${Name}: $($Expected.Count) entries matched." -ForegroundColor Green
         return
     }
 
     if ($missing.Count -gt 0) {
-        Write-Host "[api] Missing $Name entries:" -ForegroundColor Red
+        Write-Host "[api] Missing ${Name} entries:" -ForegroundColor Red
         $missing | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
     }
     if ($extra.Count -gt 0) {
-        Write-Host "[api] Unexpected $Name entries:" -ForegroundColor Yellow
+        Write-Host "[api] Unexpected ${Name} entries:" -ForegroundColor Yellow
         $extra | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
     }
     throw "API surface validation failed for $Name."
