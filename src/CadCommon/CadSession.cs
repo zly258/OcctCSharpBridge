@@ -71,6 +71,7 @@ public sealed class CadValues
 }
 
 public enum CadIsoView { NorthEast, NorthWest, SouthEast, SouthWest }
+public enum CadDepthBiasPreset { Forward, Backward, Default }
 
 public sealed class CadSession
 {
@@ -99,6 +100,52 @@ public sealed class CadSession
     public event EventHandler? ModelChanged;
     public event EventHandler? HistoryChanged;
     public event EventHandler<string>? StatusChanged;
+
+    public int ApplyDepthBiasToSelection(CadDepthBiasPreset preset)
+    {
+        var targets = Engine.SelectedObjects
+            .Where(value => value.Kind == OcctObjectKind.Shape)
+            .DistinctBy(value => value.Id)
+            .ToList();
+
+        if (targets.Count == 0
+            && ActiveObject is { Kind: OcctObjectKind.Shape } active
+            && Engine.Exists(active))
+        {
+            targets.Add(active);
+        }
+
+        if (targets.Count == 0) return 0;
+
+        using (Engine.BeginDisplayBatch())
+        {
+            foreach (var target in targets)
+            {
+                switch (preset)
+                {
+                    case CadDepthBiasPreset.Forward:
+                        Engine.SetPolygonOffsets(
+                            target,
+                            OcctPolygonOffsetMode.Fill,
+                            factor: -1.0,
+                            units: -1.0);
+                        break;
+                    case CadDepthBiasPreset.Backward:
+                        Engine.SetPolygonOffsets(
+                            target,
+                            OcctPolygonOffsetMode.Fill,
+                            factor: 3.0,
+                            units: 3.0);
+                        break;
+                    default:
+                        Engine.ResetPolygonOffsets(target);
+                        break;
+                }
+            }
+        }
+
+        return targets.Count;
+    }
 
     public CadCommandResult Execute(CadCommandId commandId, IReadOnlyDictionary<string, string>? rawValues = null)
     {

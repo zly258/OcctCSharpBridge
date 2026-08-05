@@ -251,6 +251,10 @@ The branch validates:
 
 GitHub runners do not contain the repository-specific OCCT 7.9.0 SDK. Native linking, real Viewer rendering and complete portable package generation must still be validated on the target Windows development machine.
 
+## Coplanar display controls
+
+Both applications expose **View > Depth and Coplanar Display**. Automatic Z Range improves the camera near/far range and depth-buffer precision. It does not decide which of two exactly coplanar objects should win. For deliberate overlays, select the overlay object and use **Bring Selected Forward**, **Push Selected Back**, or **Reset Selected Depth Bias**. The commands apply one per-object polygon offset and preserve separate object identity, selection and properties. Duplicate production geometry should still be removed or hidden.
+
 ## Documentation
 
 - [Demo documentation index](docs/README.md)
