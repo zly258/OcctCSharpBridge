@@ -1,6 +1,7 @@
 #include "OcctInternal.hxx"
 
 #include <AIS_SelectionScheme.hxx>
+#include <Aspect_PolygonOffsetMode.hxx>
 #include <Aspect_TypeOfTriedronPosition.hxx>
 #include <BRepBndLib.hxx>
 #include <BRepBuilderAPI_Copy.hxx>
@@ -11,6 +12,7 @@
 #include <Bnd_Box.hxx>
 #include <GProp_GProps.hxx>
 #include <Graphic3d_Camera.hxx>
+#include <Graphic3d_AspectFillArea3d.hxx>
 #include <Graphic3d_MaterialAspect.hxx>
 #include <Graphic3d_TransformPers.hxx>
 #include <Graphic3d_TransModeFlags.hxx>
@@ -318,6 +320,11 @@ extern "C"
             engine->viewer->SetDefaultTypeOfView(V3d_ORTHOGRAPHIC);
             engine->context = new AIS_InteractiveContext(engine->viewer);
             engine->view = engine->viewer->CreateView();
+            engine->view->SetAutoZFitMode(Standard_True, 1.0);
+            const Handle(Prs3d_Drawer)& defaultDrawer = engine->context->DefaultDrawer();
+            defaultDrawer->SetupOwnShadingAspect();
+            defaultDrawer->ShadingAspect()->Aspect()->SetPolygonOffsets(
+                Aspect_POM_Fill, 1.0f, 1.0f);
             engine->window = new WNT_Window(reinterpret_cast<Aspect_Handle>(windowHandle));
             engine->view->SetWindow(engine->window);
             if (!engine->window->IsMapped()) engine->window->Map();
