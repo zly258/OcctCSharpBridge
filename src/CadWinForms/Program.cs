@@ -1,4 +1,4 @@
-﻿using System.Threading;
+using System.Threading;
 using System.Threading.Tasks;
 using CadCommon;
 
@@ -19,7 +19,9 @@ internal static class Program
         try
         {
             ApplicationConfiguration.Initialize();
-            Application.Run(new MainForm());
+            var mainForm = new MainForm();
+            mainForm.AttachApiCenter();
+            Application.Run(mainForm);
         }
         catch (Exception exception)
         {
