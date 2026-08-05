@@ -1,0 +1,41 @@
+name: Apply Demo Batch Delete
+
+on:
+  push:
+    branches:
+      - perf/demo-batch-delete
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[demo-batch-delete-applied]') }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: perf/demo-batch-delete
+          fetch-depth: 0
+      - name: Apply Demo patch
+        run: python tools/patch-demo-batch-delete.py
+      - name: Build shared and UI projects
+        shell: pwsh
+        run: |
+          dotnet build .\src\CadCommon\CadCommon.csproj -c Release --nologo
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet build .\src\CadWinForms\CadWinForms.csproj -c Release --nologo
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet build .\src\CadWpf\CadWpf.csproj -c Release --nologo
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Commit source change
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/CadCommon/CadSession.cs
+          git commit -m "Use native batch deletion in Demo [demo-batch-delete-applied]"
+          git push
