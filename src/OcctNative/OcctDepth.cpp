@@ -1,4 +1,4 @@
-#include "OcctInternal.hxx"
+﻿#include "OcctInternal.hxx"
 
 #include <Aspect_PolygonOffsetMode.hxx>
 #include <Graphic3d_AspectFillArea3d.hxx>
@@ -63,6 +63,11 @@ namespace
         result->factor = static_cast<double>(factor);
         result->units = static_cast<double>(units);
     }
+
+    void redisplayObject(Engine* engine, const Handle(AIS_InteractiveObject)& presentation)
+    {
+        engine->context->Redisplay(presentation, Standard_False, Standard_True);
+    }
 }
 
 extern "C"
@@ -119,6 +124,7 @@ extern "C"
             const Standard_ShortReal nativeUnits = static_cast<Standard_ShortReal>(units);
             const Handle(Prs3d_Drawer)& drawer = e->context->DefaultDrawer();
             drawer->SetupOwnShadingAspect();
+            drawer->SetFaceBoundaryDraw(Standard_True);
             drawer->ShadingAspect()->Aspect()->SetPolygonOffsets(mode, nativeFactor, nativeUnits);
 
             if (applyExisting != 0)
@@ -132,6 +138,7 @@ extern "C"
                         nativeFactor,
                         nativeUnits,
                         Standard_False);
+                    redisplayObject(e, pair.second.presentation);
                 }
             }
             e->requestRedraw();
@@ -171,6 +178,7 @@ extern "C"
                 static_cast<Standard_ShortReal>(factor),
                 static_cast<Standard_ShortReal>(units),
                 Standard_False);
+            redisplayObject(e, entry.presentation);
             e->requestRedraw();
         });
     }
@@ -208,6 +216,7 @@ extern "C"
             Standard_ShortReal units = 1.0f;
             readDefaultPolygonOffset(e, mode, factor, units);
             e->context->SetPolygonOffsets(entry.presentation, mode, factor, units, Standard_False);
+            redisplayObject(e, entry.presentation);
             e->requestRedraw();
         });
     }
