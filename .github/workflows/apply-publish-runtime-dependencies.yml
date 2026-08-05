@@ -18,7 +18,15 @@ jobs:
           ref: fix/publish-runtime-dependency-closure
           fetch-depth: 0
       - name: Apply source patch
-        run: python tools/patch-publish-runtime-dependencies.py
+        shell: pwsh
+        run: |
+          $path = 'tools/patch-publish-runtime-dependencies.py'
+          $text = [System.IO.File]::ReadAllText($path)
+          $text = $text.Replace(
+              'text, count = pattern.subn(replacement, text, count=1)',
+              'text, count = pattern.subn(lambda match: replacement, text, count=1)')
+          [System.IO.File]::WriteAllText($path, $text)
+          python $path
       - name: Parse publish script
         shell: pwsh
         run: |
