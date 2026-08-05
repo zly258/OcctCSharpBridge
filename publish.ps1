@@ -154,29 +154,216 @@ function Publish-Application {
     Assert-Path (Join-Path $destination $application.Executable) "$($application.Name) executable"
 }
 
+function Resolve-Dumpbin {
+    $command = Get-Command "dumpbin.exe" -ErrorAction SilentlyContinue
+    if ($null -ne $command -and -not [string]::IsNullOrWhiteSpace($command.Path)) {
+        return $command.Path
+    }
+
+    $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+    if (Test-Path $vswhere -PathType Leaf) {
+        $matches = @(& $vswhere `
+            -latest `
+            -products * `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+            -find "VC\Tools\MSVC\**\bin\Hostx64\x64\dumpbin.exe" 2>$null)
+        foreach ($match in $matches) {
+            if (-not [string]::IsNullOrWhiteSpace($match) -and (Test-Path $match -PathType Leaf)) {
+                return [System.IO.Path]::GetFullPath($match)
+            }
+        }
+    }
+
+    throw "dumpbin.exe was not found. Install the Visual Studio C++ x64 build tools used to build OcctNative.dll."
+}
+
+function Get-PeDependencies {
+    param(
+        [Parameter(Mandatory = $true)][string]$DumpbinPath,
+        [Parameter(Mandatory = $true)][string]$BinaryPath
+    )
+
+    $output = @(& $DumpbinPath /nologo /dependents $BinaryPath 2>&1)
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to inspect native dependencies: $BinaryPath"
+    }
+
+    $collecting = $false
+    $dependencies = [System.Collections.Generic.List[string]]::new()
+    foreach ($line in $output) {
+        $value = ([string]$line).Trim()
+        if ($value -match "^Image has the following dependencies:") {
+            $collecting = $true
+            continue
+        }
+        if (-not $collecting) {
+            continue
+        }
+        if ($value -eq "Summary") {
+            break
+        }
+        if ($value -match "^[A-Za-z0-9_.+\-]+\.dll$") {
+            $dependencies.Add($value)
+        }
+    }
+
+    return @($dependencies | Sort-Object -Unique)
+}
+
+function Test-SystemDependency {
+    param([Parameter(Mandatory = $true)][string]$Name)
+
+    if ($Name -match "^(?i:api-ms-win-|ext-ms-win-)") {
+        return $true
+    }
+
+    return Test-Path (Join-Path ([Environment]::SystemDirectory) $Name) -PathType Leaf
+}
+
+function Test-RuntimeCandidate {
+    param([Parameter(Mandatory = $true)][System.IO.FileInfo]$File)
+
+    $path = $File.FullName.ToLowerInvariant()
+    if ($path -match "[\\/](?:lib-static(?:-ucrt)?|static(?:-ucrt)?)[\\/]") {
+        return $false
+    }
+    if ($path -match "[\\/](?:x86|win32)[\\/]") {
+        return $false
+    }
+    if ($Configuration -ne "Debug") {
+        if ($path -match "[\\/]debug[\\/]" -or $File.Name -match "(?i)(?:_debug|debug)\.dll$") {
+            return $false
+        }
+    }
+    return $true
+}
+
+function Get-RuntimeCandidateScore {
+    param([Parameter(Mandatory = $true)][System.IO.FileInfo]$File)
+
+    $path = $File.FullName.ToLowerInvariant()
+    $score = 0
+    if ([string]::Equals($File.DirectoryName, $OcctBinDir, [StringComparison]::OrdinalIgnoreCase)) {
+        $score += 100000
+    }
+    if ($path -match "[\\/](?:bin|bin64)[\\/]") { $score += 5000 }
+    if ($path -match "[\\/](?:vc2022|vc143|vc14\.4)[\\/]") { $score += 4000 }
+    elseif ($path -match "[\\/](?:vc2019|vc142)[\\/]") { $score += 3000 }
+    elseif ($path -match "[\\/](?:vc2017|vc141)[\\/]") { $score += 2000 }
+    elseif ($path -match "[\\/](?:vc2015|vc140)[\\/]") { $score += 1000 }
+    elseif ($path -match "[\\/]vc2013[\\/]") { $score += 500 }
+    if ($path -match "(?:x64|amd64|win64)") { $score += 300 }
+    if ($path -match "ucrt") { $score += 100 }
+    if ($Configuration -eq "Debug") {
+        if ($path -match "[\\/]debug[\\/]" -or $File.Name -match "(?i)(?:_debug|debug|d)\.dll$") {
+            $score += 500
+        }
+    }
+    else {
+        if ($path -notmatch "[\\/]debug[\\/]") { $score += 200 }
+    }
+    return $score
+}
+
+function New-RuntimeCandidateIndex {
+    $index = @{}
+    $files = [System.Collections.Generic.List[System.IO.FileInfo]]::new()
+
+    Get-ChildItem $OcctBinDir -File -Filter "*.dll" | ForEach-Object { $files.Add($_) }
+    if (Test-Path $OcctThirdPartyDir -PathType Container) {
+        Get-ChildItem $OcctThirdPartyDir -Recurse -File -Filter "*.dll" | Where-Object {
+            Test-RuntimeCandidate $_
+        } | ForEach-Object { $files.Add($_) }
+    }
+
+    foreach ($file in $files) {
+        $key = $file.Name.ToLowerInvariant()
+        if (-not $index.ContainsKey($key)) {
+            $index[$key] = [System.Collections.Generic.List[System.IO.FileInfo]]::new()
+        }
+        $index[$key].Add($file)
+    }
+    return $index
+}
+
+function Resolve-RuntimeDependency {
+    param(
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)][hashtable]$CandidateIndex
+    )
+
+    $key = $Name.ToLowerInvariant()
+    if (-not $CandidateIndex.ContainsKey($key)) {
+        return $null
+    }
+
+    $ranked = @($CandidateIndex[$key] | ForEach-Object {
+        [pscustomobject]@{
+            File = $_
+            Score = Get-RuntimeCandidateScore $_
+        }
+    } | Sort-Object -Property @{ Expression = "Score"; Descending = $true }, @{ Expression = { $_.File.FullName }; Descending = $false })
+
+    if ($ranked.Count -eq 0) {
+        return $null
+    }
+
+    $topScore = $ranked[0].Score
+    $top = @($ranked | Where-Object { $_.Score -eq $topScore })
+    if ($top.Count -gt 1) {
+        $hashGroups = @($top | Group-Object { Get-FileHashValue $_.File.FullName })
+        if ($hashGroups.Count -gt 1) {
+            $paths = ($top | ForEach-Object { "  $($_.File.FullName)" }) -join "`n"
+            throw "Ambiguous required runtime DLL '$Name'. Multiple equally ranked binaries were found:`n$paths"
+        }
+    }
+
+    return $ranked[0].File
+}
+
 function Copy-OcctRuntime {
     Assert-Path $OcctBinDir "OCCT runtime directory"
+    $rootBinary = Join-Path $RuntimeRoot "OcctNative.dll"
+    Assert-Path $rootBinary "Packaged OcctNative.dll"
 
-    Write-Host "[runtime] Copying OCCT DLLs..." -ForegroundColor Cyan
-    Get-ChildItem $OcctBinDir -File -Filter "*.dll" | Sort-Object Name | ForEach-Object {
-        Copy-RuntimeDll $_ "OCCT runtime"
-    }
+    $dumpbin = Resolve-Dumpbin
+    $candidateIndex = New-RuntimeCandidateIndex
+    $queue = [System.Collections.Generic.Queue[string]]::new()
+    $processed = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $records = [System.Collections.Generic.List[string]]::new()
+    $queue.Enqueue($rootBinary)
 
-    if (Test-Path $OcctThirdPartyDir -PathType Container) {
-        Write-Host "[runtime] Copying detected third-party DLLs..." -ForegroundColor Cyan
-        $candidates = Get-ChildItem $OcctThirdPartyDir -Recurse -File -Filter "*.dll" | Where-Object {
-            if ($Configuration -eq "Debug") {
-                return $true
+    Write-Host "[runtime] Resolving native dependency closure from OcctNative.dll..." -ForegroundColor Cyan
+    while ($queue.Count -gt 0) {
+        $binary = [System.IO.Path]::GetFullPath($queue.Dequeue())
+        if (-not $processed.Add($binary)) {
+            continue
+        }
+
+        foreach ($dependency in Get-PeDependencies $dumpbin $binary) {
+            if (Test-SystemDependency $dependency) {
+                continue
             }
-            $path = $_.FullName.ToLowerInvariant()
-            return $path -notmatch "[\\/]debug[\\/]" -and
-                   $_.Name -notmatch "(?i)(_debug|debug|d)\.dll$"
-        }
 
-        $candidates | Sort-Object FullName | ForEach-Object {
-            Copy-RuntimeDll $_ "OCCT third-party runtime"
+            $destination = Join-Path $RuntimeRoot $dependency
+            if (-not (Test-Path $destination -PathType Leaf)) {
+                $source = Resolve-RuntimeDependency $dependency $candidateIndex
+                if ($null -eq $source) {
+                    throw "Required native dependency '$dependency' imported by '$binary' was not found in:`n  $OcctBinDir`n  $OcctThirdPartyDir"
+                }
+                Copy-RuntimeDll $source "required native dependency"
+                $records.Add("$([System.IO.Path]::GetFileName($binary)) -> $dependency <- $($source.FullName)")
+            }
+            else {
+                $records.Add("$([System.IO.Path]::GetFileName($binary)) -> $dependency")
+            }
+            $queue.Enqueue($destination)
         }
     }
+
+    $reportPath = Join-Path $PackageRoot "native-dependencies.txt"
+    [System.IO.File]::WriteAllLines($reportPath, @($records | Sort-Object -Unique), $utf8)
+    Write-Host "[runtime] Native dependency closure contains $($processed.Count) binaries." -ForegroundColor Green
 }
 
 function Copy-VisualCppRuntime {
@@ -304,6 +491,9 @@ function Write-PackageReadme {
         "",
         "The launchers configure PATH, OCCT_BRIDGE_NATIVE_DIR, OCCT_ROOT and CASROOT",
         "relative to the extracted package. No OCCT SDK configuration is required on the target computer.",
+        "",
+        "Native DLLs are selected from the actual dependency closure of OcctNative.dll;",
+        "unused SDK, sample, static-library and alternate-toolset DLLs are intentionally excluded.",
         "",
         "Before redistribution, review all license files in the licenses directory."
     )
