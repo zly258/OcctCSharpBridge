@@ -1,4 +1,4 @@
-﻿#include "OcctModelingInternal.hxx"
+#include "OcctModelingInternal.hxx"
 
 using namespace OcctModelingInternal;
 
@@ -226,7 +226,8 @@ extern "C"
             requirePositive(dy, "Box Y size");
             requirePositive(dz, "Box Z size");
             BRepPrimAPI_MakeBox maker(gp_Pnt(x, y, z), dx, dy, dz);
-            if (!maker.IsDone()) throw std::runtime_error("Box creation failed.");
+            maker.Build();
+            if (!maker.IsDone() || maker.Shape().IsNull()) throw std::runtime_error("Box creation failed.");
             return maker.Shape();
         });
     }
@@ -239,7 +240,8 @@ extern "C"
             requirePositive(radius, "Radius");
             requirePositive(height, "Height");
             BRepPrimAPI_MakeCylinder maker(toAxis2(origin, axis), radius, height);
-            if (!maker.IsDone()) throw std::runtime_error("Cylinder creation failed.");
+            maker.Build();
+            if (!maker.IsDone() || maker.Shape().IsNull()) throw std::runtime_error("Cylinder creation failed.");
             return maker.Shape();
         });
     }
@@ -253,7 +255,8 @@ extern "C"
                 throw std::invalid_argument("Cone radii are invalid.");
             requirePositive(height, "Height");
             BRepPrimAPI_MakeCone maker(toAxis2(origin, axis), radius1, radius2, height);
-            if (!maker.IsDone()) throw std::runtime_error("Cone creation failed.");
+            maker.Build();
+            if (!maker.IsDone() || maker.Shape().IsNull()) throw std::runtime_error("Cone creation failed.");
             return maker.Shape();
         });
     }
@@ -265,7 +268,8 @@ extern "C"
         {
             requirePositive(radius, "Radius");
             BRepPrimAPI_MakeSphere maker(toPoint(center), radius);
-            if (!maker.IsDone()) throw std::runtime_error("Sphere creation failed.");
+            maker.Build();
+            if (!maker.IsDone() || maker.Shape().IsNull()) throw std::runtime_error("Sphere creation failed.");
             return maker.Shape();
         });
     }
@@ -279,7 +283,8 @@ extern "C"
             requirePositive(minorRadius, "Minor radius");
             if (minorRadius >= majorRadius) throw std::invalid_argument("Minor radius must be less than major radius.");
             BRepPrimAPI_MakeTorus maker(toAxis2(center, axis), majorRadius, minorRadius);
-            if (!maker.IsDone()) throw std::runtime_error("Torus creation failed.");
+            maker.Build();
+            if (!maker.IsDone() || maker.Shape().IsNull()) throw std::runtime_error("Torus creation failed.");
             return maker.Shape();
         });
     }
