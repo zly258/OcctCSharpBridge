@@ -1,4 +1,4 @@
-﻿using CadCommon;
+using CadCommon;
 using OcctNet;
 
 namespace CadWinForms;
@@ -13,6 +13,7 @@ public sealed partial class MainForm : Form
     private ToolStripMenuItem? _redoMenuItem;
     private ToolStripButton? _undoButton;
     private ToolStripButton? _redoButton;
+    private bool _autoZFitEnabled = true;
 
     public MainForm()
     {
@@ -155,6 +156,7 @@ public sealed partial class MainForm : Form
         display.DropDownItems.Add(CheckMenuItem(CadLocalization.Text("Menu.Triedron"), true, (_, item) => ExecuteSafe(() => Session.Engine.SetTriedronVisible(item.Checked))));
         display.DropDownItems.Add(CheckMenuItem(CadLocalization.Text("Menu.ViewCube"), true, (_, item) => ExecuteSafe(() => Session.Engine.SetViewCubeVisible(item.Checked))));
         view.DropDownItems.Add(display);
+        view.DropDownItems.Add(BuildDepthMenu());
 
         var standard = new ToolStripMenuItem(CadLocalization.Text("Menu.StandardViews"));
         standard.DropDownItems.Add(MenuItem(CadLocalization.Text("Menu.Front"), (_, _) => Session.Engine.SetView(OcctViewOrientation.Front), "1"));
@@ -191,6 +193,50 @@ public sealed partial class MainForm : Form
         view.DropDownItems.Add(MenuItem(CadLocalization.Text("Menu.Background"), (_, _) => SetBackgroundColor()));
         view.DropDownItems.Add(MenuItem(CadLocalization.Text("Menu.GradientBackground"), (_, _) => Session.Engine.SetGradientBackground(Color.White, Color.LightSteelBlue)));
         return view;
+    }
+
+    private ToolStripMenuItem BuildDepthMenu()
+    {
+        var menu = new ToolStripMenuItem(CadLocalization.Text("Menu.DepthHandling"));
+        menu.DropDownItems.Add(CheckMenuItem(
+            CadLocalization.Text("Menu.AutoZFit"),
+            _autoZFitEnabled,
+            (_, item) => ExecuteSafe(() =>
+            {
+                _autoZFitEnabled = item.Checked;
+                Session.Engine.SetAutoZFitMode(_autoZFitEnabled, 1.0);
+                var message = CadLocalization.Text(
+                    _autoZFitEnabled ? "Status.AutoZFitOn" : "Status.AutoZFitOff");
+                _commandStatus.Text = message;
+                Log(message);
+            })));
+        menu.DropDownItems.Add(MenuItem(
+            CadLocalization.Text("Menu.AutoZFitNow"),
+            (_, _) => ExecuteSafe(Session.Engine.AutoZFit)));
+        menu.DropDownItems.Add(new ToolStripSeparator());
+        menu.DropDownItems.Add(MenuItem(
+            CadLocalization.Text("Menu.DepthForward"),
+            (_, _) => ApplyDepthBias(CadDepthBiasPreset.Forward)));
+        menu.DropDownItems.Add(MenuItem(
+            CadLocalization.Text("Menu.DepthBackward"),
+            (_, _) => ApplyDepthBias(CadDepthBiasPreset.Backward)));
+        menu.DropDownItems.Add(MenuItem(
+            CadLocalization.Text("Menu.DepthReset"),
+            (_, _) => ApplyDepthBias(CadDepthBiasPreset.Default)));
+        return menu;
+    }
+
+    private void ApplyDepthBias(CadDepthBiasPreset preset)
+    {
+        ExecuteSafe(() =>
+        {
+            var count = Session.ApplyDepthBiasToSelection(preset);
+            var message = count == 0
+                ? CadLocalization.Text("Status.DepthBiasNoShape")
+                : CadLocalization.Text("Status.DepthBiasApplied", count);
+            _commandStatus.Text = message;
+            Log(message);
+        });
     }
 
     private ToolStripMenuItem BuildMaterialMenu()
@@ -285,6 +331,7 @@ public sealed partial class MainForm : Form
         _session.Engine.SetTriedronVisible(true);
         _session.Engine.SetViewCubeVisible(true);
         _session.Engine.SetAntialiasing(true);
+        _session.Engine.SetAutoZFitMode(true, 1.0);
         _session.Engine.SetSelectionTolerance(4);
         _session.Engine.SetDefaultMaterial(OcctMaterial.Plastified);
         _commandStatus.Text = CadLocalization.Text("Status.Ready", OcctEngine.OcctVersion);
