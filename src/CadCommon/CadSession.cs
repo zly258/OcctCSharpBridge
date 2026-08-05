@@ -597,10 +597,24 @@ public sealed class CadSession
     {
         var selected = Engine.SelectedObjects.ToList();
         if (selected.Count == 0 && ActiveObject is { } active) selected.Add(active);
-        if (selected.Count == 0) throw new InvalidOperationException(Local("Select one or more objects to erase.", "请先选择要删除的对象。"));
-        foreach (var value in selected.DistinctBy(item => item.Id)) if (Engine.Exists(value)) Engine.Delete(value);
+
+        var targets = selected
+            .DistinctBy(item => item.Id)
+            .Where(item => Engine.Exists(item))
+            .Select(item => (IOcctObject)item)
+            .ToArray();
+
+        if (targets.Length == 0)
+        {
+            throw new InvalidOperationException(Local(
+                "Select one or more objects to erase.",
+                "请先选择要删除的对象。"));
+        }
+
+        // One managed call, one P/Invoke transition, one native validation pass and one redraw.
+        Engine.Delete(targets);
         ActiveObject = null;
-        return CadCommandResult.Empty(CadLocalization.Text("Session.Deleted", selected.Count));
+        return CadCommandResult.Empty(CadLocalization.Text("Session.Deleted", targets.Length));
     }
 
     private CadCommandResult AnalyzeBounds()
