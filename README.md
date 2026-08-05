@@ -1,155 +1,203 @@
-# OCCT 7.9.0 C# CAD Demo
+# OCCT 7.9.0 C# Engineering Bridge
 
-[简体中文](README.zh-CN.md)
+[简体中文](README.zh-CN.md) · [Documentation](docs/README.md) · [WinForms/WPF demo branch](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
-The `demo` branch is the complete example environment built on top of the reusable `main` wrapper. It exposes Open CASCADE Technology **7.9.0** through a **C++17 native DLL, stable C ABI, and .NET 8 P/Invoke**, with WinForms, WPF, shared CAD commands, headless modeling, OCAF/TNaming/XDE, and API coverage tooling.
+OcctCSharpBridge exposes Open CASCADE Technology **7.9.0** to .NET 8 through a C++17 native DLL, a stable C ABI, and type-safe C# wrappers. The `main` branch is the reusable SDK. The `demo` branch adds complete WinForms and WPF applications, shared CAD commands, an API catalog, executable scenarios, and portable publishing scripts.
+
+## Design goals
+
+- Keep OCCT C++ handles, labels, and implementation classes behind a stable C ABI.
+- Provide engineering workflows instead of mirroring every OCCT class one-to-one.
+- Separate Viewer/AIS, headless modeling, and OCAF/XDE document lifetimes.
+- Preserve the caller's camera: creating or editing a shape does **not** automatically call `FitAll`.
+- Support efficient multi-object updates through nestable display batches.
+- Require exactly OCCT 7.9.0 so OCAF, TNaming, XDE, and persistence behavior is deterministic.
 
 ## Architecture
 
 ```text
-CadWinForms ─┐
-             ├─ CadCommon ── OcctNet ── OcctNative ── OCCT 7.9.0
-CadWpf ──────┘                  │
-                                ├─ OcctEngine            Viewer/AIS
-                                ├─ OcctModelingSession   Headless modeling
-                                └─ OcafDocument          OCAF/XDE
+Application
+├─ OcctEngine              HWND Viewer, AIS objects, selection, camera and annotations
+├─ OcctModelingSession     Headless geometry, topology, algorithms, healing and mesh
+└─ OcafDocument            OCAF/TDF/TNaming/XDE, assemblies, metadata and persistence
+          ↓
+OcctNet (.NET 8, Windows x64)
+          ↓ P/Invoke / stable C ABI
+OcctNative (C++17 DLL)
+          ↓
+Open CASCADE Technology 7.9.0
 ```
 
-| Project | Purpose |
+The three high-level sessions own independent native registries. Shapes are copied between registries; raw `Handle(...)`, `TopoDS_Shape*`, `TDF_Label*`, and persistence-driver objects never cross the ABI.
+
+## Which API should I use?
+
+| Requirement | API |
 |---|---|
-| `src/OcctNative` | C++17 Viewer, modeling, OCAF/XDE, and stable C ABI |
-| `src/OcctNet` | Type-safe .NET 8 API, P/Invoke, and viewport control |
-| `src/CadCommon` | Shared commands, session, replay undo/redo, localization, and API scenarios |
-| `src/CadWinForms` | Conventional WinForms CAD application |
-| `src/CadWpf` | WPF CAD application hosting the OCCT viewport through `WindowsFormsHost` |
-| `tests/OcctNet.Smoke` | Headless, OCAF/XDE, and persistence smoke coverage |
+| Interactive 3D viewport, picking, camera, colors and dimensions | `OcctEngine` |
+| Server-side or background modeling without a window | `OcctModelingSession` |
+| Persistent product structure, parameters, metadata and undo/redo | `OcafDocument` |
+| Build a shape headlessly and display it later | `OcctModelingSession` + `OcctEngine.AddShape(...)` |
+| Preserve assemblies, names, colors, layers and materials in exchange | `OcafDocument` STEPCAF/IGESCAF APIs |
 
-## API Center
+## Viewer quick start
 
-Both desktop applications contain an **API Center** menu. It:
+```csharp
+using OcctNet;
 
-- discovers every public `OcctNet` type, constructor, property, field, event, and method through reflection;
-- supports searching by area, type, method, signature, or prerequisite;
-- classifies members as automated, interactive, file-dependent, environment-dependent, or catalog-only;
-- updates automatically when public APIs are added to `main`;
-- shares one `CadCommon.ApiDemoCatalog` implementation between WinForms and WPF.
+OcctRuntime.Configure(
+    occtRoot: @"D:\tools\occt-vc144-64",
+    nativeBridgeDirectory: AppContext.BaseDirectory);
 
-Included executable scenarios cover:
+using var engine = new OcctEngine();
+engine.Initialize(viewportHandle);
 
-1. public API catalog auditing;
-2. Viewer, camera, projection, display precision, materials, and lighting;
-3. existing CAD primitive, Boolean, loft, and annotation samples;
-4. headless modeling, topology, mesh, analysis, healing, and algorithm reports;
-5. headless Shape transfer into the Viewer;
-6. temporary BREP round trips;
-7. OCAF labels, attributes, variables, expressions, relations, transactions, and BinXCAF;
-8. TNaming history and persistent selection;
-9. XDE assemblies, components, colors, layers, and reusable materials.
+var box = engine.MakeBox(100, 80, 60);
+engine.SetColor(box, Color.SteelBlue);
 
-“Every interface is covered” means every public member appears in the searchable catalog. Members requiring mouse input, selected topology, user files, or a specific document state expose that prerequisite instead of being called with meaningless default arguments.
-
-## Requirements
-
-- Windows x64
-- Visual Studio 2022 with **Desktop development with C++** and **.NET desktop development**
-- .NET 8 SDK
-- CMake 3.21+
-- **OCCT 7.9.0 VC++ x64**
-
-The default OCCT root is:
-
-```text
-D:\tools\occt-vc144-64
+// Creation keeps the current camera unchanged.
+// Fit explicitly only when the workflow needs it.
+engine.FitAll();
 ```
 
-Set `OCCT_ROOT` or pass `-OcctRoot` to override it.
+### Efficient multi-object display
+
+```csharp
+using (engine.BeginDisplayBatch())
+{
+    var box = engine.MakeBox(100, 80, 60);
+    var cylinder = engine.MakeCylinder(20, 80, 150, 0, 0);
+    engine.SetMaterial(box, OcctMaterial.Plastified);
+    engine.SetColor(cylinder, Color.OrangeRed);
+
+    // Optional. Without this call, the camera is preserved.
+    engine.FitAll();
+}
+```
+
+During a batch, `Display`, `Redisplay`, visibility, color, material, delete, and other scene updates are accumulated. The outermost batch performs one final redraw. Batches can be nested.
+
+## Headless modeling quick start
+
+```csharp
+using var model = new OcctModelingSession();
+var body = model.MakeBox(100, 80, 60);
+var hole = model.MakeCylinder(
+    new OcctPoint3d(50, 40, -10),
+    OcctVector3d.UnitZ,
+    12,
+    80);
+var result = model.Cut(body, hole);
+
+if (!result.Succeeded || !model.IsValid(result.Shape))
+    throw new InvalidOperationException(result.Report);
+
+model.ExportStep(result.Shape, @"D:\output\result.step");
+```
+
+## OCAF/XDE quick start
+
+```csharp
+using var model = new OcctModelingSession();
+var body = model.MakeBox(100, 80, 60);
+
+using var document = new OcafDocument(OcafDocumentFormats.BinaryXde)
+{
+    UndoLimit = 20
+};
+
+using (var command = document.BeginCommand())
+{
+    var product = document.AddShape(model, body);
+    document.SetName(product, "Housing");
+    document.SetColor(product, OcafColorType.Surface,
+        new OcafColor(0.2, 0.45, 0.8));
+    var layer = document.AddLayer("Equipment");
+    document.SetLayer(product, layer);
+    document.SetMaterial(product, "Steel", "Structural steel", 7.85);
+    command.Commit();
+}
+
+document.SaveAs(@"D:\output\assembly.xbf");
+document.ExportStep(@"D:\output\assembly.step");
+```
+
+## Capability overview
+
+| Area | Main capabilities |
+|---|---|
+| Viewer and AIS | HWND initialization, camera, orthographic/perspective projection, view cube, triedron, lighting, antialiasing, materials, colors, transparency, text and dimensions |
+| Selection | Object and subshape filters, point selection, rectangle selection, persistent selection state and OCCT overlay rubber band |
+| Geometry | Vertex, line, arc, circle, ellipse, Bezier, B-spline, wire, face and standard solids |
+| Features | Boolean, splitter, extrusion, revolution, sweep, loft, fillet, chamfer, offset, thick solid, drilling and transforms |
+| Analysis | Bounds, mass properties, topology, distance, projection, ray intersection, classification, validation and reports |
+| Mesh and healing | Explicit meshing, face triangulation access, BRepCheck and ShapeFix workflows |
+| OCAF/TDF | Documents, labels, transactions, undo/redo, scalar/reference/array/position/shape attributes, variables, expressions and relations |
+| TNaming | Generated/Modify/Delete/Select evolution, named-shape history and selector solve workflows |
+| XDE | Free shapes, assemblies, components, locations, names, colors, visibility, layers, materials and validation properties |
+| Exchange | BREP/STL/STEP/IGES pure shapes plus STEPCAF/IGESCAF metadata-preserving workflows |
+
+## Version contract
+
+This repository requires **exactly OCCT 7.9.0**:
+
+1. CMake parses `Standard_Version.hxx` and rejects a different version.
+2. Native code contains compile-time version assertions.
+3. Managed OCAF initialization validates the loaded bridge at runtime.
+
+Do not silently substitute 7.8, 7.9.1/7.9.3, or 8.x binaries.
 
 ## Build
+
+Requirements:
+
+- Windows 10/11 x64
+- Visual Studio 2022 with **Desktop development with C++**
+- .NET 8 SDK
+- CMake 3.21+
+- OCCT 7.9.0 VC++ x64 SDK
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
 
-# No OCCT SDK required
+# Validate C header, C++ implementation and P/Invoke parity.
 .\build.ps1 validate Release
+
+# Build reusable managed assemblies.
 .\build.ps1 managed Release
 
-# OCCT 7.9.0 required
-.\build.ps1 native Release
-.\build.ps1 winform Release
-.\build.ps1 wpf Release
-.\build.ps1 smoke Release
-.\build.ps1 all Release
-
-.\build.ps1 all Release -OcctRoot "D:\SDK\occt-vc144-64"
-```
-
-| Target | Result |
-|---|---|
-| `validate` | Compare C declarations, C++ definitions, and C# P/Invoke names |
-| `managed` | Build `OcctNet` and `CadCommon` |
-| `native` | Build `OcctNative.dll` |
-| `winform` | Native + WinForms |
-| `wpf` | Native + WPF |
-| `smoke` | Native + compile and run the smoke test |
-| `all` | Native, WinForms, WPF, and smoke-test compilation |
-
-Run:
-
-```powershell
-.\run.ps1 winform Release
-.\run.ps1 wpf Release
-```
-
-## CAD interaction
-
-Both applications use a Model Explorer on the left, an OCCT viewport in the center, Properties/Command Line on the right, and command, selection, and world-coordinate status at the bottom.
-
-| Input | Action |
-|---|---|
-| Left click | Select an object or subshape |
-| Left drag | Rectangle selection |
-| `Ctrl` + selection | Append to selection |
-| Right drag | Orbit |
-| Middle drag | Pan |
-| Mouse wheel | Zoom |
-| `Esc` | Clear selection |
-| `Ctrl+Z` / `Ctrl+Y` | Replay-based undo/redo |
-
-Selection filters include Object, Vertex, Edge, Wire, Face, Shell, and Solid. English is the default UI language; Simplified Chinese is available from the `Language` menu.
-
-## Wrapper coverage
-
-| Area | Main capabilities |
-|---|---|
-| Viewer/AIS | HWND Viewer, display, visibility, selection, subshapes, camera, projection, materials, lighting, text, and dimensions |
-| Headless | Geometry, solids, Booleans, Splitter, features, healing, topology, distance, projection, rays, mesh, and pure-Shape exchange |
-| OCAF/TDF | Documents, persistence, transactions, Undo/Redo, labels, scalars, arrays, references, variables, expressions, and relations |
-| TNaming | Generated/Modify/Delete/Select, NamedShape history, and Selector workflows |
-| XDE | Shapes, assemblies, components, instance locations, colors, layers, materials, validation properties, and length units |
-| Exchange | STEP/IGES/BREP/STL plus metadata-preserving STEPCAF/IGESCAF |
-
-Detailed boundaries:
-
-- `docs/API_COVERAGE.md`
-- `docs/OCAF_COVERAGE.md`
-- `docs/OCAF_EXTENDED_API.md`
-
-## Validation and runtime boundary
-
-GitHub Actions validates 491 C ABI entry points across declarations, C++ definitions, and P/Invoke, then compiles `OcctNet`, `CadCommon`, WinForms, WPF, and the smoke project.
-
-Native linking, Viewer rendering, and actual BinXCAF/STEPCAF/IGESCAF execution still require the Windows target machine with the OCCT 7.9.0 SDK:
-
-```powershell
+# Build native bridge and run smoke coverage.
 .\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-Application crash logs are written to:
+## Referencing the SDK
 
-```text
-%LOCALAPPDATA%\OcctCSharpBridge\Logs
+```xml
+<ItemGroup>
+  <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet\OcctNet.csproj" />
+</ItemGroup>
 ```
+
+Deploy `OcctNative.dll` beside the application or set `OCCT_BRIDGE_NATIVE_DIR`. OCCT runtime DLLs and required third-party DLLs must be discoverable through the application directory or `PATH`; OCCT resource directories must be available through `CASROOT`/`OCCT_ROOT` when exchange or persistence uses them.
+
+The `demo` branch contains `publish.ps1`, which produces a self-contained Windows x64 package with managed runtime, native bridge, OCCT DLLs, third-party DLLs, resource directories, launchers, manifests, and licenses.
+
+## Documentation
+
+- [Documentation index](docs/README.md)
+- [Getting started](docs/GETTING_STARTED.md)
+- [Viewer, selection and display updates](docs/VIEWER_AND_DISPLAY.md)
+- [Deployment and runtime layout](docs/DEPLOYMENT.md)
+- [Complete API coverage](docs/API_COVERAGE.md)
+- [OCAF/XDE coverage](docs/OCAF_COVERAGE.md)
+- [Extended OCAF API](docs/OCAF_EXTENDED_API.md)
+
+## Boundary and extension policy
+
+The bridge intentionally does not expose raw OCCT ownership objects, concrete TDF delta subclasses, persistence-driver internals, or arbitrary custom C++ callbacks. New typed modules should be added behind the C ABI without leaking implementation pointers or breaking existing signatures.
+
+Advanced GD&T, view, note, clipping-plane, and PBR visual-material sections can currently be inspected through section labels and generic attribute JSON. Dedicated typed CRUD modules may be added incrementally.
 
 ## License
 
-The project uses the [PolyForm Noncommercial License 1.0.0](LICENSE). OCCT and third-party components remain subject to their respective licenses.
+The project is provided under the [PolyForm Noncommercial License 1.0.0](LICENSE). OCCT, Microsoft runtime components, and third-party libraries remain subject to their own licenses and redistribution terms.
