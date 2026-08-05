@@ -44,15 +44,25 @@ jobs:
         shell: pwsh
         run: |
           $text = Get-Content .\publish.ps1 -Raw
-          $requiredTokens = @(
+          $functionNames = @(
               'Resolve-Dumpbin',
               'Get-PeDependencies',
+              'Test-SystemDependency',
+              'Test-RuntimeCandidate',
+              'Get-RuntimeCandidateScore',
               'New-RuntimeCandidateIndex',
               'Resolve-RuntimeDependency',
-              'native-dependencies.txt',
-              'lib-static'
+              'Copy-OcctRuntime'
           )
-          foreach ($token in $requiredTokens) {
+          foreach ($name in $functionNames) {
+              $count = ([regex]::Matches(
+                  $text,
+                  "function\s+$([regex]::Escape($name))\s*\{")).Count
+              if ($count -ne 1) {
+                  throw "Expected one $name definition, found $count."
+              }
+          }
+          foreach ($token in @('native-dependencies.txt', 'lib-static')) {
               if (-not $text.Contains($token)) {
                   throw "Dependency-closure packaging token was not found: $token"
               }
