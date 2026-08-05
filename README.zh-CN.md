@@ -29,7 +29,7 @@ OcctCSharpBridge 通过原生 C++ DLL、稳定 C ABI 和类型安全的 .NET 8 A
 ## 运行
 
 ```powershell
-.\run.ps1 winforms
+.\run.ps1 winform
 .\run.ps1 wpf
 ```
 
