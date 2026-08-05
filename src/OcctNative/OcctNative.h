@@ -19,6 +19,8 @@ extern "C"
     struct OcctMassProperties { double mass; double centerX; double centerY; double centerZ; };
     struct OcctDistanceResult { double distance; OcctPoint3d pointOnFirst; OcctPoint3d pointOnSecond; };
     struct OcctCameraState { OcctPoint3d eye; OcctPoint3d center; OcctVector3d up; OcctVector3d direction; double scale; };
+    struct OcctAutoZFitSettings { int enabled; double scaleFactor; };
+    struct OcctPolygonOffsetSettings { int mode; double factor; double units; };
     struct OcctUvBounds { double uMin; double uMax; double vMin; double vMax; };
 
     enum OcctObjectKind { OcctObject_Unknown = 0, OcctObject_Shape = 1, OcctObject_Text = 2, OcctObject_Dimension = 3 };
@@ -91,6 +93,14 @@ extern "C"
     OCCTBRIDGE_API int occt_set_scene_lighting(OcctHandle handle, double ambientIntensity, double directionalIntensity, OcctVector3d direction, int headlight);
     OCCTBRIDGE_API int occt_reset_scene_lighting(OcctHandle handle);
     OCCTBRIDGE_API int occt_set_selection_tolerance(OcctHandle handle, int pixelTolerance);
+    OCCTBRIDGE_API int occt_set_auto_z_fit_mode(OcctHandle handle, int enabled, double scaleFactor);
+    OCCTBRIDGE_API int occt_get_auto_z_fit_mode(OcctHandle handle, OcctAutoZFitSettings* result);
+    OCCTBRIDGE_API int occt_auto_z_fit(OcctHandle handle);
+    OCCTBRIDGE_API int occt_set_default_polygon_offsets(OcctHandle handle, int mode, double factor, double units, int applyExisting);
+    OCCTBRIDGE_API int occt_get_default_polygon_offsets(OcctHandle handle, OcctPolygonOffsetSettings* result);
+    OCCTBRIDGE_API int occt_set_object_polygon_offsets(OcctHandle handle, OcctObjectId objectId, int mode, double factor, double units);
+    OCCTBRIDGE_API int occt_get_object_polygon_offsets(OcctHandle handle, OcctObjectId objectId, OcctPolygonOffsetSettings* result);
+    OCCTBRIDGE_API int occt_reset_object_polygon_offsets(OcctHandle handle, OcctObjectId objectId);
 
     // Registry, AIS attributes and lifecycle.
     OCCTBRIDGE_API int occt_object_count(OcctHandle handle);
