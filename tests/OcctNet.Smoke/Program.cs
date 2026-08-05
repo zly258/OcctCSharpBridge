@@ -110,7 +110,6 @@ try
             document.SetArea(shapeLabel, model.GetSurfaceProperties(cut.Shape).Mass);
             document.SetVolume(shapeLabel, model.GetVolumeProperties(cut.Shape).Mass);
             document.SetCentroid(shapeLabel, model.GetVolumeProperties(cut.Shape).CenterOfMass);
-            document.MarkModified(shapeLabel);
 
             _ = command.Commit();
         }
@@ -150,6 +149,7 @@ try
         if (!document.IsMaterialDefinition(materialDefinition) || document.GetMaterialLabel(shapeLabel) != materialDefinition)
             throw new InvalidOperationException("Extended XDE material workflow failed.");
 
+        document.MarkModified(shapeLabel);
         if (document.GetModifiedLabels().Count == 0)
             throw new InvalidOperationException("Modified-label tracking failed.");
         document.PurgeModified();
