@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+using System.Drawing;
 using System.Globalization;
 using OcctNet;
 
@@ -111,8 +111,12 @@ public sealed class CadSession
             selectedObjectIds.Add(active.Id);
         }
         var values = new CadValues(storedValues);
-        var result = commandId switch
+        var displayBatch = IsDemoCommand(commandId) ? Engine.BeginDisplayBatch() : null;
+        CadCommandResult result;
+        try
         {
+            result = commandId switch
+            {
             CadCommandId.Point => CreateShape(CadLocalization.CommandText(commandId), Engine.MakeVertex(values.Point())),
             CadCommandId.Line => CreateShape(CadLocalization.CommandText(commandId), Engine.MakeLine(new(values.Number("x1"), values.Number("y1"), values.Number("z1")), new(values.Number("x2"), values.Number("y2"), values.Number("z2")))),
             CadCommandId.Polyline => CreateShape(CadLocalization.CommandText(commandId), Engine.MakePolyline(values.Points("points"), values.Boolean("closed"))),
@@ -176,7 +180,12 @@ public sealed class CadSession
             CadCommandId.DemoBoolean => DemoBoolean(),
             CadCommandId.DemoAnnotations => DemoAnnotations(),
             _ => throw new NotSupportedException(Local($"Command is not implemented: {commandId}", $"未实现命令：{commandId}"))
-        };
+            };
+        }
+        finally
+        {
+            displayBatch?.Dispose();
+        }
 
         var changed = result.CreatedObjects.Count > 0 || commandId == CadCommandId.Delete;
         if (changed)
@@ -735,6 +744,17 @@ public sealed class CadSession
         Engine.FitAll();
         return new(Local("Annotation and dimension samples created.", "已生成注释与尺寸示例。"), new IOcctObject[] { line, circle, otherLine, length, angle, radius, diameter, text });
     }
+
+    private static bool IsDemoCommand(CadCommandId commandId) =>
+        commandId is CadCommandId.DemoPrimitives
+            or CadCommandId.DemoBracket
+            or CadCommandId.DemoFlange
+            or CadCommandId.DemoPipe
+            or CadCommandId.DemoTee
+            or CadCommandId.DemoReducer
+            or CadCommandId.DemoLoft
+            or CadCommandId.DemoBoolean
+            or CadCommandId.DemoAnnotations;
 
     private static string Local(string english, string chinese) =>
         CadLocalization.CurrentLanguage == CadLanguage.ChineseSimplified ? chinese : english;
