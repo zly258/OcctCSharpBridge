@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+using System.Drawing;
 using System.Runtime.InteropServices;
 
 namespace OcctNet;
@@ -88,7 +88,7 @@ public sealed partial class OcctEngine : IDisposable
 
     public void MoveTo(int x, int y) => CheckInitialized(() => NativeMethods.occt_move_to(_handle, x, y));
     public void Select(int x, int y, bool appendSelection = false) => CheckInitialized(() => NativeMethods.occt_select(_handle, x, y, appendSelection ? 1 : 0));
-    public void SelectRectangle(int x1, int y1, int x2, int y2, bool appendSelection = false) => CheckInitialized(() => NativeMethods.occt_select_rectangle(_handle, x1, y1, x2, y2, appendSelection ? 1 : 0));
+    public void SelectRectangle(int x1, int y1, int x2, int y2, bool appendSelection = false, bool allowOverlap = false) => CheckInitialized(() => NativeMethods.occt_select_rectangle_ex(_handle, x1, y1, x2, y2, appendSelection ? 1 : 0, allowOverlap ? 1 : 0));
     public void SelectObject(OcctObject value, bool appendSelection = false) => CheckInitialized(() => NativeMethods.occt_select_object(_handle, value.Id, appendSelection ? 1 : 0));
     public void SetSelectionMode(OcctSelectionMode mode) => CheckInitialized(() => NativeMethods.occt_set_selection_mode(_handle, (int)mode));
 
@@ -160,7 +160,29 @@ public sealed partial class OcctEngine : IDisposable
     public void SetDisplayMode(IOcctObject value, OcctDisplayMode displayMode) => CheckInitialized(() => NativeMethods.occt_set_object_display_mode(_handle, value.Id, (int)displayMode));
     public void SetLineWidth(IOcctObject value, double width) => CheckInitialized(() => NativeMethods.occt_set_object_line_width(_handle, value.Id, width));
     public void SetMaterial(IOcctObject value, OcctMaterial material) => CheckInitialized(() => NativeMethods.occt_set_object_material(_handle, value.Id, (int)material));
-    public void Delete(IOcctObject value) => CheckInitialized(() => NativeMethods.occt_delete_object(_handle, value.Id));
+    public void Delete(IOcctObject value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        Delete(new[] { value });
+    }
+
+    public void Delete(IEnumerable<IOcctObject> values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        EnsureInitialized();
+
+        var ids = new HashSet<long>();
+        foreach (var value in values)
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            if (value.Id <= 0) throw new ArgumentException("Object IDs must be greater than zero.", nameof(values));
+            ids.Add(value.Id);
+        }
+
+        if (ids.Count == 0) return;
+        var objectIds = ids.ToArray();
+        Check(NativeMethods.occt_delete_objects(_handle, objectIds, objectIds.Length));
+    }
     public void Clear() => CheckInitialized(() => NativeMethods.occt_clear(_handle));
     public void ShowAll() => CheckInitialized(() => NativeMethods.occt_show_all(_handle));
     public void HideAll() => CheckInitialized(() => NativeMethods.occt_hide_all(_handle));

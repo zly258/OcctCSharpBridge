@@ -72,6 +72,7 @@ extern "C"
     OCCTBRIDGE_API int occt_move_to(OcctHandle handle, int x, int y);
     OCCTBRIDGE_API int occt_select(OcctHandle handle, int x, int y, int appendSelection);
     OCCTBRIDGE_API int occt_select_rectangle(OcctHandle handle, int x1, int y1, int x2, int y2, int appendSelection);
+    OCCTBRIDGE_API int occt_select_rectangle_ex(OcctHandle handle, int x1, int y1, int x2, int y2, int appendSelection, int allowOverlap);
     OCCTBRIDGE_API int occt_select_object(OcctHandle handle, OcctObjectId objectId, int appendSelection);
     OCCTBRIDGE_API int occt_set_selection_mode(OcctHandle handle, int selectionMode);
     OCCTBRIDGE_API int occt_selected_count(OcctHandle handle);
@@ -117,6 +118,7 @@ extern "C"
     OCCTBRIDGE_API int occt_set_object_line_width(OcctHandle handle, OcctObjectId objectId, double width);
     OCCTBRIDGE_API int occt_set_object_material(OcctHandle handle, OcctObjectId objectId, int material);
     OCCTBRIDGE_API int occt_delete_object(OcctHandle handle, OcctObjectId objectId);
+    OCCTBRIDGE_API int occt_delete_objects(OcctHandle handle, const OcctObjectId* objectIds, int count);
     OCCTBRIDGE_API int occt_clear(OcctHandle handle);
     OCCTBRIDGE_API int occt_show_all(OcctHandle handle);
     OCCTBRIDGE_API int occt_hide_all(OcctHandle handle);

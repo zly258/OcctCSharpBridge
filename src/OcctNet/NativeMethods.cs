@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
@@ -95,6 +95,7 @@ internal static class NativeMethods
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern int occt_move_to(IntPtr handle, int x, int y);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern int occt_select(IntPtr handle, int x, int y, int appendSelection);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern int occt_select_rectangle(IntPtr handle, int x1, int y1, int x2, int y2, int appendSelection);
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern int occt_select_rectangle_ex(IntPtr handle, int x1, int y1, int x2, int y2, int appendSelection, int allowOverlap);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern int occt_select_object(IntPtr handle, long objectId, int appendSelection);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern int occt_set_selection_mode(IntPtr handle, int selectionMode);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern int occt_selected_count(IntPtr handle);
@@ -120,6 +121,7 @@ internal static class NativeMethods
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern int occt_set_object_line_width(IntPtr handle, long objectId, double width);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern int occt_set_object_material(IntPtr handle, long objectId, int material);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern int occt_delete_object(IntPtr handle, long objectId);
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern int occt_delete_objects(IntPtr handle, [In] long[] objectIds, int count);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern int occt_clear(IntPtr handle);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern int occt_shape_type(IntPtr handle, long shapeId);
