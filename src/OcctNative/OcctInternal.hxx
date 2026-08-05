@@ -67,6 +67,9 @@ namespace OcctBridge
         OcctObjectId nextId = 1;
         int displayMode = AIS_Shaded;
         int selectionMode = OcctSelection_Object;
+        int updateDepth = 0;
+        bool redrawPending = false;
+        bool fitAllPending = false;
 
         bool isInitialized() const;
         void clearError();
@@ -81,6 +84,11 @@ namespace OcctBridge
         void hide(OcctObjectId id);
         void erase(OcctObjectId id);
         void applySelectionMode(const Handle(AIS_InteractiveObject)& presentation);
+        void beginUpdate();
+        void endUpdate(bool fitAll);
+        void requestRedraw();
+        void requestFitAll();
+        bool isUpdating() const;
     };
 
     Engine* engineOf(OcctHandle handle);
