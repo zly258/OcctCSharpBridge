@@ -763,7 +763,6 @@ public sealed class CadSession
     {
         SetGeneratedName(shape, baseName);
         ActiveObject = new OcctObject(shape.Id, OcctObjectKind.Shape);
-        Engine.Fit(shape);
         return CadCommandResult.Created(CadLocalization.Text("Session.Created", baseName), shape);
     }
 

@@ -256,7 +256,7 @@ function Copy-LicenseFiles {
             $_.Name -match "(?i)^(license|copying|notice|readme)(\.|$)"
         } | ForEach-Object {
             $relative = $_.FullName.Substring($OcctThirdPartyDir.Length).TrimStart('\', '/')
-            $safeName = $relative -replace "[\\/:*?\"<>|]", "_"
+            $safeName = $relative -replace '[\\/:*?"<>|]', '_'
             Copy-Item $_.FullName (Join-Path $thirdPartyLicenseRoot $safeName) -Force
         }
     }
