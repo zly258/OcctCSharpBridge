@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Position = 0)]
     [ValidateSet("all", "winform", "wpf")]
     [string]$Target = "all",
@@ -230,11 +230,9 @@ function Test-RuntimeCandidate {
     if ($path -match "[\\/](?:x86|win32)[\\/]") {
         return $false
     }
-    if ($Configuration -ne "Debug") {
-        if ($path -match "[\\/]debug[\\/]" -or $File.Name -match "(?i)(?:_debug|debug)\.dll$") {
-            return $false
-        }
-    }
+
+    # The PE import table is the source of truth. A Release OCCT distribution
+    # can still import a debug-named third-party DLL, so do not filter it out.
     return $true
 }
 
@@ -331,6 +329,7 @@ function Copy-OcctRuntime {
     $queue = [System.Collections.Generic.Queue[string]]::new()
     $processed = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $records = [System.Collections.Generic.List[string]]::new()
+    $reportedDebugDependencies = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $queue.Enqueue($rootBinary)
 
     Write-Host "[runtime] Resolving native dependency closure from OcctNative.dll..." -ForegroundColor Cyan
@@ -343,6 +342,12 @@ function Copy-OcctRuntime {
         foreach ($dependency in Get-PeDependencies $dumpbin $binary) {
             if (Test-SystemDependency $dependency) {
                 continue
+            }
+
+            if ($Configuration -ne "Debug" -and
+                $dependency -match "(?i)(?:_debug|debug)\.dll$" -and
+                $reportedDebugDependencies.Add($dependency)) {
+                Write-Warning "Release dependency closure imports debug-named runtime '$dependency'. It will be packaged because the binary imports it directly."
             }
 
             $destination = Join-Path $RuntimeRoot $dependency
