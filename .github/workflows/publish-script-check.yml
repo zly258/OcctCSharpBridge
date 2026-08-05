@@ -40,3 +40,23 @@ jobs:
                   throw "Required publishing input was not found: $path"
               }
           }
+      - name: Verify dependency-closure packaging
+        shell: pwsh
+        run: |
+          $text = Get-Content .\publish.ps1 -Raw
+          $requiredTokens = @(
+              'Resolve-Dumpbin',
+              'Get-PeDependencies',
+              'New-RuntimeCandidateIndex',
+              'Resolve-RuntimeDependency',
+              'native-dependencies.txt',
+              'lib-static'
+          )
+          foreach ($token in $requiredTokens) {
+              if (-not $text.Contains($token)) {
+                  throw "Dependency-closure packaging token was not found: $token"
+              }
+          }
+          if ($text -match 'Copying detected third-party DLLs') {
+              throw 'publish.ps1 still contains the old blanket third-party DLL copy.'
+          }
