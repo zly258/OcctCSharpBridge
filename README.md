@@ -1,148 +1,150 @@
-﻿# OCCT 7.9.0 C# CAD Bridge
+# OCCT 7.9.0 C# CAD Demo
 
 [简体中文](README.zh-CN.md)
 
-This project wraps Open CASCADE Technology 7.9.0 through a **native C++ DLL, a stable C ABI, and C# P/Invoke**. It provides two compact CAD applications for WinForms and WPF. English is the default UI language; Simplified Chinese can be selected from the `Language` menu.
+The `demo` branch is the complete example environment built on top of the reusable `main` wrapper. It exposes Open CASCADE Technology **7.9.0** through a **C++17 native DLL, stable C ABI, and .NET 8 P/Invoke**, with WinForms, WPF, shared CAD commands, headless modeling, OCAF/TNaming/XDE, and API coverage tooling.
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    WF[CAD-Winform] --> COMMON[CadCommon]
-    WPF[CAD-WPF] --> COMMON
-    COMMON --> NET[OcctNet]
-    NET --> ABI[OcctNative C ABI]
-    ABI --> OCCT[OCCT 7.9.0]
+```text
+CadWinForms ─┐
+             ├─ CadCommon ── OcctNet ── OcctNative ── OCCT 7.9.0
+CadWpf ──────┘                  │
+                                ├─ OcctEngine            Viewer/AIS
+                                ├─ OcctModelingSession   Headless modeling
+                                └─ OcafDocument          OCAF/XDE
 ```
 
 | Project | Purpose |
 |---|---|
-| `OcctNative` | OCCT geometry, topology, features, AIS, Viewer, annotations, and data exchange |
-| `OcctNet` | Type-safe C# API, P/Invoke, object lifetime, and the WinForms viewport control |
-| `CadCommon` | Shared commands, session, undo/redo, localization, and advanced samples |
-| `CadWinForms` | WinForms CAD application using the standard `Form / Designer / resx` structure |
-| `CadWpf` | WPF CAD application reusing the OCCT viewport through `WindowsFormsHost` |
+| `src/OcctNative` | C++17 Viewer, modeling, OCAF/XDE, and stable C ABI |
+| `src/OcctNet` | Type-safe .NET 8 API, P/Invoke, and viewport control |
+| `src/CadCommon` | Shared commands, session, replay undo/redo, localization, and API scenarios |
+| `src/CadWinForms` | Conventional WinForms CAD application |
+| `src/CadWpf` | WPF CAD application hosting the OCCT viewport through `WindowsFormsHost` |
+| `tests/OcctNet.Smoke` | Headless, OCAF/XDE, and persistence smoke coverage |
 
-## Fixed development environment
+## API Center
 
-| Item | Path or version |
-|---|---|
-| OCCT root | `D:\tools\occt-vc144-64` |
-| Headers | `D:\tools\occt-vc144-64\inc` |
-| Libraries | `D:\tools\occt-vc144-64\win64\vc14\lib` |
-| OCCT runtime | `D:\tools\occt-vc144-64\win64\vc14\bin` |
-| Third-party runtime | `D:\tools\occt-vc144-64\3rdparty-vc14-64` |
-| .NET | 8.0 Windows Desktop |
-| CMake | 3.21 or later |
-| Compiler | Visual Studio 2022 x64 |
+Both desktop applications contain an **API Center** menu. It:
 
-Install the Visual Studio workloads **Desktop development with C++** and **.NET desktop development**.
+- discovers every public `OcctNet` type, constructor, property, field, event, and method through reflection;
+- supports searching by area, type, method, signature, or prerequisite;
+- classifies members as automated, interactive, file-dependent, environment-dependent, or catalog-only;
+- updates automatically when public APIs are added to `main`;
+- shares one `CadCommon.ApiDemoCatalog` implementation between WinForms and WPF.
 
-## Build and run
+Included executable scenarios cover:
 
-Arguments are `target configuration`. The default configuration is `Release`.
+1. public API catalog auditing;
+2. Viewer, camera, projection, display precision, materials, and lighting;
+3. existing CAD primitive, Boolean, loft, and annotation samples;
+4. headless modeling, topology, mesh, analysis, healing, and algorithm reports;
+5. headless Shape transfer into the Viewer;
+6. temporary BREP round trips;
+7. OCAF labels, attributes, variables, expressions, relations, transactions, and BinXCAF;
+8. TNaming history and persistent selection;
+9. XDE assemblies, components, colors, layers, and reusable materials.
+
+“Every interface is covered” means every public member appears in the searchable catalog. Members requiring mouse input, selected topology, user files, or a specific document state expose that prerequisite instead of being called with meaningless default arguments.
+
+## Requirements
+
+- Windows x64
+- Visual Studio 2022 with **Desktop development with C++** and **.NET desktop development**
+- .NET 8 SDK
+- CMake 3.21+
+- **OCCT 7.9.0 VC++ x64**
+
+The default OCCT root is:
+
+```text
+D:\tools\occt-vc144-64
+```
+
+Set `OCCT_ROOT` or pass `-OcctRoot` to override it.
+
+## Build
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
 
-.\build.ps1 native
-.\build.ps1 winform
-.\build.ps1 wpf
-.\build.ps1 all
+# No OCCT SDK required
+.\build.ps1 validate Release
+.\build.ps1 managed Release
 
-.\build.ps1 wpf Debug
-.\build.ps1 all RelWithDebInfo
+# OCCT 7.9.0 required
+.\build.ps1 native Release
+.\build.ps1 winform Release
+.\build.ps1 wpf Release
+.\build.ps1 smoke Release
+.\build.ps1 all Release
+
+.\build.ps1 all Release -OcctRoot "D:\SDK\occt-vc144-64"
 ```
 
 | Target | Result |
 |---|---|
-| `native` | Build only `OcctNative.dll` |
-| `winform` | Build Native and WinForms |
-| `wpf` | Build Native and WPF |
-| `all` | Build Native, WinForms, and WPF |
+| `validate` | Compare C declarations, C++ definitions, and C# P/Invoke names |
+| `managed` | Build `OcctNet` and `CadCommon` |
+| `native` | Build `OcctNative.dll` |
+| `winform` | Native + WinForms |
+| `wpf` | Native + WPF |
+| `smoke` | Native + compile and run the smoke test |
+| `all` | Native, WinForms, WPF, and smoke-test compilation |
 
 Run:
 
 ```powershell
-.\run.ps1 winform
-.\run.ps1 wpf
-
-.\run.ps1 winform Debug
+.\run.ps1 winform Release
+.\run.ps1 wpf Release
 ```
 
-`run.ps1` adds only the fixed OCCT runtime and the component `bin`, `bin\win64`, and `bin\x64` directories under `3rdparty-vc14-64` to the current process `PATH`. It does not scan unrelated FreeCAD, DBeaver, OSG, or other software directories.
+## CAD interaction
 
-## CAD shell
-
-Both applications use the same conventional CAD layout:
-
-```text
-Menu bar
-Toolbar
-├─ Left: Model Explorer
-├─ Center: OCCT Viewport + ViewCube
-└─ Right: Properties / Command Line
-Status bar: command state, selection state, and world coordinates
-```
-
-Top-level menus:
-
-```text
-File  Edit  Draw  Solid  Annotate  View  Tools  Samples  Language  Help
-```
-
-English is the default language. Selecting `Language > 简体中文` updates menus, toolbars, parameter dialogs, status messages, object properties, and command names.
-
-## Interaction
+Both applications use a Model Explorer on the left, an OCCT viewport in the center, Properties/Command Line on the right, and command, selection, and world-coordinate status at the bottom.
 
 | Input | Action |
 |---|---|
 | Left click | Select an object or subshape |
-| Left drag | Rectangle/window selection |
-| `Ctrl` + selection | Add to the selection set |
+| Left drag | Rectangle selection |
+| `Ctrl` + selection | Append to selection |
 | Right drag | Orbit |
 | Middle drag | Pan |
 | Mouse wheel | Zoom |
-| `Esc` | Deselect all |
-| `Ctrl+Z` / `Ctrl+Y` | Undo / Redo |
+| `Esc` | Clear selection |
+| `Ctrl+Z` / `Ctrl+Y` | Replay-based undo/redo |
 
-Selection filters include Object, Vertex, Edge, Wire, Face, Shell, and Solid.
+Selection filters include Object, Vertex, Edge, Wire, Face, Shell, and Solid. English is the default UI language; Simplified Chinese is available from the `Language` menu.
 
-## Undo and redo
+## Wrapper coverage
 
-The current implementation uses **command replay**, not an OCAF parametric feature tree.
-
-Tracked operations include:
-
-- 2D, 3D, feature, and Boolean commands;
-- move, rotate, scale, mirror, copy, and erase;
-- 3D text and advanced samples;
-- import operations;
-- multi-step undo and redo, with redo truncation after a new command.
-
-Boundaries:
-
-- `Open` establishes a new history baseline. Replay reloads the original file, so that file must remain accessible;
-- direct linear, angular, radius, and diameter dimensions based on temporary subshape selection clear and disable the current undo history; `New` or `Open` enables it again;
-- view orientation, visual style, material, lighting, background, and selection preferences are not part of modeling history;
-- this is a wrapper demonstration and is not a replacement for persistent OCAF/XDE feature history.
-
-## API coverage
-
-| Module | Main features |
+| Area | Main capabilities |
 |---|---|
-| Core and queries | Points, vectors, bounding boxes, mass properties, centroid, distance, topology counts, validation |
-| 2D | Point, line, polyline, circle, arc, ellipse, Bezier, B-spline, rectangle, polygon, planar face |
-| 3D | Box, cylinder, frustum, cone, sphere, torus, wedge, tube, compound, wire, shell, solid |
-| Features | Extrude, revolve, sweep, loft, fillet, chamfer, offset, shelling, drilling |
-| Boolean | Union, subtract, intersect, section curves |
-| AIS and view | Display, selection, highlighting, window selection, camera, standard views, ViewCube, projection, resolution, materials, lighting, background |
-| Annotations | 3D text, linear, angular, radius, and diameter dimensions |
-| IO | STEP, IGES, BREP, STL import/export and viewport capture |
+| Viewer/AIS | HWND Viewer, display, visibility, selection, subshapes, camera, projection, materials, lighting, text, and dimensions |
+| Headless | Geometry, solids, Booleans, Splitter, features, healing, topology, distance, projection, rays, mesh, and pure-Shape exchange |
+| OCAF/TDF | Documents, persistence, transactions, Undo/Redo, labels, scalars, arrays, references, variables, expressions, and relations |
+| TNaming | Generated/Modify/Delete/Select, NamedShape history, and Selector workflows |
+| XDE | Shapes, assemblies, components, instance locations, colors, layers, materials, validation properties, and length units |
+| Exchange | STEP/IGES/BREP/STL plus metadata-preserving STEPCAF/IGESCAF |
 
-## Exception logs
+Detailed boundaries:
 
-WinForms and WPF install global exception handlers. Logs are written to:
+- `docs/API_COVERAGE.md`
+- `docs/OCAF_COVERAGE.md`
+- `docs/OCAF_EXTENDED_API.md`
+
+## Validation and runtime boundary
+
+GitHub Actions validates 491 C ABI entry points across declarations, C++ definitions, and P/Invoke, then compiles `OcctNet`, `CadCommon`, WinForms, WPF, and the smoke project.
+
+Native linking, Viewer rendering, and actual BinXCAF/STEPCAF/IGESCAF execution still require the Windows target machine with the OCCT 7.9.0 SDK:
+
+```powershell
+.\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
+```
+
+Application crash logs are written to:
 
 ```text
 %LOCALAPPDATA%\OcctCSharpBridge\Logs
@@ -150,17 +152,4 @@ WinForms and WPF install global exception handlers. Logs are written to:
 
 ## License
 
-The project is provided under the [PolyForm Noncommercial License 1.0.0](LICENSE):
-
-- personal study, research, testing, and other permitted noncommercial uses are allowed;
-- modification and distribution are allowed under the license terms;
-- commercial use is outside this license and requires a separate commercial license;
-- this is a source-available noncommercial license, not an OSI open-source license.
-
-OCCT and all third-party dependencies remain subject to their own licenses.
-
-## Current limits
-
-- STEP and IGES currently use plain `TopoDS_Shape` exchange and do not preserve full XDE assembly instances, names, colors, or layers;
-- topology traversal indices are not persistent identifiers after Boolean or feature reconstruction;
-- the current binaries, viewport, and build scripts target Windows x64 only.
+The project uses the [PolyForm Noncommercial License 1.0.0](LICENSE). OCCT and third-party components remain subject to their respective licenses.
