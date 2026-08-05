@@ -1,0 +1,42 @@
+name: Publish Script Check
+
+on:
+  push:
+    branches:
+      - demo
+  pull_request:
+    branches:
+      - demo
+
+jobs:
+  validate-publish-script:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse publish.ps1
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path .\publish.ps1),
+              [ref]$tokens,
+              [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+              $errors | Format-List
+              exit 1
+          }
+      - name: Verify publishing inputs
+        shell: pwsh
+        run: |
+          $required = @(
+              '.\publish.ps1',
+              '.\build.ps1',
+              '.\src\CadWinForms\CadWinForms.csproj',
+              '.\src\CadWpf\CadWpf.csproj'
+          )
+          foreach ($path in $required) {
+              if (-not (Test-Path $path -PathType Leaf)) {
+                  throw "Required publishing input was not found: $path"
+              }
+          }
