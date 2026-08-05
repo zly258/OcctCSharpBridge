@@ -38,7 +38,7 @@ OcctCSharpBridge 通过原生 C++ DLL、稳定 C ABI 和类型安全的 .NET 8 A
 默认生成精简的框架依赖 WinForms 发布包：
 
 ```powershell
-.\publish.ps1
+.\publish.ps1 winform Release
 ```
 
 可通过发布脚本参数选择 WPF、自包含运行时、完整 OCCT 资源、诊断文件或 ZIP 输出。
