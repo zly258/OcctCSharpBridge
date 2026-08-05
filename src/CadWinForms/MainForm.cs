@@ -14,6 +14,8 @@ public sealed partial class MainForm : Form
     private ToolStripButton? _undoButton;
     private ToolStripButton? _redoButton;
     private bool _autoZFitEnabled = true;
+    private bool _initialPanelLayoutApplied;
+    private bool _initialPanelLayoutScheduled;
 
     public MainForm()
     {
@@ -27,42 +29,102 @@ public sealed partial class MainForm : Form
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);
-        ApplyInitialPanelLayout();
+        ScheduleInitialPanelLayout();
     }
 
-    private void ApplyInitialPanelLayout()
+    protected override void OnResize(EventArgs e)
     {
-        SetSplitterDistance(_mainSplitContainer, 270, keepSecondPanel: false);
-        SetSplitterDistance(_centerRightSplitContainer, 330, keepSecondPanel: true);
-
-        var preferredPropertyHeight = Math.Max(260, (int)(_rightSplitContainer.ClientSize.Height * 0.62));
-        SetSplitterDistance(_rightSplitContainer, preferredPropertyHeight, keepSecondPanel: false);
+        base.OnResize(e);
+        if (WindowState != FormWindowState.Minimized)
+        {
+            ScheduleInitialPanelLayout();
+        }
     }
 
-    private static void SetSplitterDistance(
-        SplitContainer container,
-        int preferredSize,
-        bool keepSecondPanel)
+    private void ScheduleInitialPanelLayout()
     {
-        var available = container.Orientation == Orientation.Vertical
-            ? container.ClientSize.Width
-            : container.ClientSize.Height;
-
-        if (available <= container.SplitterWidth)
+        if (_initialPanelLayoutApplied
+            || _initialPanelLayoutScheduled
+            || IsDisposed
+            || Disposing
+            || !IsHandleCreated)
         {
             return;
         }
 
-        var minimum = container.Panel1MinSize;
-        var maximum = Math.Max(
-            minimum,
-            available - container.Panel2MinSize - container.SplitterWidth);
+        _initialPanelLayoutScheduled = true;
+        BeginInvoke((Action)(() =>
+        {
+            _initialPanelLayoutScheduled = false;
+            if (IsDisposed
+                || Disposing
+                || !IsHandleCreated
+                || WindowState == FormWindowState.Minimized)
+            {
+                return;
+            }
 
-        var distance = keepSecondPanel
+            _initialPanelLayoutApplied = ApplyInitialPanelLayout();
+        }));
+    }
+
+    private bool ApplyInitialPanelLayout()
+    {
+        var mainApplied = TrySetSplitterDistance(
+            _mainSplitContainer,
+            270,
+            keepSecondPanel: false);
+        var centerRightApplied = TrySetSplitterDistance(
+            _centerRightSplitContainer,
+            330,
+            keepSecondPanel: true);
+
+        var preferredPropertyHeight = Math.Max(
+            260,
+            (int)(_rightSplitContainer.ClientSize.Height * 0.62));
+        var rightApplied = TrySetSplitterDistance(
+            _rightSplitContainer,
+            preferredPropertyHeight,
+            keepSecondPanel: false);
+
+        return mainApplied && centerRightApplied && rightApplied;
+    }
+
+    private static bool TrySetSplitterDistance(
+        SplitContainer container,
+        int preferredSize,
+        bool keepSecondPanel)
+    {
+        if (container.IsDisposed || !container.IsHandleCreated)
+        {
+            return false;
+        }
+
+        var available = container.Orientation == Orientation.Vertical
+            ? container.ClientSize.Width
+            : container.ClientSize.Height;
+        var minimum = container.Panel1MinSize;
+        var maximum = available - container.Panel2MinSize - container.SplitterWidth;
+
+        // During startup, DPI scaling and maximization can temporarily leave less
+        // space than both panel minimums require. In that state no legal splitter
+        // distance exists, so defer the layout instead of assigning an invalid value.
+        if (available <= 0 || maximum < minimum)
+        {
+            return false;
+        }
+
+        var requested = keepSecondPanel
             ? available - preferredSize - container.SplitterWidth
             : preferredSize;
+        var distance = Math.Clamp(requested, minimum, maximum);
 
-        container.SplitterDistance = Math.Clamp(distance, minimum, maximum);
+        if (container.SplitterDistance != distance)
+        {
+            container.SplitterDistance = distance;
+        }
+
+        return true;
     }
 
     private CadSession Session => _session ?? throw new InvalidOperationException(CadLocalization.CurrentLanguage == CadLanguage.ChineseSimplified ? "OCCT 视口尚未初始化。" : "The OCCT viewport has not been initialized.");
