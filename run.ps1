@@ -13,7 +13,7 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$utf8 = [System.Text.UTF8Encoding]::new($false)
+$utf8 = New-Object System.Text.UTF8Encoding($false)
 [Console]::InputEncoding = $utf8
 [Console]::OutputEncoding = $utf8
 $OutputEncoding = $utf8
@@ -34,13 +34,28 @@ function Add-PathEntry {
     }
 
     $fullDirectory = [System.IO.Path]::GetFullPath($Directory).TrimEnd('\')
-    $currentPath = [Environment]::GetEnvironmentVariable("PATH") ?? ""
-    $entries = $currentPath.Split(';', [System.StringSplitOptions]::RemoveEmptyEntries)
-    if ($entries.Any({ [System.IO.Path]::GetFullPath($_).TrimEnd('\').Equals($fullDirectory, [System.StringComparison]::OrdinalIgnoreCase) })) {
-        return
+    $currentPath = [Environment]::GetEnvironmentVariable("PATH")
+    if ($null -eq $currentPath) {
+        $currentPath = ""
     }
 
-    $env:PATH = if ([string]::IsNullOrEmpty($currentPath)) { $fullDirectory } else { "$fullDirectory;$currentPath" }
+    $alreadyPresent = $false
+    foreach ($entry in $currentPath.Split(';', [System.StringSplitOptions]::RemoveEmptyEntries)) {
+        try {
+            $normalizedEntry = [System.IO.Path]::GetFullPath($entry).TrimEnd('\')
+            if ($normalizedEntry.Equals($fullDirectory, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $alreadyPresent = $true
+                break
+            }
+        }
+        catch {
+            # Ignore malformed PATH entries owned by other applications.
+        }
+    }
+
+    if (-not $alreadyPresent) {
+        $env:PATH = if ([string]::IsNullOrEmpty($currentPath)) { $fullDirectory } else { "$fullDirectory;$currentPath" }
+    }
 }
 
 if (-not (Test-Path $OcctBinDir -PathType Container)) {
