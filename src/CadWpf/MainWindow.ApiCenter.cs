@@ -1,11 +1,40 @@
 using CadCommon;
+using System.Collections.Specialized;
+using System.Windows.Threading;
 using Controls = System.Windows.Controls;
 
 namespace CadWpf;
 
 public partial class MainWindow
 {
+    private bool _apiCenterMenuHooked;
+    private bool _apiCenterAttachPending;
+
     public void AttachApiCenter()
+    {
+        if (!_apiCenterMenuHooked && MainMenu.Items is INotifyCollectionChanged notifications)
+        {
+            notifications.CollectionChanged += MainMenuCollectionChangedForApiCenter;
+            _apiCenterMenuHooked = true;
+        }
+        EnsureApiCenterMenu();
+    }
+
+    private void MainMenuCollectionChangedForApiCenter(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (_apiCenterAttachPending)
+            return;
+
+        _apiCenterAttachPending = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            _apiCenterAttachPending = false;
+            if (!IsLoaded || !IsVisible) return;
+            EnsureApiCenterMenu();
+        }));
+    }
+
+    private void EnsureApiCenterMenu()
     {
         if (MainMenu.Items.OfType<Controls.MenuItem>().Any(item => string.Equals(item.Name, "ApiCenterMenu", StringComparison.Ordinal)))
             return;
