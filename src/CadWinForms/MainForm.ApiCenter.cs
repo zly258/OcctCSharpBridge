@@ -19,7 +19,8 @@ public sealed partial class MainForm
 
     private void MenuItemAddedForApiCenter(object? sender, ToolStripItemEventArgs e)
     {
-        if (string.Equals(e.Item.Name, "ApiCenterMenu", StringComparison.Ordinal) || _apiCenterAttachPending)
+        if ((e.Item is not null && string.Equals(e.Item.Name, "ApiCenterMenu", StringComparison.Ordinal))
+            || _apiCenterAttachPending)
             return;
 
         _apiCenterAttachPending = true;
