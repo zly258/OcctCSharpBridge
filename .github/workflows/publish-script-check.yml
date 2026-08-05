@@ -1,9 +1,10 @@
-name: Publish Script Check
+﻿name: Publish Script Check
 
 on:
   push:
     branches:
       - demo
+      - optimize/**
   pull_request:
     branches:
       - demo
@@ -13,6 +14,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Parse publish.ps1
         shell: pwsh
         run: |
@@ -26,6 +28,7 @@ jobs:
               $errors | Format-List
               exit 1
           }
+
       - name: Verify publishing inputs
         shell: pwsh
         run: |
@@ -40,33 +43,31 @@ jobs:
                   throw "Required publishing input was not found: $path"
               }
           }
-      - name: Verify dependency-closure packaging
+
+      - name: Verify lean package rules
         shell: pwsh
         run: |
           $text = Get-Content .\publish.ps1 -Raw
-          $functionNames = @(
-              'Resolve-Dumpbin',
-              'Get-PeDependencies',
-              'Test-SystemDependency',
-              'Test-RuntimeCandidate',
-              'Get-RuntimeCandidateScore',
-              'New-RuntimeCandidateIndex',
-              'Resolve-RuntimeDependency',
-              'Copy-OcctRuntime'
-          )
-          foreach ($name in $functionNames) {
-              $count = ([regex]::Matches(
-                  $text,
-                  "function\s+$([regex]::Escape($name))\s*\{")).Count
-              if ($count -ne 1) {
-                  throw "Expected one $name definition, found $count."
-              }
-          }
-          foreach ($token in @('native-dependencies.txt', 'lib-static')) {
+          foreach ($token in @(
+              'PublishSingleFile=true',
+              'EnableCompressionInSingleFile=true',
+              '[switch]$SelfContained',
+              '[switch]$FullResources',
+              '[switch]$Diagnostics',
+              'native-dependencies.txt',
+              'THIRD-PARTY-NOTICES.txt'
+          )) {
               if (-not $text.Contains($token)) {
-                  throw "Dependency-closure packaging token was not found: $token"
+                  throw "Lean publishing token was not found: $token"
               }
           }
-          if ($text -match 'Copying detected third-party DLLs') {
-              throw 'publish.ps1 still contains the old blanket third-party DLL copy.'
+
+          if ($text -match '\[string\]\$Target\s*=\s*"all"') {
+              throw 'The default package target must not publish both UI demos.'
+          }
+          if ($text -match 'PublishSingleFile=false') {
+              throw 'Managed demo output is not configured as single-file.'
+          }
+          if ($text -match 'function\s+Write-Launcher') {
+              throw 'Legacy launcher generation is still present.'
           }
