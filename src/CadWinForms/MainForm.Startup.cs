@@ -1,4 +1,6 @@
-﻿namespace CadWinForms;
+﻿using OcctNet;
+
+namespace CadWinForms;
 
 public sealed partial class MainForm
 {
@@ -8,6 +10,11 @@ public sealed partial class MainForm
         try
         {
             _initialPanelLayoutApplied = ApplyInitialPanelLayout();
+            _session?.Engine.SetDefaultPolygonOffsets(
+                OcctPolygonOffsetMode.Fill,
+                factor: 1.0,
+                units: 1.0,
+                applyExisting: true);
         }
         finally
         {
