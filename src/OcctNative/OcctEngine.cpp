@@ -143,7 +143,7 @@ namespace OcctBridge
         context->Activate(presentation, mode, Standard_False);
     }
 
-    OcctObjectId Engine::addShape(const TopoDS_Shape& shape, bool fit, const std::string& name)
+    OcctObjectId Engine::addShape(const TopoDS_Shape& shape, bool /*fit*/, const std::string& name)
     {
         if (shape.IsNull()) throw std::runtime_error("OCCT returned a null shape.");
         if (!isInitialized()) throw std::runtime_error("The OCCT viewer has not been initialized.");
@@ -153,8 +153,9 @@ namespace OcctBridge
         context->Display(ais, Standard_False);
         applySelectionMode(ais);
         objects.emplace(id, ObjectEntry{OcctObject_Shape, shape, ais, name});
-        if (fit) requestFitAll();
-        else requestRedraw();
+        // Shape creation changes the scene but must not change the user's camera.
+        // Fit/FitAll remain explicit public view operations.
+        requestRedraw();
         return id;
     }
 
