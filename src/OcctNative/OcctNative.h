@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <cstdint>
 
@@ -50,6 +50,9 @@ extern "C"
     OCCTBRIDGE_API int occt_initialize(OcctHandle handle, void* windowHandle);
     OCCTBRIDGE_API int occt_resize(OcctHandle handle);
     OCCTBRIDGE_API int occt_redraw(OcctHandle handle);
+    OCCTBRIDGE_API int occt_begin_update(OcctHandle handle);
+    OCCTBRIDGE_API int occt_end_update(OcctHandle handle, int fitAll);
+    OCCTBRIDGE_API int occt_is_updating(OcctHandle handle);
     OCCTBRIDGE_API int occt_fit_all(OcctHandle handle);
     OCCTBRIDGE_API int occt_fit_object(OcctHandle handle, OcctObjectId objectId);
     OCCTBRIDGE_API int occt_window_fit(OcctHandle handle, int x1, int y1, int x2, int y2);
