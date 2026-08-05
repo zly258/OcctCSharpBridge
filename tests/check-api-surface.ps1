@@ -1,4 +1,4 @@
-﻿param(
+param(
     [string]$RepositoryRoot = (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
 )
 
@@ -10,6 +10,7 @@ $managedRoot = Join-Path $RepositoryRoot "src\OcctNet"
 
 $headerFiles = @(
     Join-Path $nativeRoot "OcctNative.h"
+    Join-Path $nativeRoot "OcctSelectionOverlay.h"
     Join-Path $nativeRoot "OcctModeling.h"
     Join-Path $nativeRoot "OcctOcaf.h"
     Join-Path $nativeRoot "OcctOcafExtended.h"

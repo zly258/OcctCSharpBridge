@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.21)
 
 project(OcctNative LANGUAGES CXX)
 
@@ -36,6 +36,7 @@ endif()
 
 add_library(OcctNative SHARED
     OcctEngine.cpp
+    OcctSelectionOverlay.cpp
     OcctView.cpp
     OcctQueries.cpp
     OcctGeometry.cpp
@@ -60,6 +61,7 @@ add_library(OcctNative SHARED
     OcctModelingInternal.hxx
     OcctOcafInternal.hxx
     OcctNative.h
+    OcctSelectionOverlay.h
     OcctModeling.h
     OcctOcaf.h
     OcctOcafExtended.h)
