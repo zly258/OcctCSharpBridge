@@ -22,6 +22,7 @@
 #include <Graphic3d_Vec2.hxx>
 #include <Precision.hxx>
 #include <Standard_Version.hxx>
+#include <StdSelect_ViewerSelector3d.hxx>
 #include <TopAbs_ShapeEnum.hxx>
 #include <TopExp_Explorer.hxx>
 #include <TopoDS.hxx>
@@ -563,14 +564,29 @@ extern "C"
         return execute(e, [&] { e->context->MoveTo(x,y,e->view,Standard_False); e->context->SelectDetected(append ? AIS_SelectionScheme_Add : AIS_SelectionScheme_Replace); e->view->Redraw(); });
     }
 
-    int occt_select_rectangle(OcctHandle h, int x1, int y1, int x2, int y2, int append)
+    int occt_select_rectangle_ex(OcctHandle h, int x1, int y1, int x2, int y2, int append, int allowOverlap)
     {
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            Graphic3d_Vec2i minPoint(std::min(x1,x2), std::min(y1,y2)); Graphic3d_Vec2i maxPoint(std::max(x1,x2), std::max(y1,y2));
-            e->context->SelectRectangle(minPoint, maxPoint, e->view, append ? AIS_SelectionScheme_Add : AIS_SelectionScheme_Replace); e->view->Redraw();
+            // OCCT uses full inclusion for rectangle selection by default. Configure the
+            // selector explicitly for every gesture so callers can request crossing selection.
+            const Handle(StdSelect_ViewerSelector3d)& selector = e->context->MainSelector();
+            selector->AllowOverlapDetection(allowOverlap != 0);
+            Graphic3d_Vec2i minPoint(std::min(x1,x2), std::min(y1,y2));
+            Graphic3d_Vec2i maxPoint(std::max(x1,x2), std::max(y1,y2));
+            e->context->SelectRectangle(
+                minPoint,
+                maxPoint,
+                e->view,
+                append ? AIS_SelectionScheme_Add : AIS_SelectionScheme_Replace);
+            e->view->Redraw();
         });
+    }
+
+    int occt_select_rectangle(OcctHandle h, int x1, int y1, int x2, int y2, int append)
+    {
+        return occt_select_rectangle_ex(h, x1, y1, x2, y2, append, 0);
     }
 
     int occt_select_object(OcctHandle h, OcctObjectId objectId, int append)
@@ -658,7 +674,35 @@ extern "C"
             e->requestRedraw();
         });
     }
-    int occt_delete_object(OcctHandle h, OcctObjectId id) { Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return execute(e,[&]{e->erase(id);e->requestRedraw();}); }
+    int occt_delete_objects(OcctHandle h, const OcctObjectId* ids, int count)
+    {
+        Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
+        return execute(e, [&]
+        {
+            if (count < 0) throw std::invalid_argument("Object count must not be negative.");
+            if (count > 0 && ids == nullptr) throw std::invalid_argument("Object ID array is null.");
+
+            std::vector<OcctObjectId> uniqueIds;
+            uniqueIds.reserve(static_cast<std::size_t>(count));
+            for (int index = 0; index < count; ++index)
+            {
+                const OcctObjectId id = ids[index];
+                if (e->findObject(id) == nullptr) throw std::invalid_argument("Object ID does not exist.");
+                if (std::find(uniqueIds.begin(), uniqueIds.end(), id) == uniqueIds.end())
+                    uniqueIds.push_back(id);
+            }
+
+            // Validate the complete request before mutating the registry. Removal is then
+            // performed without viewer updates and flushed exactly once for the whole batch.
+            for (const OcctObjectId id : uniqueIds) e->erase(id);
+            if (!uniqueIds.empty()) e->requestRedraw();
+        });
+    }
+
+    int occt_delete_object(OcctHandle h, OcctObjectId id)
+    {
+        return occt_delete_objects(h, &id, 1);
+    }
     int occt_clear(OcctHandle h)
     {
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
