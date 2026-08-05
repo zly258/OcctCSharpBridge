@@ -1,4 +1,4 @@
-﻿using CadCommon;
+using CadCommon;
 using OcctNet;
 using DrawingColor = System.Drawing.Color;
 using Controls = System.Windows.Controls;
@@ -17,6 +17,7 @@ public partial class MainWindow : System.Windows.Window
     private Controls.MenuItem? _redoMenuItem;
     private Controls.Button? _undoButton;
     private Controls.Button? _redoButton;
+    private bool _autoZFitEnabled = true;
 
     public MainWindow()
     {
@@ -79,6 +80,7 @@ public partial class MainWindow : System.Windows.Window
             _session.Engine.SetTriedronVisible(true);
             _session.Engine.SetViewCubeVisible(true);
             _session.Engine.SetAntialiasing(true);
+            _session.Engine.SetAutoZFitMode(true, 1.0);
             _session.Engine.SetSelectionTolerance(4);
             _session.Engine.SetDefaultMaterial(OcctMaterial.Plastified);
         });
@@ -205,6 +207,7 @@ public partial class MainWindow : System.Windows.Window
         display.Items.Add(CheckMenuItem(CadLocalization.Text("Menu.Triedron"), true, item => ExecuteSafe(() => Session.Engine.SetTriedronVisible(item.IsChecked))));
         display.Items.Add(CheckMenuItem(CadLocalization.Text("Menu.ViewCube"), true, item => ExecuteSafe(() => Session.Engine.SetViewCubeVisible(item.IsChecked))));
         view.Items.Add(display);
+        view.Items.Add(BuildDepthMenu());
 
         var standard = Menu(MenuHeader("Menu.StandardViews"));
         standard.Items.Add(MenuItem(CadLocalization.Text("Menu.Front"), (_, _) => Session.Engine.SetView(OcctViewOrientation.Front), "1"));
@@ -242,6 +245,50 @@ public partial class MainWindow : System.Windows.Window
         view.Items.Add(MenuItem(CadLocalization.Text("Menu.GradientBackground"), (_, _) =>
             Session.Engine.SetGradientBackground(DrawingColor.White, DrawingColor.LightSteelBlue)));
         return view;
+    }
+
+    private Controls.MenuItem BuildDepthMenu()
+    {
+        var menu = Menu(MenuHeader("Menu.DepthHandling"));
+        menu.Items.Add(CheckMenuItem(
+            CadLocalization.Text("Menu.AutoZFit"),
+            _autoZFitEnabled,
+            item => ExecuteSafe(() =>
+            {
+                _autoZFitEnabled = item.IsChecked;
+                Session.Engine.SetAutoZFitMode(_autoZFitEnabled, 1.0);
+                var message = CadLocalization.Text(
+                    _autoZFitEnabled ? "Status.AutoZFitOn" : "Status.AutoZFitOff");
+                CommandStatus.Text = message;
+                Log(message);
+            })));
+        menu.Items.Add(MenuItem(
+            CadLocalization.Text("Menu.AutoZFitNow"),
+            (_, _) => ExecuteSafe(Session.Engine.AutoZFit)));
+        menu.Items.Add(new Controls.Separator());
+        menu.Items.Add(MenuItem(
+            CadLocalization.Text("Menu.DepthForward"),
+            (_, _) => ApplyDepthBias(CadDepthBiasPreset.Forward)));
+        menu.Items.Add(MenuItem(
+            CadLocalization.Text("Menu.DepthBackward"),
+            (_, _) => ApplyDepthBias(CadDepthBiasPreset.Backward)));
+        menu.Items.Add(MenuItem(
+            CadLocalization.Text("Menu.DepthReset"),
+            (_, _) => ApplyDepthBias(CadDepthBiasPreset.Default)));
+        return menu;
+    }
+
+    private void ApplyDepthBias(CadDepthBiasPreset preset)
+    {
+        ExecuteSafe(() =>
+        {
+            var count = Session.ApplyDepthBiasToSelection(preset);
+            var message = count == 0
+                ? CadLocalization.Text("Status.DepthBiasNoShape")
+                : CadLocalization.Text("Status.DepthBiasApplied", count);
+            CommandStatus.Text = message;
+            Log(message);
+        });
     }
 
     private Controls.MenuItem BuildMaterialMenu()
