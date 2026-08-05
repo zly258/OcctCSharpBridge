@@ -177,3 +177,12 @@ The script copies common x64 runtime DLLs that are available on the publishing c
 ## Security and licensing
 
 Do not treat “copy every DLL” as automatic permission to redistribute it. Review the license and vulnerability status of each third-party library. Preserve license notices and rebuild the package after updating OCCT or third-party dependencies.
+
+## Native dependency closure
+
+`publish.ps1` does not recursively copy every DLL under `3rdparty-vc14-64`. That directory may contain several compiler generations, static-library variants, debug binaries, SDK tools, and sample-only libraries such as GLFW. Copying all of them creates duplicate file names and can package an ABI-incompatible binary.
+
+The script now locates the Visual C++ `dumpbin.exe`, starts from the built `OcctNative.dll`, reads each PE import table, and recursively copies only the OCCT and third-party DLLs that are actually required. Windows system DLLs are excluded, while the supported Visual C++ redistributable DLLs are copied separately. The selected dependency graph is written to `native-dependencies.txt` in the package root.
+
+When multiple third-party files have the same name, candidates are ranked by runtime location, x64 architecture, and the VC 2022/vc14.4 toolset used by this project. Static and static-UCRT directories are never considered. An ambiguity is reported only when an actually imported DLL still has multiple equally ranked, different binaries.
+
