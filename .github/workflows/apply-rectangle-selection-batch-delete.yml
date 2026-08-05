@@ -1,0 +1,42 @@
+name: Apply Rectangle Selection and Batch Delete Fix
+
+on:
+  push:
+    branches:
+      - fix/rectangle-selection-batch-delete
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[rectangle-batch-delete-applied]') }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/rectangle-selection-batch-delete
+          fetch-depth: 0
+      - name: Apply source patch
+        run: python tools/patch-rectangle-selection-batch-delete.py
+      - name: Validate API surface
+        shell: pwsh
+        run: .\tests\check-api-surface.ps1
+      - name: Build managed wrapper and smoke test
+        shell: pwsh
+        run: |
+          dotnet build .\src\OcctNet\OcctNet.csproj -c Release --nologo
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet build .\tests\OcctNet.Smoke\OcctNet.Smoke.csproj -c Release --nologo
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Commit patched source
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/OcctNative/OcctNative.h src/OcctNative/OcctEngine.cpp src/OcctNet/NativeMethods.cs src/OcctNet/OcctTypes.cs src/OcctNet/OcctEngine.cs src/OcctNet/OcctViewportControl.cs
+          git commit -m "Fix rectangle selection and add batch deletion [rectangle-batch-delete-applied]"
+          git push
