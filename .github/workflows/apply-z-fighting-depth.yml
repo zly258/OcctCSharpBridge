@@ -1,0 +1,32 @@
+name: Apply Z Fighting Depth Patch
+
+on:
+  push:
+    branches:
+      - fix/z-fighting-depth-controls
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[z-depth-applied]') }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/z-fighting-depth-controls
+          fetch-depth: 0
+      - name: Apply source patch
+        run: python tools/patch-z-fighting-depth.py
+      - name: Commit patched sources
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/OcctNative/OcctNative.h src/OcctNative/CMakeLists.txt src/OcctNative/OcctEngine.cpp docs/VIEWER_AND_DISPLAY.md docs/VIEWER_AND_DISPLAY.zh-CN.md
+          git commit -m "Add Z-fit and polygon offset integration [z-depth-applied]"
+          git push
