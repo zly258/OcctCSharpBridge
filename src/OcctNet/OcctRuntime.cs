@@ -12,8 +12,9 @@ public static class OcctRuntime
     private const uint LoadLibrarySearchDefaultDirs = 0x00001000;
 
     private static readonly object SyncRoot = new();
+    private static readonly List<IntPtr> NativeDirectoryCookies = new();
     private static bool _configured;
-    private static IntPtr _nativeDirectoryCookie;
+    private static bool _useNativeDirectoryApi;
 
     /// <summary>
     /// Gets the OCCT root selected during runtime configuration.
@@ -48,14 +49,14 @@ public static class OcctRuntime
                 return;
             }
 
-            PrependPath(AppContext.BaseDirectory);
+            InitializeNativeSearchPolicy();
+            AddRuntimeSearchPath(AppContext.BaseDirectory);
 
             ConfiguredNativeDirectory = ResolveNativeBridgeDirectory(nativeBridgeDirectory);
             if (!string.IsNullOrWhiteSpace(ConfiguredNativeDirectory))
             {
                 Environment.SetEnvironmentVariable("OCCT_BRIDGE_NATIVE_DIR", ConfiguredNativeDirectory);
-                PrependPath(ConfiguredNativeDirectory);
-                RegisterNativeSearchDirectory(ConfiguredNativeDirectory);
+                AddRuntimeSearchPath(ConfiguredNativeDirectory);
             }
 
             ConfiguredRoot = ResolveOcctRoot(occtRoot);
@@ -64,7 +65,7 @@ public static class OcctRuntime
                 var occtBinDirectory = Path.Combine(ConfiguredRoot, "win64", "vc14", "bin");
                 var thirdPartyDirectory = Path.Combine(ConfiguredRoot, "3rdparty-vc14-64");
 
-                PrependPath(occtBinDirectory);
+                AddRuntimeSearchPath(occtBinDirectory);
                 AddThirdPartyRuntimePaths(thirdPartyDirectory);
                 SetIfMissing("OCCT_ROOT", ConfiguredRoot);
                 SetIfMissing("CASROOT", ConfiguredRoot);
@@ -165,24 +166,42 @@ public static class OcctRuntime
         return null;
     }
 
-    private static void RegisterNativeSearchDirectory(string directory)
+    private static void InitializeNativeSearchPolicy()
     {
         if (!OperatingSystem.IsWindows())
         {
             return;
         }
 
-        if (SetDefaultDllDirectories(LoadLibrarySearchDefaultDirs))
+        _useNativeDirectoryApi = SetDefaultDllDirectories(LoadLibrarySearchDefaultDirs);
+    }
+
+    private static void AddRuntimeSearchPath(string directory)
+    {
+        if (!Directory.Exists(directory))
         {
-            var cookie = AddDllDirectory(directory);
+            return;
+        }
+
+        var fullPath = Path.GetFullPath(directory);
+        PrependPath(fullPath);
+
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        if (_useNativeDirectoryApi)
+        {
+            var cookie = AddDllDirectory(fullPath);
             if (cookie != IntPtr.Zero)
             {
-                _nativeDirectoryCookie = cookie;
+                NativeDirectoryCookies.Add(cookie);
                 return;
             }
         }
 
-        SetDllDirectory(directory);
+        SetDllDirectory(fullPath);
     }
 
     private static void AddThirdPartyRuntimePaths(string thirdPartyDirectory)
@@ -195,9 +214,9 @@ public static class OcctRuntime
         foreach (var componentDirectory in Directory.EnumerateDirectories(thirdPartyDirectory)
                      .OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
         {
-            PrependPath(Path.Combine(componentDirectory, "bin", "x64"));
-            PrependPath(Path.Combine(componentDirectory, "bin", "win64"));
-            PrependPath(Path.Combine(componentDirectory, "bin"));
+            AddRuntimeSearchPath(Path.Combine(componentDirectory, "bin", "x64"));
+            AddRuntimeSearchPath(Path.Combine(componentDirectory, "bin", "win64"));
+            AddRuntimeSearchPath(Path.Combine(componentDirectory, "bin"));
         }
     }
 
