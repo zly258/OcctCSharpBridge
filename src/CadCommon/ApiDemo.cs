@@ -212,13 +212,16 @@ public static class ApiDemoCatalog
             CadCommandId.DemoLoft,
             CadCommandId.DemoAnnotations
         };
-        foreach (var command in commands)
+        using (session.Engine.BeginDisplayBatch())
         {
-            token.ThrowIfCancellationRequested();
-            progress.Report($"Running {CadLocalization.CommandText(command)}...");
-            session.Execute(command);
+            foreach (var command in commands)
+            {
+                token.ThrowIfCancellationRequested();
+                progress.Report($"Running {CadLocalization.CommandText(command)}...");
+                session.Execute(command);
+            }
+            session.Engine.FitAll();
         }
-        session.Engine.FitAll();
         return Success("cad-samples", started, "Shared CAD scenarios completed.",
             commands.Select(CadLocalization.CommandText).ToArray());
     }
