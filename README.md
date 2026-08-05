@@ -22,7 +22,7 @@ The `demo` branch contains WinForms and WPF reference applications. The reusable
 ## Build
 
 ```powershell
-.\build.ps1 Release
+.\build.ps1 all Release
 ```
 
 ## Run
