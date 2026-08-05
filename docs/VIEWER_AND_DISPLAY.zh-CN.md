@@ -127,3 +127,31 @@ Viewer 支持：
 ## WPF 宿主
 
 WPF Demo 通过 `WindowsFormsHost` 复用 `OcctViewportControl`。因此选择、相机、批量刷新和框选行为与 WinForms 共用；相关修复应放在 `OcctNet`，而不是维护两套 UI 实现。
+
+## 深度精度与共面对象
+
+Viewer 中应区分两种机制：
+
+- `SetAutoZFitMode()` 与 `AutoZFit()` 调整相机近、远 Z 范围，用于提高深度缓冲精度和避免裁剪，但无法区分两个深度完全相同的面。
+- Polygon Offset 对指定 AIS 对象施加渲染深度偏移，适用于预览、覆盖面、参考面以及其他有意共面显示的对象。
+
+```csharp
+engine.SetAutoZFitMode(true, 1.0);
+engine.AutoZFit();
+
+var reference = engine.MakePlaneFace(100, 80);
+var overlay = engine.MakePlaneFace(100, 80);
+
+// 负值会让覆盖对象在深度上更靠近视口。
+engine.SetPolygonOffsets(
+    overlay,
+    OcctPolygonOffsetMode.Fill,
+    factor: -1.0,
+    units: -1.0);
+
+// 恢复当前 Viewer 默认值，通常为 Fill / 1 / 1。
+engine.ResetPolygonOffsets(overlay);
+```
+
+不要给两个共面对象设置完全相同的自定义偏移，否则二者的深度关系仍然不明确。正式模型中的重复几何仍应删除或隐藏；Polygon Offset 用于有意的视觉分层，不用于修复无效拓扑。
+
