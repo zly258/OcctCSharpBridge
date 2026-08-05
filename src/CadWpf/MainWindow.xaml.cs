@@ -1,3 +1,4 @@
+﻿using System.Globalization;
 using CadCommon;
 using OcctNet;
 using DrawingColor = System.Drawing.Color;
@@ -11,13 +12,15 @@ public partial class MainWindow : System.Windows.Window
     private readonly Dictionary<long, Controls.TreeViewItem> _objectNodes = new();
     private CadSession? _session;
     private bool _refreshingTree;
-    private OcctObject? _treeHighlighted;
     private Controls.ComboBox? _selectionCombo;
     private Controls.MenuItem? _undoMenuItem;
     private Controls.MenuItem? _redoMenuItem;
     private Controls.Button? _undoButton;
     private Controls.Button? _redoButton;
     private bool _autoZFitEnabled = true;
+    private DrawingColor _selectionHighlightColor = DrawingColor.FromArgb(255, 155, 0);
+    private DrawingColor _hoverHighlightColor = DrawingColor.FromArgb(0, 185, 255);
+    private OcctSceneLightingSettings _lightingSettings = OcctLightingPresets.Create(OcctLightingPreset.Studio);
 
     public MainWindow()
     {
@@ -83,6 +86,9 @@ public partial class MainWindow : System.Windows.Window
             _session.Engine.SetAutoZFitMode(true, 1.0);
             _session.Engine.SetSelectionTolerance(4);
             _session.Engine.SetDefaultMaterial(OcctMaterial.Plastified);
+            _session.Engine.SetSelectionHighlightColor(_selectionHighlightColor);
+            _session.Engine.SetHoverHighlightColor(_hoverHighlightColor);
+            _session.Engine.SetSceneLighting(_lightingSettings);
         });
 
         CommandStatus.Text = CadLocalization.Text("Status.Ready", OcctEngine.OcctVersion);
@@ -156,10 +162,6 @@ public partial class MainWindow : System.Windows.Window
         AddCommands(tools, CadCommandId.AnalyzeBounds, CadCommandId.AnalyzeMass, CadCommandId.AnalyzeTopology,
             CadCommandId.AnalyzeDistance, CadCommandId.ValidateShape);
 
-        var samples = Menu(MenuHeader("Menu.Samples"));
-        AddCommands(samples, CadCommandId.DemoPrimitives, CadCommandId.DemoBracket, CadCommandId.DemoFlange,
-            CadCommandId.DemoPipe, CadCommandId.DemoTee, CadCommandId.DemoReducer, CadCommandId.DemoLoft,
-            CadCommandId.DemoBoolean, CadCommandId.DemoAnnotations);
 
         var language = Menu(MenuHeader("Menu.Language"));
         var english = MenuItem(CadLocalization.Text("Menu.English"), (_, _) => SetLanguage(CadLanguage.English));
@@ -182,7 +184,6 @@ public partial class MainWindow : System.Windows.Window
         MainMenu.Items.Add(annotate);
         MainMenu.Items.Add(BuildViewMenu());
         MainMenu.Items.Add(tools);
-        MainMenu.Items.Add(samples);
         MainMenu.Items.Add(language);
         MainMenu.Items.Add(help);
         UpdateHistoryUi();
@@ -231,10 +232,10 @@ public partial class MainWindow : System.Windows.Window
         view.Items.Add(projection);
 
         view.Items.Add(MenuItem(CadLocalization.Text("Menu.DisplayPrecision"), (_, _) => SetDisplayPrecision()));
-        view.Items.Add(MenuItem(CadLocalization.Text("Menu.Lighting"), (_, _) => SetLighting()));
-        view.Items.Add(MenuItem(CadLocalization.Text("Menu.ResetLighting"), (_, _) => ExecuteSafe(Session.Engine.ResetSceneLighting)));
+        view.Items.Add(BuildLightingMenu());
         view.Items.Add(BuildMaterialMenu());
         view.Items.Add(BuildSelectionMenu());
+        view.Items.Add(BuildSelectionAppearanceMenu());
         view.Items.Add(CheckMenuItem(CadLocalization.Text("Menu.WindowSelection"), Viewport.EnableRectangleSelection, item =>
         {
             Viewport.EnableRectangleSelection = item.IsChecked;
@@ -510,21 +511,109 @@ public partial class MainWindow : System.Windows.Window
         ExecuteSafe(() => Session.Engine.SetDisplayPrecision(values.Number("coefficient"), values.Number("angle"), values.Boolean("existing", true)));
     }
 
-    private void SetLighting()
+
+    private Controls.MenuItem BuildLightingMenu()
     {
+        var menu = Menu(Local("Lighting", "灯光"));
+        foreach (var preset in Enum.GetValues<OcctLightingPreset>())
+        {
+            var captured = preset;
+            menu.Items.Add(MenuItem(LightingPresetName(captured), (_, _) => ApplyLightingPreset(captured)));
+        }
+        menu.Items.Add(new Controls.Separator());
+        menu.Items.Add(MenuItem(Local("Custom Lighting...", "自定义灯光..."), (_, _) => SetAdvancedLighting()));
+        menu.Items.Add(MenuItem(Local("OCCT Default Lights", "恢复 OCCT 默认灯光"), (_, _) => ExecuteSafe(Session.Engine.ResetSceneLighting)));
+        return menu;
+    }
+
+    private void ApplyLightingPreset(OcctLightingPreset preset)
+    {
+        ExecuteSafe(() =>
+        {
+            _lightingSettings = OcctLightingPresets.Create(preset);
+            Session.Engine.SetSceneLighting(_lightingSettings);
+            Log($"{Local("Lighting", "灯光")}: {LightingPresetName(preset)}");
+        });
+    }
+
+    private void SetAdvancedLighting()
+    {
+        static string Number(double value) => value.ToString("0.###", CultureInfo.InvariantCulture);
         var parameters = new[]
         {
-            new CadParameterDefinition("ambient", Local("Ambient Intensity", "环境光强度"), CadParameterKind.Number, "0.45"),
-            new CadParameterDefinition("directional", Local("Directional Intensity", "方向光强度"), CadParameterKind.Number, "1.0"),
-            new CadParameterDefinition("x", Local("Light Direction X", "光线方向 X"), CadParameterKind.Number, "-1"),
-            new CadParameterDefinition("y", Local("Light Direction Y", "光线方向 Y"), CadParameterKind.Number, "-1"),
-            new CadParameterDefinition("z", Local("Light Direction Z", "光线方向 Z"), CadParameterKind.Number, "-1"),
-            new CadParameterDefinition("headlight", Local("Camera Headlight", "随相机移动"), CadParameterKind.Boolean, "true")
+            new CadParameterDefinition("ambient", Local("Ambient Intensity", "环境光强度"), CadParameterKind.Number, Number(_lightingSettings.AmbientIntensity)),
+            new CadParameterDefinition("cameraEnabled", Local("Camera Light", "相机直射光"), CadParameterKind.Boolean, _lightingSettings.CameraLight.Enabled.ToString()),
+            new CadParameterDefinition("camera", Local("Camera Light Intensity", "相机直射光强度"), CadParameterKind.Number, Number(_lightingSettings.CameraLight.Intensity)),
+            new CadParameterDefinition("sunEnabled", Local("Sun Light", "太阳光"), CadParameterKind.Boolean, _lightingSettings.SunLight.Enabled.ToString()),
+            new CadParameterDefinition("sun", Local("Sun Intensity", "太阳光强度"), CadParameterKind.Number, Number(_lightingSettings.SunLight.Intensity)),
+            new CadParameterDefinition("sunX", Local("Sun Direction X", "太阳光方向 X"), CadParameterKind.Number, Number(_lightingSettings.SunLight.Direction.X)),
+            new CadParameterDefinition("sunY", Local("Sun Direction Y", "太阳光方向 Y"), CadParameterKind.Number, Number(_lightingSettings.SunLight.Direction.Y)),
+            new CadParameterDefinition("sunZ", Local("Sun Direction Z", "太阳光方向 Z"), CadParameterKind.Number, Number(_lightingSettings.SunLight.Direction.Z)),
+            new CadParameterDefinition("fillEnabled", Local("Fill Light", "补光"), CadParameterKind.Boolean, _lightingSettings.FillLight.Enabled.ToString()),
+            new CadParameterDefinition("fill", Local("Fill Intensity", "补光强度"), CadParameterKind.Number, Number(_lightingSettings.FillLight.Intensity)),
+            new CadParameterDefinition("fillX", Local("Fill Direction X", "补光方向 X"), CadParameterKind.Number, Number(_lightingSettings.FillLight.Direction.X)),
+            new CadParameterDefinition("fillY", Local("Fill Direction Y", "补光方向 Y"), CadParameterKind.Number, Number(_lightingSettings.FillLight.Direction.Y)),
+            new CadParameterDefinition("fillZ", Local("Fill Direction Z", "补光方向 Z"), CadParameterKind.Number, Number(_lightingSettings.FillLight.Direction.Z))
         };
-        if (!ParameterDialog.TryGetValues(this, CadLocalization.Text("Menu.Lighting"), parameters, out var raw)) return;
+        if (!ParameterDialog.TryGetValues(this, Local("Custom Lighting", "自定义灯光"), parameters, out var raw)) return;
         var values = new CadValues(raw);
-        ExecuteSafe(() => Session.Engine.SetSceneLighting(values.Number("ambient"), values.Number("directional"),
-            values.Vector("x", "y", "z"), values.Boolean("headlight", true)));
+        var settings = _lightingSettings with
+        {
+            AmbientIntensity = values.Number("ambient"),
+            CameraLight = _lightingSettings.CameraLight with
+            {
+                Enabled = values.Boolean("cameraEnabled", true),
+                Intensity = values.Number("camera")
+            },
+            SunLight = _lightingSettings.SunLight with
+            {
+                Enabled = values.Boolean("sunEnabled", true),
+                Intensity = values.Number("sun"),
+                Direction = values.Vector("sunX", "sunY", "sunZ")
+            },
+            FillLight = _lightingSettings.FillLight with
+            {
+                Enabled = values.Boolean("fillEnabled", true),
+                Intensity = values.Number("fill"),
+                Direction = values.Vector("fillX", "fillY", "fillZ")
+            }
+        };
+        ExecuteSafe(() =>
+        {
+            Session.Engine.SetSceneLighting(settings);
+            _lightingSettings = settings;
+            Log(Local("Custom lighting applied.", "已应用自定义灯光。"));
+        });
+    }
+
+    private Controls.MenuItem BuildSelectionAppearanceMenu()
+    {
+        var menu = Menu(Local("Selection Appearance", "选择外观"));
+        menu.Items.Add(MenuItem(Local("Selected Color...", "选中高亮颜色..."), (_, _) => SetSelectionHighlightColor()));
+        menu.Items.Add(MenuItem(Local("Hover Color...", "悬浮高亮颜色..."), (_, _) => SetHoverHighlightColor()));
+        return menu;
+    }
+
+    private void SetSelectionHighlightColor()
+    {
+        using var dialog = new System.Windows.Forms.ColorDialog { Color = _selectionHighlightColor, FullOpen = true };
+        if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+        ExecuteSafe(() =>
+        {
+            _selectionHighlightColor = dialog.Color;
+            Session.Engine.SetSelectionHighlightColor(dialog.Color);
+        });
+    }
+
+    private void SetHoverHighlightColor()
+    {
+        using var dialog = new System.Windows.Forms.ColorDialog { Color = _hoverHighlightColor, FullOpen = true };
+        if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+        ExecuteSafe(() =>
+        {
+            _hoverHighlightColor = dialog.Color;
+            Session.Engine.SetHoverHighlightColor(dialog.Color);
+        });
     }
 
     private void SetSelectionTolerance()
@@ -648,9 +737,6 @@ public partial class MainWindow : System.Windows.Window
         Session.ActiveObject = value;
         Session.Engine.SelectObject(value, false);
         Viewport.RaiseSelectionChanged();
-        if (_treeHighlighted is { } previous && Session.Engine.Exists(previous)) Session.Engine.Unhighlight(previous);
-        Session.Engine.Highlight(value);
-        _treeHighlighted = value;
         ShowObjectProperties(value);
         SelectionStatus.Text = Local($"Current: {Session.SafeName(value)}", $"当前：{Session.SafeName(value)}");
     }
@@ -942,6 +1028,13 @@ public partial class MainWindow : System.Windows.Window
         : "STEP Files|*.step;*.stp|IGES Files|*.iges;*.igs|BREP Files|*.brep|STL Files|*.stl";
 
     private static string SelectionModeName(OcctSelectionMode mode) => CadLocalization.SelectionMode(mode);
+    private static string LightingPresetName(OcctLightingPreset preset) => preset switch
+    {
+        OcctLightingPreset.Neutral => Local("Neutral", "中性"),
+        OcctLightingPreset.Sunlight => Local("Sunlight", "日光"),
+        OcctLightingPreset.Flat => Local("Flat", "平光"),
+        _ => Local("Studio", "摄影棚")
+    };
 
     private static string MaterialDisplayName(OcctMaterial material)
     {

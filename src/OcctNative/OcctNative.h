@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <cstdint>
 
@@ -21,6 +21,24 @@ extern "C"
     struct OcctCameraState { OcctPoint3d eye; OcctPoint3d center; OcctVector3d up; OcctVector3d direction; double scale; };
     struct OcctAutoZFitSettings { int enabled; double scaleFactor; };
     struct OcctPolygonOffsetSettings { int mode; double factor; double units; };
+    struct OcctColorRgb { double r; double g; double b; };
+    struct OcctSceneLightingSettings
+    {
+        OcctColorRgb ambientColor;
+        double ambientIntensity;
+        int cameraLightEnabled;
+        OcctColorRgb cameraLightColor;
+        double cameraLightIntensity;
+        OcctVector3d cameraLightDirection;
+        int sunLightEnabled;
+        OcctColorRgb sunLightColor;
+        double sunLightIntensity;
+        OcctVector3d sunLightDirection;
+        int fillLightEnabled;
+        OcctColorRgb fillLightColor;
+        double fillLightIntensity;
+        OcctVector3d fillLightDirection;
+    };
     struct OcctUvBounds { double uMin; double uMax; double vMin; double vMax; };
 
     enum OcctObjectKind { OcctObject_Unknown = 0, OcctObject_Shape = 1, OcctObject_Text = 2, OcctObject_Dimension = 3 };
@@ -92,6 +110,9 @@ extern "C"
     OCCTBRIDGE_API int occt_set_display_precision(OcctHandle handle, double deviationCoefficient, double deviationAngleDegrees, int applyExisting);
     OCCTBRIDGE_API int occt_set_default_material(OcctHandle handle, int material, int applyExisting);
     OCCTBRIDGE_API int occt_set_scene_lighting(OcctHandle handle, double ambientIntensity, double directionalIntensity, OcctVector3d direction, int headlight);
+    OCCTBRIDGE_API int occt_set_scene_lighting_ex(OcctHandle handle, const OcctSceneLightingSettings* settings);
+    OCCTBRIDGE_API int occt_set_selection_highlight_color(OcctHandle handle, double r, double g, double b);
+    OCCTBRIDGE_API int occt_set_hover_highlight_color(OcctHandle handle, double r, double g, double b);
     OCCTBRIDGE_API int occt_reset_scene_lighting(OcctHandle handle);
     OCCTBRIDGE_API int occt_set_selection_tolerance(OcctHandle handle, int pixelTolerance);
     OCCTBRIDGE_API int occt_set_auto_z_fit_mode(OcctHandle handle, int enabled, double scaleFactor);

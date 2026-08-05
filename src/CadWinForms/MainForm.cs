@@ -1,3 +1,4 @@
+﻿using System.Globalization;
 using CadCommon;
 using OcctNet;
 
@@ -8,7 +9,6 @@ public sealed partial class MainForm : Form
     private readonly Dictionary<long, TreeNode> _objectNodes = new();
     private CadSession? _session;
     private bool _refreshingTree;
-    private OcctObject? _treeHighlighted;
     private ToolStripMenuItem? _undoMenuItem;
     private ToolStripMenuItem? _redoMenuItem;
     private ToolStripButton? _undoButton;
@@ -16,6 +16,9 @@ public sealed partial class MainForm : Form
     private bool _autoZFitEnabled = true;
     private bool _initialPanelLayoutApplied;
     private bool _initialPanelLayoutScheduled;
+    private Color _selectionHighlightColor = Color.FromArgb(255, 155, 0);
+    private Color _hoverHighlightColor = Color.FromArgb(0, 185, 255);
+    private OcctSceneLightingSettings _lightingSettings = OcctLightingPresets.Create(OcctLightingPreset.Studio);
 
     public MainForm()
     {
@@ -184,8 +187,6 @@ public sealed partial class MainForm : Form
         var tools = new ToolStripMenuItem(CadLocalization.Text("Menu.Tools"));
         AddCommands(tools, CadCommandId.AnalyzeBounds, CadCommandId.AnalyzeMass, CadCommandId.AnalyzeTopology, CadCommandId.AnalyzeDistance, CadCommandId.ValidateShape);
 
-        var samples = new ToolStripMenuItem(CadLocalization.Text("Menu.Samples"));
-        AddCommands(samples, CadCommandId.DemoPrimitives, CadCommandId.DemoBracket, CadCommandId.DemoFlange, CadCommandId.DemoPipe, CadCommandId.DemoTee, CadCommandId.DemoReducer, CadCommandId.DemoLoft, CadCommandId.DemoBoolean, CadCommandId.DemoAnnotations);
 
         var language = new ToolStripMenuItem(CadLocalization.Text("Menu.Language"));
         var english = new ToolStripMenuItem(CadLocalization.Text("Menu.English")) { Checked = CadLocalization.CurrentLanguage == CadLanguage.English };
@@ -199,7 +200,7 @@ public sealed partial class MainForm : Form
         help.DropDownItems.Add(MenuItem(CadLocalization.Text("Menu.MouseHelp"), (_, _) => ShowMouseHelp()));
         help.DropDownItems.Add(MenuItem(CadLocalization.Text("Menu.About"), (_, _) => ShowAbout()));
 
-        _menu.Items.AddRange(new ToolStripItem[] { file, edit, draw, solid, annotate, BuildViewMenu(), tools, samples, language, help });
+        _menu.Items.AddRange(new ToolStripItem[] { file, edit, draw, solid, annotate, BuildViewMenu(), tools, language, help });
         UpdateHistoryUi();
     }
 
@@ -242,10 +243,10 @@ public sealed partial class MainForm : Form
         view.DropDownItems.Add(projection);
 
         view.DropDownItems.Add(MenuItem(CadLocalization.Text("Menu.DisplayPrecision"), (_, _) => SetDisplayPrecision()));
-        view.DropDownItems.Add(MenuItem(CadLocalization.Text("Menu.Lighting"), (_, _) => SetLighting()));
-        view.DropDownItems.Add(MenuItem(CadLocalization.Text("Menu.ResetLighting"), (_, _) => ExecuteSafe(Session.Engine.ResetSceneLighting)));
+        view.DropDownItems.Add(BuildLightingMenu());
         view.DropDownItems.Add(BuildMaterialMenu());
         view.DropDownItems.Add(BuildSelectionMenu());
+        view.DropDownItems.Add(BuildSelectionAppearanceMenu());
         view.DropDownItems.Add(CheckMenuItem(CadLocalization.Text("Menu.WindowSelection"), _viewport.EnableRectangleSelection, (_, item) =>
         {
             _viewport.EnableRectangleSelection = item.Checked;
@@ -396,6 +397,9 @@ public sealed partial class MainForm : Form
         _session.Engine.SetAutoZFitMode(true, 1.0);
         _session.Engine.SetSelectionTolerance(4);
         _session.Engine.SetDefaultMaterial(OcctMaterial.Plastified);
+        _session.Engine.SetSelectionHighlightColor(_selectionHighlightColor);
+        _session.Engine.SetHoverHighlightColor(_hoverHighlightColor);
+        _session.Engine.SetSceneLighting(_lightingSettings);
         _commandStatus.Text = CadLocalization.Text("Status.Ready", OcctEngine.OcctVersion);
         _selectionStatus.Text = CadLocalization.Text("Status.NoneSelected");
         RefreshObjectTree();
@@ -513,20 +517,109 @@ public sealed partial class MainForm : Form
         ExecuteSafe(() => Session.Engine.SetDisplayPrecision(values.Number("coefficient"), values.Number("angle"), values.Boolean("existing", true)));
     }
 
-    private void SetLighting()
+
+    private ToolStripMenuItem BuildLightingMenu()
     {
+        var menu = new ToolStripMenuItem(Local("Lighting", "灯光"));
+        foreach (var preset in Enum.GetValues<OcctLightingPreset>())
+        {
+            var captured = preset;
+            menu.DropDownItems.Add(MenuItem(LightingPresetName(captured), (_, _) => ApplyLightingPreset(captured)));
+        }
+        menu.DropDownItems.Add(new ToolStripSeparator());
+        menu.DropDownItems.Add(MenuItem(Local("Custom Lighting...", "自定义灯光..."), (_, _) => SetAdvancedLighting()));
+        menu.DropDownItems.Add(MenuItem(Local("OCCT Default Lights", "恢复 OCCT 默认灯光"), (_, _) => ExecuteSafe(Session.Engine.ResetSceneLighting)));
+        return menu;
+    }
+
+    private void ApplyLightingPreset(OcctLightingPreset preset)
+    {
+        ExecuteSafe(() =>
+        {
+            _lightingSettings = OcctLightingPresets.Create(preset);
+            Session.Engine.SetSceneLighting(_lightingSettings);
+            Log($"{Local("Lighting", "灯光")}: {LightingPresetName(preset)}");
+        });
+    }
+
+    private void SetAdvancedLighting()
+    {
+        static string Number(double value) => value.ToString("0.###", CultureInfo.InvariantCulture);
         var parameters = new[]
         {
-            new CadParameterDefinition("ambient", CadLocalization.CurrentLanguage == CadLanguage.ChineseSimplified ? "环境光强度" : "Ambient Intensity", CadParameterKind.Number, "0.45"),
-            new CadParameterDefinition("directional", CadLocalization.CurrentLanguage == CadLanguage.ChineseSimplified ? "方向光强度" : "Directional Intensity", CadParameterKind.Number, "1.0"),
-            new CadParameterDefinition("x", CadLocalization.CurrentLanguage == CadLanguage.ChineseSimplified ? "光线方向 X" : "Light Direction X", CadParameterKind.Number, "-1"),
-            new CadParameterDefinition("y", CadLocalization.CurrentLanguage == CadLanguage.ChineseSimplified ? "光线方向 Y" : "Light Direction Y", CadParameterKind.Number, "-1"),
-            new CadParameterDefinition("z", CadLocalization.CurrentLanguage == CadLanguage.ChineseSimplified ? "光线方向 Z" : "Light Direction Z", CadParameterKind.Number, "-1"),
-            new CadParameterDefinition("headlight", CadLocalization.CurrentLanguage == CadLanguage.ChineseSimplified ? "随相机移动" : "Camera Headlight", CadParameterKind.Boolean, "true")
+            new CadParameterDefinition("ambient", Local("Ambient Intensity", "环境光强度"), CadParameterKind.Number, Number(_lightingSettings.AmbientIntensity)),
+            new CadParameterDefinition("cameraEnabled", Local("Camera Light", "相机直射光"), CadParameterKind.Boolean, _lightingSettings.CameraLight.Enabled.ToString()),
+            new CadParameterDefinition("camera", Local("Camera Light Intensity", "相机直射光强度"), CadParameterKind.Number, Number(_lightingSettings.CameraLight.Intensity)),
+            new CadParameterDefinition("sunEnabled", Local("Sun Light", "太阳光"), CadParameterKind.Boolean, _lightingSettings.SunLight.Enabled.ToString()),
+            new CadParameterDefinition("sun", Local("Sun Intensity", "太阳光强度"), CadParameterKind.Number, Number(_lightingSettings.SunLight.Intensity)),
+            new CadParameterDefinition("sunX", Local("Sun Direction X", "太阳光方向 X"), CadParameterKind.Number, Number(_lightingSettings.SunLight.Direction.X)),
+            new CadParameterDefinition("sunY", Local("Sun Direction Y", "太阳光方向 Y"), CadParameterKind.Number, Number(_lightingSettings.SunLight.Direction.Y)),
+            new CadParameterDefinition("sunZ", Local("Sun Direction Z", "太阳光方向 Z"), CadParameterKind.Number, Number(_lightingSettings.SunLight.Direction.Z)),
+            new CadParameterDefinition("fillEnabled", Local("Fill Light", "补光"), CadParameterKind.Boolean, _lightingSettings.FillLight.Enabled.ToString()),
+            new CadParameterDefinition("fill", Local("Fill Intensity", "补光强度"), CadParameterKind.Number, Number(_lightingSettings.FillLight.Intensity)),
+            new CadParameterDefinition("fillX", Local("Fill Direction X", "补光方向 X"), CadParameterKind.Number, Number(_lightingSettings.FillLight.Direction.X)),
+            new CadParameterDefinition("fillY", Local("Fill Direction Y", "补光方向 Y"), CadParameterKind.Number, Number(_lightingSettings.FillLight.Direction.Y)),
+            new CadParameterDefinition("fillZ", Local("Fill Direction Z", "补光方向 Z"), CadParameterKind.Number, Number(_lightingSettings.FillLight.Direction.Z))
         };
-        if (!ParameterDialog.TryGetValues(this, CadLocalization.Text("Menu.Lighting"), parameters, out var raw)) return;
+        if (!ParameterDialog.TryGetValues(this, Local("Custom Lighting", "自定义灯光"), parameters, out var raw)) return;
         var values = new CadValues(raw);
-        ExecuteSafe(() => Session.Engine.SetSceneLighting(values.Number("ambient"), values.Number("directional"), values.Vector("x", "y", "z"), values.Boolean("headlight", true)));
+        var settings = _lightingSettings with
+        {
+            AmbientIntensity = values.Number("ambient"),
+            CameraLight = _lightingSettings.CameraLight with
+            {
+                Enabled = values.Boolean("cameraEnabled", true),
+                Intensity = values.Number("camera")
+            },
+            SunLight = _lightingSettings.SunLight with
+            {
+                Enabled = values.Boolean("sunEnabled", true),
+                Intensity = values.Number("sun"),
+                Direction = values.Vector("sunX", "sunY", "sunZ")
+            },
+            FillLight = _lightingSettings.FillLight with
+            {
+                Enabled = values.Boolean("fillEnabled", true),
+                Intensity = values.Number("fill"),
+                Direction = values.Vector("fillX", "fillY", "fillZ")
+            }
+        };
+        ExecuteSafe(() =>
+        {
+            Session.Engine.SetSceneLighting(settings);
+            _lightingSettings = settings;
+            Log(Local("Custom lighting applied.", "已应用自定义灯光。"));
+        });
+    }
+
+    private ToolStripMenuItem BuildSelectionAppearanceMenu()
+    {
+        var menu = new ToolStripMenuItem(Local("Selection Appearance", "选择外观"));
+        menu.DropDownItems.Add(MenuItem(Local("Selected Color...", "选中高亮颜色..."), (_, _) => SetSelectionHighlightColor()));
+        menu.DropDownItems.Add(MenuItem(Local("Hover Color...", "悬浮高亮颜色..."), (_, _) => SetHoverHighlightColor()));
+        return menu;
+    }
+
+    private void SetSelectionHighlightColor()
+    {
+        using var dialog = new ColorDialog { Color = _selectionHighlightColor, FullOpen = true };
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        ExecuteSafe(() =>
+        {
+            _selectionHighlightColor = dialog.Color;
+            Session.Engine.SetSelectionHighlightColor(dialog.Color);
+        });
+    }
+
+    private void SetHoverHighlightColor()
+    {
+        using var dialog = new ColorDialog { Color = _hoverHighlightColor, FullOpen = true };
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        ExecuteSafe(() =>
+        {
+            _hoverHighlightColor = dialog.Color;
+            Session.Engine.SetHoverHighlightColor(dialog.Color);
+        });
     }
 
     private void SetSelectionTolerance()
@@ -620,9 +713,6 @@ public sealed partial class MainForm : Form
         Session.ActiveObject = value;
         Session.Engine.SelectObject(value, false);
         _viewport.RaiseSelectionChanged();
-        if (_treeHighlighted is { } previous && Session.Engine.Exists(previous)) Session.Engine.Unhighlight(previous);
-        Session.Engine.Highlight(value);
-        _treeHighlighted = value;
         ShowObjectProperties(value);
         _selectionStatus.Text = CadLocalization.CurrentLanguage == CadLanguage.ChineseSimplified ? $"当前：{Session.SafeName(value)}" : $"Current: {Session.SafeName(value)}";
     }
@@ -817,6 +907,15 @@ public sealed partial class MainForm : Form
     private static string SaveFileFilter() => CadLocalization.CurrentLanguage == CadLanguage.ChineseSimplified ? "STEP 文件|*.step;*.stp|IGES 文件|*.iges;*.igs|BREP 文件|*.brep|STL 文件|*.stl" : "STEP Files|*.step;*.stp|IGES Files|*.iges;*.igs|BREP Files|*.brep|STL Files|*.stl";
 
     private static string SelectionModeName(OcctSelectionMode mode) => CadLocalization.SelectionMode(mode);
+    private static string LightingPresetName(OcctLightingPreset preset) => preset switch
+    {
+        OcctLightingPreset.Neutral => Local("Neutral", "中性"),
+        OcctLightingPreset.Sunlight => Local("Sunlight", "日光"),
+        OcctLightingPreset.Flat => Local("Flat", "平光"),
+        _ => Local("Studio", "摄影棚")
+    };
+    private static string Local(string english, string chinese) =>
+        CadLocalization.CurrentLanguage == CadLanguage.ChineseSimplified ? chinese : english;
 
     private static string MaterialDisplayName(OcctMaterial material)
     {
