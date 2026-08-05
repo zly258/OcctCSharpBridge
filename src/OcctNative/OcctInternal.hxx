@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "OcctNative.h"
 
@@ -63,6 +63,8 @@ namespace OcctBridge
         Handle(WNT_Window) window;
         Handle(V3d_AmbientLight) customAmbientLight;
         Handle(V3d_DirectionalLight) customDirectionalLight;
+        Handle(V3d_DirectionalLight) customSunLight;
+        Handle(V3d_DirectionalLight) customFillLight;
         std::unordered_map<OcctObjectId, ObjectEntry> objects;
         OcctObjectId nextId = 1;
         int displayMode = AIS_Shaded;

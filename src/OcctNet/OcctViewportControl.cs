@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Windows.Forms;
 
 namespace OcctNet;
@@ -35,6 +35,7 @@ public sealed class OcctViewportControl : Control
     private Point _lastMouse;
     private Point _selectionStart;
     private Point _selectionCurrent;
+    private Size _lastNativeSize;
     private bool _rectangleDragStarted;
     private bool _rotating;
     private bool _panning;
@@ -73,6 +74,7 @@ public sealed class OcctViewportControl : Control
         if (DesignMode) return;
         _engine = new OcctEngine();
         _engine.Initialize(Handle);
+        _lastNativeSize = ClientSize;
         EngineInitialized?.Invoke(this, EventArgs.Empty);
     }
 
@@ -81,16 +83,23 @@ public sealed class OcctViewportControl : Control
         HideSelectionFrame();
         _engine?.Dispose();
         _engine = null;
+        _lastNativeSize = Size.Empty;
         base.OnHandleDestroyed(e);
     }
 
     protected override void OnResize(EventArgs e)
     {
         base.OnResize(e);
-        if (_engine?.IsInitialized == true && Width > 0 && Height > 0)
+        CancelRectangleSelection();
+        ResizeNativeView();
+    }
+
+    protected override void OnVisibleChanged(EventArgs e)
+    {
+        base.OnVisibleChanged(e);
+        if (Visible)
         {
-            CancelRectangleSelection();
-            TryInvoke(() => _engine.Resize());
+            ResizeNativeView(force: true);
         }
     }
 
@@ -238,6 +247,25 @@ public sealed class OcctViewportControl : Control
             HideSelectionFrame();
         }
         base.OnMouseCaptureChanged(e);
+    }
+
+    private void ResizeNativeView(bool force = false)
+    {
+        if (_engine?.IsInitialized != true
+            || !Visible
+            || ClientSize.Width <= 0
+            || ClientSize.Height <= 0)
+        {
+            return;
+        }
+
+        if (!force && _lastNativeSize == ClientSize)
+        {
+            return;
+        }
+
+        _lastNativeSize = ClientSize;
+        TryInvoke(_engine.Resize);
     }
 
     private void UpdateSelectionFrame(Point current)

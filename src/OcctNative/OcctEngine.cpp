@@ -1,6 +1,7 @@
-#include "OcctInternal.hxx"
+﻿#include "OcctInternal.hxx"
 
 #include <AIS_SelectionScheme.hxx>
+#include <Aspect_GradientFillMethod.hxx>
 #include <Aspect_PolygonOffsetMode.hxx>
 #include <Aspect_TypeOfTriedronPosition.hxx>
 #include <BRepBndLib.hxx>
@@ -403,7 +404,17 @@ extern "C"
         return execute(e, [&] { if (degrees <= 1.0 || degrees >= 179.0) throw std::invalid_argument("FOV must be between 1 and 179 degrees."); e->view->Camera()->SetFOVy(degrees); e->view->Redraw(); });
     }
 
-    int occt_set_background(OcctHandle h, double r, double g, double b) { Engine* e = engineOf(h); if (!validateInitialized(e)) return 0; return execute(e, [&] { e->view->SetBackgroundColor(color(r,g,b)); e->view->Redraw(); }); }
+    int occt_set_background(OcctHandle h, double r, double g, double b)
+    {
+        Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
+        return execute(e, [&]
+        {
+            // A previously enabled gradient otherwise remains the active background.
+            e->view->SetBgGradientStyle(Aspect_GradientFillMethod_None, Standard_False);
+            e->view->SetBackgroundColor(color(r, g, b));
+            e->view->Redraw();
+        });
+    }
 
     int occt_set_display_mode(OcctHandle h, int mode)
     {
@@ -499,6 +510,8 @@ extern "C"
             removeAllLights(e->viewer);
             e->customAmbientLight.Nullify();
             e->customDirectionalLight.Nullify();
+            e->customSunLight.Nullify();
+            e->customFillLight.Nullify();
 
             e->customAmbientLight = new V3d_AmbientLight(Quantity_NOC_WHITE);
             e->customAmbientLight->SetIntensity(static_cast<Standard_ShortReal>(ambientIntensity));
@@ -521,6 +534,8 @@ extern "C"
             removeAllLights(e->viewer);
             e->customAmbientLight.Nullify();
             e->customDirectionalLight.Nullify();
+            e->customSunLight.Nullify();
+            e->customFillLight.Nullify();
             e->viewer->SetDefaultLights();
             e->viewer->SetLightOn();
             e->viewer->UpdateLights();
@@ -561,7 +576,7 @@ extern "C"
     int occt_select(OcctHandle h, int x, int y, int append)
     {
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { e->context->MoveTo(x,y,e->view,Standard_False); e->context->SelectDetected(append ? AIS_SelectionScheme_Add : AIS_SelectionScheme_Replace); e->view->Redraw(); });
+        return execute(e, [&] { e->context->MoveTo(x,y,e->view,Standard_False); e->context->SelectDetected(append ? AIS_SelectionScheme_XOR : AIS_SelectionScheme_Replace); e->view->Redraw(); });
     }
 
     int occt_select_rectangle_ex(OcctHandle h, int x1, int y1, int x2, int y2, int append, int allowOverlap)
