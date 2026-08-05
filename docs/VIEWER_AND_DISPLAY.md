@@ -126,3 +126,31 @@ Use separate objects rather than merging everything into one Compound when indep
 ## WPF hosting
 
 The WPF demo uses `WindowsFormsHost` to reuse `OcctViewportControl`. Therefore selection, camera, batching, and rubber-band behavior are shared with WinForms; fixes belong in `OcctNet`, not in two separate UI implementations.
+
+## Depth precision and coplanar objects
+
+The Viewer uses two separate mechanisms:
+
+- `SetAutoZFitMode()` and `AutoZFit()` adjust the camera near/far Z range. This improves depth-buffer precision and avoids clipping, but cannot distinguish two surfaces at exactly the same depth.
+- Polygon offsets apply a render-time depth bias to a specific AIS object. Use this for previews, overlays, reference faces, or other objects intentionally displayed coplanar with another object.
+
+```csharp
+engine.SetAutoZFitMode(true, 1.0);
+engine.AutoZFit();
+
+var reference = engine.MakePlaneFace(100, 80);
+var overlay = engine.MakePlaneFace(100, 80);
+
+// Negative values move the overlay toward the viewport.
+engine.SetPolygonOffsets(
+    overlay,
+    OcctPolygonOffsetMode.Fill,
+    factor: -1.0,
+    units: -1.0);
+
+// Restore the current Viewer default, normally Fill / 1 / 1.
+engine.ResetPolygonOffsets(overlay);
+```
+
+Do not assign the same custom offset to both coplanar objects; their depth relationship would remain ambiguous. Duplicate production geometry should still be removed or hidden. Polygon offsets are intended for deliberate visual layering, not for repairing invalid topology.
+
