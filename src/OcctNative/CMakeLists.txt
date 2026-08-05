@@ -54,12 +54,15 @@ add_library(OcctNative SHARED
     OcctOcafXdeAppearance.cpp
     OcctOcafXdeProperties.cpp
     OcctOcafExchange.cpp
+    OcctOcafExtendedDocument.cpp
+    OcctOcafExtendedXde.cpp
     OcctInternal.hxx
     OcctModelingInternal.hxx
     OcctOcafInternal.hxx
     OcctNative.h
     OcctModeling.h
-    OcctOcaf.h)
+    OcctOcaf.h
+    OcctOcafExtended.h)
 
 target_compile_definitions(OcctNative PRIVATE NOMINMAX _CRT_SECURE_NO_WARNINGS)
 if(MSVC)

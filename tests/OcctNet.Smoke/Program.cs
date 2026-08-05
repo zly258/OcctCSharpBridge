@@ -59,27 +59,102 @@ try
     {
         if (OcafDocument.NativeVersion != "7.9.0")
             throw new InvalidOperationException($"Unexpected OCAF runtime: {OcafDocument.NativeVersion}");
+        if (document.StorageFormatVersion != OcafStorageFormatVersion.Current)
+            throw new InvalidOperationException("Unexpected OCAF storage format version.");
 
         document.UndoLimit = 10;
+        OcafLabel dataLabel;
+        OcafLabel widthVariable;
+        OcafLabel heightVariable;
+        OcafLabel expressionLabel;
+        OcafLabel relationLabel;
+        OcafLabel shapeLabel;
+        OcafLabel subshapeLabel;
+        OcafLabel colorDefinition;
+        OcafLabel layer;
+        OcafLabel materialDefinition;
+
         using (var command = document.BeginCommand())
         {
-            var dataLabel = document.NewChild(document.Main);
+            dataLabel = document.NewChild(document.Main);
             document.SetName(dataLabel, "Smoke metadata");
+            document.SetComment(dataLabel, "参数化数据");
             document.SetInteger(dataLabel, 42);
             document.SetRealArray(dataLabel, new[] { 1.25, 2.5, 5.0 }, lower: -1);
 
-            var shapeLabel = document.AddShape(model, cut.Shape, makeAssembly: false);
+            widthVariable = document.NewChild(dataLabel);
+            heightVariable = document.NewChild(dataLabel);
+            expressionLabel = document.NewChild(dataLabel);
+            relationLabel = document.NewChild(dataLabel);
+            document.SetVariable(widthVariable, "Width", 100.0, "mm", isConstant: true);
+            document.SetVariable(heightVariable, "Height", 80.0, "mm");
+            document.SetExpression(expressionLabel, "Width + Height", new[] { widthVariable, heightVariable });
+            document.SetRelation(relationLabel, "Height <= Width", new[] { heightVariable, widthVariable });
+            document.AssignVariableExpression(heightVariable, "Width * 0.8", new[] { widthVariable });
+
+            shapeLabel = document.AddShape(model, cut.Shape, makeAssembly: false);
             document.SetName(shapeLabel, "Cut body");
-            document.SetColor(shapeLabel, OcafColorType.Surface, new OcafColor(0.2, 0.4, 0.8));
-            var layer = document.AddLayer("Machined");
+            subshapeLabel = document.AddSubshape(shapeLabel, model, firstFace);
+            document.SetName(subshapeLabel, "First face");
+
+            colorDefinition = document.AddColorDefinition(new OcafColor(0.2, 0.4, 0.8));
+            document.SetColor(shapeLabel, OcafColorType.Surface, colorDefinition);
+
+            layer = document.AddLayer("Machined");
             document.SetLayer(shapeLabel, layer, oneLayerOnly: true);
-            document.SetMaterial(shapeLabel, "Steel", "Smoke-test material", 7850.0, "density", "kg/m3");
+
+            materialDefinition = document.AddMaterialDefinition(
+                "Steel", "Smoke-test material", 7850.0, "density", "kg/m3");
+            document.SetMaterial(shapeLabel, materialDefinition);
+
             document.SetArea(shapeLabel, model.GetSurfaceProperties(cut.Shape).Mass);
             document.SetVolume(shapeLabel, model.GetVolumeProperties(cut.Shape).Mass);
             document.SetCentroid(shapeLabel, model.GetVolumeProperties(cut.Shape).CenterOfMass);
 
             _ = command.Commit();
         }
+
+        if (document.GetChildCount(dataLabel) != 4 || !document.IsDescendant(widthVariable, dataLabel))
+            throw new InvalidOperationException("Extended TDF label queries failed.");
+        if (document.GetAttributeCount(widthVariable) == 0 || document.GetTransaction(widthVariable) < 0)
+            throw new InvalidOperationException("Extended TDF label state failed.");
+
+        var width = document.GetVariable(widthVariable);
+        var height = document.GetVariable(heightVariable);
+        if (width.Value != 100.0 || width.Unit != "mm" || !width.IsConstant)
+            throw new InvalidOperationException("TDataStd variable round trip failed.");
+        if (!height.IsAssigned || document.GetExpressionVariables(expressionLabel).Count != 2)
+            throw new InvalidOperationException("TDataStd expression variable references failed.");
+        if (document.GetExpression(expressionLabel) != "Width + Height" ||
+            document.GetRelation(relationLabel) != "Height <= Width" ||
+            document.GetExpressionVariables(relationLabel, relation: true).Count != 2)
+            throw new InvalidOperationException("TDataStd expression or relation round trip failed.");
+
+        if (document.SearchShape(model, cut.Shape) != shapeLabel ||
+            document.FindSubshape(shapeLabel, model, firstFace) != subshapeLabel ||
+            document.GetSubshapes(shapeLabel).Count != 1)
+            throw new InvalidOperationException("Extended XDE shape search or subshape storage failed.");
+        if (!document.IsTopLevelShape(shapeLabel) || document.GetComponentCount(shapeLabel) != 0)
+            throw new InvalidOperationException("Extended XDE shape classification failed.");
+
+        if (!document.IsColorDefinition(colorDefinition) || !document.HasColor(shapeLabel, OcafColorType.Surface) ||
+            document.GetColorDefinitionLabel(shapeLabel, OcafColorType.Surface) != colorDefinition ||
+            document.FindColorDefinition(new OcafColor(0.2, 0.4, 0.8)) != colorDefinition)
+            throw new InvalidOperationException("Extended XDE color definition workflow failed.");
+
+        if (!document.IsLayerDefinition(layer) || !document.HasLayer(shapeLabel, layer) ||
+            document.FindLayer("Machined") != layer || document.GetShapesOnLayer(layer).Count != 1)
+            throw new InvalidOperationException("Extended XDE layer workflow failed.");
+
+        if (!document.IsMaterialDefinition(materialDefinition) || document.GetMaterialLabel(shapeLabel) != materialDefinition)
+            throw new InvalidOperationException("Extended XDE material workflow failed.");
+
+        document.MarkModified(shapeLabel);
+        if (document.GetModifiedLabels().Count == 0)
+            throw new InvalidOperationException("Modified-label tracking failed.");
+        document.PurgeModified();
+        if (document.GetModifiedLabels().Count != 0)
+            throw new InvalidOperationException("Modified-label purge failed.");
 
         if (document.AvailableUndos <= 0 || !document.Undo() || !document.Redo())
             throw new InvalidOperationException("OCAF undo/redo failed.");
@@ -99,6 +174,8 @@ try
         throw new InvalidOperationException("XBF round trip lost the XDE layer.");
     if (reopened.GetMaterialLabel(reopenedShapes[0]) is null)
         throw new InvalidOperationException("XBF round trip lost the XDE material.");
+    if (reopened.GetSubshapes(reopenedShapes[0]).Count != 1)
+        throw new InvalidOperationException("XBF round trip lost the XDE subshape label.");
 
     var extracted = reopened.GetShape(reopenedShapes[0], model);
     if (!model.IsValid(extracted))
@@ -117,4 +194,4 @@ Console.WriteLine($"Faces: {faceCount}");
 Console.WriteLine($"Mesh: {faceMesh.Nodes.Count} nodes, {faceMesh.Triangles.Count} triangles");
 Console.WriteLine($"Ray hits: {rayHits.Count}");
 Console.WriteLine($"Loft operation: {loft.OperationId}");
-Console.WriteLine("Modeling and OCAF smoke tests passed.");
+Console.WriteLine("Modeling and extended OCAF/XDE smoke tests passed.");
