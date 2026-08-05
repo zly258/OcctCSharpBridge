@@ -2,14 +2,15 @@
 
 [English](README.md)
 
-本仓库通过 **C++17 原生 DLL + 稳定 C ABI + .NET 8 P/Invoke** 封装 Open CASCADE Technology 7.9.0。`main` 分支只保留可复用封装；完整 WinForms/WPF 示例保存在 [`demo`](https://github.com/zly258/OcctCSharpBridge/tree/demo) 分支。
+本仓库通过 **C++17 原生 DLL + 稳定 C ABI + .NET 8 P/Invoke** 封装 Open CASCADE Technology **7.9.0**。`main` 分支只保留可复用封装；完整 WinForms/WPF 示例保存在 [`demo`](https://github.com/zly258/OcctCSharpBridge/tree/demo) 分支。
 
 ## 架构
 
 ```text
 业务程序
-├─ OcctModelingSession      无窗口建模、查询、修复、网格和数据交换
-└─ OcctEngine               AIS / V3d Viewer、选择、显示和标注
+├─ OcctModelingSession      无窗口建模、查询、修复、网格和纯几何交换
+├─ OcafDocument             OCAF/TDF/TNaming/XDE、装配、属性和持久化
+└─ OcctEngine               AIS/V3d Viewer、选择、显示和标注
           ↓
 OcctNet (.NET 8, x64)
           ↓ P/Invoke / C ABI
@@ -18,39 +19,37 @@ OcctNative (C++17)
 OCCT 7.9.0
 ```
 
-`OcctModelingSession` 不需要 HWND，不创建 `AIS_InteractiveContext`，可用于后台建模、批处理、服务程序和单元测试。需要显示时，可将 Headless Shape 复制到现有 Viewer：
+三个会话分别管理生命周期。Shape 在 Headless、OCAF/XDE 与 Viewer 之间按值复制，不向 C# 暴露 `Handle(...)`、`TDF_Label` 或其他 C++ 指针。
 
-```csharp
-using var model = new OcctModelingSession();
-var box = model.MakeBox(100, 80, 60);
+## 版本约束
 
-using var viewer = new OcctEngine();
-viewer.Initialize(hwnd);
-var displayed = viewer.Display(model, box, fit: true);
-```
+OCAF/TNaming/XDE 对版本签名较敏感，因此本项目严格要求 **OCCT 7.9.0**：
 
-两个会话分别管理 Shape 生命周期，显示操作复制 `TopoDS_Shape`，不会让 Viewer 依赖建模会话内部指针。
+- CMake 读取 `Standard_Version.hxx`，非 7.9.0 直接停止配置；
+- C++ 使用编译期 `static_assert`；
+- `OcafDocument` 创建时再次校验已加载 DLL 的版本。
+
+不允许用 7.8、7.9.1/7.9.3 或 8.0 静默替代。
 
 ## 已封装范围
 
 | 模块 | 主要能力 |
 |---|---|
 | Headless 核心 | Shape 注册、复制、删除、Location、Orientation、Hash、包围盒、长度/面积/体积和重心 |
-| 几何构造 | 点、线、多段线、圆、两类圆弧、椭圆、Bezier、插值 BSpline、规则多边形、矩形和平面面 |
-| 基本实体 | Box、Cylinder、Cone、Sphere、Torus、Wedge、Compound、Wire、Sewing、Shell 转 Solid |
-| 拓扑查询 | 子拓扑、Outer/Inner Wire、祖先关系、顶点坐标、边端点/切向、Face UV/法向、曲线/曲面类型 |
-| 造型算法 | Fuse、Cut、Common、Section、Splitter、Extrude、Revolve、Sweep、Loft、Fillet、Chamfer、Offset、ThickSolid、UnifySameDomain |
-| 高级布尔参数 | Fuzzy、并行、Non-destructive、Glue、反向实体检查、边/面简化 |
-| 算法历史 | Generated、Modified、Removed 和算法报告；不依赖 OCAF/TNaming |
-| 检查与修复 | `BRepCheck_Analyzer` 详细报告、`ShapeFix_Shape`、容差范围控制 |
-| 空间分析 | Shape 距离、点投影到 Edge/Face、射线交点、点在 Solid 内外分类 |
-| 网格 | 显式网格化、清理 Triangulation、Face 节点/三角形/UV/法向读取 |
-| 数据交换 | Headless STEP、IGES、BREP、STL 导入导出 |
-| Viewer | HWND Viewer、AIS 显示、子拓扑选择、相机、标准视图、材质、光照、文字和基础尺寸 |
+| 几何与实体 | 点、线、曲线、平面轮廓、Box、Cylinder、Cone、Sphere、Torus、Compound、Wire、Sewing 等 |
+| 拓扑与算法 | 子拓扑、几何求值、布尔、Splitter、拉伸、旋转、扫掠、放样、圆角、倒角、偏移、厚实体 |
+| 修复与分析 | BRepCheck、ShapeFix、距离、投影、射线求交、实体内外分类、显式网格 |
+| OCAF 文档 | 新建/打开/保存、BinXCAF/XmlXCAF/BinOcaf/XmlOcaf、事务、Undo/Redo |
+| TDF/TData | Label 层级、通用属性枚举、Name/Comment/数值/引用/数组/Position/Shape 属性 |
+| TNaming | Generated、Modify、Delete、Select、NamedShape 历史和 Selector 求解 |
+| XDE 装配 | Shape、自由 Shape、Assembly、Component、Reference、Location 和装配更新 |
+| XDE 元数据 | RGBA 颜色、可见性、图层、物理材料、面积、体积、质心和长度单位 |
+| 数据交换 | 纯 Shape STEP/IGES/BREP/STL；保留装配和元数据的 STEPCAF/IGESCAF |
+| Viewer | HWND Viewer、AIS 显示、子拓扑选择、相机、材质、光照、文字和基础尺寸 |
 
-完整清单见 [API 覆盖说明](docs/API_COVERAGE.md)。
+详细边界见 [API 覆盖说明](docs/API_COVERAGE.md) 和 [OCAF/XDE 覆盖说明](docs/OCAF_COVERAGE.md)。
 
-## Headless 示例
+## OCAF/XDE 示例
 
 ```csharp
 using OcctNet;
@@ -60,33 +59,42 @@ OcctRuntime.Configure(
     nativeBridgeDirectory: @"D:\libs\OcctBridge");
 
 using var model = new OcctModelingSession();
-
 var body = model.MakeBox(100, 80, 60);
-var hole = model.MakeCylinder(
-    new OcctPoint3d(50, 40, -10),
-    OcctVector3d.UnitZ,
-    radius: 12,
-    height: 80);
 
+using var document = new OcafDocument(OcafDocumentFormats.BinaryXde)
+{
+    UndoLimit = 20
+};
+
+using (var command = document.BeginCommand())
+{
+    var product = document.AddShape(model, body);
+    document.SetName(product, "Housing");
+    document.SetColor(product, OcafColorType.Surface, new OcafColor(0.2, 0.45, 0.8));
+
+    var layer = document.AddLayer("Equipment");
+    document.SetLayer(product, layer);
+    document.SetMaterial(product, "Steel", "Structural steel", 7.85);
+    command.Commit();
+}
+
+document.SaveAs(@"D:\output\assembly.xbf");
+document.ExportStep(@"D:\output\assembly.step");
+```
+
+## Headless 示例
+
+```csharp
+using var model = new OcctModelingSession();
+var body = model.MakeBox(100, 80, 60);
+var hole = model.MakeCylinder(new OcctPoint3d(50, 40, -10), OcctVector3d.UnitZ, 12, 80);
 var cut = model.Cut(body, hole);
-var faces = model.GetSubshapes(cut.Shape, OcctShapeType.Face);
-
-model.Mesh(cut.Shape);
-var mesh = model.GetFaceMesh(faces[0]);
-
-var generated = model.GetGeneratedShapes(cut.OperationId, body);
 model.ExportStep(cut.Shape, @"D:\output\result.step");
 ```
 
 ## 构建与测试
 
-环境：
-
-- Windows x64；
-- Visual Studio 2022，安装“使用 C++ 的桌面开发”；
-- .NET 8 SDK；
-- CMake 3.21 或更高版本；
-- OCCT 7.9.0 Visual C++ x64 版本。
+环境：Windows x64、Visual Studio 2022（C++ 桌面开发）、.NET 8 SDK、CMake 3.21+、**OCCT 7.9.0 VC++ x64**。
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
@@ -94,12 +102,10 @@ Set-ExecutionPolicy -Scope Process Bypass
 .\build.ps1 native Release
 .\build.ps1 managed Release
 .\build.ps1 all Release
-.\build.ps1 smoke Release
-
-.\build.ps1 smoke Debug -OcctRoot "D:\SDK\occt-vc144-64"
+.\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-`smoke` 会执行无窗口布尔、拓扑、网格、射线、Loft、ShapeFix、UnifySameDomain 和 BREP 往返测试。
+`smoke` 同时验证 Headless 建模，以及 OCAF 事务、Undo/Redo、TDF 属性、XDE Shape/名称/颜色/图层/材料、BinXCAF 保存重开和 Shape 回传。
 
 ## 引用
 
@@ -111,18 +117,9 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 部署时需要将 `OcctNative.dll` 放在应用目录或通过 `OCCT_BRIDGE_NATIVE_DIR` 指定，并保证 OCCT 与第三方运行库可从 `PATH` 找到。
 
-## 明确不包含
+## 边界
 
-本项目不封装：
-
-- OCAF Document、Label、Attribute；
-- OCAF Undo/Redo；
-- TNaming；
-- XDE ShapeTool、ColorTool、LayerTool 及装配文档持久化。
-
-因此 STEP/IGES 接口面向纯 `TopoDS_Shape` 几何交换，不承诺保留 XDE 装配层级、实例、名称、颜色和图层。
-
-本项目也不以逐类映射 OCCT 全部 C++ 类型为目标，而是提供稳定的工程工作流 API。更专门的曲面填充、变量圆角、PipeShell、曲线/曲面全组合求交及 glTF/OBJ Provider 可在现有 C ABI 模块化结构上继续扩展。
+本项目提供工程级工作流 API，不逐个暴露 OCCT 的全部 C++ 实现类。原生 Handle、Label/Attribute 指针、持久化驱动内部类、TDF Delta 实现类和自定义 TFunction Driver 回调不跨 C ABI。高级 GD&T、View、Note、Clipping Plane、PBR Visual Material 当前可通过区段 Label 和通用属性 JSON 检查，专用强类型 CRUD 可按模块继续扩展。
 
 ## 许可证
 
