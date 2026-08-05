@@ -34,6 +34,8 @@ public sealed class OcctViewportControl : Control
     private OcctEngine? _engine;
     private Point _lastMouse;
     private Point _selectionStart;
+    private Point _selectionCurrent;
+    private bool _rectangleDragStarted;
     private bool _rotating;
     private bool _panning;
     private bool _selectingRectangle;
@@ -54,6 +56,7 @@ public sealed class OcctViewportControl : Control
     public OcctEngine Engine => _engine ?? throw new InvalidOperationException("The OCCT viewport handle has not been created yet.");
     public bool EnableRectangleSelection { get; set; } = true;
     public int RectangleSelectionThreshold { get; set; } = 5;
+    public OcctRectangleSelectionBehavior RectangleSelectionBehavior { get; set; } = OcctRectangleSelectionBehavior.Overlap;
     public Color RectangleSelectionLineColor { get; set; } = Color.FromArgb(35, 120, 210);
     public Color RectangleSelectionFillColor { get; set; } = Color.FromArgb(95, 165, 230);
     public double RectangleSelectionFillTransparency { get; set; } = 0.82;
@@ -118,6 +121,8 @@ public sealed class OcctViewportControl : Control
         {
             CancelRectangleSelection();
             _selectionStart = e.Location;
+            _selectionCurrent = e.Location;
+            _rectangleDragStarted = false;
             _selectingRectangle = EnableRectangleSelection;
             Capture = true;
         }
@@ -138,8 +143,10 @@ public sealed class OcctViewportControl : Control
             var dy = e.Y - _lastMouse.Y;
             TryInvoke(() => _engine.Pan(dx, -dy));
         }
-        else if (_selectingRectangle && e.Button.HasFlag(MouseButtons.Left))
+        else if (_selectingRectangle
+                 && (Capture || Control.MouseButtons.HasFlag(MouseButtons.Left)))
         {
+            _selectionCurrent = e.Location;
             UpdateSelectionFrame(e.Location);
         }
         else
@@ -167,16 +174,35 @@ public sealed class OcctViewportControl : Control
         }
         if (e.Button != MouseButtons.Left) return;
 
-        var dx = Math.Abs(e.X - _selectionStart.X);
-        var dy = Math.Abs(e.Y - _selectionStart.Y);
-        var useRectangle = _selectingRectangle
-                           && (dx >= RectangleSelectionThreshold || dy >= RectangleSelectionThreshold);
-        var append = ModifierKeys.HasFlag(Keys.Control);
+        var end = e.Location;
+        var eventDistance = Math.Max(
+            Math.Abs(end.X - _selectionStart.X),
+            Math.Abs(end.Y - _selectionStart.Y));
+        var trackedDistance = Math.Max(
+            Math.Abs(_selectionCurrent.X - _selectionStart.X),
+            Math.Abs(_selectionCurrent.Y - _selectionStart.Y));
+        if (_rectangleDragStarted && trackedDistance > eventDistance)
+            end = _selectionCurrent;
 
-        // Preserve the gesture result before releasing capture. CaptureChanged is raised synchronously
-        // by WinForms; the previous implementation cleared _selectingRectangle here and therefore
-        // every box gesture incorrectly fell back to point selection.
+        var dx = Math.Abs(end.X - _selectionStart.X);
+        var dy = Math.Abs(end.Y - _selectionStart.Y);
+        var useRectangle = EnableRectangleSelection
+                           && (_rectangleDragStarted
+                               || dx >= RectangleSelectionThreshold
+                               || dy >= RectangleSelectionThreshold);
+        var append = ModifierKeys.HasFlag(Keys.Control);
+        var allowOverlap = RectangleSelectionBehavior switch
+        {
+            OcctRectangleSelectionBehavior.Overlap => true,
+            OcctRectangleSelectionBehavior.Directional => end.X < _selectionStart.X,
+            _ => false
+        };
+
+        // MouseCaptureChanged may be raised before MouseUp, especially when this WinForms
+        // control is hosted by WPF. The recognized drag is stored independently so the
+        // gesture cannot silently degrade into a point selection.
         _selectingRectangle = false;
+        _rectangleDragStarted = false;
         HideSelectionFrame();
         ReleaseMouseCapture();
 
@@ -184,7 +210,13 @@ public sealed class OcctViewportControl : Control
         TryInvoke(() =>
         {
             if (useRectangle)
-                _engine.SelectRectangle(_selectionStart.X, _selectionStart.Y, e.X, e.Y, append);
+                _engine.SelectRectangle(
+                    _selectionStart.X,
+                    _selectionStart.Y,
+                    end.X,
+                    end.Y,
+                    append,
+                    allowOverlap);
             else
                 _engine.Select(e.X, e.Y, append);
             RaiseSelectionChanged();
@@ -200,7 +232,11 @@ public sealed class OcctViewportControl : Control
     protected override void OnMouseCaptureChanged(EventArgs e)
     {
         if (!Capture && !_releasingMouseCapture)
-            CancelRectangleSelection();
+        {
+            // Do not clear a recognized rectangle here. WinFormsHost and DPI/layout changes
+            // can deliver CaptureChanged before MouseUp; MouseUp must still finalize the box.
+            HideSelectionFrame();
+        }
         base.OnMouseCaptureChanged(e);
     }
 
@@ -208,6 +244,7 @@ public sealed class OcctViewportControl : Control
     {
         if (_engine?.IsInitialized != true) return;
 
+        _selectionCurrent = current;
         var dx = Math.Abs(current.X - _selectionStart.X);
         var dy = Math.Abs(current.Y - _selectionStart.Y);
         if (dx < RectangleSelectionThreshold && dy < RectangleSelectionThreshold)
@@ -216,6 +253,7 @@ public sealed class OcctViewportControl : Control
             return;
         }
 
+        _rectangleDragStarted = true;
         var rectangle = Rectangle.FromLTRB(
             Math.Min(_selectionStart.X, current.X),
             Math.Min(_selectionStart.Y, current.Y),
@@ -246,6 +284,8 @@ public sealed class OcctViewportControl : Control
     private void CancelRectangleSelection()
     {
         _selectingRectangle = false;
+        _rectangleDragStarted = false;
+        _selectionCurrent = Point.Empty;
         HideSelectionFrame();
         if (Capture) ReleaseMouseCapture();
     }

@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
@@ -9,6 +9,7 @@ public enum OcctProjectionType { Orthographic = 0, Perspective = 1 }
 public enum OcctDisplayMode { Wireframe = 0, Shaded = 1 }
 public enum OcctGradientFillMethod { None = 0, Horizontal = 1, Vertical = 2, Diagonal1 = 3, Diagonal2 = 4, Corner1 = 5, Corner2 = 6, Corner3 = 7, Corner4 = 8, Elliptical = 9 }
 public enum OcctSelectionMode { Object = 0, Vertex = 1, Edge = 2, Wire = 3, Face = 4, Shell = 5, Solid = 6 }
+public enum OcctRectangleSelectionBehavior { Inclusive = 0, Overlap = 1, Directional = 2 }
 public enum OcctBooleanOperation { Fuse = 0, Cut = 1, Common = 2, Section = 3 }
 public enum OcctCurveType { Line = 0, Circle = 1, Ellipse = 2, Hyperbola = 3, Parabola = 4, Bezier = 5, BSpline = 6, Offset = 7, Other = 8 }
 public enum OcctSurfaceType { Plane = 0, Cylinder = 1, Cone = 2, Sphere = 3, Torus = 4, Bezier = 5, BSpline = 6, Revolution = 7, Extrusion = 8, Offset = 9, Other = 10 }
