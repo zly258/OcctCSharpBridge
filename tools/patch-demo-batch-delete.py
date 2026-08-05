@@ -21,7 +21,7 @@ new = '''    private CadCommandResult DeleteSelected()
 
         var targets = selected
             .DistinctBy(item => item.Id)
-            .Where(Engine.Exists)
+            .Where(item => Engine.Exists(item))
             .Select(item => (IOcctObject)item)
             .ToArray();
 
