@@ -1,4 +1,4 @@
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using CadCommon;
 using System.Windows.Threading;
 
@@ -14,11 +14,6 @@ public partial class App : System.Windows.Application
         AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandledException;
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
         base.OnStartup(e);
-        Dispatcher.BeginInvoke(() =>
-        {
-            if (Current.MainWindow is MainWindow window)
-                window.AttachApiCenter();
-        }, DispatcherPriority.Loaded);
     }
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
