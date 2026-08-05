@@ -1,11 +1,13 @@
-﻿param(
+param(
     [Parameter(Position = 0, Mandatory = $true)]
     [ValidateSet("winform", "wpf")]
     [string]$Target,
 
     [Parameter(Position = 1)]
     [ValidateSet("Debug", "Release", "RelWithDebInfo")]
-    [string]$Configuration = "Release"
+    [string]$Configuration = "Release",
+
+    [string]$OcctRoot = $(if ($env:OCCT_ROOT) { $env:OCCT_ROOT } else { "D:\tools\occt-vc144-64" })
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,7 +22,6 @@ if (Test-Path "$env:SystemRoot\System32\chcp.com") {
 }
 
 $Target = $Target.ToLowerInvariant()
-$OcctRoot = "D:\tools\occt-vc144-64"
 $OcctBinDir = Join-Path $OcctRoot "win64\vc14\bin"
 $OcctThirdPartyDir = Join-Path $OcctRoot "3rdparty-vc14-64"
 $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -32,59 +33,59 @@ function Add-PathEntry {
         return
     }
 
-    $currentPath = [Environment]::GetEnvironmentVariable("PATH")
-    if ($null -eq $currentPath) {
-        $currentPath = ""
-    }
-
+    $fullDirectory = [System.IO.Path]::GetFullPath($Directory).TrimEnd('\')
+    $currentPath = [Environment]::GetEnvironmentVariable("PATH") ?? ""
     $entries = $currentPath.Split(';', [System.StringSplitOptions]::RemoveEmptyEntries)
-    if ($entries -contains $Directory) {
+    if ($entries.Any({ [System.IO.Path]::GetFullPath($_).TrimEnd('\').Equals($fullDirectory, [System.StringComparison]::OrdinalIgnoreCase) })) {
         return
     }
 
-    $env:PATH = if ([string]::IsNullOrEmpty($currentPath)) {
-        $Directory
-    }
-    else {
-        "$Directory;$currentPath"
-    }
+    $env:PATH = if ([string]::IsNullOrEmpty($currentPath)) { $fullDirectory } else { "$fullDirectory;$currentPath" }
 }
 
 if (-not (Test-Path $OcctBinDir -PathType Container)) {
     throw "OCCT runtime directory was not found: $OcctBinDir"
 }
-if (-not (Test-Path $OcctThirdPartyDir -PathType Container)) {
-    throw "OCCT third-party directory was not found: $OcctThirdPartyDir"
-}
-
-$env:CASROOT = $OcctRoot
-Add-PathEntry $OcctBinDir
-
-# Only inspect direct component directories under the fixed OCCT third-party root.
-Get-ChildItem $OcctThirdPartyDir -Directory | Sort-Object Name | ForEach-Object {
-    Add-PathEntry (Join-Path $_.FullName "bin")
-    Add-PathEntry (Join-Path $_.FullName "bin\win64")
-    Add-PathEntry (Join-Path $_.FullName "bin\x64")
-}
 
 $apps = @{
-    winform = @{
-        Path = "src\CadWinForms\bin\x64\$Configuration\net8.0-windows\CAD-Winform.exe"
-    }
-    wpf = @{
-        Path = "src\CadWpf\bin\x64\$Configuration\net8.0-windows\CAD-WPF.exe"
-    }
+    winform = "src\CadWinForms\bin\x64\$Configuration\net8.0-windows\CAD-Winform.exe"
+    wpf = "src\CadWpf\bin\x64\$Configuration\net8.0-windows\CAD-WPF.exe"
 }
 
-$executable = Join-Path $RepoRoot $apps[$Target].Path
+$executable = Join-Path $RepoRoot $apps[$Target]
 if (-not (Test-Path $executable -PathType Leaf)) {
-    throw "Executable was not found: $executable`nRun: .\build.ps1 $Target $Configuration"
+    throw "Executable was not found: $executable`nRun: .\build.ps1 $Target $Configuration -OcctRoot `"$OcctRoot`""
 }
 
-$env:OCCT_BRIDGE_NATIVE_DIR = Split-Path -Parent $executable
-Push-Location (Split-Path -Parent $executable)
+$applicationDirectory = Split-Path -Parent $executable
+$nativeBridge = Join-Path $applicationDirectory "OcctNative.dll"
+if (-not (Test-Path $nativeBridge -PathType Leaf)) {
+    throw "OcctNative.dll was not found beside the application: $nativeBridge"
+}
+
+$env:OCCT_ROOT = $OcctRoot
+$env:CASROOT = $OcctRoot
+$env:OCCT_BRIDGE_NATIVE_DIR = $applicationDirectory
+Add-PathEntry $applicationDirectory
+Add-PathEntry $OcctBinDir
+
+if (Test-Path $OcctThirdPartyDir -PathType Container) {
+    Get-ChildItem $OcctThirdPartyDir -Directory | Sort-Object Name | ForEach-Object {
+        Add-PathEntry (Join-Path $_.FullName "bin")
+        Add-PathEntry (Join-Path $_.FullName "bin\win64")
+        Add-PathEntry (Join-Path $_.FullName "bin\x64")
+    }
+}
+
+Write-Host "Application: $executable"
+Write-Host "OCCT root:  $OcctRoot" -ForegroundColor DarkGray
+
+Push-Location $applicationDirectory
 try {
     & $executable
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Target exited with code $LASTEXITCODE."
+    }
 }
 finally {
     Pop-Location
