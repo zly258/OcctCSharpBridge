@@ -1,9 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #include "OcctNative.h"
 
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_InteractiveObject.hxx>
+#include <AIS_RubberBand.hxx>
 #include <AIS_Shape.hxx>
 #include <AIS_ViewCube.hxx>
 #include <Aspect_DisplayConnection.hxx>
@@ -58,6 +59,7 @@ namespace OcctBridge
         Handle(V3d_View) view;
         Handle(AIS_InteractiveContext) context;
         Handle(AIS_ViewCube) viewCube;
+        Handle(AIS_RubberBand) selectionRubberBand;
         Handle(WNT_Window) window;
         Handle(V3d_AmbientLight) customAmbientLight;
         Handle(V3d_DirectionalLight) customDirectionalLight;
