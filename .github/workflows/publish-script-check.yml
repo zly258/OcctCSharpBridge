@@ -47,6 +47,7 @@ jobs:
               '.\tests\check-selection-contract.ps1',
               '.\tests\check-viewport-api.ps1',
               '.\tests\check-ui-hosts.ps1',
+              '.\tests\check-analytic-geometry-api.ps1',
               '.\src\OcctNet.WinForms\OcctNet.WinForms.csproj',
               '.\src\OcctNet.Wpf\OcctNet.Wpf.csproj',
               '.\src\CadWinForms\CadWinForms.csproj',

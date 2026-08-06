@@ -19,19 +19,11 @@ OCAF/XDE is not included. Documents, JSON persistence, undo/redo, and command hi
 <table>
   <tr>
     <th>WinForms · English</th>
-    <th>WinForms · 简体中文</th>
+    <th>WPF · English</th>
   </tr>
   <tr>
     <td><img src="assets/previews/winform-demo-en.webp" alt="OCCT CAD WinForms English demo" width="100%"></td>
-    <td><img src="assets/previews/winform-demo-zh.webp" alt="OCCT CAD WinForms Simplified Chinese demo" width="100%"></td>
-  </tr>
-  <tr>
-    <th>WPF · English</th>
-    <th>WPF · 简体中文</th>
-  </tr>
-  <tr>
     <td><img src="assets/previews/wpf-demo-en.webp" alt="OCCT CAD WPF English demo" width="100%"></td>
-    <td><img src="assets/previews/wpf-demo-zh.webp" alt="OCCT CAD WPF Simplified Chinese demo" width="100%"></td>
   </tr>
 </table>
 
@@ -41,6 +33,7 @@ OCAF/XDE is not included. Documents, JSON persistence, undo/redo, and command hi
 - Point, rectangle, directional crossing, multi-selection, and subshape selection
 - Viewport-state snapshots, camera persistence, Z-up views, selected-object fitting, and screen-to-plane projection
 - Batch color, transparency, visibility, display-mode, line-width, material, redisplay, and selection operations
+- Exact line, circle, ellipse, plane, cylinder, cone, sphere, and torus parameter queries
 - Configurable selected and hover highlight colors
 - Solid or gradient backgrounds, MSAA, render resolution, shadows, ray tracing, and multi-light presets
 - Curves, primitive solids, Boolean operations, features, transforms, topology queries, mesh access, and analysis
@@ -55,9 +48,9 @@ Complex scenarios use display batching and remove profiles, cutters, paths, and 
 
 - OCCT: exactly `7.9.0`
 - .NET: `8.0`, Windows x64
-- Bridge version: `2.3.0`
+- Bridge version: `2.4.0`
 - Bridge ABI: `2`
-- API count: Native `313`, P/Invoke `313`
+- API count: Native `321`, P/Invoke `321`
 - Deploy `OcctNet.dll`, the selected UI host assembly, and `OcctNative.dll` from the same build
 - Native session disposal is idempotent and finalizer-safe; a session must still be used from one application thread at a time
 
@@ -75,7 +68,7 @@ The managed-only validation path does not require the OCCT SDK:
 .\build.ps1 managed Release
 ```
 
-It validates the native source list, 313-entry API surface, selection behavior, WinForms/WPF host contracts, and deployment package contract before building the core wrapper, both reusable UI hosts, and the shared demo layer.
+It validates the native source list, 321-entry API surface, analytic geometry contracts, selection behavior, WinForms/WPF host contracts, and deployment package contract before building the core wrapper, both reusable UI hosts, and the shared demo layer.
 
 ## Publish
 

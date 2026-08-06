@@ -54,6 +54,7 @@ add_library(OcctNative SHARED
     OcctModelingGeometry.cpp
     OcctModelingAlgorithms.cpp
     OcctModelingAnalysis.cpp
+    OcctModelingAnalyticGeometry.cpp
     OcctInternal.hxx
     OcctModelingInternal.hxx
     OcctNative.h

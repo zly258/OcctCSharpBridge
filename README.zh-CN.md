@@ -18,19 +18,11 @@ WPF Demo 现在直接引用 `OcctNet.Wpf`，业务 XAML 中不再手工创建 `W
 
 <table>
   <tr>
-    <th>WinForms · English</th>
     <th>WinForms · 简体中文</th>
-  </tr>
-  <tr>
-    <td><img src="assets/previews/winform-demo-en.webp" alt="OCCT CAD WinForms 英文界面" width="100%"></td>
-    <td><img src="assets/previews/winform-demo-zh.webp" alt="OCCT CAD WinForms 中文界面" width="100%"></td>
-  </tr>
-  <tr>
-    <th>WPF · English</th>
     <th>WPF · 简体中文</th>
   </tr>
   <tr>
-    <td><img src="assets/previews/wpf-demo-en.webp" alt="OCCT CAD WPF 英文界面" width="100%"></td>
+    <td><img src="assets/previews/winform-demo-zh.webp" alt="OCCT CAD WinForms 中文界面" width="100%"></td>
     <td><img src="assets/previews/wpf-demo-zh.webp" alt="OCCT CAD WPF 中文界面" width="100%"></td>
   </tr>
 </table>
@@ -41,6 +33,7 @@ WPF Demo 现在直接引用 `OcctNet.Wpf`，业务 XAML 中不再手工创建 `W
 - 点选、框选、方向框选、多选和子形选择
 - 视口状态快照、相机保存恢复、Z-up 视图、适配选择集和屏幕投影到工作平面
 - 批量颜色、透明度、可见性、显示模式、线宽、材质、重显示和选择
+- 直线、圆、椭圆、平面、圆柱、圆锥、球面和圆环面的精确参数读取
 - 选中及悬浮高亮颜色设置
 - 纯色、渐变背景、MSAA、渲染分辨率、阴影、光线追踪和多灯光预设
 - 二维曲线、基本实体、布尔、特征、变换、拓扑查询、网格读取及分析
@@ -55,9 +48,9 @@ WPF Demo 现在直接引用 `OcctNet.Wpf`，业务 XAML 中不再手工创建 `W
 
 - OCCT：必须为 `7.9.0`
 - .NET：`8.0`，Windows x64
-- Bridge 版本：`2.3.0`
+- Bridge 版本：`2.4.0`
 - Bridge ABI：`2`
-- 接口数量：Native `313`，P/Invoke `313`
+- 接口数量：Native `321`，P/Invoke `321`
 - `OcctNet.dll`、选用的界面宿主程序集与 `OcctNative.dll` 必须来自同一次构建
 - 原生会话释放为幂等且终结器安全，但同一会话仍应由单一应用线程调用
 
@@ -75,7 +68,7 @@ WPF Demo 现在直接引用 `OcctNet.Wpf`，业务 XAML 中不再手工创建 `W
 .\build.ps1 managed Release
 ```
 
-该命令会检查原生源文件清单、313 项接口一致性、选择逻辑、WinForms/WPF 宿主约束和完整发布包规则，然后构建核心封装、两个界面宿主和公共 Demo 层。
+该命令会检查原生源文件清单、321 项接口一致性、解析几何接口、选择逻辑、WinForms/WPF 宿主约束和完整发布包规则，然后构建核心封装、两个界面宿主和公共 Demo 层。
 
 ## 发布
 
