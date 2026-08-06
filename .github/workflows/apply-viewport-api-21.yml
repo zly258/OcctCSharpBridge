@@ -22,6 +22,10 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      - name: Prepare viewport API migration
+        shell: pwsh
+        run: python .\.github\fix_viewport_migration.py
+
       - name: Apply viewport API migration
         shell: pwsh
         run: python .\.github\apply_viewport_api_21.py
