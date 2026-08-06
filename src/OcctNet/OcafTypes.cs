@@ -70,6 +70,7 @@ public sealed record OcafMaterial(
 
 public sealed class OcafCommandScope : IDisposable
 {
+    private readonly object _syncRoot = new();
     private OcafDocument? _document;
     private bool _completed;
 
@@ -82,24 +83,41 @@ public sealed class OcafCommandScope : IDisposable
     /// <summary>Commits the command and returns whether an undo delta was created.</summary>
     public bool Commit()
     {
-        var document = _document ?? throw new ObjectDisposedException(nameof(OcafCommandScope));
-        var producedDelta = document.CommitCommand();
-        _completed = true;
-        return producedDelta;
+        lock (_syncRoot)
+        {
+            var document = GetActiveDocument();
+            var producedDelta = document.CommitCommand();
+            _completed = true;
+            _document = null;
+            return producedDelta;
+        }
     }
 
     public void Abort()
     {
-        var document = _document ?? throw new ObjectDisposedException(nameof(OcafCommandScope));
-        document.AbortCommand();
-        _completed = true;
+        lock (_syncRoot)
+        {
+            var document = GetActiveDocument();
+            document.AbortCommand();
+            _completed = true;
+            _document = null;
+        }
     }
 
     public void Dispose()
     {
-        var document = _document;
-        _document = null;
-        if (document is null || _completed) return;
-        if (document.HasOpenCommand) document.AbortCommand();
+        lock (_syncRoot)
+        {
+            var document = _document;
+            _document = null;
+            if (document is null || _completed) return;
+            if (document.HasOpenCommand) document.AbortCommand();
+            _completed = true;
+        }
     }
+
+    private OcafDocument GetActiveDocument() =>
+        _document is not null && !_completed
+            ? _document
+            : throw new ObjectDisposedException(nameof(OcafCommandScope));
 }

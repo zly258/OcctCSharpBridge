@@ -14,6 +14,7 @@
   <ItemGroup>
     <ProjectReference Include="..\CadCommon\CadCommon.csproj" />
     <ProjectReference Include="..\OcctNet\OcctNet.csproj" />
+    <ProjectReference Include="..\OcctNet.WinForms\OcctNet.WinForms.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Compile Update="MainForm.cs">
