@@ -3,18 +3,21 @@
 This source-derived inventory lists the current native C ABI, C# P/Invoke mapping, and public .NET types.
 
 - OCCT: `7.9.0`
-- Native exports: `514`
-- Managed P/Invoke declarations: `514`
-- Public .NET types: `62`
+- Native exports: `517`
+- Managed P/Invoke declarations: `517`
+- Public .NET types: `64`
 
 ## Native C ABI
 
-### OcctNative.h (4)
+### OcctNative.h (7)
 
 - `occt_create`
 - `occt_destroy`
 - `occt_last_error`
 - `occt_version`
+- `occt_bridge_abi_version`
+- `occt_bridge_version`
+- `occt_bridge_build_info`
 
 ### OcctNative.h — Viewer and interaction (56)
 
@@ -645,6 +648,7 @@ This source-derived inventory lists the current native C ABI, C# P/Invoke mappin
 
 ## Public .NET types
 
+- `OcctBridgeInfo`
 - `IOcctObject`
 - `OcafColor`
 - `OcafColorType`
@@ -705,8 +709,16 @@ This source-derived inventory lists the current native C ABI, C# P/Invoke mappin
 - `OcctVector3d`
 - `OcctViewOrientation`
 - `OcctViewportControl`
+- `OcctViewportErrorEventArgs`
 - `OcctViewportSelectionEventArgs`
 - `OcctViewportWorldPointEventArgs`
+
+## Bridge ABI contract
+
+- Managed expected ABI: `1`
+- Native bridge version: `1.1.0`
+- `OcctBridgeInfo` validates the loaded `OcctNative.dll` before creating viewer, modeling, or OCAF sessions.
+- Managed and native binaries should always be deployed from the same build.
 
 ## Consistency rule
 

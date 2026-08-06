@@ -69,6 +69,9 @@ internal static class NativeMethods
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern void occt_destroy(IntPtr handle);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr occt_last_error(IntPtr handle);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr occt_version();
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern int occt_bridge_abi_version();
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr occt_bridge_version();
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr occt_bridge_build_info();
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern int occt_initialize(IntPtr handle, IntPtr windowHandle);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)] internal static extern int occt_resize(IntPtr handle);

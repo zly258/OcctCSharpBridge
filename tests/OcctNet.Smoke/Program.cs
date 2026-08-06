@@ -1,5 +1,13 @@
 ﻿using OcctNet;
 
+if (OcctBridgeInfo.NativeAbiVersion != OcctBridgeInfo.ExpectedAbiVersion)
+    throw new InvalidOperationException("Native bridge ABI validation failed.");
+if (!string.Equals(OcctBridgeInfo.NativeVersion, OcctBridgeInfo.ManagedVersion, StringComparison.Ordinal))
+    throw new InvalidOperationException(
+        $"Managed/native bridge version mismatch: {OcctBridgeInfo.ManagedVersion} / {OcctBridgeInfo.NativeVersion}.");
+if (string.IsNullOrWhiteSpace(OcctBridgeInfo.BuildInfo))
+    throw new InvalidOperationException("Native bridge build information is empty.");
+
 using var model = new OcctModelingSession();
 
 var box = model.MakeBox(100, 80, 60);

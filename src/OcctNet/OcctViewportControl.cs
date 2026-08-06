@@ -1,4 +1,5 @@
-﻿using System.Drawing;
+﻿using System.Diagnostics;
+using System.Drawing;
 using System.Windows.Forms;
 
 namespace OcctNet;
@@ -13,6 +14,16 @@ public sealed class OcctViewportSelectionEventArgs : EventArgs
 
     public OcctObject? SelectedObject { get; }
     public IReadOnlyList<OcctObject> SelectedObjects { get; }
+}
+
+public sealed class OcctViewportErrorEventArgs : EventArgs
+{
+    public OcctViewportErrorEventArgs(Exception exception)
+    {
+        Exception = exception ?? throw new ArgumentNullException(nameof(exception));
+    }
+
+    public Exception Exception { get; }
 }
 
 public sealed class OcctViewportWorldPointEventArgs : EventArgs
@@ -42,6 +53,11 @@ public sealed class OcctViewportControl : Control
     private bool _selectingRectangle;
     private bool _releasingMouseCapture;
     private Rectangle? _selectionFrameClient;
+    private long _lastHoverTimestamp;
+    private long _lastWorldPointTimestamp;
+
+    private static readonly long HoverIntervalTicks = Math.Max(1, Stopwatch.Frequency / 60);
+    private static readonly long WorldPointIntervalTicks = Math.Max(1, Stopwatch.Frequency / 30);
 
     public OcctViewportControl()
     {
@@ -66,6 +82,7 @@ public sealed class OcctViewportControl : Control
     public event EventHandler<OcctShape?>? SelectionChanged;
     public event EventHandler<OcctViewportSelectionEventArgs>? ObjectSelectionChanged;
     public event EventHandler<OcctViewportWorldPointEventArgs>? WorldPointChanged;
+    public event EventHandler<OcctViewportErrorEventArgs>? ErrorOccurred;
     public event EventHandler? EngineInitialized;
 
     protected override void OnHandleCreated(EventArgs e)
@@ -75,6 +92,8 @@ public sealed class OcctViewportControl : Control
         _engine = new OcctEngine();
         _engine.Initialize(Handle);
         _lastNativeSize = ClientSize;
+        _lastHoverTimestamp = 0;
+        _lastWorldPointTimestamp = 0;
         EngineInitialized?.Invoke(this, EventArgs.Empty);
     }
 
@@ -160,10 +179,21 @@ public sealed class OcctViewportControl : Control
         }
         else
         {
-            TryInvoke(() => _engine.MoveTo(e.X, e.Y));
-            TryInvoke(() => WorldPointChanged?.Invoke(
-                this,
-                new OcctViewportWorldPointEventArgs(e.X, e.Y, _engine.ScreenToWorld(e.X, e.Y))));
+            var now = Stopwatch.GetTimestamp();
+            if (HasElapsed(_lastHoverTimestamp, now, HoverIntervalTicks))
+            {
+                _lastHoverTimestamp = now;
+                TryInvoke(() => _engine.MoveTo(e.X, e.Y));
+            }
+
+            if (WorldPointChanged is not null
+                && HasElapsed(_lastWorldPointTimestamp, now, WorldPointIntervalTicks))
+            {
+                _lastWorldPointTimestamp = now;
+                TryInvoke(() => WorldPointChanged.Invoke(
+                    this,
+                    new OcctViewportWorldPointEventArgs(e.X, e.Y, _engine.ScreenToWorld(e.X, e.Y))));
+            }
         }
         _lastMouse = e.Location;
     }
@@ -340,9 +370,26 @@ public sealed class OcctViewportControl : Control
         ObjectSelectionChanged?.Invoke(this, new OcctViewportSelectionEventArgs(selected, _engine.SelectedObjects));
     }
 
-    private static void TryInvoke(Action action)
+    private static bool HasElapsed(long previous, long current, long interval) =>
+        previous == 0 || current - previous >= interval;
+
+    private void TryInvoke(Action action)
     {
-        try { action(); }
-        catch (Exception exception) { System.Diagnostics.Debug.WriteLine(exception); }
+        try
+        {
+            action();
+        }
+        catch (Exception exception)
+        {
+            Debug.WriteLine(exception);
+            try
+            {
+                ErrorOccurred?.Invoke(this, new OcctViewportErrorEventArgs(exception));
+            }
+            catch (Exception handlerException)
+            {
+                Debug.WriteLine(handlerException);
+            }
+        }
     }
 }
