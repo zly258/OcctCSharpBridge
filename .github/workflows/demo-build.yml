@@ -22,6 +22,10 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      - name: Validate selection contract
+        shell: pwsh
+        run: .\tests\check-selection-contract.ps1 -RepositoryRoot $PWD
+
       - name: Validate native build structure
         shell: pwsh
         run: .\tests\check-native-build-structure.ps1 -RepositoryRoot $PWD
