@@ -3,8 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:wfi="clr-namespace:System.Windows.Forms.Integration;assembly=WindowsFormsIntegration"
-        xmlns:occt="clr-namespace:OcctNet;assembly=OcctNet.WinForms"
+        xmlns:occt="clr-namespace:OcctNet;assembly=OcctNet.Wpf"
         mc:Ignorable="d"
         Title="OCCT CAD - WPF"
         Height="850" Width="1450"
@@ -86,9 +85,10 @@
             <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="#C7CDD3"/>
 
             <Border Grid.Column="2" Margin="4" BorderBrush="#AEB6BE" BorderThickness="1" Background="#E8EDF2">
-                <wfi:WindowsFormsHost x:Name="ViewportHost">
-                    <occt:OcctViewportControl x:Name="Viewport" EnableRectangleSelection="True" RectangleSelectionThreshold="5"/>
-                </wfi:WindowsFormsHost>
+                <occt:OcctWpfViewport x:Name="Viewport"
+                                      EnableRectangleSelection="True"
+                                      RectangleSelectionThreshold="5"
+                                      SynchronizeRenderDpi="True"/>
             </Border>
 
             <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch" Background="#C7CDD3"/>

@@ -34,3 +34,30 @@ public struct OcctProjectionRay
         Direction = direction;
     }
 }
+
+[StructLayout(LayoutKind.Sequential)]
+public struct OcctViewportState
+{
+    public int Width;
+    public int Height;
+    public OcctProjectionType ProjectionType;
+    private int _computedMode;
+    private int _antialiasingEnabled;
+    public int MsaaSamples;
+    public OcctRenderingMethod RenderingMethod;
+    private int _shadowsEnabled;
+    private int _frustumCullingEnabled;
+    private int _faceBoundariesVisible;
+    public int SelectionTolerance;
+    private int _automaticHighlight;
+    public double PerspectiveFieldOfView;
+    public double RenderResolutionScale;
+    public double RenderResolutionDpi;
+
+    public readonly bool ComputedMode => _computedMode != 0;
+    public readonly bool AntialiasingEnabled => _antialiasingEnabled != 0;
+    public readonly bool ShadowsEnabled => _shadowsEnabled != 0;
+    public readonly bool FrustumCullingEnabled => _frustumCullingEnabled != 0;
+    public readonly bool FaceBoundariesVisible => _faceBoundariesVisible != 0;
+    public readonly bool AutomaticHighlight => _automaticHighlight != 0;
+}

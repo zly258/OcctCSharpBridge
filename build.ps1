@@ -1,6 +1,6 @@
 ﻿param(
     [Parameter(Position = 0)]
-    [ValidateSet("validate", "native", "managed", "smoke", "all")]
+    [ValidateSet("validate", "native", "managed", "smoke", "winform", "wpf", "all")]
     [string]$Target = "all",
 
     [Parameter(Position = 1)]
@@ -29,24 +29,57 @@ $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $NativeSource = Join-Path $RepoRoot "src\OcctNative"
 $NativeBuild = Join-Path $RepoRoot "build\native"
 $NativeDll = Join-Path $NativeBuild "bin\$Configuration\OcctNative.dll"
-$ManagedProject = Join-Path $RepoRoot "src\OcctNet\OcctNet.csproj"
-$WinFormsProject = Join-Path $RepoRoot "src\OcctNet.WinForms\OcctNet.WinForms.csproj"
-$ManagedOutput = Join-Path $RepoRoot "src\OcctNet\bin\x64\$Configuration\net8.0-windows"
-$WinFormsOutput = Join-Path $RepoRoot "src\OcctNet.WinForms\bin\x64\$Configuration\net8.0-windows"
-$SmokeProject = Join-Path $RepoRoot "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
-$SmokeOutput = Join-Path $RepoRoot "tests\OcctNet.Smoke\bin\x64\$Configuration\net8.0-windows"
 $ApiSurfaceCheck = Join-Path $RepoRoot "tests\check-api-surface.ps1"
 $NativeBuildCheck = Join-Path $RepoRoot "tests\check-native-build-structure.ps1"
 $SelectionContractCheck = Join-Path $RepoRoot "tests\check-selection-contract.ps1"
 $ViewportApiCheck = Join-Path $RepoRoot "tests\check-viewport-api.ps1"
+$UiHostsCheck = Join-Path $RepoRoot "tests\check-ui-hosts.ps1"
+$PackageCheck = Join-Path $RepoRoot "tests\check-demo-package.ps1"
 
 $OcctIncludeDir = Join-Path $OcctRoot "inc"
 $OcctLibDir = Join-Path $OcctRoot "win64\vc14\lib"
 $OcctBinDir = Join-Path $OcctRoot "win64\vc14\bin"
 
+$Projects = [ordered]@{
+    wrapper = @{
+        Name = "OcctNet"
+        Project = "src\OcctNet\OcctNet.csproj"
+        Executable = $null
+    }
+    winformsHost = @{
+        Name = "OcctNet.WinForms"
+        Project = "src\OcctNet.WinForms\OcctNet.WinForms.csproj"
+        Executable = $null
+    }
+    wpfHost = @{
+        Name = "OcctNet.Wpf"
+        Project = "src\OcctNet.Wpf\OcctNet.Wpf.csproj"
+        Executable = $null
+    }
+    common = @{
+        Name = "CadCommon"
+        Project = "src\CadCommon\CadCommon.csproj"
+        Executable = $null
+    }
+    winform = @{
+        Name = "CAD-Winform"
+        Project = "src\CadWinForms\CadWinForms.csproj"
+        Executable = "CAD-Winform.exe"
+    }
+    wpf = @{
+        Name = "CAD-WPF"
+        Project = "src\CadWpf\CadWpf.csproj"
+        Executable = "CAD-WPF.exe"
+    }
+    smoke = @{
+        Name = "OcctNet.Smoke"
+        Project = "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
+        Executable = "OcctNet.Smoke.exe"
+    }
+}
+
 function Assert-Path {
     param([Parameter(Mandatory = $true)][string]$Path)
-
     if (-not (Test-Path $Path)) {
         throw "Required path was not found: $Path"
     }
@@ -54,7 +87,6 @@ function Assert-Path {
 
 function Assert-Command {
     param([Parameter(Mandatory = $true)][string]$Name)
-
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
         throw "$Name was not found in PATH."
     }
@@ -73,39 +105,50 @@ function Invoke-Checked {
     }
 }
 
+function Clean-ProjectOutput {
+    param([Parameter(Mandatory = $true)][string]$ProjectDirectory)
+    Remove-Item (Join-Path $ProjectDirectory "bin") -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item (Join-Path $ProjectDirectory "obj") -Recurse -Force -ErrorAction SilentlyContinue
+}
+
 function Test-ApiSurface {
-    Assert-Path $ApiSurfaceCheck
-    Assert-Path $NativeBuildCheck
-    Assert-Path $SelectionContractCheck
-    Assert-Path $ViewportApiCheck
+    foreach ($path in @(
+        $ApiSurfaceCheck,
+        $NativeBuildCheck,
+        $SelectionContractCheck,
+        $ViewportApiCheck,
+        $UiHostsCheck,
+        $PackageCheck
+    )) {
+        Assert-Path $path
+    }
+
+    Write-Host "[ui-hosts] Validating reusable WinForms and WPF hosts..." -ForegroundColor Cyan
+    & $UiHostsCheck -RepositoryRoot $RepoRoot
+    if (-not $?) { throw "UI host validation failed." }
 
     Write-Host "[viewport] Validating extended viewport contracts..." -ForegroundColor Cyan
     & $ViewportApiCheck -RepositoryRoot $RepoRoot
-    if (-not $?) {
-        throw "Viewport API validation failed."
-    }
+    if (-not $?) { throw "Viewport API validation failed." }
 
     Write-Host "[selection] Validating point and rectangle selection behavior..." -ForegroundColor Cyan
     & $SelectionContractCheck -RepositoryRoot $RepoRoot
-    if (-not $?) {
-        throw "Selection contract validation failed."
-    }
+    if (-not $?) { throw "Selection contract validation failed." }
 
     Write-Host "[native-build] Validating CMake sources and toolkit boundaries..." -ForegroundColor Cyan
     & $NativeBuildCheck -RepositoryRoot $RepoRoot
-    if (-not $?) {
-        throw "Native build structure validation failed."
-    }
+    if (-not $?) { throw "Native build structure validation failed." }
 
     Write-Host "[api] Validating native declarations, implementations and P/Invoke..." -ForegroundColor Cyan
     & $ApiSurfaceCheck -RepositoryRoot $RepoRoot
-    if (-not $?) {
-        throw "API surface validation failed."
-    }
+    if (-not $?) { throw "API surface validation failed." }
+
+    Write-Host "[package] Validating deployment-complete package rules..." -ForegroundColor Cyan
+    & $PackageCheck -RepositoryRoot $RepoRoot
+    if (-not $?) { throw "Demo package validation failed." }
 }
 
-function Build-Native {
-    Assert-Command "cmake"
+function Assert-OcctSdk {
     foreach ($path in @(
         $OcctIncludeDir,
         $OcctLibDir,
@@ -116,8 +159,13 @@ function Build-Native {
     )) {
         Assert-Path $path
     }
+}
 
-    Write-Host "[native] Configuring..." -ForegroundColor Cyan
+function Build-Native {
+    Assert-Command "cmake"
+    Assert-OcctSdk
+
+    Write-Host "[native] Configuring OCCT 7.9.0 bridge..." -ForegroundColor Cyan
     Invoke-Checked "cmake" @(
         "-S", $NativeSource,
         "-B", $NativeBuild,
@@ -140,67 +188,49 @@ function Build-Native {
     Write-Host "Native: $NativeDll" -ForegroundColor Green
 }
 
-function Build-Managed {
+function Build-ManagedProject {
+    param([Parameter(Mandatory = $true)][string]$Key)
+
     Assert-Command "dotnet"
-
-    foreach ($project in @($ManagedProject, $WinFormsProject)) {
-        Remove-Item (Join-Path (Split-Path -Parent $project) "bin") -Recurse -Force -ErrorAction SilentlyContinue
-        Remove-Item (Join-Path (Split-Path -Parent $project) "obj") -Recurse -Force -ErrorAction SilentlyContinue
+    $project = $Projects[$Key]
+    if ($null -eq $project) {
+        throw "Unknown managed project key: $Key"
     }
 
-    Write-Host "[managed] Building core wrapper ($Configuration)..." -ForegroundColor Cyan
+    $projectFile = Join-Path $RepoRoot $project.Project
+    Assert-Path $projectFile
+    Clean-ProjectOutput (Split-Path -Parent $projectFile)
+
+    Write-Host ("[{0}] Building {1}..." -f $project.Name, $Configuration) -ForegroundColor Cyan
     Invoke-Checked "dotnet" @(
-        "build", $ManagedProject,
+        "build", $projectFile,
         "-c", $Configuration,
         "-p:Platform=x64",
         "--nologo"
-    ) "OcctNet build failed."
+    ) "$($project.Name) build failed."
 
-    Write-Host "[managed] Building optional WinForms host ($Configuration)..." -ForegroundColor Cyan
-    Invoke-Checked "dotnet" @(
-        "build", $WinFormsProject,
-        "-c", $Configuration,
-        "-p:Platform=x64",
-        "--nologo"
-    ) "OcctNet.WinForms build failed."
-
-    Assert-Path (Join-Path $ManagedOutput "OcctNet.dll")
-    Assert-Path (Join-Path $WinFormsOutput "OcctNet.WinForms.dll")
-
-    if (Test-Path $NativeDll) {
-        Copy-Item $NativeDll (Join-Path $ManagedOutput "OcctNative.dll") -Force
+    if ($null -ne $project.Executable) {
+        $output = Join-Path (Split-Path -Parent $projectFile) "bin\x64\$Configuration\net8.0-windows"
+        Assert-Path (Join-Path $output $project.Executable)
+        if (Test-Path $NativeDll) {
+            Assert-Path (Join-Path $output "OcctNative.dll")
+        }
     }
-    else {
-        Write-Warning "OcctNative.dll was not found. Build target 'all' or 'native' before running a consumer application."
-    }
-
-    Write-Host "Managed core:     $ManagedOutput" -ForegroundColor Green
-    Write-Host "Managed WinForms: $WinFormsOutput" -ForegroundColor Green
 }
 
 function Run-Smoke {
-    Assert-Command "dotnet"
-    Assert-Path $NativeDll
+    Build-ManagedProject "smoke"
+    $smokeProject = Join-Path $RepoRoot $Projects.smoke.Project
+    $smokeOutput = Join-Path (Split-Path -Parent $smokeProject) "bin\x64\$Configuration\net8.0-windows"
+    Copy-Item $NativeDll (Join-Path $smokeOutput "OcctNative.dll") -Force
 
-    Remove-Item (Join-Path (Split-Path -Parent $SmokeProject) "bin") -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item (Join-Path (Split-Path -Parent $SmokeProject) "obj") -Recurse -Force -ErrorAction SilentlyContinue
-
-    Write-Host "[smoke] Building $Configuration..." -ForegroundColor Cyan
-    Invoke-Checked "dotnet" @(
-        "build", $SmokeProject,
-        "-c", $Configuration,
-        "-p:Platform=x64",
-        "--nologo"
-    ) "Smoke test build failed."
-
-    Copy-Item $NativeDll (Join-Path $SmokeOutput "OcctNative.dll") -Force
     $previousNativeDirectory = $env:OCCT_BRIDGE_NATIVE_DIR
     try {
-        $env:OCCT_BRIDGE_NATIVE_DIR = $SmokeOutput
-        Write-Host "[smoke] Running..." -ForegroundColor Cyan
+        $env:OCCT_BRIDGE_NATIVE_DIR = $smokeOutput
+        Write-Host "[smoke] Running native viewer and modeling scenarios..." -ForegroundColor Cyan
         Invoke-Checked "dotnet" @(
             "run",
-            "--project", $SmokeProject,
+            "--project", $smokeProject,
             "-c", $Configuration,
             "-p:Platform=x64",
             "--no-build"
@@ -220,20 +250,32 @@ Test-ApiSurface
 switch ($Target) {
     "validate" {
     }
+    "managed" {
+        Build-ManagedProject "wrapper"
+        Build-ManagedProject "winformsHost"
+        Build-ManagedProject "wpfHost"
+        Build-ManagedProject "common"
+    }
     "native" {
         Build-Native
     }
-    "managed" {
-        Build-Managed
+    "winform" {
+        Build-Native
+        Build-ManagedProject "winform"
+    }
+    "wpf" {
+        Build-Native
+        Build-ManagedProject "wpf"
     }
     "smoke" {
         Build-Native
-        Build-Managed
         Run-Smoke
     }
     "all" {
         Build-Native
-        Build-Managed
+        Build-ManagedProject "winform"
+        Build-ManagedProject "wpf"
+        Build-ManagedProject "smoke"
     }
 }
 
