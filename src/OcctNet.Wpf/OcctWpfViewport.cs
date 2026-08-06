@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using System.Windows.Forms.Integration;
+using System.Windows.Threading;
 using DrawingColor = System.Drawing.Color;
 using MediaColor = System.Windows.Media.Color;
 using MediaColors = System.Windows.Media.Colors;
@@ -9,8 +10,8 @@ namespace OcctNet;
 
 /// <summary>
 /// Reusable WPF host for the OCCT HWND viewport. The native viewer remains isolated in
-/// <see cref="OcctViewportControl"/>, while WPF applications receive dependency properties
-/// and WPF-native composition through <see cref="WindowsFormsHost"/>.
+/// <see cref="OcctViewportControl"/>, while WPF applications receive dependency properties,
+/// DPI synchronization, resize coordination, and WPF-native event routing.
 /// </summary>
 public sealed class OcctWpfViewport : WpfUserControl
 {
@@ -66,6 +67,13 @@ public sealed class OcctWpfViewport : WpfUserControl
             typeof(OcctWpfViewport),
             new FrameworkPropertyMetadata(1.0, OnSelectionPropertyChanged, CoercePositiveDouble));
 
+    public static readonly DependencyProperty SynchronizeRenderDpiProperty =
+        DependencyProperty.Register(
+            nameof(SynchronizeRenderDpi),
+            typeof(bool),
+            typeof(OcctWpfViewport),
+            new FrameworkPropertyMetadata(true, OnDpiSynchronizationChanged));
+
     public OcctWpfViewport()
     {
         _viewport = new OcctViewportControl();
@@ -76,7 +84,14 @@ public sealed class OcctWpfViewport : WpfUserControl
         VerticalContentAlignment = System.Windows.VerticalAlignment.Stretch;
         ApplySelectionProperties();
 
-        Loaded += (_, _) => FocusViewport();
+        _viewport.EngineInitialized += (_, _) => ScheduleNativeLayoutUpdate();
+        Loaded += (_, _) =>
+        {
+            FocusViewport();
+            ScheduleNativeLayoutUpdate();
+        };
+        SizeChanged += (_, _) => ScheduleNativeLayoutUpdate();
+        IsVisibleChanged += (_, _) => ScheduleNativeLayoutUpdate();
         PreviewMouseDown += (_, _) => FocusViewport();
     }
 
@@ -127,6 +142,12 @@ public sealed class OcctWpfViewport : WpfUserControl
         set => SetValue(RectangleSelectionLineWidthProperty, value);
     }
 
+    public bool SynchronizeRenderDpi
+    {
+        get => (bool)GetValue(SynchronizeRenderDpiProperty);
+        set => SetValue(SynchronizeRenderDpiProperty, value);
+    }
+
     public event EventHandler<OcctShape?>? SelectionChanged
     {
         add => _viewport.SelectionChanged += value;
@@ -161,9 +182,20 @@ public sealed class OcctWpfViewport : WpfUserControl
 
     public void RaiseSelectionChanged() => _viewport.RaiseSelectionChanged();
 
+    protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+    {
+        base.OnDpiChanged(oldDpi, newDpi);
+        ScheduleNativeLayoutUpdate();
+    }
+
     private static void OnSelectionPropertyChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs _)
     {
         ((OcctWpfViewport)dependencyObject).ApplySelectionProperties();
+    }
+
+    private static void OnDpiSynchronizationChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs _)
+    {
+        ((OcctWpfViewport)dependencyObject).ScheduleNativeLayoutUpdate();
     }
 
     private void ApplySelectionProperties()
@@ -175,6 +207,23 @@ public sealed class OcctWpfViewport : WpfUserControl
         _viewport.RectangleSelectionFillColor = ToDrawingColor(RectangleSelectionFillColor);
         _viewport.RectangleSelectionFillTransparency = RectangleSelectionFillTransparency;
         _viewport.RectangleSelectionLineWidth = RectangleSelectionLineWidth;
+    }
+
+    private void ScheduleNativeLayoutUpdate()
+    {
+        if (!IsLoaded || !IsVisible) return;
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(UpdateNativeLayout));
+    }
+
+    private void UpdateNativeLayout()
+    {
+        if (!_viewport.IsHandleCreated || !_viewport.Engine.IsInitialized) return;
+        if (SynchronizeRenderDpi)
+        {
+            var dpi = VisualTreeHelper.GetDpi(this);
+            _viewport.Engine.SetRenderResolution(dpi.PixelsPerInchX);
+        }
+        _viewport.Engine.Resize();
     }
 
     private static DrawingColor ToDrawingColor(MediaColor value) =>
