@@ -117,68 +117,6 @@ build = replace_once(
     "selection contract invocation")
 write(build_path, build)
 
-workflow_path = ".github/workflows/demo-build.yml"
-workflow = read(workflow_path)
-workflow = replace_once(
-    workflow,
-    """      - name: Validate native build structure
-        shell: pwsh
-        run: .\\tests\\check-native-build-structure.ps1 -RepositoryRoot $PWD
-
-""",
-    """      - name: Validate selection contract
-        shell: pwsh
-        run: .\\tests\\check-selection-contract.ps1 -RepositoryRoot $PWD
-
-      - name: Validate native build structure
-        shell: pwsh
-        run: .\\tests\\check-native-build-structure.ps1 -RepositoryRoot $PWD
-
-""",
-    "demo selection workflow step")
-write(workflow_path, workflow)
-
-check_path = ".github/workflows/publish-script-check.yml"
-check = read(check_path)
-check = replace_once(
-    check,
-    """              '[switch]$SelfContained',
-              '[switch]$FullResources',
-""",
-    """              '[switch]$SelfContained',
-              '[switch]$FrameworkDependent',
-              '$UseSelfContained = -not $FrameworkDependent.IsPresent',
-              '[switch]$FullResources',
-""",
-    "publish check runtime tokens")
-check = check.replace(
-    'EnableCompressionInSingleFile=$($SelfContained.IsPresent.ToString().ToLowerInvariant())',
-    'EnableCompressionInSingleFile=$($UseSelfContained.ToString().ToLowerInvariant())')
-old_default_check = """          if ($text -match '\\[string\\]\\$Target\\s*=\\s*\"all\"') {
-              throw 'The default package target must not publish both UI demos.'
-          }
-"""
-new_default_check = """          if ($text -notmatch '\\[string\\]\\$Target\\s*=\\s*\"all\"') {
-              throw 'The default package target must publish both WinForms and WPF demos.'
-          }
-"""
-check = replace_once(check, old_default_check, new_default_check, "default target check")
-check = replace_once(
-    check,
-    """          if ($text -match 'EnableCompressionInSingleFile=true') {
-              throw 'Framework-dependent publishing must not force single-file compression.'
-          }
-""",
-    """          if ($text -match 'EnableCompressionInSingleFile=true') {
-              throw 'Single-file compression must follow the selected runtime mode.'
-          }
-          if ($text -match '\\$UseSelfContained\\s*=\\s*\\$false') {
-              throw 'Portable self-contained publishing must remain the default.'
-          }
-""",
-    "self-contained default check")
-write(check_path, check)
-
 readme_path = "README.md"
 readme = read(readme_path)
 old_publish = """## Publish
@@ -280,4 +218,3 @@ readme_zh = replace_once(readme_zh, old_publish_zh, new_publish_zh, "Chinese pub
 write(readme_zh_path, readme_zh)
 
 (ROOT / ".github/apply_portable_demo_publish.py").unlink()
-(ROOT / ".github/workflows/apply-portable-demo-publish.yml").unlink()
