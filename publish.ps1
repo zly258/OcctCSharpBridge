@@ -7,7 +7,7 @@
     [ValidateSet("Debug", "Release", "RelWithDebInfo")]
     [string]$Configuration = "Release",
 
-    [string]$OcctRoot = $(if ($env:OCCT_ROOT) { $env:OCCT_ROOT } else { "D:\tools\occt-vc144-64" }),
+    [string]$OcctRoot = $env:OCCT_ROOT,
 
     [string]$OutputDirectory = "",
 
@@ -48,6 +48,10 @@ if ($SelfContained.IsPresent) {
     $UseSelfContained = $true
 }
 $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
+    throw "OCCT_ROOT is not configured. Pass -OcctRoot <path> or set the OCCT_ROOT environment variable."
+}
+$OcctRoot = [System.IO.Path]::GetFullPath($OcctRoot)
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     $OutputDirectory = Join-Path $RepoRoot "artifacts\publish"
 }
