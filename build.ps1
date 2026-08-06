@@ -38,6 +38,7 @@ $SmokeOutput = Join-Path $RepoRoot "tests\OcctNet.Smoke\bin\x64\$Configuration\n
 $ApiSurfaceCheck = Join-Path $RepoRoot "tests\check-api-surface.ps1"
 $NativeBuildCheck = Join-Path $RepoRoot "tests\check-native-build-structure.ps1"
 $SelectionContractCheck = Join-Path $RepoRoot "tests\check-selection-contract.ps1"
+$ViewportApiCheck = Join-Path $RepoRoot "tests\check-viewport-api.ps1"
 
 $OcctIncludeDir = Join-Path $OcctRoot "inc"
 $OcctLibDir = Join-Path $OcctRoot "win64\vc14\lib"
@@ -76,6 +77,13 @@ function Test-ApiSurface {
     Assert-Path $ApiSurfaceCheck
     Assert-Path $NativeBuildCheck
     Assert-Path $SelectionContractCheck
+    Assert-Path $ViewportApiCheck
+
+    Write-Host "[viewport] Validating extended viewport contracts..." -ForegroundColor Cyan
+    & $ViewportApiCheck -RepositoryRoot $RepoRoot
+    if (-not $?) {
+        throw "Viewport API validation failed."
+    }
 
     Write-Host "[selection] Validating point and rectangle selection behavior..." -ForegroundColor Cyan
     & $SelectionContractCheck -RepositoryRoot $RepoRoot
