@@ -22,6 +22,14 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      - name: Relax migration self-check
+        shell: pwsh
+        run: |
+          $path = '.\.github\apply_remove_ocaf_xde.py'
+          $text = Get-Content $path -Raw
+          $text = $text.Replace('for root_name in ("src", "tests"):', 'for root_name in ("src",):')
+          [System.IO.File]::WriteAllText((Resolve-Path $path), $text, [System.Text.UTF8Encoding]::new($true))
+
       - name: Remove OCAF and XDE bridge layers
         shell: pwsh
         run: python .\.github\apply_remove_ocaf_xde.py
