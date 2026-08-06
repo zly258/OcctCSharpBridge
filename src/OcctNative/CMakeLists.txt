@@ -55,7 +55,7 @@ add_library(OcctNative SHARED
     OcctModelingInternal.hxx
     OcctNative.h
     OcctSelectionOverlay.h
-    OcctModeling.h
+    OcctModeling.h)
 
 target_compile_definitions(OcctNative PRIVATE NOMINMAX _CRT_SECURE_NO_WARNINGS)
 if(MSVC)
