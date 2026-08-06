@@ -3,7 +3,6 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
-    <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Platforms>x64</Platforms>
@@ -14,6 +13,6 @@
   <ItemGroup>
     <ProjectReference Include="..\CadCommon\CadCommon.csproj" />
     <ProjectReference Include="..\OcctNet\OcctNet.csproj" />
-    <ProjectReference Include="..\OcctNet.WinForms\OcctNet.WinForms.csproj" />
+    <ProjectReference Include="..\OcctNet.Wpf\OcctNet.Wpf.csproj" />
   </ItemGroup>
 </Project>
