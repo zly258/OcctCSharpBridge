@@ -1,0 +1,53 @@
+name: Apply Box Selection Fix
+
+on:
+  push:
+    branches:
+      - fix/box-selection
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Apply reference selection behavior
+        shell: pwsh
+        run: python .\.github\apply_box_selection_fix.py
+
+      - name: Validate selection and API contracts
+        shell: pwsh
+        run: .\build.ps1 validate Release
+
+      - name: Build managed wrapper
+        shell: pwsh
+        run: dotnet build .\src\OcctNet\OcctNet.csproj -c Release -p:Platform=x64 --nologo
+
+      - name: Build WinForms viewport host
+        shell: pwsh
+        run: dotnet build .\src\OcctNet.WinForms\OcctNet.WinForms.csproj -c Release -p:Platform=x64 --nologo
+
+      - name: Validate patch quality
+        shell: pwsh
+        run: git diff --check
+
+      - name: Commit selection fix
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if (git diff --cached --quiet) { throw 'No selection changes were produced.' }
+          git commit -m "Correct point and rectangle selection behavior"
+          git push origin HEAD:fix/box-selection
