@@ -1,4 +1,4 @@
-#include "OcctInternal.hxx"
+﻿#include "OcctInternal.hxx"
 #include "OcctSelectionOverlay.h"
 
 #include <AIS_DisplayStatus.hxx>
@@ -46,7 +46,7 @@ extern "C"
                     width);
                 engine->selectionRubberBand->SetZLayer(Graphic3d_ZLayerId_TopOSD);
                 engine->selectionRubberBand->SetTransformPersistence(
-                    new Graphic3d_TransformPers(Graphic3d_TMF_2d, Aspect_TOTP_LEFT_UPPER));
+                    new Graphic3d_TransformPers(Graphic3d_TMF_2d, Aspect_TOTP_LEFT_LOWER));
                 engine->selectionRubberBand->SetDisplayMode(0);
                 engine->selectionRubberBand->SetMutable(Standard_True);
             }
@@ -60,9 +60,18 @@ extern "C"
 
             const int minX = std::min(x1, x2);
             const int maxX = std::max(x1, x2);
-            const int minY = std::min(y1, y2);
-            const int maxY = std::max(y1, y2);
-            engine->selectionRubberBand->SetRectangle(minX, -maxY, maxX, -minY);
+            const int minClientY = std::min(y1, y2);
+            const int maxClientY = std::max(y1, y2);
+            Standard_Integer windowWidth = 0;
+            Standard_Integer windowHeight = 0;
+            engine->window->Size(windowWidth, windowHeight);
+            if (windowHeight <= 0) throw std::runtime_error("The OCCT window height is invalid.");
+
+            // AIS_RubberBand with LEFT_LOWER persistence uses a bottom-left Y origin,
+            // while WinForms/WPF mouse coordinates use a top-left Y origin.
+            const int minY = windowHeight - maxClientY;
+            const int maxY = windowHeight - minClientY;
+            engine->selectionRubberBand->SetRectangle(minX, minY, maxX, maxY);
 
             if (engine->context->IsDisplayed(engine->selectionRubberBand))
             {
@@ -78,10 +87,7 @@ extern "C"
                     AIS_DS_Displayed);
             }
 
-            // The rubber band is an immediate top-layer presentation. Updating only that
-            // layer avoids a full scene redraw on every mouse move and prevents flicker.
-            engine->view->InvalidateImmediate();
-            engine->view->RedrawImmediate();
+            engine->view->Redraw();
         });
     }
 
@@ -99,8 +105,7 @@ extern "C"
                 engine->context->Remove(engine->selectionRubberBand, Standard_False);
             }
             engine->selectionRubberBand->ClearPoints();
-            engine->view->InvalidateImmediate();
-            engine->view->RedrawImmediate();
+            engine->view->Redraw();
         });
     }
 }

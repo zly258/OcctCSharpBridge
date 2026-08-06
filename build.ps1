@@ -30,6 +30,7 @@ $NativeSource = Join-Path $RepoRoot "src\OcctNative"
 $NativeBuild = Join-Path $RepoRoot "build\native"
 $NativeDll = Join-Path $NativeBuild "bin\$Configuration\OcctNative.dll"
 $ApiSurfaceCheck = Join-Path $RepoRoot "tests\check-api-surface.ps1"
+$SelectionContractCheck = Join-Path $RepoRoot "tests\check-selection-contract.ps1"
 $NativeBuildCheck = Join-Path $RepoRoot "tests\check-native-build-structure.ps1"
 
 $OcctIncludeDir = Join-Path $OcctRoot "inc"
@@ -105,6 +106,13 @@ function Clean-ProjectOutput {
 function Test-ApiSurface {
     Assert-Path $ApiSurfaceCheck
     Assert-Path $NativeBuildCheck
+    Assert-Path $SelectionContractCheck
+
+    Write-Host "[selection] Validating point and rectangle selection behavior..." -ForegroundColor Cyan
+    & $SelectionContractCheck -RepositoryRoot $RepoRoot
+    if (-not $?) {
+        throw "Selection contract validation failed."
+    }
 
     Write-Host "[native-build] Validating CMake sources and toolkit boundaries..." -ForegroundColor Cyan
     & $NativeBuildCheck -RepositoryRoot $RepoRoot
