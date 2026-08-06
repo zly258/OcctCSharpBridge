@@ -1,4 +1,4 @@
-from pathlib import Path
+﻿from pathlib import Path
 import re
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -537,10 +537,13 @@ build = replace_once(
     build,
     """    Assert-Path $ApiSurfaceCheck
     Assert-Path $NativeBuildCheck
+    Assert-Path $SelectionContractCheck
 
+    Write-Host "[selection] Validating point and rectangle selection behavior..." -ForegroundColor Cyan
 """,
     """    Assert-Path $ApiSurfaceCheck
     Assert-Path $NativeBuildCheck
+    Assert-Path $SelectionContractCheck
     Assert-Path $ViewportApiCheck
 
     Write-Host "[viewport] Validating extended viewport contracts..." -ForegroundColor Cyan
@@ -549,6 +552,7 @@ build = replace_once(
         throw "Viewport API validation failed."
     }
 
+    Write-Host "[selection] Validating point and rectangle selection behavior..." -ForegroundColor Cyan
 """,
     "viewport contract invocation")
 write(build_path, build)

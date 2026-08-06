@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
-internal static class NativeMethods
+internal static partial class NativeMethods
 {
     private const string LibraryName = "OcctNative";
 
