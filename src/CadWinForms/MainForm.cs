@@ -187,6 +187,10 @@ public sealed partial class MainForm : Form
         var tools = new ToolStripMenuItem(CadLocalization.Text("Menu.Tools"));
         AddCommands(tools, CadCommandId.AnalyzeBounds, CadCommandId.AnalyzeMass, CadCommandId.AnalyzeTopology, CadCommandId.AnalyzeDistance, CadCommandId.ValidateShape);
 
+        var samples = new ToolStripMenuItem(CadLocalization.Text("Menu.Samples"));
+        AddCommands(samples, CadCommandId.DemoElements, CadCommandId.DemoGear, CadCommandId.DemoManifold, CadCommandId.DemoTwistedDuct);
+        samples.DropDownItems.Add(new ToolStripSeparator());
+        AddCommands(samples, CadCommandId.DemoBracket, CadCommandId.DemoFlange, CadCommandId.DemoAnnotations);
 
         var language = new ToolStripMenuItem(CadLocalization.Text("Menu.Language"));
         var english = new ToolStripMenuItem(CadLocalization.Text("Menu.English")) { Checked = CadLocalization.CurrentLanguage == CadLanguage.English };
@@ -200,7 +204,7 @@ public sealed partial class MainForm : Form
         help.DropDownItems.Add(MenuItem(CadLocalization.Text("Menu.MouseHelp"), (_, _) => ShowMouseHelp()));
         help.DropDownItems.Add(MenuItem(CadLocalization.Text("Menu.About"), (_, _) => ShowAbout()));
 
-        _menu.Items.AddRange(new ToolStripItem[] { file, edit, draw, solid, annotate, BuildViewMenu(), tools, language, help });
+        _menu.Items.AddRange(new ToolStripItem[] { file, edit, draw, solid, annotate, BuildViewMenu(), tools, samples, language, help });
         UpdateHistoryUi();
     }
 

@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Globalization;
 using OcctNet;
 
@@ -158,7 +158,11 @@ public sealed class CadSession
             selectedObjectIds.Add(active.Id);
         }
         var values = new CadValues(storedValues);
-        var displayBatch = IsDemoCommand(commandId) ? Engine.BeginDisplayBatch() : null;
+        var isDemoCommand = IsDemoCommand(commandId);
+        var displayBatch = isDemoCommand ? Engine.BeginDisplayBatch() : null;
+        var demoInitialObjectIds = isDemoCommand
+            ? Engine.Objects.Select(item => item.Id).ToHashSet()
+            : null;
         CadCommandResult result;
         try
         {
@@ -225,9 +229,26 @@ public sealed class CadSession
             CadCommandId.DemoReducer => DemoReducer(),
             CadCommandId.DemoLoft => DemoLoft(),
             CadCommandId.DemoBoolean => DemoBoolean(),
+            CadCommandId.DemoElements => DemoElements(),
+            CadCommandId.DemoGear => DemoGear(),
+            CadCommandId.DemoManifold => DemoManifold(),
+            CadCommandId.DemoTwistedDuct => DemoTwistedDuct(),
             CadCommandId.DemoAnnotations => DemoAnnotations(),
             _ => throw new NotSupportedException(Local($"Command is not implemented: {commandId}", $"未实现命令：{commandId}"))
             };
+
+            if (demoInitialObjectIds is not null)
+            {
+                RemoveDemoProcessObjects(demoInitialObjectIds, result.CreatedObjects);
+            }
+        }
+        catch
+        {
+            if (demoInitialObjectIds is not null)
+            {
+                RemoveDemoProcessObjects(demoInitialObjectIds, Array.Empty<IOcctObject>());
+            }
+            throw;
         }
         finally
         {
@@ -556,41 +577,92 @@ public sealed class CadSession
 
     private CadCommandResult CreateText(CadValues values)
     {
-        var text = Engine.AddText(values.Text("text", "OCCT CAD"), values.Point(), values.Number("height", 18), Color.DarkSlateGray, values.Boolean("zoomable", true));
+        var text = Engine.MakeTextShape(
+            values.Text("text", "OCCT CAD"),
+            values.Point(),
+            values.Number("height", 18),
+            values.Number("depth", 0),
+            values.Text("font", "Microsoft YaHei UI"),
+            bold: values.Boolean("bold"),
+            italic: values.Boolean("italic"));
+        Engine.SetColor(text, Color.DarkSlateGray);
         SetGeneratedName(text, CadLocalization.CommandText(CadCommandId.Text));
-        ActiveObject = new OcctObject(text.Id, OcctObjectKind.Text);
+        ActiveObject = new OcctObject(text.Id, OcctObjectKind.Shape);
         return CadCommandResult.Created(CadLocalization.Text("Session.Created", CadLocalization.CommandText(CadCommandId.Text)), text);
     }
 
     private CadCommandResult CreateLengthDimension(CadValues values)
     {
         var edge = CopySelectedSubshape(0);
-        var dimension = Engine.AddLengthDimension(edge, values.Number("flyout", 20));
-        Engine.SetVisible(edge, false);
-        SetGeneratedName(dimension, CadLocalization.CommandText(CadCommandId.LengthDimension));
-        return CadCommandResult.Created(CadLocalization.Text("Session.Created", CadLocalization.CommandText(CadCommandId.LengthDimension)), dimension);
+        try
+        {
+            var dimension = Engine.MakeLengthAnnotationShape(
+                edge,
+                values.Number("flyout", 20),
+                values.Number("textHeight", 8),
+                values.Number("arrowSize", 5),
+                values.Text("font", "Microsoft YaHei UI"));
+            SetGeneratedName(dimension, CadLocalization.CommandText(CadCommandId.LengthDimension));
+            ActiveObject = new OcctObject(dimension.Id, OcctObjectKind.Shape);
+            return CadCommandResult.Created(CadLocalization.Text("Session.Created", CadLocalization.CommandText(CadCommandId.LengthDimension)), dimension);
+        }
+        finally
+        {
+            if (Engine.Exists(edge)) Engine.Delete(edge);
+        }
     }
 
     private CadCommandResult CreateAngleDimension(CadValues values)
     {
         var first = CopySelectedSubshape(0);
         var second = CopySelectedSubshape(1);
-        var dimension = Engine.AddAngleDimension(first, second, values.Number("flyout", 20));
-        Engine.SetVisible(first, false);
-        Engine.SetVisible(second, false);
-        SetGeneratedName(dimension, CadLocalization.CommandText(CadCommandId.AngleDimension));
-        return CadCommandResult.Created(CadLocalization.Text("Session.Created", CadLocalization.CommandText(CadCommandId.AngleDimension)), dimension);
+        try
+        {
+            var dimension = Engine.MakeAngleAnnotationShape(
+                first,
+                second,
+                values.Number("flyout", 30),
+                values.Number("textHeight", 8),
+                values.Number("arrowSize", 5),
+                values.Text("font", "Microsoft YaHei UI"));
+            SetGeneratedName(dimension, CadLocalization.CommandText(CadCommandId.AngleDimension));
+            ActiveObject = new OcctObject(dimension.Id, OcctObjectKind.Shape);
+            return CadCommandResult.Created(CadLocalization.Text("Session.Created", CadLocalization.CommandText(CadCommandId.AngleDimension)), dimension);
+        }
+        finally
+        {
+            if (Engine.Exists(first)) Engine.Delete(first);
+            if (Engine.Exists(second)) Engine.Delete(second);
+        }
     }
 
     private CadCommandResult CreateRadiusDimension(CadValues values, bool diameter)
     {
         var edge = CopySelectedSubshape(0);
-        var dimension = diameter
-            ? Engine.AddDiameterDimension(edge, values.Number("flyout", 20))
-            : Engine.AddRadiusDimension(edge, values.Number("flyout", 20));
-        Engine.SetVisible(edge, false);
-        SetGeneratedName(dimension, CadLocalization.CommandText(diameter ? CadCommandId.DiameterDimension : CadCommandId.RadiusDimension));
-        return CadCommandResult.Created(CadLocalization.Text("Session.Created", CadLocalization.CommandText(diameter ? CadCommandId.DiameterDimension : CadCommandId.RadiusDimension)), dimension);
+        try
+        {
+            var dimension = diameter
+                ? Engine.MakeDiameterAnnotationShape(
+                    edge,
+                    values.Number("flyout", 20),
+                    values.Number("textHeight", 8),
+                    values.Number("arrowSize", 5),
+                    values.Text("font", "Microsoft YaHei UI"))
+                : Engine.MakeRadiusAnnotationShape(
+                    edge,
+                    values.Number("flyout", 20),
+                    values.Number("textHeight", 8),
+                    values.Number("arrowSize", 5),
+                    values.Text("font", "Microsoft YaHei UI"));
+            var commandId = diameter ? CadCommandId.DiameterDimension : CadCommandId.RadiusDimension;
+            SetGeneratedName(dimension, CadLocalization.CommandText(commandId));
+            ActiveObject = new OcctObject(dimension.Id, OcctObjectKind.Shape);
+            return CadCommandResult.Created(CadLocalization.Text("Session.Created", CadLocalization.CommandText(commandId)), dimension);
+        }
+        finally
+        {
+            if (Engine.Exists(edge)) Engine.Delete(edge);
+        }
     }
 
     private CadCommandResult DeleteSelected()
@@ -790,20 +862,238 @@ public sealed class CadSession
         return Engine.Boolean(operation, box, sphere, true);
     }
 
+    private CadCommandResult DemoElements()
+    {
+        var results = new List<IOcctObject>();
+
+        results.Add(Name(Engine.MakeVertex(new(-260, -120, 0)), Local("Vertex", "顶点")));
+        results.Add(Name(Engine.MakeLine(new(-230, -120, 0), new(-150, -80, 0)), Local("Line", "直线")));
+        results.Add(Name(Engine.MakePolyline(new[]
+        {
+            new OcctPoint3d(-120, -120, 0),
+            new OcctPoint3d(-80, -80, 0),
+            new OcctPoint3d(-40, -125, 0)
+        }), Local("Polyline", "多段线")));
+        results.Add(Name(Engine.MakeArc(new(-10, -120, 0), new(35, -70, 0), new(80, -120, 0)), Local("Arc", "圆弧")));
+        results.Add(Name(Engine.MakeEllipse(new(140, -100, 0), OcctVector3d.UnitZ, 55, 28), Local("Ellipse", "椭圆")));
+        results.Add(Name(Engine.MakeBezier(new[]
+        {
+            new OcctPoint3d(220, -125, 0),
+            new OcctPoint3d(250, -55, 0),
+            new OcctPoint3d(300, -150, 0),
+            new OcctPoint3d(340, -85, 0)
+        }), Local("Bezier Curve", "Bezier 曲线")));
+        results.Add(Name(Engine.MakeInterpolatedBSpline(new[]
+        {
+            new OcctPoint3d(-260, 10, 0),
+            new OcctPoint3d(-215, 55, 0),
+            new OcctPoint3d(-170, -5, 0),
+            new OcctPoint3d(-125, 65, 0),
+            new OcctPoint3d(-80, 15, 0)
+        }), Local("B-Spline Curve", "B 样条曲线")));
+
+        var polygonFace = Engine.MakeRegularPolygon(48, 7, true, new(-10, 30, 0));
+        results.Add(Name(polygonFace, Local("Planar Face", "平面")));
+
+        var extrusionProfile = Engine.MakeRegularPolygon(38, 6, true, new(100, 10, 0));
+        var extrusion = Engine.Extrude(extrusionProfile, new(0, 0, 70), true);
+        results.Add(Name(extrusion, Local("Extruded Feature", "拉伸特征")));
+
+        var box = Engine.MakeBox(85, 70, 65, 190, -10, 0);
+        var cutter = Engine.MakeCylinder(new(232.5, 25, -1), OcctVector3d.UnitZ, 18, 67);
+        var cutResult = Engine.Cut(box, cutter, true);
+        results.Add(Name(cutResult, Local("Boolean Feature", "布尔特征")));
+
+        results.Add(Name(Engine.MakeTorus(42, 11, new(330, 30, 35)), Local("Torus", "圆环体")));
+        var vectorText = Engine.MakeTextShape(Local("VECTOR", "矢量"), new(-80, 120, 0), 28, 2, "Microsoft YaHei UI", bold: true);
+        Engine.SetColor(vectorText, Color.DarkSlateBlue);
+        results.Add(Name(vectorText, Local("BRep Vector Text", "BRep 矢量文字")));
+
+        foreach (var shape in results.OfType<OcctShape>())
+        {
+            if (Engine.GetShapeType(shape) is OcctShapeType.Solid or OcctShapeType.CompSolid)
+            {
+                Engine.SetMaterial(shape, OcctMaterial.Satin);
+            }
+        }
+        Engine.FitAll();
+        return new(Local("Comprehensive element results created.", "已生成综合元素测试结果。"), results);
+    }
+
+    private CadCommandResult DemoGear()
+    {
+        const int toothCount = 24;
+        const double rootRadius = 62;
+        const double tipRadius = 78;
+        const double thickness = 18;
+        var outline = new List<OcctPoint3d>(toothCount * 4);
+        for (var tooth = 0; tooth < toothCount; tooth++)
+        {
+            var baseAngle = tooth * Math.PI * 2.0 / toothCount;
+            foreach (var item in new[]
+                     {
+                         (Offset: 0.02, Radius: rootRadius),
+                         (Offset: 0.22, Radius: tipRadius),
+                         (Offset: 0.78, Radius: tipRadius),
+                         (Offset: 0.98, Radius: rootRadius)
+                     })
+            {
+                var angle = baseAngle + item.Offset * Math.PI * 2.0 / toothCount;
+                outline.Add(new OcctPoint3d(
+                    Math.Cos(angle) * item.Radius,
+                    Math.Sin(angle) * item.Radius,
+                    0));
+            }
+        }
+
+        var wire = Engine.MakePolyline(outline, true);
+        var face = Engine.MakeFace(wire);
+        var gear = Engine.Extrude(face, new(0, 0, thickness), true);
+        gear = Engine.DrillHole(gear, new(0, 0, -1), OcctVector3d.UnitZ, 18, thickness + 2, true);
+        for (var index = 0; index < 6; index++)
+        {
+            var angle = index * Math.PI / 3.0;
+            gear = Engine.DrillHole(
+                gear,
+                new(Math.Cos(angle) * 40, Math.Sin(angle) * 40, -1),
+                OcctVector3d.UnitZ,
+                7,
+                thickness + 2,
+                true);
+        }
+        try { gear = Engine.ChamferAllEdges(gear, 0.8, true); } catch (OcctException) { }
+        SetGeneratedName(gear, Local("Complex Gear", "复杂齿轮"));
+        Engine.SetMaterial(gear, OcctMaterial.Steel);
+        Engine.FitAll();
+        return CadCommandResult.Created(Local("Complex gear result created.", "已生成复杂齿轮结果。"), gear);
+    }
+
+    private CadCommandResult DemoManifold()
+    {
+        var body = Engine.MakeBox(220, 130, 80, -110, -65, 0);
+        var topBoss = Engine.MakeCylinder(new(0, 0, 80), OcctVector3d.UnitZ, 42, 50);
+        body = Engine.Fuse(body, topBoss, true);
+        var xBoss = Engine.MakeCylinder(new(-150, 0, 40), OcctVector3d.UnitX, 30, 300);
+        body = Engine.Fuse(body, xBoss, true);
+        var yBoss = Engine.MakeCylinder(new(0, -105, 42), OcctVector3d.UnitY, 26, 210);
+        body = Engine.Fuse(body, yBoss, true);
+
+        body = Engine.Cut(body, Engine.MakeCylinder(new(0, 0, -1), OcctVector3d.UnitZ, 25, 132), true);
+        body = Engine.Cut(body, Engine.MakeCylinder(new(-151, 0, 40), OcctVector3d.UnitX, 16, 302), true);
+        body = Engine.Cut(body, Engine.MakeCylinder(new(0, -106, 42), OcctVector3d.UnitY, 14, 212), true);
+        foreach (var point in new[]
+                 {
+                     new OcctPoint3d(-82, -42, -1),
+                     new OcctPoint3d(82, -42, -1),
+                     new OcctPoint3d(-82, 42, -1),
+                     new OcctPoint3d(82, 42, -1)
+                 })
+        {
+            body = Engine.DrillHole(body, point, OcctVector3d.UnitZ, 6.5, 82, true);
+        }
+        try { body = Engine.FilletAllEdges(body, 2.0, true); } catch (OcctException) { }
+        SetGeneratedName(body, Local("Multi-Port Manifold", "多通道阀体"));
+        Engine.SetMaterial(body, OcctMaterial.Steel);
+        Engine.FitAll();
+        return CadCommandResult.Created(Local("Multi-port manifold result created.", "已生成多通道阀体结果。"), body);
+    }
+
+    private CadCommandResult DemoTwistedDuct()
+    {
+        static OcctShape RectangleSection(
+            OcctEngine engine,
+            double centerX,
+            double centerY,
+            double z,
+            double width,
+            double height,
+            double angleDegrees)
+        {
+            var angle = angleDegrees * Math.PI / 180.0;
+            var xDirection = new OcctVector3d(Math.Cos(angle), Math.Sin(angle), 0);
+            var yDirection = new OcctVector3d(-Math.Sin(angle), Math.Cos(angle), 0);
+            var origin = new OcctPoint3d(
+                centerX - xDirection.X * width * 0.5 - yDirection.X * height * 0.5,
+                centerY - xDirection.Y * width * 0.5 - yDirection.Y * height * 0.5,
+                z);
+            return engine.MakeRectangleWire(width, height, origin, xDirection, OcctVector3d.UnitZ);
+        }
+
+        var sections = new[]
+        {
+            (X: 0d, Y: 0d, Z: 0d, Width: 130d, Height: 82d, Angle: 0d),
+            (X: 14d, Y: 0d, Z: 65d, Width: 108d, Height: 72d, Angle: 18d),
+            (X: -10d, Y: 18d, Z: 135d, Width: 142d, Height: 62d, Angle: -14d),
+            (X: 20d, Y: 28d, Z: 215d, Width: 96d, Height: 98d, Angle: 34d)
+        };
+        var outerSections = sections
+            .Select(item => RectangleSection(Engine, item.X, item.Y, item.Z, item.Width, item.Height, item.Angle))
+            .ToArray();
+        var innerSections = sections
+            .Select((item, index) => RectangleSection(
+                Engine,
+                item.X,
+                item.Y,
+                item.Z + (index == 0 ? -1 : index == sections.Length - 1 ? 1 : 0),
+                item.Width - 10,
+                item.Height - 10,
+                item.Angle))
+            .ToArray();
+        var outer = Engine.Loft(outerSections, true, false, hideInputs: true);
+        var inner = Engine.Loft(innerSections, true, false, hideInputs: true);
+        var duct = Engine.Cut(outer, inner, true);
+        SetGeneratedName(duct, Local("Twisted Transition Duct", "扭转过渡风管"));
+        Engine.SetMaterial(duct, OcctMaterial.Aluminum);
+        Engine.FitAll();
+        return CadCommandResult.Created(Local("Twisted transition duct result created.", "已生成扭转过渡风管结果。"), duct);
+    }
+
     private CadCommandResult DemoAnnotations()
     {
-        var line = Engine.MakeLine(new(-80,0,0), new(80,0,0));
-        var circle = Engine.MakeCircle(new(0,70,0), OcctVector3d.UnitZ, 35);
-        var otherLine = Engine.MakeLine(new(-80,0,0), new(-20,55,0));
-        var length = Engine.AddLengthDimension(line, 22, Color.DarkBlue);
-        var angle = Engine.AddAngleDimension(line, otherLine, 28, Color.DarkGreen);
-        var radius = Engine.AddRadiusDimension(circle, 20, Color.DarkRed);
-        var diameter = Engine.AddDiameterDimension(circle, -20, Color.Purple);
-        var text = Engine.AddText(Local("OCCT Annotations and Dimensions", "OCCT 注释与尺寸"), new(-80,130,0), 18, Color.Black, true);
-        Name(line, Local("Dimension Line", "标注直线")); Name(circle, Local("Dimension Circle", "标注圆")); Name(otherLine, Local("Angular Edge", "角度边"));
-        Name(length, Local("Linear Dimension", "线性尺寸")); Name(angle, Local("Angular Dimension", "角度尺寸")); Name(radius, Local("Radius Dimension", "半径尺寸")); Name(diameter, Local("Diameter Dimension", "直径尺寸")); Name(text, Local("Note Text", "说明文字"));
+        var lengthSource = Engine.MakeLine(new(-190, -90, 0), new(-40, -90, 0));
+        var angleFirst = Engine.MakeLine(new(-180, 15, 0), new(-70, 15, 0));
+        var angleSecond = Engine.MakeLine(new(-180, 15, 0), new(-105, 82, 0));
+        var radiusSource = Engine.MakeCircle(new(70, 55, 0), OcctVector3d.UnitZ, 38);
+        var diameterSource = Engine.MakeCircle(new(185, -65, 0), OcctVector3d.UnitZ, 34);
+
+        var length = Engine.MakeLengthAnnotationShape(lengthSource, 26, 9, 6, "Microsoft YaHei UI");
+        var angle = Engine.MakeAngleAnnotationShape(angleFirst, angleSecond, 46, 9, 6, "Microsoft YaHei UI");
+        var radius = Engine.MakeRadiusAnnotationShape(radiusSource, 28, 9, 6, "Microsoft YaHei UI");
+        var diameter = Engine.MakeDiameterAnnotationShape(diameterSource, 24, 9, 6, "Microsoft YaHei UI");
+        var text = Engine.MakeTextShape(
+            Local("VECTOR ANNOTATIONS", "矢量注释标注"),
+            new(-190, 135, 0),
+            24,
+            1.5,
+            "Microsoft YaHei UI",
+            bold: true);
+
+        Name(length, Local("Vector Linear Dimension", "矢量线性尺寸"));
+        Name(angle, Local("Vector Angular Dimension", "矢量角度尺寸"));
+        Name(radius, Local("Vector Radius Dimension", "矢量半径尺寸"));
+        Name(diameter, Local("Vector Diameter Dimension", "矢量直径尺寸"));
+        Name(text, Local("BRep Note Text", "BRep 说明文字"));
+        Engine.SetColor(length, Color.DarkBlue);
+        Engine.SetColor(angle, Color.DarkGreen);
+        Engine.SetColor(radius, Color.DarkRed);
+        Engine.SetColor(diameter, Color.Purple);
+        Engine.SetColor(text, Color.Black);
         Engine.FitAll();
-        return new(Local("Annotation and dimension samples created.", "已生成注释与尺寸示例。"), new IOcctObject[] { line, circle, otherLine, length, angle, radius, diameter, text });
+        return new(
+            Local("Vector annotation results created.", "已生成矢量注释标注结果。"),
+            new IOcctObject[] { length, angle, radius, diameter, text });
+    }
+
+    private void RemoveDemoProcessObjects(
+        IReadOnlySet<long> initialObjectIds,
+        IEnumerable<IOcctObject> resultObjects)
+    {
+        var resultIds = resultObjects.Select(item => item.Id).ToHashSet();
+        var processObjects = Engine.Objects
+            .Where(item => !initialObjectIds.Contains(item.Id) && !resultIds.Contains(item.Id))
+            .Select(item => (IOcctObject)item)
+            .ToArray();
+        if (processObjects.Length > 0) Engine.Delete(processObjects);
     }
 
     private static bool IsDemoCommand(CadCommandId commandId) =>
@@ -815,6 +1105,10 @@ public sealed class CadSession
             or CadCommandId.DemoReducer
             or CadCommandId.DemoLoft
             or CadCommandId.DemoBoolean
+            or CadCommandId.DemoElements
+            or CadCommandId.DemoGear
+            or CadCommandId.DemoManifold
+            or CadCommandId.DemoTwistedDuct
             or CadCommandId.DemoAnnotations;
 
     private static string Local(string english, string chinese) =>

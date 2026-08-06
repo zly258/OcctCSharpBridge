@@ -218,6 +218,11 @@ extern "C"
     OCCTBRIDGE_API OcctObjectId occt_thick_solid(OcctHandle handle, OcctObjectId solidId, int faceIndexToRemove, double thickness, double tolerance, int hideInput);
 
     // Text and dimensional annotations.
+    OCCTBRIDGE_API OcctObjectId occt_make_text_shape(OcctHandle handle, const char* utf8Text, OcctPoint3d position, OcctVector3d normal, OcctVector3d xDirection, double height, double extrusionDepth, const char* utf8FontName, int bold, int italic);
+    OCCTBRIDGE_API OcctObjectId occt_make_length_annotation_shape(OcctHandle handle, OcctObjectId edgeId, double flyout, double textHeight, double arrowSize, const char* utf8FontName);
+    OCCTBRIDGE_API OcctObjectId occt_make_angle_annotation_shape(OcctHandle handle, OcctObjectId firstEdgeId, OcctObjectId secondEdgeId, double radius, double textHeight, double arrowSize, const char* utf8FontName);
+    OCCTBRIDGE_API OcctObjectId occt_make_radius_annotation_shape(OcctHandle handle, OcctObjectId circularEdgeId, double flyout, double textHeight, double arrowSize, const char* utf8FontName);
+    OCCTBRIDGE_API OcctObjectId occt_make_diameter_annotation_shape(OcctHandle handle, OcctObjectId circularEdgeId, double flyout, double textHeight, double arrowSize, const char* utf8FontName);
     OCCTBRIDGE_API OcctObjectId occt_add_text(OcctHandle handle, const char* utf8Text, OcctPoint3d position, double height, double r, double g, double b, int zoomable);
     OCCTBRIDGE_API int occt_set_text(OcctHandle handle, OcctObjectId textId, const char* utf8Text);
     OCCTBRIDGE_API int occt_set_text_position(OcctHandle handle, OcctObjectId textId, OcctPoint3d position);

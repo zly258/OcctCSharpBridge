@@ -10,7 +10,8 @@ public enum CadCommandId
     Translate, Rotate, Scale, Mirror, Copy, Delete,
     Text, LengthDimension, AngleDimension, RadiusDimension, DiameterDimension,
     AnalyzeBounds, AnalyzeMass, AnalyzeTopology, AnalyzeDistance, ValidateShape,
-    DemoPrimitives, DemoBracket, DemoFlange, DemoPipe, DemoTee, DemoReducer, DemoLoft, DemoBoolean, DemoAnnotations
+    DemoPrimitives, DemoBracket, DemoFlange, DemoPipe, DemoTee, DemoReducer, DemoLoft, DemoBoolean,
+    DemoElements, DemoGear, DemoManifold, DemoTwistedDuct, DemoAnnotations
 }
 
 public enum CadParameterKind { Number, Integer, Text, Boolean, Choice }
@@ -90,11 +91,11 @@ public static class CadCommandCatalog
         new(CadCommandId.Copy, "编辑", "复制", "复制当前选择形体。", new[] { B("hide","隐藏原对象",false) }),
         new(CadCommandId.Delete, "编辑", "删除", "删除全部选中对象。", Array.Empty<CadParameterDefinition>(), "Delete"),
 
-        new(CadCommandId.Text, "注释", "文字", "创建三维文字标签。", new[] { T("text","文字","OCCT CAD"), N("x","X",0), N("y","Y",0), N("z","Z",0), N("height","文字高度",18), B("zoomable","随视图缩放",true) }),
-        new(CadCommandId.LengthDimension, "注释", "线性尺寸", "对当前选择的边创建长度标注。", new[] { N("flyout","引出距离",20) }),
-        new(CadCommandId.AngleDimension, "注释", "角度尺寸", "对当前选择的两条边创建角度标注。", new[] { N("flyout","引出距离",20) }),
-        new(CadCommandId.RadiusDimension, "注释", "半径尺寸", "对当前选择的圆边创建半径标注。", new[] { N("flyout","引出距离",20) }),
-        new(CadCommandId.DiameterDimension, "注释", "直径尺寸", "对当前选择的圆边创建直径标注。", new[] { N("flyout","引出距离",20) }),
+        new(CadCommandId.Text, "注释", "矢量文字", "生成可缩放的 BRep 矢量文字，放大后保持清晰。", new[] { T("text","文字","OCCT CAD"), N("x","X",0), N("y","Y",0), N("z","Z",0), N("height","文字高度",18), N("depth","挤出厚度",0), T("font","字体","Microsoft YaHei UI"), B("bold","粗体",false), B("italic","斜体",false) }),
+        new(CadCommandId.LengthDimension, "注释", "矢量线性尺寸", "将尺寸线、箭头和文字生成一个 BRep 结果。", new[] { N("flyout","引出距离",20), N("textHeight","文字高度",8), N("arrowSize","箭头大小",5), T("font","字体","Microsoft YaHei UI") }),
+        new(CadCommandId.AngleDimension, "注释", "矢量角度尺寸", "将圆弧、箭头和文字生成一个 BRep 结果。", new[] { N("flyout","圆弧半径",30), N("textHeight","文字高度",8), N("arrowSize","箭头大小",5), T("font","字体","Microsoft YaHei UI") }),
+        new(CadCommandId.RadiusDimension, "注释", "矢量半径尺寸", "将引线、箭头和文字生成一个 BRep 结果。", new[] { N("flyout","引出距离",20), N("textHeight","文字高度",8), N("arrowSize","箭头大小",5), T("font","字体","Microsoft YaHei UI") }),
+        new(CadCommandId.DiameterDimension, "注释", "矢量直径尺寸", "将尺寸线、箭头和文字生成一个 BRep 结果。", new[] { N("flyout","引出距离",20), N("textHeight","文字高度",8), N("arrowSize","箭头大小",5), T("font","字体","Microsoft YaHei UI") }),
 
         new(CadCommandId.AnalyzeBounds, "工具", "包围盒", "查询当前形体包围盒。", Array.Empty<CadParameterDefinition>()),
         new(CadCommandId.AnalyzeMass, "工具", "几何属性", "查询长度、面积、体积和重心。", Array.Empty<CadParameterDefinition>()),
@@ -110,7 +111,11 @@ public static class CadCommandCatalog
         new(CadCommandId.DemoReducer, "示例", "异径管", "通过内外双层放样和布尔差集生成异径管。", Array.Empty<CadParameterDefinition>()),
         new(CadCommandId.DemoLoft, "示例", "放样壳体", "生成多截面放样体。", Array.Empty<CadParameterDefinition>()),
         new(CadCommandId.DemoBoolean, "示例", "布尔运算", "生成并集、差集、交集和截交线示例。", Array.Empty<CadParameterDefinition>()),
-        new(CadCommandId.DemoAnnotations, "示例", "注释标注", "生成文字、线性、半径和直径标注示例。", Array.Empty<CadParameterDefinition>())
+        new(CadCommandId.DemoElements, "示例", "综合元素测试", "生成曲线、平面、实体和特征的代表性结果。", Array.Empty<CadParameterDefinition>()),
+        new(CadCommandId.DemoGear, "示例", "复杂齿轮", "生成带轮齿、中心孔和减重孔的完整齿轮。", Array.Empty<CadParameterDefinition>()),
+        new(CadCommandId.DemoManifold, "示例", "多通道阀体", "生成带多方向接口和内部孔道的复杂阀体。", Array.Empty<CadParameterDefinition>()),
+        new(CadCommandId.DemoTwistedDuct, "示例", "扭转风管", "生成多截面扭转过渡的中空风管。", Array.Empty<CadParameterDefinition>()),
+        new(CadCommandId.DemoAnnotations, "示例", "矢量注释标注", "生成 BRep 文字、线性、角度、半径和直径标注。", Array.Empty<CadParameterDefinition>())
     };
 
     public static CadCommandDefinition Get(CadCommandId id) => All.First(command => command.Id == id);
