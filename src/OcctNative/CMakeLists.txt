@@ -51,23 +51,11 @@ add_library(OcctNative SHARED
     OcctModelingGeometry.cpp
     OcctModelingAlgorithms.cpp
     OcctModelingAnalysis.cpp
-    OcctOcafCore.cpp
-    OcctOcafAttributes.cpp
-    OcctOcafNaming.cpp
-    OcctOcafXde.cpp
-    OcctOcafXdeAppearance.cpp
-    OcctOcafXdeProperties.cpp
-    OcctOcafExchange.cpp
-    OcctOcafExtendedDocument.cpp
-    OcctOcafExtendedXde.cpp
     OcctInternal.hxx
     OcctModelingInternal.hxx
-    OcctOcafInternal.hxx
     OcctNative.h
     OcctSelectionOverlay.h
     OcctModeling.h
-    OcctOcaf.h
-    OcctOcafExtended.h)
 
 target_compile_definitions(OcctNative PRIVATE NOMINMAX _CRT_SECURE_NO_WARNINGS)
 if(MSVC)
@@ -90,17 +78,6 @@ foreach(library_name IN LISTS occt_candidate_libraries)
     endif()
 endforeach()
 
-# These toolkits are directly referenced by the OCAF/XDE bridge and are mandatory.
-set(ocaf_required_libraries
-    TKCDF TKLCAF TKCAF TKXCAF
-    TKBinL TKXmlL TKBin TKXml TKBinXCAF TKXmlXCAF
-    TKDESTEP TKDEIGES)
-foreach(library_name IN LISTS ocaf_required_libraries)
-    if(NOT EXISTS "${OCCT_LIB_DIR}/${library_name}.lib")
-        message(FATAL_ERROR "Required OCCT 7.9.0 OCAF library was not found: ${OCCT_LIB_DIR}/${library_name}.lib")
-    endif()
-    list(APPEND occt_libraries "${library_name}")
-endforeach()
 list(REMOVE_DUPLICATES occt_libraries)
 
 message(STATUS "OCCT version: 7.9.0 (required exactly)")
