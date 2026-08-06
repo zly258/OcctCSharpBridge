@@ -110,6 +110,7 @@ namespace OcctBridge
     void requireCount(int count, int minimum, const char* name);
     TopoDS_Shape transformed(const TopoDS_Shape& source, const gp_Trsf& transform);
     void fillMassProperties(const GProp_GProps& properties, OcctMassProperties* result);
+    Graphic3d_NameOfMaterial materialName(int value);
 
     template<typename Function>
     int execute(Engine* engine, Function&& function)

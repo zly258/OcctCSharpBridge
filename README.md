@@ -10,6 +10,7 @@ A Windows x64 bridge from Open CASCADE Technology 7.9.0 to .NET 8. The reusable 
 src/OcctNative         C++17 native bridge and stable C ABI
 src/OcctNet            UI-independent, type-safe .NET wrapper
 src/OcctNet.WinForms   Optional WinForms OCCT viewport control
+src/OcctNet.Wpf        Optional WPF OCCT viewport control
 tests            API consistency and native smoke scenarios
 docs             English and Chinese API inventories
 ```
@@ -17,8 +18,10 @@ docs             English and Chinese API inventories
 The wrapper provides two native session types:
 
 - `OcctEngine`: HWND viewer, AIS objects, selection, camera, display attributes, text, and dimensions.
-- `OcctViewportControl` is provided separately by `OcctNet.WinForms`; the core wrapper no longer depends on WinForms.
+- `OcctViewportControl` is provided by `OcctNet.WinForms`; `OcctWpfViewport` is provided by `OcctNet.Wpf`.
 - `OcctModelingSession`: headless geometry, topology, algorithms, mesh, analysis, healing, and exchange.
+
+Batch color, transparency, visibility, display-mode, line-width, material, redisplay, and selection operations reduce repeated P/Invoke calls for large scenes.
 
 The bridge intentionally excludes OCAF/XDE. Application documents, undo/redo, and JSON persistence belong to the consuming application rather than the geometry bridge.
 
@@ -51,8 +54,10 @@ The bridge intentionally excludes OCAF/XDE. Application documents, undo/redo, an
 ```xml
 <ItemGroup>
   <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet\OcctNet.csproj" />
-  <!-- Add only when a WinForms/WPF host needs OcctViewportControl. -->
+  <!-- WinForms host. -->
   <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet.WinForms\OcctNet.WinForms.csproj" />
+  <!-- WPF host; references the WinForms HWND host internally. -->
+  <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet.Wpf\OcctNet.Wpf.csproj" />
 </ItemGroup>
 ```
 

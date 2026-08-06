@@ -40,6 +40,7 @@ add_library(OcctNative SHARED
     OcctSelectionOverlay.cpp
     OcctView.cpp
     OcctViewportExtensions.cpp
+    OcctObjectBatch.cpp
     OcctDepth.cpp
     OcctQueries.cpp
     OcctGeometry.cpp

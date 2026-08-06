@@ -5,9 +5,9 @@ This source-derived inventory lists the current native C ABI, C# P/Invoke mappin
 OCAF/XDE is intentionally excluded; documents, undo/redo, and JSON persistence are application-layer responsibilities.
 
 - OCCT: `7.9.0`
-- Native exports: `297`
-- Managed P/Invoke declarations: `297`
-- Public .NET types: `59`
+- Native exports: `307`
+- Managed P/Invoke declarations: `307`
+- Public .NET types: `60`
 
 ## Native C ABI
 
@@ -96,7 +96,7 @@ OCAF/XDE is intentionally excluded; documents, undo/redo, and JSON persistence a
 - `occt_set_face_boundaries_visible`
 - `occt_zoom`
 
-### OcctNative.h — Registry, AIS attributes and lifecycle (23)
+### OcctNative.h — Registry, AIS attributes and lifecycle (33)
 
 - `occt_clear`
 - `occt_copy_selected_subshape`
@@ -110,6 +110,16 @@ OCAF/XDE is intentionally excluded; documents, undo/redo, and JSON persistence a
 - `occt_object_exists`
 - `occt_object_id_at`
 - `occt_object_kind`
+- `occt_object_is_selected`
+- `occt_object_is_visible`
+- `occt_redisplay_objects`
+- `occt_select_objects`
+- `occt_set_objects_color`
+- `occt_set_objects_display_mode`
+- `occt_set_objects_line_width`
+- `occt_set_objects_material`
+- `occt_set_objects_transparency`
+- `occt_set_objects_visible`
 - `occt_redisplay_object`
 - `occt_set_object_color`
 - `occt_set_object_display_mode`
@@ -448,16 +458,17 @@ OCAF/XDE is intentionally excluded; documents, undo/redo, and JSON persistence a
 - `OcctViewOrientation`
 - `OcctZUpViewOrientation`
 - `OcctViewportControl`
+- `OcctWpfViewport`
 - `OcctViewportErrorEventArgs`
 - `OcctViewportSelectionEventArgs`
 - `OcctViewportWorldPointEventArgs`
 
-The `OcctViewport*` types above are provided by the optional `OcctNet.WinForms` assembly; all other managed types remain in the UI-independent `OcctNet` assembly.
+`OcctViewportControl` and its event types are provided by `OcctNet.WinForms`; `OcctWpfViewport` is provided by `OcctNet.Wpf`; all remaining managed types stay in the UI-independent `OcctNet` assembly.
 
 ## Bridge ABI contract
 
 - Managed expected ABI: `2`
-- Native bridge version: `2.1.0`
+- Native bridge version: `2.2.0`
 - `OcctBridgeInfo` validates the loaded `OcctNative.dll` before creating viewer or modeling sessions.
 - Managed and native binaries should always be deployed from the same build.
 

@@ -10,6 +10,7 @@
 src/OcctNative         C++17 原生桥接与稳定 C ABI
 src/OcctNet            不依赖 UI 的类型安全 .NET 封装
 src/OcctNet.WinForms   可选的 WinForms OCCT 视口控件
+src/OcctNet.Wpf        可选的 WPF OCCT 视口控件
 tests            接口一致性检查与原生 Smoke Test
 docs             中英文接口清单
 ```
@@ -18,6 +19,8 @@ docs             中英文接口清单
 
 - `OcctEngine`：HWND Viewer、AIS 对象、选择、相机、显示属性、文字和尺寸。
 - `OcctModelingSession`：无窗口几何、拓扑、算法、网格、分析、修复和文件交换。
+
+新增批量颜色、透明度、可见性、显示模式、线宽、材质、重显示和选择接口，减少大型场景中的重复 P/Invoke 调用。
 
 桥接层不再包含 OCAF/XDE。应用文档、撤销重做和 JSON 持久化由上层应用自行实现，避免把文档机制耦合进几何桥接。
 
@@ -50,8 +53,10 @@ docs             中英文接口清单
 ```xml
 <ItemGroup>
   <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet\OcctNet.csproj" />
-  <!-- 仅 WinForms/WPF 宿主需要 OcctViewportControl 时引用。 -->
+  <!-- WinForms 宿主。 -->
   <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet.WinForms\OcctNet.WinForms.csproj" />
+  <!-- WPF 宿主，内部复用 WinForms HWND 宿主。 -->
+  <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet.Wpf\OcctNet.Wpf.csproj" />
 </ItemGroup>
 ```
 

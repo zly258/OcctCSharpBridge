@@ -9,7 +9,7 @@ namespace OcctNet;
 public static class OcctBridgeInfo
 {
     public const int ExpectedAbiVersion = 2;
-    public const string ManagedVersion = "2.1.0";
+    public const string ManagedVersion = "2.2.0";
 
     private static int _validated;
 

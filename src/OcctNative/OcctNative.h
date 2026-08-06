@@ -167,6 +167,16 @@ extern "C"
     OCCTBRIDGE_API int occt_set_object_display_mode(OcctHandle handle, OcctObjectId objectId, int displayMode);
     OCCTBRIDGE_API int occt_set_object_line_width(OcctHandle handle, OcctObjectId objectId, double width);
     OCCTBRIDGE_API int occt_set_object_material(OcctHandle handle, OcctObjectId objectId, int material);
+    OCCTBRIDGE_API int occt_set_objects_color(OcctHandle handle, const OcctObjectId* objectIds, int count, double r, double g, double b);
+    OCCTBRIDGE_API int occt_set_objects_transparency(OcctHandle handle, const OcctObjectId* objectIds, int count, double transparency);
+    OCCTBRIDGE_API int occt_set_objects_visible(OcctHandle handle, const OcctObjectId* objectIds, int count, int visible);
+    OCCTBRIDGE_API int occt_set_objects_display_mode(OcctHandle handle, const OcctObjectId* objectIds, int count, int displayMode);
+    OCCTBRIDGE_API int occt_set_objects_line_width(OcctHandle handle, const OcctObjectId* objectIds, int count, double width);
+    OCCTBRIDGE_API int occt_set_objects_material(OcctHandle handle, const OcctObjectId* objectIds, int count, int material);
+    OCCTBRIDGE_API int occt_redisplay_objects(OcctHandle handle, const OcctObjectId* objectIds, int count);
+    OCCTBRIDGE_API int occt_select_objects(OcctHandle handle, const OcctObjectId* objectIds, int count, int appendSelection);
+    OCCTBRIDGE_API int occt_object_is_visible(OcctHandle handle, OcctObjectId objectId);
+    OCCTBRIDGE_API int occt_object_is_selected(OcctHandle handle, OcctObjectId objectId);
     OCCTBRIDGE_API int occt_delete_object(OcctHandle handle, OcctObjectId objectId);
     OCCTBRIDGE_API int occt_delete_objects(OcctHandle handle, const OcctObjectId* objectIds, int count);
     OCCTBRIDGE_API int occt_clear(OcctHandle handle);

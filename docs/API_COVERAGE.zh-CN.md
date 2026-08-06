@@ -5,9 +5,9 @@
 桥接层不包含 OCAF/XDE；文档、撤销重做和 JSON 持久化由上层应用实现。
 
 - OCCT: `7.9.0`
-- Native exports: `297`
-- Managed P/Invoke declarations: `297`
-- Public .NET types: `59`
+- Native exports: `307`
+- Managed P/Invoke declarations: `307`
+- Public .NET types: `60`
 
 ## 原生 C ABI
 
@@ -96,7 +96,7 @@
 - `occt_set_face_boundaries_visible`
 - `occt_zoom`
 
-### OcctNative.h — Registry, AIS attributes and lifecycle (23)
+### OcctNative.h — Registry, AIS attributes and lifecycle (33)
 
 - `occt_clear`
 - `occt_copy_selected_subshape`
@@ -110,6 +110,16 @@
 - `occt_object_exists`
 - `occt_object_id_at`
 - `occt_object_kind`
+- `occt_object_is_selected`
+- `occt_object_is_visible`
+- `occt_redisplay_objects`
+- `occt_select_objects`
+- `occt_set_objects_color`
+- `occt_set_objects_display_mode`
+- `occt_set_objects_line_width`
+- `occt_set_objects_material`
+- `occt_set_objects_transparency`
+- `occt_set_objects_visible`
 - `occt_redisplay_object`
 - `occt_set_object_color`
 - `occt_set_object_display_mode`
@@ -445,16 +455,17 @@
 - `OcctVector3d`
 - `OcctViewOrientation`
 - `OcctViewportControl`
+- `OcctWpfViewport`
 - `OcctViewportErrorEventArgs`
 - `OcctViewportSelectionEventArgs`
 - `OcctViewportWorldPointEventArgs`
 
-上述 `OcctViewport*` 类型由可选的 `OcctNet.WinForms` 程序集提供；其余托管类型仍位于不依赖 UI 的 `OcctNet` 程序集中。
+`OcctViewportControl` 及其事件参数由可选的 `OcctNet.WinForms` 程序集提供；`OcctWpfViewport` 由 `OcctNet.Wpf` 提供；其余托管类型位于不依赖 UI 的 `OcctNet` 程序集中。
 
 ## 桥接 ABI 约束
 
 - 托管层要求的 ABI：`2`
-- 原生桥接版本：`2.1.0`
+- 原生桥接版本：`2.2.0`
 - `OcctBridgeInfo` 会在创建 Viewer 或建模会话前校验已加载的 `OcctNative.dll`。
 - 托管与原生二进制文件必须来自同一次构建。
 
