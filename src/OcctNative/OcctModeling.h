@@ -108,6 +108,76 @@ extern "C"
         int node3;
     };
 
+    struct OcctModelLineGeometry
+    {
+        OcctPoint3d origin;
+        OcctVector3d direction;
+        double firstParameter;
+        double lastParameter;
+    };
+
+    struct OcctModelCircleGeometry
+    {
+        OcctPoint3d center;
+        OcctVector3d normal;
+        OcctVector3d xDirection;
+        double radius;
+        double firstParameter;
+        double lastParameter;
+    };
+
+    struct OcctModelEllipseGeometry
+    {
+        OcctPoint3d center;
+        OcctVector3d normal;
+        OcctVector3d xDirection;
+        double majorRadius;
+        double minorRadius;
+        double firstParameter;
+        double lastParameter;
+    };
+
+    struct OcctModelPlaneGeometry
+    {
+        OcctPoint3d origin;
+        OcctVector3d normal;
+        OcctVector3d xDirection;
+    };
+
+    struct OcctModelCylinderGeometry
+    {
+        OcctPoint3d origin;
+        OcctVector3d axis;
+        OcctVector3d xDirection;
+        double radius;
+    };
+
+    struct OcctModelConeGeometry
+    {
+        OcctPoint3d apex;
+        OcctVector3d axis;
+        OcctVector3d xDirection;
+        double referenceRadius;
+        double semiAngleRadians;
+    };
+
+    struct OcctModelSphereGeometry
+    {
+        OcctPoint3d center;
+        OcctVector3d axis;
+        OcctVector3d xDirection;
+        double radius;
+    };
+
+    struct OcctModelTorusGeometry
+    {
+        OcctPoint3d center;
+        OcctVector3d axis;
+        OcctVector3d xDirection;
+        double majorRadius;
+        double minorRadius;
+    };
+
     struct OcctModelLocation
     {
         double m11; double m12; double m13; double m14;
@@ -158,6 +228,14 @@ extern "C"
     OCCTBRIDGE_API int occt_model_face_surface_type(OcctModelHandle handle, OcctObjectId faceId);
     OCCTBRIDGE_API int occt_model_face_uv_bounds(OcctModelHandle handle, OcctObjectId faceId, OcctUvBounds* result);
     OCCTBRIDGE_API int occt_model_face_point_normal(OcctModelHandle handle, OcctObjectId faceId, double u, double v, OcctPoint3d* point, OcctVector3d* normal);
+    OCCTBRIDGE_API int occt_model_edge_line_geometry(OcctModelHandle handle, OcctObjectId edgeId, OcctModelLineGeometry* result);
+    OCCTBRIDGE_API int occt_model_edge_circle_geometry(OcctModelHandle handle, OcctObjectId edgeId, OcctModelCircleGeometry* result);
+    OCCTBRIDGE_API int occt_model_edge_ellipse_geometry(OcctModelHandle handle, OcctObjectId edgeId, OcctModelEllipseGeometry* result);
+    OCCTBRIDGE_API int occt_model_face_plane_geometry(OcctModelHandle handle, OcctObjectId faceId, OcctModelPlaneGeometry* result);
+    OCCTBRIDGE_API int occt_model_face_cylinder_geometry(OcctModelHandle handle, OcctObjectId faceId, OcctModelCylinderGeometry* result);
+    OCCTBRIDGE_API int occt_model_face_cone_geometry(OcctModelHandle handle, OcctObjectId faceId, OcctModelConeGeometry* result);
+    OCCTBRIDGE_API int occt_model_face_sphere_geometry(OcctModelHandle handle, OcctObjectId faceId, OcctModelSphereGeometry* result);
+    OCCTBRIDGE_API int occt_model_face_torus_geometry(OcctModelHandle handle, OcctObjectId faceId, OcctModelTorusGeometry* result);
 
     OCCTBRIDGE_API OcctObjectId occt_model_make_vertex(OcctModelHandle handle, OcctPoint3d point);
     OCCTBRIDGE_API OcctObjectId occt_model_make_line(OcctModelHandle handle, OcctPoint3d start, OcctPoint3d end);

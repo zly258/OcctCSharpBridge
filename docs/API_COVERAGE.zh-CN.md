@@ -5,9 +5,9 @@
 桥接层不包含 OCAF/XDE；文档、撤销重做和 JSON 持久化由上层应用实现。
 
 - OCCT: `7.9.0`
-- Native exports: `313`
-- Managed P/Invoke declarations: `313`
-- Public .NET types: `61`
+- Native exports: `321`
+- Managed P/Invoke declarations: `321`
+- Public .NET types: `69`
 
 ## 选择程序集
 
@@ -90,6 +90,39 @@ using (engine.BeginDisplayBatch())
 ```
 
 支持的批量操作包括颜色、透明度、可见性、显示模式、线宽、材质、重显示和选择。`IsVisible()`、`IsSelected()` 用于读取单个对象状态。
+
+### 解析几何参数读取
+
+`GetCurveType()` 和 `GetSurfaceType()` 用于判断几何类型；确认类型后，可读取精确解析参数，而不是通过离散采样反推半径、轴线和中心。
+
+| 托管接口 | 适用类型 | 返回内容 |
+|---|---|---|
+| `GetLineGeometry()` | 直线边 | 原点、方向、首尾参数 |
+| `GetCircleGeometry()` | 圆或圆弧边 | 圆心、法向、X 方向、半径、首尾参数 |
+| `GetEllipseGeometry()` | 椭圆或椭圆弧边 | 中心、法向、X 方向、长短半径、首尾参数 |
+| `GetPlaneGeometry()` | 平面 | 原点、法向、X 方向 |
+| `GetCylinderGeometry()` | 圆柱面 | 轴线原点、轴向、X 方向、半径 |
+| `GetConeGeometry()` | 圆锥面 | 顶点、轴向、X 方向、参考半径、半角 |
+| `GetSphereGeometry()` | 球面 | 球心、轴向、X 方向、半径 |
+| `GetTorusGeometry()` | 圆环面 | 中心、轴向、X 方向、主半径、次半径 |
+
+```csharp
+var edgeType = model.GetCurveType(edge);
+if (edgeType == OcctCurveType.Circle)
+{
+    OcctCircleGeometry circle = model.GetCircleGeometry(edge);
+    Console.WriteLine($"R = {circle.Radius:F3}");
+}
+
+var faceType = model.GetSurfaceType(face);
+if (faceType == OcctSurfaceType.Cylinder)
+{
+    OcctCylinderGeometry cylinder = model.GetCylinderGeometry(face);
+    Console.WriteLine($"Axis = {cylinder.Axis}, R = {cylinder.Radius:F3}");
+}
+```
+
+类型不匹配、对象不是边或面、对象不属于当前会话时会抛出 `OcctException` 或参数异常。解析参数可用于特征识别、孔轴提取、尺寸标注、工程规则判断和参数化重建。
 
 ### 几何与特征建模
 
@@ -371,7 +404,7 @@ model.ExportStep(result.Shape, "part.step");
 - `occt_hide_selection_rectangle`
 - `occt_show_selection_rectangle`
 
-### OcctModeling.h (104)
+### OcctModeling.h (112)
 
 - `occt_model_ancestor_at`
 - `occt_model_ancestor_count`
@@ -388,6 +421,9 @@ model.ExportStep(result.Shape, "part.step");
 - `occt_model_destroy`
 - `occt_model_display_in_engine`
 - `occt_model_edge_curve_type`
+- `occt_model_edge_line_geometry`
+- `occt_model_edge_circle_geometry`
+- `occt_model_edge_ellipse_geometry`
 - `occt_model_edge_endpoints`
 - `occt_model_edge_point_at`
 - `occt_model_export_brep`
@@ -400,6 +436,11 @@ model.ExportStep(result.Shape, "part.step");
 - `occt_model_face_mesh_triangle`
 - `occt_model_face_point_normal`
 - `occt_model_face_surface_type`
+- `occt_model_face_plane_geometry`
+- `occt_model_face_cylinder_geometry`
+- `occt_model_face_cone_geometry`
+- `occt_model_face_sphere_geometry`
+- `occt_model_face_torus_geometry`
 - `occt_model_face_uv_bounds`
 - `occt_model_fillet_edges`
 - `occt_model_fix_shape`
@@ -490,6 +531,14 @@ model.ExportStep(result.Shape, "part.step");
 - `OcctDisplayMode`
 - `OcctDistanceResult`
 - `OcctMassProperties`
+- `OcctLineGeometry`
+- `OcctCircleGeometry`
+- `OcctEllipseGeometry`
+- `OcctPlaneGeometry`
+- `OcctCylinderGeometry`
+- `OcctConeGeometry`
+- `OcctSphereGeometry`
+- `OcctTorusGeometry`
 - `OcctMaterial`
 - `OcctModelAlgorithmResult`
 - `OcctModelBooleanGlue`
@@ -542,6 +591,14 @@ model.ExportStep(result.Shape, "part.step");
 - `OcctLightingPreset`
 - `OcctLightingPresets`
 - `OcctMassProperties`
+- `OcctLineGeometry`
+- `OcctCircleGeometry`
+- `OcctEllipseGeometry`
+- `OcctPlaneGeometry`
+- `OcctCylinderGeometry`
+- `OcctConeGeometry`
+- `OcctSphereGeometry`
+- `OcctTorusGeometry`
 - `OcctMaterial`
 - `OcctModelAlgorithmResult`
 - `OcctModelBooleanGlue`
@@ -585,7 +642,7 @@ model.ExportStep(result.Shape, "part.step");
 ## 桥接 ABI 约束
 
 - 托管层要求的 ABI：`2`
-- 原生桥接版本：`2.3.0`
+- 原生桥接版本：`2.4.0`
 - `OcctBridgeInfo` 会在创建 Viewer 或建模会话前校验已加载的 `OcctNative.dll`。
 - 托管与原生二进制文件必须来自同一次构建。
 
