@@ -28,6 +28,10 @@ jobs:
           git fetch origin main
           git checkout origin/main -- build.ps1 docs src/OcctNative src/OcctNet src/OcctNet.WinForms tests
 
+      - name: Prepare runtime migration
+        shell: pwsh
+        run: python .\.github\fix_demo_runtime_migration.py
+
       - name: Apply deployment-complete package rules
         shell: pwsh
         run: python .\.github\apply_demo_runtime_hardening.py
