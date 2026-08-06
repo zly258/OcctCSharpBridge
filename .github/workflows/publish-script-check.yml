@@ -5,6 +5,7 @@ on:
     branches:
       - demo
       - optimize/**
+      - sync/**
   pull_request:
     branches:
       - demo
@@ -45,7 +46,9 @@ jobs:
               '.\tests\check-native-build-structure.ps1',
               '.\tests\check-selection-contract.ps1',
               '.\tests\check-viewport-api.ps1',
+              '.\tests\check-ui-hosts.ps1',
               '.\src\OcctNet.WinForms\OcctNet.WinForms.csproj',
+              '.\src\OcctNet.Wpf\OcctNet.Wpf.csproj',
               '.\src\CadWinForms\CadWinForms.csproj',
               '.\src\CadWpf\CadWpf.csproj'
           )
@@ -58,14 +61,26 @@ jobs:
       - name: Verify modular project references
         shell: pwsh
         run: |
-          foreach ($project in @(
-              '.\src\CadWinForms\CadWinForms.csproj',
-              '.\src\CadWpf\CadWpf.csproj'
-          )) {
-              $text = Get-Content $project -Raw
-              if (-not $text.Contains('..\OcctNet.WinForms\OcctNet.WinForms.csproj')) {
-                  throw "The demo project does not reference the optional WinForms host: $project"
-              }
+          $winForms = Get-Content '.\src\CadWinForms\CadWinForms.csproj' -Raw
+          if (-not $winForms.Contains('..\OcctNet.WinForms\OcctNet.WinForms.csproj')) {
+              throw 'The WinForms demo does not reference OcctNet.WinForms.'
+          }
+
+          $wpf = Get-Content '.\src\CadWpf\CadWpf.csproj' -Raw
+          if (-not $wpf.Contains('..\OcctNet.Wpf\OcctNet.Wpf.csproj')) {
+              throw 'The WPF demo does not reference OcctNet.Wpf.'
+          }
+          if ($wpf.Contains('..\OcctNet.WinForms\OcctNet.WinForms.csproj')) {
+              throw 'The WPF demo must use the dedicated WPF host instead of referencing the WinForms host directly.'
+          }
+
+          $xaml = Get-Content '.\src\CadWpf\MainWindow.xaml' -Raw
+          if (-not $xaml.Contains('assembly=OcctNet.Wpf') -or
+              -not $xaml.Contains('<occt:OcctWpfViewport')) {
+              throw 'The WPF demo does not use OcctWpfViewport.'
+          }
+          if ($xaml.Contains('WindowsFormsHost')) {
+              throw 'The WPF application still constructs WindowsFormsHost directly.'
           }
 
       - name: Validate deployment-complete package contract
