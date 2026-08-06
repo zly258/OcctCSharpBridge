@@ -29,7 +29,7 @@ foreach ($token in @(
 
 $controlText = [System.IO.File]::ReadAllText($wpfControl)
 foreach ($token in @(
-    'public sealed class OcctWpfViewport : UserControl',
+    'public sealed class OcctWpfViewport',
     'WindowsFormsHost',
     'public OcctEngine Engine => _viewport.Engine;',
     'public OcctViewportControl WinFormsViewport => _viewport;',
@@ -42,6 +42,10 @@ foreach ($token in @(
     if (-not $controlText.Contains($token)) {
         throw "WPF viewport contract is missing: $token"
     }
+}
+
+if ($controlText -notmatch 'OcctWpfViewport\s*:\s*(?:WpfUserControl|System\.Windows\.Controls\.UserControl)') {
+    throw "OcctWpfViewport must derive from the WPF UserControl type."
 }
 
 Write-Host "[ui-hosts] WinForms and WPF viewport host contracts validated." -ForegroundColor Green
