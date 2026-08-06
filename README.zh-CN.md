@@ -1,51 +1,57 @@
-﻿# OcctCSharpBridge 演示程序
+﻿# OcctCSharpBridge Demo
 
-OcctCSharpBridge 通过原生 C++ DLL、稳定 C ABI 和类型安全的 .NET 8 API 封装 Open CASCADE Technology 7.9.0。
+[English main branch](https://github.com/zly258/OcctCSharpBridge/tree/main) · [中文接口清单](docs/API_COVERAGE.zh-CN.md) · [API inventory](docs/API_COVERAGE.md)
 
-`demo` 分支包含 WinForms 和 WPF 参考程序；可复用封装位于 `src/OcctNative` 和 `src/OcctNet`。
+`demo` 在可复用 OCCT C# 封装基础上提供 WinForms、WPF 示例应用。底层 `src/OcctNative`、`src/OcctNet`、`docs` 和 `tests` 与 `main` 保持同步，界面、场景测试和发布脚本仅保留在本分支。
 
-## 演示功能
+## 主要能力
 
-- WinForms 与 WPF OCCT 三维视口
-- 对象和子拓扑选择
-- `Ctrl` 点选切换多选：再次 `Ctrl` 点选已选对象可取消选择
-- 矩形框选
-- 可修改选中高亮颜色和悬浮高亮颜色
-- 纯色及渐变场景背景
-- 环境光、相机直射光、太阳光和补光
-- 中性、摄影棚、日光和平光预设
-- 标准视图、投影、适配、平移、缩放和旋转
-- 几何创建、拓扑分析、布尔和特征操作
-- STEP、IGES、BREP 和 STL 数据交换
-- OCAF、TNaming 和 XDE 封装示例
-- 简体中文与英文界面
+- WinForms、WPF OCCT Viewer
+- 点选、框选、Ctrl 切换多选和子形选择
+- 选中及悬浮高亮颜色设置
+- 纯色、渐变背景和多灯光预设
+- 二维曲线、基本实体、布尔、特征、变换及分析
+- 复杂齿轮、多通道阀体、扭转风管等测试场景
+- BRep 矢量文字及线性、角度、半径、直径注释
+- STEP、IGES、BREP、STL 导入导出
+- 中英文界面
+
+复杂场景执行时使用显示批处理，并在结束后删除截面、刀具体、路径和辅助几何，只保留最终结果。
+
+## 兼容性
+
+- OCCT：必须为 `7.9.0`
+- .NET：`8.0`，Windows x64
+- Bridge ABI：`1`
+- 接口数量：Native `517`，P/Invoke `517`
+- `OcctNet.dll` 与 `OcctNative.dll` 必须来自同一次构建
 
 ## 构建与运行
 
 ```powershell
-.\build.ps1 all Release
+.\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 .\run.ps1 winform
 .\run.ps1 wpf
 ```
 
 ## 发布
 
+默认生成体积较小的框架依赖 WinForms 包：
+
 ```powershell
-.\publish.ps1 winform Release
+.\publish.ps1 winform Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-发布脚本还可选择 WPF、自包含运行时、完整 OCCT 资源、诊断文件或 ZIP 输出。
+发布 WinForms 和 WPF：
 
-## 接口清单
+```powershell
+.\publish.ps1 all Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
+```
 
-- [中文接口清单](docs/API_COVERAGE.zh-CN.md)
-- [English API inventory](docs/API_COVERAGE.md)
+生成无需预装 .NET 8 Desktop Runtime 的自包含包：
 
-## 环境要求
+```powershell
+.\publish.ps1 all Release -SelfContained -Zip -OcctRoot "D:\tools\occt-vc144-64"
+```
 
-- Windows x64
-- 源码构建需要 .NET 8 SDK
-- 原生构建需要 OCCT 7.9.0
-- 原生编译需要 Visual Studio C++ 工具和 CMake
-
-重新分发前，请检查仓库许可证及发布包中的第三方许可证说明。
+`publish.ps1` 只复制原生依赖闭包和需要的 OCCT 资源；`-FullResources`、`-Diagnostics` 仅在需要时开启。

@@ -65,6 +65,9 @@ extern "C"
     OCCTBRIDGE_API void occt_destroy(OcctHandle handle);
     OCCTBRIDGE_API const char* occt_last_error(OcctHandle handle);
     OCCTBRIDGE_API const char* occt_version();
+    OCCTBRIDGE_API int occt_bridge_abi_version();
+    OCCTBRIDGE_API const char* occt_bridge_version();
+    OCCTBRIDGE_API const char* occt_bridge_build_info();
 
     // Viewer and interaction.
     OCCTBRIDGE_API int occt_initialize(OcctHandle handle, void* windowHandle);

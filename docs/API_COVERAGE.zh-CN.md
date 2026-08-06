@@ -3,18 +3,21 @@
 本文件由源码接口声明整理，列出当前原生 C ABI、C# P/Invoke 映射及公开 .NET 类型。
 
 - OCCT: `7.9.0`
-- Native exports: `514`
-- Managed P/Invoke declarations: `514`
-- Public .NET types: `62`
+- Native exports: `517`
+- Managed P/Invoke declarations: `517`
+- Public .NET types: `64`
 
 ## 原生 C ABI
 
-### OcctNative.h (4)
+### OcctNative.h (7)
 
 - `occt_create`
 - `occt_destroy`
 - `occt_last_error`
 - `occt_version`
+- `occt_bridge_abi_version`
+- `occt_bridge_version`
+- `occt_bridge_build_info`
 
 ### OcctNative.h — Viewer and interaction (56)
 
@@ -645,6 +648,7 @@
 
 ## 公开 .NET 类型
 
+- `OcctBridgeInfo`
 - `IOcctObject`
 - `OcafColor`
 - `OcafColorType`
@@ -705,8 +709,16 @@
 - `OcctVector3d`
 - `OcctViewOrientation`
 - `OcctViewportControl`
+- `OcctViewportErrorEventArgs`
 - `OcctViewportSelectionEventArgs`
 - `OcctViewportWorldPointEventArgs`
+
+## 桥接 ABI 约束
+
+- 托管层要求的 ABI：`1`
+- 原生桥接版本：`1.1.0`
+- `OcctBridgeInfo` 会在创建 Viewer、建模或 OCAF 会话前校验已加载的 `OcctNative.dll`。
+- 托管与原生二进制文件必须来自同一次构建。
 
 ## 一致性规则
 

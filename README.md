@@ -1,50 +1,57 @@
-﻿# OcctCSharpBridge Demo
+# OcctCSharpBridge Demo
 
-OcctCSharpBridge wraps Open CASCADE Technology 7.9.0 through a native C++ DLL, a stable C ABI, and a type-safe .NET 8 API.
+[Main SDK branch](https://github.com/zly258/OcctCSharpBridge/tree/main) · [简体中文](README.zh-CN.md) · [API inventory](docs/API_COVERAGE.md)
 
-The `demo` branch contains WinForms and WPF reference applications. The reusable bridge remains under `src/OcctNative` and `src/OcctNet`.
+The `demo` branch adds WinForms and WPF reference applications to the reusable OCCT C# bridge. `src/OcctNative`, `src/OcctNet`, `docs`, and `tests` stay synchronized with `main`; UI, scenarios, and publishing remain demo-only.
 
-## Demo features
+## Features
 
 - WinForms and WPF OCCT viewers
-- Object and subshape selection
-- Ctrl-click toggle selection: add an object, then Ctrl-click it again to remove it from the selection
-- Rectangle selection
+- Point, rectangle, Ctrl-toggle multi-selection, and subshape selection
 - Configurable selected and hover highlight colors
-- Solid and gradient scene backgrounds
-- Ambient, camera, sun, and fill lights with Neutral, Studio, Sunlight, and Flat presets
-- Standard views, projection, fit, pan, zoom, and rotation
-- Geometry creation, topology inspection, Boolean and feature operations
+- Solid or gradient backgrounds and multi-light presets
+- Curves, primitive solids, Boolean operations, features, transforms, and analysis
+- Complex gear, multi-port manifold, and twisted-duct scenarios
+- BRep vector text plus length, angle, radius, and diameter annotations
 - STEP, IGES, BREP, and STL exchange
-- OCAF, TNaming, and XDE wrapper examples
 - English and Simplified Chinese UI
+
+Complex scenarios use display batching and remove profiles, cutters, paths, and construction geometry after completion so only final results remain in the scene.
+
+## Compatibility
+
+- OCCT: exactly `7.9.0`
+- .NET: `8.0`, Windows x64
+- Bridge ABI: `1`
+- API count: Native `517`, P/Invoke `517`
+- Deploy `OcctNet.dll` and `OcctNative.dll` from the same build
 
 ## Build and run
 
 ```powershell
-.\build.ps1 all Release
+.\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 .\run.ps1 winform
 .\run.ps1 wpf
 ```
 
 ## Publish
 
+Create the smaller framework-dependent WinForms package:
+
 ```powershell
-.\publish.ps1 winform Release
+.\publish.ps1 winform Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-The publisher can also include WPF, a self-contained runtime, full OCCT resources, diagnostics, or ZIP output.
+Publish both applications:
 
-## API inventory
+```powershell
+.\publish.ps1 all Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
+```
 
-- [English API inventory](docs/API_COVERAGE.md)
-- [中文接口清单](docs/API_COVERAGE.zh-CN.md)
+Create a self-contained package for machines without the .NET 8 Desktop Runtime:
 
-## Requirements
+```powershell
+.\publish.ps1 all Release -SelfContained -Zip -OcctRoot "D:\tools\occt-vc144-64"
+```
 
-- Windows x64
-- .NET 8 SDK for source builds
-- OCCT 7.9.0 for native builds
-- Visual Studio C++ build tools and CMake for native compilation
-
-See the repository license and the notices included in published packages before redistribution.
+`publish.ps1` copies the native dependency closure and required OCCT resources. Enable `-FullResources` or `-Diagnostics` only when needed.
