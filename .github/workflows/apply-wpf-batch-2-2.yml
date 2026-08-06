@@ -22,6 +22,16 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      - name: Prepare inventory migration
+        shell: pwsh
+        run: |
+          $path = '.\.github\apply_wpf_batch_2_2.py'
+          $text = Get-Content $path -Raw
+          $text = $text.Replace(
+            'The `OcctViewport*` types above are provided by the optional `OcctNet.WinForms` assembly; all remaining managed types stay in the UI-independent `OcctNet` assembly.',
+            'The `OcctViewport*` types above are provided by the optional `OcctNet.WinForms` assembly; all other managed types remain in the UI-independent `OcctNet` assembly.')
+          [System.IO.File]::WriteAllText((Resolve-Path $path), $text, [System.Text.UTF8Encoding]::new($true))
+
       - name: Apply WPF and batch API integration
         shell: pwsh
         run: python .\.github\apply_wpf_batch_2_2.py
