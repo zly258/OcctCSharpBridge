@@ -20,6 +20,24 @@ extern "C"
     struct OcctDistanceResult { double distance; OcctPoint3d pointOnFirst; OcctPoint3d pointOnSecond; };
     struct OcctCameraState { OcctPoint3d eye; OcctPoint3d center; OcctVector3d up; OcctVector3d direction; double scale; };
     struct OcctProjectionRay { OcctPoint3d origin; OcctVector3d direction; };
+    struct OcctViewportState
+    {
+        int width;
+        int height;
+        int projectionType;
+        int computedMode;
+        int antialiasingEnabled;
+        int msaaSamples;
+        int renderingMethod;
+        int shadowsEnabled;
+        int frustumCullingEnabled;
+        int faceBoundariesVisible;
+        int selectionTolerance;
+        int automaticHighlight;
+        double perspectiveFov;
+        double renderResolutionScale;
+        double renderResolutionDpi;
+    };
     struct OcctAutoZFitSettings { int enabled; double scaleFactor; };
     struct OcctPolygonOffsetSettings { int mode; double factor; double units; };
     struct OcctColorRgb { double r; double g; double b; };
@@ -152,6 +170,12 @@ extern "C"
     OCCTBRIDGE_API int occt_set_immediate_update(OcctHandle handle, int enabled);
     OCCTBRIDGE_API int occt_set_frustum_culling(OcctHandle handle, int enabled);
     OCCTBRIDGE_API int occt_set_face_boundaries_visible(OcctHandle handle, int visible, int applyExisting);
+    OCCTBRIDGE_API int occt_get_viewport_state(OcctHandle handle, OcctViewportState* result);
+    OCCTBRIDGE_API int occt_reset_view(OcctHandle handle);
+    OCCTBRIDGE_API int occt_reset_view_orientation(OcctHandle handle);
+    OCCTBRIDGE_API int occt_reset_view_mapping(OcctHandle handle);
+    OCCTBRIDGE_API int occt_fit_selected(OcctHandle handle, double margin);
+    OCCTBRIDGE_API int occt_get_scene_gravity_point(OcctHandle handle, OcctPoint3d* result);
 
     // Registry, AIS attributes and lifecycle.
     OCCTBRIDGE_API int occt_object_count(OcctHandle handle);

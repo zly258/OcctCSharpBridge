@@ -5,9 +5,121 @@ This source-derived inventory lists the current native C ABI, C# P/Invoke mappin
 OCAF/XDE is intentionally excluded; documents, undo/redo, and JSON persistence are application-layer responsibilities.
 
 - OCCT: `7.9.0`
-- Native exports: `307`
-- Managed P/Invoke declarations: `307`
-- Public .NET types: `60`
+- Native exports: `313`
+- Managed P/Invoke declarations: `313`
+- Public .NET types: `61`
+
+## Choose an assembly
+
+| Scenario | Reference | Purpose |
+|---|---|---|
+| Headless geometry and exchange | `OcctNet` | Type-safe viewer API plus `OcctModelingSession` |
+| WinForms viewport | `OcctNet.WinForms` | `OcctViewportControl` bound directly to an HWND |
+| WPF viewport | `OcctNet.Wpf` | `OcctWpfViewport` with `WindowsFormsHost`, dependency properties, and forwarded events |
+
+A WPF application should reference `OcctNet.Wpf` directly instead of constructing a `WindowsFormsHost` in every application window.
+
+```xml
+<Window
+    xmlns:occt="clr-namespace:OcctNet;assembly=OcctNet.Wpf">
+    <occt:OcctWpfViewport x:Name="Viewport"
+                          EnableRectangleSelection="True"
+                          RectangleSelectionBehavior="Directional"
+                          RectangleSelectionThreshold="3" />
+</Window>
+```
+
+```csharp
+Viewport.EngineInitialized += (_, _) =>
+{
+    Viewport.Engine.SetGradientBackground(Color.White, Color.LightSteelBlue);
+    Viewport.Engine.SetZUpView(OcctZUpViewOrientation.IsometricXPositiveYNegative);
+};
+```
+
+## Feature guide and examples
+
+### Viewer, camera, and screen coordinates
+
+| Managed API | Purpose | Notes |
+|---|---|---|
+| `FitAll()` | Fit all displayed objects | Changes the camera only |
+| `Fit(shape)` / `Fit(shapes)` | Fit one or several objects | The native layer combines object bounds |
+| `FitSelected()` | Fit the current selection | The selection must contain topological shapes |
+| `SetView()` / `SetZUpView()` | Apply standard orientations | Z-up orientations are suitable for plant and building applications |
+| `GetCamera()` / `SetCamera()` | Save and restore a camera | Camera data can be stored in an application JSON document |
+| `GetViewportState()` | Read projection, antialiasing, MSAA, shadows, DPI, and selection settings | Useful for settings panels and diagnostics |
+| `ResetView()` | Reset mapping and orientation | Restores the viewer defaults |
+| `ResetViewOrientation()` | Reset orientation only | Keeps mapping and scale |
+| `ResetViewMapping()` | Reset center and scale mapping only | Keeps the viewing direction |
+| `ScreenToRay()` | Convert a screen point to a world ray | Used by snapping, work planes, and ray tests |
+| `ScreenToPlane()` | Project a screen point onto a plane | Throws when the ray is parallel to the plane |
+| `TryScreenToPlane()` | Safe plane projection | Returns `false` for a parallel ray |
+| `GetSceneGravityPoint()` | Read the scene rotation center | Useful for custom orbit tools |
+
+```csharp
+var point = engine.ScreenToPlane(
+    mouseX,
+    mouseY,
+    new OcctPoint3d(0, 0, 0),
+    new OcctVector3d(0, 0, 1));
+```
+
+### Selection and rectangle selection
+
+- `Select(x, y)` performs point selection; `appendSelection=true` adds to the current set.
+- `SelectRectangle(...)` uses full inclusion by default; `allowOverlap=true` selects intersecting objects.
+- `OcctRectangleSelectionBehavior.Directional` uses left-to-right inclusion and right-to-left crossing selection.
+- `SetSelectionMode()` activates object, vertex, edge, wire, face, shell, or solid selection.
+- `SelectAllVisible()`, `InvertSelection()`, and `ClearSelection()` manage selection sets.
+- `CopySelectedSubshape()` promotes a selected subshape to an independent `OcctShape`.
+
+### Batch object operations
+
+Batch APIs validate and update several AIS objects in one P/Invoke call and are intended for scenes containing hundreds or thousands of objects.
+
+```csharp
+using (engine.BeginDisplayBatch())
+{
+    engine.SetColor(objects, Color.SteelBlue);
+    engine.SetTransparency(objects, 0.25);
+    engine.SetMaterial(objects, OcctMaterial.Steel);
+    engine.SetDisplayMode(objects, OcctDisplayMode.Shaded);
+    engine.SetVisible(objects, true);
+}
+```
+
+Batch operations cover color, transparency, visibility, display mode, line width, material, redisplay, and selection. `IsVisible()` and `IsSelected()` read individual object state.
+
+### Geometry and feature modeling
+
+```csharp
+using var model = new OcctModelingSession();
+var baseSolid = model.MakeBox(100, 80, 20);
+var hole = model.MakeCylinder(new OcctPoint3d(50, 40, -5), new OcctVector3d(0, 0, 1), 10, 30);
+var result = model.Boolean(baseSolid, hole, OcctModelBooleanOperation.Cut);
+model.ExportStep(result.Shape, "part.step");
+```
+
+Coverage includes:
+
+- Points, lines, arcs, circles, ellipses, Bezier, B-Spline, polylines, and regular polygons.
+- Box, cylinder, cone, sphere, torus, and wedge solids.
+- Wire, face, sewn shell, solid, and compound construction.
+- Extrude, revolve, sweep, loft, fillet, chamfer, offset, and thick-solid features.
+- Fuse, cut, common, section, and split operations.
+- Topology traversal, bounds, distance, mass properties, curve/surface types, and point/normal evaluation.
+- Projection, ray intersection, point classification, validity checking, and healing reports.
+- Face triangulation nodes, normals, UV values, and triangle indices.
+- STEP, IGES, BREP, and STL import/export.
+
+### Lifetime, errors, and threading
+
+- Dispose `OcctEngine`, `OcctModelingSession`, and `OcctDisplayBatch` through `using` or explicit `Dispose()`.
+- Native failures are translated to `OcctException`; details originate from the session error state.
+- A viewer or modeling session owns mutable native state and must not be called concurrently from several threads.
+- Viewer creation, mouse interaction, and viewport destruction should remain on the UI thread.
+- `OcctNet.dll`, the selected UI host assembly, and `OcctNative.dll` must come from the same build.
 
 ## Native C ABI
 
@@ -21,7 +133,7 @@ OCAF/XDE is intentionally excluded; documents, undo/redo, and JSON persistence a
 - `occt_bridge_version`
 - `occt_bridge_build_info`
 
-### OcctNative.h — Viewer and interaction (72)
+### OcctNative.h — Viewer and interaction (78)
 
 - `occt_auto_z_fit`
 - `occt_begin_update`
@@ -94,6 +206,12 @@ OCAF/XDE is intentionally excluded; documents, undo/redo, and JSON persistence a
 - `occt_set_immediate_update`
 - `occt_set_frustum_culling`
 - `occt_set_face_boundaries_visible`
+- `occt_get_viewport_state`
+- `occt_reset_view`
+- `occt_reset_view_orientation`
+- `occt_reset_view_mapping`
+- `occt_fit_selected`
+- `occt_get_scene_gravity_point`
 - `occt_zoom`
 
 ### OcctNative.h — Registry, AIS attributes and lifecycle (33)
@@ -390,6 +508,7 @@ OCAF/XDE is intentionally excluded; documents, undo/redo, and JSON persistence a
 - `OcctPolygonOffsetSettings`
 - `OcctProjectionType`
 - `OcctProjectionRay`
+- `OcctViewportState`
 - `OcctRenderingMethod`
 - `OcctSceneLightingSettings`
 - `OcctSelectionMode`
@@ -458,6 +577,7 @@ OCAF/XDE is intentionally excluded; documents, undo/redo, and JSON persistence a
 - `OcctViewOrientation`
 - `OcctZUpViewOrientation`
 - `OcctViewportControl`
+- `OcctViewportState`
 - `OcctWpfViewport`
 - `OcctViewportErrorEventArgs`
 - `OcctViewportSelectionEventArgs`
@@ -468,7 +588,7 @@ OCAF/XDE is intentionally excluded; documents, undo/redo, and JSON persistence a
 ## Bridge ABI contract
 
 - Managed expected ABI: `2`
-- Native bridge version: `2.2.0`
+- Native bridge version: `2.3.0`
 - `OcctBridgeInfo` validates the loaded `OcctNative.dll` before creating viewer or modeling sessions.
 - Managed and native binaries should always be deployed from the same build.
 
