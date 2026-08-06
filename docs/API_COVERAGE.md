@@ -110,7 +110,7 @@ Batch operations cover color, transparency, visibility, display mode, line width
 
 ### Analytic geometry parameters
 
-Use `GetCurveType()` or `GetSurfaceType()` first, then read exact analytic parameters instead of estimating centers, axes, and radii from sampled points.
+Use `GetEdgeCurveType()` or `GetFaceSurfaceType()` first, then read exact analytic parameters instead of estimating centers, axes, and radii from sampled points. The older `GetCurveType()` and `GetSurfaceType()` names remain compatibility aliases.
 
 | Managed API | Geometry | Returned parameters |
 |---|---|---|
@@ -124,14 +124,14 @@ Use `GetCurveType()` or `GetSurfaceType()` first, then read exact analytic param
 | `GetTorusGeometry()` | Torus | Center, axis, X direction, major and minor radii |
 
 ```csharp
-var edgeType = model.GetCurveType(edge);
+var edgeType = model.GetEdgeCurveType(edge);
 if (edgeType == OcctCurveType.Circle)
 {
     OcctCircleGeometry circle = model.GetCircleGeometry(edge);
     Console.WriteLine($"R = {circle.Radius:F3}");
 }
 
-var faceType = model.GetSurfaceType(face);
+var faceType = model.GetFaceSurfaceType(face);
 if (faceType == OcctSurfaceType.Cylinder)
 {
     OcctCylinderGeometry cylinder = model.GetCylinderGeometry(face);
