@@ -45,6 +45,7 @@ add_library(OcctNative SHARED
     OcctAdvancedGeometry.cpp
     OcctFeatures.cpp
     OcctAnnotations.cpp
+    OcctVectorAnnotations.cpp
     OcctIO.cpp
     OcctModelingCore.cpp
     OcctModelingGeometry.cpp

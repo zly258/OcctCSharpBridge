@@ -3,8 +3,8 @@
 This source-derived inventory lists the current native C ABI, C# P/Invoke mapping, and public .NET types.
 
 - OCCT: `7.9.0`
-- Native exports: `509`
-- Managed P/Invoke declarations: `509`
+- Native exports: `514`
+- Managed P/Invoke declarations: `514`
 - Public .NET types: `62`
 
 ## Native C ABI
@@ -175,13 +175,18 @@ This source-derived inventory lists the current native C ABI, C# P/Invoke mappin
 - `occt_sweep`
 - `occt_thick_solid`
 
-### OcctNative.h — Text and dimensional annotations (12)
+### OcctNative.h — Text and dimensional annotations (17)
 
 - `occt_add_angle_dimension`
 - `occt_add_diameter_dimension`
 - `occt_add_length_dimension`
 - `occt_add_radius_dimension`
 - `occt_add_text`
+- `occt_make_angle_annotation_shape`
+- `occt_make_diameter_annotation_shape`
+- `occt_make_length_annotation_shape`
+- `occt_make_radius_annotation_shape`
+- `occt_make_text_shape`
 - `occt_set_dimension_flyout`
 - `occt_set_text`
 - `occt_set_text_angle`
