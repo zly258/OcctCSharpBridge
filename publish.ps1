@@ -1,7 +1,7 @@
 ﻿param(
     [Parameter(Position = 0)]
     [ValidateSet("all", "winform", "wpf")]
-    [string]$Target = "winform",
+    [string]$Target = "all",
 
     [Parameter(Position = 1)]
     [ValidateSet("Debug", "Release", "RelWithDebInfo")]
@@ -12,6 +12,8 @@
     [string]$OutputDirectory = "",
 
     [switch]$SelfContained,
+
+    [switch]$FrameworkDependent,
 
     [switch]$FullResources,
 
@@ -38,6 +40,13 @@ if (Test-Path "$env:SystemRoot\System32\chcp.com") {
 }
 
 $Target = $Target.ToLowerInvariant()
+if ($SelfContained.IsPresent -and $FrameworkDependent.IsPresent) {
+    throw "Use either -SelfContained or -FrameworkDependent, not both."
+}
+$UseSelfContained = -not $FrameworkDependent.IsPresent
+if ($SelfContained.IsPresent) {
+    $UseSelfContained = $true
+}
 $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     $OutputDirectory = Join-Path $RepoRoot "artifacts\publish"
@@ -150,12 +159,12 @@ function Publish-Application {
         "-r", "win-x64",
         "-p:Platform=x64",
         "-p:PublishSingleFile=true",
-        "-p:EnableCompressionInSingleFile=$($SelfContained.IsPresent.ToString().ToLowerInvariant())",
+        "-p:EnableCompressionInSingleFile=$($UseSelfContained.ToString().ToLowerInvariant())",
         "-p:IncludeNativeLibrariesForSelfExtract=true",
         "-p:PublishReadyToRun=false",
         "-p:DebugType=None",
         "-p:DebugSymbols=false",
-        "--self-contained", $SelfContained.IsPresent.ToString().ToLowerInvariant(),
+        "--self-contained", $UseSelfContained.ToString().ToLowerInvariant(),
         "--nologo",
         "-o", $temporaryDestination
     )
@@ -484,7 +493,7 @@ function Write-LicenseFiles {
 }
 
 function Write-PackageReadme {
-    $runtimeMode = if ($SelfContained) {
+    $runtimeMode = if ($UseSelfContained) {
         "Self-contained single-file application."
     }
     else {
@@ -502,11 +511,12 @@ function Write-PackageReadme {
         "Run the executable in apps\winform or apps\wpf directly.",
         "Keep the apps, runtime and occt directories together.",
         "",
-        "The package contains only the selected demo executable, the native dependency closure,",
+        "The default package contains both WinForms and WPF executables, the native dependency closure,",
         "the required OCCT resources and consolidated license notices.",
         "",
-        "Use -SelfContained for machines without the .NET 8 Desktop Runtime.",
-        "Use -FullResources only when OCAF/XCAF or texture resources are needed.",
+        "The default package is self-contained and does not require a separate .NET installation.",
+        "Use -FrameworkDependent only when all target machines already have the .NET 8 Desktop Runtime.",
+        "Use -FullResources only when texture resources are needed.",
         "Use -Diagnostics to add dependency and file manifests."
     )
     [System.IO.File]::WriteAllLines((Join-Path $PackageRoot "README.txt"), $lines, $utf8Bom)
@@ -537,7 +547,7 @@ Write-Host "Target:             $Target"
 Write-Host "Configuration:      $Configuration"
 Write-Host "OCCT root:          $OcctRoot"
 Write-Host "Output directory:   $OutputDirectory"
-Write-Host "Self-contained:     $($SelfContained.IsPresent)"
+Write-Host "Self-contained:     $UseSelfContained"
 Write-Host "Full resources:     $($FullResources.IsPresent)"
 
 if ((Test-Path $PackageRoot) -and -not $KeepExisting) {

@@ -46,22 +46,23 @@
 
 ## 发布
 
-默认生成体积较小的框架依赖 WinForms 包：
+默认命令同时发布 WinForms 和 WPF，并生成 Windows x64 自包含程序；目标电脑不需要另外安装 .NET。
 
 ```powershell
-.\publish.ps1 winform Release -OcctRoot "D:\tools\occt-vc144-64"
+.\publish.ps1 -Zip -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-发布 WinForms 和 WPF：
+只发布其中一个程序：
 
 ```powershell
-.\publish.ps1 all Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
+.\publish.ps1 winform Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
+.\publish.ps1 wpf Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-生成无需预装 .NET 8 Desktop Runtime 的自包含包：
+只有目标电脑已经安装 .NET 8 Desktop Runtime 时，才使用体积较小的框架依赖模式：
 
 ```powershell
-.\publish.ps1 all Release -SelfContained -Zip -OcctRoot "D:\tools\occt-vc144-64"
+.\publish.ps1 all Release -FrameworkDependent -Zip -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
 `publish.ps1` 只复制原生依赖闭包和纯几何桥接需要的资源；被引用的 `OcctNet` 与 `OcctNet.WinForms` 程序集由 `dotnet publish` 自动包含。`-FullResources`、`-Diagnostics` 仅在需要时开启。

@@ -46,22 +46,23 @@ Complex scenarios use display batching and remove profiles, cutters, paths, and 
 
 ## Publish
 
-Create the smaller framework-dependent WinForms package:
+The default command publishes both WinForms and WPF as self-contained Windows x64 applications. Target computers do not need a separate .NET installation.
 
 ```powershell
-.\publish.ps1 winform Release -OcctRoot "D:\tools\occt-vc144-64"
+.\publish.ps1 -Zip -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-Publish both applications:
+Publish only one application when needed:
 
 ```powershell
-.\publish.ps1 all Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
+.\publish.ps1 winform Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
+.\publish.ps1 wpf Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-Create a self-contained package for machines without the .NET 8 Desktop Runtime:
+Create a smaller framework-dependent package only for computers that already have the .NET 8 Desktop Runtime:
 
 ```powershell
-.\publish.ps1 all Release -SelfContained -Zip -OcctRoot "D:\tools\occt-vc144-64"
+.\publish.ps1 all Release -FrameworkDependent -Zip -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
 `publish.ps1` copies only the native dependency closure and resources required by the geometry-only bridge. The referenced `OcctNet` and `OcctNet.WinForms` assemblies are included by `dotnet publish`. Enable `-FullResources` or `-Diagnostics` only when needed.
