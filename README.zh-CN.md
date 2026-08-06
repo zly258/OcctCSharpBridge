@@ -7,8 +7,9 @@
 ## 目录结构
 
 ```text
-src/OcctNative   C++17 原生桥接与稳定 C ABI
-src/OcctNet      类型安全的 .NET 封装
+src/OcctNative         C++17 原生桥接与稳定 C ABI
+src/OcctNet            不依赖 UI 的类型安全 .NET 封装
+src/OcctNet.WinForms   可选的 WinForms OCCT 视口控件
 tests            接口一致性检查与原生 Smoke Test
 docs             中英文接口清单
 ```
@@ -48,6 +49,8 @@ docs             中英文接口清单
 ```xml
 <ItemGroup>
   <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet\OcctNet.csproj" />
+  <!-- 仅 WinForms/WPF 宿主需要 OcctViewportControl 时引用。 -->
+  <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet.WinForms\OcctNet.WinForms.csproj" />
 </ItemGroup>
 ```
 
