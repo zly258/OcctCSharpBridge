@@ -34,6 +34,7 @@ $NativeBuildCheck = Join-Path $RepoRoot "tests\check-native-build-structure.ps1"
 $SelectionContractCheck = Join-Path $RepoRoot "tests\check-selection-contract.ps1"
 $ViewportApiCheck = Join-Path $RepoRoot "tests\check-viewport-api.ps1"
 $UiHostsCheck = Join-Path $RepoRoot "tests\check-ui-hosts.ps1"
+$AnalyticGeometryCheck = Join-Path $RepoRoot "tests\check-analytic-geometry-api.ps1"
 $PackageCheck = Join-Path $RepoRoot "tests\check-demo-package.ps1"
 
 $OcctIncludeDir = Join-Path $OcctRoot "inc"
@@ -118,10 +119,15 @@ function Test-ApiSurface {
         $SelectionContractCheck,
         $ViewportApiCheck,
         $UiHostsCheck,
+        $AnalyticGeometryCheck,
         $PackageCheck
     )) {
         Assert-Path $path
     }
+
+    Write-Host "[analytic-geometry] Validating analytic curve and surface contracts..." -ForegroundColor Cyan
+    & $AnalyticGeometryCheck -RepositoryRoot $RepoRoot
+    if (-not $?) { throw "Analytic geometry API validation failed." }
 
     Write-Host "[ui-hosts] Validating reusable WinForms and WPF hosts..." -ForegroundColor Cyan
     & $UiHostsCheck -RepositoryRoot $RepoRoot
@@ -226,7 +232,7 @@ function Run-Smoke {
 
     $previousNativeDirectory = $env:OCCT_BRIDGE_NATIVE_DIR
     try {
-        $env:OCCT_BRIDGE_NATIVE_DIR = $smokeOutput
+        $env:OCCT_BRIDGE_NATIVE_DIR = $SmokeOutput
         Write-Host "[smoke] Running native viewer and modeling scenarios..." -ForegroundColor Cyan
         Invoke-Checked "dotnet" @(
             "run",
