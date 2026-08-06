@@ -1,0 +1,83 @@
+name: Apply Demo Runtime Hardening
+
+on:
+  push:
+    branches:
+      - feature/demo-runtime-hardening
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Synchronize reusable wrapper from main
+        shell: pwsh
+        run: |
+          git fetch origin main
+          git checkout origin/main -- build.ps1 docs src/OcctNative src/OcctNet src/OcctNet.WinForms tests
+
+      - name: Apply deployment-complete package rules
+        shell: pwsh
+        run: python .\.github\apply_demo_runtime_hardening.py
+
+      - name: Parse PowerShell scripts
+        shell: pwsh
+        run: |
+          foreach ($path in @('.\publish.ps1', '.\build.ps1', '.\tests\check-demo-package.ps1')) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+                (Resolve-Path $path),
+                [ref]$tokens,
+                [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | Format-List
+              throw "PowerShell parse failed: $path"
+            }
+          }
+
+      - name: Validate wrapper and package contracts
+        shell: pwsh
+        run: |
+          .\build.ps1 validate Release
+          .\tests\check-demo-package.ps1 -RepositoryRoot $PWD
+
+      - name: Build all managed projects
+        shell: pwsh
+        run: |
+          dotnet build .\src\OcctNet\OcctNet.csproj -c Release -p:Platform=x64 --nologo
+          if ($LASTEXITCODE -ne 0) { throw 'OcctNet build failed.' }
+          dotnet build .\src\OcctNet.WinForms\OcctNet.WinForms.csproj -c Release -p:Platform=x64 --nologo
+          if ($LASTEXITCODE -ne 0) { throw 'OcctNet.WinForms build failed.' }
+          dotnet build .\src\CadWinForms\CadWinForms.csproj -c Release -p:Platform=x64 --nologo
+          if ($LASTEXITCODE -ne 0) { throw 'WinForms demo build failed.' }
+          dotnet build .\src\CadWpf\CadWpf.csproj -c Release -p:Platform=x64 --nologo
+          if ($LASTEXITCODE -ne 0) { throw 'WPF demo build failed.' }
+          dotnet build .\tests\OcctNet.Smoke\OcctNet.Smoke.csproj -c Release -p:Platform=x64 --nologo
+          if ($LASTEXITCODE -ne 0) { throw 'Smoke project build failed.' }
+
+      - name: Check patch quality
+        shell: pwsh
+        run: git diff --check
+
+      - name: Commit demo runtime hardening
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if (git diff --cached --quiet) { throw 'No demo runtime hardening changes were produced.' }
+          git commit -m "Harden complete demo runtime packaging"
+          git push origin HEAD:feature/demo-runtime-hardening
