@@ -19,6 +19,7 @@ extern "C"
     struct OcctMassProperties { double mass; double centerX; double centerY; double centerZ; };
     struct OcctDistanceResult { double distance; OcctPoint3d pointOnFirst; OcctPoint3d pointOnSecond; };
     struct OcctCameraState { OcctPoint3d eye; OcctPoint3d center; OcctVector3d up; OcctVector3d direction; double scale; };
+    struct OcctProjectionRay { OcctPoint3d origin; OcctVector3d direction; };
     struct OcctAutoZFitSettings { int enabled; double scaleFactor; };
     struct OcctPolygonOffsetSettings { int mode; double factor; double units; };
     struct OcctColorRgb { double r; double g; double b; };
@@ -46,6 +47,14 @@ extern "C"
     enum OcctViewOrientation { OcctView_Isometric = 0, OcctView_Front = 1, OcctView_Back = 2, OcctView_Left = 3, OcctView_Right = 4, OcctView_Top = 5, OcctView_Bottom = 6 };
     enum OcctProjectionType { OcctProjection_Orthographic = 0, OcctProjection_Perspective = 1 };
     enum OcctDisplayMode { OcctDisplay_Wireframe = 0, OcctDisplay_Shaded = 1 };
+    enum OcctRenderingMethod { OcctRendering_Rasterization = 0, OcctRendering_RayTracing = 1 };
+    enum OcctZUpViewOrientation
+    {
+        OcctZUp_Front = 0, OcctZUp_Back = 1, OcctZUp_Left = 2, OcctZUp_Right = 3,
+        OcctZUp_Top = 4, OcctZUp_Bottom = 5,
+        OcctZUp_XNegativeYNegative = 6, OcctZUp_XPositiveYNegative = 7,
+        OcctZUp_XNegativeYPositive = 8, OcctZUp_XPositiveYPositive = 9
+    };
     enum OcctSelectionMode { OcctSelection_Object = 0, OcctSelection_Vertex = 1, OcctSelection_Edge = 2, OcctSelection_Wire = 3, OcctSelection_Face = 4, OcctSelection_Shell = 5, OcctSelection_Solid = 6 };
     enum OcctBooleanOperation { OcctBoolean_Fuse = 0, OcctBoolean_Cut = 1, OcctBoolean_Common = 2, OcctBoolean_Section = 3 };
     enum OcctCurveType { OcctCurve_Line = 0, OcctCurve_Circle = 1, OcctCurve_Ellipse = 2, OcctCurve_Hyperbola = 3, OcctCurve_Parabola = 4, OcctCurve_Bezier = 5, OcctCurve_BSpline = 6, OcctCurve_Offset = 7, OcctCurve_Other = 8 };
@@ -126,6 +135,23 @@ extern "C"
     OCCTBRIDGE_API int occt_set_object_polygon_offsets(OcctHandle handle, OcctObjectId objectId, int mode, double factor, double units);
     OCCTBRIDGE_API int occt_get_object_polygon_offsets(OcctHandle handle, OcctObjectId objectId, OcctPolygonOffsetSettings* result);
     OCCTBRIDGE_API int occt_reset_object_polygon_offsets(OcctHandle handle, OcctObjectId objectId);
+
+    OCCTBRIDGE_API int occt_fit_objects(OcctHandle handle, const OcctObjectId* objectIds, int count, double margin);
+    OCCTBRIDGE_API int occt_set_zup_view(OcctHandle handle, int orientation, int fitAll);
+    OCCTBRIDGE_API int occt_screen_to_ray(OcctHandle handle, int x, int y, OcctProjectionRay* result);
+    OCCTBRIDGE_API int occt_zoom_at_point(OcctHandle handle, int x, int y, double delta);
+    OCCTBRIDGE_API int occt_select_all_visible(OcctHandle handle);
+    OCCTBRIDGE_API int occt_invert_selection(OcctHandle handle);
+    OCCTBRIDGE_API int occt_hide_selected(OcctHandle handle);
+    OCCTBRIDGE_API int occt_set_automatic_highlight(OcctHandle handle, int enabled);
+    OCCTBRIDGE_API int occt_set_msaa_samples(OcctHandle handle, int samples);
+    OCCTBRIDGE_API int occt_set_render_resolution_scale(OcctHandle handle, double scale);
+    OCCTBRIDGE_API int occt_set_render_resolution(OcctHandle handle, double dpi);
+    OCCTBRIDGE_API int occt_set_rendering_method(OcctHandle handle, int method);
+    OCCTBRIDGE_API int occt_set_shadows_enabled(OcctHandle handle, int enabled);
+    OCCTBRIDGE_API int occt_set_immediate_update(OcctHandle handle, int enabled);
+    OCCTBRIDGE_API int occt_set_frustum_culling(OcctHandle handle, int enabled);
+    OCCTBRIDGE_API int occt_set_face_boundaries_visible(OcctHandle handle, int visible, int applyExisting);
 
     // Registry, AIS attributes and lifecycle.
     OCCTBRIDGE_API int occt_object_count(OcctHandle handle);
