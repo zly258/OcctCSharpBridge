@@ -162,6 +162,11 @@ public partial class MainWindow : System.Windows.Window
         AddCommands(tools, CadCommandId.AnalyzeBounds, CadCommandId.AnalyzeMass, CadCommandId.AnalyzeTopology,
             CadCommandId.AnalyzeDistance, CadCommandId.ValidateShape);
 
+        var samples = Menu(MenuHeader("Menu.Samples"));
+        AddCommands(samples, CadCommandId.DemoElements, CadCommandId.DemoGear, CadCommandId.DemoManifold,
+            CadCommandId.DemoTwistedDuct);
+        samples.Items.Add(new Controls.Separator());
+        AddCommands(samples, CadCommandId.DemoBracket, CadCommandId.DemoFlange, CadCommandId.DemoAnnotations);
 
         var language = Menu(MenuHeader("Menu.Language"));
         var english = MenuItem(CadLocalization.Text("Menu.English"), (_, _) => SetLanguage(CadLanguage.English));
@@ -184,6 +189,7 @@ public partial class MainWindow : System.Windows.Window
         MainMenu.Items.Add(annotate);
         MainMenu.Items.Add(BuildViewMenu());
         MainMenu.Items.Add(tools);
+        MainMenu.Items.Add(samples);
         MainMenu.Items.Add(language);
         MainMenu.Items.Add(help);
         UpdateHistoryUi();

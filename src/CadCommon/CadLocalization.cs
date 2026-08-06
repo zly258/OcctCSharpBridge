@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 
 namespace CadCommon;
 
@@ -263,11 +263,11 @@ public static class CadLocalization
             [CadCommandId.Mirror] = ("Mirror", "Mirrors the selected object about a plane."),
             [CadCommandId.Copy] = ("Copy", "Creates a copy of the selected object."),
             [CadCommandId.Delete] = ("Erase", "Erases the selected objects."),
-            [CadCommandId.Text] = ("Text", "Creates a 3D text label."),
-            [CadCommandId.LengthDimension] = ("Linear Dimension", "Creates a linear dimension for a selected edge."),
-            [CadCommandId.AngleDimension] = ("Angular Dimension", "Creates an angular dimension between two selected edges."),
-            [CadCommandId.RadiusDimension] = ("Radius Dimension", "Creates a radius dimension for a circular edge."),
-            [CadCommandId.DiameterDimension] = ("Diameter Dimension", "Creates a diameter dimension for a circular edge."),
+            [CadCommandId.Text] = ("Vector Text", "Creates scalable BRep vector text that stays sharp when zoomed."),
+            [CadCommandId.LengthDimension] = ("Vector Linear Dimension", "Creates one BRep result containing dimension lines, arrows, and vector text."),
+            [CadCommandId.AngleDimension] = ("Vector Angular Dimension", "Creates one BRep result containing an arc, arrows, and vector text."),
+            [CadCommandId.RadiusDimension] = ("Vector Radius Dimension", "Creates one BRep result containing a leader, arrow, and vector text."),
+            [CadCommandId.DiameterDimension] = ("Vector Diameter Dimension", "Creates one BRep result containing dimension lines, arrows, and vector text."),
             [CadCommandId.AnalyzeBounds] = ("Extents", "Reports the bounding box of the selected shape."),
             [CadCommandId.AnalyzeMass] = ("Mass Properties", "Reports length, area, volume, and centroid."),
             [CadCommandId.AnalyzeTopology] = ("Topology Statistics", "Counts vertices, edges, wires, faces, shells, and solids."),
@@ -281,7 +281,11 @@ public static class CadLocalization
             [CadCommandId.DemoReducer] = ("Reducer", "Creates a hollow reducer using outer and inner lofts."),
             [CadCommandId.DemoLoft] = ("Lofted Body", "Creates a multi-section lofted solid."),
             [CadCommandId.DemoBoolean] = ("Boolean Examples", "Creates union, subtract, intersect, and section examples."),
-            [CadCommandId.DemoAnnotations] = ("Annotation Examples", "Creates text and dimension examples.")
+            [CadCommandId.DemoElements] = ("Comprehensive Elements", "Creates representative curve, face, solid, and feature results."),
+            [CadCommandId.DemoGear] = ("Complex Gear", "Creates a complete gear with teeth, a bore, and relief holes."),
+            [CadCommandId.DemoManifold] = ("Multi-Port Manifold", "Creates a complex body with multi-directional ports and internal channels."),
+            [CadCommandId.DemoTwistedDuct] = ("Twisted Duct", "Creates a hollow multi-section twisted transition duct."),
+            [CadCommandId.DemoAnnotations] = ("Vector Annotations", "Creates BRep text and linear, angular, radius, and diameter annotations.")
         });
 
     private static readonly IReadOnlyDictionary<string, string> EnglishParameterLabels = new ReadOnlyDictionary<string, string>(
@@ -305,6 +309,8 @@ public static class CadLocalization
             ["points"] = "Point Coordinates", ["text"] = "Text", ["closed"] = "Closed",
             ["periodic"] = "Periodic", ["solid"] = "Create Solid", ["ruled"] = "Ruled Loft",
             ["hide"] = "Hide Source Objects", ["zoomable"] = "Zoom with View", ["ltx"] = "Top Length",
+            ["font"] = "Font", ["bold"] = "Bold", ["italic"] = "Italic",
+            ["textHeight"] = "Text Height", ["arrowSize"] = "Arrow Size",
             ["fov"] = "Vertical Field of View", ["coefficient"] = "Deviation Coefficient",
             ["existing"] = "Apply to Existing Objects", ["ambient"] = "Ambient Intensity",
             ["directional"] = "Directional Intensity", ["headlight"] = "Camera Headlight", ["pixels"] = "Aperture Size"
