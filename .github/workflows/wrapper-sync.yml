@@ -36,6 +36,7 @@ jobs:
             "src/OcctNet.Wpf",
             "docs",
             "tests/OcctNet.Smoke",
+            "tests/check-analytic-geometry-api.ps1",
             "tests/check-api-surface.ps1",
             "tests/check-native-build-structure.ps1",
             "tests/check-selection-contract.ps1",
