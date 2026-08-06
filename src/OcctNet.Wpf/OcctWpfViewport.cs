@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using System.Windows.Forms.Integration;
+using System.Windows.Media;
 using System.Windows.Threading;
 using DrawingColor = System.Drawing.Color;
 using MediaColor = System.Windows.Media.Color;
