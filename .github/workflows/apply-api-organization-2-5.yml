@@ -30,6 +30,10 @@ jobs:
         shell: pwsh
         run: python .\.github\apply_api_organization_2_5.py
 
+      - name: Repair generated validation scripts
+        shell: pwsh
+        run: python .\.github\postfix_api_organization_2_5.py
+
       - name: Validate wrapper contracts
         shell: pwsh
         run: .\build.ps1 validate Release
