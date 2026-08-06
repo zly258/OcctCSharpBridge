@@ -17,12 +17,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Parse package scripts
+      - name: Parse PowerShell scripts
         shell: pwsh
         run: |
           foreach ($path in @(
+              '.\build.ps1',
+              '.\run.ps1',
               '.\publish.ps1',
-              '.\tests\check-demo-package.ps1'
+              '.\tests\check-demo-package.ps1',
+              '.\tests\check-version-contract.ps1',
+              '.\tests\check-api-organization.ps1',
+              '.\tests\check-differential-geometry-api.ps1'
           )) {
               $tokens = $null
               $errors = $null
@@ -41,13 +46,18 @@ jobs:
         run: |
           $required = @(
               '.\publish.ps1',
+              '.\run.ps1',
               '.\build.ps1',
               '.\tests\check-demo-package.ps1',
+              '.\tests\check-version-contract.ps1',
+              '.\tests\check-api-organization.ps1',
+              '.\tests\check-analytic-geometry-api.ps1',
+              '.\tests\check-differential-geometry-api.ps1',
+              '.\tests\check-api-surface.ps1',
               '.\tests\check-native-build-structure.ps1',
               '.\tests\check-selection-contract.ps1',
               '.\tests\check-viewport-api.ps1',
               '.\tests\check-ui-hosts.ps1',
-              '.\tests\check-analytic-geometry-api.ps1',
               '.\src\OcctNet.WinForms\OcctNet.WinForms.csproj',
               '.\src\OcctNet.Wpf\OcctNet.Wpf.csproj',
               '.\src\CadWinForms\CadWinForms.csproj',
@@ -56,6 +66,34 @@ jobs:
           foreach ($path in $required) {
               if (-not (Test-Path $path -PathType Leaf)) {
                   throw "Required publishing input was not found: $path"
+              }
+          }
+
+      - name: Reject machine-specific OCCT paths
+        shell: pwsh
+        run: |
+          foreach ($path in @(
+              '.\build.ps1',
+              '.\run.ps1',
+              '.\publish.ps1',
+              '.\src\OcctNative\CMakeLists.txt'
+          )) {
+              $content = Get-Content $path -Raw
+              if ($content -match '(?i)D:[\\/]tools[\\/]occt') {
+                  throw "Machine-specific OCCT path remains in $path."
+              }
+          }
+
+      - name: Verify explicit OCCT configuration
+        shell: pwsh
+        run: |
+          foreach ($path in @('.\build.ps1', '.\run.ps1', '.\publish.ps1')) {
+              $content = Get-Content $path -Raw
+              if (-not $content.Contains('$env:OCCT_ROOT')) {
+                  throw "$path does not support the OCCT_ROOT environment variable."
+              }
+              if (-not $content.Contains('OCCT_ROOT is not configured')) {
+                  throw "$path does not fail clearly when OCCT_ROOT is missing."
               }
           }
 
