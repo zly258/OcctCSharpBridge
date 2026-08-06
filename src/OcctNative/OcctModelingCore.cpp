@@ -23,7 +23,7 @@ extern "C"
 
     const char* occt_model_capabilities()
     {
-        return "headless;geometry-query;topology;history;healing;mesh;projection;ray-intersection;classification;advanced-boolean;splitter;sweep;loft;step;iges;brep;stl;viewer-interop";
+        return "headless;geometry-query;analytic-geometry;topology;history;healing;mesh;projection;ray-intersection;classification;advanced-boolean;splitter;sweep;loft;step;iges;brep;stl;viewer-interop";
     }
 
     int occt_model_shape_count(OcctModelHandle handle)

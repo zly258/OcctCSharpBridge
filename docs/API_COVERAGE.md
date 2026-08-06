@@ -5,9 +5,9 @@ This source-derived inventory lists the current native C ABI, C# P/Invoke mappin
 OCAF/XDE is intentionally excluded; documents, undo/redo, and JSON persistence are application-layer responsibilities.
 
 - OCCT: `7.9.0`
-- Native exports: `313`
-- Managed P/Invoke declarations: `313`
-- Public .NET types: `61`
+- Native exports: `321`
+- Managed P/Invoke declarations: `321`
+- Public .NET types: `69`
 
 ## Choose an assembly
 
@@ -90,6 +90,39 @@ using (engine.BeginDisplayBatch())
 ```
 
 Batch operations cover color, transparency, visibility, display mode, line width, material, redisplay, and selection. `IsVisible()` and `IsSelected()` read individual object state.
+
+### Analytic geometry parameters
+
+Use `GetCurveType()` or `GetSurfaceType()` first, then read exact analytic parameters instead of estimating centers, axes, and radii from sampled points.
+
+| Managed API | Geometry | Returned parameters |
+|---|---|---|
+| `GetLineGeometry()` | Line edge | Origin, direction, first and last parameters |
+| `GetCircleGeometry()` | Circle or circular arc | Center, normal, X direction, radius, parameter range |
+| `GetEllipseGeometry()` | Ellipse or elliptic arc | Center, normal, X direction, radii, parameter range |
+| `GetPlaneGeometry()` | Plane | Origin, normal, X direction |
+| `GetCylinderGeometry()` | Cylinder | Axis origin, axis direction, X direction, radius |
+| `GetConeGeometry()` | Cone | Apex, axis, X direction, reference radius, semi-angle |
+| `GetSphereGeometry()` | Sphere | Center, axis, X direction, radius |
+| `GetTorusGeometry()` | Torus | Center, axis, X direction, major and minor radii |
+
+```csharp
+var edgeType = model.GetCurveType(edge);
+if (edgeType == OcctCurveType.Circle)
+{
+    OcctCircleGeometry circle = model.GetCircleGeometry(edge);
+    Console.WriteLine($"R = {circle.Radius:F3}");
+}
+
+var faceType = model.GetSurfaceType(face);
+if (faceType == OcctSurfaceType.Cylinder)
+{
+    OcctCylinderGeometry cylinder = model.GetCylinderGeometry(face);
+    Console.WriteLine($"Axis = {cylinder.Axis}, R = {cylinder.Radius:F3}");
+}
+```
+
+A type mismatch, non-edge/non-face input, or a shape from another session produces an argument or `OcctException`. These exact parameters support feature recognition, hole-axis extraction, dimensions, engineering rules, and parametric reconstruction.
 
 ### Geometry and feature modeling
 
@@ -371,7 +404,7 @@ Coverage includes:
 - `occt_hide_selection_rectangle`
 - `occt_show_selection_rectangle`
 
-### OcctModeling.h (104)
+### OcctModeling.h (112)
 
 - `occt_model_ancestor_at`
 - `occt_model_ancestor_count`
@@ -388,6 +421,9 @@ Coverage includes:
 - `occt_model_destroy`
 - `occt_model_display_in_engine`
 - `occt_model_edge_curve_type`
+- `occt_model_edge_line_geometry`
+- `occt_model_edge_circle_geometry`
+- `occt_model_edge_ellipse_geometry`
 - `occt_model_edge_endpoints`
 - `occt_model_edge_point_at`
 - `occt_model_export_brep`
@@ -400,6 +436,11 @@ Coverage includes:
 - `occt_model_face_mesh_triangle`
 - `occt_model_face_point_normal`
 - `occt_model_face_surface_type`
+- `occt_model_face_plane_geometry`
+- `occt_model_face_cylinder_geometry`
+- `occt_model_face_cone_geometry`
+- `occt_model_face_sphere_geometry`
+- `occt_model_face_torus_geometry`
 - `occt_model_face_uv_bounds`
 - `occt_model_fillet_edges`
 - `occt_model_fix_shape`
@@ -490,6 +531,14 @@ Coverage includes:
 - `OcctDisplayMode`
 - `OcctDistanceResult`
 - `OcctMassProperties`
+- `OcctLineGeometry`
+- `OcctCircleGeometry`
+- `OcctEllipseGeometry`
+- `OcctPlaneGeometry`
+- `OcctCylinderGeometry`
+- `OcctConeGeometry`
+- `OcctSphereGeometry`
+- `OcctTorusGeometry`
 - `OcctMaterial`
 - `OcctModelAlgorithmResult`
 - `OcctModelBooleanGlue`
@@ -542,6 +591,14 @@ Coverage includes:
 - `OcctLightingPreset`
 - `OcctLightingPresets`
 - `OcctMassProperties`
+- `OcctLineGeometry`
+- `OcctCircleGeometry`
+- `OcctEllipseGeometry`
+- `OcctPlaneGeometry`
+- `OcctCylinderGeometry`
+- `OcctConeGeometry`
+- `OcctSphereGeometry`
+- `OcctTorusGeometry`
 - `OcctMaterial`
 - `OcctModelAlgorithmResult`
 - `OcctModelBooleanGlue`
@@ -588,7 +645,7 @@ Coverage includes:
 ## Bridge ABI contract
 
 - Managed expected ABI: `2`
-- Native bridge version: `2.3.0`
+- Native bridge version: `2.4.0`
 - `OcctBridgeInfo` validates the loaded `OcctNative.dll` before creating viewer or modeling sessions.
 - Managed and native binaries should always be deployed from the same build.
 
