@@ -36,6 +36,7 @@ jobs:
               '.\publish.ps1',
               '.\build.ps1',
               '.\tests\check-native-build-structure.ps1',
+              '.\tests\check-selection-contract.ps1',
               '.\src\OcctNet.WinForms\OcctNet.WinForms.csproj',
               '.\src\CadWinForms\CadWinForms.csproj',
               '.\src\CadWpf\CadWpf.csproj'
@@ -59,21 +60,24 @@ jobs:
               }
           }
 
-      - name: Verify lean geometry-only package rules
+      - name: Verify portable dual-demo package rules
         shell: pwsh
         run: |
           $text = Get-Content .\publish.ps1 -Raw
           foreach ($token in @(
+              '[string]$Target = "all"',
               'PublishSingleFile=true',
-              'EnableCompressionInSingleFile=$($SelfContained.IsPresent.ToString().ToLowerInvariant())',
+              'EnableCompressionInSingleFile=$($UseSelfContained.ToString().ToLowerInvariant())',
               '[switch]$SelfContained',
+              '[switch]$FrameworkDependent',
+              '$UseSelfContained = -not $FrameworkDependent.IsPresent',
               '[switch]$FullResources',
               '[switch]$Diagnostics',
               'native-dependencies.txt',
               'THIRD-PARTY-NOTICES.txt'
           )) {
               if (-not $text.Contains($token)) {
-                  throw "Lean publishing token was not found: $token"
+                  throw "Portable publishing token was not found: $token"
               }
           }
 
@@ -83,14 +87,17 @@ jobs:
               }
           }
 
-          if ($text -match '\[string\]\$Target\s*=\s*"all"') {
-              throw 'The default package target must not publish both UI demos.'
+          if ($text -notmatch '\[string\]\$Target\s*=\s*"all"') {
+              throw 'The default package target must publish both WinForms and WPF demos.'
           }
           if ($text -match 'PublishSingleFile=false') {
               throw 'Managed demo output is not configured as single-file.'
           }
           if ($text -match 'EnableCompressionInSingleFile=true') {
-              throw 'Framework-dependent publishing must not force single-file compression.'
+              throw 'Single-file compression must follow the selected runtime mode.'
+          }
+          if ($text -match '\$UseSelfContained\s*=\s*\$false') {
+              throw 'Portable self-contained publishing must remain the default.'
           }
           if ($text -match 'function\s+Write-Launcher') {
               throw 'Legacy launcher generation is still present.'
