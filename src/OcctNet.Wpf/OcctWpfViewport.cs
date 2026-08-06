@@ -72,8 +72,8 @@ public sealed class OcctWpfViewport : WpfUserControl
         _host = new WindowsFormsHost { Child = _viewport };
         Content = _host;
         Focusable = true;
-        HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        VerticalContentAlignment = VerticalAlignment.Stretch;
+        HorizontalContentAlignment = System.Windows.HorizontalAlignment.Stretch;
+        VerticalContentAlignment = System.Windows.VerticalAlignment.Stretch;
         ApplySelectionProperties();
 
         Loaded += (_, _) => FocusViewport();
