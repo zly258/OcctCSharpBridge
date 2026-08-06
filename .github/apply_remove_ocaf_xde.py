@@ -152,7 +152,7 @@ def update_inventory(path: str, chinese: bool) -> None:
     text = re.sub(r"Native exports:\s*`?\d+`?", "Native exports: `281`", text, count=1)
     text = re.sub(r"Managed P/Invoke declarations:\s*`?\d+`?", "Managed P/Invoke declarations: `281`", text, count=1)
 
-    public_heading = "## 公共 .NET 类型" if chinese else "## Public .NET types"
+    public_heading = "## 公开 .NET 类型" if chinese else "## Public .NET types"
     public_start = text.find(public_heading)
     if public_start < 0:
         raise RuntimeError(f"Public type section was not found in {path}.")
@@ -161,15 +161,16 @@ def update_inventory(path: str, chinese: bool) -> None:
     public_count = len(re.findall(r"(?m)^- `[^`]+`$", public_section))
     text = re.sub(r"Public \.NET types:\s*`?\d+`?", f"Public .NET types: `{public_count}`", text, count=1)
 
-    text = text.replace("- Managed expected ABI: `1`", "- Managed expected ABI: `2`")
-    text = text.replace("- Native bridge version: `1.1.0`", "- Native bridge version: `2.0.0`")
-    text = text.replace("viewer, modeling, or OCAF sessions", "viewer or modeling sessions")
-    text = text.replace("Viewer、建模或 OCAF 会话", "Viewer 或建模会话")
-
     if chinese:
+        text = text.replace("- 托管层要求的 ABI：`1`", "- 托管层要求的 ABI：`2`")
+        text = text.replace("- 原生桥接版本：`1.1.0`", "- 原生桥接版本：`2.0.0`")
+        text = text.replace("Viewer、建模或 OCAF 会话", "Viewer 或建模会话")
         note = "\n桥接层不包含 OCAF/XDE；文档、撤销重做和 JSON 持久化由上层应用实现。\n"
-        anchor = "本清单由源码生成，列出当前原生 C ABI、C# P/Invoke 映射和公共 .NET 类型。\n"
+        anchor = "本文件由源码接口声明整理，列出当前原生 C ABI、C# P/Invoke 映射及公开 .NET 类型。\n"
     else:
+        text = text.replace("- Managed expected ABI: `1`", "- Managed expected ABI: `2`")
+        text = text.replace("- Native bridge version: `1.1.0`", "- Native bridge version: `2.0.0`")
+        text = text.replace("viewer, modeling, or OCAF sessions", "viewer or modeling sessions")
         note = "\nOCAF/XDE is intentionally excluded; documents, undo/redo, and JSON persistence are application-layer responsibilities.\n"
         anchor = "This source-derived inventory lists the current native C ABI, C# P/Invoke mapping, and public .NET types.\n"
     if note.strip() not in text:
