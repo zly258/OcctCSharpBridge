@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\OcctScript.Domain\OcctScript.Domain.csproj" />
+    <ProjectReference Include="..\OcctScript.Expressions\OcctScript.Expressions.csproj" />
+    <ProjectReference Include="..\OcctNet\OcctNet.csproj" />
+  </ItemGroup>
+</Project>
