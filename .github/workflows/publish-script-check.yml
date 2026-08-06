@@ -50,7 +50,7 @@ jobs:
           $text = Get-Content .\publish.ps1 -Raw
           foreach ($token in @(
               'PublishSingleFile=true',
-              'EnableCompressionInSingleFile=true',
+              'EnableCompressionInSingleFile=$($SelfContained.IsPresent.ToString().ToLowerInvariant())',
               '[switch]$SelfContained',
               '[switch]$FullResources',
               '[switch]$Diagnostics',
@@ -67,6 +67,9 @@ jobs:
           }
           if ($text -match 'PublishSingleFile=false') {
               throw 'Managed demo output is not configured as single-file.'
+          }
+          if ($text -match 'EnableCompressionInSingleFile=true') {
+              throw 'Framework-dependent publishing must not force single-file compression.'
           }
           if ($text -match 'function\s+Write-Launcher') {
               throw 'Legacy launcher generation is still present.'
