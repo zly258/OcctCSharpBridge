@@ -30,7 +30,7 @@ Parameter semantics are explicit. `EvaluateEdgeNormalized()` accepts `[0, 1]`; `
 
 | Scenario | Reference | Purpose |
 |---|---|---|
-| Headless geometry and exchange | `OcctNet` | UI-independent viewer, modeling, analysis, mesh, healing, and exchange APIs |
+| Headless geometry and exchange | `OcctNet` | Type-safe viewer API plus `OcctModelingSession` |
 | WinForms viewport | `OcctNet.WinForms` | `OcctViewportControl` bound directly to an HWND |
 | WPF viewport | `OcctNet.Wpf` | `OcctWpfViewport` with `WindowsFormsHost`, dependency properties, and forwarded events |
 
@@ -110,7 +110,7 @@ Batch operations cover color, transparency, visibility, display mode, line width
 
 ### Analytic geometry parameters
 
-Use `GetEdgeCurveType()` or `GetFaceSurfaceType()` first, then read exact analytic parameters instead of estimating centers, axes, and radii from sampled points. The earlier `GetCurveType()` and `GetSurfaceType()` names remain compatibility aliases.
+Use `GetCurveType()` or `GetSurfaceType()` first, then read exact analytic parameters instead of estimating centers, axes, and radii from sampled points.
 
 | Managed API | Geometry | Returned parameters |
 |---|---|---|
@@ -124,14 +124,14 @@ Use `GetEdgeCurveType()` or `GetFaceSurfaceType()` first, then read exact analyt
 | `GetTorusGeometry()` | Torus | Center, axis, X direction, major and minor radii |
 
 ```csharp
-var edgeType = model.GetEdgeCurveType(edge);
+var edgeType = model.GetCurveType(edge);
 if (edgeType == OcctCurveType.Circle)
 {
     OcctCircleGeometry circle = model.GetCircleGeometry(edge);
     Console.WriteLine($"R = {circle.Radius:F3}");
 }
 
-var faceType = model.GetFaceSurfaceType(face);
+var faceType = model.GetSurfaceType(face);
 if (faceType == OcctSurfaceType.Cylinder)
 {
     OcctCylinderGeometry cylinder = model.GetCylinderGeometry(face);
@@ -274,516 +274,212 @@ Coverage includes:
 - `occt_zoom_at_point`
 - `occt_select_all_visible`
 - `occt_invert_selection`
-- `occt_set_objects_color`
-- `occt_set_objects_transparency`
-- `occt_set_objects_visibility`
-- `occt_set_objects_display_mode`
-- `occt_set_objects_line_width`
-- `occt_set_objects_material`
-- `occt_redisplay_objects`
-- `occt_select_objects`
+- `occt_hide_selected`
+- `occt_set_automatic_highlight`
+- `occt_set_msaa_samples`
+- `occt_set_render_resolution_scale`
+- `occt_set_render_resolution`
+- `occt_set_rendering_method`
+- `occt_set_shadows_enabled`
+- `occt_set_immediate_update`
+- `occt_set_frustum_culling`
+- `occt_set_face_boundaries_visible`
 - `occt_get_viewport_state`
 - `occt_reset_view`
 - `occt_reset_view_orientation`
 - `occt_reset_view_mapping`
-- `occt_get_scene_gravity_point`
 - `occt_fit_selected`
-- `occt_screen_to_plane`
+- `occt_get_scene_gravity_point`
+- `occt_zoom`
 
-### OcctNative.h — Interactive objects (124)
+### OcctNative.h — Registry, AIS attributes and lifecycle (33)
 
-- `occt_clear_objects`
-- `occt_erase_object`
+- `occt_clear`
+- `occt_copy_selected_subshape`
+- `occt_copy_selected_subshape_at`
+- `occt_delete_object`
+- `occt_delete_objects`
+- `occt_get_object_name`
+- `occt_hide_all`
+- `occt_highlight_object`
+- `occt_object_count`
 - `occt_object_exists`
+- `occt_object_id_at`
+- `occt_object_kind`
 - `occt_object_is_selected`
 - `occt_object_is_visible`
-- `occt_object_kind`
-- `occt_object_redisplay`
-- `occt_object_set_color`
-- `occt_object_set_display_mode`
-- `occt_object_set_line_width`
-- `occt_object_set_material`
-- `occt_object_set_selection_mode`
-- `occt_object_set_transparency`
-- `occt_object_set_visible`
-- `occt_object_set_z_layer`
-- `occt_object_transform`
-- `occt_selected_object`
-- `occt_shape_copy_selected_subshape`
-- `occt_shape_explode`
-- `occt_shape_exploded_at`
-- `occt_shape_exploded_count`
-- `occt_shape_get_location`
-- `occt_shape_get_subshape_color`
-- `occt_shape_remove_subshape_color`
-- `occt_shape_set_location`
-- `occt_shape_set_subshape_color`
-- `occt_make_shape`
-- `occt_make_vertex`
-- `occt_make_segment`
-- `occt_make_polyline`
-- `occt_make_circle`
-- `occt_make_arc_3p`
-- `occt_make_ellipse`
-- `occt_make_ellipse_arc`
+- `occt_redisplay_objects`
+- `occt_select_objects`
+- `occt_set_objects_color`
+- `occt_set_objects_display_mode`
+- `occt_set_objects_line_width`
+- `occt_set_objects_material`
+- `occt_set_objects_transparency`
+- `occt_set_objects_visible`
+- `occt_redisplay_object`
+- `occt_set_object_color`
+- `occt_set_object_display_mode`
+- `occt_set_object_line_width`
+- `occt_set_object_material`
+- `occt_set_object_name`
+- `occt_set_object_transparency`
+- `occt_set_object_visible`
+- `occt_shape_id_at`
+- `occt_show_all`
+- `occt_unhighlight_object`
+
+### OcctNative.h — Shape query and analysis (18)
+
+- `occt_copy_shape`
+- `occt_edge_curve_type`
+- `occt_edge_endpoints`
+- `occt_edge_point_at`
+- `occt_face_point_normal`
+- `occt_face_surface_type`
+- `occt_face_uv_bounds`
+- `occt_get_subshape`
+- `occt_shape_bounds`
+- `occt_shape_distance`
+- `occt_shape_hash`
+- `occt_shape_is_valid`
+- `occt_shape_linear_properties`
+- `occt_shape_surface_properties`
+- `occt_shape_type`
+- `occt_shape_volume_properties`
+- `occt_topology_count`
+- `occt_vertex_point`
+
+### OcctNative.h — Shape transformations (4)
+
+- `occt_mirror_plane`
+- `occt_rotate`
+- `occt_scale`
+- `occt_translate`
+
+### OcctNative.h — Basic points, 2D/3D curves and planar elements (13)
+
+- `occt_make_arc_center`
+- `occt_make_arc_three_points`
 - `occt_make_bezier`
-- `occt_make_bspline`
+- `occt_make_bspline_interpolated`
+- `occt_make_circle`
+- `occt_make_ellipse`
+- `occt_make_face_from_wire`
+- `occt_make_line`
+- `occt_make_plane_face`
+- `occt_make_polyline`
+- `occt_make_rectangle_wire`
 - `occt_make_regular_polygon`
-- `occt_make_plane`
+- `occt_make_vertex`
+
+### OcctNative.h — Primitive solids (6)
+
 - `occt_make_box`
-- `occt_make_cylinder`
 - `occt_make_cone`
+- `occt_make_cylinder`
 - `occt_make_sphere`
 - `occt_make_torus`
 - `occt_make_wedge`
-- `occt_make_prism`
-- `occt_make_revol`
-- `occt_make_pipe`
-- `occt_make_loft`
-- `occt_make_fillet`
-- `occt_make_chamfer`
-- `occt_make_offset`
-- `occt_make_thick_solid`
+
+### OcctNative.h — Topology assembly (4)
+
+- `occt_make_compound`
+- `occt_make_solid_from_shell`
+- `occt_make_wire`
+- `occt_sew_shapes`
+
+### OcctNative.h — Boolean and feature operations (11)
+
 - `occt_boolean`
-- `occt_section`
-- `occt_split`
-- `occt_shape_transform`
-- `occt_shape_translate`
-- `occt_shape_rotate`
-- `occt_shape_scale`
-- `occt_shape_mirror_point`
-- `occt_shape_mirror_axis`
-- `occt_shape_mirror_plane`
-- `occt_shape_bounds`
-- `occt_shape_linear_properties`
-- `occt_shape_surface_properties`
-- `occt_shape_volume_properties`
-- `occt_shape_distance`
-- `occt_shape_check`
-- `occt_shape_check_report`
-- `occt_shape_fix`
-- `occt_shape_unify_same_domain`
-- `occt_shape_tolerance`
-- `occt_shape_hash`
-- `occt_shape_type`
-- `occt_shape_orientation`
-- `occt_shape_is_closed`
-- `occt_shape_get_curve_type`
-- `occt_shape_get_surface_type`
-- `occt_shape_vertex_point`
-- `occt_shape_edge_endpoints`
-- `occt_shape_edge_point_at`
-- `occt_shape_face_uv_bounds`
-- `occt_shape_face_point_normal`
-- `occt_shape_topology_count`
-- `occt_shape_get_subshape`
-- `occt_shape_outer_wire`
-- `occt_shape_inner_wire_count`
-- `occt_shape_inner_wire_at`
-- `occt_shape_ancestor_count`
-- `occt_shape_ancestor_at`
-- `occt_shape_project_point_on_edge`
-- `occt_shape_project_point_on_face`
-- `occt_shape_ray_intersections`
-- `occt_shape_ray_hit_count`
-- `occt_shape_ray_hit_at`
-- `occt_shape_classify_point`
-- `occt_shape_mesh`
-- `occt_shape_clear_mesh`
-- `occt_shape_face_mesh_counts`
-- `occt_shape_face_mesh_node`
-- `occt_shape_face_mesh_triangle`
-- `occt_shape_import_file`
-- `occt_shape_import_step`
-- `occt_shape_import_iges`
-- `occt_shape_import_brep`
-- `occt_shape_import_stl`
-- `occt_shape_export_step`
-- `occt_shape_export_iges`
-- `occt_shape_export_brep`
-- `occt_shape_export_stl`
-- `occt_shape_display_in_engine`
-- `occt_make_text_shape`
-- `occt_make_length_annotation_shape`
+- `occt_chamfer_all_edges`
+- `occt_chamfer_edges`
+- `occt_extrude`
+- `occt_fillet_all_edges`
+- `occt_fillet_edges`
+- `occt_loft`
+- `occt_offset_shape`
+- `occt_revolve`
+- `occt_sweep`
+- `occt_thick_solid`
+
+### OcctNative.h — Text and dimensional annotations (17)
+
+- `occt_add_angle_dimension`
+- `occt_add_diameter_dimension`
+- `occt_add_length_dimension`
+- `occt_add_radius_dimension`
+- `occt_add_text`
 - `occt_make_angle_annotation_shape`
-- `occt_make_radius_annotation_shape`
 - `occt_make_diameter_annotation_shape`
-- `occt_text_update`
-- `occt_text_get_properties`
-- `occt_text_set_position`
-- `occt_text_set_direction`
-- `occt_text_set_color`
-- `occt_text_set_height`
-- `occt_dimension_update`
-- `occt_dimension_get_properties`
-- `occt_dimension_set_color`
-- `occt_dimension_set_text_height`
-- `occt_dimension_set_units`
+- `occt_make_length_annotation_shape`
+- `occt_make_radius_annotation_shape`
+- `occt_make_text_shape`
+- `occt_set_dimension_flyout`
+- `occt_set_text`
+- `occt_set_text_angle`
+- `occt_set_text_font`
+- `occt_set_text_height`
+- `occt_set_text_position`
+- `occt_set_text_zoomable`
+
+### OcctNative.h — BREP / STEP / IGES / STL IO (11)
+
+- `occt_export_all_iges`
+- `occt_export_all_step`
+- `occt_export_brep`
+- `occt_export_iges`
+- `occt_export_step`
+- `occt_export_stl`
+- `occt_import_brep`
+- `occt_import_file`
+- `occt_import_iges`
+- `occt_import_step`
+- `occt_import_stl`
+
+### OcctNative.h — Compatibility aliases retained for v1-v4 callers (5)
+
+- `occt_delete_shape`
+- `occt_set_shape_color`
+- `occt_set_shape_transparency`
+- `occt_set_shape_visible`
+- `occt_shape_count`
+
+### OcctSelectionOverlay.h — Coordinates use the host window client coordinate system (origin at left/top) (2)
+
+- `occt_hide_selection_rectangle`
+- `occt_show_selection_rectangle`
 
 ### OcctModeling.h (118)
 
-- `occt_model_capabilities`
-- `occt_model_create`
-- `occt_model_destroy`
-- `occt_model_last_error`
-- `occt_model_shape_count`
-- `occt_model_shape_id_at`
-- `occt_model_shape_exists`
-- `occt_model_delete_shape`
-- `occt_model_clear`
-- `occt_model_copy_shape`
-- `occt_model_make_vertex`
-- `occt_model_make_edge_segment`
-- `occt_model_make_edge_circle`
-- `occt_model_make_edge_arc3p`
-- `occt_model_make_edge_ellipse`
-- `occt_model_make_edge_ellipse_arc`
-- `occt_model_make_edge_bezier`
-- `occt_model_make_edge_bspline`
-- `occt_model_make_edge_polyline`
-- `occt_model_make_edge_regular_polygon`
-- `occt_model_make_wire`
-- `occt_model_make_face_from_wire`
-- `occt_model_make_face_from_wires`
-- `occt_model_make_face_plane`
-- `occt_model_make_box`
-- `occt_model_make_cylinder`
-- `occt_model_make_cone`
-- `occt_model_make_sphere`
-- `occt_model_make_torus`
-- `occt_model_make_wedge`
-- `occt_model_sew`
-- `occt_model_make_solid`
-- `occt_model_make_compound`
-- `occt_model_transform`
-- `occt_model_translate`
-- `occt_model_rotate`
-- `occt_model_scale`
-- `occt_model_mirror_point`
-- `occt_model_mirror_axis`
-- `occt_model_mirror_plane`
-- `occt_model_boolean`
-- `occt_model_section`
-- `occt_model_split`
-- `occt_model_extrude`
-- `occt_model_revolve`
-- `occt_model_sweep`
-- `occt_model_loft`
-- `occt_model_fillet`
-- `occt_model_chamfer`
-- `occt_model_offset`
-- `occt_model_thick_solid`
-- `occt_model_shape_bounds`
-- `occt_model_shape_linear_properties`
-- `occt_model_shape_surface_properties`
-- `occt_model_shape_volume_properties`
-- `occt_model_shape_distance`
-- `occt_model_shape_is_valid`
-- `occt_model_check_report`
-- `occt_model_fix_shape`
-- `occt_model_unify_same_domain`
-- `occt_model_shape_tolerance`
-- `occt_model_shape_hash`
-- `occt_model_shape_type`
-- `occt_model_shape_orientation`
-- `occt_model_shape_is_closed`
-- `occt_model_get_location`
-- `occt_model_set_location`
-- `occt_model_edge_curve_type`
-- `occt_model_face_surface_type`
-- `occt_model_vertex_point`
-- `occt_model_edge_endpoints`
-- `occt_model_edge_point_at`
-- `occt_model_face_uv_bounds`
-- `occt_model_face_point_normal`
-- `occt_model_topology_count`
-- `occt_model_get_subshape`
-- `occt_model_outer_wire`
-- `occt_model_inner_wire_count`
-- `occt_model_inner_wire_at`
-- `occt_model_ancestor_count`
 - `occt_model_ancestor_at`
+- `occt_model_ancestor_count`
+- `occt_model_boolean`
+- `occt_model_capabilities`
+- `occt_model_chamfer_edges`
+- `occt_model_check_report`
+- `occt_model_classify_point`
+- `occt_model_clear`
+- `occt_model_clear_mesh`
+- `occt_model_copy_shape`
+- `occt_model_create`
+- `occt_model_delete_shape`
+- `occt_model_destroy`
+- `occt_model_display_in_engine`
+- `occt_model_edge_curve_type`
 - `occt_model_edge_line_geometry`
 - `occt_model_edge_circle_geometry`
 - `occt_model_edge_ellipse_geometry`
-- `occt_model_face_plane_geometry`
-- `occt_model_face_cylinder_geometry`
-- `occt_model_face_cone_geometry`
-- `occt_model_face_sphere_geometry`
-- `occt_model_face_torus_geometry`
-- `occt_model_edge_parameter_range`
-- `occt_model_edge_differential`
-- `occt_model_edge_curvature`
-- `occt_model_face_periodicity`
-- `occt_model_face_differential`
-- `occt_model_face_curvature`
-- `occt_model_project_point_on_edge`
-- `occt_model_project_point_on_face`
-- `occt_model_ray_intersections`
-- `occt_model_ray_hit_count`
-- `occt_model_ray_hit_at`
-- `occt_model_classify_point`
-- `occt_model_mesh`
-- `occt_model_clear_mesh`
+- `occt_model_edge_endpoints`
+- `occt_model_edge_point_at`
+- `occt_model_export_brep`
+- `occt_model_export_iges`
+- `occt_model_export_step`
+- `occt_model_export_stl`
+- `occt_model_extrude`
 - `occt_model_face_mesh_counts`
 - `occt_model_face_mesh_node`
 - `occt_model_face_mesh_triangle`
-- `occt_model_import_file`
-- `occt_model_import_step`
-- `occt_model_import_iges`
-- `occt_model_import_brep`
-- `occt_model_import_stl`
-- `occt_model_export_step`
-- `occt_model_export_iges`
-- `occt_model_export_brep`
-- `occt_model_export_stl`
-- `occt_model_display_in_engine`
-- `occt_model_operation_count`
-- `occt_model_operation_id_at`
-- `occt_model_operation_at`
-- `occt_model_operation_result_count`
-- `occt_model_operation_result_at`
-- `occt_model_operation_modified_count`
-- `occt_model_operation_modified_at`
-- `occt_model_operation_generated_count`
-- `occt_model_operation_generated_at`
-- `occt_model_operation_is_deleted`
-
-## Managed P/Invoke declarations
-
-### NativeMethods.cs (209)
-
-- `occt_auto_z_fit`
-- `occt_begin_update`
-- `occt_clear_objects`
-- `occt_clear_selection`
-- `occt_create`
-- `occt_destroy`
-- `occt_dimension_get_properties`
-- `occt_dimension_set_color`
-- `occt_dimension_set_text_height`
-- `occt_dimension_set_units`
-- `occt_dimension_update`
-- `occt_dump_view`
-- `occt_end_update`
-- `occt_first_selected`
-- `occt_fit_all`
-- `occt_fit_object`
-- `occt_get_auto_z_fit_mode`
-- `occt_get_camera`
-- `occt_get_default_polygon_offsets`
-- `occt_get_object_polygon_offsets`
-- `occt_get_view_scale`
-- `occt_initialize`
-- `occt_invert_selection`
-- `occt_is_updating`
-- `occt_last_error`
-- `occt_make_angle_annotation_shape`
-- `occt_make_arc_3p`
-- `occt_make_bezier`
-- `occt_make_box`
-- `occt_make_bspline`
-- `occt_make_chamfer`
-- `occt_make_circle`
-- `occt_make_cone`
-- `occt_make_cylinder`
-- `occt_make_diameter_annotation_shape`
-- `occt_make_ellipse`
-- `occt_make_ellipse_arc`
-- `occt_make_fillet`
-- `occt_make_length_annotation_shape`
-- `occt_make_loft`
-- `occt_make_offset`
-- `occt_make_pipe`
-- `occt_make_plane`
-- `occt_make_polyline`
-- `occt_make_prism`
-- `occt_make_radius_annotation_shape`
-- `occt_make_regular_polygon`
-- `occt_make_revol`
-- `occt_make_segment`
-- `occt_make_shape`
-- `occt_make_sphere`
-- `occt_make_text_shape`
-- `occt_make_thick_solid`
-- `occt_make_torus`
-- `occt_make_vertex`
-- `occt_make_wedge`
-- `occt_move_to`
-- `occt_object_erase`
-- `occt_object_exists`
-- `occt_object_get_subshape_color`
-- `occt_object_is_selected`
-- `occt_object_is_visible`
-- `occt_object_kind`
-- `occt_object_redisplay`
-- `occt_object_remove_subshape_color`
-- `occt_object_set_color`
-- `occt_object_set_display_mode`
-- `occt_object_set_line_width`
-- `occt_object_set_location`
-- `occt_object_set_material`
-- `occt_object_set_selection_mode`
-- `occt_object_set_subshape_color`
-- `occt_object_set_transparency`
-- `occt_object_set_visible`
-- `occt_object_set_z_layer`
-- `occt_object_transform`
-- `occt_pan`
-- `occt_redraw`
-- `occt_redisplay_objects`
-- `occt_reset_object_polygon_offsets`
-- `occt_reset_scene_lighting`
-- `occt_reset_view`
-- `occt_reset_view_mapping`
-- `occt_reset_view_orientation`
-- `occt_resize`
-- `occt_rotation`
-- `occt_screen_to_plane`
-- `occt_screen_to_ray`
-- `occt_screen_to_world`
-- `occt_select`
-- `occt_select_all_visible`
-- `occt_select_object`
-- `occt_select_objects`
-- `occt_select_rectangle`
-- `occt_select_rectangle_ex`
-- `occt_selected_at`
-- `occt_selected_count`
-- `occt_selected_object`
-- `occt_set_antialiasing`
-- `occt_set_auto_z_fit_mode`
-- `occt_set_background`
-- `occt_set_camera`
-- `occt_set_computed_mode`
-- `occt_set_default_material`
-- `occt_set_default_polygon_offsets`
-- `occt_set_display_mode`
-- `occt_set_display_precision`
-- `occt_set_gradient_background`
-- `occt_set_hover_highlight_color`
-- `occt_set_object_polygon_offsets`
-- `occt_set_objects_color`
-- `occt_set_objects_display_mode`
-- `occt_set_objects_line_width`
-- `occt_set_objects_material`
-- `occt_set_objects_transparency`
-- `occt_set_objects_visibility`
-- `occt_set_perspective_fov`
-- `occt_set_projection`
-- `occt_set_scene_lighting`
-- `occt_set_scene_lighting_ex`
-- `occt_set_selection_highlight_color`
-- `occt_set_selection_mode`
-- `occt_set_selection_tolerance`
-- `occt_set_triedron_visible`
-- `occt_set_view`
-- `occt_set_view_cube_visible`
-- `occt_set_view_scale`
-- `occt_set_zup_view`
-- `occt_shape_ancestor_at`
-- `occt_shape_ancestor_count`
-- `occt_shape_check`
-- `occt_shape_check_report`
-- `occt_shape_classify_point`
-- `occt_shape_clear_mesh`
-- `occt_shape_copy_selected_subshape`
-- `occt_shape_edge_endpoints`
-- `occt_shape_edge_point_at`
-- `occt_shape_erase`
-- `occt_shape_explode`
-- `occt_shape_exploded_at`
-- `occt_shape_exploded_count`
-- `occt_shape_export_brep`
-- `occt_shape_export_iges`
-- `occt_shape_export_step`
-- `occt_shape_export_stl`
-- `occt_shape_face_mesh_counts`
-- `occt_shape_face_mesh_node`
-- `occt_shape_face_mesh_triangle`
-- `occt_shape_face_point_normal`
-- `occt_shape_face_uv_bounds`
-- `occt_shape_fix`
-- `occt_shape_get_curve_type`
-- `occt_shape_get_location`
-- `occt_shape_get_subshape`
-- `occt_shape_get_surface_type`
-- `occt_shape_hash`
-- `occt_shape_import_brep`
-- `occt_shape_import_file`
-- `occt_shape_import_iges`
-- `occt_shape_import_step`
-- `occt_shape_import_stl`
-- `occt_shape_inner_wire_at`
-- `occt_shape_inner_wire_count`
-- `occt_shape_is_closed`
-- `occt_shape_is_valid`
-- `occt_shape_linear_properties`
-- `occt_shape_mesh`
-- `occt_shape_outer_wire`
-- `occt_shape_project_point_on_edge`
-- `occt_shape_project_point_on_face`
-- `occt_shape_ray_hit_at`
-- `occt_shape_ray_hit_count`
-- `occt_shape_ray_intersections`
-- `occt_shape_set_location`
-- `occt_shape_split`
-- `occt_shape_surface_properties`
-- `occt_shape_tolerance`
-- `occt_shape_topology_count`
-- `occt_shape_transform`
-- `occt_shape_translate`
-- `occt_shape_rotate`
-- `occt_shape_scale`
-- `occt_shape_mirror_point`
-- `occt_shape_mirror_axis`
-- `occt_shape_mirror_plane`
-- `occt_shape_type`
-- `occt_shape_unify_same_domain`
-- `occt_shape_vertex_point`
-- `occt_shape_volume_properties`
-- `occt_split`
-- `occt_start_rotation`
-- `occt_text_get_properties`
-- `occt_text_set_color`
-- `occt_text_set_direction`
-- `occt_text_set_height`
-- `occt_text_set_position`
-- `occt_text_update`
-- `occt_version`
-- `occt_window_fit`
-- `occt_world_to_screen`
-- `occt_zoom_at_point`
-- `occt_fit_objects`
-- `occt_get_viewport_state`
-- `occt_get_scene_gravity_point`
-- `occt_fit_selected`
-- `occt_bridge_abi_version`
-- `occt_bridge_version`
-- `occt_bridge_build_info`
-
-### ModelNativeMethods.cs (118)
-
-- `occt_model_ancestor_at`
-- `occt_model_ancestor_count`
-- `occt_model_boolean`
-- `occt_model_capabilities`
-- `occt_model_chamfer`
-- `occt_model_check_report`
-- `occt_model_classify_point`
-- `occt_model_clear`
-- `occt_model_clear_mesh`
-- `occt_model_copy_shape`
-- `occt_model_create`
-- `occt_model_delete_shape`
-- `occt_model_destroy`
-- `occt_model_display_in_engine`
-- `occt_model_edge_endpoints`
-- `occt_model_edge_point_at`
-- `occt_model_edge_curve_type`
-- `occt_model_edge_line_geometry`
-- `occt_model_edge_circle_geometry`
-- `occt_model_edge_ellipse_geometry`
+- `occt_model_face_point_normal`
 - `occt_model_face_surface_type`
 - `occt_model_face_plane_geometry`
 - `occt_model_face_cylinder_geometry`
@@ -796,20 +492,16 @@ Coverage includes:
 - `occt_model_face_periodicity`
 - `occt_model_face_differential`
 - `occt_model_face_curvature`
-- `occt_model_export_brep`
-- `occt_model_export_iges`
-- `occt_model_export_step`
-- `occt_model_export_stl`
-- `occt_model_extrude`
-- `occt_model_face_mesh_counts`
-- `occt_model_face_mesh_node`
-- `occt_model_face_mesh_triangle`
-- `occt_model_face_point_normal`
 - `occt_model_face_uv_bounds`
-- `occt_model_fillet`
+- `occt_model_fillet_edges`
 - `occt_model_fix_shape`
 - `occt_model_get_location`
 - `occt_model_get_subshape`
+- `occt_model_history_generated_at`
+- `occt_model_history_generated_count`
+- `occt_model_history_is_removed`
+- `occt_model_history_modified_at`
+- `occt_model_history_modified_count`
 - `occt_model_import_brep`
 - `occt_model_import_file`
 - `occt_model_import_iges`
@@ -819,43 +511,32 @@ Coverage includes:
 - `occt_model_inner_wire_count`
 - `occt_model_last_error`
 - `occt_model_loft`
+- `occt_model_make_arc_center`
+- `occt_model_make_arc_three_points`
+- `occt_model_make_bezier`
 - `occt_model_make_box`
+- `occt_model_make_bspline_interpolated`
+- `occt_model_make_circle`
 - `occt_model_make_compound`
 - `occt_model_make_cone`
 - `occt_model_make_cylinder`
-- `occt_model_make_edge_arc3p`
-- `occt_model_make_edge_bezier`
-- `occt_model_make_edge_bspline`
-- `occt_model_make_edge_circle`
-- `occt_model_make_edge_ellipse`
-- `occt_model_make_edge_ellipse_arc`
-- `occt_model_make_edge_polyline`
-- `occt_model_make_edge_regular_polygon`
-- `occt_model_make_edge_segment`
+- `occt_model_make_ellipse`
 - `occt_model_make_face_from_wire`
-- `occt_model_make_face_from_wires`
-- `occt_model_make_face_plane`
-- `occt_model_make_solid`
+- `occt_model_make_line`
+- `occt_model_make_plane_face`
+- `occt_model_make_polyline`
+- `occt_model_make_rectangle_wire`
+- `occt_model_make_regular_polygon`
+- `occt_model_make_solid_from_shell`
 - `occt_model_make_sphere`
 - `occt_model_make_torus`
 - `occt_model_make_vertex`
 - `occt_model_make_wedge`
 - `occt_model_make_wire`
 - `occt_model_mesh`
-- `occt_model_mirror_axis`
 - `occt_model_mirror_plane`
-- `occt_model_mirror_point`
 - `occt_model_offset`
-- `occt_model_operation_at`
-- `occt_model_operation_count`
-- `occt_model_operation_generated_at`
-- `occt_model_operation_generated_count`
-- `occt_model_operation_id_at`
-- `occt_model_operation_is_deleted`
-- `occt_model_operation_modified_at`
-- `occt_model_operation_modified_count`
-- `occt_model_operation_result_at`
-- `occt_model_operation_result_count`
+- `occt_model_operation_report`
 - `occt_model_outer_wire`
 - `occt_model_project_point_on_edge`
 - `occt_model_project_point_on_face`
@@ -865,12 +546,12 @@ Coverage includes:
 - `occt_model_revolve`
 - `occt_model_rotate`
 - `occt_model_scale`
-- `occt_model_section`
 - `occt_model_set_location`
 - `occt_model_sew`
 - `occt_model_shape_bounds`
 - `occt_model_shape_count`
 - `occt_model_shape_distance`
+- `occt_model_shape_exists`
 - `occt_model_shape_hash`
 - `occt_model_shape_id_at`
 - `occt_model_shape_is_closed`
@@ -881,32 +562,26 @@ Coverage includes:
 - `occt_model_shape_tolerance`
 - `occt_model_shape_type`
 - `occt_model_shape_volume_properties`
-- `occt_model_shape_exists`
 - `occt_model_split`
 - `occt_model_sweep`
 - `occt_model_thick_solid`
 - `occt_model_topology_count`
-- `occt_model_transform`
 - `occt_model_translate`
 - `occt_model_unify_same_domain`
 - `occt_model_vertex_point`
 
-## P/Invoke-compatible structs and enums
 
-- `NativeModelAlgorithmResult`
+## Native data types
+
 - `OcctAutoZFitSettings`
 - `OcctBooleanOperation`
 - `OcctBounds`
 - `OcctCameraState`
+- `OcctColorRgb`
 - `OcctCurveType`
-- `OcctDimensionProperties`
-- `OcctDirectionalLightSettings`
 - `OcctDisplayMode`
 - `OcctDistanceResult`
-- `OcctEdgeEvaluation`
-- `OcctFaceEvaluation`
-- `OcctGradientFillMethod`
-- `OcctLightingPreset`
+- `OcctMassProperties`
 - `OcctLineGeometry`
 - `OcctCircleGeometry`
 - `OcctEllipseGeometry`
@@ -921,7 +596,7 @@ Coverage includes:
 - `OcctModelSurfacePeriodicity`
 - `OcctModelSurfaceDifferential`
 - `OcctModelSurfaceCurvature`
-- `OcctMassProperties`
+- `OcctMaterial`
 - `OcctModelAlgorithmResult`
 - `OcctModelBooleanGlue`
 - `OcctModelBooleanOperation`
