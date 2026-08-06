@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Position = 0)]
     [ValidateSet("validate", "native", "managed", "smoke", "winform", "wpf", "all")]
     [string]$Target = "all",
@@ -39,6 +39,11 @@ $Projects = [ordered]@{
     wrapper = @{
         Name = "OcctNet"
         Project = "src\OcctNet\OcctNet.csproj"
+        Executable = $null
+    }
+    winformsHost = @{
+        Name = "OcctNet.WinForms"
+        Project = "src\OcctNet.WinForms\OcctNet.WinForms.csproj"
         Executable = $null
     }
     common = @{
@@ -209,6 +214,7 @@ switch ($Target) {
     }
     "managed" {
         Build-ManagedProject "wrapper"
+        Build-ManagedProject "winformsHost"
         Build-ManagedProject "common"
     }
     "native" {

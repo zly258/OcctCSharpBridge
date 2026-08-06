@@ -1,5 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace OcctNet;
 
@@ -189,15 +190,35 @@ public sealed partial class OcafDocument : IDisposable
         return new OcctModelShape(id);
     }
 
-    private void EnsureNotDisposed() => ObjectDisposedException.ThrowIf(_handle == IntPtr.Zero, this);
+    private void EnsureNotDisposed() =>
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _handle) == IntPtr.Zero, this);
 
     public void Dispose()
     {
-        if (_handle == IntPtr.Zero) return;
-        OcafNativeMethods.occt_ocaf_destroy(_handle);
-        _handle = IntPtr.Zero;
+        ReleaseHandle(throwOnError: true);
         GC.SuppressFinalize(this);
     }
 
-    ~OcafDocument() => Dispose();
+    private void ReleaseHandle(bool throwOnError)
+    {
+        var handle = Interlocked.Exchange(ref _handle, IntPtr.Zero);
+        if (handle == IntPtr.Zero) return;
+
+        if (throwOnError)
+        {
+            OcafNativeMethods.occt_ocaf_destroy(handle);
+            return;
+        }
+
+        try
+        {
+            OcafNativeMethods.occt_ocaf_destroy(handle);
+        }
+        catch
+        {
+            // Finalizers must not allow native unload failures to terminate the process.
+        }
+    }
+
+    ~OcafDocument() => ReleaseHandle(throwOnError: false);
 }

@@ -2,7 +2,12 @@
 
 [English main branch](https://github.com/zly258/OcctCSharpBridge/tree/main) · [中文接口清单](docs/API_COVERAGE.zh-CN.md) · [API inventory](docs/API_COVERAGE.md)
 
-`demo` 在可复用 OCCT C# 封装基础上提供 WinForms、WPF 示例应用。底层 `src/OcctNative`、`src/OcctNet`、`docs` 和 `tests` 与 `main` 保持同步，界面、场景测试和发布脚本仅保留在本分支。
+`demo` 在可复用 OCCT C# 封装基础上提供 WinForms、WPF 示例应用。底层 `src/OcctNative`、`src/OcctNet`、`src/OcctNet.WinForms`、`docs` 和 `tests` 与 `main` 保持同步，界面、场景测试和发布脚本仅保留在本分支。
+
+托管封装现已拆分为：
+
+- `OcctNet`：不依赖界面的 Viewer、建模、交换及 OCAF/XDE 接口。
+- `OcctNet.WinForms`：可选的 `OcctViewportControl` 宿主，供 WinForms 及 WPF `WindowsFormsHost` 使用。
 
 ## 主要能力
 
@@ -24,7 +29,8 @@
 - .NET：`8.0`，Windows x64
 - Bridge ABI：`1`
 - 接口数量：Native `517`，P/Invoke `517`
-- `OcctNet.dll` 与 `OcctNative.dll` 必须来自同一次构建
+- 使用 Demo 视口时，`OcctNet.dll`、`OcctNet.WinForms.dll` 与 `OcctNative.dll` 必须来自同一次构建
+- 原生会话释放已改为幂等且终结器安全，但同一会话仍应由单一应用线程调用
 
 ## 构建与运行
 
@@ -33,6 +39,8 @@
 .\run.ps1 winform
 .\run.ps1 wpf
 ```
+
+`build.ps1 managed` 不需要 OCCT SDK，可完成核心封装、可选 WinForms 宿主和公共 Demo 层的验证与构建。
 
 ## 发布
 
@@ -54,4 +62,4 @@
 .\publish.ps1 all Release -SelfContained -Zip -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-`publish.ps1` 只复制原生依赖闭包和需要的 OCCT 资源；`-FullResources`、`-Diagnostics` 仅在需要时开启。
+`publish.ps1` 只复制原生依赖闭包和需要的 OCCT 资源；被引用的 `OcctNet` 与 `OcctNet.WinForms` 程序集由 `dotnet publish` 自动包含。`-FullResources`、`-Diagnostics` 仅在需要时开启。

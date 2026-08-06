@@ -1,8 +1,13 @@
-# OcctCSharpBridge Demo
+﻿# OcctCSharpBridge Demo
 
 [Main SDK branch](https://github.com/zly258/OcctCSharpBridge/tree/main) · [简体中文](README.zh-CN.md) · [API inventory](docs/API_COVERAGE.md)
 
-The `demo` branch adds WinForms and WPF reference applications to the reusable OCCT C# bridge. `src/OcctNative`, `src/OcctNet`, `docs`, and `tests` stay synchronized with `main`; UI, scenarios, and publishing remain demo-only.
+The `demo` branch adds WinForms and WPF reference applications to the reusable OCCT C# bridge. `src/OcctNative`, `src/OcctNet`, `src/OcctNet.WinForms`, `docs`, and `tests` stay synchronized with `main`; UI, scenarios, and publishing remain demo-only.
+
+The managed wrapper is now split into:
+
+- `OcctNet`: UI-independent viewer, modeling, exchange, and OCAF/XDE APIs.
+- `OcctNet.WinForms`: optional `OcctViewportControl` host for WinForms and WPF `WindowsFormsHost` applications.
 
 ## Features
 
@@ -24,7 +29,8 @@ Complex scenarios use display batching and remove profiles, cutters, paths, and 
 - .NET: `8.0`, Windows x64
 - Bridge ABI: `1`
 - API count: Native `517`, P/Invoke `517`
-- Deploy `OcctNet.dll` and `OcctNative.dll` from the same build
+- Deploy `OcctNet.dll`, `OcctNet.WinForms.dll`, and `OcctNative.dll` from the same build when using the demo viewport
+- Native session disposal is idempotent and finalizer-safe; a session must still be used from one application thread at a time
 
 ## Build and run
 
@@ -33,6 +39,8 @@ Complex scenarios use display batching and remove profiles, cutters, paths, and 
 .\run.ps1 winform
 .\run.ps1 wpf
 ```
+
+`build.ps1 managed` validates and builds the UI-independent core, optional WinForms host, and shared demo layer without requiring the OCCT SDK.
 
 ## Publish
 
@@ -54,4 +62,4 @@ Create a self-contained package for machines without the .NET 8 Desktop Runtime:
 .\publish.ps1 all Release -SelfContained -Zip -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-`publish.ps1` copies the native dependency closure and required OCCT resources. Enable `-FullResources` or `-Diagnostics` only when needed.
+`publish.ps1` copies the native dependency closure and required OCCT resources. The referenced `OcctNet` and `OcctNet.WinForms` assemblies are included by `dotnet publish`. Enable `-FullResources` or `-Diagnostics` only when needed.

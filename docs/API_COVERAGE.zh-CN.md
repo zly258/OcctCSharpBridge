@@ -713,6 +713,8 @@
 - `OcctViewportSelectionEventArgs`
 - `OcctViewportWorldPointEventArgs`
 
+上述 `OcctViewport*` 类型由可选的 `OcctNet.WinForms` 程序集提供；其余托管类型仍位于不依赖 UI 的 `OcctNet` 程序集中。
+
 ## 桥接 ABI 约束
 
 - 托管层要求的 ABI：`1`

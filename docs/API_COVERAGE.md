@@ -713,6 +713,8 @@ This source-derived inventory lists the current native C ABI, C# P/Invoke mappin
 - `OcctViewportSelectionEventArgs`
 - `OcctViewportWorldPointEventArgs`
 
+The `OcctViewport*` types above are provided by the optional `OcctNet.WinForms` assembly; all other managed types remain in the UI-independent `OcctNet` assembly.
+
 ## Bridge ABI contract
 
 - Managed expected ABI: `1`

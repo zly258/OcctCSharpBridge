@@ -14,6 +14,8 @@ Project("{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") = "Solution Items", "Solution 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet", "src\OcctNet\OcctNet.csproj", "{217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.WinForms", "src\OcctNet.WinForms\OcctNet.WinForms.csproj", "{7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CadCommon", "src\CadCommon\CadCommon.csproj", "{A01D0BAA-2AE2-487D-A76C-A6BD09ED92FA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CAD-Winform", "src\CadWinForms\CadWinForms.csproj", "{9FD55C83-D84B-498A-86E9-0413E8A5AE69}"
@@ -30,6 +32,10 @@ Global
         {217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3}.Debug|x64.Build.0 = Debug|x64
         {217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3}.Release|x64.ActiveCfg = Release|x64
         {217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3}.Release|x64.Build.0 = Release|x64
+        {7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58}.Debug|x64.ActiveCfg = Debug|x64
+        {7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58}.Debug|x64.Build.0 = Debug|x64
+        {7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58}.Release|x64.ActiveCfg = Release|x64
+        {7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58}.Release|x64.Build.0 = Release|x64
         {A01D0BAA-2AE2-487D-A76C-A6BD09ED92FA}.Debug|x64.ActiveCfg = Debug|x64
         {A01D0BAA-2AE2-487D-A76C-A6BD09ED92FA}.Debug|x64.Build.0 = Debug|x64
         {A01D0BAA-2AE2-487D-A76C-A6BD09ED92FA}.Release|x64.ActiveCfg = Release|x64

@@ -35,12 +35,26 @@ jobs:
           $required = @(
               '.\publish.ps1',
               '.\build.ps1',
+              '.\src\OcctNet.WinForms\OcctNet.WinForms.csproj',
               '.\src\CadWinForms\CadWinForms.csproj',
               '.\src\CadWpf\CadWpf.csproj'
           )
           foreach ($path in $required) {
               if (-not (Test-Path $path -PathType Leaf)) {
                   throw "Required publishing input was not found: $path"
+              }
+          }
+
+      - name: Verify modular project references
+        shell: pwsh
+        run: |
+          foreach ($project in @(
+              '.\src\CadWinForms\CadWinForms.csproj',
+              '.\src\CadWpf\CadWpf.csproj'
+          )) {
+              $text = Get-Content $project -Raw
+              if (-not $text.Contains('..\OcctNet.WinForms\OcctNet.WinForms.csproj')) {
+                  throw "The demo project does not reference the optional WinForms host: $project"
               }
           }
 
