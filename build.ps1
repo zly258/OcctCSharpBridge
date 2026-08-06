@@ -42,6 +42,7 @@ $NativeBuildCheck = Join-Path $RepoRoot "tests\check-native-build-structure.ps1"
 $SelectionContractCheck = Join-Path $RepoRoot "tests\check-selection-contract.ps1"
 $ViewportApiCheck = Join-Path $RepoRoot "tests\check-viewport-api.ps1"
 $UiHostsCheck = Join-Path $RepoRoot "tests\check-ui-hosts.ps1"
+$AnalyticGeometryCheck = Join-Path $RepoRoot "tests\check-analytic-geometry-api.ps1"
 
 $OcctIncludeDir = Join-Path $OcctRoot "inc"
 $OcctLibDir = Join-Path $OcctRoot "win64\vc14\lib"
@@ -82,6 +83,13 @@ function Test-ApiSurface {
     Assert-Path $SelectionContractCheck
     Assert-Path $ViewportApiCheck
     Assert-Path $UiHostsCheck
+    Assert-Path $AnalyticGeometryCheck
+
+    Write-Host "[analytic-geometry] Validating analytic curve and surface contracts..." -ForegroundColor Cyan
+    & $AnalyticGeometryCheck -RepositoryRoot $RepoRoot
+    if (-not $?) {
+        throw "Analytic geometry API validation failed."
+    }
 
     Write-Host "[ui-hosts] Validating WinForms and WPF viewport hosts..." -ForegroundColor Cyan
     & $UiHostsCheck -RepositoryRoot $RepoRoot
