@@ -1,0 +1,58 @@
+name: Apply Demo API 2.4
+
+on:
+  push:
+    branches:
+      - sync/demo-api-2.4-readme-previews
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Apply demo integration
+        shell: pwsh
+        run: python .\.github\apply_demo_2_4.py
+
+      - name: Validate demo wrapper and package contracts
+        shell: pwsh
+        run: .\build.ps1 validate Release
+
+      - name: Build managed demo projects
+        shell: pwsh
+        run: |
+          dotnet build .\src\OcctNet\OcctNet.csproj -c Release -p:Platform=x64 --nologo
+          if ($LASTEXITCODE -ne 0) { throw 'OcctNet build failed.' }
+          dotnet build .\src\OcctNet.WinForms\OcctNet.WinForms.csproj -c Release -p:Platform=x64 --nologo
+          if ($LASTEXITCODE -ne 0) { throw 'OcctNet.WinForms build failed.' }
+          dotnet build .\src\OcctNet.Wpf\OcctNet.Wpf.csproj -c Release -p:Platform=x64 --nologo
+          if ($LASTEXITCODE -ne 0) { throw 'OcctNet.Wpf build failed.' }
+          dotnet build .\src\CadCommon\CadCommon.csproj -c Release -p:Platform=x64 --nologo
+          if ($LASTEXITCODE -ne 0) { throw 'CadCommon build failed.' }
+          dotnet build .\src\CadWinForms\CadWinForms.csproj -c Release -p:Platform=x64 --nologo
+          if ($LASTEXITCODE -ne 0) { throw 'WinForms demo build failed.' }
+          dotnet build .\src\CadWpf\CadWpf.csproj -c Release -p:Platform=x64 --nologo
+          if ($LASTEXITCODE -ne 0) { throw 'WPF demo build failed.' }
+
+      - name: Commit demo integration
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -- .github/workflows/apply-demo-api-2-4.yml
+          git add -A
+          if (git diff --cached --quiet) { throw 'No demo changes were produced.' }
+          git commit -m "Sync API 2.4 and split preview images by language"
+          git push origin HEAD:sync/demo-api-2.4-readme-previews
