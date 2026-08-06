@@ -1,4 +1,4 @@
-name: Wrapper Branch Sync
+﻿name: Wrapper Branch Sync
 
 on:
   workflow_dispatch:
@@ -32,6 +32,7 @@ jobs:
           $paths = @(
             "src/OcctNative",
             "src/OcctNet",
+            "src/OcctNet.WinForms",
             "docs",
             "tests"
           )
