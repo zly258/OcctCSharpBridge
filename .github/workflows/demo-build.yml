@@ -22,17 +22,13 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Validate selection contract
+      - name: Validate reusable wrapper contracts
         shell: pwsh
-        run: .\tests\check-selection-contract.ps1 -RepositoryRoot $PWD
+        run: .\build.ps1 validate Release
 
-      - name: Validate native build structure
+      - name: Validate deployment-complete package contract
         shell: pwsh
-        run: .\tests\check-native-build-structure.ps1 -RepositoryRoot $PWD
-
-      - name: Validate native and managed declarations
-        shell: pwsh
-        run: .\tests\check-api-surface.ps1 -RepositoryRoot $PWD
+        run: .\tests\check-demo-package.ps1 -RepositoryRoot $PWD
 
       - name: Build reusable core wrapper
         shell: pwsh
