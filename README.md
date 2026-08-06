@@ -48,6 +48,8 @@ Complex scenarios use display batching and remove profiles, cutters, paths, and 
 
 The default command publishes both WinForms and WPF as self-contained Windows x64 applications. Target computers do not need a separate .NET installation.
 
+The package is intentionally deployment-complete: each executable embeds its .NET runtime, while `runtime` contains `OcctNative.dll`, the recursively resolved OCCT/third-party/Visual C++ DLL closure, and `occt/src` contains the required OCCT resources. Publishing fails when a required native dependency or OCCT resource is missing. `package-contract.json` and `native-dependencies.txt` describe the generated package.
+
 ```powershell
 .\publish.ps1 -Zip -OcctRoot "D:\tools\occt-vc144-64"
 ```

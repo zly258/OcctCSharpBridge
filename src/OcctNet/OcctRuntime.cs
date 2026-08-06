@@ -116,10 +116,10 @@ public static class OcctRuntime
         foreach (var candidate in new[]
                  {
                      explicitDirectory,
+                     portableRuntimeDirectory,
                      Environment.GetEnvironmentVariable("OCCT_BRIDGE_NATIVE_DIR"),
                      AppContext.BaseDirectory,
-                     Path.Combine(AppContext.BaseDirectory, "runtimes", "win-x64", "native"),
-                     portableRuntimeDirectory
+                     Path.Combine(AppContext.BaseDirectory, "runtimes", "win-x64", "native")
                  })
         {
             if (string.IsNullOrWhiteSpace(candidate))
@@ -145,9 +145,9 @@ public static class OcctRuntime
         foreach (var candidate in new[]
                  {
                      explicitRoot,
+                     portableOcctRoot,
                      Environment.GetEnvironmentVariable("OCCT_ROOT"),
                      Environment.GetEnvironmentVariable("CASROOT"),
-                     portableOcctRoot,
                      DefaultOcctRoot
                  })
         {
@@ -258,13 +258,10 @@ public static class OcctRuntime
         SetIfMissing("CSF_OCCTResourcePath", resourceDirectory);
         SetDirectoryIfExists("CSF_SHMessage", resourceDirectory, "SHMessage");
         SetDirectoryIfExists("CSF_XSMessage", resourceDirectory, "XSMessage");
-        SetDirectoryIfExists("CSF_TObjMessage", resourceDirectory, "TObj");
         SetDirectoryIfExists("CSF_StandardDefaults", resourceDirectory, "StdResource");
         SetDirectoryIfExists("CSF_PluginDefaults", resourceDirectory, "StdResource");
-        SetDirectoryIfExists("CSF_XCAFDefaults", resourceDirectory, "XCAFResources");
         SetDirectoryIfExists("CSF_IGESDefaults", resourceDirectory, "XSTEPResource");
         SetDirectoryIfExists("CSF_STEPDefaults", resourceDirectory, "XSTEPResource");
-        SetDirectoryIfExists("CSF_XmlOcafResource", resourceDirectory, "XmlOcafResource");
         SetDirectoryIfExists("CSF_ShadersDirectory", resourceDirectory, "Shaders");
         SetDirectoryIfExists("CSF_MDTVTexturesDirectory", resourceDirectory, "Textures");
         SetFileIfExists("CSF_UnitsLexicon", resourceDirectory, "UnitsAPI", "Lexi_Expr.dat");

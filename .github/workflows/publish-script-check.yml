@@ -13,20 +13,26 @@ jobs:
   validate-publish-script:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Parse publish.ps1
+      - name: Parse package scripts
         shell: pwsh
         run: |
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile(
-              (Resolve-Path .\publish.ps1),
-              [ref]$tokens,
-              [ref]$errors) | Out-Null
-          if ($errors.Count -gt 0) {
-              $errors | Format-List
-              exit 1
+          foreach ($path in @(
+              '.\publish.ps1',
+              '.\tests\check-demo-package.ps1'
+          )) {
+              $tokens = $null
+              $errors = $null
+              [System.Management.Automation.Language.Parser]::ParseFile(
+                  (Resolve-Path $path),
+                  [ref]$tokens,
+                  [ref]$errors) | Out-Null
+              if ($errors.Count -gt 0) {
+                  $errors | Format-List
+                  throw "PowerShell parse failed: $path"
+              }
           }
 
       - name: Verify publishing inputs
@@ -35,8 +41,10 @@ jobs:
           $required = @(
               '.\publish.ps1',
               '.\build.ps1',
+              '.\tests\check-demo-package.ps1',
               '.\tests\check-native-build-structure.ps1',
               '.\tests\check-selection-contract.ps1',
+              '.\tests\check-viewport-api.ps1',
               '.\src\OcctNet.WinForms\OcctNet.WinForms.csproj',
               '.\src\CadWinForms\CadWinForms.csproj',
               '.\src\CadWpf\CadWpf.csproj'
@@ -60,45 +68,6 @@ jobs:
               }
           }
 
-      - name: Verify portable dual-demo package rules
+      - name: Validate deployment-complete package contract
         shell: pwsh
-        run: |
-          $text = Get-Content .\publish.ps1 -Raw
-          foreach ($token in @(
-              '[string]$Target = "all"',
-              'PublishSingleFile=true',
-              'EnableCompressionInSingleFile=$($UseSelfContained.ToString().ToLowerInvariant())',
-              '[switch]$SelfContained',
-              '[switch]$FrameworkDependent',
-              '$UseSelfContained = -not $FrameworkDependent.IsPresent',
-              '[switch]$FullResources',
-              '[switch]$Diagnostics',
-              'native-dependencies.txt',
-              'THIRD-PARTY-NOTICES.txt'
-          )) {
-              if (-not $text.Contains($token)) {
-                  throw "Portable publishing token was not found: $token"
-              }
-          }
-
-          foreach ($forbidden in @('XmlOcafResource', 'XCAFResources', 'TObj')) {
-              if ($text.Contains($forbidden)) {
-                  throw "OCAF/XDE-only package resource remains: $forbidden"
-              }
-          }
-
-          if ($text -notmatch '\[string\]\$Target\s*=\s*"all"') {
-              throw 'The default package target must publish both WinForms and WPF demos.'
-          }
-          if ($text -match 'PublishSingleFile=false') {
-              throw 'Managed demo output is not configured as single-file.'
-          }
-          if ($text -match 'EnableCompressionInSingleFile=true') {
-              throw 'Single-file compression must follow the selected runtime mode.'
-          }
-          if ($text -match '\$UseSelfContained\s*=\s*\$false') {
-              throw 'Portable self-contained publishing must remain the default.'
-          }
-          if ($text -match 'function\s+Write-Launcher') {
-              throw 'Legacy launcher generation is still present.'
-          }
+        run: .\tests\check-demo-package.ps1 -RepositoryRoot $PWD
