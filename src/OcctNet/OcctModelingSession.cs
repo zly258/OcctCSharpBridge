@@ -1,4 +1,5 @@
 ﻿using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace OcctNet;
 
@@ -299,15 +300,35 @@ public sealed partial class OcctModelingSession : IDisposable
             : message);
     }
 
-    private void EnsureNotDisposed() => ObjectDisposedException.ThrowIf(_handle == IntPtr.Zero, this);
+    private void EnsureNotDisposed() =>
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _handle) == IntPtr.Zero, this);
 
     public void Dispose()
     {
-        if (_handle == IntPtr.Zero) return;
-        ModelNativeMethods.occt_model_destroy(_handle);
-        _handle = IntPtr.Zero;
+        ReleaseHandle(throwOnError: true);
         GC.SuppressFinalize(this);
     }
 
-    ~OcctModelingSession() => Dispose();
+    private void ReleaseHandle(bool throwOnError)
+    {
+        var handle = Interlocked.Exchange(ref _handle, IntPtr.Zero);
+        if (handle == IntPtr.Zero) return;
+
+        if (throwOnError)
+        {
+            ModelNativeMethods.occt_model_destroy(handle);
+            return;
+        }
+
+        try
+        {
+            ModelNativeMethods.occt_model_destroy(handle);
+        }
+        catch
+        {
+            // Finalizers must not allow native unload failures to terminate the process.
+        }
+    }
+
+    ~OcctModelingSession() => ReleaseHandle(throwOnError: false);
 }

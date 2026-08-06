@@ -1,5 +1,6 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace OcctNet;
 
@@ -16,7 +17,7 @@ public sealed partial class OcctEngine : IDisposable
         if (_handle == IntPtr.Zero) throw new OcctException("Unable to create the native OCCT engine.");
     }
 
-    public bool IsInitialized => _initialized;
+    public bool IsInitialized => Volatile.Read(ref _initialized) && Volatile.Read(ref _handle) != IntPtr.Zero;
     public static string OcctVersion => OcctBridgeInfo.OcctVersion;
     public int ObjectCount { get { EnsureNotDisposed(); return NativeMethods.occt_object_count(_handle); } }
     public int ShapeCount { get { EnsureNotDisposed(); return NativeMethods.occt_shape_count(_handle); } }
@@ -48,9 +49,9 @@ public sealed partial class OcctEngine : IDisposable
     public void Initialize(IntPtr windowHandle)
     {
         EnsureNotDisposed();
-        if (_initialized) return;
+        if (Volatile.Read(ref _initialized)) return;
         Check(NativeMethods.occt_initialize(_handle, windowHandle));
-        _initialized = true;
+        Volatile.Write(ref _initialized, true);
     }
 
     public void Resize() => CheckInitialized(() => NativeMethods.occt_resize(_handle));
@@ -261,19 +262,39 @@ public sealed partial class OcctEngine : IDisposable
     private void EnsureInitialized()
     {
         EnsureNotDisposed();
-        if (!_initialized) throw new InvalidOperationException("Initialize the OCCT engine with a valid window handle first.");
+        if (!Volatile.Read(ref _initialized)) throw new InvalidOperationException("Initialize the OCCT engine with a valid window handle first.");
     }
 
-    private void EnsureNotDisposed() => ObjectDisposedException.ThrowIf(_handle == IntPtr.Zero, this);
+    private void EnsureNotDisposed() =>
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _handle) == IntPtr.Zero, this);
 
     public void Dispose()
     {
-        if (_handle == IntPtr.Zero) return;
-        NativeMethods.occt_destroy(_handle);
-        _handle = IntPtr.Zero;
-        _initialized = false;
+        ReleaseHandle(throwOnError: true);
         GC.SuppressFinalize(this);
     }
 
-    ~OcctEngine() => Dispose();
+    private void ReleaseHandle(bool throwOnError)
+    {
+        var handle = Interlocked.Exchange(ref _handle, IntPtr.Zero);
+        Volatile.Write(ref _initialized, false);
+        if (handle == IntPtr.Zero) return;
+
+        if (throwOnError)
+        {
+            NativeMethods.occt_destroy(handle);
+            return;
+        }
+
+        try
+        {
+            NativeMethods.occt_destroy(handle);
+        }
+        catch
+        {
+            // Finalizers must not allow native unload failures to terminate the process.
+        }
+    }
+
+    ~OcctEngine() => ReleaseHandle(throwOnError: false);
 }
