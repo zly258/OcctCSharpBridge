@@ -5,9 +5,26 @@ This source-derived inventory lists the current native C ABI, C# P/Invoke mappin
 OCAF/XDE is intentionally excluded; documents, undo/redo, and JSON persistence are application-layer responsibilities.
 
 - OCCT: `7.9.0`
-- Native exports: `321`
-- Managed P/Invoke declarations: `321`
-- Public .NET types: `69`
+- Native exports: `327`
+- Managed P/Invoke declarations: `327`
+- Public .NET types: `75`
+
+## API design and naming rules
+
+The public wrapper follows one vocabulary across native C ABI, P/Invoke, and managed APIs:
+
+| Layer | Rule | Example |
+|---|---|---|
+| Native C ABI | `occt_model_<subject>_<operation>` | `occt_model_face_curvature` |
+| P/Invoke | Preserve the native symbol exactly; use Cdecl and exact spelling | `occt_model_edge_differential` |
+| Managed query | `Get<Subject><Result>` | `GetFaceCurvature()` |
+| Managed evaluation | `Evaluate<Subject><ParameterMeaning>` | `EvaluateEdgeAtParameter()` |
+| Collection indexing | Use the `At` suffix for zero-based indexed access | `GetSubshapeAt()` |
+| Compatibility alias | Existing ambiguous names remain forwarding aliases | `GetBounds()` forwards to `GetShapeBounds()` |
+
+Managed modeling APIs are organized by responsibility: session/core, shape queries, topology, geometry queries, analytic geometry, differential geometry, construction, algorithms, analysis, mesh, exchange, and operation history. A method must be placed in the corresponding partial-class file instead of the session core file.
+
+Parameter semantics are explicit. `EvaluateEdgeNormalized()` accepts `[0, 1]`; `EvaluateEdgeAtParameter()` accepts the exact OCCT curve parameter. Face evaluation methods use exact surface `U` and `V` parameters.
 
 ## Choose an assembly
 
@@ -123,6 +140,34 @@ if (faceType == OcctSurfaceType.Cylinder)
 ```
 
 A type mismatch, non-edge/non-face input, or a shape from another session produces an argument or `OcctException`. These exact parameters support feature recognition, hole-axis extraction, dimensions, engineering rules, and parametric reconstruction.
+
+### Differential geometry
+
+Differential queries expose exact curve and surface derivatives, periodicity, normals, and curvature without converting the model to a mesh.
+
+| Managed API | Input semantics | Returned data |
+|---|---|---|
+| `GetEdgeParameterRange()` | Edge | Exact first/last parameters, closed/periodic flags and period |
+| `EvaluateEdgeAtParameter()` | Exact curve parameter | Point, first derivative and second derivative |
+| `GetEdgeCurvature()` | Exact curve parameter | Tangent, normal, center and scalar curvature with definition flags |
+| `GetFacePeriodicity()` | Face | U/V closed and periodic flags plus periods |
+| `EvaluateFaceDifferential()` | Exact U/V | Point, oriented normal, first and second partial derivatives |
+| `GetFaceCurvature()` | Exact U/V | Principal, mean and Gaussian curvature, principal directions and umbilic state |
+
+```csharp
+var range = model.GetEdgeParameterRange(edge);
+var parameter = (range.FirstParameter + range.LastParameter) * 0.5;
+var differential = model.EvaluateEdgeAtParameter(edge, parameter);
+var curvature = model.GetEdgeCurvature(edge, parameter);
+
+var uv = model.GetFaceUvBounds(face);
+var u = (uv.UMin + uv.UMax) * 0.5;
+var v = (uv.VMin + uv.VMax) * 0.5;
+var surface = model.EvaluateFaceDifferential(face, u, v);
+var surfaceCurvature = model.GetFaceCurvature(face, u, v);
+```
+
+Normals follow the topological face orientation. For reversed faces, principal curvatures and mean curvature are sign-adjusted and principal maximum/minimum values are reordered; Gaussian curvature is unchanged. Undefined tangents, normals, and curvature are represented by explicit `Has...` flags.
 
 ### Geometry and feature modeling
 
@@ -404,7 +449,7 @@ Coverage includes:
 - `occt_hide_selection_rectangle`
 - `occt_show_selection_rectangle`
 
-### OcctModeling.h (112)
+### OcctModeling.h (118)
 
 - `occt_model_ancestor_at`
 - `occt_model_ancestor_count`
@@ -441,6 +486,12 @@ Coverage includes:
 - `occt_model_face_cone_geometry`
 - `occt_model_face_sphere_geometry`
 - `occt_model_face_torus_geometry`
+- `occt_model_edge_parameter_range`
+- `occt_model_edge_differential`
+- `occt_model_edge_curvature`
+- `occt_model_face_periodicity`
+- `occt_model_face_differential`
+- `occt_model_face_curvature`
 - `occt_model_face_uv_bounds`
 - `occt_model_fillet_edges`
 - `occt_model_fix_shape`
@@ -539,6 +590,12 @@ Coverage includes:
 - `OcctConeGeometry`
 - `OcctSphereGeometry`
 - `OcctTorusGeometry`
+- `OcctModelParameterRange`
+- `OcctModelCurveDifferential`
+- `OcctModelCurveCurvature`
+- `OcctModelSurfacePeriodicity`
+- `OcctModelSurfaceDifferential`
+- `OcctModelSurfaceCurvature`
 - `OcctMaterial`
 - `OcctModelAlgorithmResult`
 - `OcctModelBooleanGlue`
@@ -599,6 +656,12 @@ Coverage includes:
 - `OcctConeGeometry`
 - `OcctSphereGeometry`
 - `OcctTorusGeometry`
+- `OcctModelParameterRange`
+- `OcctModelCurveDifferential`
+- `OcctModelCurveCurvature`
+- `OcctModelSurfacePeriodicity`
+- `OcctModelSurfaceDifferential`
+- `OcctModelSurfaceCurvature`
 - `OcctMaterial`
 - `OcctModelAlgorithmResult`
 - `OcctModelBooleanGlue`
@@ -645,7 +708,7 @@ Coverage includes:
 ## Bridge ABI contract
 
 - Managed expected ABI: `2`
-- Native bridge version: `2.4.0`
+- Native bridge version: `2.5.0`
 - `OcctBridgeInfo` validates the loaded `OcctNative.dll` before creating viewer or modeling sessions.
 - Managed and native binaries should always be deployed from the same build.
 

@@ -7,7 +7,7 @@
     [ValidateSet("Debug", "Release", "RelWithDebInfo")]
     [string]$Configuration = "Release",
 
-    [string]$OcctRoot = $(if ($env:OCCT_ROOT) { $env:OCCT_ROOT } else { "D:\tools\occt-vc144-64" })
+    [string]$OcctRoot = $env:OCCT_ROOT
 )
 
 $ErrorActionPreference = "Stop"
@@ -29,28 +29,28 @@ $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $NativeSource = Join-Path $RepoRoot "src\OcctNative"
 $NativeBuild = Join-Path $RepoRoot "build\native"
 $NativeDll = Join-Path $NativeBuild "bin\$Configuration\OcctNative.dll"
-$ManagedProject = Join-Path $RepoRoot "src\OcctNet\OcctNet.csproj"
-$WinFormsProject = Join-Path $RepoRoot "src\OcctNet.WinForms\OcctNet.WinForms.csproj"
-$WpfProject = Join-Path $RepoRoot "src\OcctNet.Wpf\OcctNet.Wpf.csproj"
-$ManagedOutput = Join-Path $RepoRoot "src\OcctNet\bin\x64\$Configuration\net8.0-windows"
-$WinFormsOutput = Join-Path $RepoRoot "src\OcctNet.WinForms\bin\x64\$Configuration\net8.0-windows"
-$WpfOutput = Join-Path $RepoRoot "src\OcctNet.Wpf\bin\x64\$Configuration\net8.0-windows"
-$SmokeProject = Join-Path $RepoRoot "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
-$SmokeOutput = Join-Path $RepoRoot "tests\OcctNet.Smoke\bin\x64\$Configuration\net8.0-windows"
-$ApiSurfaceCheck = Join-Path $RepoRoot "tests\check-api-surface.ps1"
-$NativeBuildCheck = Join-Path $RepoRoot "tests\check-native-build-structure.ps1"
-$SelectionContractCheck = Join-Path $RepoRoot "tests\check-selection-contract.ps1"
-$ViewportApiCheck = Join-Path $RepoRoot "tests\check-viewport-api.ps1"
-$UiHostsCheck = Join-Path $RepoRoot "tests\check-ui-hosts.ps1"
-$AnalyticGeometryCheck = Join-Path $RepoRoot "tests\check-analytic-geometry-api.ps1"
 
-$OcctIncludeDir = Join-Path $OcctRoot "inc"
-$OcctLibDir = Join-Path $OcctRoot "win64\vc14\lib"
-$OcctBinDir = Join-Path $OcctRoot "win64\vc14\bin"
+$Projects = [ordered]@{
+    Core = "src\OcctNet\OcctNet.csproj"
+    WinForms = "src\OcctNet.WinForms\OcctNet.WinForms.csproj"
+    Wpf = "src\OcctNet.Wpf\OcctNet.Wpf.csproj"
+    Smoke = "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
+}
+
+$Checks = [ordered]@{
+    Version = "tests\check-version-contract.ps1"
+    Organization = "tests\check-api-organization.ps1"
+    AnalyticGeometry = "tests\check-analytic-geometry-api.ps1"
+    DifferentialGeometry = "tests\check-differential-geometry-api.ps1"
+    UiHosts = "tests\check-ui-hosts.ps1"
+    Viewport = "tests\check-viewport-api.ps1"
+    Selection = "tests\check-selection-contract.ps1"
+    NativeBuild = "tests\check-native-build-structure.ps1"
+    ApiSurface = "tests\check-api-surface.ps1"
+}
 
 function Assert-Path {
     param([Parameter(Mandatory = $true)][string]$Path)
-
     if (-not (Test-Path $Path)) {
         throw "Required path was not found: $Path"
     }
@@ -58,7 +58,6 @@ function Assert-Path {
 
 function Assert-Command {
     param([Parameter(Mandatory = $true)][string]$Name)
-
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
         throw "$Name was not found in PATH."
     }
@@ -70,81 +69,60 @@ function Invoke-Checked {
         [Parameter(Mandatory = $true)][object[]]$Arguments,
         [Parameter(Mandatory = $true)][string]$ErrorMessage
     )
-
     & $Command @Arguments
     if ($LASTEXITCODE -ne 0) {
         throw $ErrorMessage
     }
 }
 
-function Test-ApiSurface {
-    Assert-Path $ApiSurfaceCheck
-    Assert-Path $NativeBuildCheck
-    Assert-Path $SelectionContractCheck
-    Assert-Path $ViewportApiCheck
-    Assert-Path $UiHostsCheck
-    Assert-Path $AnalyticGeometryCheck
+function Invoke-ContractChecks {
+    foreach ($check in $Checks.GetEnumerator()) {
+        $path = Join-Path $RepoRoot $check.Value
+        Assert-Path $path
+        Write-Host ("[{0}] Running {1}..." -f $check.Key.ToLowerInvariant(), $check.Value) -ForegroundColor Cyan
+        & $path -RepositoryRoot $RepoRoot
+        if (-not $?) {
+            throw "$($check.Key) validation failed."
+        }
+    }
+}
 
-    Write-Host "[analytic-geometry] Validating analytic curve and surface contracts..." -ForegroundColor Cyan
-    & $AnalyticGeometryCheck -RepositoryRoot $RepoRoot
-    if (-not $?) {
-        throw "Analytic geometry API validation failed."
+function Resolve-OcctConfiguration {
+    if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
+        throw "OCCT_ROOT is not configured. Pass -OcctRoot <path> or set the OCCT_ROOT environment variable."
     }
 
-    Write-Host "[ui-hosts] Validating WinForms and WPF viewport hosts..." -ForegroundColor Cyan
-    & $UiHostsCheck -RepositoryRoot $RepoRoot
-    if (-not $?) {
-        throw "UI host validation failed."
-    }
+    $script:OcctRoot = [System.IO.Path]::GetFullPath($OcctRoot)
+    $script:OcctIncludeDir = Join-Path $script:OcctRoot "inc"
+    $script:OcctLibDir = Join-Path $script:OcctRoot "win64\vc14\lib"
+    $script:OcctBinDir = Join-Path $script:OcctRoot "win64\vc14\bin"
 
-    Write-Host "[viewport] Validating extended viewport contracts..." -ForegroundColor Cyan
-    & $ViewportApiCheck -RepositoryRoot $RepoRoot
-    if (-not $?) {
-        throw "Viewport API validation failed."
-    }
-
-    Write-Host "[selection] Validating point and rectangle selection behavior..." -ForegroundColor Cyan
-    & $SelectionContractCheck -RepositoryRoot $RepoRoot
-    if (-not $?) {
-        throw "Selection contract validation failed."
-    }
-
-    Write-Host "[native-build] Validating CMake sources and toolkit boundaries..." -ForegroundColor Cyan
-    & $NativeBuildCheck -RepositoryRoot $RepoRoot
-    if (-not $?) {
-        throw "Native build structure validation failed."
-    }
-
-    Write-Host "[api] Validating native declarations, implementations and P/Invoke..." -ForegroundColor Cyan
-    & $ApiSurfaceCheck -RepositoryRoot $RepoRoot
-    if (-not $?) {
-        throw "API surface validation failed."
+    foreach ($path in @(
+        $script:OcctIncludeDir,
+        $script:OcctLibDir,
+        $script:OcctBinDir,
+        (Join-Path $script:OcctIncludeDir "Standard.hxx"),
+        (Join-Path $script:OcctLibDir "TKernel.lib"),
+        (Join-Path $script:OcctBinDir "TKernel.dll")
+    )) {
+        Assert-Path $path
     }
 }
 
 function Build-Native {
     Assert-Command "cmake"
-    foreach ($path in @(
-        $OcctIncludeDir,
-        $OcctLibDir,
-        $OcctBinDir,
-        (Join-Path $OcctIncludeDir "Standard.hxx"),
-        (Join-Path $OcctLibDir "TKernel.lib"),
-        (Join-Path $OcctBinDir "TKernel.dll")
-    )) {
-        Assert-Path $path
-    }
+    Resolve-OcctConfiguration
 
-    Write-Host "[native] Configuring..." -ForegroundColor Cyan
+    Write-Host "[native] Configuring OCCT 7.9.0 bridge..." -ForegroundColor Cyan
     Invoke-Checked "cmake" @(
         "-S", $NativeSource,
         "-B", $NativeBuild,
         "-G", "Visual Studio 17 2022",
         "-A", "x64",
-        "-DOCCT_ROOT=$OcctRoot",
-        "-DOCCT_INCLUDE_DIR=$OcctIncludeDir",
-        "-DOCCT_LIB_DIR=$OcctLibDir",
-        "-DOCCT_BIN_DIR=$OcctBinDir"
+        "-DOCCT_ROOT=$script:OcctRoot",
+        "-DOCCT_INCLUDE_DIR=$script:OcctIncludeDir",
+        "-DOCCT_LIB_DIR=$script:OcctLibDir",
+        "-DOCCT_BIN_DIR=$script:OcctBinDir"
     ) "CMake configure failed."
 
     Write-Host "[native] Building $Configuration..." -ForegroundColor Cyan
@@ -158,77 +136,51 @@ function Build-Native {
     Write-Host "Native: $NativeDll" -ForegroundColor Green
 }
 
-function Build-Managed {
+function Build-Project {
+    param([Parameter(Mandatory = $true)][string]$Name)
+
     Assert-Command "dotnet"
-
-    foreach ($project in @($ManagedProject, $WinFormsProject, $WpfProject)) {
-        Remove-Item (Join-Path (Split-Path -Parent $project) "bin") -Recurse -Force -ErrorAction SilentlyContinue
-        Remove-Item (Join-Path (Split-Path -Parent $project) "obj") -Recurse -Force -ErrorAction SilentlyContinue
+    $relativePath = $Projects[$Name]
+    if ([string]::IsNullOrWhiteSpace($relativePath)) {
+        throw "Unknown project key: $Name"
     }
 
-    Write-Host "[managed] Building core wrapper ($Configuration)..." -ForegroundColor Cyan
+    $project = Join-Path $RepoRoot $relativePath
+    Assert-Path $project
+    $projectDirectory = Split-Path -Parent $project
+    Remove-Item (Join-Path $projectDirectory "bin") -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item (Join-Path $projectDirectory "obj") -Recurse -Force -ErrorAction SilentlyContinue
+
+    Write-Host "[$($Name.ToLowerInvariant())] Building $Configuration..." -ForegroundColor Cyan
     Invoke-Checked "dotnet" @(
-        "build", $ManagedProject,
+        "build", $project,
         "-c", $Configuration,
         "-p:Platform=x64",
         "--nologo"
-    ) "OcctNet build failed."
+    ) "$Name build failed."
+}
 
-    Write-Host "[managed] Building optional WinForms host ($Configuration)..." -ForegroundColor Cyan
-    Invoke-Checked "dotnet" @(
-        "build", $WinFormsProject,
-        "-c", $Configuration,
-        "-p:Platform=x64",
-        "--nologo"
-    ) "OcctNet.WinForms build failed."
-
-    Write-Host "[managed] Building optional WPF host ($Configuration)..." -ForegroundColor Cyan
-    Invoke-Checked "dotnet" @(
-        "build", $WpfProject,
-        "-c", $Configuration,
-        "-p:Platform=x64",
-        "--nologo"
-    ) "OcctNet.Wpf build failed."
-
-    Assert-Path (Join-Path $ManagedOutput "OcctNet.dll")
-    Assert-Path (Join-Path $WinFormsOutput "OcctNet.WinForms.dll")
-    Assert-Path (Join-Path $WpfOutput "OcctNet.Wpf.dll")
-
-    if (Test-Path $NativeDll) {
-        Copy-Item $NativeDll (Join-Path $ManagedOutput "OcctNative.dll") -Force
-    }
-    else {
-        Write-Warning "OcctNative.dll was not found. Build target 'all' or 'native' before running a consumer application."
-    }
-
-    Write-Host "Managed core:     $ManagedOutput" -ForegroundColor Green
-    Write-Host "Managed WinForms: $WinFormsOutput" -ForegroundColor Green
-    Write-Host "Managed WPF:      $WpfOutput" -ForegroundColor Green
+function Build-Managed {
+    Build-Project "Core"
+    Build-Project "WinForms"
+    Build-Project "Wpf"
 }
 
 function Run-Smoke {
-    Assert-Command "dotnet"
     Assert-Path $NativeDll
+    Build-Project "Smoke"
 
-    Remove-Item (Join-Path (Split-Path -Parent $SmokeProject) "bin") -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item (Join-Path (Split-Path -Parent $SmokeProject) "obj") -Recurse -Force -ErrorAction SilentlyContinue
+    $smokeProject = Join-Path $RepoRoot $Projects.Smoke
+    $smokeOutput = Join-Path (Split-Path -Parent $smokeProject) "bin\x64\$Configuration\net8.0-windows"
+    Copy-Item $NativeDll (Join-Path $smokeOutput "OcctNative.dll") -Force
 
-    Write-Host "[smoke] Building $Configuration..." -ForegroundColor Cyan
-    Invoke-Checked "dotnet" @(
-        "build", $SmokeProject,
-        "-c", $Configuration,
-        "-p:Platform=x64",
-        "--nologo"
-    ) "Smoke test build failed."
-
-    Copy-Item $NativeDll (Join-Path $SmokeOutput "OcctNative.dll") -Force
     $previousNativeDirectory = $env:OCCT_BRIDGE_NATIVE_DIR
     try {
-        $env:OCCT_BRIDGE_NATIVE_DIR = $SmokeOutput
-        Write-Host "[smoke] Running..." -ForegroundColor Cyan
+        $env:OCCT_BRIDGE_NATIVE_DIR = $smokeOutput
+        Write-Host "[smoke] Running native modeling scenarios..." -ForegroundColor Cyan
         Invoke-Checked "dotnet" @(
             "run",
-            "--project", $SmokeProject,
+            "--project", $smokeProject,
             "-c", $Configuration,
             "-p:Platform=x64",
             "--no-build"
@@ -241,19 +193,19 @@ function Run-Smoke {
 
 Write-Host "Target:        $Target"
 Write-Host "Configuration: $Configuration"
-Write-Host "OCCT root:     $OcctRoot" -ForegroundColor DarkGray
+if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
+    Write-Host "OCCT root:     not configured (valid for validate/managed)" -ForegroundColor DarkGray
+}
+else {
+    Write-Host "OCCT root:     $OcctRoot" -ForegroundColor DarkGray
+}
 
-Test-ApiSurface
+Invoke-ContractChecks
 
 switch ($Target) {
-    "validate" {
-    }
-    "native" {
-        Build-Native
-    }
-    "managed" {
-        Build-Managed
-    }
+    "validate" { }
+    "native" { Build-Native }
+    "managed" { Build-Managed }
     "smoke" {
         Build-Native
         Build-Managed
