@@ -22,8 +22,17 @@ if (faceCount <= 0)
     throw new InvalidOperationException("Boolean result contains no faces.");
 
 model.Mesh(cut.Shape);
-var firstFace = model.GetSubshape(cut.Shape, OcctShapeType.Face, 0);
+var firstFace = model.GetSubshapeAt(cut.Shape, OcctShapeType.Face, 0);
 var faceMesh = model.GetFaceMesh(firstFace);
+var faceUv = model.GetFaceUvBounds(firstFace);
+var faceU = (faceUv.UMin + faceUv.UMax) * 0.5;
+var faceV = (faceUv.VMin + faceUv.VMax) * 0.5;
+var facePeriodicity = model.GetFacePeriodicity(firstFace);
+var faceDifferential = model.EvaluateFaceDifferential(firstFace, faceU, faceV);
+var faceCurvature = model.GetFaceCurvature(firstFace, faceU, faceV);
+if (!faceDifferential.HasNormal || !faceCurvature.HasNormal)
+    throw new InvalidOperationException("Face differential geometry has no normal.");
+_ = facePeriodicity;
 if (faceMesh.Nodes.Count == 0 || faceMesh.Triangles.Count == 0)
     throw new InvalidOperationException("Face triangulation is empty.");
 
@@ -35,6 +44,14 @@ if (rayHits.Count == 0)
     throw new InvalidOperationException("Expected at least one ray hit.");
 
 var lowerCircle = model.MakeCircle(new OcctPoint3d(0, 0, 0), OcctVector3d.UnitZ, 10);
+var circleRange = model.GetEdgeParameterRange(lowerCircle);
+var circleParameter = (circleRange.FirstParameter + circleRange.LastParameter) * 0.5;
+var circleDifferential = model.EvaluateEdgeAtParameter(lowerCircle, circleParameter);
+var circleCurvature = model.GetEdgeCurvature(lowerCircle, circleParameter);
+if (!circleCurvature.HasTangent || Math.Abs(circleCurvature.Curvature - 0.1) > 1e-6)
+    throw new InvalidOperationException("Circle differential geometry is invalid.");
+if (circleDifferential.FirstDerivative.X == 0 && circleDifferential.FirstDerivative.Y == 0)
+    throw new InvalidOperationException("Circle first derivative is invalid.");
 var upperCircle = model.MakeCircle(new OcctPoint3d(0, 0, 25), OcctVector3d.UnitZ, 16);
 var lowerWire = model.MakeWire(new[] { lowerCircle });
 var upperWire = model.MakeWire(new[] { upperCircle });

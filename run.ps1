@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Position = 0, Mandatory = $true)]
     [ValidateSet("winform", "wpf")]
     [string]$Target,
@@ -7,13 +7,13 @@ param(
     [ValidateSet("Debug", "Release", "RelWithDebInfo")]
     [string]$Configuration = "Release",
 
-    [string]$OcctRoot = $(if ($env:OCCT_ROOT) { $env:OCCT_ROOT } else { "D:\tools\occt-vc144-64" })
+    [string]$OcctRoot = $env:OCCT_ROOT
 )
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$utf8 = New-Object System.Text.UTF8Encoding($false)
+$utf8 = [System.Text.UTF8Encoding]::new($false)
 [Console]::InputEncoding = $utf8
 [Console]::OutputEncoding = $utf8
 $OutputEncoding = $utf8
@@ -22,6 +22,11 @@ if (Test-Path "$env:SystemRoot\System32\chcp.com") {
 }
 
 $Target = $Target.ToLowerInvariant()
+if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
+    throw "OCCT_ROOT is not configured. Pass -OcctRoot <path> or set the OCCT_ROOT environment variable."
+}
+
+$OcctRoot = [System.IO.Path]::GetFullPath($OcctRoot)
 $OcctBinDir = Join-Path $OcctRoot "win64\vc14\bin"
 $OcctThirdPartyDir = Join-Path $OcctRoot "3rdparty-vc14-64"
 $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path

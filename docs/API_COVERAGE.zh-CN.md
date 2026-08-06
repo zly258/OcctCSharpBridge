@@ -5,9 +5,26 @@
 桥接层不包含 OCAF/XDE；文档、撤销重做和 JSON 持久化由上层应用实现。
 
 - OCCT: `7.9.0`
-- Native exports: `321`
-- Managed P/Invoke declarations: `321`
-- Public .NET types: `69`
+- Native exports: `327`
+- Managed P/Invoke declarations: `327`
+- Public .NET types: `75`
+
+## 接口设计与命名规范
+
+原生 C ABI、P/Invoke 与托管接口使用统一词汇：
+
+| 层级 | 规则 | 示例 |
+|---|---|---|
+| 原生 C ABI | `occt_model_<对象>_<操作>` | `occt_model_face_curvature` |
+| P/Invoke | 完整保留原生符号，统一 Cdecl 和精确名称 | `occt_model_edge_differential` |
+| 托管查询 | `Get<对象><结果>` | `GetFaceCurvature()` |
+| 托管求值 | `Evaluate<对象><参数含义>` | `EvaluateEdgeAtParameter()` |
+| 集合索引 | 零基索引访问统一使用 `At` 后缀 | `GetSubshapeAt()` |
+| 兼容别名 | 已发布的含义不够明确的方法保留为转发别名 | `GetBounds()` 转发到 `GetShapeBounds()` |
+
+建模接口按职责划分为：会话与生命周期、形状查询、拓扑、几何查询、解析几何、微分几何、构造、算法、分析、网格、文件交换和操作历史。新增方法必须进入对应的 partial class 文件，不再堆入会话核心文件。
+
+参数含义必须体现在方法名中。`EvaluateEdgeNormalized()` 接收 `[0, 1]` 归一化参数；`EvaluateEdgeAtParameter()` 接收 OCCT 原始曲线参数；面求值接口使用原始 `U`、`V` 参数。
 
 ## 选择程序集
 
@@ -123,6 +140,34 @@ if (faceType == OcctSurfaceType.Cylinder)
 ```
 
 类型不匹配、对象不是边或面、对象不属于当前会话时会抛出 `OcctException` 或参数异常。解析参数可用于特征识别、孔轴提取、尺寸标注、工程规则判断和参数化重建。
+
+### 微分几何
+
+微分几何接口直接读取曲线、曲面的导数、周期性、法向和曲率，不需要先转换为三角网格。
+
+| 托管接口 | 参数含义 | 返回内容 |
+|---|---|---|
+| `GetEdgeParameterRange()` | 边 | 原始首尾参数、闭合/周期标志和周期 |
+| `EvaluateEdgeAtParameter()` | 原始曲线参数 | 点、一阶导数和二阶导数 |
+| `GetEdgeCurvature()` | 原始曲线参数 | 切向、法向、曲率中心、曲率及定义标志 |
+| `GetFacePeriodicity()` | 面 | U/V 闭合、周期标志及周期 |
+| `EvaluateFaceDifferential()` | 原始 U/V | 点、按面方向修正的法向、一阶及二阶偏导 |
+| `GetFaceCurvature()` | 原始 U/V | 主曲率、平均曲率、高斯曲率、主方向和脐点状态 |
+
+```csharp
+var range = model.GetEdgeParameterRange(edge);
+var parameter = (range.FirstParameter + range.LastParameter) * 0.5;
+var differential = model.EvaluateEdgeAtParameter(edge, parameter);
+var curvature = model.GetEdgeCurvature(edge, parameter);
+
+var uv = model.GetFaceUvBounds(face);
+var u = (uv.UMin + uv.UMax) * 0.5;
+var v = (uv.VMin + uv.VMax) * 0.5;
+var surface = model.EvaluateFaceDifferential(face, u, v);
+var surfaceCurvature = model.GetFaceCurvature(face, u, v);
+```
+
+法向遵循拓扑面的方向。面为反向时，主曲率和平均曲率会进行符号修正，并重新排列最大、最小主曲率；高斯曲率保持不变。切向、法向或曲率不可定义时，通过明确的 `Has...` 属性表达，不使用无意义数值冒充有效结果。
 
 ### 几何与特征建模
 
@@ -404,7 +449,7 @@ model.ExportStep(result.Shape, "part.step");
 - `occt_hide_selection_rectangle`
 - `occt_show_selection_rectangle`
 
-### OcctModeling.h (112)
+### OcctModeling.h (118)
 
 - `occt_model_ancestor_at`
 - `occt_model_ancestor_count`
@@ -441,6 +486,12 @@ model.ExportStep(result.Shape, "part.step");
 - `occt_model_face_cone_geometry`
 - `occt_model_face_sphere_geometry`
 - `occt_model_face_torus_geometry`
+- `occt_model_edge_parameter_range`
+- `occt_model_edge_differential`
+- `occt_model_edge_curvature`
+- `occt_model_face_periodicity`
+- `occt_model_face_differential`
+- `occt_model_face_curvature`
 - `occt_model_face_uv_bounds`
 - `occt_model_fillet_edges`
 - `occt_model_fix_shape`
@@ -539,6 +590,12 @@ model.ExportStep(result.Shape, "part.step");
 - `OcctConeGeometry`
 - `OcctSphereGeometry`
 - `OcctTorusGeometry`
+- `OcctModelParameterRange`
+- `OcctModelCurveDifferential`
+- `OcctModelCurveCurvature`
+- `OcctModelSurfacePeriodicity`
+- `OcctModelSurfaceDifferential`
+- `OcctModelSurfaceCurvature`
 - `OcctMaterial`
 - `OcctModelAlgorithmResult`
 - `OcctModelBooleanGlue`
@@ -599,6 +656,12 @@ model.ExportStep(result.Shape, "part.step");
 - `OcctConeGeometry`
 - `OcctSphereGeometry`
 - `OcctTorusGeometry`
+- `OcctModelParameterRange`
+- `OcctModelCurveDifferential`
+- `OcctModelCurveCurvature`
+- `OcctModelSurfacePeriodicity`
+- `OcctModelSurfaceDifferential`
+- `OcctModelSurfaceCurvature`
 - `OcctMaterial`
 - `OcctModelAlgorithmResult`
 - `OcctModelBooleanGlue`
@@ -642,7 +705,7 @@ model.ExportStep(result.Shape, "part.step");
 ## 桥接 ABI 约束
 
 - 托管层要求的 ABI：`2`
-- 原生桥接版本：`2.4.0`
+- 原生桥接版本：`2.5.0`
 - `OcctBridgeInfo` 会在创建 Viewer 或建模会话前校验已加载的 `OcctNative.dll`。
 - 托管与原生二进制文件必须来自同一次构建。
 

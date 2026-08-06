@@ -2,15 +2,15 @@
 
 [English](README.md) · [中文接口清单与使用说明](docs/API_COVERAGE.zh-CN.md) · [主 SDK 分支](https://github.com/zly258/OcctCSharpBridge/tree/main)
 
-`demo` 在可复用 OCCT C# 封装基础上提供 WinForms、WPF 示例应用。`src/OcctNative`、`src/OcctNet`、`src/OcctNet.WinForms`、`src/OcctNet.Wpf` 和公共接口文档与 `main` 保持同步；界面、测试场景和发布工具仅保留在本分支。
+`demo` 分支在可复用 OCCT C# 封装基础上提供 WinForms、WPF 示例应用。`src/OcctNative`、`src/OcctNet`、`src/OcctNet.WinForms`、`src/OcctNet.Wpf`、公共 Smoke 项目和两份接口文档与 `main` 保持同步；应用界面、测试场景、运行脚本、发布工具和发布包校核仅保留在本分支。
 
 托管封装分为：
 
-- `OcctNet`：不依赖界面的 Viewer、建模、分析、修复、网格和文件交换接口。
+- `OcctNet`：不依赖界面的 Viewer、建模、拓扑、解析几何、微分几何、分析、修复、网格和文件交换接口。
 - `OcctNet.WinForms`：直接绑定 Win32 HWND 的 `OcctViewportControl`。
 - `OcctNet.Wpf`：专用 `OcctWpfViewport`，统一处理 WPF 依赖属性、事件转发、DPI 同步和原生视口尺寸更新。
 
-WPF Demo 现在直接引用 `OcctNet.Wpf`，业务 XAML 中不再手工创建 `WindowsFormsHost`。
+`OcctModelingSession` 已按职责拆分为生命周期、形状查询、拓扑、几何查询、解析几何、微分几何、构造、算法、分析、网格、文件交换和操作历史。规范接口名称明确表达操作对象和参数含义；旧的含义不够清晰的方法继续作为兼容别名保留。
 
 桥接层不包含 OCAF/XDE。文档、JSON 持久化、撤销重做和命令历史由上层应用自行实现。
 
@@ -34,6 +34,8 @@ WPF Demo 现在直接引用 `OcctNet.Wpf`，业务 XAML 中不再手工创建 `W
 - 视口状态快照、相机保存恢复、Z-up 视图、适配选择集和屏幕投影到工作平面
 - 批量颜色、透明度、可见性、显示模式、线宽、材质、重显示和选择
 - 直线、圆、椭圆、平面、圆柱、圆锥、球面和圆环面的精确参数读取
+- 边的原始参数范围、一阶/二阶导数、切向、法向、曲率和曲率中心
+- 曲面的周期性、一阶/二阶偏导、按面方向修正的法向、主曲率、平均曲率、高斯曲率、主方向和脐点状态
 - 选中及悬浮高亮颜色设置
 - 纯色、渐变背景、MSAA、渲染分辨率、阴影、光线追踪和多灯光预设
 - 二维曲线、基本实体、布尔、特征、变换、拓扑查询、网格读取及分析
@@ -48,27 +50,39 @@ WPF Demo 现在直接引用 `OcctNet.Wpf`，业务 XAML 中不再手工创建 `W
 
 - OCCT：必须为 `7.9.0`
 - .NET：`8.0`，Windows x64
-- Bridge 版本：`2.4.0`
+- Bridge 版本：`2.5.0`
 - Bridge ABI：`2`
-- 接口数量：Native `321`，P/Invoke `321`
+- 接口数量：Native `327`，P/Invoke `327`
+- Viewer 与交互接口：`209`
+- 建模接口：`118`
+- 公开 .NET 类型：`75`
 - `OcctNet.dll`、选用的界面宿主程序集与 `OcctNative.dll` 必须来自同一次构建
-- 原生会话释放为幂等且终结器安全，但同一会话仍应由单一应用线程调用
+- 原生会话包含可变状态，同一会话应由单一应用线程调用
 
 ## 构建与运行
 
+可先设置 OCCT SDK 环境变量，也可以在命令中显式传入：
+
 ```powershell
-.\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
+$env:OCCT_ROOT = "D:\tools\occt-vc144-64"
+.\build.ps1 all Release
 .\run.ps1 winform
 .\run.ps1 wpf
 ```
 
-不安装 OCCT SDK 也可以先执行托管构建与静态检查：
+不安装 OCCT SDK 也可以执行托管构建与静态检查：
 
 ```powershell
 .\build.ps1 managed Release
 ```
 
-该命令会检查原生源文件清单、321 项接口一致性、解析几何接口、选择逻辑、WinForms/WPF 宿主约束和完整发布包规则，然后构建核心封装、两个界面宿主和公共 Demo 层。
+校核内容包括 Bridge 版本、接口分类、解析几何、微分几何、原生声明与实现、Cdecl 与精确符号名称、选择逻辑、视口宿主、原生源文件边界和完整发布包规则。
+
+原生编译和运行时 Smoke 测试：
+
+```powershell
+.\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
+```
 
 ## 发布
 

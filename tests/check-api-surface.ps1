@@ -72,6 +72,7 @@ $declarationRaw = Get-RawMatches $headerText '\b(occt_[a-z0-9_]+)\s*\([^{};]*\)\
 $definitionRaw = Get-RawMatches $cppText '\b(occt_[a-z0-9_]+)\s*\([^;{}]*\)\s*\{'
 $pinvokeRaw = Get-RawMatches $pinvokeText '\bextern\s+[A-Za-z0-9_<>,\[\]?]+\s+(occt_[a-z0-9_]+)\s*\('
 $cdeclPInvokes = Get-Matches $pinvokeText '(?s)\[DllImport\([^\]]*CallingConvention\s*=\s*CallingConvention\.Cdecl[^\]]*\)\]\s*internal\s+static\s+extern\s+[A-Za-z0-9_<>,\[\]?]+\s+(occt_[a-z0-9_]+)\s*\('
+$exactPInvokes = Get-Matches $pinvokeText '(?s)\[DllImport\([^\]]*ExactSpelling\s*=\s*true[^\]]*\)\]\s*internal\s+static\s+extern\s+[A-Za-z0-9_<>,\[\]?]+\s+(occt_[a-z0-9_]+)\s*\('
 
 Assert-NoDuplicates "native declarations" $declarationRaw
 Assert-NoDuplicates "native definitions" $definitionRaw
@@ -109,6 +110,7 @@ function Assert-SetEqual {
 Assert-SetEqual "native definitions" $declarations $definitions
 Assert-SetEqual "C# P/Invoke declarations" $declarations $pinvokes
 Assert-SetEqual "Cdecl P/Invoke declarations" $pinvokes $cdeclPInvokes
+Assert-SetEqual "exact-name P/Invoke declarations" $pinvokes $exactPInvokes
 
 $documentationFiles = @(
     Join-Path $RepositoryRoot "docs\API_COVERAGE.md"
