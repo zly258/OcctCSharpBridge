@@ -33,6 +33,7 @@ jobs:
             "src/OcctNative",
             "src/OcctNet",
             "src/OcctNet.WinForms",
+            "src/OcctNet.Wpf",
             "docs",
             "tests"
           )
