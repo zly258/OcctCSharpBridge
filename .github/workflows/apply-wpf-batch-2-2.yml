@@ -61,6 +61,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -- .github/workflows
           git add -A
           if (git diff --cached --quiet) { throw 'No integration changes were produced.' }
           git commit -m "Add reusable WPF host and batch object APIs"
