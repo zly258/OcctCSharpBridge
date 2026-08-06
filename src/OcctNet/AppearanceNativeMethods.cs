@@ -33,19 +33,19 @@ internal static class AppearanceNativeMethods
         internal OcctVector3d FillLightDirection;
     }
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_set_scene_lighting_ex(
         IntPtr handle,
         in NativeSceneLightingSettings settings);
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_set_selection_highlight_color(
         IntPtr handle,
         double r,
         double g,
         double b);
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_set_hover_highlight_color(
         IntPtr handle,
         double r,

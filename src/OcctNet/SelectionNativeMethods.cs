@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
@@ -6,7 +6,7 @@ internal static class SelectionNativeMethods
 {
     private const string LibraryName = "OcctNative";
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_show_selection_rectangle(
         IntPtr handle,
         int x1,
@@ -22,6 +22,6 @@ internal static class SelectionNativeMethods
         double fillTransparency,
         double lineWidth);
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_hide_selection_rectangle(IntPtr handle);
 }

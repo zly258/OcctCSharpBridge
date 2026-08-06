@@ -6,12 +6,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS OFF)
 
-set(_occt_default_root "$ENV{OCCT_ROOT}")
-if(NOT _occt_default_root)
-    set(_occt_default_root "D:/tools/occt-vc144-64")
+set(OCCT_ROOT "$ENV{OCCT_ROOT}" CACHE PATH "OCCT installation root")
+if(NOT OCCT_ROOT)
+    message(FATAL_ERROR "OCCT_ROOT is not configured. Pass -DOCCT_ROOT=<path> or set the OCCT_ROOT environment variable.")
 endif()
-
-set(OCCT_ROOT "${_occt_default_root}" CACHE PATH "OCCT installation root")
 set(OCCT_INCLUDE_DIR "${OCCT_ROOT}/inc" CACHE PATH "OCCT include directory")
 set(OCCT_LIB_DIR "${OCCT_ROOT}/win64/vc14/lib" CACHE PATH "OCCT library directory")
 set(OCCT_BIN_DIR "${OCCT_ROOT}/win64/vc14/bin" CACHE PATH "OCCT runtime directory")
@@ -55,6 +53,7 @@ add_library(OcctNative SHARED
     OcctModelingAlgorithms.cpp
     OcctModelingAnalysis.cpp
     OcctModelingAnalyticGeometry.cpp
+    OcctModelingDifferentialGeometry.cpp
     OcctInternal.hxx
     OcctModelingInternal.hxx
     OcctNative.h
