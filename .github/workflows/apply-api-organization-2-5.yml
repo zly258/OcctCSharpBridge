@@ -22,6 +22,10 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      - name: Repair migration anchors
+        shell: pwsh
+        run: python .\.github\fix_api_organization_2_5.py
+
       - name: Apply API organization migration
         shell: pwsh
         run: python .\.github\apply_api_organization_2_5.py
