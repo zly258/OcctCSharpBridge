@@ -307,12 +307,12 @@ extern "C"
     void occt_destroy(OcctHandle handle) { delete engineOf(handle); }
     const char* occt_last_error(OcctHandle handle) { Engine* engine = engineOf(handle); return engine == nullptr ? "Invalid OCCT engine handle." : engine->lastError.c_str(); }
     const char* occt_version() { return OCC_VERSION_COMPLETE; }
-    int occt_bridge_abi_version() { return 1; }
-    const char* occt_bridge_version() { return "1.1.0"; }
+    int occt_bridge_abi_version() { return 2; }
+    const char* occt_bridge_version() { return "2.0.0"; }
     const char* occt_bridge_build_info()
     {
         static const std::string info =
-            std::string("OcctCSharpBridge/1.1.0; ABI=1; OCCT=") + OCC_VERSION_COMPLETE +
+            std::string("OcctCSharpBridge/2.0.0; ABI=2; OCCT=") + OCC_VERSION_COMPLETE +
 #if defined(_M_X64)
             "; Arch=x64" +
 #else

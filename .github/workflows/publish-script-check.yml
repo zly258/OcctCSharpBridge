@@ -35,6 +35,7 @@ jobs:
           $required = @(
               '.\publish.ps1',
               '.\build.ps1',
+              '.\tests\check-native-build-structure.ps1',
               '.\src\OcctNet.WinForms\OcctNet.WinForms.csproj',
               '.\src\CadWinForms\CadWinForms.csproj',
               '.\src\CadWpf\CadWpf.csproj'
@@ -58,7 +59,7 @@ jobs:
               }
           }
 
-      - name: Verify lean package rules
+      - name: Verify lean geometry-only package rules
         shell: pwsh
         run: |
           $text = Get-Content .\publish.ps1 -Raw
@@ -73,6 +74,12 @@ jobs:
           )) {
               if (-not $text.Contains($token)) {
                   throw "Lean publishing token was not found: $token"
+              }
+          }
+
+          foreach ($forbidden in @('XmlOcafResource', 'XCAFResources', 'TObj')) {
+              if ($text.Contains($forbidden)) {
+                  throw "OCAF/XDE-only package resource remains: $forbidden"
               }
           }
 
