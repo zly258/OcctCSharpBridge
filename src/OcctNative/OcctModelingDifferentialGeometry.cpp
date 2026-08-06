@@ -1,8 +1,19 @@
 ﻿#include "OcctModelingInternal.hxx"
 
+#include <BRepAdaptor_Curve.hxx>
+#include <BRepAdaptor_Surface.hxx>
 #include <BRepLProp_CLProps.hxx>
 #include <BRepLProp_SLProps.hxx>
 #include <Precision.hxx>
+#include <TopoDS_Edge.hxx>
+#include <TopoDS_Face.hxx>
+#include <gp_Dir.hxx>
+#include <gp_Pnt.hxx>
+#include <gp_Vec.hxx>
+
+#include <cmath>
+#include <limits>
+#include <stdexcept>
 
 using namespace OcctModelingInternal;
 
@@ -89,10 +100,12 @@ extern "C"
         {
             const BRepAdaptor_Curve curve(requireEdge(model, edgeId));
             validateCurveParameter(curve, parameter);
+
             gp_Pnt point;
             gp_Vec firstDerivative;
             gp_Vec secondDerivative;
             curve.D2(parameter, point, firstDerivative, secondDerivative);
+
             result->parameter = parameter;
             result->point = toNativePoint(point);
             result->firstDerivative = toNativeVector(firstDerivative);
@@ -126,26 +139,24 @@ extern "C"
             result->hasNormal = 0;
             result->hasCenterOfCurvature = 0;
 
-            if (properties.IsTangentDefined())
-            {
-                gp_Dir tangent;
-                properties.Tangent(tangent);
-                result->tangent = toNativeVector(tangent);
-                result->hasTangent = 1;
-            }
+            if (!properties.IsTangentDefined()) return;
 
+            gp_Dir tangent;
+            properties.Tangent(tangent);
+            result->tangent = toNativeVector(tangent);
+            result->hasTangent = 1;
             result->curvature = properties.Curvature();
-            if (std::abs(result->curvature) > resolution)
-            {
-                gp_Dir normal;
-                gp_Pnt center;
-                properties.Normal(normal);
-                properties.CentreOfCurvature(center);
-                result->normal = toNativeVector(normal);
-                result->centerOfCurvature = toNativePoint(center);
-                result->hasNormal = 1;
-                result->hasCenterOfCurvature = 1;
-            }
+
+            if (std::abs(result->curvature) <= std::numeric_limits<double>::epsilon()) return;
+
+            gp_Dir normal;
+            gp_Pnt center;
+            properties.Normal(normal);
+            properties.CentreOfCurvature(center);
+            result->normal = toNativeVector(normal);
+            result->centerOfCurvature = toNativePoint(center);
+            result->hasNormal = 1;
+            result->hasCenterOfCurvature = 1;
         });
     }
 
@@ -183,6 +194,7 @@ extern "C"
             requirePositive(resolution, "Resolution");
             const TopoDS_Face face = requireFace(model, faceId);
             const BRepAdaptor_Surface surface(face);
+
             gp_Pnt point;
             gp_Vec uDerivative;
             gp_Vec vDerivative;
@@ -211,13 +223,12 @@ extern "C"
             result->hasNormal = 0;
 
             const gp_Vec cross = uDerivative.Crossed(vDerivative);
-            if (cross.SquareMagnitude() > resolution * resolution)
-            {
-                gp_Dir normal(cross);
-                if (isReversed(face)) normal.Reverse();
-                result->normal = toNativeVector(normal);
-                result->hasNormal = 1;
-            }
+            if (cross.SquareMagnitude() <= resolution * resolution) return;
+
+            gp_Dir normal(cross);
+            if (isReversed(face)) normal.Reverse();
+            result->normal = toNativeVector(normal);
+            result->hasNormal = 1;
         });
     }
 
