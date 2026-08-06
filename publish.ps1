@@ -410,7 +410,7 @@ function Copy-OcctResources {
         $resourceNames.Add($name)
     }
     if ($FullResources) {
-        foreach ($name in @("Textures", "XmlOcafResource", "TObj", "XCAFResources")) {
+        foreach ($name in @("Textures")) {
             $resourceNames.Add($name)
         }
     }

@@ -30,6 +30,7 @@ $NativeSource = Join-Path $RepoRoot "src\OcctNative"
 $NativeBuild = Join-Path $RepoRoot "build\native"
 $NativeDll = Join-Path $NativeBuild "bin\$Configuration\OcctNative.dll"
 $ApiSurfaceCheck = Join-Path $RepoRoot "tests\check-api-surface.ps1"
+$NativeBuildCheck = Join-Path $RepoRoot "tests\check-native-build-structure.ps1"
 
 $OcctIncludeDir = Join-Path $OcctRoot "inc"
 $OcctLibDir = Join-Path $OcctRoot "win64\vc14\lib"
@@ -103,6 +104,14 @@ function Clean-ProjectOutput {
 
 function Test-ApiSurface {
     Assert-Path $ApiSurfaceCheck
+    Assert-Path $NativeBuildCheck
+
+    Write-Host "[native-build] Validating CMake sources and toolkit boundaries..." -ForegroundColor Cyan
+    & $NativeBuildCheck -RepositoryRoot $RepoRoot
+    if (-not $?) {
+        throw "Native build structure validation failed."
+    }
+
     Write-Host "[api] Validating C declarations, C++ definitions and C# P/Invoke..." -ForegroundColor Cyan
     & $ApiSurfaceCheck -RepositoryRoot $RepoRoot
     if (-not $?) {
@@ -189,7 +198,7 @@ function Run-Smoke {
     $previousNativeDirectory = $env:OCCT_BRIDGE_NATIVE_DIR
     try {
         $env:OCCT_BRIDGE_NATIVE_DIR = $smokeOutput
-        Write-Host "[smoke] Running native, modeling and OCAF/XDE scenarios..." -ForegroundColor Cyan
+        Write-Host "[smoke] Running native viewer and modeling scenarios..." -ForegroundColor Cyan
         Invoke-Checked "dotnet" @(
             "run",
             "--project", $smokeProject,

@@ -22,6 +22,10 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      - name: Validate native build structure
+        shell: pwsh
+        run: .\tests\check-native-build-structure.ps1 -RepositoryRoot $PWD
+
       - name: Validate native and managed declarations
         shell: pwsh
         run: .\tests\check-api-surface.ps1 -RepositoryRoot $PWD
@@ -46,6 +50,6 @@ jobs:
         shell: pwsh
         run: dotnet build .\src\CadWpf\CadWpf.csproj -c Release -p:Platform=x64 --nologo
 
-      - name: Compile smoke test
+      - name: Compile modeling smoke test
         shell: pwsh
         run: dotnet build .\tests\OcctNet.Smoke\OcctNet.Smoke.csproj -c Release -p:Platform=x64 --nologo
