@@ -1,5 +1,12 @@
 ﻿#include "OcctModelingInternal.hxx"
 
+#include <gp_Circ.hxx>
+#include <gp_Cone.hxx>
+#include <gp_Cylinder.hxx>
+#include <gp_Elips.hxx>
+#include <gp_Sphere.hxx>
+#include <gp_Torus.hxx>
+
 using namespace OcctModelingInternal;
 
 namespace
