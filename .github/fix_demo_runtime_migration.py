@@ -89,4 +89,8 @@ text = text.replace('''    $runtimeNames = @(
     )
 ''', 1)
 
+text = text.replace(
+    'throw "Required OCCT resource directory was not found: $resourceName"',
+    'throw "Required OCCT resource directory was not found: $name"')
+
 path.write_text(text, encoding="utf-8-sig", newline="\n")
