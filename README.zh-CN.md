@@ -14,6 +14,27 @@ WPF Demo 现在直接引用 `OcctNet.Wpf`，业务 XAML 中不再手工创建 `W
 
 桥接层不包含 OCAF/XDE。文档、JSON 持久化、撤销重做和命令历史由上层应用自行实现。
 
+## 界面预览
+
+<table>
+  <tr>
+    <th>WinForms · English</th>
+    <th>WinForms · 简体中文</th>
+  </tr>
+  <tr>
+    <td><img src="assets/previews/winform-demo-en.webp" alt="OCCT CAD WinForms 英文界面" width="100%"></td>
+    <td><img src="assets/previews/winform-demo-zh.webp" alt="OCCT CAD WinForms 中文界面" width="100%"></td>
+  </tr>
+  <tr>
+    <th>WPF · English</th>
+    <th>WPF · 简体中文</th>
+  </tr>
+  <tr>
+    <td><img src="assets/previews/wpf-demo-en.webp" alt="OCCT CAD WPF 英文界面" width="100%"></td>
+    <td><img src="assets/previews/wpf-demo-zh.webp" alt="OCCT CAD WPF 中文界面" width="100%"></td>
+  </tr>
+</table>
+
 ## 主要能力
 
 - 独立的 WinForms、WPF OCCT 视口宿主
