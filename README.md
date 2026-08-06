@@ -14,6 +14,27 @@ The WPF demo references `OcctNet.Wpf` directly and no longer constructs `Windows
 
 OCAF/XDE is not included. Documents, JSON persistence, undo/redo, and command history belong to the consuming application.
 
+## Preview
+
+<table>
+  <tr>
+    <th>WinForms · English</th>
+    <th>WinForms · 简体中文</th>
+  </tr>
+  <tr>
+    <td><img src="assets/previews/winform-demo-en.webp" alt="OCCT CAD WinForms English demo" width="100%"></td>
+    <td><img src="assets/previews/winform-demo-zh.webp" alt="OCCT CAD WinForms Simplified Chinese demo" width="100%"></td>
+  </tr>
+  <tr>
+    <th>WPF · English</th>
+    <th>WPF · 简体中文</th>
+  </tr>
+  <tr>
+    <td><img src="assets/previews/wpf-demo-en.webp" alt="OCCT CAD WPF English demo" width="100%"></td>
+    <td><img src="assets/previews/wpf-demo-zh.webp" alt="OCCT CAD WPF Simplified Chinese demo" width="100%"></td>
+  </tr>
+</table>
+
 ## Features
 
 - Dedicated WinForms and WPF OCCT viewport hosts
