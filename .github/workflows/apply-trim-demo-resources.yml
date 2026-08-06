@@ -1,0 +1,55 @@
+name: Apply Geometry Only Resource Trim
+
+on:
+  push:
+    branches:
+      - optimize/demo-abi2-sync
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Trim OCAF and XDE package resources
+        shell: pwsh
+        run: python .\.github\trim_demo_resources.py
+
+      - name: Parse publish script
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path .\publish.ps1),
+              [ref]$tokens,
+              [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+              $errors | Format-List
+              exit 1
+          }
+
+      - name: Validate geometry-only wrapper
+        shell: pwsh
+        run: .\build.ps1 validate Release
+
+      - name: Commit resource cleanup
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if (git diff --cached --quiet) { throw 'No resource cleanup changes were produced.' }
+          git commit -m "Remove OCAF and XDE resources from demo packages"
+          git push origin HEAD:optimize/demo-abi2-sync
