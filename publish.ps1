@@ -150,7 +150,7 @@ function Publish-Application {
         "-r", "win-x64",
         "-p:Platform=x64",
         "-p:PublishSingleFile=true",
-        "-p:EnableCompressionInSingleFile=true",
+        "-p:EnableCompressionInSingleFile=$($SelfContained.IsPresent.ToString().ToLowerInvariant())",
         "-p:IncludeNativeLibrariesForSelfExtract=true",
         "-p:PublishReadyToRun=false",
         "-p:DebugType=None",
