@@ -594,7 +594,20 @@ extern "C"
     int occt_select(OcctHandle h, int x, int y, int append)
     {
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { e->context->MoveTo(x,y,e->view,Standard_False); e->context->SelectDetected(append ? AIS_SelectionScheme_XOR : AIS_SelectionScheme_Replace); e->view->Redraw(); });
+        return execute(e, [&]
+        {
+            e->context->MoveTo(x, y, e->view, Standard_False);
+            if (e->context->HasDetected())
+            {
+                e->context->SelectDetected(
+                    append ? AIS_SelectionScheme_Add : AIS_SelectionScheme_Replace);
+            }
+            else if (!append)
+            {
+                e->context->ClearSelected(Standard_False);
+            }
+            e->context->UpdateCurrentViewer();
+        });
     }
 
     int occt_select_rectangle_ex(OcctHandle h, int x1, int y1, int x2, int y2, int append, int allowOverlap)
@@ -602,18 +615,19 @@ extern "C"
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            // OCCT uses full inclusion for rectangle selection by default. Configure the
-            // selector explicitly for every gesture so callers can request crossing selection.
+            // Keep the standard OCCT rectangle-selection path used by the reference
+            // Viewport examples. Full inclusion is the default; overlap is opt-in only.
             const Handle(StdSelect_ViewerSelector3d)& selector = e->context->MainSelector();
             selector->AllowOverlapDetection(allowOverlap != 0);
-            Graphic3d_Vec2i minPoint(std::min(x1,x2), std::min(y1,y2));
-            Graphic3d_Vec2i maxPoint(std::max(x1,x2), std::max(y1,y2));
+            const Graphic3d_Vec2i minPoint(std::min(x1, x2), std::min(y1, y2));
+            const Graphic3d_Vec2i maxPoint(std::max(x1, x2), std::max(y1, y2));
             e->context->SelectRectangle(
                 minPoint,
                 maxPoint,
                 e->view,
                 append ? AIS_SelectionScheme_Add : AIS_SelectionScheme_Replace);
-            e->view->Redraw();
+            selector->AllowOverlapDetection(Standard_False);
+            e->context->UpdateCurrentViewer();
         });
     }
 

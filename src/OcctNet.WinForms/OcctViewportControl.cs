@@ -72,8 +72,8 @@ public sealed class OcctViewportControl : Control
 
     public OcctEngine Engine => _engine ?? throw new InvalidOperationException("The OCCT viewport handle has not been created yet.");
     public bool EnableRectangleSelection { get; set; } = true;
-    public int RectangleSelectionThreshold { get; set; } = 5;
-    public OcctRectangleSelectionBehavior RectangleSelectionBehavior { get; set; } = OcctRectangleSelectionBehavior.Overlap;
+    public int RectangleSelectionThreshold { get; set; } = 3;
+    public OcctRectangleSelectionBehavior RectangleSelectionBehavior { get; set; } = OcctRectangleSelectionBehavior.Inclusive;
     public Color RectangleSelectionLineColor { get; set; } = Color.FromArgb(35, 120, 210);
     public Color RectangleSelectionFillColor { get; set; } = Color.FromArgb(95, 165, 230);
     public double RectangleSelectionFillTransparency { get; set; } = 0.82;
@@ -145,7 +145,7 @@ public sealed class OcctViewportControl : Control
             CancelRectangleSelection();
             _panning = true;
         }
-        else if (e.Button == MouseButtons.Left)
+        else if (e.Button == MouseButtons.Left && !ModifierKeys.HasFlag(Keys.Shift))
         {
             CancelRectangleSelection();
             _selectionStart = e.Location;
@@ -223,12 +223,11 @@ public sealed class OcctViewportControl : Control
         if (_rectangleDragStarted && trackedDistance > eventDistance)
             end = _selectionCurrent;
 
-        var dx = Math.Abs(end.X - _selectionStart.X);
-        var dy = Math.Abs(end.Y - _selectionStart.Y);
+        var dragDistance = Math.Abs(end.X - _selectionStart.X)
+                           + Math.Abs(end.Y - _selectionStart.Y);
         var useRectangle = EnableRectangleSelection
                            && (_rectangleDragStarted
-                               || dx >= RectangleSelectionThreshold
-                               || dy >= RectangleSelectionThreshold);
+                               || dragDistance > RectangleSelectionThreshold);
         var append = ModifierKeys.HasFlag(Keys.Control);
         var allowOverlap = RectangleSelectionBehavior switch
         {
@@ -270,7 +269,7 @@ public sealed class OcctViewportControl : Control
 
     protected override void OnMouseCaptureChanged(EventArgs e)
     {
-        if (!Capture && !_releasingMouseCapture)
+        if (!Capture && !_releasingMouseCapture && !_selectingRectangle)
         {
             // Do not clear a recognized rectangle here. WinFormsHost and DPI/layout changes
             // can deliver CaptureChanged before MouseUp; MouseUp must still finalize the box.
