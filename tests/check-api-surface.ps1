@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$RepositoryRoot = (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
 )
 
@@ -12,8 +12,6 @@ $headerFiles = @(
     Join-Path $nativeRoot "OcctNative.h"
     Join-Path $nativeRoot "OcctSelectionOverlay.h"
     Join-Path $nativeRoot "OcctModeling.h"
-    Join-Path $nativeRoot "OcctOcaf.h"
-    Join-Path $nativeRoot "OcctOcafExtended.h"
 )
 $cppFiles = Get-ChildItem $nativeRoot -Filter "*.cpp" -File | Select-Object -ExpandProperty FullName
 $pinvokeFiles = Get-ChildItem $managedRoot -Filter "*NativeMethods*.cs" -File | Select-Object -ExpandProperty FullName
@@ -131,10 +129,14 @@ foreach ($documentationFile in $documentationFiles) {
     }
 }
 
+$ocafExports = @($declarations | Where-Object { $_ -like 'occt_ocaf_*' })
+if ($ocafExports.Count -ne 0) {
+    throw "OCAF/XDE exports are not allowed in the reusable bridge."
+}
+
 $groups = [ordered]@{
-    Viewer = @($declarations | Where-Object { $_ -notlike 'occt_model_*' -and $_ -notlike 'occt_ocaf_*' })
+    Viewer = @($declarations | Where-Object { $_ -notlike 'occt_model_*' })
     Modeling = @($declarations | Where-Object { $_ -like 'occt_model_*' })
-    Ocaf = @($declarations | Where-Object { $_ -like 'occt_ocaf_*' })
 }
 foreach ($group in $groups.GetEnumerator()) {
     Write-Host ("[api] {0}: {1}" -f $group.Key, $group.Value.Count) -ForegroundColor Cyan
