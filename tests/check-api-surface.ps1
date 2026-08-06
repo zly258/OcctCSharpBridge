@@ -29,27 +29,59 @@ function Read-AllText {
     return ($Paths | ForEach-Object { [System.IO.File]::ReadAllText($_) }) -join "`n"
 }
 
+function Get-RawMatches {
+    param(
+        [string]$Text,
+        [string]$Pattern
+    )
+
+    return @([regex]::Matches(
+        $Text,
+        $Pattern,
+        [System.Text.RegularExpressions.RegexOptions]::Multiline -bor
+        [System.Text.RegularExpressions.RegexOptions]::Singleline
+    ) | ForEach-Object { $_.Groups[1].Value })
+}
+
 function Get-Matches {
     param(
         [string]$Text,
         [string]$Pattern
     )
 
-    return [regex]::Matches(
-        $Text,
-        $Pattern,
-        [System.Text.RegularExpressions.RegexOptions]::Multiline -bor
-        [System.Text.RegularExpressions.RegexOptions]::Singleline
-    ) | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
+    return @(Get-RawMatches $Text $Pattern | Sort-Object -Unique)
+}
+
+function Assert-NoDuplicates {
+    param(
+        [string]$Name,
+        [string[]]$Values
+    )
+
+    $duplicates = @($Values | Group-Object | Where-Object Count -gt 1 | Sort-Object Name)
+    if ($duplicates.Count -eq 0) { return }
+
+    Write-Host "[api] Duplicate ${Name} entries:" -ForegroundColor Red
+    $duplicates | ForEach-Object { Write-Host ("  {0} ({1})" -f $_.Name, $_.Count) -ForegroundColor Red }
+    throw "Duplicate API entries were found for $Name."
 }
 
 $headerText = Read-AllText $headerFiles
 $cppText = Read-AllText $cppFiles
 $pinvokeText = Read-AllText $pinvokeFiles
 
-$declarations = Get-Matches $headerText '\b(occt_[a-z0-9_]+)\s*\([^{};]*\)\s*;'
-$definitions = Get-Matches $cppText '\b(occt_[a-z0-9_]+)\s*\([^;{}]*\)\s*\{'
-$pinvokes = Get-Matches $pinvokeText '\bextern\s+[A-Za-z0-9_<>,\[\]?]+\s+(occt_[a-z0-9_]+)\s*\('
+$declarationRaw = Get-RawMatches $headerText '\b(occt_[a-z0-9_]+)\s*\([^{};]*\)\s*;'
+$definitionRaw = Get-RawMatches $cppText '\b(occt_[a-z0-9_]+)\s*\([^;{}]*\)\s*\{'
+$pinvokeRaw = Get-RawMatches $pinvokeText '\bextern\s+[A-Za-z0-9_<>,\[\]?]+\s+(occt_[a-z0-9_]+)\s*\('
+$cdeclPInvokes = Get-Matches $pinvokeText '(?s)\[DllImport\([^\]]*CallingConvention\s*=\s*CallingConvention\.Cdecl[^\]]*\)\]\s*internal\s+static\s+extern\s+[A-Za-z0-9_<>,\[\]?]+\s+(occt_[a-z0-9_]+)\s*\('
+
+Assert-NoDuplicates "native declarations" $declarationRaw
+Assert-NoDuplicates "native definitions" $definitionRaw
+Assert-NoDuplicates "C# P/Invoke declarations" $pinvokeRaw
+
+$declarations = @($declarationRaw | Sort-Object -Unique)
+$definitions = @($definitionRaw | Sort-Object -Unique)
+$pinvokes = @($pinvokeRaw | Sort-Object -Unique)
 
 function Assert-SetEqual {
     param(
@@ -78,6 +110,26 @@ function Assert-SetEqual {
 
 Assert-SetEqual "native definitions" $declarations $definitions
 Assert-SetEqual "C# P/Invoke declarations" $declarations $pinvokes
+Assert-SetEqual "Cdecl P/Invoke declarations" $pinvokes $cdeclPInvokes
+
+$documentationFiles = @(
+    Join-Path $RepositoryRoot "docs\API_COVERAGE.md"
+    Join-Path $RepositoryRoot "docs\API_COVERAGE.zh-CN.md"
+)
+foreach ($documentationFile in $documentationFiles) {
+    if (-not (Test-Path $documentationFile)) {
+        throw "API inventory was not found: $documentationFile"
+    }
+    $documentation = [System.IO.File]::ReadAllText($documentationFile)
+    $nativeCount = [regex]::Match($documentation, 'Native exports:\s*`?(\d+)`?').Groups[1].Value
+    $managedCount = [regex]::Match($documentation, 'Managed P/Invoke declarations:\s*`?(\d+)`?').Groups[1].Value
+    if ([string]::IsNullOrWhiteSpace($nativeCount) -or [string]::IsNullOrWhiteSpace($managedCount)) {
+        throw "API inventory counts could not be parsed: $documentationFile"
+    }
+    if ([int]$nativeCount -ne $declarations.Count -or [int]$managedCount -ne $pinvokes.Count) {
+        throw "API inventory is stale: $documentationFile (native=$nativeCount, managed=$managedCount, expected=$($declarations.Count))."
+    }
+}
 
 $groups = [ordered]@{
     Viewer = @($declarations | Where-Object { $_ -notlike 'occt_model_*' -and $_ -notlike 'occt_ocaf_*' })

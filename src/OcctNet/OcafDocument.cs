@@ -23,6 +23,7 @@ public sealed partial class OcafDocument : IDisposable
     {
         OcctRuntime.Configure();
         RuntimeHelpers.RunClassConstructor(typeof(NativeMethods).TypeHandle);
+        OcctBridgeInfo.EnsureCompatible();
         _handle = OcafNativeMethods.occt_ocaf_create();
         if (_handle == IntPtr.Zero)
             throw new OcctException("Unable to create the native OCAF session.");
