@@ -5,9 +5,9 @@ This source-derived inventory lists the current native C ABI, C# P/Invoke mappin
 OCAF/XDE is intentionally excluded; documents, undo/redo, and JSON persistence are application-layer responsibilities.
 
 - OCCT: `7.9.0`
-- Native exports: `281`
-- Managed P/Invoke declarations: `281`
-- Public .NET types: `56`
+- Native exports: `297`
+- Managed P/Invoke declarations: `297`
+- Public .NET types: `59`
 
 ## Native C ABI
 
@@ -21,7 +21,7 @@ OCAF/XDE is intentionally excluded; documents, undo/redo, and JSON persistence a
 - `occt_bridge_version`
 - `occt_bridge_build_info`
 
-### OcctNative.h — Viewer and interaction (56)
+### OcctNative.h — Viewer and interaction (72)
 
 - `occt_auto_z_fit`
 - `occt_begin_update`
@@ -78,6 +78,22 @@ OCAF/XDE is intentionally excluded; documents, undo/redo, and JSON persistence a
 - `occt_start_rotation`
 - `occt_window_fit`
 - `occt_world_to_screen`
+- `occt_fit_objects`
+- `occt_set_zup_view`
+- `occt_screen_to_ray`
+- `occt_zoom_at_point`
+- `occt_select_all_visible`
+- `occt_invert_selection`
+- `occt_hide_selected`
+- `occt_set_automatic_highlight`
+- `occt_set_msaa_samples`
+- `occt_set_render_resolution_scale`
+- `occt_set_render_resolution`
+- `occt_set_rendering_method`
+- `occt_set_shadows_enabled`
+- `occt_set_immediate_update`
+- `occt_set_frustum_culling`
+- `occt_set_face_boundaries_visible`
 - `occt_zoom`
 
 ### OcctNative.h — Registry, AIS attributes and lifecycle (23)
@@ -363,6 +379,8 @@ OCAF/XDE is intentionally excluded; documents, undo/redo, and JSON persistence a
 - `OcctPoint3d`
 - `OcctPolygonOffsetSettings`
 - `OcctProjectionType`
+- `OcctProjectionRay`
+- `OcctRenderingMethod`
 - `OcctSceneLightingSettings`
 - `OcctSelectionMode`
 - `OcctShapeType`
@@ -370,6 +388,7 @@ OCAF/XDE is intentionally excluded; documents, undo/redo, and JSON persistence a
 - `OcctUvBounds`
 - `OcctVector3d`
 - `OcctViewOrientation`
+- `OcctZUpViewOrientation`
 
 ## Public .NET types
 
@@ -414,6 +433,8 @@ OCAF/XDE is intentionally excluded; documents, undo/redo, and JSON persistence a
 - `OcctPolygonOffsetMode`
 - `OcctPolygonOffsetSettings`
 - `OcctProjectionType`
+- `OcctProjectionRay`
+- `OcctRenderingMethod`
 - `OcctRectangleSelectionBehavior`
 - `OcctRuntime`
 - `OcctSceneLightingSettings`
@@ -425,6 +446,7 @@ OCAF/XDE is intentionally excluded; documents, undo/redo, and JSON persistence a
 - `OcctUvBounds`
 - `OcctVector3d`
 - `OcctViewOrientation`
+- `OcctZUpViewOrientation`
 - `OcctViewportControl`
 - `OcctViewportErrorEventArgs`
 - `OcctViewportSelectionEventArgs`
@@ -435,7 +457,7 @@ The `OcctViewport*` types above are provided by the optional `OcctNet.WinForms` 
 ## Bridge ABI contract
 
 - Managed expected ABI: `2`
-- Native bridge version: `2.0.0`
+- Native bridge version: `2.1.0`
 - `OcctBridgeInfo` validates the loaded `OcctNative.dll` before creating viewer or modeling sessions.
 - Managed and native binaries should always be deployed from the same build.
 

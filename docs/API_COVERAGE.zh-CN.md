@@ -5,9 +5,9 @@
 桥接层不包含 OCAF/XDE；文档、撤销重做和 JSON 持久化由上层应用实现。
 
 - OCCT: `7.9.0`
-- Native exports: `281`
-- Managed P/Invoke declarations: `281`
-- Public .NET types: `56`
+- Native exports: `297`
+- Managed P/Invoke declarations: `297`
+- Public .NET types: `59`
 
 ## 原生 C ABI
 
@@ -21,7 +21,7 @@
 - `occt_bridge_version`
 - `occt_bridge_build_info`
 
-### OcctNative.h — Viewer and interaction (56)
+### OcctNative.h — Viewer and interaction (72)
 
 - `occt_auto_z_fit`
 - `occt_begin_update`
@@ -78,6 +78,22 @@
 - `occt_start_rotation`
 - `occt_window_fit`
 - `occt_world_to_screen`
+- `occt_fit_objects`
+- `occt_set_zup_view`
+- `occt_screen_to_ray`
+- `occt_zoom_at_point`
+- `occt_select_all_visible`
+- `occt_invert_selection`
+- `occt_hide_selected`
+- `occt_set_automatic_highlight`
+- `occt_set_msaa_samples`
+- `occt_set_render_resolution_scale`
+- `occt_set_render_resolution`
+- `occt_set_rendering_method`
+- `occt_set_shadows_enabled`
+- `occt_set_immediate_update`
+- `occt_set_frustum_culling`
+- `occt_set_face_boundaries_visible`
 - `occt_zoom`
 
 ### OcctNative.h — Registry, AIS attributes and lifecycle (23)
@@ -363,6 +379,8 @@
 - `OcctPoint3d`
 - `OcctPolygonOffsetSettings`
 - `OcctProjectionType`
+- `OcctProjectionRay`
+- `OcctRenderingMethod`
 - `OcctSceneLightingSettings`
 - `OcctSelectionMode`
 - `OcctShapeType`
@@ -370,6 +388,7 @@
 - `OcctUvBounds`
 - `OcctVector3d`
 - `OcctViewOrientation`
+- `OcctZUpViewOrientation`
 
 ## 公开 .NET 类型
 
@@ -435,7 +454,7 @@
 ## 桥接 ABI 约束
 
 - 托管层要求的 ABI：`2`
-- 原生桥接版本：`2.0.0`
+- 原生桥接版本：`2.1.0`
 - `OcctBridgeInfo` 会在创建 Viewer 或建模会话前校验已加载的 `OcctNative.dll`。
 - 托管与原生二进制文件必须来自同一次构建。
 

@@ -240,9 +240,18 @@ function Get-PeDependencies {
     return @($dependencies | Sort-Object -Unique)
 }
 
+function Test-VisualCppRuntimeDependency {
+    param([Parameter(Mandatory = $true)][string]$Name)
+
+    return $Name -match "^(?i:concrt140|msvcp140(?:_[0-9]+|_atomic_wait|_codecvt_ids)?|vcruntime140(?:_[0-9]+|_threads)?)\.dll$"
+}
+
 function Test-SystemDependency {
     param([Parameter(Mandatory = $true)][string]$Name)
 
+    if (Test-VisualCppRuntimeDependency $Name) {
+        return $false
+    }
     if ($Name -match "^(?i:api-ms-win-|ext-ms-win-)") {
         return $true
     }
@@ -287,11 +296,53 @@ function Get-RuntimeCandidateScore {
     return $score
 }
 
+function Get-VisualCppRuntimeFiles {
+    $result = [System.Collections.Generic.List[System.IO.FileInfo]]::new()
+    $seen = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+
+    $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+    if (Test-Path $vswhere -PathType Leaf) {
+        $matches = @(& $vswhere `
+            -latest `
+            -products * `
+            -requires Microsoft.VisualStudio.Component.VC.Redist.14.Latest `
+            -find "VC\Redist\MSVC\**\x64\Microsoft.VC*.CRT\*.dll" 2>$null)
+        foreach ($match in $matches) {
+            if ([string]::IsNullOrWhiteSpace($match) -or -not (Test-Path $match -PathType Leaf)) { continue }
+            $file = Get-Item -LiteralPath $match
+            if ((Test-VisualCppRuntimeDependency $file.Name) -and $seen.Add($file.FullName)) {
+                $result.Add($file)
+            }
+        }
+    }
+
+    foreach ($name in @(
+        "concrt140.dll",
+        "msvcp140.dll",
+        "msvcp140_1.dll",
+        "msvcp140_2.dll",
+        "msvcp140_atomic_wait.dll",
+        "msvcp140_codecvt_ids.dll",
+        "vcruntime140.dll",
+        "vcruntime140_1.dll",
+        "vcruntime140_threads.dll"
+    )) {
+        $path = Join-Path ([Environment]::SystemDirectory) $name
+        if (Test-Path $path -PathType Leaf) {
+            $file = Get-Item -LiteralPath $path
+            if ($seen.Add($file.FullName)) { $result.Add($file) }
+        }
+    }
+
+    return @($result)
+}
+
 function New-RuntimeCandidateIndex {
     $index = @{}
     $files = [System.Collections.Generic.List[System.IO.FileInfo]]::new()
 
     Get-ChildItem $OcctBinDir -File -Filter "*.dll" | ForEach-Object { $files.Add($_) }
+    Get-VisualCppRuntimeFiles | ForEach-Object { $files.Add($_) }
     if (Test-Path $OcctThirdPartyDir -PathType Container) {
         Get-ChildItem $OcctThirdPartyDir -Recurse -File -Filter "*.dll" | Where-Object {
             Test-RuntimeCandidate $_
@@ -398,8 +449,11 @@ function Copy-VisualCppRuntime {
         "msvcp140.dll",
         "msvcp140_1.dll",
         "msvcp140_2.dll",
+        "msvcp140_atomic_wait.dll",
+        "msvcp140_codecvt_ids.dll",
         "vcruntime140.dll",
-        "vcruntime140_1.dll"
+        "vcruntime140_1.dll",
+        "vcruntime140_threads.dll"
     )
 
     foreach ($name in $names) {
@@ -429,9 +483,10 @@ function Copy-OcctResources {
 
     foreach ($name in $resourceNames) {
         $source = Join-Path $sourceRoot $name
-        if (Test-Path $source -PathType Container) {
-            Copy-Item $source (Join-Path $destinationRoot $name) -Recurse -Force
+        if (-not (Test-Path $source -PathType Container)) {
+            throw "Required OCCT resource directory was not found: $name"
         }
+        Copy-Item $source (Join-Path $destinationRoot $name) -Recurse -Force
     }
 }
 
@@ -452,6 +507,73 @@ function Add-LicenseSection {
     [void]$Builder.AppendLine("================================================================================")
     [void]$Builder.AppendLine((Get-Content $Path -Raw -ErrorAction Stop))
     [void]$Builder.AppendLine()
+}
+
+function Test-PackagedNativeClosure {
+    $dumpbin = Resolve-Dumpbin
+    $runtimeFiles = @(Get-ChildItem $RuntimeRoot -File -Filter "*.dll" | Sort-Object Name)
+    if ($runtimeFiles.Count -eq 0) {
+        throw "The packaged runtime directory contains no DLL files."
+    }
+
+    $packagedNames = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($file in $runtimeFiles) { [void]$packagedNames.Add($file.Name) }
+
+    $rows = [System.Collections.Generic.List[string]]::new()
+    $unresolved = [System.Collections.Generic.List[string]]::new()
+    foreach ($file in $runtimeFiles) {
+        $dependencies = @(Get-PeDependencies $dumpbin $file.FullName)
+        $rows.Add("$($file.Name)`t$($dependencies -join ',')")
+        foreach ($dependency in $dependencies) {
+            if ($packagedNames.Contains($dependency)) { continue }
+            if (Test-SystemDependency $dependency) { continue }
+            $unresolved.Add("$($file.Name) -> $dependency")
+        }
+    }
+
+    [System.IO.File]::WriteAllLines(
+        (Join-Path $PackageRoot "native-dependencies.txt"),
+        @("Binary`tDependencies") + $rows,
+        $utf8Bom)
+
+    if ($unresolved.Count -gt 0) {
+        throw "The package has unresolved non-system native dependencies:`n$($unresolved -join "`n")"
+    }
+}
+
+function Write-PackageContract {
+    $applications = [System.Collections.Generic.List[object]]::new()
+    foreach ($key in @("winform", "wpf")) {
+        if ($Target -ne "all" -and $Target -ne $key) { continue }
+        $application = $Projects[$key]
+        $relativeExecutable = Join-Path (Join-Path "apps" $application.Folder) $application.Executable
+        $fullExecutable = Join-Path $PackageRoot $relativeExecutable
+        Assert-Path $fullExecutable "$($application.Name) packaged executable"
+        $applications.Add([ordered]@{
+            name = $application.Name
+            executable = $relativeExecutable.Replace('\\', '/')
+            selfContained = [bool]$UseSelfContained
+        })
+    }
+
+    $resources = @(Get-ChildItem (Join-Path $OcctPackageRoot "src") -Directory | Sort-Object Name | Select-Object -ExpandProperty Name)
+    $contract = [ordered]@{
+        schemaVersion = 1
+        packageName = $PackageName
+        platform = "windows-x64"
+        configuration = $Configuration
+        selfContained = [bool]$UseSelfContained
+        managedRuntime = if ($UseSelfContained) { "embedded-in-application" } else { "requires-.NET-8-Desktop-Runtime" }
+        applications = $applications
+        nativeRuntimeDirectory = "runtime"
+        occtRootDirectory = "occt"
+        occtResourceDirectories = $resources
+        dependencyManifest = "native-dependencies.txt"
+        licenseDirectory = "licenses"
+    }
+
+    $json = $contract | ConvertTo-Json -Depth 8
+    [System.IO.File]::WriteAllText((Join-Path $PackageRoot "package-contract.json"), $json, $utf8Bom)
 }
 
 function Write-LicenseFiles {
@@ -511,8 +633,9 @@ function Write-PackageReadme {
         "Run the executable in apps\winform or apps\wpf directly.",
         "Keep the apps, runtime and occt directories together.",
         "",
-        "The default package contains both WinForms and WPF executables, the native dependency closure,",
-        "the required OCCT resources and consolidated license notices.",
+        "The default package contains both WinForms and WPF executables with the .NET runtime embedded,",
+        "OcctNative.dll, the complete OCCT/third-party/Visual C++ native dependency closure,",
+        "required OCCT resources, package-contract.json, native-dependencies.txt and license notices.",
         "",
         "The default package is self-contained and does not require a separate .NET installation.",
         "Use -FrameworkDependent only when all target machines already have the .NET 8 Desktop Runtime.",
@@ -581,8 +704,10 @@ try {
     Copy-OcctRuntime
     Copy-VisualCppRuntime
     Copy-OcctResources
+    Test-PackagedNativeClosure
     Write-LicenseFiles
     Write-PackageReadme
+    Write-PackageContract
     Write-Manifest
 
     if ($Zip) {
