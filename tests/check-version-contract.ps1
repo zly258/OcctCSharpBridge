@@ -1,8 +1,4 @@
-﻿from pathlib import Path
-
-root = Path(__file__).resolve().parents[1]
-bom = b"\xef\xbb\xbf"
-text = r'''param(
+﻿param(
     [string]$RepositoryRoot = (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
 )
 
@@ -59,15 +55,3 @@ foreach ($path in @("build.ps1", "src/OcctNative/CMakeLists.txt")) {
 }
 
 Write-Host "[version] Bridge $expectedVersion, ABI 2 and API inventory counts validated." -ForegroundColor Green
-'''
-path = root / "tests/check-version-contract.ps1"
-path.parent.mkdir(parents=True, exist_ok=True)
-path.write_bytes(bom + text.replace("\n", "\r\n").encode("utf-8"))
-
-shape_path = root / "src/OcctNet/OcctModelingSession.ShapeQueries.cs"
-shape_text = shape_path.read_bytes().decode("utf-8-sig").replace("\r\n", "\n")
-if not shape_text.startswith("using System.Runtime.InteropServices;"):
-    shape_text = "using System.Runtime.InteropServices;\n\n" + shape_text
-shape_path.write_bytes(bom + shape_text.replace("\n", "\r\n").encode("utf-8"))
-
-Path(__file__).unlink()

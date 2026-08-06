@@ -21,7 +21,7 @@ The wrapper provides two native session types:
 - `OcctViewportControl` is provided by `OcctNet.WinForms`; `OcctWpfViewport` is provided by `OcctNet.Wpf`.
 - `OcctModelingSession`: headless geometry, topology, algorithms, mesh, analysis, healing, and exchange.
 
-Batch color, transparency, visibility, display-mode, line-width, material, redisplay, and selection operations reduce repeated P/Invoke calls for large scenes. Viewport-state snapshots, selected-object fitting, reset operations, scene gravity points, and screen-to-plane projection support reusable CAD interaction tools. Exact line, circle, ellipse, plane, cylinder, cone, sphere, and torus parameters support feature recognition and engineering automation.
+Batch color, transparency, visibility, display-mode, line-width, material, redisplay, and selection operations reduce repeated P/Invoke calls for large scenes. Viewport-state snapshots, selected-object fitting, reset operations, scene gravity points, and screen-to-plane projection support reusable CAD interaction tools. Exact analytic parameters plus curve/surface derivatives, periodicity and curvature support feature recognition, engineering rules and parametric reconstruction.
 
 The bridge intentionally excludes OCAF/XDE. Application documents, undo/redo, and JSON persistence belong to the consuming application rather than the geometry bridge.
 
@@ -29,6 +29,7 @@ The bridge intentionally excludes OCAF/XDE. Application documents, undo/redo, an
 
 - Required OCCT version: exactly `7.9.0`.
 - Managed target: `.NET 8`, Windows x64.
+- Bridge version: `2.5.0`; ABI: `2`.
 - Native bridge ABI: validated at runtime through `OcctBridgeInfo`.
 - Deploy `OcctNet.dll` and `OcctNative.dll` from the same build.
 - Native OCCT and third-party DLLs must be discoverable through the application directory or configured runtime paths.
