@@ -1,9 +1,9 @@
 ﻿using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Forms.Integration;
 using DrawingColor = System.Drawing.Color;
 using MediaColor = System.Windows.Media.Color;
 using MediaColors = System.Windows.Media.Colors;
+using WpfUserControl = System.Windows.Controls.UserControl;
 
 namespace OcctNet;
 
@@ -12,7 +12,7 @@ namespace OcctNet;
 /// <see cref="OcctViewportControl"/>, while WPF applications receive dependency properties
 /// and WPF-native composition through <see cref="WindowsFormsHost"/>.
 /// </summary>
-public sealed class OcctWpfViewport : UserControl
+public sealed class OcctWpfViewport : WpfUserControl
 {
     private readonly WindowsFormsHost _host;
     private readonly OcctViewportControl _viewport;
@@ -168,7 +168,6 @@ public sealed class OcctWpfViewport : UserControl
 
     private void ApplySelectionProperties()
     {
-        if (_viewport is null) return;
         _viewport.EnableRectangleSelection = EnableRectangleSelection;
         _viewport.RectangleSelectionThreshold = RectangleSelectionThreshold;
         _viewport.RectangleSelectionBehavior = RectangleSelectionBehavior;
