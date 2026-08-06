@@ -30,7 +30,9 @@ $NativeSource = Join-Path $RepoRoot "src\OcctNative"
 $NativeBuild = Join-Path $RepoRoot "build\native"
 $NativeDll = Join-Path $NativeBuild "bin\$Configuration\OcctNative.dll"
 $ManagedProject = Join-Path $RepoRoot "src\OcctNet\OcctNet.csproj"
+$WinFormsProject = Join-Path $RepoRoot "src\OcctNet.WinForms\OcctNet.WinForms.csproj"
 $ManagedOutput = Join-Path $RepoRoot "src\OcctNet\bin\x64\$Configuration\net8.0-windows"
+$WinFormsOutput = Join-Path $RepoRoot "src\OcctNet.WinForms\bin\x64\$Configuration\net8.0-windows"
 $SmokeProject = Join-Path $RepoRoot "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
 $SmokeOutput = Join-Path $RepoRoot "tests\OcctNet.Smoke\bin\x64\$Configuration\net8.0-windows"
 $ApiSurfaceCheck = Join-Path $RepoRoot "tests\check-api-surface.ps1"
@@ -116,10 +118,12 @@ function Build-Native {
 function Build-Managed {
     Assert-Command "dotnet"
 
-    Remove-Item (Join-Path (Split-Path -Parent $ManagedProject) "bin") -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item (Join-Path (Split-Path -Parent $ManagedProject) "obj") -Recurse -Force -ErrorAction SilentlyContinue
+    foreach ($project in @($ManagedProject, $WinFormsProject)) {
+        Remove-Item (Join-Path (Split-Path -Parent $project) "bin") -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item (Join-Path (Split-Path -Parent $project) "obj") -Recurse -Force -ErrorAction SilentlyContinue
+    }
 
-    Write-Host "[managed] Building $Configuration..." -ForegroundColor Cyan
+    Write-Host "[managed] Building core wrapper ($Configuration)..." -ForegroundColor Cyan
     Invoke-Checked "dotnet" @(
         "build", $ManagedProject,
         "-c", $Configuration,
@@ -127,7 +131,16 @@ function Build-Managed {
         "--nologo"
     ) "OcctNet build failed."
 
+    Write-Host "[managed] Building optional WinForms host ($Configuration)..." -ForegroundColor Cyan
+    Invoke-Checked "dotnet" @(
+        "build", $WinFormsProject,
+        "-c", $Configuration,
+        "-p:Platform=x64",
+        "--nologo"
+    ) "OcctNet.WinForms build failed."
+
     Assert-Path (Join-Path $ManagedOutput "OcctNet.dll")
+    Assert-Path (Join-Path $WinFormsOutput "OcctNet.WinForms.dll")
 
     if (Test-Path $NativeDll) {
         Copy-Item $NativeDll (Join-Path $ManagedOutput "OcctNative.dll") -Force
@@ -136,7 +149,8 @@ function Build-Managed {
         Write-Warning "OcctNative.dll was not found. Build target 'all' or 'native' before running a consumer application."
     }
 
-    Write-Host "Managed: $ManagedOutput" -ForegroundColor Green
+    Write-Host "Managed core:     $ManagedOutput" -ForegroundColor Green
+    Write-Host "Managed WinForms: $WinFormsOutput" -ForegroundColor Green
 }
 
 function Run-Smoke {

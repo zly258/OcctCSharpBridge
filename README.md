@@ -1,4 +1,4 @@
-# OcctCSharpBridge
+﻿# OcctCSharpBridge
 
 [简体中文](README.zh-CN.md) · [WinForms/WPF demo](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
@@ -7,8 +7,9 @@ A Windows x64 bridge from Open CASCADE Technology 7.9.0 to .NET 8. The reusable 
 ## Structure
 
 ```text
-src/OcctNative   C++17 native bridge and stable C ABI
-src/OcctNet      Type-safe .NET wrapper
+src/OcctNative         C++17 native bridge and stable C ABI
+src/OcctNet            UI-independent, type-safe .NET wrapper
+src/OcctNet.WinForms   Optional WinForms OCCT viewport control
 tests            API consistency and native smoke scenarios
 docs             English and Chinese API inventories
 ```
@@ -16,6 +17,7 @@ docs             English and Chinese API inventories
 The wrapper provides three session types:
 
 - `OcctEngine`: HWND viewer, AIS objects, selection, camera, display attributes, text, and dimensions.
+- `OcctViewportControl` is provided separately by `OcctNet.WinForms`; the core wrapper no longer depends on WinForms.
 - `OcctModelingSession`: headless geometry, topology, algorithms, mesh, analysis, healing, and exchange.
 - `OcafDocument`: OCAF/TNaming/XDE documents, assemblies, metadata, persistence, and undo/redo.
 
@@ -48,6 +50,8 @@ The wrapper provides three session types:
 ```xml
 <ItemGroup>
   <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet\OcctNet.csproj" />
+  <!-- Add only when a WinForms/WPF host needs OcctViewportControl. -->
+  <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet.WinForms\OcctNet.WinForms.csproj" />
 </ItemGroup>
 ```
 
@@ -55,6 +59,8 @@ The wrapper provides three session types:
 
 - [English interface inventory](docs/API_COVERAGE.md)
 - [中文接口清单](docs/API_COVERAGE.zh-CN.md)
+
+Session disposal is idempotent and finalizer-safe. Instances still represent native mutable state and should not be used concurrently from multiple threads.
 
 `build.ps1 validate` fails when declarations, P/Invoke mappings, calling conventions, or inventory counts are stale. A scheduled workflow also verifies that reusable wrapper files remain identical between `main` and `demo`.
 
