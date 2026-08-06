@@ -36,6 +36,7 @@ $WinFormsOutput = Join-Path $RepoRoot "src\OcctNet.WinForms\bin\x64\$Configurati
 $SmokeProject = Join-Path $RepoRoot "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
 $SmokeOutput = Join-Path $RepoRoot "tests\OcctNet.Smoke\bin\x64\$Configuration\net8.0-windows"
 $ApiSurfaceCheck = Join-Path $RepoRoot "tests\check-api-surface.ps1"
+$NativeBuildCheck = Join-Path $RepoRoot "tests\check-native-build-structure.ps1"
 
 $OcctIncludeDir = Join-Path $OcctRoot "inc"
 $OcctLibDir = Join-Path $OcctRoot "win64\vc14\lib"
@@ -72,6 +73,14 @@ function Invoke-Checked {
 
 function Test-ApiSurface {
     Assert-Path $ApiSurfaceCheck
+    Assert-Path $NativeBuildCheck
+
+    Write-Host "[native-build] Validating CMake sources and toolkit boundaries..." -ForegroundColor Cyan
+    & $NativeBuildCheck -RepositoryRoot $RepoRoot
+    if (-not $?) {
+        throw "Native build structure validation failed."
+    }
+
     Write-Host "[api] Validating native declarations, implementations and P/Invoke..." -ForegroundColor Cyan
     & $ApiSurfaceCheck -RepositoryRoot $RepoRoot
     if (-not $?) {

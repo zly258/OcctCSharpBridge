@@ -14,11 +14,12 @@ tests            接口一致性检查与原生 Smoke Test
 docs             中英文接口清单
 ```
 
-封装提供三类会话：
+封装提供两类原生会话：
 
 - `OcctEngine`：HWND Viewer、AIS 对象、选择、相机、显示属性、文字和尺寸。
 - `OcctModelingSession`：无窗口几何、拓扑、算法、网格、分析、修复和文件交换。
-- `OcafDocument`：OCAF、TNaming、XDE 文档、装配、元数据、持久化和撤销重做。
+
+桥接层不再包含 OCAF/XDE。应用文档、撤销重做和 JSON 持久化由上层应用自行实现，避免把文档机制耦合进几何桥接。
 
 ## 兼容性约束
 
@@ -40,7 +41,7 @@ docs             中英文接口清单
 # 构建原生与托管封装。
 .\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 
-# 构建并执行建模及 OCAF 原生测试。
+# 构建并执行原生建模测试。
 .\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 

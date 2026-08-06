@@ -14,12 +14,13 @@ tests            API consistency and native smoke scenarios
 docs             English and Chinese API inventories
 ```
 
-The wrapper provides three session types:
+The wrapper provides two native session types:
 
 - `OcctEngine`: HWND viewer, AIS objects, selection, camera, display attributes, text, and dimensions.
 - `OcctViewportControl` is provided separately by `OcctNet.WinForms`; the core wrapper no longer depends on WinForms.
 - `OcctModelingSession`: headless geometry, topology, algorithms, mesh, analysis, healing, and exchange.
-- `OcafDocument`: OCAF/TNaming/XDE documents, assemblies, metadata, persistence, and undo/redo.
+
+The bridge intentionally excludes OCAF/XDE. Application documents, undo/redo, and JSON persistence belong to the consuming application rather than the geometry bridge.
 
 ## Compatibility contract
 
@@ -41,7 +42,7 @@ The wrapper provides three session types:
 # Build native and managed components.
 .\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 
-# Build and run native modeling/OCAF smoke scenarios.
+# Build and run native modeling smoke scenarios.
 .\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
