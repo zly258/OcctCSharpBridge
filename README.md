@@ -2,15 +2,15 @@
 
 [Main SDK branch](https://github.com/zly258/OcctCSharpBridge/tree/main) · [简体中文](README.zh-CN.md) · [API inventory and usage guide](docs/API_COVERAGE.md)
 
-The `demo` branch adds WinForms and WPF reference applications to the reusable OCCT C# bridge. `src/OcctNative`, `src/OcctNet`, `src/OcctNet.WinForms`, `src/OcctNet.Wpf`, and the shared API documentation stay synchronized with `main`; application UI, scenarios, and publishing remain demo-only.
+The `demo` branch adds WinForms and WPF reference applications to the reusable OCCT C# bridge. `src/OcctNative`, `src/OcctNet`, `src/OcctNet.WinForms`, `src/OcctNet.Wpf`, the reusable smoke project, and the two API inventories stay synchronized with `main`; application UI, scenarios, run scripts, publishing, and package validation remain demo-only.
 
 The managed wrapper is split into:
 
-- `OcctNet`: UI-independent viewer, modeling, analysis, healing, mesh, and exchange APIs.
+- `OcctNet`: UI-independent viewer, modeling, topology, analytic geometry, differential geometry, analysis, healing, mesh, and exchange APIs.
 - `OcctNet.WinForms`: reusable `OcctViewportControl` bound directly to a Win32 HWND.
 - `OcctNet.Wpf`: reusable `OcctWpfViewport` with WPF dependency properties, event forwarding, DPI synchronization, and native resize coordination.
 
-The WPF demo references `OcctNet.Wpf` directly and no longer constructs `WindowsFormsHost` in its application XAML.
+`OcctModelingSession` is organized by responsibility: lifecycle, shape queries, topology, geometry queries, analytic geometry, differential geometry, construction, algorithms, analysis, mesh, exchange, and operation history. Canonical names describe the subject and parameter semantics; existing ambiguous names remain compatibility aliases.
 
 OCAF/XDE is not included. Documents, JSON persistence, undo/redo, and command history belong to the consuming application.
 
@@ -32,8 +32,10 @@ OCAF/XDE is not included. Documents, JSON persistence, undo/redo, and command hi
 - Dedicated WinForms and WPF OCCT viewport hosts
 - Point, rectangle, directional crossing, multi-selection, and subshape selection
 - Viewport-state snapshots, camera persistence, Z-up views, selected-object fitting, and screen-to-plane projection
-- Batch color, transparency, visibility, display-mode, line-width, material, redisplay, and selection operations
+- Batch color, transparency, visibility, display mode, line width, material, redisplay, and selection operations
 - Exact line, circle, ellipse, plane, cylinder, cone, sphere, and torus parameter queries
+- Exact edge parameter ranges, first/second derivatives, tangent, normal, curvature, and center of curvature
+- Surface periodicity, first/second partial derivatives, oriented normals, principal/mean/Gaussian curvature, principal directions, and umbilic state
 - Configurable selected and hover highlight colors
 - Solid or gradient backgrounds, MSAA, render resolution, shadows, ray tracing, and multi-light presets
 - Curves, primitive solids, Boolean operations, features, transforms, topology queries, mesh access, and analysis
@@ -48,27 +50,39 @@ Complex scenarios use display batching and remove profiles, cutters, paths, and 
 
 - OCCT: exactly `7.9.0`
 - .NET: `8.0`, Windows x64
-- Bridge version: `2.4.0`
+- Bridge version: `2.5.0`
 - Bridge ABI: `2`
-- API count: Native `321`, P/Invoke `321`
+- API count: Native `327`, P/Invoke `327`
+- Viewer and interaction APIs: `209`
+- Modeling APIs: `118`
+- Public .NET types: `75`
 - Deploy `OcctNet.dll`, the selected UI host assembly, and `OcctNative.dll` from the same build
-- Native session disposal is idempotent and finalizer-safe; a session must still be used from one application thread at a time
+- A native session owns mutable state and must be used from one application thread at a time
 
 ## Build and run
 
+Set the OCCT SDK location once or pass it explicitly:
+
 ```powershell
-.\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
+$env:OCCT_ROOT = "D:\tools\occt-vc144-64"
+.\build.ps1 all Release
 .\run.ps1 winform
 .\run.ps1 wpf
 ```
 
-The managed-only validation path does not require the OCCT SDK:
+The managed-only path does not require an OCCT SDK:
 
 ```powershell
 .\build.ps1 managed Release
 ```
 
-It validates the native source list, 321-entry API surface, analytic geometry contracts, selection behavior, WinForms/WPF host contracts, and deployment package contract before building the core wrapper, both reusable UI hosts, and the shared demo layer.
+Validation covers the bridge version, API organization, analytic geometry, differential geometry, native declarations and implementations, Cdecl and exact symbol spelling, selection, viewport hosts, native source boundaries, and deployment package contract.
+
+Native compilation and runtime smoke testing:
+
+```powershell
+.\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
+```
 
 ## Publish
 
@@ -80,7 +94,7 @@ The package is deployment-complete: each executable embeds its .NET runtime, whi
 .\publish.ps1 -Zip -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-Publish only one application when needed:
+Publish only one application:
 
 ```powershell
 .\publish.ps1 winform Release -Zip -OcctRoot "D:\tools\occt-vc144-64"

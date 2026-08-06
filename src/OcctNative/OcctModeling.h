@@ -178,6 +178,78 @@ extern "C"
         double minorRadius;
     };
 
+
+    struct OcctModelParameterRange
+    {
+        double firstParameter;
+        double lastParameter;
+        int isClosed;
+        int isPeriodic;
+        double period;
+    };
+
+    struct OcctModelCurveDifferential
+    {
+        double parameter;
+        OcctPoint3d point;
+        OcctVector3d firstDerivative;
+        OcctVector3d secondDerivative;
+    };
+
+    struct OcctModelCurveCurvature
+    {
+        double parameter;
+        OcctPoint3d point;
+        OcctVector3d tangent;
+        OcctVector3d normal;
+        OcctPoint3d centerOfCurvature;
+        double curvature;
+        int hasTangent;
+        int hasNormal;
+        int hasCenterOfCurvature;
+    };
+
+    struct OcctModelSurfacePeriodicity
+    {
+        int isUClosed;
+        int isVClosed;
+        int isUPeriodic;
+        int isVPeriodic;
+        double uPeriod;
+        double vPeriod;
+    };
+
+    struct OcctModelSurfaceDifferential
+    {
+        double u;
+        double v;
+        OcctPoint3d point;
+        OcctVector3d normal;
+        OcctVector3d uDerivative;
+        OcctVector3d vDerivative;
+        OcctVector3d uSecondDerivative;
+        OcctVector3d vSecondDerivative;
+        OcctVector3d uvDerivative;
+        int hasNormal;
+    };
+
+    struct OcctModelSurfaceCurvature
+    {
+        double u;
+        double v;
+        OcctPoint3d point;
+        OcctVector3d normal;
+        OcctVector3d maximumDirection;
+        OcctVector3d minimumDirection;
+        double maximumCurvature;
+        double minimumCurvature;
+        double meanCurvature;
+        double gaussianCurvature;
+        int isUmbilic;
+        int hasNormal;
+        int hasCurvature;
+    };
+
     struct OcctModelLocation
     {
         double m11; double m12; double m13; double m14;
@@ -236,6 +308,13 @@ extern "C"
     OCCTBRIDGE_API int occt_model_face_cone_geometry(OcctModelHandle handle, OcctObjectId faceId, OcctModelConeGeometry* result);
     OCCTBRIDGE_API int occt_model_face_sphere_geometry(OcctModelHandle handle, OcctObjectId faceId, OcctModelSphereGeometry* result);
     OCCTBRIDGE_API int occt_model_face_torus_geometry(OcctModelHandle handle, OcctObjectId faceId, OcctModelTorusGeometry* result);
+
+    OCCTBRIDGE_API int occt_model_edge_parameter_range(OcctModelHandle handle, OcctObjectId edgeId, OcctModelParameterRange* result);
+    OCCTBRIDGE_API int occt_model_edge_differential(OcctModelHandle handle, OcctObjectId edgeId, double parameter, OcctModelCurveDifferential* result);
+    OCCTBRIDGE_API int occt_model_edge_curvature(OcctModelHandle handle, OcctObjectId edgeId, double parameter, double resolution, OcctModelCurveCurvature* result);
+    OCCTBRIDGE_API int occt_model_face_periodicity(OcctModelHandle handle, OcctObjectId faceId, OcctModelSurfacePeriodicity* result);
+    OCCTBRIDGE_API int occt_model_face_differential(OcctModelHandle handle, OcctObjectId faceId, double u, double v, double resolution, OcctModelSurfaceDifferential* result);
+    OCCTBRIDGE_API int occt_model_face_curvature(OcctModelHandle handle, OcctObjectId faceId, double u, double v, double resolution, OcctModelSurfaceCurvature* result);
 
     OCCTBRIDGE_API OcctObjectId occt_model_make_vertex(OcctModelHandle handle, OcctPoint3d point);
     OCCTBRIDGE_API OcctObjectId occt_model_make_line(OcctModelHandle handle, OcctPoint3d start, OcctPoint3d end);
