@@ -1,0 +1,80 @@
+name: Apply Portable Demo Publish
+
+on:
+  push:
+    branches:
+      - fix/demo-publish-and-selection
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Apply portable publish defaults
+        shell: pwsh
+        run: python .\.github\apply_portable_demo_publish.py
+
+      - name: Parse PowerShell scripts
+        shell: pwsh
+        run: |
+          foreach ($path in @('.\publish.ps1', '.\build.ps1')) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+                (Resolve-Path $path),
+                [ref]$tokens,
+                [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | Format-List
+              throw "PowerShell parse failed: $path"
+            }
+          }
+
+      - name: Validate wrapper and selection contracts
+        shell: pwsh
+        run: .\build.ps1 validate Release
+
+      - name: Build all managed demo projects
+        shell: pwsh
+        run: |
+          dotnet build .\src\CadWinForms\CadWinForms.csproj -c Release -p:Platform=x64 --nologo
+          if ($LASTEXITCODE -ne 0) { throw 'WinForms build failed.' }
+          dotnet build .\src\CadWpf\CadWpf.csproj -c Release -p:Platform=x64 --nologo
+          if ($LASTEXITCODE -ne 0) { throw 'WPF build failed.' }
+
+      - name: Validate portable publishing contract
+        shell: pwsh
+        run: |
+          $text = Get-Content .\publish.ps1 -Raw
+          foreach ($token in @(
+              '[string]$Target = "all"',
+              '[switch]$FrameworkDependent',
+              '$UseSelfContained = -not $FrameworkDependent.IsPresent',
+              '--self-contained", $UseSelfContained.ToString().ToLowerInvariant()',
+              'EnableCompressionInSingleFile=$($UseSelfContained.ToString().ToLowerInvariant())'
+          )) {
+              if (-not $text.Contains($token)) { throw "Portable publish token missing: $token" }
+          }
+          git diff --check
+
+      - name: Commit publish and demo fixes
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if (git diff --cached --quiet) { throw 'No publish changes were produced.' }
+          git commit -m "Publish both demos as self-contained by default"
+          git push origin HEAD:fix/demo-publish-and-selection
