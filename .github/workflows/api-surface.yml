@@ -6,6 +6,7 @@ on:
       - main
       - agent/**
       - optimize/**
+      - feature/**
   pull_request:
 
 jobs:
@@ -31,6 +32,10 @@ jobs:
       - name: Build optional WinForms host
         shell: pwsh
         run: dotnet build .\src\OcctNet.WinForms\OcctNet.WinForms.csproj -c Release -p:Platform=x64 --nologo
+
+      - name: Build optional WPF host
+        shell: pwsh
+        run: dotnet build .\src\OcctNet.Wpf\OcctNet.Wpf.csproj -c Release -p:Platform=x64 --nologo
 
       - name: Compile smoke test
         shell: pwsh

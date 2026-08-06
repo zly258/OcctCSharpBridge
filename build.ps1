@@ -31,14 +31,17 @@ $NativeBuild = Join-Path $RepoRoot "build\native"
 $NativeDll = Join-Path $NativeBuild "bin\$Configuration\OcctNative.dll"
 $ManagedProject = Join-Path $RepoRoot "src\OcctNet\OcctNet.csproj"
 $WinFormsProject = Join-Path $RepoRoot "src\OcctNet.WinForms\OcctNet.WinForms.csproj"
+$WpfProject = Join-Path $RepoRoot "src\OcctNet.Wpf\OcctNet.Wpf.csproj"
 $ManagedOutput = Join-Path $RepoRoot "src\OcctNet\bin\x64\$Configuration\net8.0-windows"
 $WinFormsOutput = Join-Path $RepoRoot "src\OcctNet.WinForms\bin\x64\$Configuration\net8.0-windows"
+$WpfOutput = Join-Path $RepoRoot "src\OcctNet.Wpf\bin\x64\$Configuration\net8.0-windows"
 $SmokeProject = Join-Path $RepoRoot "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
 $SmokeOutput = Join-Path $RepoRoot "tests\OcctNet.Smoke\bin\x64\$Configuration\net8.0-windows"
 $ApiSurfaceCheck = Join-Path $RepoRoot "tests\check-api-surface.ps1"
 $NativeBuildCheck = Join-Path $RepoRoot "tests\check-native-build-structure.ps1"
 $SelectionContractCheck = Join-Path $RepoRoot "tests\check-selection-contract.ps1"
 $ViewportApiCheck = Join-Path $RepoRoot "tests\check-viewport-api.ps1"
+$UiHostsCheck = Join-Path $RepoRoot "tests\check-ui-hosts.ps1"
 
 $OcctIncludeDir = Join-Path $OcctRoot "inc"
 $OcctLibDir = Join-Path $OcctRoot "win64\vc14\lib"
@@ -78,6 +81,13 @@ function Test-ApiSurface {
     Assert-Path $NativeBuildCheck
     Assert-Path $SelectionContractCheck
     Assert-Path $ViewportApiCheck
+    Assert-Path $UiHostsCheck
+
+    Write-Host "[ui-hosts] Validating WinForms and WPF viewport hosts..." -ForegroundColor Cyan
+    & $UiHostsCheck -RepositoryRoot $RepoRoot
+    if (-not $?) {
+        throw "UI host validation failed."
+    }
 
     Write-Host "[viewport] Validating extended viewport contracts..." -ForegroundColor Cyan
     & $ViewportApiCheck -RepositoryRoot $RepoRoot
@@ -143,7 +153,7 @@ function Build-Native {
 function Build-Managed {
     Assert-Command "dotnet"
 
-    foreach ($project in @($ManagedProject, $WinFormsProject)) {
+    foreach ($project in @($ManagedProject, $WinFormsProject, $WpfProject)) {
         Remove-Item (Join-Path (Split-Path -Parent $project) "bin") -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item (Join-Path (Split-Path -Parent $project) "obj") -Recurse -Force -ErrorAction SilentlyContinue
     }
@@ -164,8 +174,17 @@ function Build-Managed {
         "--nologo"
     ) "OcctNet.WinForms build failed."
 
+    Write-Host "[managed] Building optional WPF host ($Configuration)..." -ForegroundColor Cyan
+    Invoke-Checked "dotnet" @(
+        "build", $WpfProject,
+        "-c", $Configuration,
+        "-p:Platform=x64",
+        "--nologo"
+    ) "OcctNet.Wpf build failed."
+
     Assert-Path (Join-Path $ManagedOutput "OcctNet.dll")
     Assert-Path (Join-Path $WinFormsOutput "OcctNet.WinForms.dll")
+    Assert-Path (Join-Path $WpfOutput "OcctNet.Wpf.dll")
 
     if (Test-Path $NativeDll) {
         Copy-Item $NativeDll (Join-Path $ManagedOutput "OcctNative.dll") -Force
@@ -176,6 +195,7 @@ function Build-Managed {
 
     Write-Host "Managed core:     $ManagedOutput" -ForegroundColor Green
     Write-Host "Managed WinForms: $WinFormsOutput" -ForegroundColor Green
+    Write-Host "Managed WPF:      $WpfOutput" -ForegroundColor Green
 }
 
 function Run-Smoke {
