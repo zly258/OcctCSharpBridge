@@ -97,19 +97,22 @@ build = replace_once(
     "selection contract variable")
 build = replace_once(
     build,
-    """function Test-ApiSurface {
-    Assert-Path $ApiSurfaceCheck
-    Write-Host "[api] Validating C declarations, C++ definitions and C# P/Invoke..." -ForegroundColor Cyan
+    """    Assert-Path $ApiSurfaceCheck
+    Assert-Path $NativeBuildCheck
+
+    Write-Host "[native-build] Validating CMake sources and toolkit boundaries..." -ForegroundColor Cyan
 """,
-    """function Test-ApiSurface {
-    Assert-Path $ApiSurfaceCheck
+    """    Assert-Path $ApiSurfaceCheck
+    Assert-Path $NativeBuildCheck
     Assert-Path $SelectionContractCheck
+
     Write-Host "[selection] Validating point and rectangle selection behavior..." -ForegroundColor Cyan
     & $SelectionContractCheck -RepositoryRoot $RepoRoot
     if (-not $?) {
         throw "Selection contract validation failed."
     }
-    Write-Host "[api] Validating C declarations, C++ definitions and C# P/Invoke..." -ForegroundColor Cyan
+
+    Write-Host "[native-build] Validating CMake sources and toolkit boundaries..." -ForegroundColor Cyan
 """,
     "selection contract invocation")
 write(build_path, build)
