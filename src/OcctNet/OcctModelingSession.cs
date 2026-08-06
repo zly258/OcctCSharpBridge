@@ -12,7 +12,7 @@ public sealed partial class OcctModelingSession : IDisposable
     public OcctModelingSession()
     {
         OcctRuntime.Configure();
-        _ = NativeMethods.occt_version();
+        OcctBridgeInfo.EnsureCompatible();
         _handle = ModelNativeMethods.occt_model_create();
         if (_handle == IntPtr.Zero)
             throw new OcctException("Unable to create the native OCCT modeling session.");

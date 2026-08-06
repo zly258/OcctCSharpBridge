@@ -11,12 +11,13 @@ public sealed partial class OcctEngine : IDisposable
     public OcctEngine()
     {
         OcctRuntime.Configure();
+        OcctBridgeInfo.EnsureCompatible();
         _handle = NativeMethods.occt_create();
         if (_handle == IntPtr.Zero) throw new OcctException("Unable to create the native OCCT engine.");
     }
 
     public bool IsInitialized => _initialized;
-    public static string OcctVersion => Marshal.PtrToStringUTF8(NativeMethods.occt_version()) ?? "Unknown";
+    public static string OcctVersion => OcctBridgeInfo.OcctVersion;
     public int ObjectCount { get { EnsureNotDisposed(); return NativeMethods.occt_object_count(_handle); } }
     public int ShapeCount { get { EnsureNotDisposed(); return NativeMethods.occt_shape_count(_handle); } }
     public IReadOnlyList<OcctObject> Objects
