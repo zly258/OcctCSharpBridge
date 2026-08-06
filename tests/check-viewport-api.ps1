@@ -11,10 +11,15 @@ $required = [ordered]@{
         "occt_select_all_visible", "occt_invert_selection", "occt_hide_selected",
         "occt_set_msaa_samples", "occt_set_rendering_method", "occt_set_face_boundaries_visible"
     )
+    "src/OcctNative/OcctViewportState.cpp" = @(
+        "occt_get_viewport_state", "occt_reset_view", "occt_reset_view_orientation",
+        "occt_reset_view_mapping", "occt_fit_selected", "occt_get_scene_gravity_point"
+    )
     "src/OcctNet/OcctEngine.Viewport.cs" = @(
         "Fit(IEnumerable<OcctShape>", "SetZUpView", "ScreenToRay", "ZoomAtPoint",
         "SelectAllVisible", "InvertSelection", "HideSelected", "SetMsaaSamples",
-        "SetRenderingMethod", "SetFaceBoundariesVisible"
+        "SetRenderingMethod", "SetFaceBoundariesVisible", "GetViewportState",
+        "ResetView", "FitSelected", "GetSceneGravityPoint", "ScreenToPlane"
     )
     "src/OcctNet/OcctRuntime.cs" = @(
         "portableRuntimeDirectory", "portableOcctRoot"
