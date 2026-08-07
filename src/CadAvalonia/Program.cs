@@ -11,15 +11,22 @@ internal static class Program
     public static void Main(string[] args)
     {
         InstallGlobalDiagnostics();
+        Trace($"Process started. PID={Environment.ProcessId}; BaseDirectory={AppContext.BaseDirectory}");
 
         try
         {
             Directory.SetCurrentDirectory(AppContext.BaseDirectory);
             EnsureNativeBridgeIsDiscoverable();
+            Trace("OcctNative.dll discovery check passed.");
+            Trace("Starting Avalonia classic desktop lifetime.");
+
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+
+            Trace("Avalonia classic desktop lifetime returned normally.");
         }
         catch (Exception exception)
         {
+            Environment.ExitCode = 1;
             ReportFatal("Application startup failed.", exception);
         }
     }
@@ -29,6 +36,21 @@ internal static class Program
             .UsePlatformDetect()
             .WithInterFont()
             .LogToTrace();
+
+    internal static void Trace(string message)
+    {
+        try
+        {
+            File.AppendAllText(
+                LogPath,
+                $"[{DateTimeOffset.Now:O}] {message}{Environment.NewLine}",
+                new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+        }
+        catch
+        {
+            // Diagnostics must never affect application startup.
+        }
+    }
 
     private static void InstallGlobalDiagnostics()
     {
