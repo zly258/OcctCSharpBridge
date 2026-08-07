@@ -88,6 +88,46 @@ extern "C"
         OcctMaterial_Default = 24
     };
 
+    enum OcctSelectionOperation
+    {
+        OcctSelection_Replace = 0,
+        OcctSelection_Add = 1,
+        OcctSelection_Remove = 2,
+        OcctSelection_Toggle = 3,
+        OcctSelection_Clear = 4
+    };
+
+    enum OcctShapeUpdateOptions
+    {
+        OcctShapeUpdate_None = 0,
+        OcctShapeUpdate_PreserveAppearance = 1 << 0,
+        OcctShapeUpdate_PreserveTransformation = 1 << 1,
+        OcctShapeUpdate_PreserveSelection = 1 << 2,
+        OcctShapeUpdate_PreserveSelectability = 1 << 3,
+        OcctShapeUpdate_RecomputePresentation = 1 << 4,
+        OcctShapeUpdate_RecomputeSelection = 1 << 5,
+        OcctShapeUpdate_PreserveAll =
+            OcctShapeUpdate_PreserveAppearance |
+            OcctShapeUpdate_PreserveTransformation |
+            OcctShapeUpdate_PreserveSelection |
+            OcctShapeUpdate_PreserveSelectability |
+            OcctShapeUpdate_RecomputePresentation |
+            OcctShapeUpdate_RecomputeSelection
+    };
+
+    enum OcctViewCubeLanguage
+    {
+        OcctViewCubeLanguage_English = 0,
+        OcctViewCubeLanguage_ChineseSimplified = 1
+    };
+
+    struct OcctTransform3d
+    {
+        double m00; double m01; double m02; double m03;
+        double m10; double m11; double m12; double m13;
+        double m20; double m21; double m22; double m23;
+    };
+
     OCCTBRIDGE_API OcctHandle occt_create();
     OCCTBRIDGE_API void occt_destroy(OcctHandle handle);
     OCCTBRIDGE_API const char* occt_last_error(OcctHandle handle);
@@ -185,6 +225,17 @@ extern "C"
     OCCTBRIDGE_API int occt_object_kind(OcctHandle handle, OcctObjectId objectId);
     OCCTBRIDGE_API int occt_set_object_name(OcctHandle handle, OcctObjectId objectId, const char* utf8Name);
     OCCTBRIDGE_API const char* occt_get_object_name(OcctHandle handle, OcctObjectId objectId);
+    OCCTBRIDGE_API int occt_set_object_application_tag(OcctHandle handle, OcctObjectId objectId, const char* utf8Tag);
+    OCCTBRIDGE_API const char* occt_get_object_application_tag(OcctHandle handle, OcctObjectId objectId);
+    OCCTBRIDGE_API OcctObjectId occt_find_object_by_application_tag(OcctHandle handle, const char* utf8Tag);
+    OCCTBRIDGE_API int occt_set_object_selectable(OcctHandle handle, OcctObjectId objectId, int selectable);
+    OCCTBRIDGE_API int occt_get_object_selectable(OcctHandle handle, OcctObjectId objectId);
+    OCCTBRIDGE_API int occt_set_objects_selectable(OcctHandle handle, const OcctObjectId* objectIds, int count, int selectable);
+    OCCTBRIDGE_API int occt_set_selected_objects_ex(OcctHandle handle, const OcctObjectId* objectIds, int count, int operation);
+    OCCTBRIDGE_API int occt_set_object_transform(OcctHandle handle, OcctObjectId objectId, const double* matrix3x4);
+    OCCTBRIDGE_API int occt_get_object_transform(OcctHandle handle, OcctObjectId objectId, double* matrix3x4, int* hasTransform);
+    OCCTBRIDGE_API int occt_reset_object_transform(OcctHandle handle, OcctObjectId objectId);
+    OCCTBRIDGE_API int occt_set_view_cube_language(OcctHandle handle, int language);
     OCCTBRIDGE_API int occt_set_object_color(OcctHandle handle, OcctObjectId objectId, double r, double g, double b);
     OCCTBRIDGE_API int occt_set_object_transparency(OcctHandle handle, OcctObjectId objectId, double transparency);
     OCCTBRIDGE_API int occt_set_object_visible(OcctHandle handle, OcctObjectId objectId, int visible);
