@@ -14,7 +14,7 @@ public partial class App : System.Windows.Application
 
     private static void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
-        MessageBox.Show(e.Exception.Message, "OcctScript", MessageBoxButton.OK, MessageBoxImage.Error);
+        System.Windows.MessageBox.Show(e.Exception.Message, "OcctScript", MessageBoxButton.OK, MessageBoxImage.Error);
         e.Handled = true;
     }
 
@@ -22,7 +22,7 @@ public partial class App : System.Windows.Application
     {
         if (e.ExceptionObject is Exception exception)
         {
-            MessageBox.Show(exception.Message, "OcctScript", MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show(exception.Message, "OcctScript", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }
