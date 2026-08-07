@@ -8,6 +8,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <AssemblyName>CAD-Avalonia</AssemblyName>
     <RootNamespace>CadAvalonia</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\OcctNet\OcctNet.csproj" />
