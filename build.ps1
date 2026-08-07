@@ -66,6 +66,11 @@ $Projects = [ordered]@{
         Project = "src\CadCommon\CadCommon.csproj"
         Executable = $null
     }
+    ManagedTests = @{
+        DisplayName = "OcctNet.ManagedTests"
+        Project = "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj"
+        Executable = $null
+    }
     WinFormsDemo = @{
         DisplayName = "CAD-Winform"
         Project = "src\CadWinForms\CadWinForms.csproj"
@@ -250,6 +255,22 @@ function Build-Project {
     }
 }
 
+function Run-ManagedTests {
+    Assert-Command "dotnet"
+    $definition = $Projects.ManagedTests
+    $project = Join-Path $RepoRoot $definition.Project
+    Assert-Path $project
+    Write-Host "[managed-tests] Running managed-only bridge regression tests..." -ForegroundColor Cyan
+    Invoke-Checked "dotnet" @(
+        "run",
+        "--project", $project,
+        "-c", $Configuration,
+        "-p:Platform=x64",
+        "--no-build",
+        "--nologo"
+    ) "Managed bridge regression tests failed."
+}
+
 function Get-ProjectOutputDirectory {
     param([Parameter(Mandatory = $true)][string]$Name)
 
@@ -272,6 +293,8 @@ function Build-Managed {
 
 function Build-Ci {
     Build-Managed
+    Build-Project "ManagedTests"
+    Run-ManagedTests
     Build-Project "WinFormsDemo"
     Build-Project "WpfDemo"
     Build-Project "AvaloniaDemo"
