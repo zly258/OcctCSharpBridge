@@ -14,7 +14,7 @@ internal static class LanguageService
         if (cultureName is not (English or Chinese))
             throw new ArgumentOutOfRangeException(nameof(cultureName));
 
-        var resources = Application.Current.Resources.MergedDictionaries;
+        var resources = System.Windows.Application.Current.Resources.MergedDictionaries;
         for (var index = resources.Count - 1; index >= 0; index--)
         {
             var source = resources[index].Source?.OriginalString ?? string.Empty;
