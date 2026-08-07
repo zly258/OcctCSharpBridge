@@ -238,12 +238,6 @@ public struct OcctModelLocation
 
 public readonly record struct OcctModelShape
 {
-    public OcctModelShape(long id)
-    {
-        Id = id;
-        OwnerId = 0;
-    }
-
     internal OcctModelShape(long id, long ownerId)
     {
         Id = id;
@@ -252,9 +246,7 @@ public readonly record struct OcctModelShape
 
     public long Id { get; }
     internal long OwnerId { get; }
-
     public bool IsValid => Id > 0;
-    public bool IsBound => OwnerId != 0;
     public override string ToString() => $"ModelShape {Id}";
 }
 
