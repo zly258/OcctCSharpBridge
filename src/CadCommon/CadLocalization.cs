@@ -206,7 +206,7 @@ public static class CadLocalization
             ["Dialog.ExportTitle"] = "导出选中对象", ["Dialog.ExportImageTitle"] = "导出视图图片", ["Dialog.Ok"] = "确定", ["Dialog.Cancel"] = "取消",
             ["Dialog.Yes"] = "是", ["Dialog.No"] = "否", ["Dialog.ErrorTitle"] = "CAD 操作失败", ["Dialog.ConfirmDiscard"] = "当前图形包含未保存的修改，是否在继续前保存？",
             ["Dialog.ConfirmDiscardTitle"] = "未保存图形", ["Dialog.ApplyExistingMaterial"] = "是否将该材质同时应用到现有实体？",
-            ["Dialog.AboutText"] = "OCCT CAD 演示程序\nOpen CASCADE Technology 7.9.0\nWinForms / WPF 原生视口桥接\n\n仓库：https://github.com/zly258/OcctCSharpBridge\n授权：PolyForm Noncommercial License 1.0.0\n作者：张燎原（zhangly1403）\n邮箱：zhangly1403@qq.com",
+            ["Dialog.AboutText"] = "OCCT CAD 演示程序\nOpen CASCADE Technology 7.9.0\nWinForms / WPF 原生视口桥接\n\n仓库：https://github.com/zly258/OcctCSharpBridge\n授权：PolyForm Noncommercial License 1.0.0\n作者：Zhang Liaoyuan (zhangly1403)\n邮箱：zhangly1403@qq.com",
             ["Dialog.MouseText"] = "左键单击：选择\n按住左键拖动：框选\nCtrl + 选择：追加选择\n按住右键拖动：动态旋转\n按住中键拖动：平移\n滚轮：缩放",
             ["Selection.Object"] = "对象", ["Selection.Vertex"] = "顶点", ["Selection.Edge"] = "边", ["Selection.Wire"] = "线框", ["Selection.Face"] = "面",
             ["Selection.Shell"] = "壳", ["Selection.Solid"] = "实体", ["History.Undo"] = "撤销 {0}", ["History.Redo"] = "重做 {0}",
