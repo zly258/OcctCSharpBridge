@@ -2,31 +2,72 @@
 
 namespace OcctNet;
 
-[StructLayout(LayoutKind.Sequential)]
-public struct OcctModelParameterRange
+public readonly record struct OcctModelParameterRange(
+    double FirstParameter,
+    double LastParameter,
+    bool IsClosed,
+    bool IsPeriodic,
+    double Period)
 {
-    public double FirstParameter;
-    public double LastParameter;
-    public int NativeIsClosed;
-    public int NativeIsPeriodic;
-    public double Period;
-
-    public readonly bool IsClosed => NativeIsClosed != 0;
-    public readonly bool IsPeriodic => NativeIsPeriodic != 0;
-    public readonly double Length => LastParameter - FirstParameter;
+    public double Length => LastParameter - FirstParameter;
 }
 
 [StructLayout(LayoutKind.Sequential)]
-public struct OcctModelCurveDifferential
+internal struct NativeModelParameterRange
+{
+    public double FirstParameter;
+    public double LastParameter;
+    public int IsClosed;
+    public int IsPeriodic;
+    public double Period;
+
+    public readonly OcctModelParameterRange ToManaged() => new(
+        FirstParameter,
+        LastParameter,
+        IsClosed != 0,
+        IsPeriodic != 0,
+        Period);
+}
+
+public readonly record struct OcctModelCurveDifferential(
+    double Parameter,
+    OcctPoint3d Point,
+    OcctVector3d FirstDerivative,
+    OcctVector3d SecondDerivative);
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeModelCurveDifferential
 {
     public double Parameter;
     public OcctPoint3d Point;
     public OcctVector3d FirstDerivative;
     public OcctVector3d SecondDerivative;
+
+    public readonly OcctModelCurveDifferential ToManaged() => new(
+        Parameter,
+        Point,
+        FirstDerivative,
+        SecondDerivative);
+}
+
+public readonly record struct OcctModelCurveCurvature(
+    double Parameter,
+    OcctPoint3d Point,
+    OcctVector3d Tangent,
+    OcctVector3d Normal,
+    OcctPoint3d CenterOfCurvature,
+    double Curvature,
+    bool HasTangent,
+    bool HasNormal,
+    bool HasCenterOfCurvature)
+{
+    public double RadiusOfCurvature => Math.Abs(Curvature) > double.Epsilon
+        ? 1.0 / Math.Abs(Curvature)
+        : double.PositiveInfinity;
 }
 
 [StructLayout(LayoutKind.Sequential)]
-public struct OcctModelCurveCurvature
+internal struct NativeModelCurveCurvature
 {
     public double Parameter;
     public OcctPoint3d Point;
@@ -34,36 +75,63 @@ public struct OcctModelCurveCurvature
     public OcctVector3d Normal;
     public OcctPoint3d CenterOfCurvature;
     public double Curvature;
-    public int NativeHasTangent;
-    public int NativeHasNormal;
-    public int NativeHasCenterOfCurvature;
+    public int HasTangent;
+    public int HasNormal;
+    public int HasCenterOfCurvature;
 
-    public readonly bool HasTangent => NativeHasTangent != 0;
-    public readonly bool HasNormal => NativeHasNormal != 0;
-    public readonly bool HasCenterOfCurvature => NativeHasCenterOfCurvature != 0;
-    public readonly double RadiusOfCurvature => Math.Abs(Curvature) > double.Epsilon
-        ? 1.0 / Math.Abs(Curvature)
-        : double.PositiveInfinity;
+    public readonly OcctModelCurveCurvature ToManaged() => new(
+        Parameter,
+        Point,
+        Tangent,
+        Normal,
+        CenterOfCurvature,
+        Curvature,
+        HasTangent != 0,
+        HasNormal != 0,
+        HasCenterOfCurvature != 0);
 }
 
+public readonly record struct OcctModelSurfacePeriodicity(
+    bool IsUClosed,
+    bool IsVClosed,
+    bool IsUPeriodic,
+    bool IsVPeriodic,
+    double UPeriod,
+    double VPeriod);
+
 [StructLayout(LayoutKind.Sequential)]
-public struct OcctModelSurfacePeriodicity
+internal struct NativeModelSurfacePeriodicity
 {
-    public int NativeIsUClosed;
-    public int NativeIsVClosed;
-    public int NativeIsUPeriodic;
-    public int NativeIsVPeriodic;
+    public int IsUClosed;
+    public int IsVClosed;
+    public int IsUPeriodic;
+    public int IsVPeriodic;
     public double UPeriod;
     public double VPeriod;
 
-    public readonly bool IsUClosed => NativeIsUClosed != 0;
-    public readonly bool IsVClosed => NativeIsVClosed != 0;
-    public readonly bool IsUPeriodic => NativeIsUPeriodic != 0;
-    public readonly bool IsVPeriodic => NativeIsVPeriodic != 0;
+    public readonly OcctModelSurfacePeriodicity ToManaged() => new(
+        IsUClosed != 0,
+        IsVClosed != 0,
+        IsUPeriodic != 0,
+        IsVPeriodic != 0,
+        UPeriod,
+        VPeriod);
 }
 
+public readonly record struct OcctModelSurfaceDifferential(
+    double U,
+    double V,
+    OcctPoint3d Point,
+    OcctVector3d Normal,
+    OcctVector3d UDerivative,
+    OcctVector3d VDerivative,
+    OcctVector3d USecondDerivative,
+    OcctVector3d VSecondDerivative,
+    OcctVector3d UvDerivative,
+    bool HasNormal);
+
 [StructLayout(LayoutKind.Sequential)]
-public struct OcctModelSurfaceDifferential
+internal struct NativeModelSurfaceDifferential
 {
     public double U;
     public double V;
@@ -74,13 +142,38 @@ public struct OcctModelSurfaceDifferential
     public OcctVector3d USecondDerivative;
     public OcctVector3d VSecondDerivative;
     public OcctVector3d UvDerivative;
-    public int NativeHasNormal;
+    public int HasNormal;
 
-    public readonly bool HasNormal => NativeHasNormal != 0;
+    public readonly OcctModelSurfaceDifferential ToManaged() => new(
+        U,
+        V,
+        Point,
+        Normal,
+        UDerivative,
+        VDerivative,
+        USecondDerivative,
+        VSecondDerivative,
+        UvDerivative,
+        HasNormal != 0);
 }
 
+public readonly record struct OcctModelSurfaceCurvature(
+    double U,
+    double V,
+    OcctPoint3d Point,
+    OcctVector3d Normal,
+    OcctVector3d MaximumDirection,
+    OcctVector3d MinimumDirection,
+    double MaximumCurvature,
+    double MinimumCurvature,
+    double MeanCurvature,
+    double GaussianCurvature,
+    bool IsUmbilic,
+    bool HasNormal,
+    bool HasCurvature);
+
 [StructLayout(LayoutKind.Sequential)]
-public struct OcctModelSurfaceCurvature
+internal struct NativeModelSurfaceCurvature
 {
     public double U;
     public double V;
@@ -92,11 +185,22 @@ public struct OcctModelSurfaceCurvature
     public double MinimumCurvature;
     public double MeanCurvature;
     public double GaussianCurvature;
-    public int NativeIsUmbilic;
-    public int NativeHasNormal;
-    public int NativeHasCurvature;
+    public int IsUmbilic;
+    public int HasNormal;
+    public int HasCurvature;
 
-    public readonly bool IsUmbilic => NativeIsUmbilic != 0;
-    public readonly bool HasNormal => NativeHasNormal != 0;
-    public readonly bool HasCurvature => NativeHasCurvature != 0;
+    public readonly OcctModelSurfaceCurvature ToManaged() => new(
+        U,
+        V,
+        Point,
+        Normal,
+        MaximumDirection,
+        MinimumDirection,
+        MaximumCurvature,
+        MinimumCurvature,
+        MeanCurvature,
+        GaussianCurvature,
+        IsUmbilic != 0,
+        HasNormal != 0,
+        HasCurvature != 0);
 }
