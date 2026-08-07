@@ -15,7 +15,13 @@ $requiredFiles = @(
     "src/OcctNet/OcctModelingSession.Geometry.cs",
     "src/OcctNet/OcctModelingSession.Algorithms.cs",
     "src/OcctNet/OcctModelingSession.Analysis.cs",
-    "src/OcctNet/OcctModelingSession.History.cs"
+    "src/OcctNet/OcctModelingSession.Mesh.cs",
+    "src/OcctNet/OcctModelingSession.Exchange.cs",
+    "src/OcctNet/OcctModelingSession.History.cs",
+    "src/OcctNet/ModelNativeMethods.Analysis.cs",
+    "src/OcctNet/ModelNativeMethods.Mesh.cs",
+    "src/OcctNet/ModelNativeMethods.Exchange.cs",
+    "src/OcctNet/ModelNativeMethods.Interop.cs"
 )
 foreach ($relativePath in $requiredFiles) {
     if (-not (Test-Path (Join-Path $RepositoryRoot $relativePath) -PathType Leaf)) {
@@ -24,9 +30,17 @@ foreach ($relativePath in $requiredFiles) {
 }
 
 $baseText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctModelingSession.cs"))
-foreach ($forbidden in @("GetShapeHash(", "GetTopologyCount(", "GetVertexPoint(", "GetEdgeCurveType(")) {
+foreach ($forbidden in @(
+    "GetShapeHash(",
+    "GetTopologyCount(",
+    "GetVertexPoint(",
+    "GetEdgeCurveType(",
+    "ImportCall",
+    "ExportCall",
+    "ValidateExchangePath"
+)) {
     if ($baseText.Contains($forbidden)) {
-        throw "OcctModelingSession.cs contains a categorized API method: $forbidden"
+        throw "OcctModelingSession.cs contains a categorized API/helper: $forbidden"
     }
 }
 
@@ -46,6 +60,27 @@ $canonicalContracts = [ordered]@{
         "GetFaceUvBounds",
         "EvaluateFaceAtParameters"
     )
+    "src/OcctNet/OcctModelingSession.Analysis.cs" = @(
+        "ProjectPointOnEdge",
+        "ProjectPointOnFace",
+        "IntersectRay",
+        "ClassifyPoint"
+    )
+    "src/OcctNet/OcctModelingSession.Mesh.cs" = @(
+        "public void Mesh(",
+        "ClearMesh",
+        "GetFaceMesh"
+    )
+    "src/OcctNet/OcctModelingSession.Exchange.cs" = @(
+        "ImportStep",
+        "ImportIges",
+        "ImportBrep",
+        "ImportStl",
+        "ExportStep",
+        "ExportIges",
+        "ExportBrep",
+        "ExportStl"
+    )
 }
 foreach ($contract in $canonicalContracts.GetEnumerator()) {
     $text = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot $contract.Key))
@@ -53,6 +88,20 @@ foreach ($contract in $canonicalContracts.GetEnumerator()) {
         if (-not $text.Contains($token)) {
             throw "Canonical managed API is missing from $($contract.Key): $token"
         }
+    }
+}
+
+$analysisText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctModelingSession.Analysis.cs"))
+foreach ($forbidden in @("public void Mesh(", "GetFaceMesh", "ImportStep", "ExportStep", "ImportStl", "ExportStl")) {
+    if ($analysisText.Contains($forbidden)) {
+        throw "Analysis API file contains mesh/exchange responsibility: $forbidden"
+    }
+}
+
+$nativeAnalysisText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/ModelNativeMethods.Analysis.cs"))
+foreach ($forbidden in @("occt_model_mesh", "occt_model_import_", "occt_model_export_", "occt_model_display_in_engine")) {
+    if ($nativeAnalysisText.Contains($forbidden)) {
+        throw "Native analysis declaration file contains another responsibility: $forbidden"
     }
 }
 
@@ -77,4 +126,4 @@ if (Compare-Object $expectedDocs $docs) {
     throw "The docs directory must contain only API_COVERAGE.md and API_COVERAGE.zh-CN.md."
 }
 
-Write-Host "[organization] Managed categories, canonical naming, P/Invoke attributes and documentation layout validated." -ForegroundColor Green
+Write-Host "[organization] Managed categories, responsibility boundaries, P/Invoke attributes and documentation layout validated." -ForegroundColor Green
