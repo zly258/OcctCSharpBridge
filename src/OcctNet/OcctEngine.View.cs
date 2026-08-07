@@ -116,6 +116,7 @@ public sealed partial class OcctEngine
 
     public Point WorldToScreen(OcctPoint3d point)
     {
+        OcctGuard.Finite(point, nameof(point));
         EnsureInitialized();
         Check(NativeMethods.occt_world_to_screen(_handle, point, out var x, out var y));
         return new Point(x, y);
@@ -140,10 +141,12 @@ public sealed partial class OcctEngine
 
     public void SetCamera(OcctCameraState state)
     {
-        EnsureInitialized();
+        OcctGuard.Finite(state.Eye, nameof(state.Eye));
+        OcctGuard.Finite(state.Center, nameof(state.Center));
         OcctGuard.Positive(state.Scale, nameof(state.Scale));
         OcctGuard.NonZero(state.Up, nameof(state.Up));
         OcctGuard.NonZero(state.Direction, nameof(state.Direction));
+        EnsureInitialized();
         Check(NativeMethods.occt_set_camera(_handle, in state));
     }
 
