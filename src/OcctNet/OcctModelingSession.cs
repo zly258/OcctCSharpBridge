@@ -73,25 +73,6 @@ public sealed partial class OcctModelingSession : IDisposable
         return CheckShape(ModelNativeMethods.occt_model_copy_shape(_handle, shape.Id));
     }
 
-    private delegate long ImportCall(IntPtr handle, string path);
-
-    private OcctModelShape ImportSpecific(string filePath, ImportCall call)
-    {
-        ValidatePath(filePath);
-        return CheckShape(call(_handle, Path.GetFullPath(filePath)));
-    }
-
-    private delegate int ExportCall(IntPtr handle, long shapeId, string path);
-
-    private void ExportShape(OcctModelShape shape, string filePath, ExportCall call)
-    {
-        EnsureShape(shape);
-        ValidatePath(filePath);
-        Check(call(_handle, shape.Id, Path.GetFullPath(filePath)));
-    }
-
-    private static void ValidatePath(string path) => ArgumentException.ThrowIfNullOrWhiteSpace(path);
-
     private delegate int PropertyCall(IntPtr handle, long id, out OcctMassProperties result);
 
     private OcctMassProperties GetProperties(OcctModelShape shape, PropertyCall call)
