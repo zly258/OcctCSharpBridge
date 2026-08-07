@@ -63,6 +63,9 @@ var brepPath = Path.Combine(Path.GetTempPath(), $"occt-model-{Guid.NewGuid():N}.
 try
 {
     model.ExportBrep(cut.Shape, brepPath);
+    if (!File.Exists(brepPath) || new FileInfo(brepPath).Length == 0)
+        throw new InvalidOperationException("BREP export produced no file content.");
+
     var imported = model.ImportBrep(brepPath);
     if (!model.IsValid(imported))
         throw new InvalidOperationException("Headless BREP round trip failed.");
@@ -70,6 +73,22 @@ try
 finally
 {
     if (File.Exists(brepPath)) File.Delete(brepPath);
+}
+
+var stepPath = Path.Combine(Path.GetTempPath(), $"occt-model-{Guid.NewGuid():N}.step");
+try
+{
+    model.ExportStep(cut.Shape, stepPath);
+    if (!File.Exists(stepPath) || new FileInfo(stepPath).Length == 0)
+        throw new InvalidOperationException("STEP export produced no file content.");
+
+    var imported = model.ImportStep(stepPath);
+    if (!model.IsValid(imported))
+        throw new InvalidOperationException("Headless STEP round trip failed.");
+}
+finally
+{
+    if (File.Exists(stepPath)) File.Delete(stepPath);
 }
 
 var healed = model.FixShape(cut.Shape);
@@ -84,4 +103,5 @@ Console.WriteLine($"Faces: {faceCount}");
 Console.WriteLine($"Mesh: {faceMesh.Nodes.Count} nodes, {faceMesh.Triangles.Count} triangles");
 Console.WriteLine($"Ray hits: {rayHits.Count}");
 Console.WriteLine($"Loft operation: {loft.OperationId}");
+Console.WriteLine("BREP and STEP exchange round trips passed.");
 Console.WriteLine("Modeling smoke tests passed.");
