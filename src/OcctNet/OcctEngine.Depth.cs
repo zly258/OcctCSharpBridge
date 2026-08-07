@@ -1,4 +1,4 @@
-namespace OcctNet;
+﻿namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
@@ -6,11 +6,14 @@ public sealed partial class OcctEngine
     /// Enables or disables automatic adjustment of the camera Z range.
     /// This improves depth precision and prevents clipping, but it does not separate two coplanar objects.
     /// </summary>
-    public void SetAutoZFitMode(bool enabled, double scaleFactor = 1.0) =>
+    public void SetAutoZFitMode(bool enabled, double scaleFactor = 1.0)
+    {
+        OcctGuard.Positive(scaleFactor, nameof(scaleFactor));
         CheckInitialized(() => DepthNativeMethods.occt_set_auto_z_fit_mode(
             _handle,
             enabled ? 1 : 0,
             scaleFactor));
+    }
 
     /// <summary>Returns the current automatic Z-range fitting settings.</summary>
     public OcctAutoZFitSettings GetAutoZFitSettings()
@@ -31,13 +34,18 @@ public sealed partial class OcctEngine
         OcctPolygonOffsetMode mode,
         double factor = 1.0,
         double units = 1.0,
-        bool applyExisting = false) =>
+        bool applyExisting = false)
+    {
+        if (!Enum.IsDefined(mode)) throw new ArgumentOutOfRangeException(nameof(mode));
+        OcctGuard.Finite(factor, nameof(factor));
+        OcctGuard.Finite(units, nameof(units));
         CheckInitialized(() => DepthNativeMethods.occt_set_default_polygon_offsets(
             _handle,
             (int)mode,
             factor,
             units,
             applyExisting ? 1 : 0));
+    }
 
     /// <summary>Returns the polygon offset configured on the Viewer default drawer.</summary>
     public OcctPolygonOffsetSettings GetDefaultPolygonOffsets()
@@ -57,7 +65,10 @@ public sealed partial class OcctEngine
         double factor = 1.0,
         double units = 1.0)
     {
-        ArgumentNullException.ThrowIfNull(value);
+        EnsureObject(value);
+        if (!Enum.IsDefined(mode)) throw new ArgumentOutOfRangeException(nameof(mode));
+        OcctGuard.Finite(factor, nameof(factor));
+        OcctGuard.Finite(units, nameof(units));
         CheckInitialized(() => DepthNativeMethods.occt_set_object_polygon_offsets(
             _handle,
             value.Id,
@@ -69,7 +80,7 @@ public sealed partial class OcctEngine
     /// <summary>Returns the effective polygon offset for a Viewer object.</summary>
     public OcctPolygonOffsetSettings GetPolygonOffsets(IOcctObject value)
     {
-        ArgumentNullException.ThrowIfNull(value);
+        EnsureObject(value);
         EnsureInitialized();
         Check(DepthNativeMethods.occt_get_object_polygon_offsets(_handle, value.Id, out var result));
         return ToManaged(result);
@@ -78,7 +89,7 @@ public sealed partial class OcctEngine
     /// <summary>Restores a Viewer object's polygon offset to the current default drawer values.</summary>
     public void ResetPolygonOffsets(IOcctObject value)
     {
-        ArgumentNullException.ThrowIfNull(value);
+        EnsureObject(value);
         CheckInitialized(() => DepthNativeMethods.occt_reset_object_polygon_offsets(_handle, value.Id));
     }
 
