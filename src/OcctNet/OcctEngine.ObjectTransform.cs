@@ -4,14 +4,13 @@ public sealed partial class OcctEngine
 {
     public void SetLocalTransformation(IOcctObject value, OcctTransform3d transform)
     {
-        ArgumentNullException.ThrowIfNull(value);
-        EnsureInitialized();
-        Check(NativeMethods.occt_set_object_transform(_handle, value.Id, transform.ToArray()));
+        EnsureObject(value);
+        CheckInitialized(() => NativeMethods.occt_set_object_transform(_handle, value.Id, transform.ToArray()));
     }
 
     public OcctTransform3d GetLocalTransformation(IOcctObject value)
     {
-        ArgumentNullException.ThrowIfNull(value);
+        EnsureObject(value);
         EnsureInitialized();
         var matrix = new double[12];
         Check(NativeMethods.occt_get_object_transform(_handle, value.Id, matrix, out _));
@@ -20,7 +19,7 @@ public sealed partial class OcctEngine
 
     public bool HasLocalTransformation(IOcctObject value)
     {
-        ArgumentNullException.ThrowIfNull(value);
+        EnsureObject(value);
         EnsureInitialized();
         var matrix = new double[12];
         Check(NativeMethods.occt_get_object_transform(_handle, value.Id, matrix, out var hasTransform));
@@ -29,7 +28,7 @@ public sealed partial class OcctEngine
 
     public void ResetLocalTransformation(IOcctObject value)
     {
-        ArgumentNullException.ThrowIfNull(value);
+        EnsureObject(value);
         CheckInitialized(() => NativeMethods.occt_reset_object_transform(_handle, value.Id));
     }
 
@@ -41,6 +40,7 @@ public sealed partial class OcctEngine
         foreach (var update in updates)
         {
             ArgumentNullException.ThrowIfNull(update.Object);
+            EnsureObject(update.Object);
             Check(NativeMethods.occt_set_object_transform(_handle, update.Object.Id, update.Transformation.ToArray()));
         }
     }
