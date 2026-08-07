@@ -1,0 +1,42 @@
+﻿name: Refresh Object Integration Inventory
+
+on:
+  push:
+    branches:
+      - feature/object-integration-p0
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.event.head_commit.message == 'Refresh object integration API inventory'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Refresh counts
+        shell: pwsh
+        run: |
+          foreach ($path in @('docs/API_COVERAGE.md', 'docs/API_COVERAGE.zh-CN.md')) {
+            $text = [System.IO.File]::ReadAllText($path)
+            $text = $text.Replace('Native exports: `327`', 'Native exports: `339`')
+            $text = $text.Replace('Managed P/Invoke declarations: `327`', 'Managed P/Invoke declarations: `339`')
+            [System.IO.File]::WriteAllText($path, $text, [System.Text.UTF8Encoding]::new($true))
+          }
+          Remove-Item .github/workflows/refresh-object-integration-inventory.yml
+
+      - name: Validate
+        shell: pwsh
+        run: .\build.ps1 validate Release
+
+      - name: Commit
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Refresh API inventory for object integration"
+          git push origin HEAD:feature/object-integration-p0
