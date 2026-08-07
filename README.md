@@ -10,7 +10,8 @@ The bridge intentionally excludes OCAF/XDE as an application document layer. Doc
 
 - Windows x64
 - Visual Studio 2022 / MSVC v143-compatible toolchain
-- .NET 8 SDK
+- .NET SDK **8.0.423**, pinned by `global.json`
+- C# 12.0
 - CMake 3.21 or newer
 - Open CASCADE Technology **7.9.0**, VC14 x64 layout
 - PowerShell 5.1+ or PowerShell 7+
@@ -41,19 +42,24 @@ Configure OCCT once for the current PowerShell session:
 $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 ```
 
-You can also omit the environment variable and pass `-OcctRoot` explicitly to every command.
+You can also omit the environment variable and pass `-OcctRoot` explicitly to every command that needs the native SDK.
 
 ## Repository structure
 
 ```text
-src/OcctNative         C++17 native bridge and stable C ABI
-src/OcctNet            UI-independent, type-safe .NET wrapper
-src/OcctNet.WinForms   Optional WinForms HWND viewport host
-src/OcctNet.Wpf        Optional WPF viewport host
+bridge-contract.json    Authoritative Bridge/ABI/OCCT/.NET/API metadata
+global.json             Pinned .NET SDK used locally and in CI
+Directory.Build.props   Shared C# compiler policy
+src/OcctNative          C++17 native bridge and stable C ABI
+src/OcctNet             UI-independent, type-safe .NET wrapper
+src/OcctNet.WinForms    Optional WinForms HWND viewport host
+src/OcctNet.Wpf         Optional WPF viewport host
 tests                   API contract checks and native modeling smoke scenarios
 docs                    English and Chinese API inventories
-build.ps1               Validation/build/smoke entry point
+build.ps1               Validation/build/CI/smoke entry point
 ```
+
+`bridge-contract.json` is the metadata source of truth. Version/API checks, branch synchronization, build output paths, and the website contract validate against this file rather than maintaining independent expected values.
 
 The managed API is organized around two native session types:
 
@@ -74,8 +80,9 @@ Supported targets on `main`:
 
 | Target | What it does | OCCT SDK required |
 | --- | --- | --- |
-| `validate` | Runs API/version/source-organization/PInvoke/UI-host contract checks without compiling OCCT | No |
-| `managed` | Builds `OcctNet`, WinForms host and WPF host | No native build required |
+| `validate` | Runs API/version/source-organization/PInvoke/UI-host contract checks | No |
+| `managed` | Builds `OcctNet`, WinForms host and WPF host | No |
+| `ci` | Runs the same contract checks as `validate`, then builds all reusable managed projects and compiles the Smoke project | No |
 | `native` | Configures and builds `OcctNative.dll` with CMake/MSVC | Yes |
 | `smoke` | Builds native + managed components and runs real native modeling smoke scenarios | Yes |
 | `all` | Builds native bridge and all reusable managed host projects | Yes |
@@ -90,9 +97,15 @@ Use this after changing public APIs, native declarations, P/Invoke signatures or
 .\build.ps1 validate Release
 ```
 
-### Build only the managed wrapper
+### Run the same managed build as GitHub Actions
 
-Useful for API/UI-host development that does not require rebuilding OCCT native code:
+```powershell
+.\build.ps1 ci Release
+```
+
+This is the preferred pre-push check when the OCCT SDK is not available. GitHub Actions calls this same target instead of duplicating individual `dotnet build` commands.
+
+### Build only the managed wrapper
 
 ```powershell
 .\build.ps1 managed Release
@@ -123,6 +136,18 @@ This is the strongest local check on `main` because it loads the native bridge a
 ```powershell
 .\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
+
+## GitHub Actions and native smoke testing
+
+The normal `API Surface` workflow runs `build.ps1 ci Release` on a GitHub-hosted Windows runner and therefore does not require an OCCT SDK.
+
+A separate `Native Smoke` workflow is available for a real OCCT runtime test. The repository intentionally does not vendor the OCCT SDK, so this job remains skipped until the repository is explicitly configured with:
+
+- Repository variable `OCCT_NATIVE_CI_ENABLED=true`
+- Repository secret `OCCT_SDK_URL`: URL to a ZIP archive containing the expected `inc` and `win64\vc14` OCCT 7.9.0 layout
+- Optional repository secret `OCCT_SDK_SHA256`: SHA-256 of that ZIP archive
+
+When enabled, the workflow downloads and validates the SDK archive, builds `OcctNative.dll`, loads the native bridge, and executes the real modeling Smoke scenarios through `build.ps1 smoke Release`.
 
 ## Run desktop applications
 
@@ -157,6 +182,8 @@ For deployment, keep `OcctNet.dll`, the selected host assembly, `OcctNative.dll`
 
 ## Compatibility contract
 
+The authoritative values are stored in `bridge-contract.json`:
+
 - OCCT: exactly `7.9.0`
 - Managed target: `.NET 8`, Windows x64
 - Bridge version: `2.5.0`
@@ -171,7 +198,7 @@ Batch color, transparency, visibility, display-mode, material, line-width, redis
 - [English API inventory](docs/API_COVERAGE.md)
 - [中文接口清单](docs/API_COVERAGE.zh-CN.md)
 
-`build.ps1 validate` intentionally fails when declarations, P/Invoke mappings, calling conventions, source organization or documented interface counts become stale.
+`build.ps1 validate` intentionally fails when declarations, P/Invoke mappings, calling conventions, source organization, documented interface counts, SDK policy, or contract metadata become stale.
 
 ## Troubleshooting
 
