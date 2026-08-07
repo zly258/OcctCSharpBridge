@@ -173,16 +173,11 @@ function Build-Project {
 function Run-ManagedTests {
     Assert-Command "dotnet"
     $project = Join-Path $RepoRoot $Projects.ManagedTests
-    Assert-Path $project
+    $output = Join-Path (Split-Path -Parent $project) "bin\x64\$Configuration\$TargetFramework"
+    $assembly = Join-Path $output "OcctNet.ManagedTests.dll"
+    Assert-Path $assembly
     Write-Host "[managed-tests] Running managed-only bridge regression tests..." -ForegroundColor Cyan
-    Invoke-Checked "dotnet" @(
-        "run",
-        "--project", $project,
-        "-c", $Configuration,
-        "-p:Platform=x64",
-        "--no-restore",
-        "--nologo"
-    ) "Managed bridge regression tests failed."
+    Invoke-Checked "dotnet" @($assembly) "Managed bridge regression tests failed."
 }
 
 function Build-Managed {
