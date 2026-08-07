@@ -1,0 +1,81 @@
+﻿name: Native Smoke
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-smoke-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    if: ${{ vars.OCCT_NATIVE_CI_ENABLED == 'true' }}
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      OCCT_SDK_URL: ${{ secrets.OCCT_SDK_URL }}
+      OCCT_SDK_SHA256: ${{ secrets.OCCT_SDK_SHA256 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET 8.0.423
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 8.0.423
+
+      - name: Restore OCCT 7.9.0 SDK
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:OCCT_SDK_URL)) {
+            throw "OCCT_NATIVE_CI_ENABLED is true, but the OCCT_SDK_URL repository secret is not configured."
+          }
+
+          $archive = Join-Path $env:RUNNER_TEMP "occt-sdk.zip"
+          $extract = Join-Path $env:RUNNER_TEMP "occt-sdk"
+          Remove-Item $archive -Force -ErrorAction SilentlyContinue
+          Remove-Item $extract -Recurse -Force -ErrorAction SilentlyContinue
+
+          Write-Host "Downloading configured OCCT SDK archive..." -ForegroundColor Cyan
+          Invoke-WebRequest -Uri $env:OCCT_SDK_URL -OutFile $archive
+
+          if (-not [string]::IsNullOrWhiteSpace($env:OCCT_SDK_SHA256)) {
+            $actual = (Get-FileHash $archive -Algorithm SHA256).Hash
+            if (-not $actual.Equals($env:OCCT_SDK_SHA256, [System.StringComparison]::OrdinalIgnoreCase)) {
+              throw "OCCT SDK SHA256 mismatch. Expected $env:OCCT_SDK_SHA256, actual $actual."
+            }
+          }
+
+          Expand-Archive -Path $archive -DestinationPath $extract -Force
+          $standard = Get-ChildItem $extract -Filter "Standard.hxx" -File -Recurse |
+            Where-Object { $_.Directory.Name -eq "inc" } |
+            Select-Object -First 1
+          if ($null -eq $standard) {
+            throw "The OCCT SDK archive does not contain inc/Standard.hxx."
+          }
+
+          $root = Split-Path $standard.Directory.FullName -Parent
+          foreach ($required in @(
+            (Join-Path $root "win64\vc14\lib\TKernel.lib"),
+            (Join-Path $root "win64\vc14\bin\TKernel.dll")
+          )) {
+            if (-not (Test-Path $required -PathType Leaf)) {
+              throw "The OCCT SDK archive does not match the expected VC14 x64 layout: $required"
+            }
+          }
+
+          "OCCT_ROOT=$root" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "OCCT_ROOT=$root" -ForegroundColor Green
+
+      - name: Run real native modeling smoke test
+        shell: pwsh
+        run: .\build.ps1 smoke Release
