@@ -1,4 +1,4 @@
-﻿# OcctCSharpBridge · OcctScript
+# OcctCSharpBridge · OcctScript
 
 [English](README.md) · [main 分支](https://github.com/zly258/OcctCSharpBridge/tree/main) · [demo 分支](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
@@ -133,6 +133,8 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 这些能力后续可以继续扩展，不需要破坏当前 JSON Command 模型。
 
 ## Bridge 兼容性
+
+Bridge 版本：2.5.0；ABI：2。
 
 当前同步的封装目标：OCCT `7.9.0`、.NET `8`、Windows x64、`OcctBridgeInfo.ManagedVersion` `2.5.0`、Native ABI `2`。
 
