@@ -80,19 +80,6 @@ public sealed partial class OcctEngine
         CheckInitialized(() => NativeMethods.occt_set_default_material(_handle, (int)material, applyExisting ? 1 : 0));
     }
 
-    public void SetSceneLighting(double ambientIntensity, double directionalIntensity, OcctVector3d direction, bool headlight = true)
-    {
-        OcctGuard.NonNegative(ambientIntensity, nameof(ambientIntensity));
-        OcctGuard.NonNegative(directionalIntensity, nameof(directionalIntensity));
-        OcctGuard.NonZero(direction, nameof(direction));
-        CheckInitialized(() => NativeMethods.occt_set_scene_lighting(
-            _handle,
-            ambientIntensity,
-            directionalIntensity,
-            direction,
-            headlight ? 1 : 0));
-    }
-
     public void ResetSceneLighting() => CheckInitialized(() => NativeMethods.occt_reset_scene_lighting(_handle));
 
     public void SetSelectionTolerance(int pixelTolerance)
