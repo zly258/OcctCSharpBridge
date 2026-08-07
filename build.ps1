@@ -1,6 +1,6 @@
 ﻿param(
     [Parameter(Position = 0)]
-    [ValidateSet("validate", "native", "managed", "smoke", "winform", "wpf", "all")]
+    [ValidateSet("validate", "native", "managed", "smoke", "winform", "wpf", "avalonia", "all")]
     [string]$Target = "all",
 
     [Parameter(Position = 1)]
@@ -46,6 +46,11 @@ $Projects = [ordered]@{
         Project = "src\OcctNet.Wpf\OcctNet.Wpf.csproj"
         Executable = $null
     }
+    AvaloniaHost = @{
+        DisplayName = "OcctNet.Avalonia"
+        Project = "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj"
+        Executable = $null
+    }
     DemoCommon = @{
         DisplayName = "CadCommon"
         Project = "src\CadCommon\CadCommon.csproj"
@@ -61,6 +66,11 @@ $Projects = [ordered]@{
         Project = "src\CadWpf\CadWpf.csproj"
         Executable = "CAD-WPF.exe"
     }
+    AvaloniaDemo = @{
+        DisplayName = "CAD-Avalonia"
+        Project = "src\CadAvalonia\CadAvalonia.csproj"
+        Executable = "CAD-Avalonia.exe"
+    }
     Smoke = @{
         DisplayName = "OcctNet.Smoke"
         Project = "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
@@ -74,6 +84,7 @@ $Checks = [ordered]@{
     AnalyticGeometry = "tests\check-analytic-geometry-api.ps1"
     DifferentialGeometry = "tests\check-differential-geometry-api.ps1"
     UiHosts = "tests\check-ui-hosts.ps1"
+    AvaloniaHost = "tests\check-avalonia-host.ps1"
     Viewport = "tests\check-viewport-api.ps1"
     Selection = "tests\check-selection-contract.ps1"
     NativeBuild = "tests\check-native-build-structure.ps1"
@@ -206,6 +217,7 @@ function Build-Managed {
     Build-Project "Core"
     Build-Project "WinFormsHost"
     Build-Project "WpfHost"
+    Build-Project "AvaloniaHost"
     Build-Project "DemoCommon"
 }
 
@@ -257,6 +269,10 @@ switch ($Target) {
         Build-Native
         Build-Project "WpfDemo"
     }
+    "avalonia" {
+        Build-Native
+        Build-Project "AvaloniaDemo"
+    }
     "smoke" {
         Build-Native
         Run-Smoke
@@ -265,6 +281,7 @@ switch ($Target) {
         Build-Native
         Build-Project "WinFormsDemo"
         Build-Project "WpfDemo"
+        Build-Project "AvaloniaDemo"
         Build-Project "Smoke"
     }
 }
