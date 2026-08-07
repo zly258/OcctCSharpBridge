@@ -1,0 +1,134 @@
+﻿name: Bridge 2.6 Native Migration
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/bridge-26-native-migration.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Apply one-time native ABI cleanup
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          root = Path("src/OcctNative")
+          removed_symbols = [
+              "occt_set_shape_color",
+              "occt_set_shape_transparency",
+              "occt_set_shape_visible",
+              "occt_delete_shape",
+              "occt_delete_object",
+              "occt_select_rectangle",
+              "occt_first_selected",
+              "occt_copy_selected_subshape",
+              "occt_set_scene_lighting",
+          ]
+
+          header = root / "OcctNative.h"
+          header_text = header.read_text(encoding="utf-8-sig")
+          for symbol in removed_symbols:
+              pattern = re.compile(
+                  r"\n[ \t]*OCCTBRIDGE_API\b[^;]*?\b" + re.escape(symbol) + r"\s*\([^;]*?\);[ \t]*\n",
+                  re.DOTALL,
+              )
+              header_text, count = pattern.subn("\n", header_text, count=1)
+              if count != 1:
+                  raise SystemExit(f"Expected exactly one header declaration for {symbol}, found {count}")
+          header.write_text("\ufeff" + header_text, encoding="utf-8")
+
+          def remove_function(text: str, symbol: str):
+              match = re.search(r"(?m)^[ \t]*[^\n;{}]*\b" + re.escape(symbol) + r"\s*\(", text)
+              if not match:
+                  return text, False
+              start = match.start()
+              open_brace = text.find("{", match.end())
+              if open_brace < 0:
+                  raise SystemExit(f"No function body found for {symbol}")
+              depth = 0
+              in_string = False
+              escape = False
+              index = open_brace
+              while index < len(text):
+                  ch = text[index]
+                  if in_string:
+                      if escape:
+                          escape = False
+                      elif ch == "\\":
+                          escape = True
+                      elif ch == '"':
+                          in_string = False
+                  else:
+                      if ch == '"':
+                          in_string = True
+                      elif ch == "{":
+                          depth += 1
+                      elif ch == "}":
+                          depth -= 1
+                          if depth == 0:
+                              end = index + 1
+                              while end < len(text) and text[end] in " \t":
+                                  end += 1
+                              if end < len(text) and text[end] == "\r":
+                                  end += 1
+                              if end < len(text) and text[end] == "\n":
+                                  end += 1
+                              return text[:start] + text[end:], True
+                  index += 1
+              raise SystemExit(f"Unbalanced function body for {symbol}")
+
+          cpp_files = list(root.glob("*.cpp"))
+          for symbol in removed_symbols:
+              locations = []
+              for path in cpp_files:
+                  text = path.read_text(encoding="utf-8-sig")
+                  updated, removed = remove_function(text, symbol)
+                  if removed:
+                      path.write_text("\ufeff" + updated, encoding="utf-8")
+                      locations.append(path.name)
+              if len(locations) != 1:
+                  raise SystemExit(f"Expected exactly one C++ definition for {symbol}, found {locations}")
+              print(f"Removed {symbol} from {locations[0]}")
+
+          version_file = root / "OcctEngine.cpp"
+          text = version_file.read_text(encoding="utf-8-sig")
+          replacements = {
+              "int occt_bridge_abi_version() { return 2; }": "int occt_bridge_abi_version() { return 3; }",
+              'const char* occt_bridge_version() { return "2.5.0"; }': 'const char* occt_bridge_version() { return "2.6.0"; }',
+              'std::string("OcctCSharpBridge/2.5.0; ABI=2; OCCT=")': 'std::string("OcctCSharpBridge/2.6.0; ABI=3; OCCT=")',
+          }
+          for old, new in replacements.items():
+              if text.count(old) != 1:
+                  raise SystemExit(f"Native version token missing or duplicated: {old}")
+              text = text.replace(old, new)
+          version_file.write_text("\ufeff" + text, encoding="utf-8")
+
+          print("Bridge 2.6 native ABI migration completed.")
+
+      - name: Commit migration
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No native migration changes remain."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/OcctNative
+          git commit -m "Finalize Bridge 2.6 native ABI"
+          git push origin HEAD:main
