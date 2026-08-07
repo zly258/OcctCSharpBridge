@@ -1,6 +1,10 @@
 ﻿name: Wrapper Branch Sync
 
 on:
+  push:
+    branches:
+      - main
+      - demo
   workflow_dispatch:
   schedule:
     - cron: "23 2 * * *"
@@ -8,19 +12,24 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: wrapper-sync-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   compare:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
           path: main
           fetch-depth: 1
 
       - name: Checkout demo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: demo
           path: demo
