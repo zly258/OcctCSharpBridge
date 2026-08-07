@@ -22,12 +22,20 @@ static void Expect<TException>(Action action, string message)
 
 var vector = new OcctVector3d(3, 4, 0);
 Assert(Math.Abs(vector.Length - 5) < 1e-12, "Vector length regression.");
+Assert(Math.Abs(vector.LengthSquared - 25) < 1e-12, "Vector squared-length regression.");
 var normalized = vector.Normalized();
 Assert(Math.Abs(normalized.Length - 1) < 1e-12, "Vector normalization regression.");
-var cross = OcctVector3d.UnitX.Cross(OcctVector3d.UnitY);
-Assert(
-    Math.Abs(cross.X) < 1e-12 && Math.Abs(cross.Y) < 1e-12 && Math.Abs(cross.Z - 1) < 1e-12,
-    "Vector cross product regression.");
+Assert(vector.TryNormalize(out var normalizedViaTry) && normalizedViaTry == normalized, "Vector TryNormalize regression.");
+Assert(!OcctVector3d.Zero.TryNormalize(out _), "Zero vector must not normalize.");
+Assert(OcctVector3d.UnitX.Cross(OcctVector3d.UnitY) == OcctVector3d.UnitZ, "Vector equality/cross product regression.");
+Assert(OcctVector3d.UnitX + OcctVector3d.UnitY == new OcctVector3d(1, 1, 0), "Vector addition regression.");
+Assert(2 * OcctVector3d.UnitX == new OcctVector3d(2, 0, 0), "Left scalar multiplication regression.");
+
+var point = new OcctPoint3d(1, 2, 3);
+Assert(point + OcctVector3d.UnitX == new OcctPoint3d(2, 2, 3), "Point translation regression.");
+Assert(point - OcctVector3d.UnitZ == new OcctPoint3d(1, 2, 2), "Point subtraction regression.");
+Assert(Math.Abs(point.DistanceTo(new OcctPoint3d(1, 2, 8)) - 5) < 1e-12, "Point distance regression.");
+Assert(point.IsFinite && !new OcctPoint3d(double.NaN, 0, 0).IsFinite, "Point finite-state regression.");
 
 var booleanOptions = OcctModelBooleanOptions.Default;
 Assert(booleanOptions.UseParallelProcessing, "Boolean parallel option mapping regression.");
@@ -53,6 +61,17 @@ var viewerShapeB = new OcctShape(3, 2002);
 Assert(viewerShapeA.IsBound && viewerShapeB.IsBound, "Viewer shape owner binding regression.");
 Assert(viewerShapeA.OwnerId != viewerShapeB.OwnerId, "Viewer shape owner identity regression.");
 Assert(!new OcctShape(3).IsBound, "Legacy viewer shape must remain unbound.");
+Assert(new OcctObject(4, OcctObjectKind.Shape, 2001).IsBound, "Generic object owner binding regression.");
+Assert(new OcctText(5, 2001).IsBound, "Text owner binding regression.");
+Assert(new OcctDimension(6, 2001).IsBound, "Dimension owner binding regression.");
+
+var transform = OcctTransform3d.Translation(1, 2, 3);
+Assert(transform.IsFinite, "Transform finite-state regression.");
+Assert(!new OcctTransform3d(double.NaN, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0).IsFinite, "Invalid transform finite-state regression.");
+Assert(OcctModelLocation.Identity.IsFinite, "Model location finite-state regression.");
+var invalidLocation = OcctModelLocation.Identity;
+invalidLocation.M14 = double.PositiveInfinity;
+Assert(!invalidLocation.IsFinite, "Invalid model location finite-state regression.");
 
 var nativeHit = new NativeModelRayHit
 {
@@ -67,7 +86,9 @@ Assert(managedHit.State == OcctModelState.On, "Ray-hit state mapping regression.
 
 Expect<ArgumentOutOfRangeException>(() => OcctGuard.Positive(0, "value"), "Positive guard accepted zero.");
 Expect<ArgumentOutOfRangeException>(() => OcctGuard.UnitInterval(1.1, "value"), "Unit interval guard accepted value above one.");
-Expect<ArgumentException>(() => OcctGuard.NonZero(new OcctVector3d(0, 0, 0), "vector"), "Non-zero vector guard accepted zero vector.");
+Expect<ArgumentException>(() => OcctGuard.NonZero(OcctVector3d.Zero, "vector"), "Non-zero vector guard accepted zero vector.");
+Expect<ArgumentException>(() => OcctGuard.Finite(new OcctPoint3d(double.NaN, 0, 0), "point"), "Finite point guard accepted NaN.");
+Expect<ArgumentOutOfRangeException>(() => OcctGuard.AtLeast(2, 3, "value"), "Minimum-value guard accepted a value below minimum.");
 
 var exception = new OcctException("managed message", "Cut", "native message");
 Assert(exception.Operation == "Cut", "OcctException operation metadata regression.");

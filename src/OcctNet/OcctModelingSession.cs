@@ -30,6 +30,8 @@ public sealed partial class OcctModelingSession : IDisposable
 
     internal long OwnerId => _ownerId;
 
+    public bool IsDisposed => Volatile.Read(ref _handle) == IntPtr.Zero || _safeHandle.IsClosed;
+
     internal IntPtr NativeHandle
     {
         get
@@ -76,9 +78,7 @@ public sealed partial class OcctModelingSession : IDisposable
         return ModelNativeMethods.occt_model_shape_exists(_handle, shape.Id) != 0;
     }
 
-    /// <summary>
-    /// Returns true when the shape was created or resolved by this session.
-    /// </summary>
+    /// <summary>Returns true when the shape was created or resolved by this session.</summary>
     public bool Owns(OcctModelShape shape) => shape.IsValid && shape.OwnerId == _ownerId;
 
     /// <summary>
@@ -183,8 +183,7 @@ public sealed partial class OcctModelingSession : IDisposable
         return new OcctException(message, operation, nativeMessage);
     }
 
-    private void EnsureNotDisposed() =>
-        ObjectDisposedException.ThrowIf(Volatile.Read(ref _handle) == IntPtr.Zero || _safeHandle.IsClosed, this);
+    private void EnsureNotDisposed() => ObjectDisposedException.ThrowIf(IsDisposed, this);
 
     public void Dispose()
     {
