@@ -121,14 +121,48 @@
         <p data-i18n="demoLead">The demo branch validates CAD interaction, localization and packaging across WinForms, WPF and Avalonia while main remains focused and reusable.</p>
       </div>
 
-      <div class="preview-grid">
+      <div class="preview-grid" style="grid-template-columns: 1fr; gap: 22px;">
         <figure class="preview-card">
-          <img id="winformsPreview" src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-en.webp" data-src-zh="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-zh.webp" data-src-en="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-en.webp" alt="WinForms demo preview" loading="lazy" />
+          <img id="winformsPreview"
+               src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-en.png"
+               data-src-en="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-en.png"
+               data-src-zh="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-zh.png"
+               data-fallback-en="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-en.webp"
+               data-fallback-zh="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-zh.webp"
+               data-alt-en="WinForms demo preview"
+               data-alt-zh="WinForms 示例界面预览"
+               alt="WinForms demo preview"
+               loading="lazy"
+               style="object-fit: contain;" />
           <figcaption><strong>WinForms</strong><span data-i18n="winformsCaption">Classic CAD desktop layout with a native HWND viewport</span></figcaption>
         </figure>
+
         <figure class="preview-card">
-          <img id="wpfPreview" src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-en.webp" data-src-zh="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-zh.webp" data-src-en="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-en.webp" alt="WPF demo preview" loading="lazy" />
+          <img id="wpfPreview"
+               src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-en.png"
+               data-src-en="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-en.png"
+               data-src-zh="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-zh.png"
+               data-fallback-en="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-en.webp"
+               data-fallback-zh="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-zh.webp"
+               data-alt-en="WPF demo preview"
+               data-alt-zh="WPF 示例界面预览"
+               alt="WPF demo preview"
+               loading="lazy"
+               style="object-fit: contain;" />
           <figcaption><strong>WPF</strong><span data-i18n="wpfCaption">WPF application built around OcctWpfViewport</span></figcaption>
+        </figure>
+
+        <figure class="preview-card">
+          <img id="avaloniaPreview"
+               src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-demo-en.png"
+               data-src-en="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-demo-en.png"
+               data-src-zh="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-demo-zh.png"
+               data-alt-en="Avalonia demo preview"
+               data-alt-zh="Avalonia 示例界面预览"
+               alt="Avalonia demo preview"
+               loading="lazy"
+               style="object-fit: contain;" />
+          <figcaption><strong>Avalonia</strong><span data-i18n="avaloniaCaption">Full CAD demo using the native Avalonia HWND host</span></figcaption>
         </figure>
       </div>
     </section>
