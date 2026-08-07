@@ -12,7 +12,7 @@ OCAF/XDE is intentionally excluded. Document persistence, undo/redo, application
 - OCCT: `7.9.0`
 - Native exports: `336`
 - Managed P/Invoke declarations: `336`
-- Public .NET types: `82`
+- Public .NET types: `81`
 - Viewer API: `212`
 - Modeling API: `124`
 
