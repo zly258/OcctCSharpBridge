@@ -1,6 +1,6 @@
 ﻿param(
     [Parameter(Position = 0)]
-    [ValidateSet("all", "winform", "wpf")]
+    [ValidateSet("all", "winform", "wpf", "avalonia")]
     [string]$Target = "all",
 
     [Parameter(Position = 1)]
@@ -8,19 +8,12 @@
     [string]$Configuration = "Release",
 
     [string]$OcctRoot = $env:OCCT_ROOT,
-
     [string]$OutputDirectory = "",
-
     [switch]$SelfContained,
-
     [switch]$FrameworkDependent,
-
     [switch]$FullResources,
-
     [switch]$Diagnostics,
-
     [switch]$Zip,
-
     [switch]$KeepExisting
 )
 
@@ -47,6 +40,7 @@ $UseSelfContained = -not $FrameworkDependent.IsPresent
 if ($SelfContained.IsPresent) {
     $UseSelfContained = $true
 }
+
 $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
     throw "OCCT_ROOT is not configured. Pass -OcctRoot <path> or set the OCCT_ROOT environment variable."
@@ -81,6 +75,12 @@ $Projects = [ordered]@{
         Folder = "wpf"
         Executable = "CAD-WPF.exe"
     }
+    avalonia = @{
+        Name = "Avalonia"
+        Project = "src\CadAvalonia\CadAvalonia.csproj"
+        Folder = "avalonia"
+        Executable = "CAD-Avalonia.exe"
+    }
 }
 
 function Assert-Path {
@@ -88,7 +88,6 @@ function Assert-Path {
         [Parameter(Mandatory = $true)][string]$Path,
         [string]$Description = "Required path"
     )
-
     if (-not (Test-Path $Path)) {
         throw "$Description was not found: $Path"
     }
@@ -96,7 +95,6 @@ function Assert-Path {
 
 function Assert-Command {
     param([Parameter(Mandatory = $true)][string]$Name)
-
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
         throw "$Name was not found in PATH."
     }
@@ -108,11 +106,17 @@ function Invoke-Checked {
         [Parameter(Mandatory = $true)][object[]]$Arguments,
         [Parameter(Mandatory = $true)][string]$ErrorMessage
     )
-
     & $Command @Arguments
     if ($LASTEXITCODE -ne 0) {
         throw $ErrorMessage
     }
+}
+
+function Get-SelectedApplicationKeys {
+    if ($Target -eq "all") {
+        return @("winform", "wpf", "avalonia")
+    }
+    return @($Target)
 }
 
 function Get-FileHashValue {
@@ -128,9 +132,7 @@ function Copy-RuntimeDll {
 
     $destination = Join-Path $RuntimeRoot $Source.Name
     if (Test-Path $destination -PathType Leaf) {
-        $sourceHash = Get-FileHashValue $Source.FullName
-        $destinationHash = Get-FileHashValue $destination
-        if ($sourceHash -eq $destinationHash) {
+        if ((Get-FileHashValue $Source.FullName) -eq (Get-FileHashValue $destination)) {
             return
         }
         throw "Conflicting runtime DLL '$($Source.Name)' was found while copying $Category."
@@ -143,17 +145,17 @@ function Publish-Application {
     param([Parameter(Mandatory = $true)][string]$Key)
 
     $application = $Projects[$Key]
+    if ($null -eq $application) {
+        throw "Unknown publish target: $Key"
+    }
+
     $projectPath = Join-Path $RepoRoot $application.Project
     $destination = Join-Path $AppsRoot $application.Folder
     $temporaryDestination = Join-Path $TemporaryRoot $application.Folder
     Assert-Path $projectPath "$($application.Name) project"
 
-    if (Test-Path $destination) {
-        Remove-Item $destination -Recurse -Force
-    }
-    if (Test-Path $temporaryDestination) {
-        Remove-Item $temporaryDestination -Recurse -Force
-    }
+    Remove-Item $destination -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item $temporaryDestination -Recurse -Force -ErrorAction SilentlyContinue
     New-Item $destination -ItemType Directory -Force | Out-Null
     New-Item $temporaryDestination -ItemType Directory -Force | Out-Null
 
@@ -226,17 +228,15 @@ function Get-PeDependencies {
     $dependencies = [System.Collections.Generic.List[string]]::new()
     foreach ($line in $output) {
         $value = ([string]$line).Trim()
-        if ($value -match "^Image has the following dependencies:") {
+        if ($value -match "^Image has the following (?:delay load )?dependencies:") {
             $collecting = $true
             continue
         }
-        if (-not $collecting) {
+        if ($value -eq "Summary") {
+            $collecting = $false
             continue
         }
-        if ($value -eq "Summary") {
-            break
-        }
-        if ($value -match "^[A-Za-z0-9_.+\-]+\.dll$") {
+        if ($collecting -and $value -match "^[A-Za-z0-9_.+\-]+\.dll$") {
             $dependencies.Add($value)
         }
     }
@@ -246,8 +246,7 @@ function Get-PeDependencies {
 
 function Test-VisualCppRuntimeDependency {
     param([Parameter(Mandatory = $true)][string]$Name)
-
-    return $Name -match "^(?i:concrt140|msvcp140(?:_[0-9]+|_atomic_wait|_codecvt_ids)?|vcruntime140(?:_[0-9]+|_threads)?)\.dll$"
+    return $Name -match "^(?i:concrt140|msvcp140(?:_[A-Za-z0-9]+)*|vcruntime140(?:_[A-Za-z0-9]+)*|vcomp140)\.dll$"
 }
 
 function Test-SystemDependency {
@@ -286,22 +285,14 @@ function Get-RuntimeCandidateVersion {
         $File.FullName,
         "(?i)[\\/]VC[\\/]Redist[\\/]MSVC[\\/](?<version>[0-9]+(?:\.[0-9]+){1,3})[\\/]")
     if ($pathMatch.Success) {
-        try {
-            return [version]$pathMatch.Groups["version"].Value
-        }
-        catch {
-        }
+        try { return [version]$pathMatch.Groups["version"].Value } catch { }
     }
 
     $fileVersion = $File.VersionInfo.FileVersion
     if (-not [string]::IsNullOrWhiteSpace($fileVersion)) {
         $versionMatch = [regex]::Match($fileVersion, "[0-9]+(?:\.[0-9]+){1,3}")
         if ($versionMatch.Success) {
-            try {
-                return [version]$versionMatch.Value
-            }
-            catch {
-            }
+            try { return [version]$versionMatch.Value } catch { }
         }
     }
 
@@ -316,7 +307,7 @@ function Get-RuntimeCandidateScore {
     if ([string]::Equals($File.DirectoryName, $OcctBinDir, [StringComparison]::OrdinalIgnoreCase)) {
         $score += 100000
     }
-    if ($path -match "[\\/]vc[\\/]redist[\\/]msvc[\\/][^\\/]+[\\/]x64[\\/]microsoft\.vc[0-9]+\.crt[\\/]") {
+    if ($path -match "[\\/]vc[\\/]redist[\\/]msvc[\\/][^\\/]+[\\/]x64[\\/]") {
         $score += 20000
     }
     if ($path -match "[\\/](?:bin|bin64)[\\/]") { $score += 5000 }
@@ -345,7 +336,7 @@ function Get-VisualCppRuntimeFiles {
             -latest `
             -products * `
             -requires Microsoft.VisualStudio.Component.VC.Redist.14.Latest `
-            -find "VC\Redist\MSVC\**\x64\Microsoft.VC*.CRT\*.dll" 2>$null)
+            -find "VC\Redist\MSVC\**\x64\**\*.dll" 2>$null)
         foreach ($match in $matches) {
             if ([string]::IsNullOrWhiteSpace($match) -or -not (Test-Path $match -PathType Leaf)) { continue }
             $file = Get-Item -LiteralPath $match
@@ -366,12 +357,15 @@ function Get-VisualCppRuntimeFiles {
         "msvcp140_codecvt_ids.dll",
         "vcruntime140.dll",
         "vcruntime140_1.dll",
-        "vcruntime140_threads.dll"
+        "vcruntime140_threads.dll",
+        "vcomp140.dll"
     )) {
         $path = Join-Path ([Environment]::SystemDirectory) $name
         if (Test-Path $path -PathType Leaf) {
             $file = Get-Item -LiteralPath $path
-            if ($seen.Add($file.FullName)) { $result.Add($file) }
+            if ($seen.Add($file.FullName)) {
+                $result.Add($file)
+            }
         }
     }
 
@@ -384,6 +378,7 @@ function New-RuntimeCandidateIndex {
 
     Get-ChildItem $OcctBinDir -File -Filter "*.dll" | ForEach-Object { $files.Add($_) }
     Get-VisualCppRuntimeFiles | ForEach-Object { $files.Add($_) }
+
     if (Test-Path $OcctThirdPartyDir -PathType Container) {
         Get-ChildItem $OcctThirdPartyDir -Recurse -File -Filter "*.dll" | Where-Object {
             Test-RuntimeCandidate $_
@@ -433,6 +428,7 @@ function Resolve-RuntimeDependency {
     $top = @($ranked | Where-Object {
         $_.Score -eq $topScore -and $_.Version -eq $topVersion
     })
+
     if ($top.Count -gt 1) {
         $hashGroups = @($top | Group-Object { Get-FileHashValue $_.File.FullName })
         if ($hashGroups.Count -gt 1) {
@@ -456,7 +452,7 @@ function Copy-OcctRuntime {
     $records = [System.Collections.Generic.List[string]]::new()
     $queue.Enqueue($rootBinary)
 
-    Write-Host "[runtime] Resolving required native DLLs..." -ForegroundColor Cyan
+    Write-Host "[runtime] Resolving complete native dependency closure..." -ForegroundColor Cyan
     while ($queue.Count -gt 0) {
         $binary = [System.IO.Path]::GetFullPath($queue.Dequeue())
         if (-not $processed.Add($binary)) {
@@ -480,20 +476,23 @@ function Copy-OcctRuntime {
             else {
                 $records.Add("$([System.IO.Path]::GetFileName($binary)) -> $dependency")
             }
+
             $queue.Enqueue($destination)
         }
     }
 
     if ($Diagnostics) {
         [System.IO.File]::WriteAllLines(
-            (Join-Path $PackageRoot "native-dependencies.txt"),
+            (Join-Path $PackageRoot "native-resolution.txt"),
             @($records | Sort-Object -Unique),
             $utf8Bom)
     }
-    Write-Host "[runtime] Packaged $($processed.Count) native binaries." -ForegroundColor Green
+
+    Write-Host "[runtime] Resolved $($processed.Count) native binaries." -ForegroundColor Green
 }
 
 function Copy-VisualCppRuntime {
+    $candidateIndex = New-RuntimeCandidateIndex
     $names = @(
         "concrt140.dll",
         "msvcp140.dll",
@@ -503,10 +502,10 @@ function Copy-VisualCppRuntime {
         "msvcp140_codecvt_ids.dll",
         "vcruntime140.dll",
         "vcruntime140_1.dll",
-        "vcruntime140_threads.dll"
+        "vcruntime140_threads.dll",
+        "vcomp140.dll"
     )
 
-    $candidateIndex = New-RuntimeCandidateIndex
     foreach ($name in $names) {
         $source = Resolve-RuntimeDependency $name $candidateIndex
         if ($null -ne $source) {
@@ -515,18 +514,27 @@ function Copy-VisualCppRuntime {
     }
 }
 
-function Copy-OcctResources {
-    $sourceRoot = Join-Path $OcctRoot "src"
-    Assert-Path $sourceRoot "OCCT resource directory"
+function Resolve-OcctResourceRoot {
+    foreach ($candidate in @(
+        (Join-Path $OcctRoot "src"),
+        (Join-Path $OcctRoot "share\opencascade\resources"),
+        (Join-Path $OcctRoot "resources")
+    )) {
+        if (Test-Path $candidate -PathType Container) {
+            return $candidate
+        }
+    }
+    throw "OCCT resources were not found below the configured OCCT root: $OcctRoot"
+}
 
+function Copy-OcctResources {
+    $sourceRoot = Resolve-OcctResourceRoot
     $resourceNames = [System.Collections.Generic.List[string]]::new()
     foreach ($name in @("Shaders", "StdResource", "UnitsAPI", "SHMessage", "XSMessage", "XSTEPResource")) {
         $resourceNames.Add($name)
     }
     if ($FullResources) {
-        foreach ($name in @("Textures")) {
-            $resourceNames.Add($name)
-        }
+        $resourceNames.Add("Textures")
     }
 
     $destinationRoot = Join-Path $OcctPackageRoot "src"
@@ -541,25 +549,6 @@ function Copy-OcctResources {
     }
 }
 
-function Add-LicenseSection {
-    param(
-        [Parameter(Mandatory = $true)][System.Text.StringBuilder]$Builder,
-        [Parameter(Mandatory = $true)][string]$Title,
-        [Parameter(Mandatory = $true)][string]$Path
-    )
-
-    if (-not (Test-Path $Path -PathType Leaf)) {
-        return
-    }
-
-    [void]$Builder.AppendLine("================================================================================")
-    [void]$Builder.AppendLine($Title)
-    [void]$Builder.AppendLine("Source: $Path")
-    [void]$Builder.AppendLine("================================================================================")
-    [void]$Builder.AppendLine((Get-Content $Path -Raw -ErrorAction Stop))
-    [void]$Builder.AppendLine()
-}
-
 function Test-PackagedNativeClosure {
     $dumpbin = Resolve-Dumpbin
     $runtimeFiles = @(Get-ChildItem $RuntimeRoot -File -Filter "*.dll" | Sort-Object Name)
@@ -568,7 +557,9 @@ function Test-PackagedNativeClosure {
     }
 
     $packagedNames = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-    foreach ($file in $runtimeFiles) { [void]$packagedNames.Add($file.Name) }
+    foreach ($file in $runtimeFiles) {
+        [void]$packagedNames.Add($file.Name)
+    }
 
     $rows = [System.Collections.Generic.List[string]]::new()
     $unresolved = [System.Collections.Generic.List[string]]::new()
@@ -592,39 +583,147 @@ function Test-PackagedNativeClosure {
     }
 }
 
-function Write-PackageContract {
-    $applications = [System.Collections.Generic.List[object]]::new()
-    foreach ($key in @("winform", "wpf")) {
-        if ($Target -ne "all" -and $Target -ne $key) { continue }
+function Copy-NativeRuntimeToApplications {
+    $runtimeFiles = @(Get-ChildItem $RuntimeRoot -File -Filter "*.dll")
+    if ($runtimeFiles.Count -eq 0) {
+        throw "No native runtime DLLs are available for application-local deployment."
+    }
+
+    foreach ($key in Get-SelectedApplicationKeys) {
         $application = $Projects[$key]
-        $relativeExecutable = Join-Path (Join-Path "apps" $application.Folder) $application.Executable
-        $fullExecutable = Join-Path $PackageRoot $relativeExecutable
-        Assert-Path $fullExecutable "$($application.Name) packaged executable"
-        $applications.Add([ordered]@{
-            name = $application.Name
-            executable = $relativeExecutable.Replace('\\', '/')
-            selfContained = [bool]$UseSelfContained
-        })
+        $appDirectory = Join-Path $AppsRoot $application.Folder
+        Assert-Path $appDirectory "$($application.Name) package directory"
+
+        foreach ($file in $runtimeFiles) {
+            $destination = Join-Path $appDirectory $file.Name
+            if (Test-Path $destination -PathType Leaf) {
+                if ((Get-FileHashValue $file.FullName) -ne (Get-FileHashValue $destination)) {
+                    throw "Application-local DLL conflicts with the packaged runtime: $destination"
+                }
+                continue
+            }
+            Copy-Item $file.FullName $destination -Force
+        }
+
+        Assert-Path (Join-Path $appDirectory "OcctNative.dll") "$($application.Name) application-local native bridge"
     }
 
-    $resources = @(Get-ChildItem (Join-Path $OcctPackageRoot "src") -Directory | Sort-Object Name | Select-Object -ExpandProperty Name)
-    $contract = [ordered]@{
-        schemaVersion = 1
-        packageName = $PackageName
-        platform = "windows-x64"
-        configuration = $Configuration
-        selfContained = [bool]$UseSelfContained
-        managedRuntime = if ($UseSelfContained) { "embedded-in-application" } else { "requires-.NET-8-Desktop-Runtime" }
-        applications = $applications
-        nativeRuntimeDirectory = "runtime"
-        occtRootDirectory = "occt"
-        occtResourceDirectories = $resources
-        dependencyManifest = "native-dependencies.txt"
-        licenseDirectory = "licenses"
+    Write-Host "[runtime] Native dependency closure copied beside every executable." -ForegroundColor Green
+}
+
+function Test-PackagedNativeLoad {
+    $probePath = Join-Path $TemporaryRoot "native-load-probe.ps1"
+    New-Item $TemporaryRoot -ItemType Directory -Force | Out-Null
+
+    $probe = @'
+param(
+    [Parameter(Mandatory = $true)][string]$NativePath,
+    [Parameter(Mandatory = $true)][string]$SearchDirectory
+)
+$ErrorActionPreference = "Stop"
+Add-Type -TypeDefinition @"
+using System;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+
+public static class OcctPackageNativeProbe
+{
+    private const uint LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR = 0x00000100;
+    private const uint LOAD_LIBRARY_SEARCH_USER_DIRS = 0x00000400;
+    private const uint LOAD_LIBRARY_SEARCH_SYSTEM32 = 0x00000800;
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetDefaultDllDirectories(uint directoryFlags);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr AddDllDirectory(string newDirectory);
+
+    [DllImport("kernel32.dll", EntryPoint = "LoadLibraryExW", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr LoadLibraryEx(string fileName, IntPtr file, uint flags);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool FreeLibrary(IntPtr module);
+
+    public static void Load(string nativePath, string searchDirectory)
+    {
+        uint defaults = LOAD_LIBRARY_SEARCH_USER_DIRS | LOAD_LIBRARY_SEARCH_SYSTEM32;
+        if (!SetDefaultDllDirectories(defaults))
+        {
+            int code = Marshal.GetLastWin32Error();
+            throw new Win32Exception(code, "SetDefaultDllDirectories failed.");
+        }
+
+        if (AddDllDirectory(searchDirectory) == IntPtr.Zero)
+        {
+            int code = Marshal.GetLastWin32Error();
+            throw new Win32Exception(code, "AddDllDirectory failed.");
+        }
+
+        uint flags = LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR |
+                     LOAD_LIBRARY_SEARCH_USER_DIRS |
+                     LOAD_LIBRARY_SEARCH_SYSTEM32;
+        IntPtr module = LoadLibraryEx(nativePath, IntPtr.Zero, flags);
+        if (module == IntPtr.Zero)
+        {
+            int code = Marshal.GetLastWin32Error();
+            throw new Win32Exception(code, "Unable to load packaged OcctNative.dll.");
+        }
+
+        FreeLibrary(module);
+    }
+}
+"@
+[OcctPackageNativeProbe]::Load(
+    [System.IO.Path]::GetFullPath($NativePath),
+    [System.IO.Path]::GetFullPath($SearchDirectory))
+'@
+
+    [System.IO.File]::WriteAllText($probePath, $probe, $utf8Bom)
+    $powerShellExecutable = (Get-Process -Id $PID).Path
+    Assert-Path $powerShellExecutable "Current PowerShell executable"
+
+    foreach ($key in Get-SelectedApplicationKeys) {
+        $application = $Projects[$key]
+        $appDirectory = Join-Path $AppsRoot $application.Folder
+        $nativePath = Join-Path $appDirectory "OcctNative.dll"
+
+        Write-Host "[probe] Loading $($application.Name) app-local OcctNative.dll with restricted DLL search..." -ForegroundColor Cyan
+        & $powerShellExecutable `
+            -NoLogo `
+            -NoProfile `
+            -NonInteractive `
+            -ExecutionPolicy Bypass `
+            -File $probePath `
+            -NativePath $nativePath `
+            -SearchDirectory $appDirectory
+
+        if ($LASTEXITCODE -ne 0) {
+            throw "$($application.Name) native load probe failed. The package would not be portable to a clean Windows machine."
+        }
     }
 
-    $json = $contract | ConvertTo-Json -Depth 8
-    [System.IO.File]::WriteAllText((Join-Path $PackageRoot "package-contract.json"), $json, $utf8Bom)
+    Write-Host "[probe] Packaged native load probe passed for all selected applications." -ForegroundColor Green
+}
+
+function Add-LicenseSection {
+    param(
+        [Parameter(Mandatory = $true)][System.Text.StringBuilder]$Builder,
+        [Parameter(Mandatory = $true)][string]$Title,
+        [Parameter(Mandatory = $true)][string]$Path
+    )
+
+    if (-not (Test-Path $Path -PathType Leaf)) {
+        return
+    }
+
+    [void]$Builder.AppendLine("================================================================================")
+    [void]$Builder.AppendLine($Title)
+    [void]$Builder.AppendLine("Source: $Path")
+    [void]$Builder.AppendLine("================================================================================")
+    [void]$Builder.AppendLine((Get-Content $Path -Raw -ErrorAction Stop))
+    [void]$Builder.AppendLine()
 }
 
 function Write-LicenseFiles {
@@ -665,6 +764,47 @@ function Write-LicenseFiles {
     }
 }
 
+function Write-PackageContract {
+    $applications = [System.Collections.Generic.List[object]]::new()
+    foreach ($key in Get-SelectedApplicationKeys) {
+        $application = $Projects[$key]
+        $relativeExecutable = Join-Path (Join-Path "apps" $application.Folder) $application.Executable
+        $fullExecutable = Join-Path $PackageRoot $relativeExecutable
+        Assert-Path $fullExecutable "$($application.Name) packaged executable"
+
+        $applications.Add([ordered]@{
+            name = $application.Name
+            executable = $relativeExecutable.Replace('\', '/')
+            selfContained = [bool]$UseSelfContained
+            appLocalNativeRuntime = $true
+        })
+    }
+
+    $resources = @(Get-ChildItem (Join-Path $OcctPackageRoot "src") -Directory |
+        Sort-Object Name |
+        Select-Object -ExpandProperty Name)
+
+    $contract = [ordered]@{
+        schemaVersion = 2
+        packageName = $PackageName
+        platform = "windows-x64"
+        configuration = $Configuration
+        selfContained = [bool]$UseSelfContained
+        managedRuntime = if ($UseSelfContained) { "embedded-in-application" } else { "requires-.NET-8-Desktop-Runtime" }
+        applications = $applications
+        nativeRuntimeDirectory = "runtime"
+        nativeRuntimeDeployment = "app-local-copy"
+        occtRootDirectory = "occt"
+        occtResourceDirectories = $resources
+        dependencyManifest = "native-dependencies.txt"
+        licenseDirectory = "licenses"
+        contact = "zhangly1403@gmail.com"
+    }
+
+    $json = $contract | ConvertTo-Json -Depth 8
+    [System.IO.File]::WriteAllText((Join-Path $PackageRoot "package-contract.json"), $json, $utf8Bom)
+}
+
 function Write-PackageReadme {
     $runtimeMode = if ($UseSelfContained) {
         "Self-contained single-file application."
@@ -673,26 +813,38 @@ function Write-PackageReadme {
         "Framework-dependent single-file application; install the .NET 8 Desktop Runtime."
     }
 
-    $lines = @(
+    $selected = @(Get-SelectedApplicationKeys | ForEach-Object {
+        "apps\$($Projects[$_].Folder)\$($Projects[$_].Executable)"
+    })
+
+    $lines = [System.Collections.Generic.List[string]]::new()
+    foreach ($line in @(
         "OcctCSharpBridge Demo",
         "=====================",
         "",
         "Platform: Windows x64",
         "Target: $Target",
         "Runtime: $runtimeMode",
+        "Contact: zhangly1403@gmail.com",
         "",
-        "Run the executable in apps\winform or apps\wpf directly.",
-        "Keep the apps, runtime and occt directories together.",
+        "Runnable applications:"
+    )) { $lines.Add($line) }
+    foreach ($path in $selected) { $lines.Add("  $path") }
+    foreach ($line in @(
         "",
-        "The default package contains both WinForms and WPF executables with the .NET runtime embedded,",
-        "OcctNative.dll, the complete OCCT/third-party/Visual C++ native dependency closure,",
-        "required OCCT resources, package-contract.json, native-dependencies.txt and license notices.",
+        "Each application folder contains its own OcctNative.dll and complete native dependency closure.",
+        "This app-local layout is intentional: a copied package can be started directly on a clean Windows machine",
+        "without relying on OCCT or Visual C++ DLLs installed on the developer computer.",
+        "",
+        "Keep the apps and occt directories together. The top-level runtime directory is the canonical",
+        "dependency manifest copy used for diagnostics and package validation.",
         "",
         "The default package is self-contained and does not require a separate .NET installation.",
-        "Use -FrameworkDependent only when all target machines already have the .NET 8 Desktop Runtime.",
+        "Use -FrameworkDependent only when target machines already have the .NET 8 Desktop Runtime.",
         "Use -FullResources only when texture resources are needed.",
-        "Use -Diagnostics to add dependency and file manifests."
-    )
+        "Use -Diagnostics to add native resolution and file manifests."
+    )) { $lines.Add($line) }
+
     [System.IO.File]::WriteAllLines((Join-Path $PackageRoot "README.txt"), $lines, $utf8Bom)
 }
 
@@ -706,9 +858,10 @@ function Write-Manifest {
         $hash = Get-FileHashValue $_.FullName
         "{0}`t{1}`t{2}" -f $relative, $_.Length, $hash
     }
+
     [System.IO.File]::WriteAllLines(
         (Join-Path $PackageRoot "runtime-manifest.txt"),
-        @("RelativePath`tBytes`tSHA256" + $entries),
+        @("RelativePath`tBytes`tSHA256") + $entries,
         $utf8Bom)
 }
 
@@ -727,12 +880,11 @@ Write-Host "Full resources:     $($FullResources.IsPresent)"
 if ((Test-Path $PackageRoot) -and -not $KeepExisting) {
     Remove-Item $PackageRoot -Recurse -Force
 }
-if (Test-Path $TemporaryRoot) {
-    Remove-Item $TemporaryRoot -Recurse -Force
-}
+Remove-Item $TemporaryRoot -Recurse -Force -ErrorAction SilentlyContinue
 New-Item $AppsRoot -ItemType Directory -Force | Out-Null
 New-Item $RuntimeRoot -ItemType Directory -Force | Out-Null
 New-Item $OcctPackageRoot -ItemType Directory -Force | Out-Null
+New-Item $TemporaryRoot -ItemType Directory -Force | Out-Null
 
 try {
     Write-Host "[build] Building native bridge..." -ForegroundColor Cyan
@@ -740,22 +892,20 @@ try {
     if (-not $?) {
         throw "Native bridge build failed."
     }
+
     Assert-Path $NativeDll "OcctNative.dll"
     Copy-Item $NativeDll (Join-Path $RuntimeRoot "OcctNative.dll") -Force
 
-    switch ($Target) {
-        "winform" { Publish-Application "winform" }
-        "wpf" { Publish-Application "wpf" }
-        "all" {
-            Publish-Application "winform"
-            Publish-Application "wpf"
-        }
+    foreach ($key in Get-SelectedApplicationKeys) {
+        Publish-Application $key
     }
 
     Copy-OcctRuntime
     Copy-VisualCppRuntime
     Copy-OcctResources
     Test-PackagedNativeClosure
+    Copy-NativeRuntimeToApplications
+    Test-PackagedNativeLoad
     Write-LicenseFiles
     Write-PackageReadme
     Write-PackageContract
@@ -763,21 +913,17 @@ try {
 
     if ($Zip) {
         $zipPath = Join-Path $OutputDirectory "$PackageName.zip"
-        if (Test-Path $zipPath) {
-            Remove-Item $zipPath -Force
-        }
+        Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
         Compress-Archive -Path (Join-Path $PackageRoot "*") -DestinationPath $zipPath -CompressionLevel Optimal
         Write-Host "ZIP: $zipPath" -ForegroundColor Green
     }
 
-    $fileCount = @(Get-ChildItem $PackageRoot -Recurse -File).Count
-    $totalBytes = (Get-ChildItem $PackageRoot -Recurse -File | Measure-Object Length -Sum).Sum
+    $files = @(Get-ChildItem $PackageRoot -Recurse -File)
+    $totalBytes = ($files | Measure-Object Length -Sum).Sum
     Write-Host "Package: $PackageRoot" -ForegroundColor Green
-    Write-Host "Files:   $fileCount" -ForegroundColor Green
+    Write-Host "Files:   $($files.Count)" -ForegroundColor Green
     Write-Host ("Size:    {0:N2} MB" -f ($totalBytes / 1MB)) -ForegroundColor Green
 }
 finally {
-    if (Test-Path $TemporaryRoot) {
-        Remove-Item $TemporaryRoot -Recurse -Force
-    }
+    Remove-Item $TemporaryRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
