@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform;
 using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
+using Application = Avalonia.Application;
 
 namespace CadAvalonia;
 
