@@ -9,6 +9,13 @@ using CadCommon;
 using OcctNet;
 using DrawingColor = System.Drawing.Color;
 using Forms = System.Windows.Forms;
+using Button = Avalonia.Controls.Button;
+using ComboBox = Avalonia.Controls.ComboBox;
+using Control = Avalonia.Controls.Control;
+using GroupBox = Avalonia.Controls.GroupBox;
+using TextBox = Avalonia.Controls.TextBox;
+using TreeView = Avalonia.Controls.TreeView;
+using KeyEventArgs = Avalonia.Input.KeyEventArgs;
 
 namespace CadAvalonia;
 
@@ -614,7 +621,7 @@ public sealed class MainWindow : Window
     {
         _commandStatus.Text = message;
         Log(message);
-        Forms.SystemSounds.Asterisk.Play();
+        System.Media.SystemSounds.Asterisk.Play();
         _viewport.Focus();
     }
 

@@ -2,6 +2,7 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
 using CadCommon;
+using Control = Avalonia.Controls.Control;
 
 namespace CadAvalonia;
 
