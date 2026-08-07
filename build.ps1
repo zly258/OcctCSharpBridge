@@ -78,6 +78,7 @@ $Checks = [ordered]@{
     Selection = "tests\check-selection-contract.ps1"
     NativeBuild = "tests\check-native-build-structure.ps1"
     ApiSurface = "tests\check-api-surface.ps1"
+    DemoPreconditions = "tests\check-demo-command-preconditions.ps1"
     Package = "tests\check-demo-package.ps1"
 }
 

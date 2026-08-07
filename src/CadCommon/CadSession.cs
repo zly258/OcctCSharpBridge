@@ -73,7 +73,7 @@ public sealed class CadValues
 public enum CadIsoView { NorthEast, NorthWest, SouthEast, SouthWest }
 public enum CadDepthBiasPreset { Forward, Backward, Default }
 
-public sealed class CadSession
+public sealed partial class CadSession
 {
     private int _nameSequence = 1;
     private readonly List<CadHistoryEntry> _history = new();
@@ -149,14 +149,12 @@ public sealed class CadSession
 
     public CadCommandResult Execute(CadCommandId commandId, IReadOnlyDictionary<string, string>? rawValues = null)
     {
+        EnsureCommandAvailable(commandId);
+
         var storedValues = rawValues is null
             ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             : new Dictionary<string, string>(rawValues, StringComparer.OrdinalIgnoreCase);
         var selectedObjectIds = Engine.SelectedObjects.Select(item => item.Id).Distinct().ToList();
-        if (selectedObjectIds.Count == 0 && ActiveObject is { } active && Engine.Exists(active))
-        {
-            selectedObjectIds.Add(active.Id);
-        }
         var values = new CadValues(storedValues);
         var isDemoCommand = IsDemoCommand(commandId);
         var displayBatch = isDemoCommand ? Engine.BeginDisplayBatch() : null;
@@ -668,7 +666,6 @@ public sealed class CadSession
     private CadCommandResult DeleteSelected()
     {
         var selected = Engine.SelectedObjects.ToList();
-        if (selected.Count == 0 && ActiveObject is { } active) selected.Add(active);
 
         var targets = selected
             .DistinctBy(item => item.Id)
@@ -1149,9 +1146,11 @@ public sealed class CadSession
 
     private List<OcctShape> SelectedShapes()
     {
-        var shapes = Engine.SelectedObjects.Where(item => item.Kind == OcctObjectKind.Shape).Select(item => new OcctShape(item.Id)).DistinctBy(item => item.Id).ToList();
-        if (shapes.Count == 0 && ActiveObject is { Kind: OcctObjectKind.Shape } active && Engine.Exists(active)) shapes.Add(new OcctShape(active.Id));
-        return shapes;
+        return Engine.SelectedObjects
+            .Where(item => item.Kind == OcctObjectKind.Shape)
+            .Select(item => new OcctShape(item.Id))
+            .DistinctBy(item => item.Id)
+            .ToList();
     }
 
     private OcctShape CopySelectedSubshape(int index)
