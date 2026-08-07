@@ -37,6 +37,42 @@ public struct OcctModelBooleanOptions
     public int SimplifyEdges;
     public int SimplifyFaces;
 
+    public bool UseParallelProcessing
+    {
+        readonly get => RunParallel != 0;
+        set => RunParallel = value ? 1 : 0;
+    }
+
+    public bool NonDestructiveMode
+    {
+        readonly get => NonDestructive != 0;
+        set => NonDestructive = value ? 1 : 0;
+    }
+
+    public OcctModelBooleanGlue GlueMode
+    {
+        readonly get => (OcctModelBooleanGlue)Glue;
+        set => Glue = (int)value;
+    }
+
+    public bool CheckInvertedSolids
+    {
+        readonly get => CheckInverted != 0;
+        set => CheckInverted = value ? 1 : 0;
+    }
+
+    public bool SimplifyResultEdges
+    {
+        readonly get => SimplifyEdges != 0;
+        set => SimplifyEdges = value ? 1 : 0;
+    }
+
+    public bool SimplifyResultFaces
+    {
+        readonly get => SimplifyFaces != 0;
+        set => SimplifyFaces = value ? 1 : 0;
+    }
+
     public static OcctModelBooleanOptions Default => new()
     {
         FuzzyValue = 0.0,
@@ -71,6 +107,27 @@ public struct OcctModelProjectionResult
 }
 
 [StructLayout(LayoutKind.Sequential)]
+internal struct NativeModelRayHit
+{
+    public OcctPoint3d Point;
+    public long FaceId;
+    public double RayParameter;
+    public double U;
+    public double V;
+    public int NativeState;
+
+    public readonly OcctModelRayHit ToManaged(long ownerId) => new()
+    {
+        Point = Point,
+        FaceId = FaceId,
+        RayParameter = RayParameter,
+        U = U,
+        V = V,
+        NativeState = NativeState,
+        OwnerId = ownerId
+    };
+}
+
 public struct OcctModelRayHit
 {
     public OcctPoint3d Point;
@@ -80,7 +137,9 @@ public struct OcctModelRayHit
     public double V;
     public int NativeState;
 
-    public readonly OcctModelShape Face => new(FaceId);
+    internal long OwnerId;
+
+    public readonly OcctModelShape Face => new(FaceId, OwnerId);
     public readonly OcctModelState State => (OcctModelState)NativeState;
 }
 
@@ -94,6 +153,30 @@ public struct OcctModelMeshParameters
     public int Parallel;
     public int InternalVertices;
     public int ControlSurfaceDeflection;
+
+    public bool RelativeDeflection
+    {
+        readonly get => Relative != 0;
+        set => Relative = value ? 1 : 0;
+    }
+
+    public bool UseParallelMeshing
+    {
+        readonly get => Parallel != 0;
+        set => Parallel = value ? 1 : 0;
+    }
+
+    public bool IncludeInternalVertices
+    {
+        readonly get => InternalVertices != 0;
+        set => InternalVertices = value ? 1 : 0;
+    }
+
+    public bool ControlSurfaceDeflectionEnabled
+    {
+        readonly get => ControlSurfaceDeflection != 0;
+        set => ControlSurfaceDeflection = value ? 1 : 0;
+    }
 
     public static OcctModelMeshParameters Default => new()
     {
@@ -158,31 +241,48 @@ public struct OcctModelLocation
     };
 }
 
-public readonly record struct OcctModelShape(long Id)
+public readonly record struct OcctModelShape
 {
+    public OcctModelShape(long id)
+    {
+        Id = id;
+        OwnerId = 0;
+    }
+
+    internal OcctModelShape(long id, long ownerId)
+    {
+        Id = id;
+        OwnerId = ownerId;
+    }
+
+    public long Id { get; }
+    internal long OwnerId { get; }
+
     public bool IsValid => Id > 0;
+    public bool IsBound => OwnerId != 0;
     public override string ToString() => $"ModelShape {Id}";
 }
 
 public sealed class OcctModelAlgorithmResult
 {
+    private readonly string _report;
+
     internal OcctModelAlgorithmResult(OcctModelingSession session, NativeModelAlgorithmResult native)
     {
-        Session = session;
-        Shape = new OcctModelShape(native.ShapeId);
+        Shape = new OcctModelShape(native.ShapeId, session.OwnerId);
         OperationId = native.OperationId;
         Succeeded = native.Succeeded != 0;
         HasWarnings = native.HasWarnings != 0;
         HasErrors = native.HasErrors != 0;
+        _report = session.GetOperationReport(native.OperationId);
     }
 
-    internal OcctModelingSession Session { get; }
     public OcctModelShape Shape { get; }
     public long OperationId { get; }
     public bool Succeeded { get; }
     public bool HasWarnings { get; }
     public bool HasErrors { get; }
-    public string Report => Session.GetOperationReport(OperationId);
+    public string Report => _report;
 }
 
 public sealed class OcctFaceMesh
