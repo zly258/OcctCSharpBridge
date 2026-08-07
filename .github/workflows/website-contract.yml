@@ -70,4 +70,12 @@ jobs:
           if str(contract["occtVersion"]) not in index:
               raise SystemExit("Website OCCT version is stale.")
 
-          print("Website branch matches main bridge-contract.json.")
+          contact = str(contract.get("contactEmail", "")).strip()
+          if not contact:
+              raise SystemExit("Main bridge contract has no contactEmail.")
+          if contact not in index or f"mailto:{contact}" not in index:
+              raise SystemExit(f"Website contact is stale; expected {contact}")
+          if "zhangly1403" + "@" + "qq.com" in all_text:
+              raise SystemExit("Legacy contact email remains on website branch.")
+
+          print("Website branch matches main bridge-contract.json, including contact metadata.")
