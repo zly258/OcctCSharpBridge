@@ -7,7 +7,9 @@
     [ValidateSet("Debug", "Release", "RelWithDebInfo")]
     [string]$Configuration = "Release",
 
-    [string]$OcctRoot = $env:OCCT_ROOT
+    [string]$OcctRoot = $env:OCCT_ROOT,
+
+    [int]$StartupTimeoutSeconds = 5
 )
 
 $ErrorActionPreference = "Stop"
@@ -63,6 +65,20 @@ function Add-PathEntry {
     }
 }
 
+function Show-AvaloniaLog {
+    param([Parameter(Mandatory = $true)][string]$LogPath)
+
+    if (Test-Path $LogPath -PathType Leaf) {
+        Write-Host ""
+        Write-Host "----- CAD-Avalonia.log -----" -ForegroundColor Yellow
+        Get-Content $LogPath -Encoding UTF8
+        Write-Host "----- end log -----" -ForegroundColor Yellow
+    }
+    else {
+        Write-Warning "CAD-Avalonia.log was not created: $LogPath"
+    }
+}
+
 if (-not (Test-Path $OcctBinDir -PathType Container)) {
     throw "OCCT runtime directory was not found: $OcctBinDir"
 }
@@ -101,13 +117,53 @@ if (Test-Path $OcctThirdPartyDir -PathType Container) {
 Write-Host "Application: $executable"
 Write-Host "OCCT root:  $OcctRoot" -ForegroundColor DarkGray
 
-Push-Location $applicationDirectory
-try {
-    & $executable
-    if ($LASTEXITCODE -ne 0) {
-        throw "$Target exited with code $LASTEXITCODE."
-    }
+$logPath = Join-Path $applicationDirectory "CAD-Avalonia.log"
+if ($Target -eq "avalonia" -and (Test-Path $logPath -PathType Leaf)) {
+    Remove-Item $logPath -Force -ErrorAction SilentlyContinue
 }
-finally {
-    Pop-Location
+
+$process = Start-Process -FilePath $executable -WorkingDirectory $applicationDirectory -PassThru
+Write-Host "Process ID: $($process.Id)"
+
+if ($Target -eq "avalonia") {
+    $deadline = [DateTime]::UtcNow.AddSeconds([Math]::Max(1, $StartupTimeoutSeconds))
+    $mainWindowHandle = [IntPtr]::Zero
+
+    while ([DateTime]::UtcNow -lt $deadline) {
+        Start-Sleep -Milliseconds 200
+        $process.Refresh()
+
+        if ($process.HasExited) {
+            $exitCode = $process.ExitCode
+            Write-Host "Process exited during startup. Exit code: $exitCode" -ForegroundColor Red
+            Show-AvaloniaLog -LogPath $logPath
+            throw "avalonia exited before creating a main window. Exit code: $exitCode"
+        }
+
+        $mainWindowHandle = $process.MainWindowHandle
+        if ($mainWindowHandle -ne [IntPtr]::Zero) {
+            break
+        }
+    }
+
+    if ($mainWindowHandle -eq [IntPtr]::Zero) {
+        Write-Host "Process is alive, but no top-level window was created within $StartupTimeoutSeconds second(s)." -ForegroundColor Red
+        Show-AvaloniaLog -LogPath $logPath
+        try { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue } catch { }
+        throw "avalonia process is running without a visible main window."
+    }
+
+    Write-Host ("Main window: 0x{0:X}" -f $mainWindowHandle.ToInt64()) -ForegroundColor Green
+}
+
+$process.WaitForExit()
+$process.Refresh()
+$exitCode = $process.ExitCode
+Write-Host "Exit code: $exitCode"
+
+if ($exitCode -ne 0) {
+    if ($Target -eq "avalonia") {
+        Show-AvaloniaLog -LogPath $logPath
+    }
+    throw "$Target exited with code $exitCode."
 }
