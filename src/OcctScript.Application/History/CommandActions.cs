@@ -19,6 +19,7 @@ public sealed class AddCommandAction(ScriptCommand command, int index = -1) : ID
 public sealed class RemoveCommandAction : IDocumentAction
 {
     private readonly Guid commandId;
+    private readonly List<int> outputIndexes = [];
     private ScriptCommand? removedCommand;
     private int removedIndex;
 
@@ -31,13 +32,24 @@ public sealed class RemoveCommandAction : IDocumentAction
         if (removedIndex < 0) throw new KeyNotFoundException($"Command '{commandId}' was not found.");
         removedCommand = document.Commands[removedIndex];
         document.Commands.RemoveAt(removedIndex);
-        document.OutputCommandIds.RemoveAll(x => x == commandId);
+
+        outputIndexes.Clear();
+        for (var index = document.OutputCommandIds.Count - 1; index >= 0; index--)
+        {
+            if (document.OutputCommandIds[index] != commandId) continue;
+            outputIndexes.Add(index);
+            document.OutputCommandIds.RemoveAt(index);
+        }
     }
 
     public void Undo(ScriptDocument document)
     {
         if (removedCommand is null) throw new InvalidOperationException("The action has not been executed.");
         document.Commands.Insert(Math.Min(removedIndex, document.Commands.Count), removedCommand);
+        foreach (var index in outputIndexes.OrderBy(x => x))
+        {
+            document.OutputCommandIds.Insert(Math.Min(index, document.OutputCommandIds.Count), commandId);
+        }
     }
 }
 
