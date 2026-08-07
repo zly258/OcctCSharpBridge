@@ -7,6 +7,8 @@ on:
   pull_request:
     branches:
       - website
+  schedule:
+    - cron: "41 2 * * *"
 
 permissions:
   contents: read
@@ -20,16 +22,28 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Checkout
+      - name: Checkout website
         uses: actions/checkout@v6
+        with:
+          path: site
+
+      - name: Checkout main contract
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          path: main
+          fetch-depth: 1
 
       - name: Validate JavaScript syntax
+        working-directory: site
         run: node --check app.js
 
       - name: Validate website contracts
+        working-directory: site
         shell: python
         run: |
           from pathlib import Path
+          import json
           import re
 
           required_files = [
@@ -43,6 +57,11 @@ jobs:
           missing = [str(path) for path in required_files if not path.is_file()]
           if missing:
               raise SystemExit(f"Missing website files: {', '.join(missing)}")
+
+          contract_path = Path("../main/bridge-contract.json")
+          if not contract_path.is_file():
+              raise SystemExit("main/bridge-contract.json was not checked out")
+          contract = json.loads(contract_path.read_text(encoding="utf-8-sig"))
 
           text_files = required_files[:-1]
           content = "\n".join(path.read_text(encoding="utf-8-sig") for path in text_files)
@@ -63,4 +82,22 @@ jobs:
           if missing_keys:
               raise SystemExit(f"Missing bilingual translation keys: {', '.join(missing_keys)}")
 
-          print(f"Validated {len(keys)} bilingual translation keys.")
+          expected_stats = {
+              "statNative": str(contract["api"]["nativeExports"]),
+              "statPInvoke": str(contract["api"]["managedPInvokes"]),
+              "statTypes": str(contract["api"]["publicNetTypes"]),
+              "statVersion": str(contract["bridgeVersion"]),
+          }
+          for key, value in expected_stats.items():
+              pattern = rf'<article><strong>{re.escape(value)}</strong><span data-i18n="{key}">'
+              if not re.search(pattern, index):
+                  raise SystemExit(f"Website statistic {key} is stale; expected {value} from bridge-contract.json")
+
+          occt_version = str(contract["occtVersion"])
+          if occt_version not in index:
+              raise SystemExit(f"Website does not contain contracted OCCT version {occt_version}")
+
+          print(
+              f"Validated {len(keys)} bilingual keys and website stats against "
+              f"Bridge {contract['bridgeVersion']} / OCCT {occt_version}."
+          )
