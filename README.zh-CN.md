@@ -172,7 +172,7 @@ Demo 发布脚本会复制应用本地 Native 依赖，并在生成最终包前�
 - Target：`.NET 8` / Windows x64
 - Native exports：`336`
 - Managed P/Invoke：`336`
-- Public .NET types：`82`
+- Public .NET types：`81`
 - Viewer API：`212`
 - Modeling API：`124`
 

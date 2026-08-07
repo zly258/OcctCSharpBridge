@@ -172,7 +172,7 @@ Authoritative metadata is in `bridge-contract.json`:
 - Target: `.NET 8`, Windows x64
 - Native exports: `336`
 - Managed P/Invoke declarations: `336`
-- Public .NET types: `82`
+- Public .NET types: `81`
 - Viewer API: `212`
 - Modeling API: `124`
 
