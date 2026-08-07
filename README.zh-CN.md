@@ -10,7 +10,8 @@ OcctCSharpBridge 是面向 Windows x64 的 **Open CASCADE Technology 7.9.0 → .
 
 - Windows x64
 - Visual Studio 2022 / MSVC v143 兼容工具链
-- .NET 8 SDK
+- .NET SDK **8.0.423**，由 `global.json` 固定
+- C# 12.0
 - CMake 3.21 或更高
 - Open CASCADE Technology **7.9.0**，VC14 x64 目录结构
 - PowerShell 5.1+ 或 PowerShell 7+
@@ -44,14 +45,19 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 ## 目录结构
 
 ```text
-src/OcctNative         C++17 原生桥接与稳定 C ABI
-src/OcctNet            不依赖 UI 的类型安全 .NET 封装
-src/OcctNet.WinForms   可选 WinForms HWND 视口宿主
-src/OcctNet.Wpf        可选 WPF 视口宿主
+bridge-contract.json    Bridge/ABI/OCCT/.NET/API 权威元数据
+global.json             本地与 CI 统一使用的 .NET SDK 版本
+Directory.Build.props   C# 编译公共策略
+src/OcctNative          C++17 原生桥接与稳定 C ABI
+src/OcctNet             不依赖 UI 的类型安全 .NET 封装
+src/OcctNet.WinForms    可选 WinForms HWND 视口宿主
+src/OcctNet.Wpf         可选 WPF 视口宿主
 tests                   接口契约校核与真实原生建模 Smoke Test
 docs                    中英文接口清单
-build.ps1               校核、构建与 Smoke Test 统一入口
+build.ps1               校核、构建、CI 与 Smoke Test 统一入口
 ```
+
+`bridge-contract.json` 是仓库元数据的唯一权威来源。版本/API 校验、分支同步、构建输出路径以及网站统计值都围绕该文件进行一致性检查，不再分别维护独立的期望数字。
 
 核心会话：
 
@@ -72,8 +78,9 @@ build.ps1               校核、构建与 Smoke Test 统一入口
 
 | Target | 作用 | 是否需要 OCCT SDK |
 | --- | --- | --- |
-| `validate` | 校核版本、API 组织、Native/PInvoke、UI Host 等契约，不编译 OCCT | 否 |
+| `validate` | 校核版本、API 组织、Native/PInvoke、UI Host 等契约 | 否 |
 | `managed` | 构建 `OcctNet`、WinForms Host、WPF Host | 否 |
+| `ci` | 执行与 GitHub Actions 相同的契约校验，并构建全部可复用托管项目与 Smoke 项目 | 否 |
 | `native` | 使用 CMake/MSVC 构建 `OcctNative.dll` | 是 |
 | `smoke` | 构建并执行真实 OCCT 建模 Smoke 场景 | 是 |
 | `all` | 构建原生桥接与全部可复用托管项目 | 是 |
@@ -87,6 +94,14 @@ build.ps1               校核、构建与 Smoke Test 统一入口
 ```powershell
 .\build.ps1 validate Release
 ```
+
+### 执行与 GitHub Actions 相同的托管构建
+
+```powershell
+.\build.ps1 ci Release
+```
+
+这是没有 OCCT SDK 时建议在提交前执行的检查。GitHub Actions 也直接调用该目标，不再自行维护一套重复的 `dotnet build` 顺序。
 
 ### 只构建托管封装
 
@@ -119,6 +134,18 @@ build.ps1               校核、构建与 Smoke Test 统一入口
 ```
 
 这一步会真正加载 Native Bridge 并执行 OCCT 建模，比纯编译更能发现运行时问题。
+
+## GitHub Actions 与 Native Smoke
+
+普通 `API Surface` 工作流在 GitHub 托管的 Windows Runner 上执行 `build.ps1 ci Release`，因此不依赖 OCCT SDK。
+
+仓库同时提供独立的 `Native Smoke` 工作流，用于真正加载 OCCT 运行原生建模测试。由于仓库不直接携带 OCCT SDK，该任务默认跳过；需要显式配置：
+
+- Repository variable：`OCCT_NATIVE_CI_ENABLED=true`
+- Repository secret：`OCCT_SDK_URL`，指向包含预期 `inc` 与 `win64\vc14` 目录结构的 OCCT 7.9.0 ZIP 包
+- 可选 Repository secret：`OCCT_SDK_SHA256`，用于校验该 ZIP 包 SHA-256
+
+启用后，CI 会下载并校验 SDK，构建 `OcctNative.dll`，真正加载 Native Bridge，并通过 `build.ps1 smoke Release` 执行建模 Smoke 场景。
 
 ## 运行桌面 Demo
 
@@ -153,6 +180,8 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 
 ## 兼容性契约
 
+权威值统一存放于 `bridge-contract.json`：
+
 - OCCT：严格 `7.9.0`
 - .NET：`8.0`
 - 平台：Windows x64
@@ -166,7 +195,7 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 - [中文接口清单](docs/API_COVERAGE.zh-CN.md)
 - [English API inventory](docs/API_COVERAGE.md)
 
-`build.ps1 validate` 会主动阻止声明、P/Invoke、调用约定、源码组织或接口清单未同步的提交。
+`build.ps1 validate` 会主动阻止声明、P/Invoke、调用约定、源码组织、接口清单、SDK 策略或契约元数据未同步的提交。
 
 ## 常见问题
 
