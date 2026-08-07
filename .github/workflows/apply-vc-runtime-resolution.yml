@@ -1,0 +1,58 @@
+name: Apply VC Runtime Resolution Fix
+
+on:
+  push:
+    branches:
+      - demo
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: contains(github.event.head_commit.message, 'Add deterministic desktop VC runtime migration')
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply deterministic VC runtime resolution
+        shell: pwsh
+        run: python .\.github\fix_vc_runtime_resolution.py
+
+      - name: Parse package scripts
+        shell: pwsh
+        run: |
+          foreach ($path in @('.\publish.ps1', '.\tests\check-demo-package.ps1')) {
+              $tokens = $null
+              $errors = $null
+              [System.Management.Automation.Language.Parser]::ParseFile(
+                  (Resolve-Path $path),
+                  [ref]$tokens,
+                  [ref]$errors) | Out-Null
+              if ($errors.Count -gt 0) {
+                  $errors | Format-List
+                  throw "PowerShell parse failed: $path"
+              }
+          }
+
+      - name: Validate package contract
+        shell: pwsh
+        run: .\tests\check-demo-package.ps1 -RepositoryRoot $PWD
+
+      - name: Check patch quality
+        shell: pwsh
+        run: git diff --check
+
+      - name: Commit fix
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -- .github/workflows
+          git add -A
+          if (git diff --cached --quiet) { throw 'No VC runtime resolution changes were produced.' }
+          git commit -m "Fix deterministic desktop VC runtime packaging"
+          git push origin HEAD:demo
