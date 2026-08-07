@@ -4,10 +4,9 @@ on:
   push:
     branches:
       - main
-      - agent/**
-      - optimize/**
-      - feature/**
   pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
