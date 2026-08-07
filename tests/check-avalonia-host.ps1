@@ -9,8 +9,10 @@ $hostProject = Join-Path $RepositoryRoot "src\OcctNet.Avalonia\OcctNet.Avalonia.
 $hostControl = Join-Path $RepositoryRoot "src\OcctNet.Avalonia\OcctAvaloniaViewport.cs"
 $demoProject = Join-Path $RepositoryRoot "src\CadAvalonia\CadAvalonia.csproj"
 $demoWindow = Join-Path $RepositoryRoot "src\CadAvalonia\MainWindow.cs"
+$demoProgram = Join-Path $RepositoryRoot "src\CadAvalonia\Program.cs"
+$buildScript = Join-Path $RepositoryRoot "build.ps1"
 
-foreach ($path in @($hostProject, $hostControl, $demoProject, $demoWindow)) {
+foreach ($path in @($hostProject, $hostControl, $demoProject, $demoWindow, $demoProgram, $buildScript)) {
     if (-not (Test-Path $path -PathType Leaf)) {
         throw "Required Avalonia host file was not found: $path"
     }
@@ -42,7 +44,9 @@ foreach ($token in @(
     'EnableRectangleSelection',
     'ObjectSelectionChanged',
     'WorldPointChanged',
-    'EngineInitialized'
+    'EngineInitialized',
+    'SizeChanged += OnHostSizeChanged',
+    'Dispatcher.UIThread.Post(RefreshNativeView'
 )) {
     if (-not $hostText.Contains($token)) {
         throw "Avalonia viewport contract is missing: $token"
@@ -53,18 +57,37 @@ if ($hostText.Contains('WindowsFormsHost') -or $hostText.Contains('System.Window
     throw "Avalonia host must not depend on WinForms or WPF hosting layers."
 }
 
+$demoProjectText = [System.IO.File]::ReadAllText($demoProject)
+if (-not $demoProjectText.Contains('Avalonia.Fonts.Inter')) {
+    throw "Avalonia demo must include Avalonia.Fonts.Inter for deterministic desktop bootstrap."
+}
+
+$programText = [System.IO.File]::ReadAllText($demoProgram)
+foreach ($token in @('CAD-Avalonia.log', 'EnsureNativeBridgeIsDiscoverable', 'WithInterFont()', 'LogToTrace()', 'MessageBoxW')) {
+    if (-not $programText.Contains($token)) {
+        throw "Avalonia startup diagnostics contract is missing: $token"
+    }
+}
+
+$buildText = [System.IO.File]::ReadAllText($buildScript)
+foreach ($token in @('Copy-OcctRuntimeDependencies', 'TKernel.dll', 'OcctThirdPartyDir')) {
+    if (-not $buildText.Contains($token)) {
+        throw "Avalonia runtime deployment contract is missing: $token"
+    }
+}
+
 $demoText = [System.IO.File]::ReadAllText($demoWindow)
-foreach ($token in @('OcctAvaloniaViewport', 'SetZUpView', 'MakeBox', 'MakeCylinder', 'MakeSphere')) {
+foreach ($token in @('OcctAvaloniaViewport', 'SetZUpView', 'MakeBox', 'MakeCylinder', 'MakeSphere', 'Dispatcher.UIThread.Post(InitializeScene')) {
     if (-not $demoText.Contains($token)) {
         throw "Avalonia demo contract is missing: $token"
     }
 }
 
-foreach ($path in @($hostProject, $hostControl, $demoProject, $demoWindow)) {
+foreach ($path in @($hostProject, $hostControl, $demoProject, $demoWindow, $demoProgram)) {
     $bytes = [System.IO.File]::ReadAllBytes($path)
     if ($bytes.Length -lt 3 -or $bytes[0] -ne 0xEF -or $bytes[1] -ne 0xBB -or $bytes[2] -ne 0xBF) {
         throw "Avalonia source file is not UTF-8 with BOM: $path"
     }
 }
 
-Write-Host "[avalonia-host] Avalonia HWND host contract validated." -ForegroundColor Green
+Write-Host "[avalonia-host] Avalonia HWND host, startup diagnostics, and runtime deployment contracts validated." -ForegroundColor Green
