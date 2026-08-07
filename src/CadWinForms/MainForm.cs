@@ -730,7 +730,7 @@ public sealed partial class MainForm : Form
     private void ObjectTreeAfterSelect(object? sender, TreeViewEventArgs e)
     {
         var node = e.Node;
-        if (_session is null || node is null || node.Tag is not OcctObject value) return;
+        if (_session is null || node is null || node.Tag is not IOcctObject value) return;
 
         Session.ActiveObject = value;
         Session.Engine.SelectObject(value, false);
@@ -742,19 +742,19 @@ public sealed partial class MainForm : Form
     private void ObjectTreeAfterCheck(object? sender, TreeViewEventArgs e)
     {
         var node = e.Node;
-        if (_refreshingTree || _session is null || node is null || node.Tag is not OcctObject value) return;
+        if (_refreshingTree || _session is null || node is null || node.Tag is not IOcctObject value) return;
 
         ExecuteSafe(() => Session.Engine.SetVisible(value, node.Checked));
     }
 
-    private void ShowObjectProperties(OcctObject? value)
+    private void ShowObjectProperties(IOcctObject? value)
     {
         _propertyGrid.Rows.Clear();
         if (_session is null || value is null) return;
         foreach (var property in Session.DescribeObject(value.Value)) _propertyGrid.Rows.Add(property.Key, property.Value);
     }
 
-    private void SelectTreeNode(OcctObject? value)
+    private void SelectTreeNode(IOcctObject? value)
     {
         if (value is null || !_objectNodes.TryGetValue(value.Value.Id, out var node)) return;
         _objectTree.SelectedNode = node;

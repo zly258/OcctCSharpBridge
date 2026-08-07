@@ -185,7 +185,7 @@ public sealed partial class CadSession
 
     private static CadCommandAvailability RequireSubshapeCount(
         CadCommandId commandId,
-        IReadOnlyCollection<OcctObject> selectedEntries,
+        IReadOnlyCollection<IOcctObject> selectedEntries,
         int required)
     {
         var command = CadLocalization.CommandText(commandId);

@@ -937,7 +937,7 @@ public sealed class MainWindow : Window
             $"对象 {Session.Engine.ObjectCount} / 形体 {Session.Engine.ShapeCount}");
     }
 
-    private ContextMenu BuildObjectContextMenu(OcctObject value)
+    private ContextMenu BuildObjectContextMenu(IOcctObject value)
     {
         return new ContextMenu
         {
@@ -964,7 +964,7 @@ public sealed class MainWindow : Window
 
     private void ObjectTreeSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (_refreshingTree || _session is null || _objectTree.SelectedItem is not TreeViewItem { Tag: OcctObject value }) return;
+        if (_refreshingTree || _session is null || _objectTree.SelectedItem is not TreeViewItem { Tag: IOcctObject value }) return;
         Session.ActiveObject = value;
         Session.Engine.SelectObject(value, false);
         _viewport.RaiseSelectionChanged();
@@ -972,7 +972,7 @@ public sealed class MainWindow : Window
         _selectionStatus.Text = Local($"Current: {Session.SafeName(value)}", $"当前：{Session.SafeName(value)}");
     }
 
-    private void ShowObjectProperties(OcctObject? value)
+    private void ShowObjectProperties(IOcctObject? value)
     {
         _propertyPanel.Children.Clear();
         var header = new Grid
@@ -1006,21 +1006,21 @@ public sealed class MainWindow : Window
         }
     }
 
-    private void SelectTreeNode(OcctObject? value)
+    private void SelectTreeNode(IOcctObject? value)
     {
         if (value is null || !_objectNodes.TryGetValue(value.Value.Id, out var item)) return;
         item.IsSelected = true;
         item.BringIntoView();
     }
 
-    private void SetObjectColor(OcctObject value)
+    private void SetObjectColor(IOcctObject value)
     {
         using var dialog = new Forms.ColorDialog { Color = DrawingColor.SteelBlue, FullOpen = true };
         if (dialog.ShowDialog() == Forms.DialogResult.OK)
             ExecuteSafe(() => Session.Engine.SetColor(value, dialog.Color));
     }
 
-    private async Task SetObjectMaterialAsync(OcctObject value)
+    private async Task SetObjectMaterialAsync(IOcctObject value)
     {
         if (value.Kind != OcctObjectKind.Shape) return;
         var options = Enum.GetValues<OcctMaterial>().Select(MaterialDisplayName).ToArray();

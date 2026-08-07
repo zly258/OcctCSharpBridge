@@ -729,7 +729,7 @@ public partial class MainWindow : System.Windows.Window
             $"对象 {Session.Engine.ObjectCount} / 形体 {Session.Engine.ShapeCount}");
     }
 
-    private Controls.ContextMenu BuildObjectContextMenu(OcctObject value)
+    private Controls.ContextMenu BuildObjectContextMenu(IOcctObject value)
     {
         var menu = new Controls.ContextMenu();
         menu.Items.Add(MenuItem(CadLocalization.Text("Menu.FitSelected"), (_, _) =>
@@ -752,13 +752,13 @@ public partial class MainWindow : System.Windows.Window
 
     private void ObjectVisibilityChanged(object sender, System.Windows.RoutedEventArgs e)
     {
-        if (_refreshingTree || _session is null || sender is not Controls.CheckBox { Tag: OcctObject value } checkBox) return;
+        if (_refreshingTree || _session is null || sender is not Controls.CheckBox { Tag: IOcctObject value } checkBox) return;
         ExecuteSafe(() => Session.Engine.SetVisible(value, checkBox.IsChecked == true));
     }
 
     private void ObjectTreeSelectedItemChanged(object sender, System.Windows.RoutedPropertyChangedEventArgs<object> e)
     {
-        if (_session is null || e.NewValue is not Controls.TreeViewItem { Tag: OcctObject value }) return;
+        if (_session is null || e.NewValue is not Controls.TreeViewItem { Tag: IOcctObject value }) return;
         Session.ActiveObject = value;
         Session.Engine.SelectObject(value, false);
         Viewport.RaiseSelectionChanged();
@@ -766,19 +766,19 @@ public partial class MainWindow : System.Windows.Window
         SelectionStatus.Text = Local($"Current: {Session.SafeName(value)}", $"当前：{Session.SafeName(value)}");
     }
 
-    private void ShowObjectProperties(OcctObject? value)
+    private void ShowObjectProperties(IOcctObject? value)
     {
         PropertyGrid.ItemsSource = value is null || _session is null ? null : Session.DescribeObject(value.Value);
     }
 
-    private void SelectTreeNode(OcctObject? value)
+    private void SelectTreeNode(IOcctObject? value)
     {
         if (value is null || !_objectNodes.TryGetValue(value.Value.Id, out var item)) return;
         item.IsSelected = true;
         item.BringIntoView();
     }
 
-    private void SetObjectColor(OcctObject value)
+    private void SetObjectColor(IOcctObject value)
     {
         using var dialog = new System.Windows.Forms.ColorDialog { Color = DrawingColor.SteelBlue, FullOpen = true };
         if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
@@ -787,7 +787,7 @@ public partial class MainWindow : System.Windows.Window
         }
     }
 
-    private void SetObjectMaterial(OcctObject value)
+    private void SetObjectMaterial(IOcctObject value)
     {
         if (value.Kind != OcctObjectKind.Shape) return;
         var options = Enum.GetValues<OcctMaterial>().Select(MaterialDisplayName).ToArray();
