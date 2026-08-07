@@ -61,13 +61,15 @@ Translation strings live in the `translations` object in `app.js`. Elements that
 The desktop screenshots shown by the site are loaded from the `demo` branch:
 
 ```text
-assets/previews/winform-demo-en.webp
-assets/previews/winform-demo-zh.webp
-assets/previews/wpf-demo-en.webp
-assets/previews/wpf-demo-zh.webp
+assets/previews/winform-demo-en.png
+assets/previews/winform-demo-zh.png
+assets/previews/wpf-demo-en.png
+assets/previews/wpf-demo-zh.png
+assets/previews/avalonia-demo-en.png
+assets/previews/avalonia-demo-zh.png
 ```
 
-`app.js` switches the screenshot source together with the selected site language. Preview images support a full-size lightbox: click or use Enter/Space to open, and click the backdrop/close button or press Esc to close. Keyboard focus returns to the originating image.
+WinForms and WPF additionally keep WebP fallbacks. `app.js` switches the screenshot source together with the selected site language. Preview images support a full-size lightbox: click or use Enter/Space to open, and click the backdrop/close button or press Esc to close. Keyboard focus returns to the originating image.
 
 When adding another screenshot, place it inside `.preview-card` so the same lightbox behavior is applied automatically.
 
@@ -90,7 +92,7 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 .\publish.ps1 all Release -Zip
 ```
 
-Detailed script semantics belong in the `main`, `demo`, and `script` branch READMEs; the website should stay concise enough to scan.
+Detailed script semantics belong in the `main` and `demo` branch READMEs; the website should stay concise enough to scan.
 
 ## Editing guidelines
 
@@ -107,7 +109,6 @@ Detailed script semantics belong in the `main`, `demo`, and `script` branch READ
 
 - [`main`](https://github.com/zly258/OcctCSharpBridge/tree/main): reusable OCCT C++/C# bridge
 - [`demo`](https://github.com/zly258/OcctCSharpBridge/tree/demo): WinForms, WPF and Avalonia reference applications
-- [`script`](https://github.com/zly258/OcctCSharpBridge/tree/script): OcctScript parametric editor
 - `website`: this static site
 
 ## Author
