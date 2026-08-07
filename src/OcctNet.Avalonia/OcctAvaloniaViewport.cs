@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Platform;
+using Avalonia.Threading;
 using DrawingColor = System.Drawing.Color;
 
 namespace OcctNet;
@@ -44,9 +45,10 @@ public sealed class OcctAvaloniaWorldPointEventArgs : EventArgs
 }
 
 /// <summary>
-/// Avalonia host for the OCCT Windows HWND viewer.
-/// The embedded child HWND owns native mouse messages, so interaction is handled in its
-/// window procedure instead of relying on Avalonia routed pointer events.
+/// Avalonia NativeControlHost for the OCCT Windows HWND viewer.
+/// The control follows Avalonia's native-child lifecycle: create one WS_CHILD HWND,
+/// initialize OCCT against that HWND, resize from Avalonia SizeChanged, and destroy
+/// the OCCT engine before the child HWND is destroyed.
 /// </summary>
 public sealed class OcctAvaloniaViewport : NativeControlHost
 {
@@ -56,7 +58,6 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
     private const int WsClipSiblings = 0x04000000;
     private const int WsClipChildren = 0x02000000;
 
-    private const uint WmSize = 0x0005;
     private const uint WmSetFocus = 0x0007;
     private const uint WmKillFocus = 0x0008;
     private const uint WmEraseBkgnd = 0x0014;
@@ -105,6 +106,7 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
     {
         _windowProcedure = WindowProcedure;
         Focusable = true;
+        SizeChanged += OnHostSizeChanged;
     }
 
     public OcctEngine Engine => _engine ?? throw new InvalidOperationException("The Avalonia OCCT viewport has not been created yet.");
@@ -116,9 +118,12 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
         get => _enableDefaultInteraction;
         set
         {
-            if (_enableDefaultInteraction == value) return;
+            if (_enableDefaultInteraction == value)
+                return;
+
             _enableDefaultInteraction = value;
-            if (!value) CancelInteraction();
+            if (!value)
+                CancelInteraction();
         }
     }
 
@@ -139,7 +144,9 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
 
     public void RaiseSelectionChanged()
     {
-        if (_engine?.IsInitialized != true) return;
+        if (_engine?.IsInitialized != true)
+            return;
+
         var selected = _engine.FirstSelectedObject;
         SelectionChanged?.Invoke(this, _engine.FirstSelected);
         ObjectSelectionChanged?.Invoke(this, new OcctAvaloniaSelectionEventArgs(selected, _engine.SelectedObjects));
@@ -147,7 +154,9 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
 
     public void RefreshNativeView()
     {
-        if (_engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero) return;
+        if (_engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero)
+            return;
+
         SynchronizeDpi();
         TryInvoke(_engine.Resize);
         TryInvoke(_engine.Redraw);
@@ -157,13 +166,14 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
     {
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException("OcctNet.Avalonia currently supports the Windows HWND backend only.");
+
         if (!string.Equals(parent.HandleDescriptor, "HWND", StringComparison.OrdinalIgnoreCase))
             throw new PlatformNotSupportedException($"Expected an HWND parent but received '{parent.HandleDescriptor}'.");
 
         var handle = CreateWindowExW(
             0,
             "STATIC",
-            string.Empty,
+            "OCCT_Render_Target",
             WsChild | WsVisible | WsClipSiblings | WsClipChildren,
             0,
             0,
@@ -173,29 +183,27 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
             IntPtr.Zero,
             IntPtr.Zero,
             IntPtr.Zero);
+
         if (handle == IntPtr.Zero)
             throw new InvalidOperationException($"Unable to create the Avalonia OCCT child HWND. Win32 error: {Marshal.GetLastWin32Error()}.");
 
         _nativeHandle = handle;
-        var procedurePointer = Marshal.GetFunctionPointerForDelegate(_windowProcedure);
-        _previousWindowProcedure = SetWindowLongPtrW(handle, GwlpWndProc, procedurePointer);
-        if (_previousWindowProcedure == IntPtr.Zero)
-        {
-            var error = Marshal.GetLastWin32Error();
-            DestroyWindow(handle);
-            _nativeHandle = IntPtr.Zero;
-            throw new InvalidOperationException($"Unable to subclass the Avalonia OCCT child HWND. Win32 error: {error}.");
-        }
 
         try
         {
+            InstallInputWindowProcedure(handle);
+
             _engine = new OcctEngine();
             _engine.Initialize(handle);
             SynchronizeDpi();
             _engine.Resize();
+            _engine.Redraw();
+
             _lastHoverTimestamp = 0;
             _lastWorldPointTimestamp = 0;
             EngineInitialized?.Invoke(this, EventArgs.Empty);
+
+            Dispatcher.UIThread.Post(RefreshNativeView, DispatcherPriority.Background);
             return new PlatformHandle(handle, "HWND");
         }
         catch
@@ -216,26 +224,35 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
         base.DestroyNativeControlCore(control);
     }
 
+    private void InstallInputWindowProcedure(IntPtr handle)
+    {
+        var procedurePointer = Marshal.GetFunctionPointerForDelegate(_windowProcedure);
+        Marshal.SetLastPInvokeError(0);
+        var previous = SetWindowLongPtrW(handle, GwlpWndProc, procedurePointer);
+        var error = Marshal.GetLastPInvokeError();
+
+        if (previous == IntPtr.Zero && error != 0)
+            throw new InvalidOperationException($"Unable to subclass the Avalonia OCCT child HWND. Win32 error: {error}.");
+
+        _previousWindowProcedure = previous;
+    }
+
+    private void OnHostSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        if (_engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero)
+            return;
+
+        RefreshNativeView();
+    }
+
     private IntPtr WindowProcedure(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam)
     {
         try
         {
             switch (message)
             {
-                case WmSize:
-                    if (_engine?.IsInitialized == true)
-                    {
-                        SynchronizeDpi();
-                        TryInvoke(_engine.Resize);
-                    }
-                    break;
-
                 case WmDpiChanged:
-                    if (_engine?.IsInitialized == true)
-                    {
-                        SynchronizeDpi();
-                        TryInvoke(_engine.Resize);
-                    }
+                    RefreshNativeView();
                     break;
 
                 case WmSetFocus:
@@ -247,7 +264,8 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
                     break;
 
                 case WmEraseBkgnd:
-                    if (_engine?.IsInitialized == true) return new IntPtr(1);
+                    if (_engine?.IsInitialized == true)
+                        return new IntPtr(1);
                     break;
 
                 case WmLButtonDown:
@@ -303,7 +321,8 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
     private void HandleLeftButtonDown(IntPtr hwnd, IntPtr lParam)
     {
         SetFocus(hwnd);
-        if (_engine?.IsInitialized != true || !EnableDefaultInteraction || IsKeyDown(VkShift)) return;
+        if (_engine?.IsInitialized != true || !EnableDefaultInteraction || IsKeyDown(VkShift))
+            return;
 
         CancelRectangleSelection();
         (_selectionStartX, _selectionStartY) = GetPoint(lParam);
@@ -314,12 +333,14 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
         _leftSelectionGesture = true;
         _rectangleDragStarted = false;
         _selectingRectangle = EnableRectangleSelection;
-        if (_selectingRectangle) SetCapture(hwnd);
+        if (_selectingRectangle)
+            SetCapture(hwnd);
     }
 
     private void HandleLeftButtonUp(IntPtr lParam)
     {
-        if (!EnableDefaultInteraction || !_leftSelectionGesture) return;
+        if (!EnableDefaultInteraction || !_leftSelectionGesture)
+            return;
 
         var (endX, endY) = GetPoint(lParam);
         var eventDistance = Math.Max(Math.Abs(endX - _selectionStartX), Math.Abs(endY - _selectionStartY));
@@ -346,13 +367,16 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
         HideSelectionFrame();
         ReleaseCapture();
 
-        if (_engine?.IsInitialized != true) return;
+        if (_engine?.IsInitialized != true)
+            return;
+
         TryInvoke(() =>
         {
             if (useRectangle)
                 _engine.SelectRectangle(_selectionStartX, _selectionStartY, endX, endY, append, allowOverlap);
             else
                 _engine.Select(endX, endY, append);
+
             RaiseSelectionChanged();
         });
     }
@@ -360,7 +384,9 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
     private void HandleRightButtonDown(IntPtr hwnd, IntPtr lParam)
     {
         SetFocus(hwnd);
-        if (_engine?.IsInitialized != true || !EnableDefaultInteraction) return;
+        if (_engine?.IsInitialized != true || !EnableDefaultInteraction)
+            return;
+
         CancelRectangleSelection();
         var (x, y) = GetPoint(lParam);
         _lastMouseX = x;
@@ -372,7 +398,9 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
     private void HandleMiddleButtonDown(IntPtr hwnd, IntPtr lParam)
     {
         SetFocus(hwnd);
-        if (_engine?.IsInitialized != true || !EnableDefaultInteraction) return;
+        if (_engine?.IsInitialized != true || !EnableDefaultInteraction)
+            return;
+
         CancelRectangleSelection();
         (_lastMouseX, _lastMouseY) = GetPoint(lParam);
         _panning = true;
@@ -425,15 +453,20 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
 
     private void HandleMouseWheel(IntPtr wParam)
     {
-        if (_engine?.IsInitialized != true || !EnableDefaultInteraction) return;
+        if (_engine?.IsInitialized != true || !EnableDefaultInteraction)
+            return;
+
         var delta = GetHighWordSigned(wParam);
-        if (delta == 0) return;
+        if (delta == 0)
+            return;
+
         TryInvoke(() => _engine.Zoom(delta > 0 ? 1.15 : 0.87));
     }
 
     private void UpdateSelectionFrame(int currentX, int currentY)
     {
-        if (_engine?.IsInitialized != true) return;
+        if (_engine?.IsInitialized != true)
+            return;
 
         _selectionCurrentX = currentX;
         _selectionCurrentY = currentY;
@@ -452,7 +485,8 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
             Math.Min(_selectionStartY, currentY),
             Math.Max(_selectionStartX, currentX),
             Math.Max(_selectionStartY, currentY));
-        if (_selectionFrame == frame) return;
+        if (_selectionFrame == frame)
+            return;
 
         TryInvoke(() => _engine.ShowSelectionRectangle(
             frame.Left,
@@ -462,14 +496,21 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
             ToDrawingColor(RectangleSelectionLineColor),
             ToDrawingColor(RectangleSelectionFillColor),
             Math.Clamp(RectangleSelectionFillTransparency, 0.0, 1.0),
-            double.IsFinite(RectangleSelectionLineWidth) && RectangleSelectionLineWidth > 0.0 ? RectangleSelectionLineWidth : 1.0));
+            double.IsFinite(RectangleSelectionLineWidth) && RectangleSelectionLineWidth > 0.0
+                ? RectangleSelectionLineWidth
+                : 1.0));
+
         _selectionFrame = frame;
     }
 
     private void HideSelectionFrame()
     {
-        if (_selectionFrame is null) return;
-        if (_engine?.IsInitialized == true) TryInvoke(_engine.HideSelectionRectangle);
+        if (_selectionFrame is null)
+            return;
+
+        if (_engine?.IsInitialized == true)
+            TryInvoke(_engine.HideSelectionRectangle);
+
         _selectionFrame = null;
     }
 
@@ -486,14 +527,18 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
         _selectingRectangle = false;
         _rectangleDragStarted = false;
         HideSelectionFrame();
-        if (releaseCapture) ReleaseCapture();
+        if (releaseCapture)
+            ReleaseCapture();
     }
 
     private void SynchronizeDpi()
     {
-        if (!SynchronizeRenderDpi || _engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero) return;
+        if (!SynchronizeRenderDpi || _engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero)
+            return;
+
         var dpi = GetDpiForWindow(_nativeHandle);
-        if (dpi > 0) TryInvoke(() => _engine.SetRenderResolution(dpi));
+        if (dpi > 0)
+            TryInvoke(() => _engine.SetRenderResolution(dpi));
     }
 
     private void DisposeNativeHost(IntPtr handle)
@@ -520,7 +565,9 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
             _previousWindowProcedure = IntPtr.Zero;
         }
 
-        if (handle != IntPtr.Zero) DestroyWindow(handle);
+        if (handle != IntPtr.Zero)
+            DestroyWindow(handle);
+
         _nativeHandle = IntPtr.Zero;
         _selectionFrame = null;
     }
@@ -557,7 +604,9 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
         }
     }
 
-    private static bool HasElapsed(long previous, long current, long interval) => previous == 0 || current - previous >= interval;
+    private static bool HasElapsed(long previous, long current, long interval) =>
+        previous == 0 || current - previous >= interval;
+
     private static bool IsKeyDown(int virtualKey) => (GetKeyState(virtualKey) & 0x8000) != 0;
     private static (int X, int Y) GetPoint(IntPtr lParam) => (GetLowWordSigned(lParam), GetHighWordSigned(lParam));
     private static int GetLowWordSigned(IntPtr value) => unchecked((short)(value.ToInt64() & 0xFFFF));

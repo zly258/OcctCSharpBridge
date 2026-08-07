@@ -141,6 +141,7 @@ function Resolve-OcctConfiguration {
     $script:OcctIncludeDir = Join-Path $script:ResolvedOcctRoot "inc"
     $script:OcctLibDir = Join-Path $script:ResolvedOcctRoot "win64\vc14\lib"
     $script:OcctBinDir = Join-Path $script:ResolvedOcctRoot "win64\vc14\bin"
+    $script:OcctThirdPartyDir = Join-Path $script:ResolvedOcctRoot "3rdparty-vc14-64"
 
     foreach ($path in @(
         $script:OcctIncludeDir,
@@ -181,6 +182,32 @@ function Build-Native {
     Write-Host "Native: $NativeDll" -ForegroundColor Green
 }
 
+function Copy-OcctRuntimeDependencies {
+    param([Parameter(Mandatory = $true)][string]$OutputDirectory)
+
+    Resolve-OcctConfiguration
+    Assert-Path $OutputDirectory
+    Assert-Path $NativeDll
+
+    Write-Host "[runtime] Deploying OCCT runtime beside the application..." -ForegroundColor Cyan
+    Copy-Item $NativeDll (Join-Path $OutputDirectory "OcctNative.dll") -Force
+
+    Get-ChildItem $script:OcctBinDir -Filter "*.dll" -File | ForEach-Object {
+        Copy-Item $_.FullName (Join-Path $OutputDirectory $_.Name) -Force
+    }
+
+    if (Test-Path $script:OcctThirdPartyDir -PathType Container) {
+        Get-ChildItem $script:OcctThirdPartyDir -Filter "*.dll" -File -Recurse | Where-Object {
+            $_.DirectoryName -match '[\\/]bin([\\/]|$)'
+        } | ForEach-Object {
+            Copy-Item $_.FullName (Join-Path $OutputDirectory $_.Name) -Force
+        }
+    }
+
+    Assert-Path (Join-Path $OutputDirectory "OcctNative.dll")
+    Assert-Path (Join-Path $OutputDirectory "TKernel.dll")
+}
+
 function Build-Project {
     param([Parameter(Mandatory = $true)][string]$Name)
 
@@ -208,9 +235,22 @@ function Build-Project {
         $output = Join-Path $projectDirectory "bin\x64\$Configuration\net8.0-windows"
         Assert-Path (Join-Path $output $definition.Executable)
         if (Test-Path $NativeDll) {
+            Copy-Item $NativeDll (Join-Path $output "OcctNative.dll") -Force
             Assert-Path (Join-Path $output "OcctNative.dll")
         }
     }
+}
+
+function Get-ProjectOutputDirectory {
+    param([Parameter(Mandatory = $true)][string]$Name)
+
+    $definition = $Projects[$Name]
+    if ($null -eq $definition) {
+        throw "Unknown project key: $Name"
+    }
+
+    $project = Join-Path $RepoRoot $definition.Project
+    return Join-Path (Split-Path -Parent $project) "bin\x64\$Configuration\net8.0-windows"
 }
 
 function Build-Managed {
@@ -272,6 +312,7 @@ switch ($Target) {
     "avalonia" {
         Build-Native
         Build-Project "AvaloniaDemo"
+        Copy-OcctRuntimeDependencies (Get-ProjectOutputDirectory "AvaloniaDemo")
     }
     "smoke" {
         Build-Native
@@ -282,6 +323,7 @@ switch ($Target) {
         Build-Project "WinFormsDemo"
         Build-Project "WpfDemo"
         Build-Project "AvaloniaDemo"
+        Copy-OcctRuntimeDependencies (Get-ProjectOutputDirectory "AvaloniaDemo")
         Build-Project "Smoke"
     }
 }
