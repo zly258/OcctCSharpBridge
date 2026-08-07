@@ -24,7 +24,7 @@ internal static partial class ModelNativeMethods
     internal static extern int occt_model_ray_hit_count(IntPtr handle);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_model_ray_hit_at(IntPtr handle, int index, out OcctModelRayHit result);
+    internal static extern int occt_model_ray_hit_at(IntPtr handle, int index, out NativeModelRayHit result);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_model_classify_point(IntPtr handle, long solidId, OcctPoint3d point, double tolerance);
