@@ -2,6 +2,8 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
 using CadCommon;
+using AvaloniaHorizontalAlignment = Avalonia.Layout.HorizontalAlignment;
+using AvaloniaOrientation = Avalonia.Layout.Orientation;
 using Button = Avalonia.Controls.Button;
 using CheckBox = Avalonia.Controls.CheckBox;
 using ComboBox = Avalonia.Controls.ComboBox;
@@ -27,8 +29,8 @@ internal sealed class ParameterDialog : Window
         var root = new DockPanel { Margin = new Thickness(16) };
         var buttons = new StackPanel
         {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right,
+            Orientation = AvaloniaOrientation.Horizontal,
+            HorizontalAlignment = AvaloniaHorizontalAlignment.Right,
             Spacing = 8,
             Margin = new Thickness(0, 14, 0, 0)
         };
