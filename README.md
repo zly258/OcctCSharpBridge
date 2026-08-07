@@ -50,6 +50,8 @@ The managed wrapper intentionally exposes two façades:
 
 These two façades may expose equivalent OCCT operations because their object models are different by design. Bridge 2.6 does **not** keep multiple compatibility names inside the same façade.
 
+Interactive objects use one public abstraction: `IOcctObject` exposes `Id`, `Kind`, and `IsValid`; actual instances are `OcctShape`, `OcctText`, or `OcctDimension`. There is no generic object wrapper and no public raw-ID object constructor. Together with the headless types, the reusable SDK currently exposes **81 public .NET types**.
+
 ## Canonical API naming
 
 - Shape queries: `GetShape...`, `IsShape...`, `SetShape...`
@@ -132,7 +134,7 @@ GitHub-hosted CI cannot provide the project-specific OCCT SDK, so the repository
 
 ## Runtime deployment
 
-Keep `OcctNet.dll`, the selected viewport host, `OcctNative.dll`, OCCT runtime DLLs, and required third-party DLLs from the **same Bridge build**. Do not mix ABI 2 and ABI 3 binaries.
+Keep `OcctNet.dll`, the selected viewport host, `OcctNative.dll`, OCCT runtime DLLs, and required third-party DLLs from the **same Bridge build**. Do not mix managed/native binaries from different ABI revisions.
 
 `OcctRuntime.GetDiagnosticReport()` reports native bridge candidates, configured OCCT paths, and resource variables. It is intended for diagnosing deployment failures such as Win32 error 126.
 
