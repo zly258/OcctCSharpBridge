@@ -48,6 +48,7 @@ jobs:
             "src/OcctNet.WinForms",
             "src/OcctNet.Wpf",
             "docs",
+            "tests/OcctNet.ManagedTests",
             "tests/OcctNet.Smoke",
             "tests/check-api-organization.ps1",
             "tests/check-api-surface.ps1",
