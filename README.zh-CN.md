@@ -55,16 +55,18 @@ Settings
 
 ## Demo 图片
 
-网站中的 WinForms/WPF 截图直接读取 `demo` 分支：
+网站中的桌面 Demo 截图直接读取 `demo` 分支：
 
 ```text
-assets/previews/winform-demo-en.webp
-assets/previews/winform-demo-zh.webp
-assets/previews/wpf-demo-en.webp
-assets/previews/wpf-demo-zh.webp
+assets/previews/winform-demo-en.png
+assets/previews/winform-demo-zh.png
+assets/previews/wpf-demo-en.png
+assets/previews/wpf-demo-zh.png
+assets/previews/avalonia-demo-en.png
+assets/previews/avalonia-demo-zh.png
 ```
 
-切换网站语言时，`app.js` 会同步切换对应语言截图。
+WinForms 和 WPF 同时保留 WebP 回退资源。切换网站语言时，`app.js` 会同步切换对应语言截图。
 
 截图支持点击查看大图：
 
@@ -108,7 +110,7 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 .\publish.ps1 all Release -Zip
 ```
 
-每个脚本的详细参数和 target 解释放在 `main`、`demo`、`script` 各自 README 中；网站首页只保留清晰、可复制的首次使用流程。
+每个脚本的详细参数和 target 解释放在 `main`、`demo` 各自 README 中；网站首页只保留清晰、可复制的首次使用流程。
 
 ## 页面维护要求
 
@@ -124,7 +126,6 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 
 - [`main`](https://github.com/zly258/OcctCSharpBridge/tree/main)：纯净、可复用的 OCCT C++/C# Bridge
 - [`demo`](https://github.com/zly258/OcctCSharpBridge/tree/demo)：WinForms、WPF、Avalonia 参考应用
-- [`script`](https://github.com/zly258/OcctCSharpBridge/tree/script)：OcctScript 参数化编辑器
 - `website`：本静态网站
 
 ## 作者
