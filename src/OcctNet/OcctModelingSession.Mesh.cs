@@ -6,6 +6,9 @@ public sealed partial class OcctModelingSession
     {
         EnsureShape(shape);
         var actual = parameters ?? OcctModelMeshParameters.Default;
+        OcctGuard.Positive(actual.LinearDeflection, nameof(actual.LinearDeflection));
+        OcctGuard.Positive(actual.AngularDeflection, nameof(actual.AngularDeflection));
+        OcctGuard.NonNegative(actual.MinSize, nameof(actual.MinSize));
         Check(ModelNativeMethods.occt_model_mesh(_handle, shape.Id, in actual));
     }
 
