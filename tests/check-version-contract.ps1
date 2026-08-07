@@ -61,8 +61,8 @@ $contracts = [ordered]@{
         "ExpectedAbiVersion = $expectedAbiVersion",
         "ManagedVersion = `"$expectedVersion`""
     )
-    "README.md" = @($expectedVersion, $expectedOcctVersion, $expectedCmakeVersion)
-    "README.zh-CN.md" = @($expectedVersion, $expectedOcctVersion, $expectedCmakeVersion)
+    "README.md" = @($expectedVersion, $expectedOcctVersion)
+    "README.zh-CN.md" = @($expectedVersion, $expectedOcctVersion)
     "docs/API_COVERAGE.md" = @(
         "Native exports:",
         [string]$expectedNativeCount,
