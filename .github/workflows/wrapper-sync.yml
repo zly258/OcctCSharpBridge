@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: wrapper-sync-${{ github.ref }}
+  group: wrapper-sync
   cancel-in-progress: true
 
 jobs:
