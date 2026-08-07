@@ -284,7 +284,7 @@ function Get-RuntimeCandidateVersion {
 
     $pathMatch = [regex]::Match(
         $File.FullName,
-        "(?i)[\\/]VC[\\/]Redist[\\/]MSVC[\\/](?<version>[0-9]+(?:\\.[0-9]+){1,3})[\\/]")
+        "(?i)[\\/]VC[\\/]Redist[\\/]MSVC[\\/](?<version>[0-9]+(?:\.[0-9]+){1,3})[\\/]")
     if ($pathMatch.Success) {
         try {
             return [version]$pathMatch.Groups["version"].Value
@@ -295,7 +295,7 @@ function Get-RuntimeCandidateVersion {
 
     $fileVersion = $File.VersionInfo.FileVersion
     if (-not [string]::IsNullOrWhiteSpace($fileVersion)) {
-        $versionMatch = [regex]::Match($fileVersion, "[0-9]+(?:\\.[0-9]+){1,3}")
+        $versionMatch = [regex]::Match($fileVersion, "[0-9]+(?:\.[0-9]+){1,3}")
         if ($versionMatch.Success) {
             try {
                 return [version]$versionMatch.Value
@@ -316,7 +316,7 @@ function Get-RuntimeCandidateScore {
     if ([string]::Equals($File.DirectoryName, $OcctBinDir, [StringComparison]::OrdinalIgnoreCase)) {
         $score += 100000
     }
-    if ($path -match "[\\/]vc[\\/]redist[\\/]msvc[\\/][^\\/]+[\\/]x64[\\/]microsoft\\.vc[0-9]+\\.crt[\\/]") {
+    if ($path -match "[\\/]vc[\\/]redist[\\/]msvc[\\/][^\\/]+[\\/]x64[\\/]microsoft\.vc[0-9]+\.crt[\\/]") {
         $score += 20000
     }
     if ($path -match "[\\/](?:bin|bin64)[\\/]") { $score += 5000 }
