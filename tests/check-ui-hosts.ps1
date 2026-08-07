@@ -48,4 +48,18 @@ if ($controlText -notmatch 'OcctWpfViewport\s*:\s*(?:WpfUserControl|System\.Wind
     throw "OcctWpfViewport must derive from the WPF UserControl type."
 }
 
+
+$demoFiles = @(
+    (Join-Path $RepositoryRoot "src\CadWinForms\MainForm.cs"),
+    (Join-Path $RepositoryRoot "src\CadWpf\MainWindow.xaml.cs")
+)
+foreach ($demoFile in $demoFiles) {
+    $demoText = [System.IO.File]::ReadAllText($demoFile)
+    foreach ($token in @('Menu.ShadedEdges', 'SetFaceBoundariesVisible')) {
+        if (-not $demoText.Contains($token)) {
+            throw "Demo shaded-edge display contract is missing '$token' in $demoFile"
+        }
+    }
+}
+
 Write-Host "[ui-hosts] WinForms and WPF viewport host contracts validated." -ForegroundColor Green

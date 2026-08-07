@@ -217,6 +217,7 @@ public sealed partial class MainForm : Form
 
         var display = new ToolStripMenuItem(CadLocalization.Text("Menu.Display"));
         display.DropDownItems.Add(MenuItem(CadLocalization.Text("Menu.Shaded"), (_, _) => Session.Engine.SetDisplayMode(OcctDisplayMode.Shaded)));
+        display.DropDownItems.Add(CheckMenuItem(CadLocalization.Text("Menu.ShadedEdges"), true, (_, item) => ExecuteSafe(() => Session.Engine.SetFaceBoundariesVisible(item.Checked))));
         display.DropDownItems.Add(MenuItem(CadLocalization.Text("Menu.Wireframe"), (_, _) => Session.Engine.SetDisplayMode(OcctDisplayMode.Wireframe)));
         display.DropDownItems.Add(CheckMenuItem(CadLocalization.Text("Menu.Hlr"), false, (_, item) => Session.Engine.SetComputedHlr(item.Checked)));
         display.DropDownItems.Add(CheckMenuItem(CadLocalization.Text("Menu.Antialiasing"), true, (_, item) => Session.Engine.SetAntialiasing(item.Checked)));
