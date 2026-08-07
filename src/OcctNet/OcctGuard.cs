@@ -8,6 +8,18 @@ internal static class OcctGuard
             throw new ArgumentOutOfRangeException(parameterName, value, "Value must be finite.");
     }
 
+    internal static void Finite(OcctPoint3d value, string parameterName)
+    {
+        if (!value.IsFinite)
+            throw new ArgumentException("Point coordinates must be finite.", parameterName);
+    }
+
+    internal static void Finite(OcctVector3d value, string parameterName)
+    {
+        if (!value.IsFinite)
+            throw new ArgumentException("Vector components must be finite.", parameterName);
+    }
+
     internal static void Positive(double value, string parameterName)
     {
         if (!double.IsFinite(value) || value <= 0)
@@ -28,7 +40,7 @@ internal static class OcctGuard
 
     internal static void NonZero(OcctVector3d vector, string parameterName)
     {
-        if (!double.IsFinite(vector.X) || !double.IsFinite(vector.Y) || !double.IsFinite(vector.Z) || vector.Length <= 1e-15)
+        if (!vector.IsFinite || vector.LengthSquared <= 1e-30)
             throw new ArgumentException("Vector must be finite and non-zero.", parameterName);
     }
 
@@ -36,5 +48,11 @@ internal static class OcctGuard
     {
         if (value < 0)
             throw new ArgumentOutOfRangeException(parameterName, value, "Index must be zero or greater.");
+    }
+
+    internal static void AtLeast(int value, int minimum, string parameterName)
+    {
+        if (value < minimum)
+            throw new ArgumentOutOfRangeException(parameterName, value, $"Value must be at least {minimum}.");
     }
 }

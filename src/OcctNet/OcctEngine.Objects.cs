@@ -62,6 +62,57 @@ public sealed partial class OcctEngine
         return GetOwnerId(value) == _ownerId;
     }
 
+    /// <summary>Resolves a persisted native object ID into an engine-bound managed handle.</summary>
+    public IOcctObject GetObject(long id)
+    {
+        EnsureNotDisposed();
+        if (id <= 0 || NativeMethods.occt_object_exists(_handle, id) == 0)
+            throw new ArgumentOutOfRangeException(nameof(id), id, "The object ID does not exist in this OCCT engine.");
+        return CreateBoundObject(id, GetObjectKind(id));
+    }
+
+    public bool TryGetObject(long id, out IOcctObject? value)
+    {
+        EnsureNotDisposed();
+        if (id > 0 && NativeMethods.occt_object_exists(_handle, id) != 0)
+        {
+            value = CreateBoundObject(id, GetObjectKind(id));
+            return true;
+        }
+
+        value = null;
+        return false;
+    }
+
+    /// <summary>Resolves a persisted shape ID into an engine-bound shape handle.</summary>
+    public OcctShape GetShape(long id)
+    {
+        EnsureNotDisposed();
+        if (id <= 0 ||
+            NativeMethods.occt_object_exists(_handle, id) == 0 ||
+            NativeMethods.occt_object_kind(_handle, id) != (int)OcctObjectKind.Shape)
+        {
+            throw new ArgumentOutOfRangeException(nameof(id), id, "The shape ID does not exist in this OCCT engine.");
+        }
+
+        return new OcctShape(id, _ownerId);
+    }
+
+    public bool TryGetShape(long id, out OcctShape shape)
+    {
+        EnsureNotDisposed();
+        if (id > 0 &&
+            NativeMethods.occt_object_exists(_handle, id) != 0 &&
+            NativeMethods.occt_object_kind(_handle, id) == (int)OcctObjectKind.Shape)
+        {
+            shape = new OcctShape(id, _ownerId);
+            return true;
+        }
+
+        shape = default;
+        return false;
+    }
+
     public OcctObjectKind GetObjectKind(long id)
     {
         EnsureNotDisposed();
@@ -238,6 +289,7 @@ public sealed partial class OcctEngine
     public OcctShape Translate(OcctShape shape, OcctVector3d vector, bool hideInput = false)
     {
         EnsureShape(shape);
+        OcctGuard.Finite(vector, nameof(vector));
         EnsureInitialized();
         return CheckShape(NativeMethods.occt_translate(_handle, shape.Id, vector, hideInput ? 1 : 0));
     }
@@ -250,6 +302,7 @@ public sealed partial class OcctEngine
         bool hideInput = false)
     {
         EnsureShape(shape);
+        OcctGuard.Finite(axisPoint, nameof(axisPoint));
         OcctGuard.NonZero(axisDirection, nameof(axisDirection));
         OcctGuard.Finite(angleDegrees, nameof(angleDegrees));
         EnsureInitialized();
@@ -265,6 +318,7 @@ public sealed partial class OcctEngine
     public OcctShape Scale(OcctShape shape, OcctPoint3d center, double factor, bool hideInput = false)
     {
         EnsureShape(shape);
+        OcctGuard.Finite(center, nameof(center));
         OcctGuard.Positive(factor, nameof(factor));
         EnsureInitialized();
         return CheckShape(NativeMethods.occt_scale(_handle, shape.Id, center, factor, hideInput ? 1 : 0));
@@ -277,6 +331,7 @@ public sealed partial class OcctEngine
         bool hideInput = false)
     {
         EnsureShape(shape);
+        OcctGuard.Finite(planePoint, nameof(planePoint));
         OcctGuard.NonZero(planeNormal, nameof(planeNormal));
         EnsureInitialized();
         return CheckShape(NativeMethods.occt_mirror_plane(
@@ -347,6 +402,14 @@ public sealed partial class OcctEngine
         Check(NativeMethods.occt_face_point_normal(_handle, face.Id, u, v, out var point, out var normal));
         return new(point, normal);
     }
+
+    private IOcctObject CreateBoundObject(long id, OcctObjectKind kind) => kind switch
+    {
+        OcctObjectKind.Shape => new OcctShape(id, _ownerId),
+        OcctObjectKind.Text => new OcctText(id, _ownerId),
+        OcctObjectKind.Dimension => new OcctDimension(id, _ownerId),
+        _ => new OcctObject(id, kind, _ownerId)
+    };
 
     private delegate int PropertyCall(IntPtr handle, long id, out OcctMassProperties result);
 

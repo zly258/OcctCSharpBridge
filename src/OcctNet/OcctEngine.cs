@@ -28,10 +28,11 @@ public sealed partial class OcctEngine : IDisposable
 
     internal long OwnerId => _ownerId;
 
+    public bool IsDisposed => Volatile.Read(ref _handle) == IntPtr.Zero || _safeHandle.IsClosed;
+
     public bool IsInitialized =>
         Volatile.Read(ref _initialized) &&
-        Volatile.Read(ref _handle) != IntPtr.Zero &&
-        !_safeHandle.IsClosed;
+        !IsDisposed;
 
     public static string OcctVersion => OcctBridgeInfo.OcctVersion;
 
@@ -102,6 +103,20 @@ public sealed partial class OcctEngine : IDisposable
         }
     }
 
+    private void EnsureText(OcctText text)
+    {
+        EnsureObject(text);
+        if (NativeMethods.occt_object_kind(_handle, text.Id) != (int)OcctObjectKind.Text)
+            throw new ArgumentException("Object is not a text object in this OCCT engine.", nameof(text));
+    }
+
+    private void EnsureDimension(OcctDimension dimension)
+    {
+        EnsureObject(dimension);
+        if (NativeMethods.occt_object_kind(_handle, dimension.Id) != (int)OcctObjectKind.Dimension)
+            throw new ArgumentException("Object is not a dimension object in this OCCT engine.", nameof(dimension));
+    }
+
     private bool IsForeignObject(IOcctObject value)
     {
         var ownerId = GetOwnerId(value);
@@ -145,9 +160,7 @@ public sealed partial class OcctEngine : IDisposable
     }
 
     private void EnsureNotDisposed() =>
-        ObjectDisposedException.ThrowIf(
-            Volatile.Read(ref _handle) == IntPtr.Zero || _safeHandle.IsClosed,
-            this);
+        ObjectDisposedException.ThrowIf(IsDisposed, this);
 
     public void Dispose()
     {
