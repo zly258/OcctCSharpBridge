@@ -127,6 +127,9 @@ namespace OcctBridge
     {
         if (presentation.IsNull()) return;
         context->Deactivate(presentation);
+        const OcctObjectId objectId = findPresentation(presentation);
+        const ObjectEntry* entry = findObject(objectId);
+        if (entry != nullptr && !entry->selectable) return;
         int mode = 0;
         const Handle(AIS_Shape) aisShape = Handle(AIS_Shape)::DownCast(presentation);
         if (!aisShape.IsNull() && selectionMode != OcctSelection_Object)
@@ -185,6 +188,8 @@ namespace OcctBridge
         auto iterator = objects.find(id);
         if (iterator == objects.end()) return;
         if (!iterator->second.presentation.IsNull()) context->Remove(iterator->second.presentation, Standard_False);
+        if (!iterator->second.applicationTag.empty())
+            objectIdByApplicationTag.erase(iterator->second.applicationTag);
         objects.erase(iterator);
     }
 
@@ -384,7 +389,7 @@ extern "C"
         return execute(e, [&]
         {
             ObjectEntry* entry = e->findShape(id); if (entry == nullptr) throw std::invalid_argument("Shape ID does not exist.");
-            Bnd_Box box; BRepBndLib::Add(entry->shape, box); e->view->FitAll(box, 0.05, Standard_True); e->view->ZFitAll();
+            Bnd_Box box; BRepBndLib::Add(shapeWithPresentationTransformation(*entry), box); e->view->FitAll(box, 0.05, Standard_True); e->view->ZFitAll();
         });
     }
 
@@ -643,6 +648,7 @@ extern "C"
         {
             ObjectEntry* entry = e->findObject(objectId);
             if (entry == nullptr || entry->presentation.IsNull()) throw std::invalid_argument("Object ID does not exist.");
+            if (!entry->selectable) throw std::invalid_argument("Object is not selectable.");
             if (!append) e->context->ClearSelected(Standard_False);
             e->context->SetSelected(entry->presentation, Standard_False);
             e->view->Redraw();
@@ -763,6 +769,7 @@ extern "C"
                 }
             }
             e->objects.clear();
+            e->objectIdByApplicationTag.clear();
             e->nextId = 1;
             e->context->ClearSelected(Standard_False);
             e->requestRedraw();
@@ -774,7 +781,7 @@ extern "C"
 
     int occt_shape_bounds(OcctHandle h, OcctObjectId id, OcctBounds* result)
     {
-        Engine* e=engineOf(h);if(!validateInitialized(e)||!result)return 0;return execute(e,[&]{ObjectEntry* o=e->findShape(id);if(!o)throw std::invalid_argument("Shape ID does not exist.");Bnd_Box box;BRepBndLib::Add(o->shape,box);box.Get(result->minX,result->minY,result->minZ,result->maxX,result->maxY,result->maxZ);});
+        Engine* e=engineOf(h);if(!validateInitialized(e)||!result)return 0;return execute(e,[&]{ObjectEntry* o=e->findShape(id);if(!o)throw std::invalid_argument("Shape ID does not exist.");Bnd_Box box;BRepBndLib::Add(shapeWithPresentationTransformation(*o),box);box.Get(result->minX,result->minY,result->minZ,result->maxX,result->maxY,result->maxZ);});
     }
 
     int occt_shape_linear_properties(OcctHandle h, OcctObjectId id, OcctMassProperties* result) { Engine* e=engineOf(h);if(!validateInitialized(e)||!result)return 0;return execute(e,[&]{ObjectEntry* o=e->findShape(id);if(!o)throw std::invalid_argument("Shape ID does not exist.");GProp_GProps p;BRepGProp::LinearProperties(o->shape,p);fillMassProperties(p,result);}); }
