@@ -8,7 +8,6 @@ namespace OcctNet;
 public static class OcctRuntime
 {
     private const string NativeLibraryFileName = "OcctNative.dll";
-    private const string DefaultOcctRoot = @"D:\tools\occt-vc144-64";
     private const uint LoadLibrarySearchDefaultDirs = 0x00001000;
 
     private static readonly object SyncRoot = new();
@@ -27,7 +26,7 @@ public static class OcctRuntime
     public static string? ConfiguredNativeDirectory { get; private set; }
 
     /// <summary>
-    /// Configures the runtime using OCCT_ROOT, CASROOT, or the conventional development path.
+    /// Configures the runtime using the portable package layout, OCCT_ROOT, or CASROOT.
     /// </summary>
     public static void Configure()
     {
@@ -38,7 +37,7 @@ public static class OcctRuntime
     /// Configures the runtime using explicit locations.
     /// Call this before creating the first <see cref="OcctEngine"/> instance.
     /// </summary>
-    /// <param name="occtRoot">OCCT installation root. When omitted, environment variables are used.</param>
+    /// <param name="occtRoot">OCCT installation root. When omitted, the portable layout and environment variables are used.</param>
     /// <param name="nativeBridgeDirectory">Directory containing OcctNative.dll.</param>
     public static void Configure(string? occtRoot, string? nativeBridgeDirectory = null)
     {
@@ -147,8 +146,7 @@ public static class OcctRuntime
                      explicitRoot,
                      portableOcctRoot,
                      Environment.GetEnvironmentVariable("OCCT_ROOT"),
-                     Environment.GetEnvironmentVariable("CASROOT"),
-                     DefaultOcctRoot
+                     Environment.GetEnvironmentVariable("CASROOT")
                  })
         {
             if (string.IsNullOrWhiteSpace(candidate))
