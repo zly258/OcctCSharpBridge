@@ -25,6 +25,12 @@ public sealed partial class OcctModelingSession
         double tolerance = 1e-7)
     {
         EnsureShape(shape);
+        OcctGuard.NonZero(direction, nameof(direction));
+        OcctGuard.NonNegative(tolerance, nameof(tolerance));
+        if (!double.IsFinite(minimumParameter)) throw new ArgumentOutOfRangeException(nameof(minimumParameter));
+        if (!double.IsFinite(maximumParameter) || maximumParameter < minimumParameter)
+            throw new ArgumentOutOfRangeException(nameof(maximumParameter));
+
         var count = ModelNativeMethods.occt_model_ray_intersections(
             _handle,
             shape.Id,
@@ -34,10 +40,12 @@ public sealed partial class OcctModelingSession
             maximumParameter,
             tolerance);
         if (count < 0) throw CreateException();
+
         var result = new OcctModelRayHit[count];
         for (var index = 0; index < count; index++)
         {
-            Check(ModelNativeMethods.occt_model_ray_hit_at(_handle, index, out result[index]));
+            Check(ModelNativeMethods.occt_model_ray_hit_at(_handle, index, out var native));
+            result[index] = native.ToManaged(_ownerId);
         }
         return result;
     }
@@ -45,6 +53,7 @@ public sealed partial class OcctModelingSession
     public OcctModelState ClassifyPoint(OcctModelShape solid, OcctPoint3d point, double tolerance = 1e-7)
     {
         EnsureShape(solid);
+        OcctGuard.NonNegative(tolerance, nameof(tolerance));
         return (OcctModelState)ModelNativeMethods.occt_model_classify_point(_handle, solid.Id, point, tolerance);
     }
 }
