@@ -38,32 +38,35 @@ Assert(Math.Abs(point.DistanceTo(new OcctPoint3d(1, 2, 8)) - 5) < 1e-12, "Point 
 Assert(point.IsFinite && !new OcctPoint3d(double.NaN, 0, 0).IsFinite, "Point finite-state regression.");
 
 var booleanOptions = OcctModelBooleanOptions.Default;
-Assert(booleanOptions.UseParallelProcessing, "Boolean parallel option mapping regression.");
-Assert(booleanOptions.NonDestructiveMode, "Boolean non-destructive option mapping regression.");
-booleanOptions.UseParallelProcessing = false;
-booleanOptions.GlueMode = OcctModelBooleanGlue.Full;
-Assert(booleanOptions.RunParallel == 0, "Boolean bool-to-native mapping regression.");
-Assert(booleanOptions.Glue == (int)OcctModelBooleanGlue.Full, "Boolean enum-to-native mapping regression.");
+Assert(booleanOptions.RunParallel, "Boolean parallel option regression.");
+Assert(booleanOptions.NonDestructive, "Boolean non-destructive option regression.");
+booleanOptions.RunParallel = false;
+booleanOptions.Glue = OcctModelBooleanGlue.Full;
+var nativeBooleanOptions = booleanOptions.ToNative();
+Assert(nativeBooleanOptions.RunParallel == 0, "Boolean bool-to-native mapping regression.");
+Assert(nativeBooleanOptions.Glue == (int)OcctModelBooleanGlue.Full, "Boolean enum-to-native mapping regression.");
 
 var meshOptions = OcctModelMeshParameters.Default;
-Assert(meshOptions.UseParallelMeshing, "Mesh parallel option mapping regression.");
-meshOptions.RelativeDeflection = true;
-Assert(meshOptions.Relative == 1, "Mesh bool-to-native mapping regression.");
+Assert(meshOptions.Parallel, "Mesh parallel option regression.");
+meshOptions.Relative = true;
+var nativeMeshOptions = meshOptions.ToNative();
+Assert(nativeMeshOptions.Relative == 1, "Mesh bool-to-native mapping regression.");
+Assert(Math.Abs(nativeMeshOptions.MinSize - meshOptions.MinimumSize) < 1e-12, "Mesh minimum-size mapping regression.");
 
 var modelShapeA = new OcctModelShape(7, 1001);
 var modelShapeB = new OcctModelShape(7, 1002);
-Assert(modelShapeA.IsBound && modelShapeB.IsBound, "Model shape owner binding regression.");
+Assert(modelShapeA.IsValid && modelShapeB.IsValid, "Model shape validity regression.");
 Assert(modelShapeA.OwnerId != modelShapeB.OwnerId, "Model shape owner identity regression.");
-Assert(!new OcctModelShape(7).IsBound, "Legacy model shape must remain unbound.");
+Assert(!default(OcctModelShape).IsValid, "Default model shape must be invalid.");
 
 var viewerShapeA = new OcctShape(3, 2001);
 var viewerShapeB = new OcctShape(3, 2002);
-Assert(viewerShapeA.IsBound && viewerShapeB.IsBound, "Viewer shape owner binding regression.");
+Assert(viewerShapeA.IsValid && viewerShapeB.IsValid, "Viewer shape validity regression.");
 Assert(viewerShapeA.OwnerId != viewerShapeB.OwnerId, "Viewer shape owner identity regression.");
-Assert(!new OcctShape(3).IsBound, "Legacy viewer shape must remain unbound.");
-Assert(new OcctObject(4, OcctObjectKind.Shape, 2001).IsBound, "Generic object owner binding regression.");
-Assert(new OcctText(5, 2001).IsBound, "Text owner binding regression.");
-Assert(new OcctDimension(6, 2001).IsBound, "Dimension owner binding regression.");
+Assert(!default(OcctShape).IsValid, "Default viewer shape must be invalid.");
+Assert(new OcctObject(4, OcctObjectKind.Shape, 2001).IsValid, "Generic object binding regression.");
+Assert(new OcctText(5, 2001).IsValid, "Text binding regression.");
+Assert(new OcctDimension(6, 2001).IsValid, "Dimension binding regression.");
 
 var transform = OcctTransform3d.Translation(1, 2, 3);
 Assert(transform.IsFinite, "Transform finite-state regression.");
@@ -76,13 +79,28 @@ Assert(!invalidLocation.IsFinite, "Invalid model location finite-state regressio
 var nativeHit = new NativeModelRayHit
 {
     FaceId = 11,
-    NativeState = (int)OcctModelState.On,
+    State = (int)OcctModelState.On,
     RayParameter = 2.5
 };
 var managedHit = nativeHit.ToManaged(1001);
-Assert(managedHit.Face.IsBound, "Ray-hit face must inherit modeling-session ownership.");
+Assert(managedHit.Face.IsValid, "Ray-hit face validity regression.");
 Assert(managedHit.Face.OwnerId == 1001, "Ray-hit owner propagation regression.");
 Assert(managedHit.State == OcctModelState.On, "Ray-hit state mapping regression.");
+
+var orientedBounds = new OcctOrientedBounds
+{
+    Center = OcctPoint3d.Origin,
+    XDirection = OcctVector3d.UnitX,
+    YDirection = OcctVector3d.UnitY,
+    ZDirection = OcctVector3d.UnitZ,
+    HalfSizeX = 1,
+    HalfSizeY = 2,
+    HalfSizeZ = 3
+};
+Assert(orientedBounds.IsFinite, "Oriented bounds finite-state regression.");
+Assert(orientedBounds.SizeX == 2 && orientedBounds.SizeY == 4 && orientedBounds.SizeZ == 6, "Oriented bounds size regression.");
+Assert(orientedBounds.Volume == 48, "Oriented bounds volume regression.");
+Assert(Enum.IsDefined(OcctJoinType.Intersection), "Join-type enum regression.");
 
 Expect<ArgumentOutOfRangeException>(() => OcctGuard.Positive(0, "value"), "Positive guard accepted zero.");
 Expect<ArgumentOutOfRangeException>(() => OcctGuard.UnitInterval(1.1, "value"), "Unit interval guard accepted value above one.");
@@ -99,4 +117,4 @@ Expect<DirectoryNotFoundException>(
     () => OcctRuntime.Configure(new OcctRuntimeOptions { NativeBridgeDirectory = impossibleDirectory }),
     "Runtime configuration accepted a missing explicit native directory.");
 
-Console.WriteLine("Managed bridge regression tests passed.");
+Console.WriteLine("Managed Bridge 2.6 regression tests passed.");
