@@ -84,22 +84,21 @@ public sealed partial class OcctEngine : IDisposable
     {
         ArgumentNullException.ThrowIfNull(value);
         EnsureNotDisposed();
-        if (IsForeignObject(value))
-            throw new ArgumentException("Object belongs to a different OcctEngine.", nameof(value));
+        if (GetOwnerId(value) != _ownerId)
+            throw new ArgumentException("Object does not belong to this OcctEngine.", nameof(value));
         if (value.Id <= 0 || NativeMethods.occt_object_exists(_handle, value.Id) == 0)
-            throw new ArgumentException("Object does not belong to this OCCT engine.", nameof(value));
+            throw new ArgumentException("Object no longer exists in this OcctEngine.", nameof(value));
     }
 
     private void EnsureShape(OcctShape shape)
     {
         EnsureNotDisposed();
-        if (shape.OwnerId != 0 && shape.OwnerId != _ownerId)
-            throw new ArgumentException("Shape belongs to a different OcctEngine.", nameof(shape));
-        if (!shape.IsValid ||
-            NativeMethods.occt_object_exists(_handle, shape.Id) == 0 ||
+        if (!shape.IsValid || shape.OwnerId != _ownerId)
+            throw new ArgumentException("Shape does not belong to this OcctEngine.", nameof(shape));
+        if (NativeMethods.occt_object_exists(_handle, shape.Id) == 0 ||
             NativeMethods.occt_object_kind(_handle, shape.Id) != (int)OcctObjectKind.Shape)
         {
-            throw new ArgumentException("Shape does not belong to this OCCT engine.", nameof(shape));
+            throw new ArgumentException("Shape no longer exists in this OcctEngine.", nameof(shape));
         }
     }
 
@@ -107,20 +106,14 @@ public sealed partial class OcctEngine : IDisposable
     {
         EnsureObject(text);
         if (NativeMethods.occt_object_kind(_handle, text.Id) != (int)OcctObjectKind.Text)
-            throw new ArgumentException("Object is not a text object in this OCCT engine.", nameof(text));
+            throw new ArgumentException("Object is not a text object in this OcctEngine.", nameof(text));
     }
 
     private void EnsureDimension(OcctDimension dimension)
     {
         EnsureObject(dimension);
         if (NativeMethods.occt_object_kind(_handle, dimension.Id) != (int)OcctObjectKind.Dimension)
-            throw new ArgumentException("Object is not a dimension object in this OCCT engine.", nameof(dimension));
-    }
-
-    private bool IsForeignObject(IOcctObject value)
-    {
-        var ownerId = GetOwnerId(value);
-        return ownerId != 0 && ownerId != _ownerId;
+            throw new ArgumentException("Object is not a dimension object in this OcctEngine.", nameof(dimension));
     }
 
     private static long GetOwnerId(IOcctObject value) => value switch
@@ -129,7 +122,7 @@ public sealed partial class OcctEngine : IDisposable
         OcctShape item => item.OwnerId,
         OcctText item => item.OwnerId,
         OcctDimension item => item.OwnerId,
-        _ => 0
+        _ => long.MinValue
     };
 
     private long[] GetObjectIds(IEnumerable<IOcctObject> values, string parameterName)

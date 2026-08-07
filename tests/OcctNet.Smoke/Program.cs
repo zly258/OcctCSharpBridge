@@ -14,16 +14,25 @@ var box = model.MakeBox(100, 80, 60);
 var cylinder = model.MakeCylinder(new OcctPoint3d(50, 40, -10), OcctVector3d.UnitZ, 12, 80);
 var cut = model.Cut(box, cylinder);
 
-if (!cut.Succeeded || !model.IsValid(cut.Shape))
+if (!cut.Succeeded || !model.IsShapeValid(cut.Shape))
     throw new InvalidOperationException("Boolean result is invalid.");
+
+var bounds = model.GetShapeOrientedBounds(cut.Shape, optimal: true);
+if (!bounds.IsFinite || bounds.SizeX <= 0 || bounds.SizeY <= 0 || bounds.SizeZ <= 0)
+    throw new InvalidOperationException("Oriented bounding box is invalid.");
 
 var faceCount = model.GetTopologyCount(cut.Shape, OcctShapeType.Face);
 if (faceCount <= 0)
     throw new InvalidOperationException("Boolean result contains no faces.");
 
-model.Mesh(cut.Shape);
+model.Triangulate(cut.Shape);
 var firstFace = model.GetSubshapeAt(cut.Shape, OcctShapeType.Face, 0);
+var firstFaceAgain = model.GetSubshapeAt(cut.Shape, OcctShapeType.Face, 0);
+if (!model.IsSameShape(firstFace, firstFaceAgain) || !model.IsPartnerShape(firstFace, firstFaceAgain))
+    throw new InvalidOperationException("Shape identity checks failed.");
+
 var faceMesh = model.GetFaceMesh(firstFace);
+var shapeMesh = model.GetShapeMesh(cut.Shape);
 var faceUv = model.GetFaceUvBounds(firstFace);
 var faceU = (faceUv.UMin + faceUv.UMax) * 0.5;
 var faceV = (faceUv.VMin + faceUv.VMax) * 0.5;
@@ -35,6 +44,8 @@ if (!faceDifferential.HasNormal || !faceCurvature.HasNormal)
 _ = facePeriodicity;
 if (faceMesh.Nodes.Count == 0 || faceMesh.Triangles.Count == 0)
     throw new InvalidOperationException("Face triangulation is empty.");
+if (shapeMesh.Nodes.Count == 0 || shapeMesh.Triangles.Count == 0)
+    throw new InvalidOperationException("Whole-shape triangulation is empty.");
 
 var rayHits = model.IntersectRay(
     cut.Shape,
@@ -52,11 +63,33 @@ if (!circleCurvature.HasTangent || Math.Abs(circleCurvature.Curvature - 0.1) > 1
     throw new InvalidOperationException("Circle differential geometry is invalid.");
 if (circleDifferential.FirstDerivative.X == 0 && circleDifferential.FirstDerivative.Y == 0)
     throw new InvalidOperationException("Circle first derivative is invalid.");
+
+var circleSpan = circleRange.LastParameter - circleRange.FirstParameter;
+var trimmedCircle = model.TrimEdge(
+    lowerCircle,
+    circleRange.FirstParameter + circleSpan * 0.1,
+    circleRange.FirstParameter + circleSpan * 0.6);
+if (!model.IsShapeValid(trimmedCircle))
+    throw new InvalidOperationException("Trimmed edge is invalid.");
+
+var outerWire = model.MakeRectangleWire(40, 30);
+var innerWire = model.MakeRectangleWire(
+    10,
+    8,
+    new OcctPoint3d(12, 10, 0));
+var faceWithHole = model.MakePlanarFace(outerWire, new[] { innerWire });
+if (!model.IsShapeValid(faceWithHole) || model.GetInnerWires(faceWithHole).Count != 1)
+    throw new InvalidOperationException("Planar face with hole is invalid.");
+
+var offsetWire = model.OffsetWire(outerWire, 2.0);
+if (!model.IsShapeValid(offsetWire))
+    throw new InvalidOperationException("Planar wire offset is invalid.");
+
 var upperCircle = model.MakeCircle(new OcctPoint3d(0, 0, 25), OcctVector3d.UnitZ, 16);
 var lowerWire = model.MakeWire(new[] { lowerCircle });
 var upperWire = model.MakeWire(new[] { upperCircle });
 var loft = model.Loft(new[] { lowerWire, upperWire });
-if (!model.IsValid(loft.Shape))
+if (!model.IsShapeValid(loft.Shape))
     throw new InvalidOperationException("Loft result is invalid.");
 
 var brepPath = Path.Combine(Path.GetTempPath(), $"occt-model-{Guid.NewGuid():N}.brep");
@@ -67,7 +100,7 @@ try
         throw new InvalidOperationException("BREP export produced no file content.");
 
     var imported = model.ImportBrep(brepPath);
-    if (!model.IsValid(imported))
+    if (!model.IsShapeValid(imported))
         throw new InvalidOperationException("Headless BREP round trip failed.");
 }
 finally
@@ -83,7 +116,7 @@ try
         throw new InvalidOperationException("STEP export produced no file content.");
 
     var imported = model.ImportStep(stepPath);
-    if (!model.IsValid(imported))
+    if (!model.IsShapeValid(imported))
         throw new InvalidOperationException("Headless STEP round trip failed.");
 }
 finally
@@ -93,15 +126,17 @@ finally
 
 var healed = model.FixShape(cut.Shape);
 var unified = model.UnifySameDomain(healed.Shape);
-if (!model.IsValid(unified.Shape))
+if (!model.IsShapeValid(unified.Shape))
     throw new InvalidOperationException("Healed and unified shape is invalid.");
 
 Console.WriteLine($"OCCT {OcctEngine.OcctVersion}");
+Console.WriteLine($"Bridge {OcctBridgeInfo.ManagedVersion} / ABI {OcctBridgeInfo.ExpectedAbiVersion}");
 Console.WriteLine($"Modeling capabilities: {OcctModelingSession.Capabilities}");
 Console.WriteLine($"Shapes: {model.ShapeCount}");
 Console.WriteLine($"Faces: {faceCount}");
-Console.WriteLine($"Mesh: {faceMesh.Nodes.Count} nodes, {faceMesh.Triangles.Count} triangles");
+Console.WriteLine($"Face mesh: {faceMesh.Nodes.Count} nodes, {faceMesh.Triangles.Count} triangles");
+Console.WriteLine($"Shape mesh: {shapeMesh.Nodes.Count} nodes, {shapeMesh.Triangles.Count} triangles");
 Console.WriteLine($"Ray hits: {rayHits.Count}");
+Console.WriteLine($"OBB: {bounds.SizeX:G4} x {bounds.SizeY:G4} x {bounds.SizeZ:G4}");
 Console.WriteLine($"Loft operation: {loft.OperationId}");
-Console.WriteLine("BREP and STEP exchange round trips passed.");
-Console.WriteLine("Modeling smoke tests passed.");
+Console.WriteLine("Bridge 2.6 native smoke tests passed.");

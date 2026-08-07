@@ -145,10 +145,10 @@ public sealed partial class OcctModelingSession
             NativeHandle, actualOrigin, actualXDirection, actualNormal, width, height));
     }
 
-    public OcctModelShape MakeFace(OcctModelShape wire, bool onlyPlane = true)
+    public OcctModelShape MakeFace(OcctModelShape wire)
     {
         EnsureShape(wire);
-        return CheckShape(ModelNativeMethods.occt_model_make_face_from_wire(_handle, wire.Id, onlyPlane ? 1 : 0));
+        return CheckShape(ModelNativeMethods.occt_model_make_face_from_wire(_handle, wire.Id, 0));
     }
 
     public OcctModelShape MakeBox(double dx, double dy, double dz, double x = 0, double y = 0, double z = 0)
@@ -196,6 +196,8 @@ public sealed partial class OcctModelingSession
         OcctGuard.NonZero(axis, nameof(axis));
         OcctGuard.Positive(majorRadius, nameof(majorRadius));
         OcctGuard.Positive(minorRadius, nameof(minorRadius));
+        if (minorRadius >= majorRadius)
+            throw new ArgumentException("minorRadius must be less than majorRadius.", nameof(minorRadius));
         return CheckShape(ModelNativeMethods.occt_model_make_torus(NativeHandle, center, axis, majorRadius, minorRadius));
     }
 
