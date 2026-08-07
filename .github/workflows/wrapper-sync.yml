@@ -37,6 +37,9 @@ jobs:
         shell: pwsh
         run: |
           $paths = @(
+            "bridge-contract.json",
+            "global.json",
+            "Directory.Build.props",
             "src/OcctNative",
             "src/OcctNet",
             "src/OcctNet.WinForms",
