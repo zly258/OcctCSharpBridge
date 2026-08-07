@@ -96,20 +96,23 @@ endif()
 target_include_directories(OcctNative SYSTEM PRIVATE "${OCCT_INCLUDE_DIR}")
 target_link_directories(OcctNative PRIVATE "${OCCT_LIB_DIR}")
 
-set(occt_candidate_libraries
+# These modules are part of the public bridge capability set, not opportunistic options.
+# Failing during CMake configuration is preferable to building against a partial SDK and
+# discovering a missing TK*.dll only after the package is copied to another workstation.
+set(occt_required_libraries
     TKernel TKMath TKG2d TKG3d TKGeomBase TKBRep TKGeomAlgo TKTopAlgo
     TKPrim TKBO TKBool TKFillet TKOffset TKMesh TKShHealing
     TKService TKV3d TKOpenGl TKXSBase TKDE TKDESTEP TKDEIGES TKDESTL
     TKSTEPBase TKSTEPAttr TKSTEP209 TKSTEP TKIGES)
 
-set(occt_libraries "")
-foreach(library_name IN LISTS occt_candidate_libraries)
-    if(EXISTS "${OCCT_LIB_DIR}/${library_name}.lib")
-        list(APPEND occt_libraries "${library_name}")
+foreach(library_name IN LISTS occt_required_libraries)
+    if(NOT EXISTS "${OCCT_LIB_DIR}/${library_name}.lib")
+        message(FATAL_ERROR "Required OCCT import library was not found: ${OCCT_LIB_DIR}/${library_name}.lib")
+    endif()
+    if(NOT EXISTS "${OCCT_BIN_DIR}/${library_name}.dll")
+        message(FATAL_ERROR "Required OCCT runtime module was not found: ${OCCT_BIN_DIR}/${library_name}.dll")
     endif()
 endforeach()
-
-list(REMOVE_DUPLICATES occt_libraries)
 
 message(STATUS "Bridge contract: ${BRIDGE_VERSION} (ABI ${BRIDGE_ABI_VERSION})")
 message(STATUS "OCCT version: ${REQUIRED_OCCT_VERSION} (required exactly)")
@@ -117,9 +120,9 @@ message(STATUS "OCCT CASROOT: ${OCCT_CASROOT}")
 message(STATUS "OCCT include: ${OCCT_INCLUDE_DIR}")
 message(STATUS "OCCT lib: ${OCCT_LIB_DIR}")
 message(STATUS "OCCT bin: ${OCCT_BIN_DIR}")
-message(STATUS "OCCT libraries: ${occt_libraries}")
+message(STATUS "Required OCCT libraries: ${occt_required_libraries}")
 
-target_link_libraries(OcctNative PRIVATE ${occt_libraries} opengl32 user32 gdi32)
+target_link_libraries(OcctNative PRIVATE ${occt_required_libraries} opengl32 user32 gdi32)
 
 set_target_properties(OcctNative PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
