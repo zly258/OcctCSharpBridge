@@ -63,10 +63,18 @@ jobs:
 
           text_files = required_files[:-1]
           content = "\n".join(path.read_text(encoding="utf-8-sig") for path in text_files)
-          obsolete = ["tree/script", "git switch script", "OcctScript", "branchScript"]
+          obsolete = [
+              "tree/script",
+              "git switch script",
+              "OcctScript",
+              "branchScript",
+              "2.5.0",
+              "ABI 2",
+              "ABI=2",
+          ]
           found = [token for token in obsolete if token in content]
           if found:
-              raise SystemExit(f"Obsolete script branch references found: {', '.join(found)}")
+              raise SystemExit(f"Obsolete website metadata/references found: {', '.join(found)}")
 
           index = Path("index.html").read_text(encoding="utf-8-sig")
           app = Path("app.js").read_text(encoding="utf-8-sig")
@@ -86,6 +94,10 @@ jobs:
               if not re.search(pattern, index):
                   raise SystemExit(f"Website statistic {key} is stale; expected {value} from bridge-contract.json")
 
+          abi_version = str(contract["nativeAbiVersion"])
+          if f"ABI {abi_version}" not in content and f"ABI={abi_version}" not in content:
+              raise SystemExit(f"Website does not contain contracted native ABI {abi_version}")
+
           occt_version = str(contract["occtVersion"])
           if occt_version not in index:
               raise SystemExit(f"Website does not contain contracted OCCT version {occt_version}")
@@ -98,4 +110,7 @@ jobs:
           if "zhangly1403" + "@" + "qq.com" in content:
               raise SystemExit("Legacy contact email remains on website branch")
 
-          print(f"Validated {len(keys)} bilingual keys against Bridge {contract['bridgeVersion']} / OCCT {occt_version}, including contact metadata.")
+          print(
+              f"Validated {len(keys)} bilingual keys against Bridge {contract['bridgeVersion']} / "
+              f"ABI {abi_version} / OCCT {occt_version}, including contact metadata."
+          )
