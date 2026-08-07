@@ -1,6 +1,6 @@
 ﻿param(
     [Parameter(Position = 0, Mandatory = $true)]
-    [ValidateSet("winform", "wpf")]
+    [ValidateSet("winform", "wpf", "avalonia")]
     [string]$Target,
 
     [Parameter(Position = 1)]
@@ -70,6 +70,7 @@ if (-not (Test-Path $OcctBinDir -PathType Container)) {
 $apps = @{
     winform = "src\CadWinForms\bin\x64\$Configuration\net8.0-windows\CAD-Winform.exe"
     wpf = "src\CadWpf\bin\x64\$Configuration\net8.0-windows\CAD-WPF.exe"
+    avalonia = "src\CadAvalonia\bin\x64\$Configuration\net8.0-windows\CAD-Avalonia.exe"
 }
 
 $executable = Join-Path $RepoRoot $apps[$Target]
