@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   cleanup:
-    if: github.event.head_commit.message == 'Add temporary merged-branch cleanup workflow'
     runs-on: ubuntu-latest
     steps:
       - name: Delete merged feature branches
@@ -19,9 +18,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          for branch in feature/object-integration-p0 feature/demo-usability-localization; do
-            if git ls-remote --exit-code --heads "$remote" "$branch" >/dev/null 2>&1; then
-              git push "$remote" --delete "$branch"
+          for ref in \
+            'heads/feature/object-integration-p0' \
+            'heads/feature/demo-usability-localization'; do
+            encoded_ref="${ref//\//%2F}"
+            status=$(curl -sS -o /tmp/delete-ref-response.txt -w '%{http_code}' \
+              -X DELETE \
+              -H 'Accept: application/vnd.github+json' \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H 'X-GitHub-Api-Version: 2026-03-10' \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/refs/${encoded_ref}")
+            if [[ "$status" != '204' && "$status" != '422' ]]; then
+              cat /tmp/delete-ref-response.txt
+              echo "Unexpected HTTP status while deleting ${ref}: ${status}" >&2
+              exit 1
             fi
           done
