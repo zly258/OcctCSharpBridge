@@ -18,6 +18,10 @@ foreach ($token in @(
     'package-contract.json',
     'native-dependencies.txt',
     'Get-VisualCppRuntimeFiles',
+    'Get-RuntimeCandidateVersion',
+    'Test-RuntimeCandidate $file',
+    '(?:onecore|uwp|store|debug_nonredist)',
+    '$source = Resolve-RuntimeDependency $name $candidateIndex',
     'msvcp140_atomic_wait.dll',
     'vcruntime140_threads.dll',
     'throw "Required OCCT resource directory was not found: $name"'
@@ -30,4 +34,8 @@ if ($text -match 'return Test-Path \(Join-Path \(\[Environment\]::SystemDirector
     throw "VC runtime dependencies may still be incorrectly classified as system DLLs."
 }
 
-Write-Host "[package] Self-contained .NET, OCCT, third-party, VC runtime, resources and closure validation rules passed." -ForegroundColor Green
+if ($text -match 'Copy-RuntimeDll \(Get-Item \$candidate\) "Visual C\+\+ runtime"') {
+    throw "Visual C++ runtime copying must use the same deterministic dependency resolver as OCCT dependencies."
+}
+
+Write-Host "[package] Self-contained .NET, OCCT, third-party, desktop VC runtime, resources and closure validation rules passed." -ForegroundColor Green

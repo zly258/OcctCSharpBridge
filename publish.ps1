@@ -270,10 +270,42 @@ function Test-RuntimeCandidate {
     if ($path -match "[\\/](?:lib-static(?:-ucrt)?|static(?:-ucrt)?)[\\/]") {
         return $false
     }
-    if ($path -match "[\\/](?:x86|win32)[\\/]") {
+    if ($path -match "[\\/](?:x86|win32|arm|arm64)[\\/]") {
+        return $false
+    }
+    if ($path -match "[\\/](?:onecore|uwp|store|debug_nonredist)[\\/]") {
         return $false
     }
     return $true
+}
+
+function Get-RuntimeCandidateVersion {
+    param([Parameter(Mandatory = $true)][System.IO.FileInfo]$File)
+
+    $pathMatch = [regex]::Match(
+        $File.FullName,
+        "(?i)[\\/]VC[\\/]Redist[\\/]MSVC[\\/](?<version>[0-9]+(?:\\.[0-9]+){1,3})[\\/]")
+    if ($pathMatch.Success) {
+        try {
+            return [version]$pathMatch.Groups["version"].Value
+        }
+        catch {
+        }
+    }
+
+    $fileVersion = $File.VersionInfo.FileVersion
+    if (-not [string]::IsNullOrWhiteSpace($fileVersion)) {
+        $versionMatch = [regex]::Match($fileVersion, "[0-9]+(?:\\.[0-9]+){1,3}")
+        if ($versionMatch.Success) {
+            try {
+                return [version]$versionMatch.Value
+            }
+            catch {
+            }
+        }
+    }
+
+    return [version]"0.0"
 }
 
 function Get-RuntimeCandidateScore {
@@ -283,6 +315,9 @@ function Get-RuntimeCandidateScore {
     $score = 0
     if ([string]::Equals($File.DirectoryName, $OcctBinDir, [StringComparison]::OrdinalIgnoreCase)) {
         $score += 100000
+    }
+    if ($path -match "[\\/]vc[\\/]redist[\\/]msvc[\\/][^\\/]+[\\/]x64[\\/]microsoft\\.vc[0-9]+\\.crt[\\/]") {
+        $score += 20000
     }
     if ($path -match "[\\/](?:bin|bin64)[\\/]") { $score += 5000 }
     if ($path -match "[\\/](?:vc2022|vc143|vc14\.4)[\\/]") { $score += 4000 }
@@ -314,7 +349,9 @@ function Get-VisualCppRuntimeFiles {
         foreach ($match in $matches) {
             if ([string]::IsNullOrWhiteSpace($match) -or -not (Test-Path $match -PathType Leaf)) { continue }
             $file = Get-Item -LiteralPath $match
-            if ((Test-VisualCppRuntimeDependency $file.Name) -and $seen.Add($file.FullName)) {
+            if ((Test-RuntimeCandidate $file) -and
+                (Test-VisualCppRuntimeDependency $file.Name) -and
+                $seen.Add($file.FullName)) {
                 $result.Add($file)
             }
         }
@@ -374,19 +411,28 @@ function Resolve-RuntimeDependency {
         return $null
     }
 
-    $ranked = @($CandidateIndex[$key] | ForEach-Object {
+    $ranked = @($CandidateIndex[$key] | Where-Object {
+        Test-RuntimeCandidate $_
+    } | ForEach-Object {
         [pscustomobject]@{
             File = $_
             Score = Get-RuntimeCandidateScore $_
+            Version = Get-RuntimeCandidateVersion $_
         }
-    } | Sort-Object -Property @{ Expression = "Score"; Descending = $true }, @{ Expression = { $_.File.FullName }; Descending = $false })
+    } | Sort-Object -Property `
+        @{ Expression = "Score"; Descending = $true }, `
+        @{ Expression = "Version"; Descending = $true }, `
+        @{ Expression = { $_.File.FullName }; Descending = $false })
 
     if ($ranked.Count -eq 0) {
         return $null
     }
 
     $topScore = $ranked[0].Score
-    $top = @($ranked | Where-Object { $_.Score -eq $topScore })
+    $topVersion = $ranked[0].Version
+    $top = @($ranked | Where-Object {
+        $_.Score -eq $topScore -and $_.Version -eq $topVersion
+    })
     if ($top.Count -gt 1) {
         $hashGroups = @($top | Group-Object { Get-FileHashValue $_.File.FullName })
         if ($hashGroups.Count -gt 1) {
@@ -460,10 +506,11 @@ function Copy-VisualCppRuntime {
         "vcruntime140_threads.dll"
     )
 
+    $candidateIndex = New-RuntimeCandidateIndex
     foreach ($name in $names) {
-        $candidate = Join-Path ([Environment]::SystemDirectory) $name
-        if (Test-Path $candidate -PathType Leaf) {
-            Copy-RuntimeDll (Get-Item $candidate) "Visual C++ runtime"
+        $source = Resolve-RuntimeDependency $name $candidateIndex
+        if ($null -ne $source) {
+            Copy-RuntimeDll $source "Visual C++ runtime"
         }
     }
 }
