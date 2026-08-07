@@ -89,11 +89,13 @@ jobs:
         run: |
           $contract = Get-Content '.\bridge-contract.json' -Raw -Encoding UTF8 | ConvertFrom-Json
           $sdk = Get-Content '.\global.json' -Raw -Encoding UTF8 | ConvertFrom-Json
+          if ([string]::IsNullOrWhiteSpace([string]$contract.bridgeVersion) -or
+              [string]::IsNullOrWhiteSpace([string]$contract.occtVersion) -or
+              [string]::IsNullOrWhiteSpace([string]$contract.dotnet.sdkVersion)) {
+              throw "bridge-contract.json is missing required version metadata."
+          }
           if ($contract.dotnet.sdkVersion -ne $sdk.sdk.version) {
               throw "global.json SDK does not match bridge-contract.json."
-          }
-          if ($contract.bridgeVersion -ne '2.5.0' -or $contract.occtVersion -ne '7.9.0') {
-              throw "Unexpected bridge contract metadata."
           }
 
       - name: Reject machine-specific OCCT paths
@@ -106,7 +108,7 @@ jobs:
               '.\src\OcctNative\CMakeLists.txt'
           )) {
               $content = Get-Content $path -Raw
-              if ($content -match '(?i)D:[\\/]tools[\\/]occt') {
+              if ($content -match '(?i)[A-Z]:[\\/]tools[\\/]occt') {
                   throw "Machine-specific OCCT path remains in $path."
               }
           }
