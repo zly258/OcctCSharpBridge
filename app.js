@@ -47,6 +47,7 @@
       demoLead: 'The demo branch validates CAD interaction, localization and packaging across WinForms, WPF and Avalonia while main remains focused and reusable.',
       winformsCaption: 'Classic CAD desktop layout with a native HWND viewport',
       wpfCaption: 'WPF application built around OcctWpfViewport',
+      avaloniaCaption: 'Full CAD demo using the native Avalonia HWND host',
       branchesEyebrow: 'BRANCHES',
       branchesTitle: 'Clear responsibilities across branches',
       branchesLead: 'Keep reusable bridge code separate from demos, scripting experiments and the project website.',
@@ -114,6 +115,7 @@
       demoLead: 'demo 分支验证 WinForms、WPF 与 Avalonia 的 CAD 交互、本地化和构建发布；main 继续保持纯净可复用。',
       winformsCaption: '经典 CAD 桌面布局与原生 HWND 视口',
       wpfCaption: '基于 OcctWpfViewport 的 WPF 应用',
+      avaloniaCaption: '使用 Avalonia 原生 HWND 宿主的完整 CAD Demo',
       branchesEyebrow: 'BRANCHES',
       branchesTitle: '不同分支保持清晰职责',
       branchesLead: '将可复用桥接核心、Demo、参数化脚本实验和项目网站分别维护。',
@@ -141,11 +143,41 @@
   const buildCode = document.getElementById('buildCode');
   const previews = [
     document.getElementById('winformsPreview'),
-    document.getElementById('wpfPreview')
+    document.getElementById('wpfPreview'),
+    document.getElementById('avaloniaPreview')
   ].filter(Boolean);
 
   const storageKey = 'occt-website-language-v2';
   let language = localStorage.getItem(storageKey) === 'zh' ? 'zh' : 'en';
+
+  function placeholderSource(image) {
+    const host = image.closest('figure')?.querySelector('figcaption strong')?.textContent?.trim() || 'Demo';
+    const pending = language === 'zh' ? '预览图待上传' : 'Preview pending';
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000"><rect width="1600" height="1000" fill="#eef2f7"/><rect x="40" y="40" width="1520" height="920" rx="24" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/><text x="800" y="470" text-anchor="middle" font-family="Segoe UI,Arial,sans-serif" font-size="46" font-weight="600" fill="#334155">${host}</text><text x="800" y="535" text-anchor="middle" font-family="Segoe UI,Arial,sans-serif" font-size="24" fill="#64748b">${pending}</text></svg>`;
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  }
+
+  function setPreviewLanguage(image) {
+    image.dataset.fallbackUsed = 'false';
+    image.dataset.placeholderUsed = 'false';
+    image.alt = language === 'zh' ? (image.dataset.altZh || image.alt) : (image.dataset.altEn || image.alt);
+    const source = language === 'zh' ? image.dataset.srcZh : image.dataset.srcEn;
+    if (source) image.src = source;
+  }
+
+  previews.forEach((image) => {
+    image.addEventListener('error', () => {
+      if (image.dataset.placeholderUsed === 'true') return;
+      const fallback = language === 'zh' ? image.dataset.fallbackZh : image.dataset.fallbackEn;
+      if (fallback && image.dataset.fallbackUsed !== 'true') {
+        image.dataset.fallbackUsed = 'true';
+        image.src = fallback;
+        return;
+      }
+      image.dataset.placeholderUsed = 'true';
+      image.src = placeholderSource(image);
+    });
+  });
 
   function applyLanguage(nextLanguage) {
     language = nextLanguage === 'zh' ? 'zh' : 'en';
@@ -158,10 +190,7 @@
       if (dictionary[key]) element.textContent = dictionary[key];
     });
 
-    previews.forEach((image) => {
-      const source = language === 'zh' ? image.dataset.srcZh : image.dataset.srcEn;
-      if (source && image.src !== source) image.src = source;
-    });
+    previews.forEach(setPreviewLanguage);
 
     languageToggle.textContent = language === 'zh' ? 'EN' : '中文';
     languageToggle.setAttribute('aria-label', language === 'zh' ? 'Switch to English' : 'Switch to Chinese');
