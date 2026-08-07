@@ -1,0 +1,44 @@
+name: Fix Avalonia Main Aliases
+
+on:
+  push:
+    branches:
+      - feature/avalonia-wpf-parity
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message == 'Add temporary Avalonia main alias workflow'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/avalonia-wpf-parity
+          fetch-depth: 0
+      - name: Patch aliases
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('src/CadAvalonia/MainWindow.cs')
+          text = path.read_text(encoding='utf-8-sig')
+          anchor = 'using Button = Avalonia.Controls.Button;\n'
+          aliases = '''using CheckBox = Avalonia.Controls.CheckBox;
+          using ContextMenu = Avalonia.Controls.ContextMenu;
+          using MenuItem = Avalonia.Controls.MenuItem;
+          '''
+          if aliases.strip() not in text:
+              text = text.replace(anchor, anchor + aliases)
+          path.write_text(text, encoding='utf-8-sig')
+      - name: Remove temporary workflow
+        shell: bash
+        run: rm .github/workflows/fix-avalonia-main-aliases.yml
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name "zly258"
+          git config user.email "zhangly1403@qq.com"
+          git add -A
+          git commit -m "Complete Avalonia control aliases"
+          git push origin HEAD:feature/avalonia-wpf-parity
