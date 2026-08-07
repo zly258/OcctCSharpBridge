@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   refresh:
-    if: github.event.head_commit.message == 'Refresh demo ViewCube API inventory'
+    if: github.event.head_commit.message == 'Refresh demo ViewCube API inventory v2'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,14 +20,15 @@ jobs:
       - name: Refresh inventory
         shell: pwsh
         run: |
+          $newLine = [Environment]::NewLine
           foreach ($path in @('docs/API_COVERAGE.md', 'docs/API_COVERAGE.zh-CN.md')) {
             $text = [System.IO.File]::ReadAllText($path)
             $text = $text.Replace('Native exports: `327`', 'Native exports: `328`')
             $text = $text.Replace('Managed P/Invoke declarations: `327`', 'Managed P/Invoke declarations: `328`')
             $text = $text.Replace('Public .NET types: `75`', 'Public .NET types: `76`')
             $text = $text.Replace('OcctNative.h — Viewer and interaction (78)', 'OcctNative.h — Viewer and interaction (79)')
-            $text = $text.Replace('- `occt_set_view_cube_visible`', "- `occt_set_view_cube_visible`n- `occt_set_view_cube_language`")
-            $text = $text.Replace('- `OcctViewOrientation`', "- `OcctViewCubeLanguage`n- `OcctViewOrientation`")
+            $text = $text.Replace('- `occt_set_view_cube_visible`', '- `occt_set_view_cube_visible`' + $newLine + '- `occt_set_view_cube_language`')
+            $text = $text.Replace('- `OcctViewOrientation`', '- `OcctViewCubeLanguage`' + $newLine + '- `OcctViewOrientation`')
             [System.IO.File]::WriteAllText($path, $text, [System.Text.UTF8Encoding]::new($true))
           }
           $versionContract = 'tests/check-version-contract.ps1'
