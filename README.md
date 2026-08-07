@@ -133,3 +133,7 @@ Published packages include the selected application, matching managed wrapper/ho
 ## License
 
 The project uses the [PolyForm Noncommercial License 1.0.0](LICENSE). Open CASCADE Technology and third-party components remain subject to their own licenses.
+
+## Contact
+
+Liaoyuan Zhang · [zhangly1403@gmail.com](mailto:zhangly1403@gmail.com)
