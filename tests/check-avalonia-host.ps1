@@ -12,11 +12,12 @@ $demoManifest = Join-Path $RepositoryRoot "src\CadAvalonia\app.manifest"
 $demoWindow = Join-Path $RepositoryRoot "src\CadAvalonia\MainWindow.cs"
 $demoParameters = Join-Path $RepositoryRoot "src\CadAvalonia\ParameterDialog.cs"
 $demoProgram = Join-Path $RepositoryRoot "src\CadAvalonia\Program.cs"
+$wpfWindow = Join-Path $RepositoryRoot "src\CadWpf\MainWindow.xaml.cs"
 $buildScript = Join-Path $RepositoryRoot "build.ps1"
 
-foreach ($path in @($hostProject, $hostControl, $demoProject, $demoManifest, $demoWindow, $demoParameters, $demoProgram, $buildScript)) {
+foreach ($path in @($hostProject, $hostControl, $demoProject, $demoManifest, $demoWindow, $demoParameters, $demoProgram, $wpfWindow, $buildScript)) {
     if (-not (Test-Path $path -PathType Leaf)) {
-        throw "Required Avalonia host file was not found: $path"
+        throw "Required Avalonia host/parity file was not found: $path"
     }
 }
 
@@ -123,6 +124,17 @@ foreach ($token in @(
         throw "Avalonia CAD parity contract is missing: $token"
     }
 }
+
+# Keep every CadCommandId exposed by the WPF reference UI available in the Avalonia UI.
+$wpfText = [System.IO.File]::ReadAllText($wpfWindow)
+$commandPattern = 'CadCommandId\.([A-Za-z0-9_]+)'
+$wpfCommands = @([regex]::Matches($wpfText, $commandPattern) | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+$avaloniaCommands = @([regex]::Matches($demoText, $commandPattern) | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+$missingCommands = @($wpfCommands | Where-Object { $_ -notin $avaloniaCommands })
+if ($missingCommands.Count -gt 0) {
+    throw "Avalonia CAD demo is missing WPF commands: $($missingCommands -join ', ')"
+}
+Write-Host "[avalonia-host] WPF command parity: $($wpfCommands.Count) command IDs covered." -ForegroundColor Green
 
 $parameterText = [System.IO.File]::ReadAllText($demoParameters)
 foreach ($token in @('CadParameterDefinition', 'GetValuesAsync', 'CadParameterKind.Boolean', 'CadParameterKind.Choice')) {
