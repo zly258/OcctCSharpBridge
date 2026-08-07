@@ -52,8 +52,9 @@ public sealed partial class OcctEngine
     {
         ArgumentNullException.ThrowIfNull(value);
         EnsureNotDisposed();
-        if (value.Id <= 0 || IsForeignObject(value)) return false;
-        return NativeMethods.occt_object_exists(_handle, value.Id) != 0;
+        return value.Id > 0 &&
+               GetOwnerId(value) == _ownerId &&
+               NativeMethods.occt_object_exists(_handle, value.Id) != 0;
     }
 
     public bool Owns(IOcctObject value)
@@ -62,7 +63,6 @@ public sealed partial class OcctEngine
         return GetOwnerId(value) == _ownerId;
     }
 
-    /// <summary>Resolves a persisted native object ID into an engine-bound managed handle.</summary>
     public IOcctObject GetObject(long id)
     {
         EnsureNotDisposed();
@@ -84,7 +84,6 @@ public sealed partial class OcctEngine
         return false;
     }
 
-    /// <summary>Resolves a persisted shape ID into an engine-bound shape handle.</summary>
     public OcctShape GetShape(long id)
     {
         EnsureNotDisposed();
@@ -229,10 +228,10 @@ public sealed partial class OcctEngine
         return (OcctShapeType)NativeMethods.occt_shape_type(_handle, shape.Id);
     }
 
-    public bool IsValid(OcctShape shape) =>
+    public bool IsShapeValid(OcctShape shape) =>
         Exists(shape) && NativeMethods.occt_shape_is_valid(_handle, shape.Id) != 0;
 
-    public OcctBounds GetBounds(OcctShape shape)
+    public OcctBounds GetShapeBounds(OcctShape shape)
     {
         EnsureShape(shape);
         EnsureInitialized();
@@ -240,16 +239,16 @@ public sealed partial class OcctEngine
         return result;
     }
 
-    public OcctMassProperties GetLinearProperties(OcctShape shape) =>
+    public OcctMassProperties GetShapeLinearProperties(OcctShape shape) =>
         GetProperties(shape, NativeMethods.occt_shape_linear_properties);
 
-    public OcctMassProperties GetSurfaceProperties(OcctShape shape) =>
+    public OcctMassProperties GetShapeSurfaceProperties(OcctShape shape) =>
         GetProperties(shape, NativeMethods.occt_shape_surface_properties);
 
-    public OcctMassProperties GetVolumeProperties(OcctShape shape) =>
+    public OcctMassProperties GetShapeVolumeProperties(OcctShape shape) =>
         GetProperties(shape, NativeMethods.occt_shape_volume_properties);
 
-    public OcctDistanceResult Distance(OcctShape first, OcctShape second)
+    public OcctDistanceResult GetShapeDistance(OcctShape first, OcctShape second)
     {
         EnsureShape(first);
         EnsureShape(second);
@@ -265,7 +264,7 @@ public sealed partial class OcctEngine
         return NativeMethods.occt_topology_count(_handle, shape.Id, (int)type);
     }
 
-    public OcctShape GetSubshape(OcctShape shape, OcctShapeType type, int index)
+    public OcctShape GetSubshapeAt(OcctShape shape, OcctShapeType type, int index)
     {
         EnsureShape(shape);
         if (!Enum.IsDefined(type)) throw new ArgumentOutOfRangeException(nameof(type));
@@ -276,7 +275,7 @@ public sealed partial class OcctEngine
 
     public IReadOnlyList<OcctShape> GetSubshapes(OcctShape shape, OcctShapeType type) =>
         Enumerable.Range(0, GetTopologyCount(shape, type))
-            .Select(index => GetSubshape(shape, type, index))
+            .Select(index => GetSubshapeAt(shape, type, index))
             .ToArray();
 
     public OcctShape Copy(OcctShape shape, bool hideInput = false)
@@ -373,19 +372,19 @@ public sealed partial class OcctEngine
         return new(point, tangent);
     }
 
-    public OcctCurveType GetCurveType(OcctShape edge)
+    public OcctCurveType GetEdgeCurveType(OcctShape edge)
     {
         EnsureShape(edge);
         return (OcctCurveType)NativeMethods.occt_edge_curve_type(_handle, edge.Id);
     }
 
-    public OcctSurfaceType GetSurfaceType(OcctShape face)
+    public OcctSurfaceType GetFaceSurfaceType(OcctShape face)
     {
         EnsureShape(face);
         return (OcctSurfaceType)NativeMethods.occt_face_surface_type(_handle, face.Id);
     }
 
-    public OcctUvBounds GetUvBounds(OcctShape face)
+    public OcctUvBounds GetFaceUvBounds(OcctShape face)
     {
         EnsureShape(face);
         EnsureInitialized();

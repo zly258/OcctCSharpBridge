@@ -25,8 +25,44 @@ public enum OcctModelBooleanGlue
     Full = 2
 }
 
-[StructLayout(LayoutKind.Sequential)]
 public struct OcctModelBooleanOptions
+{
+    public double FuzzyValue { get; set; }
+    public double AngularTolerance { get; set; }
+    public bool RunParallel { get; set; }
+    public bool NonDestructive { get; set; }
+    public OcctModelBooleanGlue Glue { get; set; }
+    public bool CheckInverted { get; set; }
+    public bool SimplifyEdges { get; set; }
+    public bool SimplifyFaces { get; set; }
+
+    public static OcctModelBooleanOptions Default => new()
+    {
+        FuzzyValue = 0.0,
+        AngularTolerance = 1e-7,
+        RunParallel = true,
+        NonDestructive = true,
+        Glue = OcctModelBooleanGlue.Off,
+        CheckInverted = true,
+        SimplifyEdges = true,
+        SimplifyFaces = true
+    };
+
+    internal readonly NativeModelBooleanOptions ToNative() => new()
+    {
+        FuzzyValue = FuzzyValue,
+        AngularTolerance = AngularTolerance,
+        RunParallel = RunParallel ? 1 : 0,
+        NonDestructive = NonDestructive ? 1 : 0,
+        Glue = (int)Glue,
+        CheckInverted = CheckInverted ? 1 : 0,
+        SimplifyEdges = SimplifyEdges ? 1 : 0,
+        SimplifyFaces = SimplifyFaces ? 1 : 0
+    };
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeModelBooleanOptions
 {
     public double FuzzyValue;
     public double AngularTolerance;
@@ -36,54 +72,6 @@ public struct OcctModelBooleanOptions
     public int CheckInverted;
     public int SimplifyEdges;
     public int SimplifyFaces;
-
-    public bool UseParallelProcessing
-    {
-        readonly get => RunParallel != 0;
-        set => RunParallel = value ? 1 : 0;
-    }
-
-    public bool NonDestructiveMode
-    {
-        readonly get => NonDestructive != 0;
-        set => NonDestructive = value ? 1 : 0;
-    }
-
-    public OcctModelBooleanGlue GlueMode
-    {
-        readonly get => (OcctModelBooleanGlue)Glue;
-        set => Glue = (int)value;
-    }
-
-    public bool CheckInvertedSolids
-    {
-        readonly get => CheckInverted != 0;
-        set => CheckInverted = value ? 1 : 0;
-    }
-
-    public bool SimplifyResultEdges
-    {
-        readonly get => SimplifyEdges != 0;
-        set => SimplifyEdges = value ? 1 : 0;
-    }
-
-    public bool SimplifyResultFaces
-    {
-        readonly get => SimplifyFaces != 0;
-        set => SimplifyFaces = value ? 1 : 0;
-    }
-
-    public static OcctModelBooleanOptions Default => new()
-    {
-        FuzzyValue = 0.0,
-        AngularTolerance = 1e-7,
-        RunParallel = 1,
-        NonDestructive = 1,
-        Glue = (int)OcctModelBooleanGlue.Off,
-        CheckInverted = 1,
-        SimplifyEdges = 1,
-        SimplifyFaces = 1
-    };
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -114,37 +102,60 @@ internal struct NativeModelRayHit
     public double RayParameter;
     public double U;
     public double V;
-    public int NativeState;
+    public int State;
 
-    public readonly OcctModelRayHit ToManaged(long ownerId) => new()
+    public readonly OcctModelRayHit ToManaged(long ownerId) => new(
+        Point,
+        new OcctModelShape(FaceId, ownerId),
+        RayParameter,
+        U,
+        V,
+        (OcctModelState)State);
+}
+
+public readonly record struct OcctModelRayHit(
+    OcctPoint3d Point,
+    OcctModelShape Face,
+    double RayParameter,
+    double U,
+    double V,
+    OcctModelState State);
+
+public struct OcctModelMeshParameters
+{
+    public double LinearDeflection { get; set; }
+    public double AngularDeflection { get; set; }
+    public double MinimumSize { get; set; }
+    public bool Relative { get; set; }
+    public bool Parallel { get; set; }
+    public bool InternalVertices { get; set; }
+    public bool ControlSurfaceDeflection { get; set; }
+
+    public static OcctModelMeshParameters Default => new()
     {
-        Point = Point,
-        FaceId = FaceId,
-        RayParameter = RayParameter,
-        U = U,
-        V = V,
-        NativeState = NativeState,
-        OwnerId = ownerId
+        LinearDeflection = 0.1,
+        AngularDeflection = 0.5,
+        MinimumSize = 0.01,
+        Relative = false,
+        Parallel = true,
+        InternalVertices = true,
+        ControlSurfaceDeflection = true
+    };
+
+    internal readonly NativeModelMeshParameters ToNative() => new()
+    {
+        LinearDeflection = LinearDeflection,
+        AngularDeflection = AngularDeflection,
+        MinSize = MinimumSize,
+        Relative = Relative ? 1 : 0,
+        Parallel = Parallel ? 1 : 0,
+        InternalVertices = InternalVertices ? 1 : 0,
+        ControlSurfaceDeflection = ControlSurfaceDeflection ? 1 : 0
     };
 }
 
-public struct OcctModelRayHit
-{
-    public OcctPoint3d Point;
-    public long FaceId;
-    public double RayParameter;
-    public double U;
-    public double V;
-    public int NativeState;
-
-    internal long OwnerId;
-
-    public readonly OcctModelShape Face => new(FaceId, OwnerId);
-    public readonly OcctModelState State => (OcctModelState)NativeState;
-}
-
 [StructLayout(LayoutKind.Sequential)]
-public struct OcctModelMeshParameters
+internal struct NativeModelMeshParameters
 {
     public double LinearDeflection;
     public double AngularDeflection;
@@ -153,56 +164,34 @@ public struct OcctModelMeshParameters
     public int Parallel;
     public int InternalVertices;
     public int ControlSurfaceDeflection;
-
-    public bool RelativeDeflection
-    {
-        readonly get => Relative != 0;
-        set => Relative = value ? 1 : 0;
-    }
-
-    public bool UseParallelMeshing
-    {
-        readonly get => Parallel != 0;
-        set => Parallel = value ? 1 : 0;
-    }
-
-    public bool IncludeInternalVertices
-    {
-        readonly get => InternalVertices != 0;
-        set => InternalVertices = value ? 1 : 0;
-    }
-
-    public bool ControlSurfaceDeflectionEnabled
-    {
-        readonly get => ControlSurfaceDeflection != 0;
-        set => ControlSurfaceDeflection = value ? 1 : 0;
-    }
-
-    public static OcctModelMeshParameters Default => new()
-    {
-        LinearDeflection = 0.1,
-        AngularDeflection = 0.5,
-        MinSize = 0.01,
-        Relative = 0,
-        Parallel = 1,
-        InternalVertices = 1,
-        ControlSurfaceDeflection = 1
-    };
 }
 
 [StructLayout(LayoutKind.Sequential)]
-public struct OcctModelMeshNode
+internal struct NativeModelMeshNode
 {
     public OcctPoint3d Point;
     public double U;
     public double V;
     public OcctVector3d Normal;
-    public int NativeHasUv;
-    public int NativeHasNormal;
+    public int HasUv;
+    public int HasNormal;
 
-    public readonly bool HasUv => NativeHasUv != 0;
-    public readonly bool HasNormal => NativeHasNormal != 0;
+    public readonly OcctModelMeshNode ToManaged() => new(
+        Point,
+        U,
+        V,
+        Normal,
+        HasUv != 0,
+        HasNormal != 0);
 }
+
+public readonly record struct OcctModelMeshNode(
+    OcctPoint3d Point,
+    double U,
+    double V,
+    OcctVector3d Normal,
+    bool HasUv,
+    bool HasNormal);
 
 [StructLayout(LayoutKind.Sequential)]
 public struct OcctModelMeshTriangle
@@ -249,12 +238,6 @@ public struct OcctModelLocation
 
 public readonly record struct OcctModelShape
 {
-    public OcctModelShape(long id)
-    {
-        Id = id;
-        OwnerId = 0;
-    }
-
     internal OcctModelShape(long id, long ownerId)
     {
         Id = id;
@@ -263,9 +246,7 @@ public readonly record struct OcctModelShape
 
     public long Id { get; }
     internal long OwnerId { get; }
-
     public bool IsValid => Id > 0;
-    public bool IsBound => OwnerId != 0;
     public override string ToString() => $"ModelShape {Id}";
 }
 
@@ -291,9 +272,11 @@ public sealed class OcctModelAlgorithmResult
     public string Report => _report;
 }
 
-public sealed class OcctFaceMesh
+public sealed class OcctMesh
 {
-    internal OcctFaceMesh(IReadOnlyList<OcctModelMeshNode> nodes, IReadOnlyList<OcctModelMeshTriangle> triangles)
+    internal OcctMesh(
+        IReadOnlyList<OcctModelMeshNode> nodes,
+        IReadOnlyList<OcctModelMeshTriangle> triangles)
     {
         Nodes = nodes;
         Triangles = triangles;
