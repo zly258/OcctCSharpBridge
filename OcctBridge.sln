@@ -7,6 +7,7 @@ Project("{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") = "Solution Items", "Solution 
         .gitignore = .gitignore
         Directory.Build.props = Directory.Build.props
         build.ps1 = build.ps1
+        run.ps1 = run.ps1
         docs\API_COVERAGE.md = docs\API_COVERAGE.md
         docs\API_COVERAGE.zh-CN.md = docs\API_COVERAGE.zh-CN.md
         docs\script\README.md = docs\script\README.md
