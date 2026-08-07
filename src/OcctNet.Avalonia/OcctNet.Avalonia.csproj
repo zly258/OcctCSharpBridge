@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>OcctNet</RootNamespace>
+    <AssemblyName>OcctNet.Avalonia</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\OcctNet\OcctNet.csproj" />
+    <PackageReference Include="Avalonia" Version="12.1.0" />
+  </ItemGroup>
+</Project>

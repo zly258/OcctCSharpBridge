@@ -18,11 +18,15 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.WinForms", "src\Occ
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.Wpf", "src\OcctNet.Wpf\OcctNet.Wpf.csproj", "{B65176A4-9A31-4C15-BE31-2F4FB10EFB56}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.Avalonia", "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj", "{3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CadCommon", "src\CadCommon\CadCommon.csproj", "{A01D0BAA-2AE2-487D-A76C-A6BD09ED92FA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CAD-Winform", "src\CadWinForms\CadWinForms.csproj", "{9FD55C83-D84B-498A-86E9-0413E8A5AE69}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CAD-WPF", "src\CadWpf\CadWpf.csproj", "{FF3305BE-D770-4E1E-A730-49F67353F64E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CAD-Avalonia", "src\CadAvalonia\CadAvalonia.csproj", "{B6496B5B-10CF-45BB-8BC9-D77BD86F2E71}"
 EndProject
 Global
     GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -42,6 +46,10 @@ Global
         {B65176A4-9A31-4C15-BE31-2F4FB10EFB56}.Debug|x64.Build.0 = Debug|x64
         {B65176A4-9A31-4C15-BE31-2F4FB10EFB56}.Release|x64.ActiveCfg = Release|x64
         {B65176A4-9A31-4C15-BE31-2F4FB10EFB56}.Release|x64.Build.0 = Release|x64
+        {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}.Debug|x64.ActiveCfg = Debug|x64
+        {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}.Debug|x64.Build.0 = Debug|x64
+        {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}.Release|x64.ActiveCfg = Release|x64
+        {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}.Release|x64.Build.0 = Release|x64
         {A01D0BAA-2AE2-487D-A76C-A6BD09ED92FA}.Debug|x64.ActiveCfg = Debug|x64
         {A01D0BAA-2AE2-487D-A76C-A6BD09ED92FA}.Debug|x64.Build.0 = Debug|x64
         {A01D0BAA-2AE2-487D-A76C-A6BD09ED92FA}.Release|x64.ActiveCfg = Release|x64
@@ -54,6 +62,10 @@ Global
         {FF3305BE-D770-4E1E-A730-49F67353F64E}.Debug|x64.Build.0 = Debug|x64
         {FF3305BE-D770-4E1E-A730-49F67353F64E}.Release|x64.ActiveCfg = Release|x64
         {FF3305BE-D770-4E1E-A730-49F67353F64E}.Release|x64.Build.0 = Release|x64
+        {B6496B5B-10CF-45BB-8BC9-D77BD86F2E71}.Debug|x64.ActiveCfg = Debug|x64
+        {B6496B5B-10CF-45BB-8BC9-D77BD86F2E71}.Debug|x64.Build.0 = Debug|x64
+        {B6496B5B-10CF-45BB-8BC9-D77BD86F2E71}.Release|x64.ActiveCfg = Release|x64
+        {B6496B5B-10CF-45BB-8BC9-D77BD86F2E71}.Release|x64.Build.0 = Release|x64
     EndGlobalSection
     GlobalSection(SolutionProperties) = preSolution
         HideSolutionNode = FALSE
