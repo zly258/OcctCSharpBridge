@@ -217,3 +217,7 @@ Use the `demo` branch rather than adding application-specific code to `main`.
 ## License
 
 The project is provided under the [PolyForm Noncommercial License 1.0.0](LICENSE). Open CASCADE Technology and third-party components remain subject to their own licenses.
+
+## Contact
+
+Liaoyuan Zhang · [zhangly1403@gmail.com](mailto:zhangly1403@gmail.com)
