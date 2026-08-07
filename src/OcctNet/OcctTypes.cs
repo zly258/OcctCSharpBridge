@@ -158,21 +158,11 @@ public struct OcctUvBounds
 public readonly record struct OcctFaceEvaluation(OcctPoint3d Point, OcctVector3d Normal);
 public readonly record struct OcctEdgeEvaluation(OcctPoint3d Point, OcctVector3d Tangent);
 
-public interface IOcctObject { long Id { get; } }
-
-public readonly record struct OcctObject : IOcctObject
+public interface IOcctObject
 {
-    internal OcctObject(long id, OcctObjectKind kind, long ownerId)
-    {
-        Id = id;
-        Kind = kind;
-        OwnerId = ownerId;
-    }
-
-    public long Id { get; }
-    public OcctObjectKind Kind { get; }
-    internal long OwnerId { get; }
-    public bool IsValid => Id > 0;
+    long Id { get; }
+    OcctObjectKind Kind { get; }
+    bool IsValid { get; }
 }
 
 public readonly record struct OcctShape : IOcctObject
@@ -184,8 +174,9 @@ public readonly record struct OcctShape : IOcctObject
     }
 
     public long Id { get; }
-    internal long OwnerId { get; }
+    public OcctObjectKind Kind => OcctObjectKind.Shape;
     public bool IsValid => Id > 0;
+    internal long OwnerId { get; }
     public override string ToString() => $"Shape {Id}";
 }
 
@@ -198,8 +189,9 @@ public readonly record struct OcctText : IOcctObject
     }
 
     public long Id { get; }
-    internal long OwnerId { get; }
+    public OcctObjectKind Kind => OcctObjectKind.Text;
     public bool IsValid => Id > 0;
+    internal long OwnerId { get; }
 }
 
 public readonly record struct OcctDimension : IOcctObject
@@ -211,6 +203,7 @@ public readonly record struct OcctDimension : IOcctObject
     }
 
     public long Id { get; }
-    internal long OwnerId { get; }
+    public OcctObjectKind Kind => OcctObjectKind.Dimension;
     public bool IsValid => Id > 0;
+    internal long OwnerId { get; }
 }
