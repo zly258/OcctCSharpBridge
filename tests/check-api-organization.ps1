@@ -168,7 +168,7 @@ $forbiddenManagedTokens = @(
     "NativeHasNormal",
     "NativeState",
     "IsBound",
-    "public readonly record struct OcctObject"
+    "public readonly record struct OcctObject :"
 )
 foreach ($token in $forbiddenManagedTokens) {
     if ($sourceText.Contains($token)) {
