@@ -17,7 +17,7 @@ OCAF/XDE is intentionally not used as the application document layer. Documents,
 - Avalonia `12.1.0`
 - Bridge version `2.5.0`, native ABI `2`
 
-`bridge-contract.json` is shared with `main` and is the authoritative source for Bridge/ABI/OCCT/.NET/API metadata. It records both the core SDK used by `main` and the newer demo SDK required by Avalonia 12 analyzers. `global.json` is therefore intentionally branch-specific: `main` stays on .NET SDK 8.0.423, while `demo` uses 10.0.302. The target framework and C# language level remain .NET 8 and C# 12. `Wrapper Branch Sync` compares the reusable sources and shared contract, but deliberately does not compare `global.json`.
+`bridge-contract.json` is shared with `main` and is the authoritative source for Bridge/ABI/OCCT/.NET/API metadata. It records both the core SDK used by `main` and the newer demo SDK required by Avalonia 12 analyzers. `global.json` is intentionally branch-specific: `main` stays on .NET SDK 8.0.423, while `demo` uses 10.0.302. The target framework and C# language level remain .NET 8 and C# 12.
 
 ## Layering
 
@@ -28,15 +28,12 @@ OCAF/XDE is intentionally not used as the application document layer. Documents,
 - `CadCommon`: shared application/session/command layer used by the desktop demos.
 - `CadWinForms`, `CadWpf`, `CadAvalonia`: runnable reference applications.
 
-Avalonia remains a native Windows HWND host today; this repository does not claim Linux/macOS OCCT viewer support.
+Avalonia remains a native Windows HWND host today; this repository does not claim Linux/macOS OCCT Viewer support.
 
 ## Preview
 
 <table>
-  <tr>
-    <th>WinForms</th>
-    <th>WPF</th>
-  </tr>
+  <tr><th>WinForms</th><th>WPF</th></tr>
   <tr>
     <td><img src="assets/previews/winform-demo-en.webp" alt="OCCT CAD WinForms English demo" width="100%"></td>
     <td><img src="assets/previews/wpf-demo-en.webp" alt="OCCT CAD WPF English demo" width="100%"></td>
@@ -64,27 +61,20 @@ The expected OCCT layout contains `inc`, `win64\vc14\lib`, `win64\vc14\bin`, and
 | --- | --- | --- |
 | `validate` | Contract/source/package checks only | No |
 | `managed` | Core wrapper + WinForms/WPF/Avalonia hosts + `CadCommon` | No |
-| `ci` | Same managed build used by GitHub Actions, including all 3 demos and Smoke project compilation | No |
+| `ci` | Hosted-CI managed build, all 3 demos and Smoke project compilation | No |
 | `native` | Build `OcctNative.dll` | Yes |
 | `winform` / `wpf` / `avalonia` | Build the selected runnable demo | Yes |
-| `smoke` | Build native bridge and run real OCCT modeling Smoke scenarios | Yes |
+| `smoke` | Build native bridge and run real OCCT modeling scenarios | Yes |
 | `all` | Build native bridge, all demos, and Smoke project | Yes |
 
 ```powershell
-# Fast source/API contract check
 .\build.ps1 validate Release
-
-# Reproduce the normal GitHub Actions build locally
 .\build.ps1 ci Release
-
-# Complete native/demo build
 .\build.ps1 all Release
-
-# Strongest native runtime check
 .\build.ps1 smoke Release
 ```
 
-GitHub Actions calls `build.ps1 ci Release` directly, so local pre-push validation and hosted CI use the same managed build path instead of duplicating project-by-project commands.
+Normal GitHub Actions calls `build.ps1 ci Release`. `smoke` is intentionally stronger and requires a real OCCT SDK because it actually loads the native bridge and executes OCCT modeling operations.
 
 ## Run
 
@@ -96,24 +86,38 @@ GitHub Actions calls `build.ps1 ci Release` directly, so local pre-push validati
 .\run.ps1 avalonia
 ```
 
-If a demo is stale, build the relevant target first.
-
 ## Publish
 
-`publish.ps1` currently produces deployment-complete WinForms and WPF packages. Avalonia is fully covered by build/run/CI but has not yet been added to the formal publishing target.
+`publish.ps1` formally supports **WinForms, WPF, and Avalonia**. `all` publishes all three applications.
 
 ```powershell
 .\publish.ps1 all Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
 .\publish.ps1 winform Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
 .\publish.ps1 wpf Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
+.\publish.ps1 avalonia Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-Published packages include the selected application, matching managed wrapper/host assemblies, `OcctNative.dll`, recursively resolved OCCT/third-party runtime dependencies, required OCCT resources, `package-contract.json`, and `native-dependencies.txt`. Use `-FrameworkDependent` only when the target machine already has the matching .NET 8 Desktop Runtime.
+The publisher resolves the complete PE dependency closure of `OcctNative.dll`, OCCT modules, third-party DLLs, and Visual C++ runtime components, including `vcomp140.dll` when required. The resolved native DLL set is copied **beside every application executable** instead of relying only on a sibling `runtime` directory. The runtime resolver therefore prefers the application directory first.
+
+Before a package is accepted, `publish.ps1` performs two checks: a static `dumpbin` closure check and a fresh-process `LoadLibraryExW` probe with a restricted DLL search path. A package that would produce a clean-machine `Win32 126` native-load failure is rejected during publishing. The top-level `runtime` directory remains as the canonical dependency/diagnostic copy, while `apps\winform`, `apps\wpf`, and `apps\avalonia` are directly runnable.
+
+Published packages also include required OCCT resources, `package-contract.json`, `native-dependencies.txt`, and available license notices. Use `-FrameworkDependent` only when the target machine already has the .NET 8 Desktop Runtime.
+
+## Tests
+
+The PowerShell tests are contract/static regression checks. Obsolete duplicate checks that were no longer called by `build.ps1` have been removed. `tests/OcctNet.Smoke` is retained deliberately: it is the functional native integration test and is the only test layer that actually loads OCCT and performs real modeling operations.
+
+Recommended cadence:
+
+- `build.ps1 validate`: every API/source change.
+- `build.ps1 ci`: before every push.
+- `build.ps1 smoke`: after native/modeling/runtime changes, and before a release when an OCCT SDK is available.
+- `publish.ps1 ...`: before distributing a package; it includes the dedicated portability/load probe.
 
 ## Main capabilities exercised by the demos
 
 - Point, rectangle, directional crossing, multi-selection, and subshape selection
-- Camera/view state, Z-up views, fitting, screen/world projection, view cube and triedron
+- Camera/view state, Z-up views, fitting, screen/world projection, ViewCube and triedron
 - Shaded/wireframe/shaded-with-edges display and configurable precision/material/lighting
 - Stable application tags, transforms, visibility, color, transparency, and batch operations
 - Primitive and feature modeling, Boolean operations, sweep/loft, topology and geometry queries
@@ -125,10 +129,9 @@ Published packages include the selected application, matching managed wrapper/ho
 ## Troubleshooting
 
 - `OCCT_ROOT is not configured`: set `$env:OCCT_ROOT` or pass `-OcctRoot` to a native target.
-- Native DLL load failure: rebuild with the correct OCCT SDK and ensure matching runtime dependencies are present.
-- Avalonia analyzer/compiler mismatch: use the branch-pinned .NET SDK from `global.json`; do not downgrade the target framework or disable analyzers.
+- `Unable to load OcctNative.dll ... Win32 126`: do not redistribute an old package. Republish with the current `publish.ps1`; the application directory must contain `OcctNative.dll` and its native dependency closure. Publishing now fails if the restricted native-load probe cannot load it.
+- Avalonia analyzer/compiler mismatch: use the branch-pinned SDK from `global.json`; do not downgrade the target framework or disable analyzers.
 - Avalonia startup issue: inspect `src\CadAvalonia\bin\x64\<Configuration>\net8.0-windows\CAD-Avalonia.log`.
-- After API/host/menu changes, run `build.ps1 validate`; before pushing, prefer `build.ps1 ci`; use `build.ps1 smoke` when a real OCCT SDK is available.
 
 ## License
 
