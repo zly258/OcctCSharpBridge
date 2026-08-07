@@ -118,7 +118,6 @@ public sealed partial class OcctEngine : IDisposable
 
     private static long GetOwnerId(IOcctObject value) => value switch
     {
-        OcctObject item => item.OwnerId,
         OcctShape item => item.OwnerId,
         OcctText item => item.OwnerId,
         OcctDimension item => item.OwnerId,
