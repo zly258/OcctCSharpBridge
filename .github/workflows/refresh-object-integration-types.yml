@@ -1,0 +1,67 @@
+﻿name: Refresh Object Integration Types
+
+on:
+  push:
+    branches:
+      - feature/object-integration-p0
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.event.head_commit.message == 'Run object integration type inventory'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Refresh type inventory
+        shell: pwsh
+        run: |
+          $newLine = [Environment]::NewLine
+          foreach ($path in @('docs/API_COVERAGE.md', 'docs/API_COVERAGE.zh-CN.md')) {
+            $text = [System.IO.File]::ReadAllText($path)
+            $text = $text.Replace('Public .NET types: `75`', 'Public .NET types: `80`')
+            $text = $text.Replace('OcctNative.h — Registry, AIS attributes and lifecycle (33)', 'OcctNative.h — Registry, AIS attributes and lifecycle (44)')
+            $text = $text.Replace('OcctModeling.h (118)', 'OcctModeling.h (119)')
+            $identityAnchor = '- `occt_get_object_name`'
+            $identityApis = @(
+              '- `occt_get_object_name`',
+              '- `occt_set_object_application_tag`',
+              '- `occt_get_object_application_tag`',
+              '- `occt_find_object_by_application_tag`',
+              '- `occt_set_object_selectable`',
+              '- `occt_get_object_selectable`',
+              '- `occt_set_objects_selectable`',
+              '- `occt_set_selected_objects_ex`',
+              '- `occt_set_object_transform`',
+              '- `occt_get_object_transform`',
+              '- `occt_reset_object_transform`',
+              '- `occt_set_view_cube_language`'
+            ) -join $newLine
+            $text = $text.Replace($identityAnchor, $identityApis)
+            $text = $text.Replace('- `occt_model_display_in_engine`', '- `occt_model_display_in_engine`' + $newLine + '- `occt_update_object_shape_from_model`')
+            $text = $text.Replace('- `OcctMaterial`', '- `OcctSelectionOperation`' + $newLine + '- `OcctShapeUpdateOptions`' + $newLine + '- `OcctViewCubeLanguage`' + $newLine + '- `OcctTransform3d`' + $newLine + '- `OcctMaterial`')
+            $text = $text.Replace('- `OcctModelingSession`', '- `OcctModelingSession`' + $newLine + '- `OcctSelectionOperation`' + $newLine + '- `OcctShapeUpdateOptions`' + $newLine + '- `OcctViewCubeLanguage`' + $newLine + '- `OcctTransform3d`' + $newLine + '- `OcctObjectTransformUpdate`')
+            [System.IO.File]::WriteAllText($path, $text, [System.Text.UTF8Encoding]::new($true))
+          }
+          $versionContract = 'tests/check-version-contract.ps1'
+          $versionText = [System.IO.File]::ReadAllText($versionContract)
+          $versionText = $versionText.Replace('$expectedPublicTypeCount = 75', '$expectedPublicTypeCount = 80')
+          [System.IO.File]::WriteAllText($versionContract, $versionText, [System.Text.UTF8Encoding]::new($true))
+          Remove-Item .github/workflows/refresh-object-integration-types.yml
+
+      - name: Validate
+        shell: pwsh
+        run: .\build.ps1 validate Release
+
+      - name: Commit
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Document object integration API types"
+          git push origin HEAD:feature/object-integration-p0
