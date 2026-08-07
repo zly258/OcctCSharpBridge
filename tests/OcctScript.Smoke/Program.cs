@@ -1,4 +1,4 @@
-﻿using OcctNet;
+using OcctNet;
 using OcctScript.Application;
 using OcctScript.Domain;
 using OcctScript.Expressions;
@@ -116,8 +116,11 @@ static void VerifySweep()
     var document = new ScriptDocument { Name = "Sweep" };
     var spine = Command(registry, BuiltInCommandCatalog.Line, "Spine", 10); Literal(spine, "start", "0,0,0"); Literal(spine, "end", "0,0,300");
     var profile = Command(registry, BuiltInCommandCatalog.Circle, "Profile", 20); Literal(profile, "center", "0,0,0"); Literal(profile, "normal", "0,0,1"); Expression(profile, "radius", "25");
-    var sweep = Command(registry, BuiltInCommandCatalog.Sweep, "Sweep", 30); Reference(sweep, "spine", spine); Reference(sweep, "profile", profile);
-    document.Commands.AddRange([spine, profile, sweep]); BuildAndAssert(document, (sweep, OcctShapeType.Solid));
+    var shellSweep = Command(registry, BuiltInCommandCatalog.Sweep, "ShellSweep", 30); Reference(shellSweep, "spine", spine); Reference(shellSweep, "profile", profile);
+    var profileFace = Command(registry, BuiltInCommandCatalog.Face, "ProfileFace", 40); Reference(profileFace, "profile", profile);
+    var solidSweep = Command(registry, BuiltInCommandCatalog.Sweep, "SolidSweep", 50); Reference(solidSweep, "spine", spine); Reference(solidSweep, "profile", profileFace);
+    document.Commands.AddRange([spine, profile, shellSweep, profileFace, solidSweep]);
+    BuildAndAssert(document, (shellSweep, OcctShapeType.Shell), (profileFace, OcctShapeType.Face), (solidSweep, OcctShapeType.Solid));
 }
 
 static void VerifyLoft()
