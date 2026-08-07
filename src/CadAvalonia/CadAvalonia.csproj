@@ -6,11 +6,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
+    <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>CAD-Avalonia</AssemblyName>
     <RootNamespace>CadAvalonia</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\CadCommon\CadCommon.csproj" />
     <ProjectReference Include="..\OcctNet\OcctNet.csproj" />
     <ProjectReference Include="..\OcctNet.Avalonia\OcctNet.Avalonia.csproj" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
