@@ -1,0 +1,55 @@
+﻿name: Deduplicate Object Integration Inventory
+
+on:
+  push:
+    branches:
+      - feature/object-integration-p0
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.event.head_commit.message == 'Run object integration inventory cleanup'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Remove duplicate type entries
+        shell: pwsh
+        run: |
+          $newLine = [Environment]::NewLine
+          $duplicate = @(
+            '- `OcctModelingSession`',
+            '- `OcctSelectionOperation`',
+            '- `OcctShapeUpdateOptions`',
+            '- `OcctViewCubeLanguage`',
+            '- `OcctTransform3d`',
+            '- `OcctObjectTransformUpdate`'
+          ) -join $newLine
+          $replacement = @(
+            '- `OcctModelingSession`',
+            '- `OcctObjectTransformUpdate`'
+          ) -join $newLine
+          foreach ($path in @('docs/API_COVERAGE.md', 'docs/API_COVERAGE.zh-CN.md')) {
+            $text = [System.IO.File]::ReadAllText($path)
+            if (-not $text.Contains($duplicate)) { throw "Duplicate inventory block was not found in $path" }
+            $text = $text.Replace($duplicate, $replacement)
+            [System.IO.File]::WriteAllText($path, $text, [System.Text.UTF8Encoding]::new($true))
+          }
+          Remove-Item .github/workflows/dedupe-object-integration-inventory.yml
+
+      - name: Validate
+        shell: pwsh
+        run: .\build.ps1 validate Release
+
+      - name: Commit
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Deduplicate object integration API inventory"
+          git push origin HEAD:feature/object-integration-p0
