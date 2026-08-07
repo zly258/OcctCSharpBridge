@@ -51,6 +51,11 @@ public readonly record struct OcctTransform3d(
         0, 1, 0, y,
         0, 0, 1, z);
 
+    public bool IsFinite =>
+        double.IsFinite(M00) && double.IsFinite(M01) && double.IsFinite(M02) && double.IsFinite(M03) &&
+        double.IsFinite(M10) && double.IsFinite(M11) && double.IsFinite(M12) && double.IsFinite(M13) &&
+        double.IsFinite(M20) && double.IsFinite(M21) && double.IsFinite(M22) && double.IsFinite(M23);
+
     internal double[] ToArray() =>
     [
         M00, M01, M02, M03,

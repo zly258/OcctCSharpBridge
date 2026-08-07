@@ -232,6 +232,12 @@ public struct OcctModelLocation
     public double M43;
     public double M44;
 
+    public readonly bool IsFinite =>
+        double.IsFinite(M11) && double.IsFinite(M12) && double.IsFinite(M13) && double.IsFinite(M14) &&
+        double.IsFinite(M21) && double.IsFinite(M22) && double.IsFinite(M23) && double.IsFinite(M24) &&
+        double.IsFinite(M31) && double.IsFinite(M32) && double.IsFinite(M33) && double.IsFinite(M34) &&
+        double.IsFinite(M41) && double.IsFinite(M42) && double.IsFinite(M43) && double.IsFinite(M44);
+
     public static OcctModelLocation Identity => new()
     {
         M11 = 1,
