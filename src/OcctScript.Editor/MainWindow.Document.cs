@@ -47,7 +47,7 @@ public partial class MainWindow
 
     private async void OpenDocument()
     {
-        var dialog = new OpenFileDialog
+        var dialog = new Microsoft.Win32.OpenFileDialog
         {
             Filter = "OcctScript project (*.ocsproj)|*.ocsproj|JSON document (*.json)|*.json|All files (*.*)|*.*"
         };
@@ -63,7 +63,7 @@ public partial class MainWindow
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, ResourceText("Ui.OpenFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show(this, ex.Message, ResourceText("Ui.OpenFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -72,7 +72,7 @@ public partial class MainWindow
         var path = currentFilePath;
         if (string.IsNullOrWhiteSpace(path))
         {
-            var dialog = new SaveFileDialog
+            var dialog = new Microsoft.Win32.SaveFileDialog
             {
                 Filter = "OcctScript project (*.ocsproj)|*.ocsproj|JSON document (*.json)|*.json",
                 FileName = document.Name + ".ocsproj",
@@ -92,7 +92,7 @@ public partial class MainWindow
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, ResourceText("Ui.SaveFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show(this, ex.Message, ResourceText("Ui.SaveFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
