@@ -10,12 +10,14 @@ $hostControl = Join-Path $RepositoryRoot "src\OcctNet.Avalonia\OcctAvaloniaViewp
 $demoProject = Join-Path $RepositoryRoot "src\CadAvalonia\CadAvalonia.csproj"
 $demoManifest = Join-Path $RepositoryRoot "src\CadAvalonia\app.manifest"
 $demoWindow = Join-Path $RepositoryRoot "src\CadAvalonia\MainWindow.cs"
+$demoParameters = Join-Path $RepositoryRoot "src\CadAvalonia\ParameterDialog.cs"
 $demoProgram = Join-Path $RepositoryRoot "src\CadAvalonia\Program.cs"
+$wpfWindow = Join-Path $RepositoryRoot "src\CadWpf\MainWindow.xaml.cs"
 $buildScript = Join-Path $RepositoryRoot "build.ps1"
 
-foreach ($path in @($hostProject, $hostControl, $demoProject, $demoManifest, $demoWindow, $demoProgram, $buildScript)) {
+foreach ($path in @($hostProject, $hostControl, $demoProject, $demoManifest, $demoWindow, $demoParameters, $demoProgram, $wpfWindow, $buildScript)) {
     if (-not (Test-Path $path -PathType Leaf)) {
-        throw "Required Avalonia host file was not found: $path"
+        throw "Required Avalonia host/parity file was not found: $path"
     }
 }
 
@@ -47,7 +49,7 @@ foreach ($token in @(
     'WorldPointChanged',
     'EngineInitialized',
     'SizeChanged += OnHostSizeChanged',
-    'Dispatcher.UIThread.Post(RefreshNativeView'
+    'ScheduleNativeViewRefresh'
 )) {
     if (-not $hostText.Contains($token)) {
         throw "Avalonia viewport contract is missing: $token"
@@ -59,7 +61,12 @@ if ($hostText.Contains('WindowsFormsHost') -or $hostText.Contains('System.Window
 }
 
 $demoProjectText = [System.IO.File]::ReadAllText($demoProject)
-foreach ($token in @('Avalonia.Fonts.Inter', '<ApplicationManifest>app.manifest</ApplicationManifest>')) {
+foreach ($token in @(
+    'Avalonia.Fonts.Inter',
+    '<ApplicationManifest>app.manifest</ApplicationManifest>',
+    '<UseWindowsForms>true</UseWindowsForms>',
+    '..\CadCommon\CadCommon.csproj'
+)) {
     if (-not $demoProjectText.Contains($token)) {
         throw "Avalonia demo project contract is missing: $token"
     }
@@ -90,17 +97,57 @@ foreach ($token in @('Copy-OcctRuntimeDependencies', 'TKernel.dll', 'OcctThirdPa
 }
 
 $demoText = [System.IO.File]::ReadAllText($demoWindow)
-foreach ($token in @('OcctAvaloniaViewport', 'SetZUpView', 'MakeBox', 'MakeCylinder', 'MakeSphere', 'Dispatcher.UIThread.Post(InitializeScene')) {
+foreach ($token in @(
+    'OcctAvaloniaViewport',
+    'new CadSession(_viewport.Engine)',
+    'CadCommandCatalog.Get',
+    'RunCommandAsync',
+    'Session.Undo()',
+    'Session.Redo()',
+    'Session.Open',
+    'Session.Import',
+    'Session.SaveAll',
+    'Session.ExportSelected',
+    'DumpView',
+    'RefreshObjectTree',
+    'ShowObjectProperties',
+    'SetFaceBoundariesVisible',
+    'SetSelectionMode',
+    'SetSceneLighting',
+    'SetDefaultMaterial',
+    'SetProjection',
+    'SetDisplayPrecision',
+    'SetLanguage',
+    'MainWindowKeyDown'
+)) {
     if (-not $demoText.Contains($token)) {
-        throw "Avalonia demo contract is missing: $token"
+        throw "Avalonia CAD parity contract is missing: $token"
     }
 }
 
-foreach ($path in @($hostProject, $hostControl, $demoProject, $demoManifest, $demoWindow, $demoProgram)) {
+# Keep every CadCommandId exposed by the WPF reference UI available in the Avalonia UI.
+$wpfText = [System.IO.File]::ReadAllText($wpfWindow)
+$commandPattern = 'CadCommandId\.([A-Za-z0-9_]+)'
+$wpfCommands = @([regex]::Matches($wpfText, $commandPattern) | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+$avaloniaCommands = @([regex]::Matches($demoText, $commandPattern) | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+$missingCommands = @($wpfCommands | Where-Object { $_ -notin $avaloniaCommands })
+if ($missingCommands.Count -gt 0) {
+    throw "Avalonia CAD demo is missing WPF commands: $($missingCommands -join ', ')"
+}
+Write-Host "[avalonia-host] WPF command parity: $($wpfCommands.Count) command IDs covered." -ForegroundColor Green
+
+$parameterText = [System.IO.File]::ReadAllText($demoParameters)
+foreach ($token in @('CadParameterDefinition', 'GetValuesAsync', 'CadParameterKind.Boolean', 'CadParameterKind.Choice')) {
+    if (-not $parameterText.Contains($token)) {
+        throw "Avalonia parameter dialog contract is missing: $token"
+    }
+}
+
+foreach ($path in @($hostProject, $hostControl, $demoProject, $demoManifest, $demoWindow, $demoParameters, $demoProgram)) {
     $bytes = [System.IO.File]::ReadAllBytes($path)
     if ($bytes.Length -lt 3 -or $bytes[0] -ne 0xEF -or $bytes[1] -ne 0xBB -or $bytes[2] -ne 0xBF) {
         throw "Avalonia source file is not UTF-8 with BOM: $path"
     }
 }
 
-Write-Host "[avalonia-host] Avalonia HWND host, Windows manifest, startup diagnostics, and runtime deployment contracts validated." -ForegroundColor Green
+Write-Host "[avalonia-host] Avalonia HWND host, full CAD demo parity, Windows manifest, startup diagnostics, and runtime deployment contracts validated." -ForegroundColor Green

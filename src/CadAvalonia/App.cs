@@ -3,9 +3,11 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform;
 using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
+using Application = Avalonia.Application;
 
 namespace CadAvalonia;
 
+// The CAD shell and OCCT NativeControlHost remain Avalonia-native; WinForms is used only for Windows system dialogs.
 public sealed class App : Application
 {
     public override void Initialize()
