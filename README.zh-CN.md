@@ -214,3 +214,7 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 ## 许可证
 
 项目使用 [PolyForm Noncommercial License 1.0.0](LICENSE)。Open CASCADE Technology 与第三方组件仍遵循各自许可证。
+
+## 联系方式
+
+Liaoyuan Zhang · [zhangly1403@gmail.com](mailto:zhangly1403@gmail.com)
