@@ -5,7 +5,7 @@ namespace OcctScript.Geometry;
 
 public sealed class CommandFieldEvaluator(ExpressionEngine expressionEngine)
 {
-    public double EvaluateNumber(
+    public double RequiredNumber(
         ScriptCommand command,
         string fieldName,
         IReadOnlyDictionary<string, double> parameters,
@@ -14,24 +14,18 @@ public sealed class CommandFieldEvaluator(ExpressionEngine expressionEngine)
     {
         ArgumentNullException.ThrowIfNull(command);
         if (!command.Fields.TryGetValue(fieldName, out var field))
-            throw new InvalidOperationException($"Command '{command.Name}' does not contain field '{fieldName}'.");
-        if (string.IsNullOrWhiteSpace(field.Expression))
-            throw new InvalidOperationException($"Field '{fieldName}' has no expression.");
+            throw new InvalidOperationException($"Required field '{fieldName}' is missing from command '{command.Name}'.");
 
         var result = expressionEngine.Evaluate(field.Expression, parameters);
         if (!result.Success)
-            throw new InvalidOperationException($"Field '{fieldName}' is invalid: {result.Error}");
-        if (minimum.HasValue && result.Value < minimum.Value)
-            throw new InvalidOperationException($"Field '{fieldName}' must be at least {minimum.Value}.");
-        if (maximum.HasValue && result.Value > maximum.Value)
-            throw new InvalidOperationException($"Field '{fieldName}' must not exceed {maximum.Value}.");
-        return result.Value;
-    }
+            throw new InvalidOperationException($"Field '{fieldName}' of command '{command.Name}' is invalid: {result.Error}");
 
-    public Guid EvaluateReference(ScriptCommand command, string fieldName)
-    {
-        if (!command.Fields.TryGetValue(fieldName, out var field) || field.ReferenceId is null)
-            throw new InvalidOperationException($"Field '{fieldName}' does not contain an object reference.");
-        return field.ReferenceId.Value;
+        if (minimum.HasValue && result.Value < minimum.Value)
+            throw new InvalidOperationException($"Field '{fieldName}' of command '{command.Name}' must be greater than or equal to {minimum.Value}.");
+
+        if (maximum.HasValue && result.Value > maximum.Value)
+            throw new InvalidOperationException($"Field '{fieldName}' of command '{command.Name}' must be less than or equal to {maximum.Value}.");
+
+        return result.Value;
     }
 }
