@@ -24,8 +24,9 @@ public sealed partial class OcctEngine
             appendSelection ? 1 : 0,
             allowOverlap ? 1 : 0));
 
-    public void SelectObject(OcctObject value, bool appendSelection = false)
+    public void SelectObject(IOcctObject value, bool appendSelection = false)
     {
+        ArgumentNullException.ThrowIfNull(value);
         EnsureObject(value);
         CheckInitialized(() => NativeMethods.occt_select_object(_handle, value.Id, appendSelection ? 1 : 0));
     }
@@ -36,17 +37,17 @@ public sealed partial class OcctEngine
         CheckInitialized(() => NativeMethods.occt_set_selection_mode(_handle, (int)mode));
     }
 
-    public IReadOnlyList<OcctObject> SelectedObjects
+    public IReadOnlyList<IOcctObject> SelectedObjects
     {
         get
         {
             EnsureInitialized();
             var count = NativeMethods.occt_selected_count(_handle);
-            var result = new List<OcctObject>(Math.Max(count, 0));
+            var result = new List<IOcctObject>(Math.Max(count, 0));
             for (var index = 0; index < count; index++)
             {
                 var id = NativeMethods.occt_selected_at(_handle, index);
-                if (id > 0) result.Add(new OcctObject(id, GetObjectKind(id), _ownerId));
+                if (id > 0) result.Add(GetObject(id));
             }
             return result;
         }
@@ -64,13 +65,13 @@ public sealed partial class OcctEngine
         }
     }
 
-    public OcctObject? FirstSelectedObject
+    public IOcctObject? FirstSelectedObject
     {
         get
         {
             EnsureInitialized();
             var id = NativeMethods.occt_selected_at(_handle, 0);
-            return id > 0 ? new OcctObject(id, GetObjectKind(id), _ownerId) : null;
+            return id > 0 ? GetObject(id) : null;
         }
     }
 

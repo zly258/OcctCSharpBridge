@@ -12,7 +12,7 @@ OcctCSharpBridge 2.6 面向 Windows x64 与 OCCT 7.9.0，托管层明确分为�
 - OCCT：`7.9.0`
 - Native exports: `336`
 - Managed P/Invoke declarations: `336`
-- Public .NET types: `82`
+- Public .NET types: `81`
 - Viewer API：`212`
 - Modeling API：`124`
 
