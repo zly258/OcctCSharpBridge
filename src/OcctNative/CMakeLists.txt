@@ -88,11 +88,7 @@ add_library(OcctNative SHARED
     OcctSelectionOverlay.h
     OcctModeling.h)
 
-target_compile_definitions(OcctNative PRIVATE
-    NOMINMAX
-    _CRT_SECURE_NO_WARNINGS
-    "OCCT_BRIDGE_VERSION=\"${BRIDGE_VERSION}\""
-    "OCCT_BRIDGE_ABI_VERSION=${BRIDGE_ABI_VERSION}")
+target_compile_definitions(OcctNative PRIVATE NOMINMAX _CRT_SECURE_NO_WARNINGS)
 if(MSVC)
     target_compile_options(OcctNative PRIVATE /utf-8 /W4 /WX /permissive- /external:W0)
 endif()
@@ -115,7 +111,7 @@ endforeach()
 
 list(REMOVE_DUPLICATES occt_libraries)
 
-message(STATUS "Bridge version: ${BRIDGE_VERSION} (ABI ${BRIDGE_ABI_VERSION})")
+message(STATUS "Bridge contract: ${BRIDGE_VERSION} (ABI ${BRIDGE_ABI_VERSION})")
 message(STATUS "OCCT version: ${REQUIRED_OCCT_VERSION} (required exactly)")
 message(STATUS "OCCT CASROOT: ${OCCT_CASROOT}")
 message(STATUS "OCCT include: ${OCCT_INCLUDE_DIR}")
