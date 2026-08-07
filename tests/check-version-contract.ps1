@@ -85,7 +85,11 @@ $contracts = [ordered]@{
     )
     "src/OcctNative/CMakeLists.txt" = @(
         "cmake_minimum_required(VERSION $expectedCmakeVersion)",
-        "requires exactly OCCT $expectedOcctVersion"
+        "bridge-contract.json",
+        "string(JSON BRIDGE_VERSION",
+        "string(JSON BRIDGE_ABI_VERSION",
+        "string(JSON REQUIRED_OCCT_VERSION",
+        'OcctCSharpBridge requires exactly OCCT ${REQUIRED_OCCT_VERSION}'
     )
     "global.json" = @($expectedSdkVersion)
     "Directory.Build.props" = @("<LangVersion>$expectedLanguageVersion</LangVersion>")
