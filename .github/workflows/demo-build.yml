@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - demo
-      - agent/**
-      - optimize/**
-      - sync/**
   pull_request:
     branches:
       - demo
@@ -30,6 +27,22 @@ jobs:
         uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+
+      - name: Parse deployment scripts
+        shell: pwsh
+        run: |
+          foreach ($path in @('.\run.ps1', '.\publish.ps1')) {
+              $tokens = $null
+              $errors = $null
+              [System.Management.Automation.Language.Parser]::ParseFile(
+                  (Resolve-Path $path),
+                  [ref]$tokens,
+                  [ref]$errors) | Out-Null
+              if ($errors.Count -gt 0) {
+                  $errors | Format-List
+                  throw "PowerShell parse failed: $path"
+              }
+          }
 
       - name: Run demo CI build
         shell: pwsh
