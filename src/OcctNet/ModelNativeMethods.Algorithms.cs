@@ -4,8 +4,8 @@ namespace OcctNet;
 
 internal static partial class ModelNativeMethods
 {
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern NativeModelAlgorithmResult occt_model_boolean(IntPtr handle, int operation, long leftId, long rightId, in OcctModelBooleanOptions options);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern NativeModelAlgorithmResult occt_model_split(IntPtr handle, [In] long[] objectIds, int objectCount, [In] long[] toolIds, int toolCount, in OcctModelBooleanOptions options);
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern NativeModelAlgorithmResult occt_model_boolean(IntPtr handle, int operation, long leftId, long rightId, in NativeModelBooleanOptions options);
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern NativeModelAlgorithmResult occt_model_split(IntPtr handle, [In] long[] objectIds, int objectCount, [In] long[] toolIds, int toolCount, in NativeModelBooleanOptions options);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern NativeModelAlgorithmResult occt_model_extrude(IntPtr handle, long profileId, OcctVector3d vector);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern NativeModelAlgorithmResult occt_model_revolve(IntPtr handle, long profileId, OcctPoint3d axisPoint, OcctVector3d axisDirection, double angleDegrees);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern NativeModelAlgorithmResult occt_model_sweep(IntPtr handle, long spineWireId, long profileId);
