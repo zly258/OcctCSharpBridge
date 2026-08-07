@@ -1,5 +1,7 @@
 ﻿# OcctCSharpBridge Website
 
+[简体中文](README.zh-CN.md)
+
 This branch contains the static GitHub Pages site for [OcctCSharpBridge](https://github.com/zly258/OcctCSharpBridge). It is intentionally independent from the C++/.NET build and has no Node.js, npm, bundler, framework, CDN, or external font dependency.
 
 ## Files
@@ -28,9 +30,7 @@ The site can be opened directly from `index.html`, but using a local static serv
 python -m http.server 8000
 ```
 
-Then open `http://localhost:8000/` in a browser.
-
-No compilation step is required.
+Then open `http://localhost:8000/` in a browser. No compilation step is required.
 
 ## GitHub Pages
 
@@ -52,7 +52,7 @@ The published source must remain at the branch root. `.nojekyll` prevents Jekyll
 - The header language button switches between English and Simplified Chinese.
 - The manual language choice is saved in `localStorage`.
 - Light/dark appearance follows the browser/system `prefers-color-scheme` setting.
-- No application or author name is localized; the author display remains `Liaoyuan Zhang`.
+- The author display remains `Liaoyuan Zhang`.
 
 Translation strings live in the `translations` object in `app.js`. Elements that participate in localization use `data-i18n` keys in `index.html`.
 
@@ -67,47 +67,26 @@ assets/previews/wpf-demo-en.webp
 assets/previews/wpf-demo-zh.webp
 ```
 
-`app.js` switches the screenshot source together with the selected site language.
-
-Preview images are interactive:
-
-- click an image to open a full-size lightbox;
-- press Enter/Space when an image has keyboard focus;
-- click the backdrop, click the close button, or press Esc to close;
-- focus returns to the originating screenshot after closing.
+`app.js` switches the screenshot source together with the selected site language. Preview images support a full-size lightbox: click or use Enter/Space to open, and click the backdrop/close button or press Esc to close. Keyboard focus returns to the originating image.
 
 When adding another screenshot, place it inside `.preview-card` so the same lightbox behavior is applied automatically.
 
 ## Getting Started section
 
-The website is meant to show the complete first-run sequence rather than isolated build commands. Keep it in this order:
+The website shows the complete first-run sequence rather than isolated build commands:
 
 ```powershell
-# Clone
 git clone https://github.com/zly258/OcctCSharpBridge.git
 cd OcctCSharpBridge
-
-# Select runnable desktop examples
 git switch demo
-
-# Configure OCCT 7.9.0
 $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 
-# Validate
 .\build.ps1 validate Release
-
-# Build
 .\build.ps1 all Release
-
-# Run
 .\run.ps1 winform
 .\run.ps1 wpf
 .\run.ps1 avalonia
-
-# Native smoke test
 .\build.ps1 smoke Release
-
-# Package WinForms/WPF
 .\publish.ps1 all Release -Zip
 ```
 
