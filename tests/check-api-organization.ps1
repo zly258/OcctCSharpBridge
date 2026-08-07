@@ -24,7 +24,9 @@ $requiredFiles = @(
     "src/OcctNet/OcctModelingSession.Analysis.cs",
     "src/OcctNet/OcctModelingSession.Mesh.cs",
     "src/OcctNet/OcctModelingSession.Exchange.cs",
+    "src/OcctNet/OcctModelingSession.Extensions.cs",
     "src/OcctNet/OcctModelingSession.History.cs",
+    "src/OcctNet/OcctModelingExtensionTypes.cs",
     "src/OcctNet/NativeMethods.cs",
     "src/OcctNet/NativeMethods.View.cs",
     "src/OcctNet/NativeMethods.Objects.cs",
@@ -34,6 +36,7 @@ $requiredFiles = @(
     "src/OcctNet/ModelNativeMethods.Analysis.cs",
     "src/OcctNet/ModelNativeMethods.Mesh.cs",
     "src/OcctNet/ModelNativeMethods.Exchange.cs",
+    "src/OcctNet/ModelNativeMethods.Extensions.cs",
     "src/OcctNet/ModelNativeMethods.Interop.cs"
 )
 foreach ($relativePath in $requiredFiles) {
@@ -42,32 +45,12 @@ foreach ($relativePath in $requiredFiles) {
     }
 }
 
-$engineBaseText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctEngine.cs"))
-foreach ($forbidden in @(
-    "public void Initialize(",
-    "public void SetView(",
-    "public void Select(",
-    "public int ObjectCount",
-    "public IReadOnlyList<OcctShape> Shapes",
-    "public OcctBounds GetBounds("
-)) {
-    if ($engineBaseText.Contains($forbidden)) {
-        throw "OcctEngine.cs contains a categorized viewer API: $forbidden"
-    }
-}
-
-$baseText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctModelingSession.cs"))
-foreach ($forbidden in @(
-    "GetShapeHash(",
-    "GetTopologyCount(",
-    "GetVertexPoint(",
-    "GetEdgeCurveType(",
-    "ImportCall",
-    "ExportCall",
-    "ValidateExchangePath"
-)) {
-    if ($baseText.Contains($forbidden)) {
-        throw "OcctModelingSession.cs contains a categorized API/helper: $forbidden"
+$forbiddenFiles = @(
+    "src/OcctNet/OcctEngine.ApiAliases.cs"
+)
+foreach ($relativePath in $forbiddenFiles) {
+    if (Test-Path (Join-Path $RepositoryRoot $relativePath)) {
+        throw "Compatibility alias file is not allowed in Bridge 2.6: $relativePath"
     }
 }
 
@@ -84,40 +67,54 @@ $canonicalContracts = [ordered]@{
         "public IReadOnlyList<OcctObject> SelectedObjects"
     )
     "src/OcctNet/OcctEngine.Objects.cs" = @(
-        "public int ObjectCount",
-        "public IReadOnlyList<OcctShape> Shapes",
-        "public bool Owns(",
         "public IOcctObject GetObject(",
-        "public bool TryGetObject(",
         "public OcctShape GetShape(",
-        "public bool TryGetShape(",
-        "public OcctBounds GetBounds("
+        "public bool IsShapeValid(",
+        "public OcctBounds GetShapeBounds(",
+        "public OcctDistanceResult GetShapeDistance(",
+        "public OcctShape GetSubshapeAt(",
+        "public OcctCurveType GetEdgeCurveType(",
+        "public OcctSurfaceType GetFaceSurfaceType(",
+        "public OcctUvBounds GetFaceUvBounds("
     )
     "src/OcctNet/OcctModelingSession.ShapeQueries.cs" = @(
         "GetShapeOrientation",
+        "IsShapeClosed",
+        "IsShapeValid",
+        "GetShapeMaximumTolerance",
+        "GetShapeCheckReport",
         "GetShapeBounds",
         "GetShapeDistance",
         "GetShapeLocation",
         "SetShapeLocation"
     )
-    "src/OcctNet/OcctModelingSession.Topology.cs" = @("GetSubshapeAt")
+    "src/OcctNet/OcctModelingSession.Topology.cs" = @(
+        "GetSubshapeAt",
+        "GetSubshapes",
+        "GetOuterWire",
+        "GetInnerWires",
+        "GetAncestors"
+    )
     "src/OcctNet/OcctModelingSession.GeometryQueries.cs" = @(
-        "EvaluateEdgeNormalized",
+        "EvaluateEdge(",
         "GetEdgeCurveType",
         "GetFaceSurfaceType",
         "GetFaceUvBounds",
-        "EvaluateFaceAtParameters"
-    )
-    "src/OcctNet/OcctModelingSession.Analysis.cs" = @(
-        "ProjectPointOnEdge",
-        "ProjectPointOnFace",
-        "IntersectRay",
-        "ClassifyPoint"
+        "EvaluateFace("
     )
     "src/OcctNet/OcctModelingSession.Mesh.cs" = @(
-        "public void Mesh(",
-        "ClearMesh",
-        "GetFaceMesh"
+        "public void Triangulate(",
+        "ClearTriangulation",
+        "GetFaceMesh",
+        "GetShapeMesh"
+    )
+    "src/OcctNet/OcctModelingSession.Extensions.cs" = @(
+        "IsSameShape",
+        "IsPartnerShape",
+        "GetShapeOrientedBounds",
+        "MakePlanarFace",
+        "TrimEdge",
+        "OffsetWire"
     )
     "src/OcctNet/OcctModelingSession.Exchange.cs" = @(
         "ImportStep",
@@ -129,6 +126,14 @@ $canonicalContracts = [ordered]@{
         "ExportBrep",
         "ExportStl"
     )
+    "src/OcctNet/ModelNativeMethods.Extensions.cs" = @(
+        "occt_model_shape_is_same",
+        "occt_model_shape_is_partner",
+        "occt_model_shape_oriented_bounds",
+        "occt_model_make_face_with_holes",
+        "occt_model_trim_edge",
+        "occt_model_offset_wire"
+    )
 }
 foreach ($contract in $canonicalContracts.GetEnumerator()) {
     $text = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot $contract.Key))
@@ -139,45 +144,48 @@ foreach ($contract in $canonicalContracts.GetEnumerator()) {
     }
 }
 
-$engineGeometryText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctEngine.Geometry.cs"))
-if ($engineGeometryText.Contains("private static long[] ShapeIds")) {
-    throw "OcctEngine geometry ShapeIds must be instance-owned so object ownership can be validated."
-}
-foreach ($required in @(
-    "foreach (var shape in array) EnsureShape(shape);",
-    "EnsureShape(wire);",
-    "EnsureShape(shell);",
-    "OcctGuard.Positive(radius, nameof(radius));"
-)) {
-    if (-not $engineGeometryText.Contains($required)) {
-        throw "OcctEngine geometry safety contract is missing: $required"
+$sourceRoot = Join-Path $RepositoryRoot "src/OcctNet"
+$sourceText = (Get-ChildItem $sourceRoot -Filter "*.cs" -File | ForEach-Object {
+    [System.IO.File]::ReadAllText($_.FullName)
+}) -join "`n"
+
+$forbiddenManagedTokens = @(
+    "public OcctBounds GetBounds(",
+    "public OcctDistanceResult Distance(",
+    "public OcctShape GetSubshape(",
+    "EvaluateEdgeNormalized",
+    "EvaluateFaceAtParameters",
+    "public OcctCurveType GetCurveType(",
+    "public OcctSurfaceType GetSurfaceType(",
+    "public OcctUvBounds GetUvBounds(",
+    "public void Mesh(",
+    "public void ClearMesh(",
+    "UseParallelProcessing",
+    "NonDestructiveMode",
+    "RelativeDeflection",
+    "UseParallelMeshing",
+    "NativeHasUv",
+    "NativeHasNormal",
+    "NativeState",
+    "IsBound"
+)
+foreach ($token in $forbiddenManagedTokens) {
+    if ($sourceText.Contains($token)) {
+        throw "Bridge 2.6 compatibility/native-leak token remains in public wrapper: $token"
     }
 }
 
-$engineFeatureText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctEngine.Features.cs"))
-foreach ($required in @(
-    "EnsureShape(left);",
-    "EnsureShape(right);",
-    "EnsureShape(profile);",
-    "EnsureText(textObject);",
-    "EnsureDimension(dimension);"
-)) {
-    if (-not $engineFeatureText.Contains($required)) {
-        throw "OcctEngine feature ownership contract is missing: $required"
+$engineBaseText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctEngine.cs"))
+foreach ($forbidden in @("public void Initialize(", "public void SetView(", "public void Select(", "public int ObjectCount")) {
+    if ($engineBaseText.Contains($forbidden)) {
+        throw "OcctEngine.cs contains a categorized viewer API: $forbidden"
     }
 }
 
-$analysisText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctModelingSession.Analysis.cs"))
-foreach ($forbidden in @("public void Mesh(", "GetFaceMesh", "ImportStep", "ExportStep", "ImportStl", "ExportStl")) {
-    if ($analysisText.Contains($forbidden)) {
-        throw "Analysis API file contains mesh/exchange responsibility: $forbidden"
-    }
-}
-
-$nativeAnalysisText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/ModelNativeMethods.Analysis.cs"))
-foreach ($forbidden in @("occt_model_mesh", "occt_model_import_", "occt_model_export_", "occt_model_display_in_engine")) {
-    if ($nativeAnalysisText.Contains($forbidden)) {
-        throw "Native analysis declaration file contains another responsibility: $forbidden"
+$baseText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctModelingSession.cs"))
+foreach ($forbidden in @("GetShapeHash(", "GetTopologyCount(", "GetVertexPoint(", "ImportCall", "ExportCall")) {
+    if ($baseText.Contains($forbidden)) {
+        throw "OcctModelingSession.cs contains a categorized API/helper: $forbidden"
     }
 }
 
@@ -187,36 +195,13 @@ foreach ($required in @("ResolveLibrary", "occt_create", "occt_destroy", "occt_l
         throw "NativeMethods.cs is missing bootstrap/core declaration: $required"
     }
 }
-foreach ($forbidden in @(
-    "occt_initialize(",
-    "occt_select(",
-    "occt_object_count(",
-    "occt_make_box(",
-    "occt_add_text(",
-    "occt_import_step("
-)) {
+foreach ($forbidden in @("occt_initialize(", "occt_select(", "occt_object_count(", "occt_make_box(", "occt_add_text(", "occt_import_step(")) {
     if ($nativeBootstrapText.Contains($forbidden)) {
         throw "NativeMethods.cs contains a categorized declaration: $forbidden"
     }
 }
 
-$nativeCategoryContracts = [ordered]@{
-    "src/OcctNet/NativeMethods.View.cs" = @("occt_initialize", "occt_select", "occt_get_camera")
-    "src/OcctNet/NativeMethods.Objects.cs" = @("occt_object_count", "occt_shape_bounds", "occt_translate")
-    "src/OcctNet/NativeMethods.Modeling.cs" = @("occt_make_box", "occt_boolean", "occt_fillet_edges")
-    "src/OcctNet/NativeMethods.Annotations.cs" = @("occt_add_text", "occt_add_length_dimension")
-    "src/OcctNet/NativeMethods.Exchange.cs" = @("occt_import_step", "occt_export_step")
-}
-foreach ($contract in $nativeCategoryContracts.GetEnumerator()) {
-    $text = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot $contract.Key))
-    foreach ($token in $contract.Value) {
-        if (-not $text.Contains($token)) {
-            throw "Native declaration category is missing from $($contract.Key): $token"
-        }
-    }
-}
-
-$nativeMethodFiles = Get-ChildItem (Join-Path $RepositoryRoot "src/OcctNet") -Filter "*NativeMethods*.cs" -File
+$nativeMethodFiles = Get-ChildItem $sourceRoot -Filter "*NativeMethods*.cs" -File
 foreach ($file in $nativeMethodFiles) {
     $text = [System.IO.File]::ReadAllText($file.FullName)
     $attributes = [regex]::Matches($text, '\[DllImport\(LibraryName(?<body>.*?)\)\]', 'Singleline')
@@ -237,4 +222,4 @@ if (Compare-Object $expectedDocs $docs) {
     throw "The docs directory must contain only API_COVERAGE.md and API_COVERAGE.zh-CN.md."
 }
 
-Write-Host "[organization] Viewer/modeling categories, ownership guards, native responsibility boundaries, P/Invoke attributes and documentation layout validated." -ForegroundColor Green
+Write-Host "[organization] Bridge 2.6 canonical naming, strict ownership, typed DTO boundaries and responsibility layout validated." -ForegroundColor Green
