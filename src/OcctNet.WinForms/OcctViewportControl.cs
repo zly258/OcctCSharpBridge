@@ -6,14 +6,14 @@ namespace OcctNet;
 
 public sealed class OcctViewportSelectionEventArgs : EventArgs
 {
-    public OcctViewportSelectionEventArgs(OcctObject? selectedObject, IReadOnlyList<OcctObject> selectedObjects)
+    public OcctViewportSelectionEventArgs(IOcctObject? selectedObject, IReadOnlyList<IOcctObject> selectedObjects)
     {
         SelectedObject = selectedObject;
         SelectedObjects = selectedObjects;
     }
 
-    public OcctObject? SelectedObject { get; }
-    public IReadOnlyList<OcctObject> SelectedObjects { get; }
+    public IOcctObject? SelectedObject { get; }
+    public IReadOnlyList<IOcctObject> SelectedObjects { get; }
 }
 
 public sealed class OcctViewportErrorEventArgs : EventArgs
