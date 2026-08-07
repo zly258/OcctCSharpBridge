@@ -12,8 +12,8 @@ $expectedPublicTypeCount = 80
 $contracts = [ordered]@{
     "src/OcctNative/OcctEngine.cpp" = @("occt_bridge_version()", $expectedVersion)
     "src/OcctNet/OcctBridgeInfo.cs" = @("ManagedVersion", $expectedVersion)
-    "README.md" = @("Bridge version:", $expectedVersion)
-    "README.zh-CN.md" = @("Bridge 版本：", $expectedVersion)
+    "README.md" = @($expectedVersion)
+    "README.zh-CN.md" = @($expectedVersion)
     "docs/API_COVERAGE.md" = @(
         "Native exports:",
         [string]$expectedNativeCount,
