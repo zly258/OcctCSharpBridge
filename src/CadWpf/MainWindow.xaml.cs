@@ -381,9 +381,25 @@ public partial class MainWindow : System.Windows.Window
         }
     }
 
+    private void ReportCommandPrecondition(string message)
+    {
+        CommandStatus.Text = message;
+        Log(message);
+        System.Media.SystemSounds.Asterisk.Play();
+        Viewport.FocusViewport();
+    }
+
     private void RunCommand(CadCommandId id)
     {
         if (_session is null) return;
+
+        var availability = _session.GetCommandAvailability(id);
+        if (!availability.CanExecute)
+        {
+            ReportCommandPrecondition(availability.Message);
+            return;
+        }
+
         var definition = CadLocalization.Localize(CadCommandCatalog.Get(id));
         if (!ParameterDialog.TryGetValues(this, definition.Text, definition.Parameters, out var values)) return;
         ExecuteSafe(() =>
