@@ -1,8 +1,10 @@
 # OcctCSharpBridge · OcctScript
 
-[English](README.md) · [main 分支](https://github.com/zly258/OcctCSharpBridge/tree/main) · [demo 分支](https://github.com/zly258/OcctCSharpBridge/tree/demo)
+[English](README.md) · [main 分支](https://github.com/zly258/OcctCSharpBridge/tree/main)
 
 `script` 分支提供 **OcctScript 可用初版**：在 `OcctCSharpBridge` 可复用封装基础上实现轻量、可扩展的参数化 CAD 脚本编辑器，并持续同步 `main` 中最新 OCCT 封装。
+
+本分支不包含 Demo 应用项目。`OcctNet.WinForms` 与 `OcctNet.Wpf` 是从 `main` 同步的可复用视口宿主库，`OcctScript.Editor` 才是本分支提供的桌面应用。
 
 OcctScript **不使用 OCAF/XDE**。文档机制、历史和持久化属于应用层，文件使用可读 JSON 保存。
 
@@ -62,15 +64,15 @@ OcctScript **不使用 OCAF/XDE**。文档机制、历史和持久化属于应�
 ```text
 src/OcctNative              C++17 OCCT 桥接与稳定 C ABI
 src/OcctNet                 与 UI 无关的托管封装
-src/OcctNet.WinForms        WinForms HWND 视口宿主
-src/OcctNet.Wpf             WPF 视口宿主
+src/OcctNet.WinForms        WPF 视口内部复用的 HWND 宿主库
+src/OcctNet.Wpf             可复用 WPF 视口宿主
 
 src/OcctScript.Domain       JSON 文档和 Command 元数据
 src/OcctScript.Expressions  表达式解析与计算
 src/OcctScript.Serialization JSON 持久化
 src/OcctScript.Application  校验、参数、撤销重做
 src/OcctScript.Geometry     依赖图和真实 OCCT Builder
-src/OcctScript.Editor       WPF 参数化编辑器
+src/OcctScript.Editor       WPF 参数化编辑器应用
 
 samples/Scripts             可直接打开的 JSON 示例
 tests/OcctScript.Smoke      脚本/建模 Smoke Test
@@ -98,9 +100,22 @@ src\OcctScript.Editor\bin\x64\Release\net8.0-windows\
 
 ## 启动编辑器
 
+构建完成后，在仓库根目录直接运行：
+
 ```powershell
-$env:OCCT_ROOT = "D:\tools\occt-vc144-64"
-.\src\OcctScript.Editor\bin\x64\Release\net8.0-windows\OcctScript.Editor.exe
+.\run.ps1
+```
+
+需要明确指定 OCCT 安装目录时：
+
+```powershell
+.\run.ps1 Release -OcctRoot "D:\tools\occt-vc144-64"
+```
+
+需要先完整构建 `script` 再启动时：
+
+```powershell
+.\run.ps1 Release -OcctRoot "D:\tools\occt-vc144-64" -Build
 ```
 
 程序默认英文，通过 **Language → 中文** 切换中文。
