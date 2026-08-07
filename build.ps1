@@ -44,6 +44,7 @@ $Projects = [ordered]@{
     Core = "src\OcctNet\OcctNet.csproj"
     WinForms = "src\OcctNet.WinForms\OcctNet.WinForms.csproj"
     Wpf = "src\OcctNet.Wpf\OcctNet.Wpf.csproj"
+    ManagedTests = "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj"
     Smoke = "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
 }
 
@@ -169,6 +170,21 @@ function Build-Project {
     ) "$Name build failed."
 }
 
+function Run-ManagedTests {
+    Assert-Command "dotnet"
+    $project = Join-Path $RepoRoot $Projects.ManagedTests
+    Assert-Path $project
+    Write-Host "[managed-tests] Running managed-only bridge regression tests..." -ForegroundColor Cyan
+    Invoke-Checked "dotnet" @(
+        "run",
+        "--project", $project,
+        "-c", $Configuration,
+        "-p:Platform=x64",
+        "--no-restore",
+        "--nologo"
+    ) "Managed bridge regression tests failed."
+}
+
 function Build-Managed {
     Build-Project "Core"
     Build-Project "WinForms"
@@ -177,6 +193,8 @@ function Build-Managed {
 
 function Build-Ci {
     Build-Managed
+    Build-Project "ManagedTests"
+    Run-ManagedTests
     Build-Project "Smoke"
 }
 
