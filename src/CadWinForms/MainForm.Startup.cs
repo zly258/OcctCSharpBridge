@@ -38,6 +38,7 @@ public sealed partial class MainForm
             factor: 1.0,
             units: 1.0,
             applyExisting: true);
+        _session.Engine.SetFaceBoundariesVisible(true, applyExisting: true);
         _depthDefaultsApplied = true;
     }
 }
