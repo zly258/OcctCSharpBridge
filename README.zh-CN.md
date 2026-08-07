@@ -72,6 +72,57 @@ Avalonia 当前提供轻量的宿主验证 Demo，用于验证真实 OCCT 场景
 - `OcctNet.dll`、选用的界面宿主程序集与 `OcctNative.dll` 必须来自同一次构建
 - 原生会话包含可变状态，同一会话应由单一应用线程调用
 
+## 第一次使用
+
+先克隆仓库、切换到 `demo` 分支，再配置 OCCT 7.9.0：
+
+```powershell
+git clone https://github.com/zly258/OcctCSharpBridge.git
+cd OcctCSharpBridge
+git switch demo
+$env:OCCT_ROOT = "D:\\tools\\occt-vc144-64"
+```
+
+### PowerShell 脚本说明
+
+`build.ps1` 是统一构建与校核入口，支持 `validate`、`native`、`managed`、`smoke`、`winform`、`wpf`、`avalonia`、`all`。其中 `validate` 不要求 OCCT SDK；涉及 Native、Demo 或 Smoke 的目标需要 OCCT。
+
+```powershell
+.\build.ps1 validate Release
+.\build.ps1 managed Release
+.\build.ps1 winform Release
+.\build.ps1 wpf Release
+.\build.ps1 avalonia Release
+.\build.ps1 all Release
+.\build.ps1 smoke Release
+```
+
+`run.ps1` **只启动已经构建好的程序，不会自动重新编译**。格式：
+
+```powershell
+.\run.ps1 <winform|wpf|avalonia> [Release] [-OcctRoot <path>]
+```
+
+常用示例：
+
+```powershell
+.\run.ps1 winform
+.\run.ps1 wpf
+.\run.ps1 avalonia
+```
+
+`publish.ps1` 用于生成 WinForms/WPF 可部署发布包。Avalonia 当前已纳入 build/run/CI，但尚未纳入正式 publish 目标。
+
+```powershell
+.\publish.ps1 all Release -Zip -OcctRoot "D:\\tools\\occt-vc144-64"
+.\publish.ps1 winform Release -Zip -OcctRoot "D:\\tools\\occt-vc144-64"
+.\publish.ps1 wpf Release -Zip -OcctRoot "D:\\tools\\occt-vc144-64"
+```
+
+### 默认显示样式
+
+WinForms 与 WPF 默认使用着色并显示实体边线，可在 **视图 → 视觉样式 → 着色并显示边线** 独立开关面边界显示；它不会改变 Shaded/Wireframe 本身。轻量 Avalonia Demo 也默认开启面边界。
+
 ## 构建与运行
 
 可先设置 OCCT SDK 环境变量，也可以在命令中显式传入：
@@ -104,6 +155,13 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 ```powershell
 .\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
+
+## 常见问题
+
+- `run.ps1` 运行的是旧程序：先重新执行对应 `build.ps1` target；运行脚本不会编译。
+- Avalonia 启动退出：查看 `src\CadAvalonia\bin\x64\<Configuration>\net8.0-windows\CAD-Avalonia.log`。
+- Native DLL 加载失败：使用正确 `-OcctRoot` 重新构建，并确认 OCCT/第三方 Runtime DLL 完整。
+- 修改 API、菜单或 Host 后优先执行 `build.ps1 validate`；需要验证真实 OCCT 建模时执行 `build.ps1 smoke`。
 
 ## 发布
 

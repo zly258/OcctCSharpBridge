@@ -84,6 +84,7 @@ public partial class MainWindow : System.Windows.Window
             _session.Engine.SetViewCubeVisible(true);
             ApplyViewCubeLanguage();
             _session.Engine.SetAntialiasing(true);
+            _session.Engine.SetFaceBoundariesVisible(true, applyExisting: true);
             _session.Engine.SetAutoZFitMode(true, 1.0);
             _session.Engine.SetSelectionTolerance(4);
             _session.Engine.SetDefaultMaterial(OcctMaterial.Plastified);
@@ -209,6 +210,7 @@ public partial class MainWindow : System.Windows.Window
 
         var display = Menu(MenuHeader("Menu.Display"));
         display.Items.Add(MenuItem(CadLocalization.Text("Menu.Shaded"), (_, _) => Session.Engine.SetDisplayMode(OcctDisplayMode.Shaded)));
+        display.Items.Add(CheckMenuItem(CadLocalization.Text("Menu.ShadedEdges"), true, item => ExecuteSafe(() => Session.Engine.SetFaceBoundariesVisible(item.IsChecked))));
         display.Items.Add(MenuItem(CadLocalization.Text("Menu.Wireframe"), (_, _) => Session.Engine.SetDisplayMode(OcctDisplayMode.Wireframe)));
         display.Items.Add(CheckMenuItem(CadLocalization.Text("Menu.Hlr"), false, item => Session.Engine.SetComputedHlr(item.IsChecked)));
         display.Items.Add(CheckMenuItem(CadLocalization.Text("Menu.Antialiasing"), true, item => Session.Engine.SetAntialiasing(item.IsChecked)));
