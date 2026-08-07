@@ -57,7 +57,7 @@ public sealed partial class OcctEngine
         get
         {
             EnsureInitialized();
-            var id = NativeMethods.occt_first_selected(_handle);
+            var id = NativeMethods.occt_selected_at(_handle, 0);
             return id > 0 && GetObjectKind(id) == OcctObjectKind.Shape
                 ? new OcctShape(id, _ownerId)
                 : null;
@@ -69,7 +69,7 @@ public sealed partial class OcctEngine
         get
         {
             EnsureInitialized();
-            var id = NativeMethods.occt_first_selected(_handle);
+            var id = NativeMethods.occt_selected_at(_handle, 0);
             return id > 0 ? new OcctObject(id, GetObjectKind(id), _ownerId) : null;
         }
     }
