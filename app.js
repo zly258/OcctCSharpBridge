@@ -50,10 +50,9 @@
       avaloniaCaption: 'Full CAD demo using the native Avalonia HWND host',
       branchesEyebrow: 'BRANCHES',
       branchesTitle: 'Clear responsibilities across branches',
-      branchesLead: 'Keep reusable bridge code separate from demos, scripting experiments and the project website.',
+      branchesLead: 'Keep the reusable bridge core, desktop demos and project website in clearly separated branches.',
       branchMain: 'Reusable OCCT C++ / C# bridge core',
       branchDemo: 'WinForms, WPF and Avalonia demos',
-      branchScript: 'Parametric scripting and editor experiments',
       branchWebsite: 'Static project website and GitHub Pages source',
       startEyebrow: 'GET STARTED',
       startTitle: 'Clone, build, run and publish',
@@ -118,10 +117,9 @@
       avaloniaCaption: '使用 Avalonia 原生 HWND 宿主的完整 CAD Demo',
       branchesEyebrow: 'BRANCHES',
       branchesTitle: '不同分支保持清晰职责',
-      branchesLead: '将可复用桥接核心、Demo、参数化脚本实验和项目网站分别维护。',
+      branchesLead: '将可复用桥接核心、桌面 Demo 与项目网站分别维护，保持分支边界清晰。',
       branchMain: '可复用 OCCT C++ / C# 桥接核心',
       branchDemo: 'WinForms、WPF 与 Avalonia 示例',
-      branchScript: '参数化脚本与编辑器实验',
       branchWebsite: '静态项目网站与 GitHub Pages 源码',
       startEyebrow: 'GET STARTED',
       startTitle: '从克隆开始：构建、运行与发布',
@@ -137,7 +135,6 @@
       footerText: 'Built for OCCT 7.9.0 · .NET 8 · Windows x64'
     }
   };
-
   const languageToggle = document.getElementById('languageToggle');
   const copyButton = document.getElementById('copyCode');
   const buildCode = document.getElementById('buildCode');
