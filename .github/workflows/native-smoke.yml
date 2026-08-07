@@ -4,9 +4,27 @@ on:
   push:
     branches:
       - main
+    paths:
+      - bridge-contract.json
+      - global.json
+      - build.ps1
+      - src/OcctNative/**
+      - src/OcctNet/**
+      - tests/OcctNet.Smoke/**
+      - tests/check-*.ps1
+      - .github/workflows/native-smoke.yml
   pull_request:
     branches:
       - main
+    paths:
+      - bridge-contract.json
+      - global.json
+      - build.ps1
+      - src/OcctNative/**
+      - src/OcctNet/**
+      - tests/OcctNet.Smoke/**
+      - tests/check-*.ps1
+      - .github/workflows/native-smoke.yml
   workflow_dispatch:
 
 permissions:
