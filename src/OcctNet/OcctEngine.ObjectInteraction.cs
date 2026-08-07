@@ -4,29 +4,26 @@ public sealed partial class OcctEngine
 {
     public void SetSelectable(IOcctObject value, bool selectable)
     {
-        ArgumentNullException.ThrowIfNull(value);
+        EnsureObject(value);
         CheckInitialized(() => NativeMethods.occt_set_object_selectable(_handle, value.Id, selectable ? 1 : 0));
     }
 
     public bool IsSelectable(IOcctObject value)
     {
-        ArgumentNullException.ThrowIfNull(value);
-        EnsureNotDisposed();
+        EnsureObject(value);
         return NativeMethods.occt_get_object_selectable(_handle, value.Id) != 0;
     }
 
     public void SetSelectable(IEnumerable<IOcctObject> values, bool selectable)
     {
-        ArgumentNullException.ThrowIfNull(values);
-        EnsureInitialized();
-        var ids = values.Select(value => value?.Id ?? throw new ArgumentException("Object collection contains null.", nameof(values)))
-            .Where(id => id > 0)
-            .Distinct()
-            .ToArray();
+        var ids = GetObjectIds(values, nameof(values));
         if (ids.Length == 0) return;
-        Check(NativeMethods.occt_set_objects_selectable(_handle, ids, ids.Length, selectable ? 1 : 0));
+        CheckInitialized(() => NativeMethods.occt_set_objects_selectable(_handle, ids, ids.Length, selectable ? 1 : 0));
     }
 
-    public void SetViewCubeLanguage(OcctViewCubeLanguage language) =>
+    public void SetViewCubeLanguage(OcctViewCubeLanguage language)
+    {
+        if (!Enum.IsDefined(language)) throw new ArgumentOutOfRangeException(nameof(language));
         CheckInitialized(() => NativeMethods.occt_set_view_cube_language(_handle, (int)language));
+    }
 }
