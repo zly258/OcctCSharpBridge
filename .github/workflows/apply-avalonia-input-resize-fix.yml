@@ -1,0 +1,160 @@
+name: Apply Avalonia Native Host Fix
+
+on:
+  push:
+    branches:
+      - fix/avalonia-input-resize
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/avalonia-input-resize
+          fetch-depth: 0
+      - name: Patch native host and regression checks
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(text, old, new, label):
+              if old not in text:
+                  raise RuntimeError(f"missing patch anchor: {label}")
+              return text.replace(old, new, 1)
+
+          path = Path("src/OcctNet.Avalonia/OcctAvaloniaViewport.cs")
+          text = path.read_text(encoding="utf-8-sig")
+
+          text = replace_once(text,
+              "    private const int WsClipChildren = 0x02000000;\n\n    private const uint WmSetFocus = 0x0007;",
+              "    private const int WsClipChildren = 0x02000000;\n    private const int SsNotify = 0x00000100;\n    private const int HtClient = 1;\n\n    private const uint WmSize = 0x0005;\n    private const uint WmSetFocus = 0x0007;\n    private const uint WmNcHitTest = 0x0084;\n    private const uint WmWindowPosChanged = 0x0047;",
+              "Win32 constants")
+
+          text = replace_once(text,
+              "    private long _lastHoverTimestamp;\n    private long _lastWorldPointTimestamp;",
+              "    private long _lastHoverTimestamp;\n    private long _lastWorldPointTimestamp;\n    private bool _nativeRefreshScheduled;",
+              "refresh state")
+
+          text = replace_once(text,
+              "            WsChild | WsVisible | WsClipSiblings | WsClipChildren,",
+              "            WsChild | WsVisible | WsClipSiblings | WsClipChildren | SsNotify,",
+              "SS_NOTIFY style")
+
+          text = replace_once(text,
+              "        RefreshNativeView();\n    }\n\n    private IntPtr WindowProcedure",
+              "        ScheduleNativeViewRefresh();\n    }\n\n    private void ScheduleNativeViewRefresh()\n    {\n        if (_nativeRefreshScheduled || _engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero)\n            return;\n\n        _nativeRefreshScheduled = true;\n        Dispatcher.UIThread.Post(() =>\n        {\n            _nativeRefreshScheduled = false;\n            RefreshNativeView();\n        }, DispatcherPriority.Background);\n    }\n\n    private IntPtr WindowProcedure",
+              "deferred resize")
+
+          text = replace_once(text,
+              "            switch (message)\n            {\n                case WmDpiChanged:",
+              "            switch (message)\n            {\n                case WmNcHitTest:\n                    return new IntPtr(HtClient);\n\n                case WmSize:\n                case WmWindowPosChanged:\n                    ScheduleNativeViewRefresh();\n                    break;\n\n                case WmDpiChanged:",
+              "native resize messages")
+
+          text = replace_once(text,
+              "                case WmDpiChanged:\n                    RefreshNativeView();",
+              "                case WmDpiChanged:\n                    ScheduleNativeViewRefresh();",
+              "DPI refresh")
+
+          text = replace_once(text,
+              "                case WmRButtonUp:\n                    _rotating = false;\n                    break;",
+              "                case WmRButtonUp:\n                    _rotating = false;\n                    ReleaseCapture();\n                    break;",
+              "rotation capture release")
+
+          text = replace_once(text,
+              "                case WmMButtonUp:\n                    _panning = false;\n                    break;",
+              "                case WmMButtonUp:\n                    _panning = false;\n                    ReleaseCapture();\n                    break;",
+              "pan capture release")
+
+          text = replace_once(text,
+              "                    HandleMouseWheel(wParam);",
+              "                    HandleMouseWheel(wParam, lParam);",
+              "wheel coordinates")
+
+          text = replace_once(text,
+              "                case WmCaptureChanged:\n                    if (wParam != hwnd)",
+              "                case WmCaptureChanged:\n                    if (lParam != hwnd)",
+              "WM_CAPTURECHANGED parameter")
+
+          text = replace_once(text,
+              "        _rotating = true;\n        TryInvoke(() => _engine.StartRotation(x, y));",
+              "        _rotating = true;\n        SetCapture(hwnd);\n        TryInvoke(() => _engine.StartRotation(x, y));",
+              "rotation capture")
+
+          text = replace_once(text,
+              "        _panning = true;\n    }\n\n    private void HandleMouseMove",
+              "        _panning = true;\n        SetCapture(hwnd);\n    }\n\n    private void HandleMouseMove",
+              "pan capture")
+
+          text = replace_once(text,
+              "    private void HandleMouseWheel(IntPtr wParam)\n    {",
+              "    private void HandleMouseWheel(IntPtr wParam, IntPtr lParam)\n    {",
+              "wheel signature")
+
+          text = replace_once(text,
+              "        TryInvoke(() => _engine.Zoom(delta > 0 ? 1.15 : 0.87));\n    }\n\n    private void UpdateSelectionFrame",
+              "        var point = new NativePoint(GetLowWordSigned(lParam), GetHighWordSigned(lParam));\n        if (_nativeHandle != IntPtr.Zero && ScreenToClient(_nativeHandle, ref point))\n            TryInvoke(() => _engine.ZoomAtPoint(point.X, point.Y, delta));\n        else\n            TryInvoke(() => _engine.Zoom(delta > 0 ? 1.15 : 0.87));\n    }\n\n    private void UpdateSelectionFrame",
+              "cursor-centered wheel zoom")
+
+          text = replace_once(text,
+              "        _nativeHandle = IntPtr.Zero;\n        _selectionFrame = null;",
+              "        _nativeHandle = IntPtr.Zero;\n        _selectionFrame = null;\n        _nativeRefreshScheduled = false;",
+              "dispose refresh state")
+
+          text = replace_once(text,
+              "    private readonly record struct SelectionFrame(int Left, int Top, int Right, int Bottom);\n\n    [UnmanagedFunctionPointer",
+              "    private readonly record struct SelectionFrame(int Left, int Top, int Right, int Bottom);\n\n    [StructLayout(LayoutKind.Sequential)]\n    private struct NativePoint\n    {\n        public NativePoint(int x, int y)\n        {\n            X = x;\n            Y = y;\n        }\n\n        public int X;\n        public int Y;\n    }\n\n    [UnmanagedFunctionPointer",
+              "POINT struct")
+
+          text = replace_once(text,
+              "    [DllImport(\"user32.dll\")]\n    private static extern uint GetDpiForWindow(IntPtr hwnd);\n}",
+              "    [DllImport(\"user32.dll\")]\n    private static extern uint GetDpiForWindow(IntPtr hwnd);\n\n    [DllImport(\"user32.dll\")]\n    private static extern bool ScreenToClient(IntPtr hwnd, ref NativePoint point);\n}",
+              "ScreenToClient")
+
+          path.write_text(text, encoding="utf-8-sig")
+
+          test_path = Path("tests/check-ui-hosts.ps1")
+          test = test_path.read_text(encoding="utf-8-sig")
+          test = replace_once(test,
+              '$wpfControl = Join-Path $RepositoryRoot "src\\OcctNet.Wpf\\OcctWpfViewport.cs"',
+              '$wpfControl = Join-Path $RepositoryRoot "src\\OcctNet.Wpf\\OcctWpfViewport.cs"\n$avaloniaControl = Join-Path $RepositoryRoot "src\\OcctNet.Avalonia\\OcctAvaloniaViewport.cs"',
+              "Avalonia test path")
+          test = replace_once(test,
+              'foreach ($path in @($winFormsProject, $wpfProject, $wpfControl))',
+              'foreach ($path in @($winFormsProject, $wpfProject, $wpfControl, $avaloniaControl))',
+              "Avalonia required file")
+          marker = 'Write-Host "[ui-hosts] WinForms and WPF viewport host contracts validated." -ForegroundColor Green'
+          block = '''$avaloniaText = [System.IO.File]::ReadAllText($avaloniaControl)
+          foreach ($token in @(
+              'SsNotify',
+              'WmNcHitTest',
+              'WmSize',
+              'WmWindowPosChanged',
+              'ScheduleNativeViewRefresh',
+              'SetCapture(hwnd)',
+              'ScreenToClient',
+              'ZoomAtPoint',
+              'if (lParam != hwnd)'
+          )) {
+              if (-not $avaloniaText.Contains($token)) {
+                  throw "Avalonia viewport interaction/resize contract is missing: $token"
+              }
+          }
+
+          Write-Host "[ui-hosts] WinForms, WPF and Avalonia viewport host contracts validated." -ForegroundColor Green'''
+          test = replace_once(test, marker, block, "Avalonia regression checks")
+          test_path.write_text(test, encoding="utf-8-sig")
+      - name: Remove patch workflow
+        shell: bash
+        run: rm .github/workflows/apply-avalonia-input-resize-fix.yml
+      - name: Commit patched files
+        shell: bash
+        run: |
+          git config user.name "zly258"
+          git config user.email "zhangly1403@qq.com"
+          git add -A
+          git commit -m "Fix Avalonia native viewport input and resize"
+          git push origin HEAD:fix/avalonia-input-resize
