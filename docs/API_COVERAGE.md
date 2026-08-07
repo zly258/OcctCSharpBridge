@@ -5,8 +5,8 @@ This source-derived inventory lists the current native C ABI, C# P/Invoke mappin
 OCAF/XDE is intentionally excluded; documents, undo/redo, and JSON persistence are application-layer responsibilities.
 
 - OCCT: `7.9.0`
-- Native exports: `327`
-- Managed P/Invoke declarations: `327`
+- Native exports: `339`
+- Managed P/Invoke declarations: `339`
 - Public .NET types: `75`
 
 ## API design and naming rules

@@ -5,8 +5,8 @@
 桥接层不包含 OCAF/XDE；文档、撤销重做和 JSON 持久化由上层应用实现。
 
 - OCCT: `7.9.0`
-- Native exports: `327`
-- Managed P/Invoke declarations: `327`
+- Native exports: `339`
+- Managed P/Invoke declarations: `339`
 - Public .NET types: `75`
 
 ## 接口设计与命名规范

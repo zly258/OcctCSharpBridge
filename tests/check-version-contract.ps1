@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $expectedVersion = "2.5.0"
-$expectedNativeCount = 327
+$expectedNativeCount = 339
 $expectedPublicTypeCount = 75
 
 $contracts = [ordered]@{
