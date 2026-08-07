@@ -30,7 +30,7 @@ public partial class MainWindow
 
     private void ParameterGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
     {
-        if (e.Row.Item is not ScriptParameter parameter || e.EditingElement is not TextBox textBox) return;
+        if (e.Row.Item is not ScriptParameter parameter || e.EditingElement is not System.Windows.Controls.TextBox textBox) return;
         var property = parameterEditProperty ?? e.Column.SortMemberPath;
         var newValue = textBox.Text.Trim();
         var oldValue = parameterEditOriginal ?? string.Empty;
@@ -65,7 +65,7 @@ public partial class MainWindow
         catch (Exception ex)
         {
             e.Cancel = true;
-            MessageBox.Show(this, ex.Message, ResourceText("Ui.InvalidValue"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            System.Windows.MessageBox.Show(this, ex.Message, ResourceText("Ui.InvalidValue"), MessageBoxButton.OK, MessageBoxImage.Warning);
             Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => ParameterGrid.Items.Refresh()));
         }
     }
@@ -84,7 +84,7 @@ public partial class MainWindow
 
     private void PropertyGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
     {
-        if (selectedCommand is null || e.Row.Item is not CommandFieldRow row || e.EditingElement is not TextBox textBox) return;
+        if (selectedCommand is null || e.Row.Item is not CommandFieldRow row || e.EditingElement is not System.Windows.Controls.TextBox textBox) return;
         var newValue = textBox.Text.Trim();
         var oldText = fieldEditOriginal ?? row.ValueText;
         fieldEditOriginal = null;
@@ -108,7 +108,7 @@ public partial class MainWindow
         catch (Exception ex)
         {
             e.Cancel = true;
-            MessageBox.Show(this, ex.Message, ResourceText("Ui.InvalidValue"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            System.Windows.MessageBox.Show(this, ex.Message, ResourceText("Ui.InvalidValue"), MessageBoxButton.OK, MessageBoxImage.Warning);
             Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(RefreshFieldRows));
         }
     }
@@ -177,7 +177,7 @@ public partial class MainWindow
 
     private void CommandName_LostFocus(object sender, RoutedEventArgs e)
     {
-        if (selectedCommand is null || sender is not TextBox textBox) return;
+        if (selectedCommand is null || sender is not System.Windows.Controls.TextBox textBox) return;
         var before = commandNameOriginal ?? selectedCommand.Name;
         var after = textBox.Text.Trim();
         commandNameOriginal = null;
@@ -186,7 +186,7 @@ public partial class MainWindow
         {
             selectedCommand.Name = before;
             textBox.Text = before;
-            MessageBox.Show(this, "Command names must be non-empty and unique.", ResourceText("Ui.InvalidValue"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            System.Windows.MessageBox.Show(this, "Command names must be non-empty and unique.", ResourceText("Ui.InvalidValue"), MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         history.Execute(document, new ChangeCommandNameAction(selectedCommand.Id, before, after));
