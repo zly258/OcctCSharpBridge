@@ -24,7 +24,10 @@ var vector = new OcctVector3d(3, 4, 0);
 Assert(Math.Abs(vector.Length - 5) < 1e-12, "Vector length regression.");
 var normalized = vector.Normalized();
 Assert(Math.Abs(normalized.Length - 1) < 1e-12, "Vector normalization regression.");
-Assert(OcctVector3d.UnitX.Cross(OcctVector3d.UnitY) == OcctVector3d.UnitZ, "Vector cross product regression.");
+var cross = OcctVector3d.UnitX.Cross(OcctVector3d.UnitY);
+Assert(
+    Math.Abs(cross.X) < 1e-12 && Math.Abs(cross.Y) < 1e-12 && Math.Abs(cross.Z - 1) < 1e-12,
+    "Vector cross product regression.");
 
 var booleanOptions = OcctModelBooleanOptions.Default;
 Assert(booleanOptions.UseParallelProcessing, "Boolean parallel option mapping regression.");
@@ -43,13 +46,13 @@ var modelShapeA = new OcctModelShape(7, 1001);
 var modelShapeB = new OcctModelShape(7, 1002);
 Assert(modelShapeA.IsBound && modelShapeB.IsBound, "Model shape owner binding regression.");
 Assert(modelShapeA.OwnerId != modelShapeB.OwnerId, "Model shape owner identity regression.");
-Assert(new OcctModelShape(7).IsBound == false, "Legacy model shape must remain unbound.");
+Assert(!new OcctModelShape(7).IsBound, "Legacy model shape must remain unbound.");
 
 var viewerShapeA = new OcctShape(3, 2001);
 var viewerShapeB = new OcctShape(3, 2002);
 Assert(viewerShapeA.IsBound && viewerShapeB.IsBound, "Viewer shape owner binding regression.");
 Assert(viewerShapeA.OwnerId != viewerShapeB.OwnerId, "Viewer shape owner identity regression.");
-Assert(new OcctShape(3).IsBound == false, "Legacy viewer shape must remain unbound.");
+Assert(!new OcctShape(3).IsBound, "Legacy viewer shape must remain unbound.");
 
 var nativeHit = new NativeModelRayHit
 {
