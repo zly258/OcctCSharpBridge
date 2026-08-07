@@ -51,7 +51,7 @@ extern "C"
             {
                 const ObjectEntry* entry = e->findShape(objectIds[index]);
                 if (entry == nullptr) throw std::invalid_argument("Shape ID does not exist.");
-                BRepBndLib::Add(entry->shape, bounds);
+                BRepBndLib::Add(shapeWithPresentationTransformation(*entry), bounds);
             }
             if (bounds.IsVoid()) throw std::runtime_error("Selected shapes have no finite bounds.");
             e->view->FitAll(bounds, margin, Standard_False);
@@ -115,7 +115,9 @@ extern "C"
             e->context->ClearSelected(Standard_False);
             for (const auto& pair : e->objects)
             {
-                if (!pair.second.presentation.IsNull() && e->context->IsDisplayed(pair.second.presentation))
+                if (!pair.second.presentation.IsNull()
+                    && pair.second.selectable
+                    && e->context->IsDisplayed(pair.second.presentation))
                     e->context->AddSelect(pair.second.presentation);
             }
             e->context->HilightSelected(Standard_False);
@@ -130,7 +132,9 @@ extern "C"
         {
             for (const auto& pair : e->objects)
             {
-                if (!pair.second.presentation.IsNull() && e->context->IsDisplayed(pair.second.presentation))
+                if (!pair.second.presentation.IsNull()
+                    && pair.second.selectable
+                    && e->context->IsDisplayed(pair.second.presentation))
                     e->context->AddOrRemoveSelected(pair.second.presentation, Standard_False);
             }
             e->context->HilightSelected(Standard_False);

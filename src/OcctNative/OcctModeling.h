@@ -387,4 +387,5 @@ extern "C"
     OCCTBRIDGE_API int occt_model_history_is_removed(OcctModelHandle handle, OcctOperationId operationId, OcctObjectId sourceShapeId);
 
     OCCTBRIDGE_API OcctObjectId occt_model_display_in_engine(OcctHandle engineHandle, OcctModelHandle modelHandle, OcctObjectId shapeId, int fit);
+    OCCTBRIDGE_API int occt_update_object_shape_from_model(OcctHandle engineHandle, OcctModelHandle modelHandle, OcctObjectId viewerObjectId, OcctObjectId modelShapeId, unsigned int options);
 }
