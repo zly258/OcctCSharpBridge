@@ -45,8 +45,7 @@ public sealed partial class OcctModelingSession
     public string GetCheckReport(OcctModelShape shape)
     {
         EnsureShape(shape);
-        return Marshal.PtrToStringUTF8(
-            ModelNativeMethods.occt_model_check_report(_handle, shape.Id)) ?? string.Empty;
+        return Marshal.PtrToStringUTF8(ModelNativeMethods.occt_model_check_report(_handle, shape.Id)) ?? string.Empty;
     }
 
     public OcctBounds GetShapeBounds(OcctModelShape shape)
@@ -71,13 +70,11 @@ public sealed partial class OcctModelingSession
     {
         EnsureShape(first);
         EnsureShape(second);
-        Check(ModelNativeMethods.occt_model_shape_distance(
-            _handle, first.Id, second.Id, out var result));
+        Check(ModelNativeMethods.occt_model_shape_distance(_handle, first.Id, second.Id, out var result));
         return result;
     }
 
-    public OcctDistanceResult Distance(OcctModelShape first, OcctModelShape second) =>
-        GetShapeDistance(first, second);
+    public OcctDistanceResult Distance(OcctModelShape first, OcctModelShape second) => GetShapeDistance(first, second);
 
     public OcctModelLocation GetShapeLocation(OcctModelShape shape)
     {
@@ -88,18 +85,13 @@ public sealed partial class OcctModelingSession
 
     public OcctModelLocation GetLocation(OcctModelShape shape) => GetShapeLocation(shape);
 
-    public OcctModelShape SetShapeLocation(
-        OcctModelShape shape,
-        OcctModelLocation location,
-        bool copyShape = true)
+    public OcctModelShape SetShapeLocation(OcctModelShape shape, OcctModelLocation location, bool copyShape = true)
     {
         EnsureShape(shape);
-        return CheckShape(ModelNativeMethods.occt_model_set_location(
-            _handle, shape.Id, in location, copyShape ? 1 : 0));
+        if (!location.IsFinite) throw new ArgumentException("Location matrix must contain only finite values.", nameof(location));
+        return CheckShape(ModelNativeMethods.occt_model_set_location(_handle, shape.Id, in location, copyShape ? 1 : 0));
     }
 
-    public OcctModelShape SetLocation(
-        OcctModelShape shape,
-        OcctModelLocation location,
-        bool copyShape = true) => SetShapeLocation(shape, location, copyShape);
+    public OcctModelShape SetLocation(OcctModelShape shape, OcctModelLocation location, bool copyShape = true) =>
+        SetShapeLocation(shape, location, copyShape);
 }

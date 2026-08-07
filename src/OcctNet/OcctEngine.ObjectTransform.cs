@@ -5,6 +5,7 @@ public sealed partial class OcctEngine
     public void SetLocalTransformation(IOcctObject value, OcctTransform3d transform)
     {
         EnsureObject(value);
+        if (!transform.IsFinite) throw new ArgumentException("Transformation matrix must contain only finite values.", nameof(transform));
         CheckInitialized(() => NativeMethods.occt_set_object_transform(_handle, value.Id, transform.ToArray()));
     }
 
@@ -41,6 +42,8 @@ public sealed partial class OcctEngine
         {
             ArgumentNullException.ThrowIfNull(update.Object);
             EnsureObject(update.Object);
+            if (!update.Transformation.IsFinite)
+                throw new ArgumentException("Transformation matrix must contain only finite values.", nameof(updates));
             Check(NativeMethods.occt_set_object_transform(_handle, update.Object.Id, update.Transformation.ToArray()));
         }
     }
