@@ -38,7 +38,7 @@ $Contract = Get-Content $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $BridgeVersion = [string]$Contract.bridgeVersion
 $RequiredOcctVersion = [string]$Contract.occtVersion
 $TargetFramework = [string]$Contract.dotnet.targetFramework
-$SdkVersion = [string]$Contract.dotnet.sdkVersion
+$SdkVersion = [string]$Contract.dotnet.demoSdkVersion
 
 $Projects = [ordered]@{
     Core = @{
