@@ -7,8 +7,6 @@ on:
   pull_request:
     branches:
       - website
-  schedule:
-    - cron: "41 2 * * *"
 
 permissions:
   contents: read
@@ -65,12 +63,7 @@ jobs:
 
           text_files = required_files[:-1]
           content = "\n".join(path.read_text(encoding="utf-8-sig") for path in text_files)
-          obsolete = [
-              "tree/script",
-              "git switch script",
-              "OcctScript",
-              "branchScript",
-          ]
+          obsolete = ["tree/script", "git switch script", "OcctScript", "branchScript"]
           found = [token for token in obsolete if token in content]
           if found:
               raise SystemExit(f"Obsolete script branch references found: {', '.join(found)}")
@@ -97,7 +90,4 @@ jobs:
           if occt_version not in index:
               raise SystemExit(f"Website does not contain contracted OCCT version {occt_version}")
 
-          print(
-              f"Validated {len(keys)} bilingual keys and website stats against "
-              f"Bridge {contract['bridgeVersion']} / OCCT {occt_version}."
-          )
+          print(f"Validated {len(keys)} bilingual keys against Bridge {contract['bridgeVersion']} / OCCT {occt_version}.")
