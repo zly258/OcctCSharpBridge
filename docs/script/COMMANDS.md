@@ -1,4 +1,4 @@
-﻿# OcctScript command reference
+# OcctScript command reference
 
 The first preview focuses on ordinary parametric CAD construction and intentionally excludes steel-profile generators, complex transition parts and arrays.
 
@@ -38,6 +38,8 @@ The first preview focuses on ordinary parametric CAD construction and intentiona
 | `Chamfer` | `shape`, `edgeIndices`, `distance` |
 | `Offset` | `shape`, `offset`, `tolerance` |
 | `Shell` | `solid`, `faceIndices`, `thickness`, `tolerance` |
+
+`Sweep` preserves the dimensional meaning of its profile: sweeping an edge or wire normally produces a face or shell, while sweeping a face is the supported path for producing a solid. For a circular solid pipe, use `Circle -> Face -> Sweep` rather than `Circle -> Sweep`.
 
 Topology indices used by `Fillet`, `Chamfer` and `Shell` are zero-based. A future persistent subshape-naming layer can replace index-based selection without changing the command registry.
 
