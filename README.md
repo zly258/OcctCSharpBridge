@@ -1,10 +1,12 @@
 # OcctCSharpBridge · OcctScript
 
-[简体中文](README.zh-CN.md) · [main branch](https://github.com/zly258/OcctCSharpBridge/tree/main) · [demo branch](https://github.com/zly258/OcctCSharpBridge/tree/demo)
+[简体中文](README.zh-CN.md) · [main branch](https://github.com/zly258/OcctCSharpBridge/tree/main)
 
 The `script` branch provides a usable first preview of **OcctScript**, a lightweight parametric CAD script editor built on the reusable `OcctCSharpBridge` wrapper.
 
 It keeps the low-level OCCT wrapper synchronized with `main`, while adding a JSON document model, parameters and expressions, dependency-driven command history, undo/redo, a WPF editor, bilingual UI, examples, and script smoke tests.
+
+This branch contains no demo application projects. `OcctNet.WinForms` and `OcctNet.Wpf` are reusable viewport host libraries inherited from `main`; `OcctScript.Editor` is the desktop application provided by this branch.
 
 OcctScript intentionally does **not** use OCAF/XDE. Documents, history and persistence belong to the application layer and are stored as readable JSON.
 
@@ -65,15 +67,15 @@ Other supported flows include edge → extruded face, profile → revolve, profi
 ```text
 src/OcctNative              C++17 OCCT bridge and stable C ABI
 src/OcctNet                 UI-independent managed wrapper
-src/OcctNet.WinForms        WinForms HWND viewport host
-src/OcctNet.Wpf             WPF viewport host
+src/OcctNet.WinForms        reusable HWND viewport host used by the WPF host
+src/OcctNet.Wpf             reusable WPF viewport host
 
 src/OcctScript.Domain       JSON document and command metadata
 src/OcctScript.Expressions  expression parser/evaluator
 src/OcctScript.Serialization JSON persistence
 src/OcctScript.Application  validation, parameters and undo/redo
 src/OcctScript.Geometry     dependency graph and OCCT builders
-src/OcctScript.Editor       WPF parametric editor
+src/OcctScript.Editor       WPF parametric editor application
 
 samples/Scripts             ready-to-open JSON examples
 tests/OcctScript.Smoke      script/modeling smoke scenarios
@@ -109,9 +111,22 @@ Build only the reusable managed wrapper with `./build.ps1 managed Release`.
 
 ## Run the editor
 
+After a successful build, start the editor from the repository root:
+
 ```powershell
-$env:OCCT_ROOT = "D:\tools\occt-vc144-64"
-.\src\OcctScript.Editor\bin\x64\Release\net8.0-windows\OcctScript.Editor.exe
+.\run.ps1
+```
+
+Specify the OCCT installation explicitly when needed:
+
+```powershell
+.\run.ps1 Release -OcctRoot "D:\tools\occt-vc144-64"
+```
+
+Build the full script target first and then start the editor in one command:
+
+```powershell
+.\run.ps1 Release -OcctRoot "D:\tools\occt-vc144-64" -Build
 ```
 
 The editor starts in English. Use **Language → 中文** to switch to Simplified Chinese.
