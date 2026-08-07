@@ -1,0 +1,59 @@
+name: Author Normalization
+on:
+  push:
+    branches: [website]
+permissions:
+  contents: write
+jobs:
+  normalize-author:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Normalize and audit author display
+        shell: pwsh
+        run: |
+          @'
+          from pathlib import Path
+          import re
+          root=Path('.'); old_western='Zhang'+' Liaoyuan'; old_chinese=''.join(chr(v) for v in (0x5F20,0x71CE,0x539F)); canonical='Liaoyuan Zhang'
+          exts={'.md','.cs','.csproj','.props','.targets','.ps1','.yml','.yaml','.json','.html','.css','.js','.txt','.xml','.sln','.cmake','.h','.hpp','.hxx','.c','.cpp','.cc','.sh','.bat','.cmd'}; names={'CMakeLists.txt','LICENSE'}; changed=[]
+          for p in root.rglob('*'):
+              if not p.is_file() or '.git' in p.parts or (p.suffix.lower() not in exts and p.name not in names): continue
+              raw=p.read_bytes(); bom=raw.startswith(b'\xef\xbb\xbf')
+              try: text=raw.decode('utf-8-sig')
+              except UnicodeDecodeError: continue
+              new=text.replace(old_western,canonical).replace(old_chinese,canonical)
+              new=re.sub(r'Liaoyuan Zhang\s*[/／|·]\s*Liaoyuan Zhang',canonical,new); new=re.sub(r'Liaoyuan Zhang\s*\(\s*Liaoyuan Zhang\s*\)',canonical,new)
+              if new!=text: p.write_bytes((b'\xef\xbb\xbf' if bom else b'')+new.encode()); changed.append(str(p))
+          print('Changed files:'); [print('  '+x) for x in changed]
+          '@ | Set-Content -Encoding UTF8 .author.py
+          python .author.py
+          Remove-Item .author.py
+          if (git status --porcelain) {
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "Normalize author name to Liaoyuan Zhang"
+            git push
+          }
+      - name: Verify no legacy author name remains
+        shell: pwsh
+        run: |
+          @'
+          from pathlib import Path
+          old_western='Zhang'+' Liaoyuan'; old_chinese=''.join(chr(v) for v in (0x5F20,0x71CE,0x539F)); canonical='Liaoyuan Zhang'; bad=[]; hits=[]
+          for p in Path('.').rglob('*'):
+              if not p.is_file() or '.git' in p.parts: continue
+              try: text=p.read_bytes().decode('utf-8-sig')
+              except (UnicodeDecodeError,OSError): continue
+              for n,line in enumerate(text.splitlines(),1):
+                  if old_western in line or old_chinese in line: bad.append((str(p),n,line.strip()))
+                  if canonical in line: hits.append((str(p),n,line.strip()))
+          print('Canonical author references:'); [print(f'  {p}:{n}: {l}') for p,n,l in hits]
+          if bad:
+              print('Legacy references:'); [print(f'  {p}:{n}: {l}') for p,n,l in bad]; raise SystemExit(1)
+          print('Author audit passed.')
+          '@ | Set-Content -Encoding UTF8 .audit.py
+          python .audit.py
+          Remove-Item .audit.py
