@@ -133,3 +133,7 @@ GitHub Actions 直接调用 `build.ps1 ci Release`，因此本地提交前检查
 ## 许可证
 
 项目使用 [PolyForm Noncommercial License 1.0.0](LICENSE)。Open CASCADE Technology 与第三方组件仍遵循各自许可证。
+
+## 联系方式
+
+Liaoyuan Zhang · [zhangly1403@gmail.com](mailto:zhangly1403@gmail.com)
