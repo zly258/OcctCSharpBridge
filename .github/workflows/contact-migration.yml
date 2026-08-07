@@ -1,0 +1,57 @@
+﻿name: Contact Migration
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/contact-migration.yml
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Replace contact information
+        shell: pwsh
+        run: |
+          $old = 'zhangly1403@qq.com'
+          $new = 'zhangly1403@gmail.com'
+          $utf8Bom = [System.Text.UTF8Encoding]::new($true)
+          $extensions = @('.cs','.cpp','.h','.hxx','.ps1','.psm1','.md','.txt','.json','.yml','.yaml','.xml','.xaml','.props','.targets','.csproj','.sln','.html','.js','.css','.cmake')
+
+          Get-ChildItem . -Recurse -File -Force | Where-Object {
+            $_.FullName -notmatch '[\\/]\.git[\\/]' -and
+            ($extensions -contains $_.Extension.ToLowerInvariant() -or $_.Name -eq 'CMakeLists.txt')
+          } | ForEach-Object {
+            $text = [System.IO.File]::ReadAllText($_.FullName)
+            if ($text.Contains($old)) {
+              [System.IO.File]::WriteAllText($_.FullName, $text.Replace($old, $new), $utf8Bom)
+            }
+          }
+
+          $readme = Join-Path $PWD 'README.md'
+          $readmeZh = Join-Path $PWD 'README.zh-CN.md'
+          $text = [System.IO.File]::ReadAllText($readme)
+          if (-not $text.Contains('mailto:zhangly1403@gmail.com')) {
+            [System.IO.File]::WriteAllText($readme, $text.TrimEnd() + "`n`n## Contact`n`nLiaoyuan Zhang · [zhangly1403@gmail.com](mailto:zhangly1403@gmail.com)`n", $utf8Bom)
+          }
+          $textZh = [System.IO.File]::ReadAllText($readmeZh)
+          if (-not $textZh.Contains('mailto:zhangly1403@gmail.com')) {
+            [System.IO.File]::WriteAllText($readmeZh, $textZh.TrimEnd() + "`n`n## 联系方式`n`nLiaoyuan Zhang · [zhangly1403@gmail.com](mailto:zhangly1403@gmail.com)`n", $utf8Bom)
+          }
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if (-not (git diff --cached --quiet)) {
+            git commit -m 'Update project contact email'
+            git push origin HEAD:main
+          }
