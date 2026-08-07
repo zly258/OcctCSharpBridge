@@ -57,6 +57,7 @@ public sealed class OcctViewportControl : Control
     private Rectangle? _selectionFrameClient;
     private long _lastHoverTimestamp;
     private long _lastWorldPointTimestamp;
+    private bool _enableDefaultInteraction = true;
 
     private static readonly long HoverIntervalTicks = Math.Max(1, Stopwatch.Frequency / 60);
     private static readonly long WorldPointIntervalTicks = Math.Max(1, Stopwatch.Frequency / 30);
@@ -73,6 +74,22 @@ public sealed class OcctViewportControl : Control
     }
 
     public OcctEngine Engine => _engine ?? throw new InvalidOperationException("The OCCT viewport handle has not been created yet.");
+    public bool EnableDefaultInteraction
+    {
+        get => _enableDefaultInteraction;
+        set
+        {
+            if (_enableDefaultInteraction == value) return;
+            _enableDefaultInteraction = value;
+            if (!value)
+            {
+                _rotating = false;
+                _panning = false;
+                CancelRectangleSelection();
+            }
+        }
+    }
+
     public bool EnableRectangleSelection { get; set; } = true;
     public int RectangleSelectionThreshold { get; set; } = 3;
     public OcctRectangleSelectionBehavior RectangleSelectionBehavior { get; set; } = OcctRectangleSelectionBehavior.Inclusive;
@@ -142,7 +159,7 @@ public sealed class OcctViewportControl : Control
         base.OnMouseDown(e);
         Focus();
         _lastMouse = e.Location;
-        if (_engine?.IsInitialized != true) return;
+        if (_engine?.IsInitialized != true || !EnableDefaultInteraction) return;
 
         if (e.Button == MouseButtons.Right)
         {
@@ -170,7 +187,11 @@ public sealed class OcctViewportControl : Control
     protected override void OnMouseMove(MouseEventArgs e)
     {
         base.OnMouseMove(e);
-        if (_engine?.IsInitialized != true) return;
+        if (_engine?.IsInitialized != true || !EnableDefaultInteraction)
+        {
+            _lastMouse = e.Location;
+            return;
+        }
 
         if (_rotating && e.Button.HasFlag(MouseButtons.Right))
         {
@@ -212,6 +233,7 @@ public sealed class OcctViewportControl : Control
     protected override void OnMouseUp(MouseEventArgs e)
     {
         base.OnMouseUp(e);
+        if (!EnableDefaultInteraction) return;
         if (e.Button == MouseButtons.Right)
         {
             _rotating = false;
@@ -275,7 +297,8 @@ public sealed class OcctViewportControl : Control
     protected override void OnMouseWheel(MouseEventArgs e)
     {
         base.OnMouseWheel(e);
-        if (_engine?.IsInitialized == true) TryInvoke(() => _engine.Zoom(e.Delta > 0 ? 1.15 : 0.87));
+        if (EnableDefaultInteraction && _engine?.IsInitialized == true)
+            TryInvoke(() => _engine.Zoom(e.Delta > 0 ? 1.15 : 0.87));
     }
 
     protected override void OnMouseCaptureChanged(EventArgs e)

@@ -92,7 +92,7 @@ extern "C"
                 const OcctObjectId id = engine->findPresentation(engine->context->SelectedInteractive());
                 const ObjectEntry* entry = engine->findShape(id);
                 if (entry == nullptr) continue;
-                BRepBndLib::Add(entry->shape, bounds);
+                BRepBndLib::Add(shapeWithPresentationTransformation(*entry), bounds);
                 ++shapeCount;
             }
             if (shapeCount == 0 || bounds.IsVoid())
@@ -109,8 +109,19 @@ extern "C"
         if (!validateInitialized(engine) || result == nullptr) return 0;
         return execute(engine, [&]
         {
-            const gp_Pnt point = engine->view->GravityPoint();
-            *result = {point.X(), point.Y(), point.Z()};
+            Bnd_Box bounds;
+            for (const auto& pair : engine->objects)
+            {
+                const ObjectEntry& entry = pair.second;
+                if (entry.kind != OcctObject_Shape
+                    || entry.presentation.IsNull()
+                    || !engine->context->IsDisplayed(entry.presentation)) continue;
+                BRepBndLib::Add(shapeWithPresentationTransformation(entry), bounds);
+            }
+            if (bounds.IsVoid()) throw std::runtime_error("The scene has no finite shape bounds.");
+            double minX, minY, minZ, maxX, maxY, maxZ;
+            bounds.Get(minX, minY, minZ, maxX, maxY, maxZ);
+            *result = {(minX + maxX) * 0.5, (minY + maxY) * 0.5, (minZ + maxZ) * 0.5};
         });
     }
 }

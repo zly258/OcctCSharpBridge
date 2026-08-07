@@ -5,9 +5,9 @@
 桥接层不包含 OCAF/XDE；文档、撤销重做和 JSON 持久化由上层应用实现。
 
 - OCCT: `7.9.0`
-- Native exports: `328`
-- Managed P/Invoke declarations: `328`
-- Public .NET types: `76`
+- Native exports: `339`
+- Managed P/Invoke declarations: `339`
+- Public .NET types: `80`
 
 ## 接口设计与命名规范
 
@@ -211,7 +211,7 @@ model.ExportStep(result.Shape, "part.step");
 - `occt_bridge_version`
 - `occt_bridge_build_info`
 
-### OcctNative.h — Viewer and interaction (79)
+### OcctNative.h — Viewer and interaction (78)
 
 - `occt_auto_z_fit`
 - `occt_begin_update`
@@ -264,7 +264,6 @@ model.ExportStep(result.Shape, "part.step");
 - `occt_set_triedron_visible`
 - `occt_set_view`
 - `occt_set_view_cube_visible`
-- `occt_set_view_cube_language`
 - `occt_set_view_scale`
 - `occt_start_rotation`
 - `occt_window_fit`
@@ -293,7 +292,7 @@ model.ExportStep(result.Shape, "part.step");
 - `occt_get_scene_gravity_point`
 - `occt_zoom`
 
-### OcctNative.h — Registry, AIS attributes and lifecycle (33)
+### OcctNative.h — Registry, AIS attributes and lifecycle (44)
 
 - `occt_clear`
 - `occt_copy_selected_subshape`
@@ -301,6 +300,17 @@ model.ExportStep(result.Shape, "part.step");
 - `occt_delete_object`
 - `occt_delete_objects`
 - `occt_get_object_name`
+- `occt_set_object_application_tag`
+- `occt_get_object_application_tag`
+- `occt_find_object_by_application_tag`
+- `occt_set_object_selectable`
+- `occt_get_object_selectable`
+- `occt_set_objects_selectable`
+- `occt_set_selected_objects_ex`
+- `occt_set_object_transform`
+- `occt_get_object_transform`
+- `occt_reset_object_transform`
+- `occt_set_view_cube_language`
 - `occt_hide_all`
 - `occt_highlight_object`
 - `occt_object_count`
@@ -450,7 +460,7 @@ model.ExportStep(result.Shape, "part.step");
 - `occt_hide_selection_rectangle`
 - `occt_show_selection_rectangle`
 
-### OcctModeling.h (118)
+### OcctModeling.h (119)
 
 - `occt_model_ancestor_at`
 - `occt_model_ancestor_count`
@@ -466,6 +476,7 @@ model.ExportStep(result.Shape, "part.step");
 - `occt_model_delete_shape`
 - `occt_model_destroy`
 - `occt_model_display_in_engine`
+- `occt_update_object_shape_from_model`
 - `occt_model_edge_curve_type`
 - `occt_model_edge_line_geometry`
 - `occt_model_edge_circle_geometry`
@@ -597,6 +608,10 @@ model.ExportStep(result.Shape, "part.step");
 - `OcctModelSurfacePeriodicity`
 - `OcctModelSurfaceDifferential`
 - `OcctModelSurfaceCurvature`
+- `OcctSelectionOperation`
+- `OcctShapeUpdateOptions`
+- `OcctViewCubeLanguage`
+- `OcctTransform3d`
 - `OcctMaterial`
 - `OcctModelAlgorithmResult`
 - `OcctModelBooleanGlue`
@@ -623,7 +638,6 @@ model.ExportStep(result.Shape, "part.step");
 - `OcctSurfaceType`
 - `OcctUvBounds`
 - `OcctVector3d`
-- `OcctViewCubeLanguage`
 - `OcctViewOrientation`
 - `OcctZUpViewOrientation`
 
@@ -664,6 +678,10 @@ model.ExportStep(result.Shape, "part.step");
 - `OcctModelSurfacePeriodicity`
 - `OcctModelSurfaceDifferential`
 - `OcctModelSurfaceCurvature`
+- `OcctSelectionOperation`
+- `OcctShapeUpdateOptions`
+- `OcctViewCubeLanguage`
+- `OcctTransform3d`
 - `OcctMaterial`
 - `OcctModelAlgorithmResult`
 - `OcctModelBooleanGlue`
@@ -678,6 +696,7 @@ model.ExportStep(result.Shape, "part.step");
 - `OcctModelShape`
 - `OcctModelState`
 - `OcctModelingSession`
+- `OcctObjectTransformUpdate`
 - `OcctObject`
 - `OcctObjectKind`
 - `OcctPoint3d`
@@ -694,7 +713,6 @@ model.ExportStep(result.Shape, "part.step");
 - `OcctText`
 - `OcctUvBounds`
 - `OcctVector3d`
-- `OcctViewCubeLanguage`
 - `OcctViewOrientation`
 - `OcctViewportControl`
 - `OcctViewportState`

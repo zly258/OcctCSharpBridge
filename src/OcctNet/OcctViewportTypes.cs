@@ -8,12 +8,6 @@ public enum OcctRenderingMethod
     RayTracing = 1
 }
 
-public enum OcctViewCubeLanguage
-{
-    English = 0,
-    ChineseSimplified = 1
-}
-
 public enum OcctZUpViewOrientation
 {
     Front = 0,
