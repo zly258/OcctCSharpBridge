@@ -22,7 +22,7 @@ public sealed partial class OcctEngine
         }
     }
 
-    public IReadOnlyList<OcctObject> Objects
+    public IReadOnlyList<IOcctObject> Objects
     {
         get
         {
@@ -30,7 +30,7 @@ public sealed partial class OcctEngine
             return Enumerable.Range(0, ObjectCount)
                 .Select(index => NativeMethods.occt_object_id_at(_handle, index))
                 .Where(id => id > 0)
-                .Select(id => new OcctObject(id, GetObjectKind(id), _ownerId))
+                .Select(id => CreateBoundObject(id, GetObjectKind(id)))
                 .ToArray();
         }
     }
@@ -407,7 +407,7 @@ public sealed partial class OcctEngine
         OcctObjectKind.Shape => new OcctShape(id, _ownerId),
         OcctObjectKind.Text => new OcctText(id, _ownerId),
         OcctObjectKind.Dimension => new OcctDimension(id, _ownerId),
-        _ => new OcctObject(id, kind, _ownerId)
+        _ => throw new InvalidOperationException($"Unsupported OCCT object kind: {kind}.")
     };
 
     private delegate int PropertyCall(IntPtr handle, long id, out OcctMassProperties result);
