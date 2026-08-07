@@ -53,13 +53,13 @@ Assert-Contains $control 'ScheduleRectangleCaptureRecovery();' 'asynchronous rec
 Assert-Contains $control 'ScheduleSelectionFrameRestore();' 'rubber-band restoration after host resize'
 Assert-Contains $control 'WindowsFormsHost and first-focus DPI/layout negotiation' 'the first-gesture resize guard'
 
-$resizeMatch = [regex]::Match(
-    $control,
-    '(?s)protected override void OnResize\(EventArgs e\).*?\n    }\n\n    protected override void OnVisibleChanged')
-if (-not $resizeMatch.Success) {
+$resizeStart = $control.IndexOf('protected override void OnResize(EventArgs e)', [StringComparison]::Ordinal)
+$visibleStart = $control.IndexOf('protected override void OnVisibleChanged(EventArgs e)', [StringComparison]::Ordinal)
+if ($resizeStart -lt 0 -or $visibleStart -le $resizeStart) {
     throw 'Unable to inspect OcctViewportControl.OnResize().'
 }
-if ($resizeMatch.Value.Contains('CancelRectangleSelection();')) {
+$resizeBlock = $control.Substring($resizeStart, $visibleStart - $resizeStart)
+if ($resizeBlock.Contains('CancelRectangleSelection();')) {
     throw 'OnResize must preserve an active rectangle gesture instead of cancelling the first drag.'
 }
 
