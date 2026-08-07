@@ -7,7 +7,7 @@ Set-StrictMode -Version Latest
 
 $expectedVersion = "2.5.0"
 $expectedNativeCount = 339
-$expectedPublicTypeCount = 75
+$expectedPublicTypeCount = 80
 
 $contracts = [ordered]@{
     "src/OcctNative/OcctEngine.cpp" = @("occt_bridge_version()", $expectedVersion)
