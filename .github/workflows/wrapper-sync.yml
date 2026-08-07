@@ -38,9 +38,10 @@ jobs:
       - name: Compare reusable wrapper content
         shell: pwsh
         run: |
+          # global.json is intentionally branch-specific: main uses the .NET 8 SDK,
+          # while demo uses a newer SDK required by Avalonia 12 analyzers.
           $paths = @(
             "bridge-contract.json",
-            "global.json",
             "Directory.Build.props",
             "src/OcctNative",
             "src/OcctNet",
