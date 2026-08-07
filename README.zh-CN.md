@@ -1,6 +1,6 @@
 ﻿# OcctCSharpBridge
 
-[English](README.md) · [桌面 Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo) · [OcctScript](https://github.com/zly258/OcctCSharpBridge/tree/script)
+[English](README.md) · [桌面 Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
 OcctCSharpBridge 是面向 Windows x64 的 **Open CASCADE Technology 7.9.0 → .NET 8** 桥接项目。`main` 分支保持纯净可复用，只包含原生 C++ 桥接、稳定 C ABI、类型安全的 C# 封装、可选 UI 视口宿主、接口校核与建模 Smoke Test；完整 WinForms/WPF/Avalonia 应用位于 `demo` 分支。
 
@@ -11,7 +11,7 @@ OcctCSharpBridge 是面向 Windows x64 的 **Open CASCADE Technology 7.9.0 → .
 - Windows x64
 - Visual Studio 2022 / MSVC v143 兼容工具链
 - .NET 8 SDK
-- CMake 3.16 或更高
+- CMake 3.21 或更高
 - Open CASCADE Technology **7.9.0**，VC14 x64 目录结构
 - PowerShell 5.1+ 或 PowerShell 7+
 
@@ -134,16 +134,6 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 ```
 
 `demo` 分支 README 会详细说明 `build.ps1`、`run.ps1` 和 `publish.ps1`。
-
-## 使用 OcctScript
-
-```powershell
-git switch script
-.\build.ps1 script Release -OcctRoot "D:\tools\occt-vc144-64"
-.\run.ps1 Release -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-`script` 分支在桥接层之上增加 JSON 文档、参数、表达式、依赖关系、撤销重做和 WPF 参数化编辑器。
 
 ## 在其他项目中引用
 
