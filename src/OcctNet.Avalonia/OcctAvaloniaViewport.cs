@@ -10,14 +10,14 @@ namespace OcctNet;
 
 public sealed class OcctAvaloniaSelectionEventArgs : EventArgs
 {
-    public OcctAvaloniaSelectionEventArgs(OcctObject? selectedObject, IReadOnlyList<OcctObject> selectedObjects)
+    public OcctAvaloniaSelectionEventArgs(IOcctObject? selectedObject, IReadOnlyList<IOcctObject> selectedObjects)
     {
         SelectedObject = selectedObject;
         SelectedObjects = selectedObjects;
     }
 
-    public OcctObject? SelectedObject { get; }
-    public IReadOnlyList<OcctObject> SelectedObjects { get; }
+    public IOcctObject? SelectedObject { get; }
+    public IReadOnlyList<IOcctObject> SelectedObjects { get; }
 }
 
 public sealed class OcctAvaloniaErrorEventArgs : EventArgs
