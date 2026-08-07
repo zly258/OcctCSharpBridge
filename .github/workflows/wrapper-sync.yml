@@ -6,8 +6,6 @@ on:
       - main
       - demo
   workflow_dispatch:
-  schedule:
-    - cron: "23 2 * * *"
 
 permissions:
   contents: read
