@@ -1,4 +1,4 @@
-﻿# OcctCSharpBridge · OcctScript
+# OcctCSharpBridge · OcctScript
 
 [简体中文](README.zh-CN.md) · [main branch](https://github.com/zly258/OcctCSharpBridge/tree/main) · [demo branch](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
@@ -146,6 +146,8 @@ Intentionally excluded: steel/profile-specific generators; complex transition so
 These can be added later without changing the core JSON command model.
 
 ## Bridge compatibility
+
+Bridge version: 2.5.0; ABI: 2.
 
 The synchronized wrapper targets OCCT `7.9.0`, .NET `8`, Windows x64, managed wrapper `2.5.0`, native ABI `2`.
 
