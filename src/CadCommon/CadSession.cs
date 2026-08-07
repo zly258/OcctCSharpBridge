@@ -517,7 +517,7 @@ public sealed partial class CadSession
             new(CadLocalization.Text("Object.Kind"), CadLocalization.ObjectKind(value.Kind))
         };
         if (value.Kind != OcctObjectKind.Shape) return rows;
-        var shape = new OcctShape(value.Id);
+        var shape = Engine.GetShape(value.Id);
         rows.Add(new(CadLocalization.Text("Object.Topology"), CadLocalization.ShapeType(Engine.GetShapeType(shape))));
         rows.Add(new(CadLocalization.Text("Object.Validity"), Engine.IsShapeValid(shape) ? CadLocalization.Text("Object.Valid") : CadLocalization.Text("Object.Invalid")));
         var bounds = Engine.GetShapeBounds(shape);
@@ -1148,7 +1148,7 @@ public sealed partial class CadSession
     {
         return Engine.SelectedObjects
             .Where(item => item.Kind == OcctObjectKind.Shape)
-            .Select(item => new OcctShape(item.Id))
+            .Select(item => Engine.GetShape(item.Id))
             .DistinctBy(item => item.Id)
             .ToList();
     }
@@ -1172,7 +1172,7 @@ public sealed partial class CadSession
     private OcctPoint3d GetSceneCenter()
     {
         if (Engine.Shapes.Count == 0) return OcctPoint3d.Origin;
-        var bounds = Engine.Shapes.Select(Engine.GetBounds).ToArray();
+        var bounds = Engine.Shapes.Select(Engine.GetShapeBounds).ToArray();
         return new(
             (bounds.Min(item => item.MinX) + bounds.Max(item => item.MaxX)) / 2,
             (bounds.Min(item => item.MinY) + bounds.Max(item => item.MaxY)) / 2,
@@ -1182,7 +1182,7 @@ public sealed partial class CadSession
     private double GetSceneDiagonal()
     {
         if (Engine.Shapes.Count == 0) return 100;
-        var bounds = Engine.Shapes.Select(Engine.GetBounds).ToArray();
+        var bounds = Engine.Shapes.Select(Engine.GetShapeBounds).ToArray();
         var dx = bounds.Max(item => item.MaxX) - bounds.Min(item => item.MinX);
         var dy = bounds.Max(item => item.MaxY) - bounds.Min(item => item.MinY);
         var dz = bounds.Max(item => item.MaxZ) - bounds.Min(item => item.MinZ);

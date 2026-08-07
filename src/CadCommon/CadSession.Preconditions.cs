@@ -45,7 +45,7 @@ public sealed partial class CadSession
         var selectedShapes = selectedEntries
             .Where(value => value.Kind == OcctObjectKind.Shape)
             .DistinctBy(value => value.Id)
-            .Select(value => new OcctShape(value.Id))
+            .Select(value => Engine.GetShape(value.Id))
             .ToArray();
 
         if (commandId == CadCommandId.Delete)
