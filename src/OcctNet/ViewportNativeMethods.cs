@@ -4,6 +4,7 @@ namespace OcctNet;
 
 internal static partial class NativeMethods
 {
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_view_cube_language(IntPtr handle, int language);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_fit_objects(IntPtr handle, [In] long[] objectIds, int count, double margin);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_zup_view(IntPtr handle, int orientation, int fitAll);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_screen_to_ray(IntPtr handle, int x, int y, out OcctProjectionRay result);
