@@ -96,8 +96,14 @@ extern "C"
         {
             if (!std::isfinite(delta) || std::abs(delta) <= Precision::Confusion())
                 throw std::invalid_argument("Zoom delta must be finite and non-zero.");
+
+            const double clampedDelta = std::clamp(delta, -10000.0, 10000.0);
+            Standard_Integer zoomDelta = static_cast<Standard_Integer>(std::lround(clampedDelta));
+            if (zoomDelta == 0)
+                zoomDelta = delta > 0.0 ? 1 : -1;
+
             e->view->StartZoomAtPoint(x, y);
-            e->view->ZoomAtPoint(0, 0, delta, 0);
+            e->view->ZoomAtPoint(0, 0, zoomDelta, 0);
         });
     }
 
