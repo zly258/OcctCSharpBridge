@@ -18,7 +18,6 @@ internal static partial class NativeMethods
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_computed_mode(IntPtr handle, int enabled);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_display_precision(IntPtr handle, double deviationCoefficient, double deviationAngleDegrees, int applyExisting);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_default_material(IntPtr handle, int material, int applyExisting);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_scene_lighting(IntPtr handle, double ambientIntensity, double directionalIntensity, OcctVector3d direction, int headlight);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_reset_scene_lighting(IntPtr handle);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_selection_tolerance(IntPtr handle, int pixelTolerance);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_dump_view(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string path);
