@@ -57,8 +57,13 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
     private const int WsVisible = 0x10000000;
     private const int WsClipSiblings = 0x04000000;
     private const int WsClipChildren = 0x02000000;
+    private const int SsNotify = 0x00000100;
+    private const int HtClient = 1;
 
+    private const uint WmSize = 0x0005;
     private const uint WmSetFocus = 0x0007;
+    private const uint WmNcHitTest = 0x0084;
+    private const uint WmWindowPosChanged = 0x0047;
     private const uint WmKillFocus = 0x0008;
     private const uint WmEraseBkgnd = 0x0014;
     private const uint WmCancelMode = 0x001F;
@@ -101,6 +106,7 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
     private SelectionFrame? _selectionFrame;
     private long _lastHoverTimestamp;
     private long _lastWorldPointTimestamp;
+    private bool _nativeRefreshScheduled;
 
     public OcctAvaloniaViewport()
     {
@@ -174,7 +180,7 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
             0,
             "STATIC",
             "OCCT_Render_Target",
-            WsChild | WsVisible | WsClipSiblings | WsClipChildren,
+            WsChild | WsVisible | WsClipSiblings | WsClipChildren | SsNotify,
             0,
             0,
             100,
@@ -242,7 +248,20 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
         if (_engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero)
             return;
 
-        RefreshNativeView();
+        ScheduleNativeViewRefresh();
+    }
+
+    private void ScheduleNativeViewRefresh()
+    {
+        if (_nativeRefreshScheduled || _engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero)
+            return;
+
+        _nativeRefreshScheduled = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _nativeRefreshScheduled = false;
+            RefreshNativeView();
+        }, DispatcherPriority.Background);
     }
 
     private IntPtr WindowProcedure(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam)
@@ -251,8 +270,16 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
         {
             switch (message)
             {
+                case WmNcHitTest:
+                    return new IntPtr(HtClient);
+
+                case WmSize:
+                case WmWindowPosChanged:
+                    ScheduleNativeViewRefresh();
+                    break;
+
                 case WmDpiChanged:
-                    RefreshNativeView();
+                    ScheduleNativeViewRefresh();
                     break;
 
                 case WmSetFocus:
@@ -282,6 +309,7 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
 
                 case WmRButtonUp:
                     _rotating = false;
+                    ReleaseCapture();
                     break;
 
                 case WmMButtonDown:
@@ -290,6 +318,7 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
 
                 case WmMButtonUp:
                     _panning = false;
+                    ReleaseCapture();
                     break;
 
                 case WmMouseMove:
@@ -297,11 +326,11 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
                     break;
 
                 case WmMouseWheel:
-                    HandleMouseWheel(wParam);
+                    HandleMouseWheel(wParam, lParam);
                     break;
 
                 case WmCaptureChanged:
-                    if (wParam != hwnd)
+                    if (lParam != hwnd)
                     {
                         _rotating = false;
                         _panning = false;
@@ -392,6 +421,7 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
         _lastMouseX = x;
         _lastMouseY = y;
         _rotating = true;
+        SetCapture(hwnd);
         TryInvoke(() => _engine.StartRotation(x, y));
     }
 
@@ -404,6 +434,7 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
         CancelRectangleSelection();
         (_lastMouseX, _lastMouseY) = GetPoint(lParam);
         _panning = true;
+        SetCapture(hwnd);
     }
 
     private void HandleMouseMove(IntPtr wParam, IntPtr lParam)
@@ -451,7 +482,7 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
         _lastMouseY = y;
     }
 
-    private void HandleMouseWheel(IntPtr wParam)
+    private void HandleMouseWheel(IntPtr wParam, IntPtr lParam)
     {
         if (_engine?.IsInitialized != true || !EnableDefaultInteraction)
             return;
@@ -460,7 +491,11 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
         if (delta == 0)
             return;
 
-        TryInvoke(() => _engine.Zoom(delta > 0 ? 1.15 : 0.87));
+        var point = new NativePoint(GetLowWordSigned(lParam), GetHighWordSigned(lParam));
+        if (_nativeHandle != IntPtr.Zero && ScreenToClient(_nativeHandle, ref point))
+            TryInvoke(() => _engine.ZoomAtPoint(point.X, point.Y, delta));
+        else
+            TryInvoke(() => _engine.Zoom(delta > 0 ? 1.15 : 0.87));
     }
 
     private void UpdateSelectionFrame(int currentX, int currentY)
@@ -570,6 +605,7 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
 
         _nativeHandle = IntPtr.Zero;
         _selectionFrame = null;
+        _nativeRefreshScheduled = false;
     }
 
     private IntPtr CallPreviousWindowProcedure(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam)
@@ -615,6 +651,19 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
 
     private readonly record struct SelectionFrame(int Left, int Top, int Right, int Bottom);
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativePoint
+    {
+        public NativePoint(int x, int y)
+        {
+            X = x;
+            Y = y;
+        }
+
+        public int X;
+        public int Y;
+    }
+
     [UnmanagedFunctionPointer(CallingConvention.Winapi)]
     private delegate IntPtr WndProcDelegate(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
 
@@ -659,4 +708,7 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
 
     [DllImport("user32.dll")]
     private static extern uint GetDpiForWindow(IntPtr hwnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool ScreenToClient(IntPtr hwnd, ref NativePoint point);
 }
