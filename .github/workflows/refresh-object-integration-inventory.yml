@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   refresh:
-    if: github.event.head_commit.message == 'Refresh object integration API inventory'
+    if: github.event.head_commit.message == 'Refresh object integration API inventory v2'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,6 +26,10 @@ jobs:
             $text = $text.Replace('Managed P/Invoke declarations: `327`', 'Managed P/Invoke declarations: `339`')
             [System.IO.File]::WriteAllText($path, $text, [System.Text.UTF8Encoding]::new($true))
           }
+          $versionContract = 'tests/check-version-contract.ps1'
+          $versionText = [System.IO.File]::ReadAllText($versionContract)
+          $versionText = $versionText.Replace('$expectedNativeCount = 327', '$expectedNativeCount = 339')
+          [System.IO.File]::WriteAllText($versionContract, $versionText, [System.Text.UTF8Encoding]::new($true))
           Remove-Item .github/workflows/refresh-object-integration-inventory.yml
 
       - name: Validate
