@@ -28,12 +28,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup .NET 8.0.423
+      - name: Setup .NET from global.json
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 8.0.423
+          global-json-file: global.json
 
-      - name: Restore OCCT 7.9.0 SDK
+      - name: Restore configured OCCT SDK
         shell: pwsh
         run: |
           if ([string]::IsNullOrWhiteSpace($env:OCCT_SDK_URL)) {
