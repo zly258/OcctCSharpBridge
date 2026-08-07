@@ -946,7 +946,7 @@ public sealed class MainWindow : Window
                 MenuItem(CadLocalization.Text("Menu.FitSelected"), () =>
                 {
                     Session.ActiveObject = value;
-                    if (value.Kind == OcctObjectKind.Shape) Session.Engine.Fit(new OcctShape(value.Id));
+                    if (value.Kind == OcctObjectKind.Shape) Session.Engine.Fit(Session.Engine.GetShape(value.Id));
                 }),
                 MenuItem(Local("Show", "显示"), () => Session.Engine.SetVisible(value, true)),
                 MenuItem(Local("Hide", "隐藏"), () => Session.Engine.SetVisible(value, false)),
@@ -989,7 +989,7 @@ public sealed class MainWindow : Window
         _propertyPanel.Children.Add(header);
 
         if (value is null || _session is null) return;
-        foreach (var property in Session.DescribeObject(value.Value))
+        foreach (var property in Session.DescribeObject(value))
         {
             var row = new Grid
             {
@@ -1008,7 +1008,7 @@ public sealed class MainWindow : Window
 
     private void SelectTreeNode(IOcctObject? value)
     {
-        if (value is null || !_objectNodes.TryGetValue(value.Value.Id, out var item)) return;
+        if (value is null || !_objectNodes.TryGetValue(value.Id, out var item)) return;
         item.IsSelected = true;
         item.BringIntoView();
     }
@@ -1038,7 +1038,7 @@ public sealed class MainWindow : Window
 
     private OcctShape? ActiveShape()
     {
-        if (_session?.ActiveObject is { Kind: OcctObjectKind.Shape } active) return new OcctShape(active.Id);
+        if (_session?.ActiveObject is { Kind: OcctObjectKind.Shape } active) return Session.Engine.GetShape(active.Id);
         return _session?.Engine.FirstSelected;
     }
 
