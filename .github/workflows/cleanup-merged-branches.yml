@@ -1,0 +1,27 @@
+﻿name: Cleanup merged feature branches
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.event.head_commit.message == 'Add temporary merged-branch cleanup workflow'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete merged feature branches
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          for branch in feature/object-integration-p0 feature/demo-usability-localization; do
+            if git ls-remote --exit-code --heads "$remote" "$branch" >/dev/null 2>&1; then
+              git push "$remote" --delete "$branch"
+            fi
+          done
