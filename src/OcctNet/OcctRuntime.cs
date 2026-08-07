@@ -51,10 +51,7 @@ public static class OcctRuntime
             NativeBridgeDirectory = nativeBridgeDirectory
         });
 
-    /// <summary>
-    /// Configures the process-wide OCCT runtime once. Conflicting explicit reconfiguration is rejected by default.
-    /// </summary>
-    public static void Configure(OcctRuntimeOptions options)
+    internal static void Configure(OcctRuntimeOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
 
