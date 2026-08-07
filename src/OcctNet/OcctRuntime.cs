@@ -87,13 +87,13 @@ public static class OcctRuntime
 
         if (!string.IsNullOrWhiteSpace(ConfiguredNativeDirectory))
         {
-            candidates.Insert(0, Path.Combine(ConfiguredNativeDirectory, NativeLibraryFileName));
+            candidates.Add(Path.Combine(ConfiguredNativeDirectory, NativeLibraryFileName));
         }
 
         var configuredDirectory = Environment.GetEnvironmentVariable("OCCT_BRIDGE_NATIVE_DIR");
         if (!string.IsNullOrWhiteSpace(configuredDirectory))
         {
-            candidates.Insert(0, Path.Combine(configuredDirectory, NativeLibraryFileName));
+            candidates.Add(Path.Combine(configuredDirectory, NativeLibraryFileName));
         }
 
         var repositoryRoot = FindRepositoryRoot(AppContext.BaseDirectory);
@@ -109,16 +109,18 @@ public static class OcctRuntime
 
     private static string? ResolveNativeBridgeDirectory(string? explicitDirectory)
     {
+        var appLocalNativeDirectory = AppContext.BaseDirectory;
+        var appLocalRuntimeDirectory = Path.Combine(AppContext.BaseDirectory, "runtimes", "win-x64", "native");
         var portableRuntimeDirectory = Path.GetFullPath(
             Path.Combine(AppContext.BaseDirectory, "..", "..", "runtime"));
 
         foreach (var candidate in new[]
                  {
                      explicitDirectory,
-                     portableRuntimeDirectory,
+                     appLocalNativeDirectory,
+                     appLocalRuntimeDirectory,
                      Environment.GetEnvironmentVariable("OCCT_BRIDGE_NATIVE_DIR"),
-                     AppContext.BaseDirectory,
-                     Path.Combine(AppContext.BaseDirectory, "runtimes", "win-x64", "native")
+                     portableRuntimeDirectory
                  })
         {
             if (string.IsNullOrWhiteSpace(candidate))
