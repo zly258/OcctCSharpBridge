@@ -40,7 +40,7 @@ public sealed partial class CadSession
     public CadCommandAvailability GetCommandAvailability(CadCommandId commandId)
     {
         var selectedEntries = Engine.SelectedObjects
-            .Where(Engine.Exists)
+            .Where(value => Engine.Exists(value))
             .ToArray();
         var selectedShapes = selectedEntries
             .Where(value => value.Kind == OcctObjectKind.Shape)
