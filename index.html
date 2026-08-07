@@ -154,8 +154,8 @@
       <div class="start-grid">
         <div class="section-heading">
           <div class="eyebrow" data-i18n="startEyebrow">GET STARTED</div>
-          <h2 data-i18n="startTitle">Validate the API, then build</h2>
-          <p data-i18n="startLead">Target environment: Windows x64, .NET 8 and exactly OCCT 7.9.0.</p>
+          <h2 data-i18n="startTitle">Clone, build, run and publish</h2>
+          <p data-i18n="startLead">Start from a fresh clone, switch to the demo branch, configure OCCT_ROOT, then use the PowerShell scripts for validation, build, run, smoke testing and packaging.</p>
           <div class="doc-links">
             <a href="https://github.com/zly258/OcctCSharpBridge/blob/main/docs/API_COVERAGE.md" target="_blank" rel="noreferrer" data-i18n="enInventory">English API Inventory ↗</a>
             <a href="https://github.com/zly258/OcctCSharpBridge/blob/main/docs/API_COVERAGE.zh-CN.md" target="_blank" rel="noreferrer" data-i18n="cnInventory">Chinese API Inventory ↗</a>
@@ -164,14 +164,32 @@
 
         <div class="code-window">
           <div class="code-tabs"><span>PowerShell</span><button id="copyCode" type="button" data-i18n="copy">Copy</button></div>
-          <pre><code id="buildCode"># Validate API contracts
+          <pre><code id="buildCode"># 1. Clone the repository
+git clone https://github.com/zly258/OcctCSharpBridge.git
+cd OcctCSharpBridge
+
+# 2. Switch to the desktop demo branch
+git switch demo
+
+# 3. Configure OCCT 7.9.0
+$env:OCCT_ROOT = "D:\tools\occt-vc144-64"
+
+# 4. Validate API contracts only
 .\build.ps1 validate Release
 
-# Build native + managed bridge
-.\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
+# 5. Build native bridge + all desktop demos
+.\build.ps1 all Release
 
-# Run modeling smoke scenarios
-.\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"</code></pre>
+# 6. Run a desktop demo
+.\run.ps1 winform
+.\run.ps1 wpf
+.\run.ps1 avalonia
+
+# 7. Run native modeling smoke scenarios
+.\build.ps1 smoke Release
+
+# 8. Publish deployment packages
+.\publish.ps1 all Release -Zip</code></pre>
         </div>
       </div>
     </section>

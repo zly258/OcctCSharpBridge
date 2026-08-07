@@ -55,8 +55,8 @@
       branchScript: 'Parametric scripting and editor experiments',
       branchWebsite: 'Static project website and GitHub Pages source',
       startEyebrow: 'GET STARTED',
-      startTitle: 'Validate the API, then build',
-      startLead: 'Target environment: Windows x64, .NET 8 and exactly OCCT 7.9.0.',
+      startTitle: 'Clone, build, run and publish',
+      startLead: 'Start from a fresh clone, switch to the demo branch, configure OCCT_ROOT, then use the PowerShell scripts for validation, build, run, smoke testing and packaging.',
       enInventory: 'English API Inventory ↗',
       cnInventory: 'Chinese API Inventory ↗',
       copy: 'Copy',
@@ -122,8 +122,8 @@
       branchScript: '参数化脚本与编辑器实验',
       branchWebsite: '静态项目网站与 GitHub Pages 源码',
       startEyebrow: 'GET STARTED',
-      startTitle: '先验证接口，再构建项目',
-      startLead: '目标环境：Windows x64、.NET 8，并精确使用 OCCT 7.9.0。',
+      startTitle: '从克隆开始：构建、运行与发布',
+      startLead: '建议从全新克隆开始，切换到 demo 分支，配置 OCCT_ROOT，再分别使用 PowerShell 脚本完成校核、构建、运行、Smoke 测试和发布。',
       enInventory: '英文接口清单 ↗',
       cnInventory: '中文接口清单 ↗',
       copy: '复制',
@@ -187,6 +187,67 @@
       selection.addRange(range);
     }
   });
+
+  const previewImages = Array.from(document.querySelectorAll('.preview-card img'));
+  if (previewImages.length) {
+    const lightbox = document.createElement('div');
+    lightbox.className = 'image-lightbox';
+    lightbox.setAttribute('role', 'dialog');
+    lightbox.setAttribute('aria-modal', 'true');
+    lightbox.setAttribute('aria-label', 'Image preview');
+    lightbox.hidden = true;
+    lightbox.innerHTML = `
+      <button class="image-lightbox-close" type="button" aria-label="Close image preview">×</button>
+      <img class="image-lightbox-image" alt="" />
+      <div class="image-lightbox-caption"></div>`;
+    document.body.appendChild(lightbox);
+
+    const lightboxImage = lightbox.querySelector('.image-lightbox-image');
+    const lightboxCaption = lightbox.querySelector('.image-lightbox-caption');
+    const lightboxClose = lightbox.querySelector('.image-lightbox-close');
+    let lastFocusedImage = null;
+
+    const closeLightbox = () => {
+      if (lightbox.hidden) return;
+      lightbox.hidden = true;
+      document.body.classList.remove('lightbox-open');
+      lightboxImage.removeAttribute('src');
+      if (lastFocusedImage) lastFocusedImage.focus();
+    };
+
+    const openLightbox = (image) => {
+      lastFocusedImage = image;
+      lightboxImage.src = image.currentSrc || image.src;
+      lightboxImage.alt = image.alt || '';
+      const caption = image.closest('figure')?.querySelector('figcaption')?.innerText?.trim() || image.alt || '';
+      lightboxCaption.textContent = caption;
+      lightbox.hidden = false;
+      document.body.classList.add('lightbox-open');
+      lightboxClose.focus();
+    };
+
+    previewImages.forEach((image) => {
+      image.classList.add('zoomable-image');
+      image.tabIndex = 0;
+      image.setAttribute('role', 'button');
+      image.setAttribute('aria-label', `${image.alt || 'Preview image'} — open full size`);
+      image.addEventListener('click', () => openLightbox(image));
+      image.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          openLightbox(image);
+        }
+      });
+    });
+
+    lightboxClose.addEventListener('click', closeLightbox);
+    lightbox.addEventListener('click', (event) => {
+      if (event.target === lightbox) closeLightbox();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !lightbox.hidden) closeLightbox();
+    });
+  }
 
   applyLanguage(language);
 })();
