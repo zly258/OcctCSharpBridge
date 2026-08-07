@@ -1,4 +1,4 @@
-# OcctCSharpBridge · OcctScript
+﻿# OcctCSharpBridge · OcctScript
 
 [简体中文](README.zh-CN.md) · [main branch](https://github.com/zly258/OcctCSharpBridge/tree/main)
 
@@ -81,6 +81,29 @@ samples/Scripts             ready-to-open JSON examples
 tests/OcctScript.Smoke      script/modeling smoke scenarios
 docs/script                 concise OcctScript documentation
 ```
+
+## Clone and configure
+
+```powershell
+git clone https://github.com/zly258/OcctCSharpBridge.git
+cd OcctCSharpBridge
+git switch script
+$env:OCCT_ROOT = "D:\\tools\\occt-vc144-64"
+```
+
+The `script` branch is not the desktop demo branch. It provides the `OcctScript.Editor` parametric application. For a first run, build the complete `script` target before starting the editor.
+
+### Script quick reference
+
+| Command | Purpose |
+| --- | --- |
+| `.\build.ps1 managed Release` | Build only the reusable managed bridge/hosts |
+| `.\build.ps1 script Release -OcctRoot <path>` | Validate bridge contracts, build native + OcctScript layers + Editor, and run Script Smoke |
+| `.\run.ps1` | Start an already-built Editor |
+| `.\run.ps1 Release -OcctRoot <path>` | Start the Editor with an explicit OCCT root |
+| `.\run.ps1 Release -OcctRoot <path> -Build` | Build the full script target first, then launch the Editor |
+
+`run.ps1` normally does not rebuild. Keep the output synchronized with the current source or use `-Build`.
 
 ## Requirements
 

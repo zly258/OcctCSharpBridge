@@ -1,4 +1,4 @@
-# OcctCSharpBridge · OcctScript
+﻿# OcctCSharpBridge · OcctScript
 
 [English](README.md) · [main 分支](https://github.com/zly258/OcctCSharpBridge/tree/main)
 
@@ -78,6 +78,29 @@ samples/Scripts             可直接打开的 JSON 示例
 tests/OcctScript.Smoke      脚本/建模 Smoke Test
 docs/script                 精简的 OcctScript 文档
 ```
+
+## 从克隆开始
+
+```powershell
+git clone https://github.com/zly258/OcctCSharpBridge.git
+cd OcctCSharpBridge
+git switch script
+$env:OCCT_ROOT = "D:\\tools\\occt-vc144-64"
+```
+
+`script` 分支不是 Demo 分支，它提供 `OcctScript.Editor` 参数化编辑器。第一次使用建议先执行完整 `script` target，再启动 Editor。
+
+### 脚本使用速查
+
+| 命令 | 用途 |
+| --- | --- |
+| `.\build.ps1 managed Release` | 只构建可复用托管 Bridge/Host |
+| `.\build.ps1 script Release -OcctRoot <path>` | 校核 Bridge，构建 Native、OcctScript 各层、Editor，并运行 Script Smoke |
+| `.\run.ps1` | 启动已经构建好的 Editor |
+| `.\run.ps1 Release -OcctRoot <path>` | 指定 OCCT 路径启动 Editor |
+| `.\run.ps1 Release -OcctRoot <path> -Build` | 先执行完整 script 构建，再启动 Editor |
+
+`run.ps1` 默认不会重新构建；需要保证输出目录与当前源码一致，或者使用 `-Build`。
 
 ## 环境要求
 
