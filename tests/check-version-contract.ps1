@@ -21,30 +21,32 @@ $expectedVersion = [string]$contract.bridgeVersion
 $expectedAbiVersion = [int]$contract.nativeAbiVersion
 $expectedOcctVersion = [string]$contract.occtVersion
 $expectedCmakeVersion = [string]$contract.cmakeMinimumVersion
+$expectedTargetFramework = [string]$contract.dotnet.targetFramework
 $expectedSdkVersion = [string]$contract.dotnet.sdkVersion
 $expectedLanguageVersion = [string]$contract.dotnet.languageVersion
 $expectedNativeCount = [int]$contract.api.nativeExports
 $expectedManagedCount = [int]$contract.api.managedPInvokes
 $expectedPublicTypeCount = [int]$contract.api.publicNetTypes
 
-foreach ($entry in [ordered]@{
+foreach ($entry in ([ordered]@{
     bridgeVersion = $expectedVersion
     occtVersion = $expectedOcctVersion
     cmakeMinimumVersion = $expectedCmakeVersion
+    targetFramework = $expectedTargetFramework
     dotnetSdkVersion = $expectedSdkVersion
     languageVersion = $expectedLanguageVersion
-}.GetEnumerator()) {
+}).GetEnumerator()) {
     if ([string]::IsNullOrWhiteSpace([string]$entry.Value)) {
         throw "Bridge contract value is missing: $($entry.Key)"
     }
 }
 
-foreach ($entry in [ordered]@{
+foreach ($entry in ([ordered]@{
     nativeAbiVersion = $expectedAbiVersion
     nativeExports = $expectedNativeCount
     managedPInvokes = $expectedManagedCount
     publicNetTypes = $expectedPublicTypeCount
-}.GetEnumerator()) {
+}).GetEnumerator()) {
     if ([int]$entry.Value -le 0) {
         throw "Bridge contract numeric value must be positive: $($entry.Key)"
     }
@@ -60,6 +62,10 @@ $contracts = [ordered]@{
     "src/OcctNet/OcctBridgeInfo.cs" = @(
         "ExpectedAbiVersion = $expectedAbiVersion",
         "ManagedVersion = `"$expectedVersion`""
+    )
+    "src/OcctNet/OcctNet.csproj" = @(
+        "<TargetFramework>$expectedTargetFramework</TargetFramework>",
+        "<Platforms>x64</Platforms>"
     )
     "README.md" = @($expectedVersion, $expectedOcctVersion)
     "README.zh-CN.md" = @($expectedVersion, $expectedOcctVersion)
@@ -108,9 +114,14 @@ foreach ($contractEntry in $contracts.GetEnumerator()) {
     }
 }
 
-foreach ($path in @("build.ps1", "src/OcctNative/CMakeLists.txt")) {
-    $content = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot $path))
-    if ($content -match '(?i)D:[\\/]tools[\\/]occt') {
+$machineSpecificFiles = @(
+    (Join-Path $RepositoryRoot "build.ps1"),
+    (Join-Path $RepositoryRoot "src\OcctNative\CMakeLists.txt")
+) + @(Get-ChildItem (Join-Path $RepositoryRoot "src\OcctNet") -Filter "*.cs" -File | Select-Object -ExpandProperty FullName)
+
+foreach ($path in $machineSpecificFiles) {
+    $content = [System.IO.File]::ReadAllText($path)
+    if ($content -match '(?i)[A-Z]:[\\/]tools[\\/]occt') {
         throw "A machine-specific OCCT path remains in $path."
     }
 }
