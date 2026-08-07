@@ -111,6 +111,7 @@ public sealed class MainWindow : Window
             engine.SetViewCubeVisible(true);
             engine.SetViewCubeLanguage(OcctViewCubeLanguage.English);
             engine.SetAntialiasing(true);
+            engine.SetFaceBoundariesVisible(true, applyExisting: true);
 
             var box = engine.MakeBox(80, 60, 40, -40, -30, 0);
             engine.SetColor(box, DrawingColor.SteelBlue);
