@@ -70,6 +70,7 @@ public sealed partial class OcctEngine
 
     public void SetTransparency(IEnumerable<IOcctObject> values, double transparency)
     {
+        OcctGuard.UnitInterval(transparency, nameof(transparency));
         var ids = GetObjectIds(values, nameof(values));
         if (ids.Length == 0) return;
         CheckInitialized(() => NativeMethods.occt_set_objects_transparency(
@@ -92,6 +93,7 @@ public sealed partial class OcctEngine
 
     public void SetDisplayMode(IEnumerable<IOcctObject> values, OcctDisplayMode displayMode)
     {
+        if (!Enum.IsDefined(displayMode)) throw new ArgumentOutOfRangeException(nameof(displayMode));
         var ids = GetObjectIds(values, nameof(values));
         if (ids.Length == 0) return;
         CheckInitialized(() => NativeMethods.occt_set_objects_display_mode(
@@ -103,6 +105,7 @@ public sealed partial class OcctEngine
 
     public void SetLineWidth(IEnumerable<IOcctObject> values, double width)
     {
+        OcctGuard.Positive(width, nameof(width));
         var ids = GetObjectIds(values, nameof(values));
         if (ids.Length == 0) return;
         CheckInitialized(() => NativeMethods.occt_set_objects_line_width(
@@ -114,6 +117,7 @@ public sealed partial class OcctEngine
 
     public void SetMaterial(IEnumerable<IOcctObject> values, OcctMaterial material)
     {
+        if (!Enum.IsDefined(material)) throw new ArgumentOutOfRangeException(nameof(material));
         var ids = GetObjectIds(values, nameof(values));
         if (ids.Length == 0) return;
         CheckInitialized(() => NativeMethods.occt_set_objects_material(
@@ -142,29 +146,15 @@ public sealed partial class OcctEngine
 
     public bool IsVisible(IOcctObject value)
     {
-        ArgumentNullException.ThrowIfNull(value);
+        EnsureObject(value);
         EnsureInitialized();
         return NativeMethods.occt_object_is_visible(_handle, value.Id) != 0;
     }
 
     public bool IsSelected(IOcctObject value)
     {
-        ArgumentNullException.ThrowIfNull(value);
+        EnsureObject(value);
         EnsureInitialized();
         return NativeMethods.occt_object_is_selected(_handle, value.Id) != 0;
-    }
-
-    private static long[] GetObjectIds(IEnumerable<IOcctObject> values, string parameterName)
-    {
-        ArgumentNullException.ThrowIfNull(values);
-        var ids = new HashSet<long>();
-        foreach (var value in values)
-        {
-            ArgumentNullException.ThrowIfNull(value);
-            if (value.Id <= 0)
-                throw new ArgumentException("Object IDs must be greater than zero.", parameterName);
-            ids.Add(value.Id);
-        }
-        return ids.ToArray();
     }
 }
