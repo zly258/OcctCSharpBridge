@@ -5,7 +5,7 @@ namespace OcctNet;
 internal static partial class ModelNativeMethods
 {
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_model_mesh(IntPtr handle, long shapeId, in OcctModelMeshParameters parameters);
+    internal static extern int occt_model_mesh(IntPtr handle, long shapeId, in NativeModelMeshParameters parameters);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_model_clear_mesh(IntPtr handle, long shapeId);
@@ -14,7 +14,7 @@ internal static partial class ModelNativeMethods
     internal static extern int occt_model_face_mesh_counts(IntPtr handle, long faceId, out int nodeCount, out int triangleCount);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_model_face_mesh_node(IntPtr handle, long faceId, int index, out OcctModelMeshNode result);
+    internal static extern int occt_model_face_mesh_node(IntPtr handle, long faceId, int index, out NativeModelMeshNode result);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_model_face_mesh_triangle(IntPtr handle, long faceId, int index, out OcctModelMeshTriangle result);
