@@ -10,13 +10,14 @@
 
 - Windows x64
 - Open CASCADE Technology **7.9.0**，VC14 x64 目录结构
-- .NET SDK **8.0.423**，由 `global.json` 固定
+- 本分支使用 .NET SDK **10.0.302**，由 `global.json` 固定
+- 目标框架仍保持 **`net8.0-windows`**
 - C# 12.0
 - CMake 3.21+
 - Avalonia `12.1.0`
 - Bridge `2.5.0`，Native ABI `2`
 
-`bridge-contract.json` 与 `main` 共享，是 Bridge/ABI/OCCT/.NET/API 元数据的权威来源；`global.json` 固定 SDK，`Directory.Build.props` 固定 C# 编译策略。`Wrapper Branch Sync` 会持续校验这些元数据及可复用源码是否与 `main` 一致。
+`bridge-contract.json` 与 `main` 共享，是 Bridge/ABI/OCCT/.NET/API 元数据的权威来源，其中同时记录 `main` 使用的 Core SDK 和 Avalonia Demo 所需的较新 SDK。`global.json` 因此有意按分支设置：`main` 保持 .NET SDK 8.0.423，`demo` 使用 10.0.302；目标框架和语言级别仍统一为 .NET 8 与 C# 12。`Wrapper Branch Sync` 继续严格比较共享源码与公共契约，但不再要求两个分支的 `global.json` 完全相同。
 
 ## 分层结构
 
@@ -125,6 +126,7 @@ GitHub Actions 直接调用 `build.ps1 ci Release`，因此本地提交前检查
 
 - `OCCT_ROOT is not configured`：设置 `$env:OCCT_ROOT`，或给需要 Native 的 target 传 `-OcctRoot`。
 - Native DLL 加载失败：使用正确 OCCT SDK 重新构建，并确保匹配的运行库存在。
+- Avalonia Analyzer/编译器版本不匹配：使用本分支 `global.json` 固定的 SDK，不要通过降级目标框架或关闭 Analyzer 来绕过。
 - Avalonia 启动异常：查看 `src\CadAvalonia\bin\x64\<Configuration>\net8.0-windows\CAD-Avalonia.log`。
 - 修改 API/Host/Menu 后先执行 `build.ps1 validate`；提交前优先执行 `build.ps1 ci`；有真实 OCCT SDK 时再执行 `build.ps1 smoke`。
 
