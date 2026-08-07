@@ -8,6 +8,12 @@ using Avalonia.Threading;
 using CadCommon;
 using OcctNet;
 using DrawingColor = System.Drawing.Color;
+using AvaloniaBrushes = Avalonia.Media.Brushes;
+using AvaloniaColor = Avalonia.Media.Color;
+using AvaloniaFontFamily = Avalonia.Media.FontFamily;
+using AvaloniaHorizontalAlignment = Avalonia.Layout.HorizontalAlignment;
+using AvaloniaOrientation = Avalonia.Layout.Orientation;
+using AvaloniaToolTip = Avalonia.Controls.ToolTip;
 using Forms = System.Windows.Forms;
 using Button = Avalonia.Controls.Button;
 using CheckBox = Avalonia.Controls.CheckBox;
@@ -59,12 +65,12 @@ public sealed class MainWindow : Window
         MinHeight = 720;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         WindowState = WindowState.Maximized;
-        Background = new SolidColorBrush(Color.Parse("#EEF1F4"));
+        Background = new SolidColorBrush(AvaloniaColor.Parse("#EEF1F4"));
 
         _mainMenu = new Menu();
         _toolbar = new StackPanel
         {
-            Orientation = Orientation.Horizontal,
+            Orientation = AvaloniaOrientation.Horizontal,
             Spacing = 4,
             Margin = new Thickness(6, 4)
         };
@@ -83,19 +89,19 @@ public sealed class MainWindow : Window
             IsReadOnly = true,
             AcceptsReturn = true,
             TextWrapping = TextWrapping.NoWrap,
-            FontFamily = new FontFamily("Consolas"),
+            FontFamily = new AvaloniaFontFamily("Consolas"),
             FontSize = 12,
-            Background = new SolidColorBrush(Color.Parse("#101820")),
-            Foreground = new SolidColorBrush(Color.Parse("#D8E2EA")),
-            BorderBrush = new SolidColorBrush(Color.Parse("#48525B"))
+            Background = new SolidColorBrush(AvaloniaColor.Parse("#101820")),
+            Foreground = new SolidColorBrush(AvaloniaColor.Parse("#D8E2EA")),
+            BorderBrush = new SolidColorBrush(AvaloniaColor.Parse("#48525B"))
         };
         _commandStatus = new TextBlock { MinWidth = 320, VerticalAlignment = VerticalAlignment.Center };
         _selectionStatus = new TextBlock { MinWidth = 170, VerticalAlignment = VerticalAlignment.Center };
         _coordinateStatus = new TextBlock
         {
             Text = "X 0.000  Y 0.000  Z 0.000",
-            FontFamily = new FontFamily("Consolas"),
-            HorizontalAlignment = HorizontalAlignment.Right,
+            FontFamily = new AvaloniaFontFamily("Consolas"),
+            HorizontalAlignment = AvaloniaHorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center
         };
         _modelExplorerGroup = new GroupBox();
@@ -124,8 +130,8 @@ public sealed class MainWindow : Window
 
         var toolbarBorder = new Border
         {
-            Background = new SolidColorBrush(Color.Parse("#E7EAED")),
-            BorderBrush = new SolidColorBrush(Color.Parse("#C7CDD3")),
+            Background = new SolidColorBrush(AvaloniaColor.Parse("#E7EAED")),
+            BorderBrush = new SolidColorBrush(AvaloniaColor.Parse("#C7CDD3")),
             BorderThickness = new Thickness(0, 0, 0, 1),
             Child = new ScrollViewer
             {
@@ -155,8 +161,8 @@ public sealed class MainWindow : Window
         var leftSplitter = new GridSplitter
         {
             Width = 5,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Background = new SolidColorBrush(Color.Parse("#C7CDD3"))
+            HorizontalAlignment = AvaloniaHorizontalAlignment.Stretch,
+            Background = new SolidColorBrush(AvaloniaColor.Parse("#C7CDD3"))
         };
         Grid.SetColumn(leftSplitter, 1);
         workspace.Children.Add(leftSplitter);
@@ -164,9 +170,9 @@ public sealed class MainWindow : Window
         var viewportBorder = new Border
         {
             Margin = new Thickness(4),
-            BorderBrush = new SolidColorBrush(Color.Parse("#AEB6BE")),
+            BorderBrush = new SolidColorBrush(AvaloniaColor.Parse("#AEB6BE")),
             BorderThickness = new Thickness(1),
-            Background = new SolidColorBrush(Color.Parse("#E8EDF2")),
+            Background = new SolidColorBrush(AvaloniaColor.Parse("#E8EDF2")),
             Child = _viewport
         };
         Grid.SetColumn(viewportBorder, 2);
@@ -175,8 +181,8 @@ public sealed class MainWindow : Window
         var rightSplitter = new GridSplitter
         {
             Width = 5,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Background = new SolidColorBrush(Color.Parse("#C7CDD3"))
+            HorizontalAlignment = AvaloniaHorizontalAlignment.Stretch,
+            Background = new SolidColorBrush(AvaloniaColor.Parse("#C7CDD3"))
         };
         Grid.SetColumn(rightSplitter, 3);
         workspace.Children.Add(rightSplitter);
@@ -201,8 +207,8 @@ public sealed class MainWindow : Window
         var horizontalSplitter = new GridSplitter
         {
             Height = 5,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Background = new SolidColorBrush(Color.Parse("#C7CDD3"))
+            HorizontalAlignment = AvaloniaHorizontalAlignment.Stretch,
+            Background = new SolidColorBrush(AvaloniaColor.Parse("#C7CDD3"))
         };
         Grid.SetRow(horizontalSplitter, 1);
         right.Children.Add(horizontalSplitter);
@@ -221,15 +227,15 @@ public sealed class MainWindow : Window
         var statusGrid = new Grid
         {
             ColumnDefinitions = new ColumnDefinitions("Auto,Auto,*"),
-            Background = new SolidColorBrush(Color.Parse("#2F3B46")),
+            Background = new SolidColorBrush(AvaloniaColor.Parse("#2F3B46")),
             Margin = new Thickness(0),
             MinHeight = 26
         };
-        _commandStatus.Foreground = Brushes.White;
+        _commandStatus.Foreground = AvaloniaBrushes.White;
         _commandStatus.Margin = new Thickness(8, 3);
-        _selectionStatus.Foreground = Brushes.White;
+        _selectionStatus.Foreground = AvaloniaBrushes.White;
         _selectionStatus.Margin = new Thickness(8, 3);
-        _coordinateStatus.Foreground = Brushes.White;
+        _coordinateStatus.Foreground = AvaloniaBrushes.White;
         _coordinateStatus.Margin = new Thickness(8, 3);
         Grid.SetColumn(_commandStatus, 0);
         Grid.SetColumn(_selectionStatus, 1);
@@ -588,7 +594,7 @@ public sealed class MainWindow : Window
         {
             var definition = CadLocalization.Localize(CadCommandCatalog.Get(id));
             var item = AsyncMenuItem(definition.Text, () => RunCommandAsync(id), ShortcutFromText(definition.Shortcut));
-            ToolTip.SetTip(item, definition.Description);
+            AvaloniaToolTip.SetTip(item, definition.Description);
             parent.Add(item);
         }
     }
@@ -972,7 +978,7 @@ public sealed class MainWindow : Window
         var header = new Grid
         {
             ColumnDefinitions = new ColumnDefinitions("2*,3*"),
-            Background = new SolidColorBrush(Color.Parse("#E7EAED")),
+            Background = new SolidColorBrush(AvaloniaColor.Parse("#E7EAED")),
             Margin = new Thickness(0, 0, 0, 2)
         };
         var nameHeader = new TextBlock { Text = CadLocalization.Text("Property.Name"), FontWeight = FontWeight.SemiBold, Margin = new Thickness(6, 4) };
@@ -988,7 +994,7 @@ public sealed class MainWindow : Window
             var row = new Grid
             {
                 ColumnDefinitions = new ColumnDefinitions("2*,3*"),
-                Background = Brushes.White,
+                Background = AvaloniaBrushes.White,
                 Margin = new Thickness(0, 0, 0, 1)
             };
             var name = new TextBlock { Text = property.Key, Margin = new Thickness(6, 4), TextWrapping = TextWrapping.Wrap };
@@ -1101,7 +1107,7 @@ public sealed class MainWindow : Window
 
     private void ApplyLanguage()
     {
-        FontFamily = new FontFamily(CadLocalization.CurrentLanguage == CadLanguage.ChineseSimplified ? "Microsoft YaHei UI" : "Segoe UI");
+        FontFamily = new AvaloniaFontFamily(CadLocalization.CurrentLanguage == CadLanguage.ChineseSimplified ? "Microsoft YaHei UI" : "Segoe UI");
         Title = "OCCT CAD - Avalonia";
         _modelExplorerGroup.Header = CadLocalization.Text("Panel.ModelExplorer");
         _propertiesGroup.Header = CadLocalization.Text("Panel.Properties");
@@ -1289,7 +1295,7 @@ public sealed class MainWindow : Window
             Padding = new Thickness(9, 4),
             Margin = new Thickness(1)
         };
-        ToolTip.SetTip(button, text);
+        AvaloniaToolTip.SetTip(button, text);
         button.Click += (_, _) => ExecuteSafe(action);
         return button;
     }
@@ -1303,7 +1309,7 @@ public sealed class MainWindow : Window
             Margin = new Thickness(1),
             Tag = command
         };
-        ToolTip.SetTip(button, text);
+        AvaloniaToolTip.SetTip(button, text);
         button.Click += async (_, _) => await RunCommandAsync((CadCommandId)button.Tag!);
         return button;
     }
@@ -1313,7 +1319,7 @@ public sealed class MainWindow : Window
         Width = 1,
         Height = 24,
         Margin = new Thickness(4, 2),
-        Background = new SolidColorBrush(Color.Parse("#B8C0C8"))
+        Background = new SolidColorBrush(AvaloniaColor.Parse("#B8C0C8"))
     };
 
     private static TreeViewItem TreeRoot(string header, IReadOnlyList<object> items) => new()
