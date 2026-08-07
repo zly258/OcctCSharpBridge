@@ -91,11 +91,12 @@ jobs:
           $sdk = Get-Content '.\global.json' -Raw -Encoding UTF8 | ConvertFrom-Json
           if ([string]::IsNullOrWhiteSpace([string]$contract.bridgeVersion) -or
               [string]::IsNullOrWhiteSpace([string]$contract.occtVersion) -or
-              [string]::IsNullOrWhiteSpace([string]$contract.dotnet.sdkVersion)) {
+              [string]::IsNullOrWhiteSpace([string]$contract.dotnet.sdkVersion) -or
+              [string]::IsNullOrWhiteSpace([string]$contract.dotnet.demoSdkVersion)) {
               throw "bridge-contract.json is missing required version metadata."
           }
-          if ($contract.dotnet.sdkVersion -ne $sdk.sdk.version) {
-              throw "global.json SDK does not match bridge-contract.json."
+          if ($contract.dotnet.demoSdkVersion -ne $sdk.sdk.version) {
+              throw "demo global.json SDK does not match bridge-contract.json demoSdkVersion."
           }
 
       - name: Reject machine-specific OCCT paths
