@@ -5,6 +5,7 @@
   "occtVersion": "7.9.0",
   "platform": "windows-x64",
   "cmakeMinimumVersion": "3.21",
+  "contactEmail": "zhangly1403@gmail.com",
   "dotnet": {
     "targetFramework": "net8.0-windows",
     "sdkVersion": "8.0.423",
