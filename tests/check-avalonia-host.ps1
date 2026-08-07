@@ -8,11 +8,12 @@ Set-StrictMode -Version Latest
 $hostProject = Join-Path $RepositoryRoot "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj"
 $hostControl = Join-Path $RepositoryRoot "src\OcctNet.Avalonia\OcctAvaloniaViewport.cs"
 $demoProject = Join-Path $RepositoryRoot "src\CadAvalonia\CadAvalonia.csproj"
+$demoManifest = Join-Path $RepositoryRoot "src\CadAvalonia\app.manifest"
 $demoWindow = Join-Path $RepositoryRoot "src\CadAvalonia\MainWindow.cs"
 $demoProgram = Join-Path $RepositoryRoot "src\CadAvalonia\Program.cs"
 $buildScript = Join-Path $RepositoryRoot "build.ps1"
 
-foreach ($path in @($hostProject, $hostControl, $demoProject, $demoWindow, $demoProgram, $buildScript)) {
+foreach ($path in @($hostProject, $hostControl, $demoProject, $demoManifest, $demoWindow, $demoProgram, $buildScript)) {
     if (-not (Test-Path $path -PathType Leaf)) {
         throw "Required Avalonia host file was not found: $path"
     }
@@ -58,8 +59,20 @@ if ($hostText.Contains('WindowsFormsHost') -or $hostText.Contains('System.Window
 }
 
 $demoProjectText = [System.IO.File]::ReadAllText($demoProject)
-if (-not $demoProjectText.Contains('Avalonia.Fonts.Inter')) {
-    throw "Avalonia demo must include Avalonia.Fonts.Inter for deterministic desktop bootstrap."
+foreach ($token in @('Avalonia.Fonts.Inter', '<ApplicationManifest>app.manifest</ApplicationManifest>')) {
+    if (-not $demoProjectText.Contains($token)) {
+        throw "Avalonia demo project contract is missing: $token"
+    }
+}
+
+$manifestText = [System.IO.File]::ReadAllText($demoManifest)
+foreach ($token in @(
+    'urn:schemas-microsoft-com:compatibility.v1',
+    '<supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />'
+)) {
+    if (-not $manifestText.Contains($token)) {
+        throw "Avalonia Windows manifest contract is missing: $token"
+    }
 }
 
 $programText = [System.IO.File]::ReadAllText($demoProgram)
@@ -83,11 +96,11 @@ foreach ($token in @('OcctAvaloniaViewport', 'SetZUpView', 'MakeBox', 'MakeCylin
     }
 }
 
-foreach ($path in @($hostProject, $hostControl, $demoProject, $demoWindow, $demoProgram)) {
+foreach ($path in @($hostProject, $hostControl, $demoProject, $demoManifest, $demoWindow, $demoProgram)) {
     $bytes = [System.IO.File]::ReadAllBytes($path)
     if ($bytes.Length -lt 3 -or $bytes[0] -ne 0xEF -or $bytes[1] -ne 0xBB -or $bytes[2] -ne 0xBF) {
         throw "Avalonia source file is not UTF-8 with BOM: $path"
     }
 }
 
-Write-Host "[avalonia-host] Avalonia HWND host, startup diagnostics, and runtime deployment contracts validated." -ForegroundColor Green
+Write-Host "[avalonia-host] Avalonia HWND host, Windows manifest, startup diagnostics, and runtime deployment contracts validated." -ForegroundColor Green
