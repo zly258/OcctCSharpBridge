@@ -6,6 +6,29 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS OFF)
 
+get_filename_component(BRIDGE_REPOSITORY_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
+set(BRIDGE_CONTRACT_FILE "${BRIDGE_REPOSITORY_ROOT}/bridge-contract.json")
+if(NOT EXISTS "${BRIDGE_CONTRACT_FILE}")
+    message(FATAL_ERROR "Bridge contract was not found: ${BRIDGE_CONTRACT_FILE}")
+endif()
+file(READ "${BRIDGE_CONTRACT_FILE}" BRIDGE_CONTRACT_JSON)
+string(JSON BRIDGE_VERSION GET "${BRIDGE_CONTRACT_JSON}" bridgeVersion)
+string(JSON BRIDGE_ABI_VERSION GET "${BRIDGE_CONTRACT_JSON}" nativeAbiVersion)
+string(JSON REQUIRED_OCCT_VERSION GET "${BRIDGE_CONTRACT_JSON}" occtVersion)
+
+if(NOT BRIDGE_VERSION OR NOT BRIDGE_ABI_VERSION OR NOT REQUIRED_OCCT_VERSION)
+    message(FATAL_ERROR "bridge-contract.json is missing native build metadata.")
+endif()
+
+string(REPLACE "." ";" REQUIRED_OCCT_VERSION_PARTS "${REQUIRED_OCCT_VERSION}")
+list(LENGTH REQUIRED_OCCT_VERSION_PARTS REQUIRED_OCCT_VERSION_PART_COUNT)
+if(NOT REQUIRED_OCCT_VERSION_PART_COUNT EQUAL 3)
+    message(FATAL_ERROR "The contracted OCCT version must use major.minor.maintenance format: ${REQUIRED_OCCT_VERSION}")
+endif()
+list(GET REQUIRED_OCCT_VERSION_PARTS 0 REQUIRED_OCCT_MAJOR)
+list(GET REQUIRED_OCCT_VERSION_PARTS 1 REQUIRED_OCCT_MINOR)
+list(GET REQUIRED_OCCT_VERSION_PARTS 2 REQUIRED_OCCT_MAINTENANCE)
+
 set(OCCT_ROOT "$ENV{OCCT_ROOT}" CACHE PATH "OCCT installation root")
 if(NOT OCCT_ROOT)
     message(FATAL_ERROR "OCCT_ROOT is not configured. Pass -DOCCT_ROOT=<path> or set the OCCT_ROOT environment variable.")
@@ -26,10 +49,10 @@ foreach(required_path
 endforeach()
 
 file(READ "${OCCT_INCLUDE_DIR}/Standard_Version.hxx" _occt_version_header)
-if(NOT _occt_version_header MATCHES "#define[ \t]+OCC_VERSION_MAJOR[ \t]+7([^0-9]|$)" OR
-   NOT _occt_version_header MATCHES "#define[ \t]+OCC_VERSION_MINOR[ \t]+9([^0-9]|$)" OR
-   NOT _occt_version_header MATCHES "#define[ \t]+OCC_VERSION_MAINTENANCE[ \t]+0([^0-9]|$)")
-    message(FATAL_ERROR "OcctCSharpBridge requires exactly OCCT 7.9.0.")
+if(NOT _occt_version_header MATCHES "#define[ \t]+OCC_VERSION_MAJOR[ \t]+${REQUIRED_OCCT_MAJOR}([^0-9]|$)" OR
+   NOT _occt_version_header MATCHES "#define[ \t]+OCC_VERSION_MINOR[ \t]+${REQUIRED_OCCT_MINOR}([^0-9]|$)" OR
+   NOT _occt_version_header MATCHES "#define[ \t]+OCC_VERSION_MAINTENANCE[ \t]+${REQUIRED_OCCT_MAINTENANCE}([^0-9]|$)")
+    message(FATAL_ERROR "OcctCSharpBridge requires exactly OCCT ${REQUIRED_OCCT_VERSION}.")
 endif()
 
 add_library(OcctNative SHARED
@@ -65,7 +88,11 @@ add_library(OcctNative SHARED
     OcctSelectionOverlay.h
     OcctModeling.h)
 
-target_compile_definitions(OcctNative PRIVATE NOMINMAX _CRT_SECURE_NO_WARNINGS)
+target_compile_definitions(OcctNative PRIVATE
+    NOMINMAX
+    _CRT_SECURE_NO_WARNINGS
+    "OCCT_BRIDGE_VERSION=\"${BRIDGE_VERSION}\""
+    "OCCT_BRIDGE_ABI_VERSION=${BRIDGE_ABI_VERSION}")
 if(MSVC)
     target_compile_options(OcctNative PRIVATE /utf-8 /W4 /WX /permissive- /external:W0)
 endif()
@@ -88,7 +115,8 @@ endforeach()
 
 list(REMOVE_DUPLICATES occt_libraries)
 
-message(STATUS "OCCT version: 7.9.0 (required exactly)")
+message(STATUS "Bridge version: ${BRIDGE_VERSION} (ABI ${BRIDGE_ABI_VERSION})")
+message(STATUS "OCCT version: ${REQUIRED_OCCT_VERSION} (required exactly)")
 message(STATUS "OCCT CASROOT: ${OCCT_CASROOT}")
 message(STATUS "OCCT include: ${OCCT_INCLUDE_DIR}")
 message(STATUS "OCCT lib: ${OCCT_LIB_DIR}")
@@ -109,4 +137,4 @@ foreach(configuration Debug Release RelWithDebInfo MinSizeRel)
 endforeach()
 
 file(WRITE "${CMAKE_BINARY_DIR}/occt_paths.txt"
-    "OCCT_CASROOT=${OCCT_CASROOT}\nOCCT_INCLUDE_DIR=${OCCT_INCLUDE_DIR}\nOCCT_LIB_DIR=${OCCT_LIB_DIR}\nOCCT_BIN_DIR=${OCCT_BIN_DIR}\nOCCT_VERSION=7.9.0\n")
+    "OCCT_CASROOT=${OCCT_CASROOT}\nOCCT_INCLUDE_DIR=${OCCT_INCLUDE_DIR}\nOCCT_LIB_DIR=${OCCT_LIB_DIR}\nOCCT_BIN_DIR=${OCCT_BIN_DIR}\nOCCT_VERSION=${REQUIRED_OCCT_VERSION}\nBRIDGE_VERSION=${BRIDGE_VERSION}\nBRIDGE_ABI=${BRIDGE_ABI_VERSION}\n")
