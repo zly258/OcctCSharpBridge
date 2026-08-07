@@ -17,7 +17,7 @@
 - Avalonia `12.1.0`
 - Bridge `2.5.0`，Native ABI `2`
 
-`bridge-contract.json` 与 `main` 共享，是 Bridge/ABI/OCCT/.NET/API 元数据的权威来源，其中同时记录 `main` 使用的 Core SDK 和 Avalonia Demo 所需的较新 SDK。`global.json` 因此有意按分支设置：`main` 保持 .NET SDK 8.0.423，`demo` 使用 10.0.302；目标框架和语言级别仍统一为 .NET 8 与 C# 12。`Wrapper Branch Sync` 继续严格比较共享源码与公共契约，但不再要求两个分支的 `global.json` 完全相同。
+`bridge-contract.json` 与 `main` 共享，是 Bridge/ABI/OCCT/.NET/API 元数据的权威来源，其中同时记录 `main` 使用的 Core SDK 和 Avalonia Demo 所需的较新 SDK。`global.json` 有意按分支设置：`main` 保持 .NET SDK 8.0.423，`demo` 使用 10.0.302；目标框架和语言级别仍统一为 .NET 8 与 C# 12。
 
 ## 分层结构
 
@@ -33,10 +33,7 @@
 ## 界面预览
 
 <table>
-  <tr>
-    <th>WinForms</th>
-    <th>WPF</th>
-  </tr>
+  <tr><th>WinForms</th><th>WPF</th></tr>
   <tr>
     <td><img src="assets/previews/winform-demo-zh.webp" alt="OCCT CAD WinForms 中文界面" width="100%"></td>
     <td><img src="assets/previews/wpf-demo-zh.webp" alt="OCCT CAD WPF 中文界面" width="100%"></td>
@@ -64,27 +61,20 @@ OCCT 目录应包含 `inc`、`win64\vc14\lib`、`win64\vc14\bin`，以及可选�
 | --- | --- | --- |
 | `validate` | 只执行契约、源码和发布包规则校验 | 否 |
 | `managed` | 构建 Core、WinForms/WPF/Avalonia Host 与 `CadCommon` | 否 |
-| `ci` | 执行与 GitHub Actions 相同的托管构建，包括三个 Demo 和 Smoke 项目编译 | 否 |
+| `ci` | 执行普通 CI 托管构建，包括三个 Demo 和 Smoke 项目编译 | 否 |
 | `native` | 构建 `OcctNative.dll` | 是 |
 | `winform` / `wpf` / `avalonia` | 构建指定可运行 Demo | 是 |
-| `smoke` | 构建 Native 并执行真实 OCCT 建模 Smoke | 是 |
+| `smoke` | 构建 Native 并执行真实 OCCT 建模场景 | 是 |
 | `all` | 构建 Native、三个 Demo 和 Smoke 项目 | 是 |
 
 ```powershell
-# 最快的源码/API 契约校验
 .\build.ps1 validate Release
-
-# 在本地复现普通 GitHub Actions
 .\build.ps1 ci Release
-
-# 完整 Native + Demo 构建
 .\build.ps1 all Release
-
-# 最强的 Native 运行时校验
 .\build.ps1 smoke Release
 ```
 
-GitHub Actions 直接调用 `build.ps1 ci Release`，因此本地提交前检查与托管 CI 使用同一条托管构建路径，不再分别维护多套 `dotnet build` 命令。
+普通 GitHub Actions 直接调用 `build.ps1 ci Release`。`smoke` 更强，它需要真实 OCCT SDK，因为它会实际加载 Native Bridge 并执行 OCCT 建模操作。
 
 ## 运行
 
@@ -96,19 +86,33 @@ GitHub Actions 直接调用 `build.ps1 ci Release`，因此本地提交前检查
 .\run.ps1 avalonia
 ```
 
-如果程序不是最新版本，应先构建对应 target。
-
 ## 发布
 
-`publish.ps1` 当前正式输出 WinForms 和 WPF 的完整部署包。Avalonia 已纳入 build/run/CI，但暂未进入正式 publish target。
+`publish.ps1` 已正式支持 **WinForms、WPF、Avalonia**，`all` 会同时发布三个应用：
 
 ```powershell
 .\publish.ps1 all Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
 .\publish.ps1 winform Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
 .\publish.ps1 wpf Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
+.\publish.ps1 avalonia Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-发布包包含应用程序、匹配版本的托管 Wrapper/Host、`OcctNative.dll`、递归解析的 OCCT/第三方运行库、必要 OCCT 资源、`package-contract.json` 和 `native-dependencies.txt`。只有目标电脑已经安装匹配的 .NET 8 Desktop Runtime 时才建议使用 `-FrameworkDependent`。
+发布过程会递归解析 `OcctNative.dll`、OCCT TK 模块、第三方库和 Visual C++ 运行库的完整 PE 依赖闭包；当实际依赖时也会纳入 `vcomp140.dll`。解析完成后的 Native DLL 会**复制到每个 EXE 同目录**，不再只依赖包根目录的兄弟 `runtime` 文件夹；运行时解析器也改为优先使用应用目录。
+
+发布包必须连续通过两层校验：先执行 `dumpbin` 静态依赖闭包检查，再启动独立 PowerShell 子进程，以受限 DLL 搜索路径实际执行 `LoadLibraryExW`。如果包在干净电脑上会出现 `Win32 126`，发布阶段就会直接失败。顶层 `runtime` 目录继续作为依赖清单和诊断用的基准副本，而 `apps\winform`、`apps\wpf`、`apps\avalonia` 均可直接运行。
+
+发布包还包含必要 OCCT 资源、`package-contract.json`、`native-dependencies.txt` 和可获取的许可证信息。只有目标电脑已安装匹配的 .NET 8 Desktop Runtime 时才建议使用 `-FrameworkDependent`。
+
+## 测试说明
+
+`tests` 下的 PowerShell 文件主要是接口契约和静态回归检查。已经删除两份脱离当前构建入口、且与现有检查重复的旧脚本。`tests/OcctNet.Smoke` 则明确保留，因为它是功能级 Native 集成测试，是目前唯一会真实加载 OCCT 并执行建模操作的测试层。
+
+建议使用频率：
+
+- 修改 API/源码后执行 `build.ps1 validate`。
+- 提交前执行 `build.ps1 ci`。
+- 修改 Native、建模或运行时加载逻辑后执行 `build.ps1 smoke`。
+- 对外发包前执行 `publish.ps1`；其内部会额外完成便携包 Native 加载探针。
 
 ## Demo 覆盖的主要能力
 
@@ -125,10 +129,9 @@ GitHub Actions 直接调用 `build.ps1 ci Release`，因此本地提交前检查
 ## 常见问题
 
 - `OCCT_ROOT is not configured`：设置 `$env:OCCT_ROOT`，或给需要 Native 的 target 传 `-OcctRoot`。
-- Native DLL 加载失败：使用正确 OCCT SDK 重新构建，并确保匹配的运行库存在。
+- `Unable to load OcctNative.dll ... Win32 126`：不要继续分发旧发布包。使用当前 `publish.ps1` 重新发布；应用 EXE 同目录必须带有 `OcctNative.dll` 及其依赖闭包，发布时的受限 LoadLibrary 探针会提前拦截缺失依赖。
 - Avalonia Analyzer/编译器版本不匹配：使用本分支 `global.json` 固定的 SDK，不要通过降级目标框架或关闭 Analyzer 来绕过。
 - Avalonia 启动异常：查看 `src\CadAvalonia\bin\x64\<Configuration>\net8.0-windows\CAD-Avalonia.log`。
-- 修改 API/Host/Menu 后先执行 `build.ps1 validate`；提交前优先执行 `build.ps1 ci`；有真实 OCCT SDK 时再执行 `build.ps1 smoke`。
 
 ## 许可证
 
