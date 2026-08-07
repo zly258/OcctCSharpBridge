@@ -90,4 +90,12 @@ jobs:
           if occt_version not in index:
               raise SystemExit(f"Website does not contain contracted OCCT version {occt_version}")
 
-          print(f"Validated {len(keys)} bilingual keys against Bridge {contract['bridgeVersion']} / OCCT {occt_version}.")
+          contact = str(contract.get("contactEmail", "")).strip()
+          if not contact:
+              raise SystemExit("main bridge-contract.json has no contactEmail")
+          if contact not in index or f"mailto:{contact}" not in index:
+              raise SystemExit(f"Website contact is stale; expected {contact}")
+          if "zhangly1403" + "@" + "qq.com" in content:
+              raise SystemExit("Legacy contact email remains on website branch")
+
+          print(f"Validated {len(keys)} bilingual keys against Bridge {contract['bridgeVersion']} / OCCT {occt_version}, including contact metadata.")
