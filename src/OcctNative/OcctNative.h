@@ -113,6 +113,7 @@ extern "C"
     OCCTBRIDGE_API int occt_set_display_mode(OcctHandle handle, int displayMode);
     OCCTBRIDGE_API int occt_set_triedron_visible(OcctHandle handle, int visible);
     OCCTBRIDGE_API int occt_set_view_cube_visible(OcctHandle handle, int visible);
+    OCCTBRIDGE_API int occt_set_view_cube_language(OcctHandle handle, int language);
     OCCTBRIDGE_API int occt_set_computed_mode(OcctHandle handle, int enabled);
     OCCTBRIDGE_API int occt_dump_view(OcctHandle handle, const char* utf8Path);
     OCCTBRIDGE_API int occt_screen_to_world(OcctHandle handle, int x, int y, OcctPoint3d* result);

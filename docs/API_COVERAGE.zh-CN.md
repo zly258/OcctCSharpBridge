@@ -5,9 +5,9 @@
 桥接层不包含 OCAF/XDE；文档、撤销重做和 JSON 持久化由上层应用实现。
 
 - OCCT: `7.9.0`
-- Native exports: `327`
-- Managed P/Invoke declarations: `327`
-- Public .NET types: `75`
+- Native exports: `328`
+- Managed P/Invoke declarations: `328`
+- Public .NET types: `76`
 
 ## 接口设计与命名规范
 
@@ -211,7 +211,7 @@ model.ExportStep(result.Shape, "part.step");
 - `occt_bridge_version`
 - `occt_bridge_build_info`
 
-### OcctNative.h — Viewer and interaction (78)
+### OcctNative.h — Viewer and interaction (79)
 
 - `occt_auto_z_fit`
 - `occt_begin_update`
@@ -264,6 +264,7 @@ model.ExportStep(result.Shape, "part.step");
 - `occt_set_triedron_visible`
 - `occt_set_view`
 - `occt_set_view_cube_visible`
+- `occt_set_view_cube_language`
 - `occt_set_view_scale`
 - `occt_start_rotation`
 - `occt_window_fit`
@@ -622,6 +623,7 @@ model.ExportStep(result.Shape, "part.step");
 - `OcctSurfaceType`
 - `OcctUvBounds`
 - `OcctVector3d`
+- `OcctViewCubeLanguage`
 - `OcctViewOrientation`
 - `OcctZUpViewOrientation`
 
@@ -692,6 +694,7 @@ model.ExportStep(result.Shape, "part.step");
 - `OcctText`
 - `OcctUvBounds`
 - `OcctVector3d`
+- `OcctViewCubeLanguage`
 - `OcctViewOrientation`
 - `OcctViewportControl`
 - `OcctViewportState`
