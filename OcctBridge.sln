@@ -28,6 +28,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CAD-WPF", "src\CadWpf\CadWp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CAD-Avalonia", "src\CadAvalonia\CadAvalonia.csproj", "{B6496B5B-10CF-45BB-8BC9-D77BD86F2E71}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.ManagedTests", "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj", "{D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.Smoke", "tests\OcctNet.Smoke\OcctNet.Smoke.csproj", "{A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}"
+EndProject
 Global
     GlobalSection(SolutionConfigurationPlatforms) = preSolution
         Debug|x64 = Debug|x64
@@ -66,6 +70,14 @@ Global
         {B6496B5B-10CF-45BB-8BC9-D77BD86F2E71}.Debug|x64.Build.0 = Debug|x64
         {B6496B5B-10CF-45BB-8BC9-D77BD86F2E71}.Release|x64.ActiveCfg = Release|x64
         {B6496B5B-10CF-45BB-8BC9-D77BD86F2E71}.Release|x64.Build.0 = Release|x64
+        {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}.Debug|x64.ActiveCfg = Debug|x64
+        {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}.Debug|x64.Build.0 = Debug|x64
+        {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}.Release|x64.ActiveCfg = Release|x64
+        {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}.Release|x64.Build.0 = Release|x64
+        {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}.Debug|x64.ActiveCfg = Debug|x64
+        {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}.Debug|x64.Build.0 = Debug|x64
+        {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}.Release|x64.ActiveCfg = Release|x64
+        {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}.Release|x64.Build.0 = Release|x64
     EndGlobalSection
     GlobalSection(SolutionProperties) = preSolution
         HideSolutionNode = FALSE
