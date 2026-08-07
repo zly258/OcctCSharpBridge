@@ -30,6 +30,8 @@ OCAF/XDE is intentionally not used as the application document layer. Documents,
 - `CadCommon`: shared application/session/command/document layer.
 - `CadWinForms`, `CadWpf`, `CadAvalonia`: runnable reference applications.
 
+Interactive objects use one typed abstraction: `IOcctObject` exposes `Id`, `Kind`, and `IsValid`, while actual instances are `OcctShape`, `OcctText`, or `OcctDimension`. There is no generic `OcctObject` wrapper and no public raw-ID constructor. CadCommon persists IDs but always resolves them through the owning `OcctEngine` before use.
+
 Avalonia remains a native Windows HWND host; the project does not claim Linux/macOS OCCT Viewer support.
 
 ## Preview
