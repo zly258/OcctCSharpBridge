@@ -2,9 +2,6 @@
 
 public sealed partial class OcctEngine
 {
-    public void SetViewCubeLanguage(OcctViewCubeLanguage language) =>
-        CheckInitialized(() => NativeMethods.occt_set_view_cube_language(_handle, (int)language));
-
     public void Fit(IEnumerable<OcctShape> shapes, double margin = 0.05)
     {
         ArgumentNullException.ThrowIfNull(shapes);
