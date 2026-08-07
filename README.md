@@ -1,6 +1,6 @@
 ﻿# OcctCSharpBridge
 
-[简体中文](README.zh-CN.md) · [Desktop demos](https://github.com/zly258/OcctCSharpBridge/tree/demo) · [OcctScript](https://github.com/zly258/OcctCSharpBridge/tree/script)
+[简体中文](README.zh-CN.md) · [Desktop demos](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
 OcctCSharpBridge is a Windows x64 bridge from **Open CASCADE Technology 7.9.0** to **.NET 8**. The `main` branch is intentionally kept reusable: it contains the native C++ bridge, stable C ABI, type-safe managed wrapper, optional viewport host libraries, API contract checks, and modeling smoke scenarios. Complete CAD applications are maintained on the `demo` branch.
 
@@ -11,7 +11,7 @@ The bridge intentionally excludes OCAF/XDE as an application document layer. Doc
 - Windows x64
 - Visual Studio 2022 / MSVC v143-compatible toolchain
 - .NET 8 SDK
-- CMake 3.16 or newer
+- CMake 3.21 or newer
 - Open CASCADE Technology **7.9.0**, VC14 x64 layout
 - PowerShell 5.1+ or PowerShell 7+
 
@@ -138,16 +138,6 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 ```
 
 The `demo` README documents `run.ps1` and `publish.ps1` in detail.
-
-## Use OcctScript
-
-The `script` branch adds a JSON-based parametric document and WPF editor while keeping the low-level bridge compatible with `main`:
-
-```powershell
-git switch script
-.\build.ps1 script Release -OcctRoot "D:\tools\occt-vc144-64"
-.\run.ps1 Release -OcctRoot "D:\tools\occt-vc144-64"
-```
 
 ## Referencing the bridge from another project
 
