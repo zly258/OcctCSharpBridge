@@ -28,7 +28,7 @@
   </tr>
 </table>
 
-Avalonia 当前提供轻量的宿主验证 Demo，用于验证真实 OCCT 场景、点选/框选、旋转、平移、缩放、Z-up 视图、DPI 与原生窗口生命周期。完整 CAD 命令界面仍以 WinForms/WPF Demo 为主。
+Avalonia 现已与 WPF 共用 `CadSession` 和 `CadCommandCatalog` 应用层，完整提供命令菜单、参数输入、撤销重做、文件交换、模型树、属性面板、命令日志、视图与显示控制、选择工具、分析命令、示例、快捷键和中英文界面，同时继续使用 Avalonia 原生 `NativeControlHost` 承载 OCCT 视口。
 
 ## 主要能力
 
@@ -121,7 +121,7 @@ $env:OCCT_ROOT = "D:\\tools\\occt-vc144-64"
 
 ### 默认显示样式
 
-WinForms 与 WPF 默认使用着色并显示实体边线，可在 **视图 → 视觉样式 → 着色并显示边线** 独立开关面边界显示；它不会改变 Shaded/Wireframe 本身。轻量 Avalonia Demo 也默认开启面边界。
+WinForms、WPF 与 Avalonia 默认都使用着色并显示实体边线，可在 **视图 → 视觉样式 → 着色并显示边线** 独立开关面边界显示；它不会改变 Shaded/Wireframe 本身。
 
 ## 构建与运行
 
@@ -165,7 +165,7 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 
 ## 发布
 
-现有 `publish.ps1` 继续负责 WinForms 和 WPF 的部署完整发布包。Avalonia 当前作为宿主验证 Demo 纳入构建、运行和 CI，但尚未加入正式发布包流程。
+现有 `publish.ps1` 继续负责 WinForms 和 WPF 的部署完整发布包。Avalonia 已作为完整 CAD Demo 纳入构建、运行和 CI；是否加入正式发布包流程作为独立的打包任务处理。
 
 默认命令同时发布 WinForms 和 WPF，并生成 Windows x64 自包含程序；目标电脑不需要另外安装 .NET。
 
