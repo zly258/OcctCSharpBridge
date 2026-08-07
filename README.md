@@ -28,7 +28,7 @@ OCAF/XDE is not included. Documents, JSON persistence, undo/redo, and command hi
   </tr>
 </table>
 
-Avalonia currently provides a lightweight host-validation demo covering a real OCCT scene, point/rectangle selection, rotation, pan, zoom, Z-up views, DPI synchronization, and native-window lifetime. The full CAD command UI remains in the WinForms and WPF demos.
+Avalonia now uses the same shared `CadSession` and `CadCommandCatalog` application layer as WPF. Its CAD demo includes the complete command menus, parameter input, undo/redo, file exchange, model explorer, properties, command log, view/display controls, selection tools, analysis commands, samples, shortcuts, and bilingual UI while retaining the native Avalonia `NativeControlHost` viewport.
 
 ## Features
 
@@ -121,7 +121,7 @@ Examples:
 
 ### Display defaults
 
-WinForms and WPF start in shaded mode with face edges enabled. Use **View → Visual Styles → Shaded with Edges** to toggle face-boundary drawing independently from Shaded/Wireframe. The lightweight Avalonia demo also enables face boundaries by default.
+WinForms, WPF, and Avalonia start in shaded mode with face edges enabled. Use **View → Visual Styles → Shaded with Edges** to toggle face-boundary drawing independently from Shaded/Wireframe.
 
 ## Build and run
 
@@ -165,7 +165,7 @@ Native compilation and runtime smoke testing:
 
 ## Publish
 
-The existing `publish.ps1` continues to produce deployment-complete WinForms and WPF packages. Avalonia is currently included in build, run, and CI as a host-validation demo but has not yet been added to the formal publishing flow.
+The existing `publish.ps1` continues to produce deployment-complete WinForms and WPF packages. Avalonia is now a full CAD demo in build, run, and CI; adding it to the formal publishing flow remains a separate packaging task.
 
 The default command publishes both WinForms and WPF as self-contained Windows x64 applications. Target computers do not need a separate .NET installation.
 
