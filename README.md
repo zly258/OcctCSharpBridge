@@ -2,9 +2,11 @@
 
 [简体中文](README.zh-CN.md) · [Desktop demos](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
-OcctCSharpBridge is a Windows x64 bridge from **Open CASCADE Technology 7.9.0** to **.NET 8**. The `main` branch is intentionally kept reusable: it contains the native C++ bridge, stable C ABI, type-safe managed wrapper, optional viewport host libraries, API contract checks, and modeling smoke scenarios. Complete CAD applications are maintained on the `demo` branch.
+OcctCSharpBridge is a Windows x64 bridge from **Open CASCADE Technology 7.9.0** to **.NET 8**. The `main` branch contains the reusable C++ bridge, strict C ABI, type-safe managed wrapper, optional WinForms/WPF viewport hosts, contract checks, and native smoke scenarios. Complete CAD applications are maintained on the `demo` branch.
 
-The bridge intentionally excludes OCAF/XDE as an application document layer. Documents, entities, command history, undo/redo, JSON persistence, tools, snapping, and other application concepts belong to the consuming program.
+Bridge **2.6.0 / ABI 3** is a breaking cleanup release: compatibility aliases and public raw-ID handle constructors were removed, managed native flags were replaced by `bool`/enums, naming was normalized, and the headless modeling API gained OBB, topology identity, planar faces with holes, exact edge trimming, planar wire offset, and whole-shape mesh extraction.
+
+OCAF/XDE is intentionally excluded. Document entities, command history, undo/redo, JSON persistence, tools, snapping, and other application concepts belong to the consuming application.
 
 ## Requirements
 
@@ -12,11 +14,11 @@ The bridge intentionally excludes OCAF/XDE as an application document layer. Doc
 - Visual Studio 2022 / MSVC v143-compatible toolchain
 - .NET SDK **8.0.423**, pinned by `global.json`
 - C# 12.0
-- CMake 3.21 or newer
+- CMake 3.21+
 - Open CASCADE Technology **7.9.0**, VC14 x64 layout
 - PowerShell 5.1+ or PowerShell 7+
 
-A typical OCCT directory used by the scripts looks like:
+Typical OCCT layout:
 
 ```text
 D:\tools\occt-vc144-64\
@@ -26,49 +28,78 @@ D:\tools\occt-vc144-64\
 └─ 3rdparty-vc14-64\
 ```
 
-## Clone first
+## Repository structure
 
-Start from a normal Git clone. The default branch is `main`.
+```text
+bridge-contract.json    Bridge/ABI/OCCT/.NET/API source of truth
+global.json             Pinned .NET SDK
+Directory.Build.props   Shared compiler policy
+src/OcctNative          C++17 native bridge and C ABI
+src/OcctNet             Core managed wrapper
+src/OcctNet.WinForms    Reusable WinForms viewport host
+src/OcctNet.Wpf         Reusable WPF viewport host
+tests                   Contract checks, managed tests, native smoke project
+docs                    English/Chinese API coverage
+build.ps1               Validation/build/smoke entry point
+```
+
+The managed wrapper intentionally exposes two façades:
+
+- `OcctEngine`: interactive CAD/AIS/viewer session. It owns displayed objects, selection, appearance, camera, interaction, annotations, and interactive document geometry.
+- `OcctModelingSession`: headless geometry/topology kernel for batch processing, services, algorithms, meshing, analysis, healing, history, and engineering file exchange.
+
+These two façades may expose equivalent OCCT operations because their object models are different by design. Bridge 2.6 does **not** keep multiple compatibility names inside the same façade.
+
+## Canonical API naming
+
+- Shape queries: `GetShape...`, `IsShape...`, `SetShape...`
+- Edge queries: `GetEdge...`, `EvaluateEdge...`, `TrimEdge()`
+- Face queries: `GetFace...`, `EvaluateFace()`
+- Indexed topology: `...At`, for example `GetSubshapeAt()`
+- Construction: `Make...`
+- Algorithms: verbs such as `Extrude()`, `OffsetShape()`, `OffsetWire()`
+- Mesh: `Triangulate()`, `ClearTriangulation()`, `GetFaceMesh()`, `GetShapeMesh()`
+
+Managed handles are always owned by the engine/session that produced them. Raw IDs are resolved using `GetShape()`, `TryGetShape()`, `GetObject()`, or `TryGetObject()`; they are not used to construct fake managed handles.
+
+## Headless modeling example
+
+```csharp
+using var model = new OcctModelingSession();
+
+var plate = model.MakeBox(100, 80, 10);
+var hole = model.MakeCylinder(
+    new OcctPoint3d(50, 40, -5),
+    OcctVector3d.UnitZ,
+    8,
+    20);
+
+var cut = model.Cut(plate, hole);
+var bounds = model.GetShapeOrientedBounds(cut.Shape, optimal: true);
+var mesh = model.GetShapeMesh(cut.Shape);
+model.ExportStep(cut.Shape, "plate.step");
+```
+
+Direct planar-hole construction is also available:
+
+```csharp
+var outer = model.MakeRectangleWire(100, 80);
+var inner = model.MakeRectangleWire(20, 20, new OcctPoint3d(40, 30, 0));
+var face = model.MakePlanarFace(outer, new[] { inner });
+var offset = model.OffsetWire(outer, 5.0, joinType: OcctJoinType.Arc);
+```
+
+See [API_COVERAGE.md](docs/API_COVERAGE.md) for the organized capability guide.
+
+## Build and validation
+
+Clone and configure the local OCCT SDK when Native work is required:
 
 ```powershell
 git clone https://github.com/zly258/OcctCSharpBridge.git
 cd OcctCSharpBridge
-git switch main
-```
-
-Configure OCCT once for the current PowerShell session:
-
-```powershell
 $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 ```
-
-You can also omit the environment variable and pass `-OcctRoot` explicitly to every command that needs the native SDK.
-
-## Repository structure
-
-```text
-bridge-contract.json    Authoritative Bridge/ABI/OCCT/.NET/API metadata
-global.json             Pinned .NET SDK used locally and in CI
-Directory.Build.props   Shared C# compiler policy
-src/OcctNative          C++17 native bridge and stable C ABI
-src/OcctNet             UI-independent, type-safe .NET wrapper
-src/OcctNet.WinForms    Optional WinForms HWND viewport host
-src/OcctNet.Wpf         Optional WPF viewport host
-tests                   API contract checks and native modeling smoke scenarios
-docs                    English and Chinese API inventories
-build.ps1               Validation/build/CI/smoke entry point
-```
-
-`bridge-contract.json` is the metadata source of truth. Version/API checks, branch synchronization, build output paths, and the website contract validate against this file rather than maintaining independent expected values.
-
-The managed API is organized around two native session types:
-
-- `OcctEngine`: interactive Viewer/AIS session, camera, projection, display attributes, object identity, selection, transforms, annotations, screen/world conversion and input-oriented operations.
-- `OcctModelingSession`: headless geometry, topology, construction, algorithms, mesh, analysis, healing, history and engineering file exchange.
-
-`OcctViewportControl` is provided by `OcctNet.WinForms`; `OcctWpfViewport` is provided by `OcctNet.Wpf`. They are optional host libraries and are not application frameworks.
-
-## `build.ps1` usage
 
 General syntax:
 
@@ -76,82 +107,38 @@ General syntax:
 .\build.ps1 <target> <configuration> [-OcctRoot <path>]
 ```
 
-Supported targets on `main`:
+| Target | Purpose | OCCT SDK |
+|---|---|---|
+| `validate` | API/version/organization/PInvoke/host contracts | No |
+| `managed` | Build reusable managed wrapper + hosts | No |
+| `ci` | Contract checks + managed builds + managed regression tests + Smoke compile | No |
+| `native` | Build `OcctNative.dll` with CMake/MSVC | Yes |
+| `smoke` | Build and run real OCCT native modeling scenarios | Yes |
+| `all` | Build native bridge and reusable managed hosts | Yes |
 
-| Target | What it does | OCCT SDK required |
-| --- | --- | --- |
-| `validate` | Runs API/version/source-organization/PInvoke/UI-host contract checks | No |
-| `managed` | Builds `OcctNet`, WinForms host and WPF host | No |
-| `ci` | Runs the same contract checks as `validate`, then builds all reusable managed projects and compiles the Smoke project | No |
-| `native` | Configures and builds `OcctNative.dll` with CMake/MSVC | Yes |
-| `smoke` | Builds native + managed components and runs real native modeling smoke scenarios | Yes |
-| `all` | Builds native bridge and all reusable managed host projects | Yes |
-
-Configurations: `Debug`, `Release`, `RelWithDebInfo`.
-
-### Validate API contracts
-
-Use this after changing public APIs, native declarations, P/Invoke signatures or project organization:
-
-```powershell
-.\build.ps1 validate Release
-```
-
-### Run the same managed build as GitHub Actions
+Preferred no-SDK pre-push check:
 
 ```powershell
 .\build.ps1 ci Release
 ```
 
-This is the preferred pre-push check when the OCCT SDK is not available. GitHub Actions calls this same target instead of duplicating individual `dotnet build` commands.
-
-### Build only the managed wrapper
-
-```powershell
-.\build.ps1 managed Release
-```
-
-### Build only the native bridge
-
-```powershell
-.\build.ps1 native Release -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-### Build the complete reusable bridge
-
-```powershell
-.\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-When `OCCT_ROOT` is already set:
-
-```powershell
-.\build.ps1 all Release
-```
-
-### Run native modeling smoke scenarios
-
-This is the strongest local check on `main` because it loads the native bridge and performs real OCCT modeling operations:
+Strongest local validation before release:
 
 ```powershell
 .\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-## GitHub Actions and native smoke testing
+GitHub-hosted CI cannot provide the project-specific OCCT SDK, so the repository deliberately does not keep a permanently skipped cloud Native workflow. Native execution is a local release gate; cloud CI validates the complete managed/static contract.
 
-The normal `API Surface` workflow runs `build.ps1 ci Release` on a GitHub-hosted Windows runner and therefore does not require an OCCT SDK.
+## Runtime deployment
 
-A separate `Native Smoke` workflow is available for a real OCCT runtime test. The repository intentionally does not vendor the OCCT SDK, so this job remains skipped until the repository is explicitly configured with:
+Keep `OcctNet.dll`, the selected viewport host, `OcctNative.dll`, OCCT runtime DLLs, and required third-party DLLs from the **same Bridge build**. Do not mix ABI 2 and ABI 3 binaries.
 
-- Repository variable `OCCT_NATIVE_CI_ENABLED=true`
-- Repository secret `OCCT_SDK_URL`: URL to a ZIP archive containing the expected `inc` and `win64\vc14` OCCT 7.9.0 layout
-- Optional repository secret `OCCT_SDK_SHA256`: SHA-256 of that ZIP archive
+`OcctRuntime.GetDiagnosticReport()` reports native bridge candidates, configured OCCT paths, and resource variables. It is intended for diagnosing deployment failures such as Win32 error 126.
 
-When enabled, the workflow downloads and validates the SDK archive, builds `OcctNative.dll`, loads the native bridge, and executes the real modeling Smoke scenarios through `build.ps1 smoke Release`.
+## Desktop demos
 
-## Run desktop applications
-
-`main` deliberately does not contain complete CAD demo executables. Switch to `demo` for WinForms, WPF and Avalonia applications:
+The `main` branch does not contain complete CAD applications. Use the `demo` branch for WinForms, WPF, and Avalonia examples:
 
 ```powershell
 git switch demo
@@ -162,57 +149,48 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 .\run.ps1 avalonia
 ```
 
-The `demo` README documents `run.ps1` and `publish.ps1` in detail.
+The Demo release script packages application-local Native dependencies and validates Native loading before producing the final package.
 
-## Referencing the bridge from another project
-
-Project references during development:
+## Referencing from another project
 
 ```xml
 <ItemGroup>
   <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet\OcctNet.csproj" />
-  <!-- Optional WinForms host -->
+  <!-- Optional -->
   <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet.WinForms\OcctNet.WinForms.csproj" />
-  <!-- Optional WPF host -->
   <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet.Wpf\OcctNet.Wpf.csproj" />
 </ItemGroup>
 ```
 
-For deployment, keep `OcctNet.dll`, the selected host assembly, `OcctNative.dll`, OCCT runtime DLLs and required third-party runtime DLLs from the same compatible build. Do not mix native and managed outputs from different bridge revisions.
-
 ## Compatibility contract
 
-The authoritative values are stored in `bridge-contract.json`:
+Authoritative metadata is in `bridge-contract.json`:
 
+- Bridge: `2.6.0`
+- Native ABI: `3`
 - OCCT: exactly `7.9.0`
-- Managed target: `.NET 8`, Windows x64
-- Bridge version: `2.5.0`
-- Native ABI version: `2`
-- Native and managed ABI compatibility is validated through `OcctBridgeInfo`
-- Native sessions own mutable state and should be used from one application thread at a time
+- Target: `.NET 8`, Windows x64
+- Native exports: `336`
+- Managed P/Invoke declarations: `336`
+- Public .NET types: `82`
+- Viewer API: `212`
+- Modeling API: `124`
 
-Batch color, transparency, visibility, display-mode, material, line-width, redisplay and selection APIs reduce repeated P/Invoke calls for large scenes. Viewport-state snapshots, transformed bounds, selected-object fitting, screen projection helpers and stable `ApplicationTag` identity are intended for reusable CAD application layers.
-
-## API inventory
-
-- [English API inventory](docs/API_COVERAGE.md)
-- [中文接口清单](docs/API_COVERAGE.zh-CN.md)
-
-`build.ps1 validate` intentionally fails when declarations, P/Invoke mappings, calling conventions, source organization, documented interface counts, SDK policy, or contract metadata become stale.
+`build.ps1 validate` fails when these values, declarations, P/Invoke mappings, naming/organization contracts, SDK policy, or documentation drift.
 
 ## Troubleshooting
 
 **`OCCT_ROOT is not configured`**  
-Set `$env:OCCT_ROOT` or pass `-OcctRoot` explicitly.
+Set `$env:OCCT_ROOT` or pass `-OcctRoot`.
 
 **`TKernel.lib` / `TKernel.dll` not found**  
-Verify that the OCCT installation follows the expected `win64\vc14\lib` and `win64\vc14\bin` layout and is version 7.9.0.
+Verify the expected `win64\vc14\lib` and `win64\vc14\bin` layout and OCCT 7.9.0.
 
-**Managed build works but native loading fails**  
-A managed build alone does not deploy the OCCT runtime. Build the native target and make the matching OCCT/third-party runtime DLLs discoverable beside the application or through the configured runtime path.
+**Managed build succeeds but Native loading fails**  
+A managed build does not deploy OCCT. Use the Demo publish process or deploy the matching Native/OCCT/third-party dependency closure beside the executable.
 
-**Need a runnable example**  
-Use the `demo` branch rather than adding application-specific code to `main`.
+**Need a runnable CAD example**  
+Use the `demo` branch; keep application-specific document/tool code out of `main`.
 
 ## License
 
