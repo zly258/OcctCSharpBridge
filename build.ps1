@@ -1,6 +1,6 @@
 ﻿param(
     [Parameter(Position = 0)]
-    [ValidateSet("validate", "native", "managed", "smoke", "all")]
+    [ValidateSet("validate", "native", "managed", "smoke", "ci", "all")]
     [string]$Target = "all",
 
     [Parameter(Position = 1)]
@@ -29,6 +29,16 @@ $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $NativeSource = Join-Path $RepoRoot "src\OcctNative"
 $NativeBuild = Join-Path $RepoRoot "build\native"
 $NativeDll = Join-Path $NativeBuild "bin\$Configuration\OcctNative.dll"
+$ContractPath = Join-Path $RepoRoot "bridge-contract.json"
+
+if (-not (Test-Path $ContractPath -PathType Leaf)) {
+    throw "Bridge contract file was not found: $ContractPath"
+}
+$Contract = Get-Content $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$BridgeVersion = [string]$Contract.bridgeVersion
+$RequiredOcctVersion = [string]$Contract.occtVersion
+$TargetFramework = [string]$Contract.dotnet.targetFramework
+$SdkVersion = [string]$Contract.dotnet.sdkVersion
 
 $Projects = [ordered]@{
     Core = "src\OcctNet\OcctNet.csproj"
@@ -113,7 +123,7 @@ function Build-Native {
     Assert-Command "cmake"
     Resolve-OcctConfiguration
 
-    Write-Host "[native] Configuring OCCT 7.9.0 bridge..." -ForegroundColor Cyan
+    Write-Host "[native] Configuring OCCT $RequiredOcctVersion bridge..." -ForegroundColor Cyan
     Invoke-Checked "cmake" @(
         "-S", $NativeSource,
         "-B", $NativeBuild,
@@ -166,12 +176,17 @@ function Build-Managed {
     Build-Project "Wpf"
 }
 
+function Build-Ci {
+    Build-Managed
+    Build-Project "Smoke"
+}
+
 function Run-Smoke {
     Assert-Path $NativeDll
     Build-Project "Smoke"
 
     $smokeProject = Join-Path $RepoRoot $Projects.Smoke
-    $smokeOutput = Join-Path (Split-Path -Parent $smokeProject) "bin\x64\$Configuration\net8.0-windows"
+    $smokeOutput = Join-Path (Split-Path -Parent $smokeProject) "bin\x64\$Configuration\$TargetFramework"
     Copy-Item $NativeDll (Join-Path $smokeOutput "OcctNative.dll") -Force
 
     $previousNativeDirectory = $env:OCCT_BRIDGE_NATIVE_DIR
@@ -193,8 +208,10 @@ function Run-Smoke {
 
 Write-Host "Target:        $Target"
 Write-Host "Configuration: $Configuration"
+Write-Host "Bridge:        $BridgeVersion"
+Write-Host "SDK:           $SdkVersion" -ForegroundColor DarkGray
 if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
-    Write-Host "OCCT root:     not configured (valid for validate/managed)" -ForegroundColor DarkGray
+    Write-Host "OCCT root:     not configured (valid for validate/managed/ci)" -ForegroundColor DarkGray
 }
 else {
     Write-Host "OCCT root:     $OcctRoot" -ForegroundColor DarkGray
@@ -206,6 +223,7 @@ switch ($Target) {
     "validate" { }
     "native" { Build-Native }
     "managed" { Build-Managed }
+    "ci" { Build-Ci }
     "smoke" {
         Build-Native
         Build-Managed
