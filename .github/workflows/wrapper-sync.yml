@@ -41,6 +41,8 @@ jobs:
           # global.json is intentionally branch-specific: main uses the .NET 8 SDK,
           # while demo uses a newer SDK required by Avalonia 12 analyzers.
           $paths = @(
+            ".editorconfig",
+            ".gitattributes",
             "bridge-contract.json",
             "Directory.Build.props",
             "src/OcctNative",
