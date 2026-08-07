@@ -66,25 +66,17 @@ public sealed partial class OcctModelingSession : IDisposable
         }
     }
 
-    /// <summary>
-    /// Returns true when a shape is valid in this session. Shapes created by another session are always rejected.
-    /// Legacy unbound handles created with <c>new OcctModelShape(id)</c> are checked by native ID for compatibility.
-    /// </summary>
     public bool Exists(OcctModelShape shape)
     {
         EnsureNotDisposed();
-        if (!shape.IsValid) return false;
-        if (shape.OwnerId != 0 && shape.OwnerId != _ownerId) return false;
-        return ModelNativeMethods.occt_model_shape_exists(_handle, shape.Id) != 0;
+        return shape.IsValid &&
+               shape.OwnerId == _ownerId &&
+               ModelNativeMethods.occt_model_shape_exists(_handle, shape.Id) != 0;
     }
 
-    /// <summary>Returns true when the shape was created or resolved by this session.</summary>
     public bool Owns(OcctModelShape shape) => shape.IsValid && shape.OwnerId == _ownerId;
 
-    /// <summary>
-    /// Resolves an existing native shape ID into a session-bound managed handle.
-    /// Use this instead of constructing a raw <see cref="OcctModelShape"/> when working with persisted IDs.
-    /// </summary>
+    /// <summary>Resolves a persisted native shape ID into a session-owned managed handle.</summary>
     public OcctModelShape GetShape(long id)
     {
         EnsureNotDisposed();
@@ -148,10 +140,10 @@ public sealed partial class OcctModelingSession : IDisposable
     private void EnsureShape(OcctModelShape shape)
     {
         EnsureNotDisposed();
-        if (shape.OwnerId != 0 && shape.OwnerId != _ownerId)
-            throw new ArgumentException("Shape belongs to a different OcctModelingSession.", nameof(shape));
-        if (!shape.IsValid || ModelNativeMethods.occt_model_shape_exists(_handle, shape.Id) == 0)
+        if (!shape.IsValid || shape.OwnerId != _ownerId)
             throw new ArgumentException("Shape does not belong to this modeling session.", nameof(shape));
+        if (ModelNativeMethods.occt_model_shape_exists(_handle, shape.Id) == 0)
+            throw new ArgumentException("Shape no longer exists in this modeling session.", nameof(shape));
     }
 
     private OcctModelShape CheckShape(long id, [CallerMemberName] string? operation = null)
