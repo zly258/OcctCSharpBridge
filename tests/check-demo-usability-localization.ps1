@@ -17,6 +17,10 @@ Assert-Contains "src/CadCommon/CadLocalization.cs" "https://github.com/zly258/Oc
 Assert-Contains "src/CadCommon/CadLocalization.cs" "zhangly1403@qq.com"
 Assert-Contains "src/CadCommon/CadSession.Preconditions.cs" "GetCommandAvailability"
 Assert-Contains "src/OcctNet.WinForms/OcctViewportControl.cs" "Preserve the gesture"
+Assert-Contains "docs/API_COVERAGE.md" 'Native exports: `328`'
+Assert-Contains "docs/API_COVERAGE.md" 'Public .NET types: `76`'
+Assert-Contains "docs/API_COVERAGE.md" "occt_set_view_cube_language"
+Assert-Contains "docs/API_COVERAGE.md" "OcctViewCubeLanguage"
 
 $utf8BomFiles = @(
     "src/OcctNative/OcctNative.h",
