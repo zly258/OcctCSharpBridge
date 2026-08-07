@@ -1,6 +1,6 @@
 ﻿param(
     [Parameter(Position = 0)]
-    [ValidateSet("validate", "native", "managed", "smoke", "winform", "wpf", "avalonia", "all")]
+    [ValidateSet("validate", "native", "managed", "smoke", "winform", "wpf", "avalonia", "ci", "all")]
     [string]$Target = "all",
 
     [Parameter(Position = 1)]
@@ -29,6 +29,16 @@ $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $NativeSource = Join-Path $RepoRoot "src\OcctNative"
 $NativeBuild = Join-Path $RepoRoot "build\native"
 $NativeDll = Join-Path $NativeBuild "bin\$Configuration\OcctNative.dll"
+$ContractPath = Join-Path $RepoRoot "bridge-contract.json"
+
+if (-not (Test-Path $ContractPath -PathType Leaf)) {
+    throw "Bridge contract file was not found: $ContractPath"
+}
+$Contract = Get-Content $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$BridgeVersion = [string]$Contract.bridgeVersion
+$RequiredOcctVersion = [string]$Contract.occtVersion
+$TargetFramework = [string]$Contract.dotnet.targetFramework
+$SdkVersion = [string]$Contract.dotnet.sdkVersion
 
 $Projects = [ordered]@{
     Core = @{
@@ -159,7 +169,7 @@ function Build-Native {
     Assert-Command "cmake"
     Resolve-OcctConfiguration
 
-    Write-Host "[native] Configuring OCCT 7.9.0 bridge..." -ForegroundColor Cyan
+    Write-Host "[native] Configuring OCCT $RequiredOcctVersion bridge..." -ForegroundColor Cyan
     Invoke-Checked "cmake" @(
         "-S", $NativeSource,
         "-B", $NativeBuild,
@@ -232,7 +242,7 @@ function Build-Project {
     ) "$($definition.DisplayName) build failed."
 
     if ($null -ne $definition.Executable) {
-        $output = Join-Path $projectDirectory "bin\x64\$Configuration\net8.0-windows"
+        $output = Join-Path $projectDirectory "bin\x64\$Configuration\$TargetFramework"
         Assert-Path (Join-Path $output $definition.Executable)
         if (Test-Path $NativeDll) {
             Copy-Item $NativeDll (Join-Path $output "OcctNative.dll") -Force
@@ -250,7 +260,7 @@ function Get-ProjectOutputDirectory {
     }
 
     $project = Join-Path $RepoRoot $definition.Project
-    return Join-Path (Split-Path -Parent $project) "bin\x64\$Configuration\net8.0-windows"
+    return Join-Path (Split-Path -Parent $project) "bin\x64\$Configuration\$TargetFramework"
 }
 
 function Build-Managed {
@@ -261,12 +271,20 @@ function Build-Managed {
     Build-Project "DemoCommon"
 }
 
+function Build-Ci {
+    Build-Managed
+    Build-Project "WinFormsDemo"
+    Build-Project "WpfDemo"
+    Build-Project "AvaloniaDemo"
+    Build-Project "Smoke"
+}
+
 function Run-Smoke {
     Assert-Path $NativeDll
     Build-Project "Smoke"
 
     $smokeProject = Join-Path $RepoRoot $Projects.Smoke.Project
-    $smokeOutput = Join-Path (Split-Path -Parent $smokeProject) "bin\x64\$Configuration\net8.0-windows"
+    $smokeOutput = Join-Path (Split-Path -Parent $smokeProject) "bin\x64\$Configuration\$TargetFramework"
     Copy-Item $NativeDll (Join-Path $smokeOutput "OcctNative.dll") -Force
 
     $previousNativeDirectory = $env:OCCT_BRIDGE_NATIVE_DIR
@@ -288,8 +306,10 @@ function Run-Smoke {
 
 Write-Host "Target:        $Target"
 Write-Host "Configuration: $Configuration"
+Write-Host "Bridge:        $BridgeVersion"
+Write-Host "SDK:           $SdkVersion" -ForegroundColor DarkGray
 if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
-    Write-Host "OCCT root:     not configured (valid for validate/managed)" -ForegroundColor DarkGray
+    Write-Host "OCCT root:     not configured (valid for validate/managed/ci)" -ForegroundColor DarkGray
 }
 else {
     Write-Host "OCCT root:     $OcctRoot" -ForegroundColor DarkGray
@@ -300,6 +320,7 @@ Invoke-ContractChecks
 switch ($Target) {
     "validate" { }
     "managed" { Build-Managed }
+    "ci" { Build-Ci }
     "native" { Build-Native }
     "winform" {
         Build-Native
