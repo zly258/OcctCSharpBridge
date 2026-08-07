@@ -1,0 +1,21 @@
+name: Avalonia Parity Build
+
+on:
+  push:
+    branches:
+      - feature/avalonia-wpf-parity
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Validate contracts
+        shell: pwsh
+        run: .\build.ps1 validate Release
+      - name: Build Avalonia CAD demo
+        shell: pwsh
+        run: dotnet build .\src\CadAvalonia\CadAvalonia.csproj -c Release -p:Platform=x64 --nologo
