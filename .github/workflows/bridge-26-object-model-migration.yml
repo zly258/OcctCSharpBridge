@@ -1,0 +1,68 @@
+﻿name: Bridge 2.6 Object Model Migration
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/bridge-26-object-model-migration.yml
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Update 2.6 object model contracts
+        shell: python
+        run: |
+          from pathlib import Path
+
+          replacements = {
+              "README.md": [
+                  ("Public .NET types: `82`", "Public .NET types: `81`"),
+              ],
+              "README.zh-CN.md": [
+                  ("Public .NET types：`82`", "Public .NET types：`81`"),
+              ],
+              "docs/API_COVERAGE.md": [
+                  ("Public .NET types: `82`", "Public .NET types: `81`"),
+              ],
+              "docs/API_COVERAGE.zh-CN.md": [
+                  ("Public .NET types: `82`", "Public .NET types: `81`"),
+              ],
+              "tests/check-api-organization.ps1": [
+                  ("public IReadOnlyList<OcctObject> SelectedObjects", "public IReadOnlyList<IOcctObject> SelectedObjects"),
+              ],
+          }
+
+          for file_name, pairs in replacements.items():
+              path = Path(file_name)
+              text = path.read_text(encoding="utf-8-sig")
+              for old, new in pairs:
+                  if old not in text:
+                      raise SystemExit(f"Expected token not found in {file_name}: {old}")
+                  text = text.replace(old, new)
+              if file_name == "tests/check-api-organization.ps1":
+                  marker = '    "IsBound"\n)'
+                  replacement = '    "IsBound",\n    "public readonly record struct OcctObject"\n)'
+                  if marker not in text:
+                      raise SystemExit("Managed forbidden-token marker not found")
+                  text = text.replace(marker, replacement)
+              path.write_text("\ufeff" + text, encoding="utf-8")
+
+      - name: Commit migration
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md README.zh-CN.md docs tests/check-api-organization.ps1
+          git commit -m "Finalize Bridge 2.6 typed object documentation"
+          git push origin HEAD:main
