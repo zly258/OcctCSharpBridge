@@ -17,8 +17,6 @@ public sealed partial class OcctModelingSession
         return CheckShape(ModelNativeMethods.occt_model_get_subshape(_handle, shape.Id, (int)type, index));
     }
 
-    public OcctModelShape GetSubshape(OcctModelShape shape, OcctShapeType type, int index) => GetSubshapeAt(shape, type, index);
-
     public IReadOnlyList<OcctModelShape> GetSubshapes(OcctModelShape shape, OcctShapeType type) =>
         Enumerable.Range(0, GetTopologyCount(shape, type))
             .Select(index => GetSubshapeAt(shape, type, index))
@@ -50,7 +48,11 @@ public sealed partial class OcctModelingSession
         var count = ModelNativeMethods.occt_model_ancestor_count(_handle, root.Id, child.Id, (int)ancestorType);
         return Enumerable.Range(0, count)
             .Select(index => CheckShape(ModelNativeMethods.occt_model_ancestor_at(
-                _handle, root.Id, child.Id, (int)ancestorType, index)))
+                _handle,
+                root.Id,
+                child.Id,
+                (int)ancestorType,
+                index)))
             .ToArray();
     }
 }
