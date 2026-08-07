@@ -22,6 +22,20 @@ public sealed class MainWindow : Window
         MinHeight = 600;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
 
+        _viewport = new OcctAvaloniaViewport
+        {
+            EnableDefaultInteraction = true,
+            EnableRectangleSelection = true,
+            RectangleSelectionBehavior = OcctRectangleSelectionBehavior.Directional,
+            SynchronizeRenderDpi = true
+        };
+        _status = new TextBlock
+        {
+            Text = "Initializing OCCT / 正在初始化 OCCT...",
+            Margin = new Thickness(12, 7),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
         var root = new Grid();
         root.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
         root.RowDefinitions.Add(new RowDefinition(GridLength.Star));
@@ -42,13 +56,6 @@ public sealed class MainWindow : Window
         Grid.SetRow(toolbar, 0);
         root.Children.Add(toolbar);
 
-        _viewport = new OcctAvaloniaViewport
-        {
-            EnableDefaultInteraction = true,
-            EnableRectangleSelection = true,
-            RectangleSelectionBehavior = OcctRectangleSelectionBehavior.Directional,
-            SynchronizeRenderDpi = true
-        };
         _viewport.EngineInitialized += (_, _) => InitializeScene();
         _viewport.ObjectSelectionChanged += (_, args) =>
         {
@@ -65,12 +72,6 @@ public sealed class MainWindow : Window
         Grid.SetRow(_viewport, 1);
         root.Children.Add(_viewport);
 
-        _status = new TextBlock
-        {
-            Text = "Initializing OCCT / 正在初始化 OCCT...",
-            Margin = new Thickness(12, 7),
-            VerticalAlignment = VerticalAlignment.Center
-        };
         var statusBorder = new Border
         {
             BorderThickness = new Thickness(0, 1, 0, 0),
