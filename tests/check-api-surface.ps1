@@ -25,9 +25,10 @@ $headerFiles = @(
     Join-Path $nativeRoot "OcctModeling.h"
 )
 $cppFiles = Get-ChildItem $nativeRoot -Filter "*.cpp" -File | Select-Object -ExpandProperty FullName
+$managedSourceFiles = Get-ChildItem $managedRoot -Filter "*.cs" -File | Select-Object -ExpandProperty FullName
 $pinvokeFiles = Get-ChildItem $managedRoot -Filter "*NativeMethods*.cs" -File | Select-Object -ExpandProperty FullName
 
-foreach ($path in @($headerFiles + $cppFiles + $pinvokeFiles)) {
+foreach ($path in @($headerFiles + $cppFiles + $managedSourceFiles + $pinvokeFiles)) {
     if (-not (Test-Path $path)) {
         throw "API validation input was not found: $path"
     }
@@ -77,6 +78,7 @@ function Assert-NoDuplicates {
 
 $headerText = Read-AllText $headerFiles
 $cppText = Read-AllText $cppFiles
+$managedText = Read-AllText $managedSourceFiles
 $pinvokeText = Read-AllText $pinvokeFiles
 
 $declarationRaw = Get-RawMatches $headerText '\b(occt_[a-z0-9_]+)\s*\([^{};]*\)\s*;'
@@ -84,6 +86,17 @@ $definitionRaw = Get-RawMatches $cppText '\b(occt_[a-z0-9_]+)\s*\([^;{}]*\)\s*\{
 $pinvokeRaw = Get-RawMatches $pinvokeText '\bextern\s+[A-Za-z0-9_<>,\[\]?]+\s+(occt_[a-z0-9_]+)\s*\('
 $cdeclPInvokes = Get-Matches $pinvokeText '(?s)\[DllImport\([^\]]*CallingConvention\s*=\s*CallingConvention\.Cdecl[^\]]*\)\]\s*internal\s+static\s+extern\s+[A-Za-z0-9_<>,\[\]?]+\s+(occt_[a-z0-9_]+)\s*\('
 $exactPInvokes = Get-Matches $pinvokeText '(?s)\[DllImport\([^\]]*ExactSpelling\s*=\s*true[^\]]*\)\]\s*internal\s+static\s+extern\s+[A-Za-z0-9_<>,\[\]?]+\s+(occt_[a-z0-9_]+)\s*\('
+
+$publicTypePatterns = @(
+    '(?m)^[ \t]*public[ \t]+(?:(?:abstract|sealed|static|partial|readonly|ref|unsafe|new)[ \t]+)*(?:class|struct|interface|enum)[ \t]+([A-Za-z_][A-Za-z0-9_]*)',
+    '(?m)^[ \t]*public[ \t]+(?:(?:abstract|sealed|static|partial|readonly|ref|unsafe|new)[ \t]+)*record(?:[ \t]+(?:class|struct))?[ \t]+([A-Za-z_][A-Za-z0-9_]*)',
+    '(?m)^[ \t]*public[ \t]+(?:(?:unsafe|new)[ \t]+)*delegate[ \t]+[^;\r\n(]+?[ \t]+([A-Za-z_][A-Za-z0-9_]*)[ \t]*(?:<[^;\r\n>]+>)?[ \t]*\('
+)
+$publicTypeNames = @(
+    foreach ($pattern in $publicTypePatterns) {
+        Get-RawMatches $managedText $pattern
+    }
+) | Sort-Object -Unique
 
 Assert-NoDuplicates "native declarations" $declarationRaw
 Assert-NoDuplicates "native definitions" $definitionRaw
@@ -129,6 +142,10 @@ if ($declarations.Count -ne $expectedNativeCount) {
 if ($pinvokes.Count -ne $expectedManagedCount) {
     throw "Managed P/Invoke count differs from bridge-contract.json: actual=$($pinvokes.Count), expected=$expectedManagedCount."
 }
+if ($publicTypeNames.Count -ne $expectedPublicTypeCount) {
+    Write-Host ("[api] Public .NET types detected: {0}" -f ($publicTypeNames -join ', ')) -ForegroundColor Yellow
+    throw "Public .NET type count differs from bridge-contract.json: actual=$($publicTypeNames.Count), expected=$expectedPublicTypeCount."
+}
 
 $documentationFiles = @(
     Join-Path $RepositoryRoot "docs\API_COVERAGE.md"
@@ -170,5 +187,6 @@ if ($groups.Modeling.Count -ne $expectedModelingCount) {
 foreach ($group in $groups.GetEnumerator()) {
     Write-Host ("[api] {0}: {1}" -f $group.Key, $group.Value.Count) -ForegroundColor Cyan
 }
+Write-Host "[api] Public .NET types: $($publicTypeNames.Count)" -ForegroundColor Cyan
 
-Write-Host ("API surface validation passed against bridge-contract.json ({0} native / {1} managed)." -f $expectedNativeCount, $expectedManagedCount) -ForegroundColor Green
+Write-Host ("API surface validation passed against bridge-contract.json ({0} native / {1} managed / {2} public types)." -f $expectedNativeCount, $expectedManagedCount, $expectedPublicTypeCount) -ForegroundColor Green
