@@ -751,19 +751,19 @@ public sealed partial class MainForm : Form
     {
         _propertyGrid.Rows.Clear();
         if (_session is null || value is null) return;
-        foreach (var property in Session.DescribeObject(value.Value)) _propertyGrid.Rows.Add(property.Key, property.Value);
+        foreach (var property in Session.DescribeObject(value)) _propertyGrid.Rows.Add(property.Key, property.Value);
     }
 
     private void SelectTreeNode(IOcctObject? value)
     {
-        if (value is null || !_objectNodes.TryGetValue(value.Value.Id, out var node)) return;
+        if (value is null || !_objectNodes.TryGetValue(value.Id, out var node)) return;
         _objectTree.SelectedNode = node;
         node.EnsureVisible();
     }
 
     private OcctShape? ActiveShape()
     {
-        if (_session?.ActiveObject is { Kind: OcctObjectKind.Shape } active) return new OcctShape(active.Id);
+        if (_session?.ActiveObject is { Kind: OcctObjectKind.Shape } active) return Session.Engine.GetShape(active.Id);
         return _session?.Engine.FirstSelected;
     }
 
