@@ -114,3 +114,7 @@ Detailed script semantics belong in the `main` and `demo` branch READMEs; the we
 ## Author
 
 Liaoyuan Zhang
+
+## Contact
+
+Liaoyuan Zhang · [zhangly1403@gmail.com](mailto:zhangly1403@gmail.com)

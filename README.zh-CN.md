@@ -131,3 +131,7 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 ## 作者
 
 Liaoyuan Zhang
+
+## 联系方式
+
+Liaoyuan Zhang · [zhangly1403@gmail.com](mailto:zhangly1403@gmail.com)
