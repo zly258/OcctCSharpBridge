@@ -5,6 +5,17 @@
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
+$contractPath = Join-Path $RepositoryRoot "bridge-contract.json"
+if (-not (Test-Path $contractPath -PathType Leaf)) {
+    throw "Bridge contract file was not found: bridge-contract.json"
+}
+$contract = Get-Content $contractPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$expectedNativeCount = [int]$contract.api.nativeExports
+$expectedManagedCount = [int]$contract.api.managedPInvokes
+$expectedPublicTypeCount = [int]$contract.api.publicNetTypes
+$expectedViewerCount = [int]$contract.api.viewer
+$expectedModelingCount = [int]$contract.api.modeling
+
 $nativeRoot = Join-Path $RepositoryRoot "src\OcctNative"
 $managedRoot = Join-Path $RepositoryRoot "src\OcctNet"
 
@@ -112,6 +123,13 @@ Assert-SetEqual "C# P/Invoke declarations" $declarations $pinvokes
 Assert-SetEqual "Cdecl P/Invoke declarations" $pinvokes $cdeclPInvokes
 Assert-SetEqual "exact-name P/Invoke declarations" $pinvokes $exactPInvokes
 
+if ($declarations.Count -ne $expectedNativeCount) {
+    throw "Native export count differs from bridge-contract.json: actual=$($declarations.Count), expected=$expectedNativeCount."
+}
+if ($pinvokes.Count -ne $expectedManagedCount) {
+    throw "Managed P/Invoke count differs from bridge-contract.json: actual=$($pinvokes.Count), expected=$expectedManagedCount."
+}
+
 $documentationFiles = @(
     Join-Path $RepositoryRoot "docs\API_COVERAGE.md"
     Join-Path $RepositoryRoot "docs\API_COVERAGE.zh-CN.md"
@@ -123,11 +141,12 @@ foreach ($documentationFile in $documentationFiles) {
     $documentation = [System.IO.File]::ReadAllText($documentationFile)
     $nativeCount = [regex]::Match($documentation, 'Native exports:\s*`?(\d+)`?').Groups[1].Value
     $managedCount = [regex]::Match($documentation, 'Managed P/Invoke declarations:\s*`?(\d+)`?').Groups[1].Value
-    if ([string]::IsNullOrWhiteSpace($nativeCount) -or [string]::IsNullOrWhiteSpace($managedCount)) {
+    $publicTypeCount = [regex]::Match($documentation, 'Public \.NET types:\s*`?(\d+)`?').Groups[1].Value
+    if ([string]::IsNullOrWhiteSpace($nativeCount) -or [string]::IsNullOrWhiteSpace($managedCount) -or [string]::IsNullOrWhiteSpace($publicTypeCount)) {
         throw "API inventory counts could not be parsed: $documentationFile"
     }
-    if ([int]$nativeCount -ne $declarations.Count -or [int]$managedCount -ne $pinvokes.Count) {
-        throw "API inventory is stale: $documentationFile (native=$nativeCount, managed=$managedCount, expected=$($declarations.Count))."
+    if ([int]$nativeCount -ne $expectedNativeCount -or [int]$managedCount -ne $expectedManagedCount -or [int]$publicTypeCount -ne $expectedPublicTypeCount) {
+        throw "API inventory differs from bridge-contract.json: $documentationFile (native=$nativeCount, managed=$managedCount, publicTypes=$publicTypeCount)."
     }
 }
 
@@ -140,8 +159,16 @@ $groups = [ordered]@{
     Viewer = @($declarations | Where-Object { $_ -notlike 'occt_model_*' })
     Modeling = @($declarations | Where-Object { $_ -like 'occt_model_*' })
 }
+
+if ($groups.Viewer.Count -ne $expectedViewerCount) {
+    throw "Viewer API count differs from bridge-contract.json: actual=$($groups.Viewer.Count), expected=$expectedViewerCount."
+}
+if ($groups.Modeling.Count -ne $expectedModelingCount) {
+    throw "Modeling API count differs from bridge-contract.json: actual=$($groups.Modeling.Count), expected=$expectedModelingCount."
+}
+
 foreach ($group in $groups.GetEnumerator()) {
     Write-Host ("[api] {0}: {1}" -f $group.Key, $group.Value.Count) -ForegroundColor Cyan
 }
 
-Write-Host "API surface validation passed." -ForegroundColor Green
+Write-Host ("API surface validation passed against bridge-contract.json ({0} native / {1} managed)." -f $expectedNativeCount, $expectedManagedCount) -ForegroundColor Green
