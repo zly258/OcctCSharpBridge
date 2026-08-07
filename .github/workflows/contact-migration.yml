@@ -29,6 +29,7 @@ jobs:
 
           Get-ChildItem . -Recurse -File -Force | Where-Object {
             $_.FullName -notmatch '[\\/]\.git[\\/]' -and
+            $_.FullName -notmatch '[\\/]\.github[\\/]workflows[\\/]' -and
             ($extensions -contains $_.Extension.ToLowerInvariant())
           } | ForEach-Object {
             $text = [System.IO.File]::ReadAllText($_.FullName)
@@ -50,7 +51,10 @@ jobs:
 
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
+          $changed = @(git diff --name-only -- . ':!.github/workflows/**')
+          foreach ($path in $changed) {
+            if (-not [string]::IsNullOrWhiteSpace($path)) { git add -- $path }
+          }
           if (-not (git diff --cached --quiet)) {
             git commit -m 'Update project contact email'
             git push origin HEAD:website
