@@ -1,26 +1,40 @@
 ﻿# OcctCSharpBridge Demo
 
-[English](README.md) · [中文接口清单与使用说明](docs/API_COVERAGE.zh-CN.md) · [主 SDK 分支](https://github.com/zly258/OcctCSharpBridge/tree/main)
+[English](README.md) · [中文接口清单](docs/API_COVERAGE.zh-CN.md) · [主 SDK 分支](https://github.com/zly258/OcctCSharpBridge/tree/main)
 
-`demo` 分支在可复用 OCCT C# 封装基础上提供 WinForms、WPF、Avalonia 示例应用。`src/OcctNative`、`src/OcctNet` 以及可复用界面宿主与 `main` 保持相同的分层原则；应用界面、测试场景、运行脚本、发布工具和发布包校核仅保留在本分支。
+`demo` 分支在与 `main` 同步维护的可复用桥接层之上，提供完整的 WinForms、WPF、Avalonia CAD 示例应用。Native/.NET 公共封装与契约元数据持续和 `main` 做一致性检查；应用界面、Demo 场景、运行脚本、发布工具和发布包校核仅保留在本分支。
 
-托管封装分为：
+桥接层不使用 OCAF/XDE 作为应用文档机制。Document、Entity、Command、Undo/Redo、JSON 持久化和 Tool 等应用层职责由上层程序实现。
 
-- `OcctNet`：不依赖界面的 Viewer、建模、拓扑、解析几何、微分几何、分析、修复、网格和文件交换接口。
-- `OcctNet.WinForms`：直接绑定 Win32 HWND 的 `OcctViewportControl`。
-- `OcctNet.Wpf`：专用 `OcctWpfViewport`，统一处理 WPF 依赖属性、事件转发、DPI 同步和原生视口尺寸更新。
-- `OcctNet.Avalonia`：基于 `NativeControlHost` 的独立 Avalonia 宿主。当前实现面向 Windows x64，由宿主创建子 HWND 并直接交给 `OcctEngine`；鼠标交互由子窗口 WndProc 处理，DPI 使用 `GetDpiForWindow` 同步，不依赖 WinForms/WPF 中转。
+## 工具链与契约
 
-`OcctModelingSession` 已按职责拆分为生命周期、形状查询、拓扑、几何查询、解析几何、微分几何、构造、算法、分析、网格、文件交换和操作历史。规范接口名称明确表达操作对象和参数含义；旧的含义不够清晰的方法继续作为兼容别名保留。
+- Windows x64
+- Open CASCADE Technology **7.9.0**，VC14 x64 目录结构
+- .NET SDK **8.0.423**，由 `global.json` 固定
+- C# 12.0
+- CMake 3.21+
+- Avalonia `12.1.0`
+- Bridge `2.5.0`，Native ABI `2`
 
-桥接层不包含 OCAF/XDE。文档、JSON 持久化、撤销重做和命令历史由上层应用自行实现。
+`bridge-contract.json` 与 `main` 共享，是 Bridge/ABI/OCCT/.NET/API 元数据的权威来源；`global.json` 固定 SDK，`Directory.Build.props` 固定 C# 编译策略。`Wrapper Branch Sync` 会持续校验这些元数据及可复用源码是否与 `main` 一致。
+
+## 分层结构
+
+- `OcctNet`：不依赖 UI 的 Viewer、建模、拓扑、几何、分析、网格、修复和文件交换接口。
+- `OcctNet.WinForms`：基于原生 HWND 的 `OcctViewportControl`。
+- `OcctNet.Wpf`：封装 WPF 事件、DPI 与原生尺寸同步的 `OcctWpfViewport`。
+- `OcctNet.Avalonia`：Windows x64 下基于 `NativeControlHost` 和独立子 HWND 的原生宿主。
+- `CadCommon`：三个桌面 Demo 共用的 Session/Command 应用层。
+- `CadWinForms`、`CadWpf`、`CadAvalonia`：可直接运行的参考应用。
+
+当前 Avalonia Viewer 仍基于 Windows HWND，本仓库暂不声明 Linux/macOS OCCT Viewer 支持。
 
 ## 界面预览
 
 <table>
   <tr>
-    <th>WinForms · 简体中文</th>
-    <th>WPF · 简体中文</th>
+    <th>WinForms</th>
+    <th>WPF</th>
   </tr>
   <tr>
     <td><img src="assets/previews/winform-demo-zh.webp" alt="OCCT CAD WinForms 中文界面" width="100%"></td>
@@ -28,82 +42,52 @@
   </tr>
 </table>
 
-Avalonia 现已与 WPF 共用 `CadSession` 和 `CadCommandCatalog` 应用层，完整提供命令菜单、参数输入、撤销重做、文件交换、模型树、属性面板、命令日志、视图与显示控制、选择工具、分析命令、示例、快捷键和中英文界面，同时继续使用 Avalonia 原生 `NativeControlHost` 承载 OCCT 视口。
+Avalonia 与 WPF 共用 `CadSession` 和 `CadCommandCatalog`，覆盖模型创建、选择、模型树、属性、撤销重做、文件交换、标注、分析、视图与显示控制、示例、快捷键和中英文界面。
 
-## 主要能力
-
-- 独立的 WinForms、WPF、Avalonia OCCT 视口宿主
-- 点选、框选、方向框选、多选和子形选择
-- Avalonia 原生子 HWND 输入处理、DPI 同步和严格的 OCCT/窗口释放顺序
-- 视口状态快照、相机保存恢复、Z-up 视图、适配选择集和屏幕投影到工作平面
-- 批量颜色、透明度、可见性、显示模式、线宽、材质、重显示和选择
-- 直线、圆、椭圆、平面、圆柱、圆锥、球面和圆环面的精确参数读取
-- 边的原始参数范围、一阶/二阶导数、切向、法向、曲率和曲率中心
-- 曲面的周期性、一阶/二阶偏导、按面方向修正的法向、主曲率、平均曲率、高斯曲率、主方向和脐点状态
-- 选中及悬浮高亮颜色设置
-- 纯色、渐变背景、MSAA、渲染分辨率、阴影、光线追踪和多灯光预设
-- 二维曲线、基本实体、布尔、特征、变换、拓扑查询、网格读取及分析
-- 复杂齿轮、多通道阀体、扭转风管等测试场景
-- BRep 矢量文字及线性、角度、半径、直径注释
-- STEP、IGES、BREP、STL 导入导出
-- 中英文界面
-
-复杂场景执行时使用显示批处理，并在结束后删除截面、刀具体、路径和辅助几何，只保留最终结果。
-
-## Avalonia 宿主说明
-
-当前 OCCT 原生 Viewer 使用 Windows `WNT_Window`，因此 `OcctNet.Avalonia` 当前明确限定为 **Windows x64 / HWND**。虽然 Avalonia 本身支持多平台，但本项目尚未实现 Linux `Xw_Window` 或 macOS 原生窗口桥接，不将当前实现声明为跨平台 OCCT Viewer。
-
-`NativeControlHost` 内的 OCCT 视口属于独立原生合成层，因此存在典型空域限制：Avalonia 的普通半透明控件不应覆盖在 OCCT 原生视口上。框选矩形继续由 OCCT `AIS_RubberBand` 在原生视口内部绘制。
-
-生命周期顺序固定为：取消交互和捕获 → 释放 `OcctEngine`/OCCT Viewer → 恢复子 HWND WndProc → 销毁子 HWND。避免先销毁窗口后释放 OCCT 图形上下文。
-
-## 兼容性
-
-- OCCT：必须为 `7.9.0`
-- .NET：`8.0`，Windows x64
-- Avalonia：`12.1.0`
-- Bridge 版本：`2.5.0`
-- Bridge ABI：`2`
-- 接口数量：Native `339`，P/Invoke `339`
-- Viewer 与交互接口：`221`
-- 建模接口：`118`
-- 公开核心 .NET 类型：`80`
-- `OcctNet.dll`、选用的界面宿主程序集与 `OcctNative.dll` 必须来自同一次构建
-- 原生会话包含可变状态，同一会话应由单一应用线程调用
-
-## 第一次使用
-
-先克隆仓库、切换到 `demo` 分支，再配置 OCCT 7.9.0：
+## 首次配置
 
 ```powershell
 git clone https://github.com/zly258/OcctCSharpBridge.git
 cd OcctCSharpBridge
 git switch demo
-$env:OCCT_ROOT = "D:\\tools\\occt-vc144-64"
+$env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 ```
 
-### PowerShell 脚本说明
+OCCT 目录应包含 `inc`、`win64\vc14\lib`、`win64\vc14\bin`，以及可选的 `3rdparty-vc14-64`。
 
-`build.ps1` 是统一构建与校核入口，支持 `validate`、`native`、`managed`、`smoke`、`winform`、`wpf`、`avalonia`、`all`。其中 `validate` 不要求 OCCT SDK；涉及 Native、Demo 或 Smoke 的目标需要 OCCT。
+## 构建与校验
+
+`build.ps1` 是统一构建入口：
+
+| Target | 作用 | 是否需要 OCCT SDK |
+| --- | --- | --- |
+| `validate` | 只执行契约、源码和发布包规则校验 | 否 |
+| `managed` | 构建 Core、WinForms/WPF/Avalonia Host 与 `CadCommon` | 否 |
+| `ci` | 执行与 GitHub Actions 相同的托管构建，包括三个 Demo 和 Smoke 项目编译 | 否 |
+| `native` | 构建 `OcctNative.dll` | 是 |
+| `winform` / `wpf` / `avalonia` | 构建指定可运行 Demo | 是 |
+| `smoke` | 构建 Native 并执行真实 OCCT 建模 Smoke | 是 |
+| `all` | 构建 Native、三个 Demo 和 Smoke 项目 | 是 |
 
 ```powershell
+# 最快的源码/API 契约校验
 .\build.ps1 validate Release
-.\build.ps1 managed Release
-.\build.ps1 winform Release
-.\build.ps1 wpf Release
-.\build.ps1 avalonia Release
+
+# 在本地复现普通 GitHub Actions
+.\build.ps1 ci Release
+
+# 完整 Native + Demo 构建
 .\build.ps1 all Release
+
+# 最强的 Native 运行时校验
 .\build.ps1 smoke Release
 ```
 
-`run.ps1` **只启动已经构建好的程序，不会自动重新编译**。格式：
+GitHub Actions 直接调用 `build.ps1 ci Release`，因此本地提交前检查与托管 CI 使用同一条托管构建路径，不再分别维护多套 `dotnet build` 命令。
 
-```powershell
-.\run.ps1 <winform|wpf|avalonia> [Release] [-OcctRoot <path>]
-```
+## 运行
 
-常用示例：
+`run.ps1` 只启动已经构建好的程序，不会隐式重新编译：
 
 ```powershell
 .\run.ps1 winform
@@ -111,81 +95,39 @@ $env:OCCT_ROOT = "D:\\tools\\occt-vc144-64"
 .\run.ps1 avalonia
 ```
 
-`publish.ps1` 用于生成 WinForms/WPF 可部署发布包。Avalonia 当前已纳入 build/run/CI，但尚未纳入正式 publish 目标。
-
-```powershell
-.\publish.ps1 all Release -Zip -OcctRoot "D:\\tools\\occt-vc144-64"
-.\publish.ps1 winform Release -Zip -OcctRoot "D:\\tools\\occt-vc144-64"
-.\publish.ps1 wpf Release -Zip -OcctRoot "D:\\tools\\occt-vc144-64"
-```
-
-### 默认显示样式
-
-WinForms、WPF 与 Avalonia 默认都使用着色并显示实体边线，可在 **视图 → 视觉样式 → 着色并显示边线** 独立开关面边界显示；它不会改变 Shaded/Wireframe 本身。
-
-## 构建与运行
-
-可先设置 OCCT SDK 环境变量，也可以在命令中显式传入：
-
-```powershell
-$env:OCCT_ROOT = "D:\tools\occt-vc144-64"
-.\build.ps1 all Release
-.\run.ps1 winform
-.\run.ps1 wpf
-.\run.ps1 avalonia
-```
-
-只构建并运行 Avalonia Demo：
-
-```powershell
-.\build.ps1 avalonia Release -OcctRoot "D:\tools\occt-vc144-64"
-.\run.ps1 avalonia Release -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-不安装 OCCT SDK 也可以执行托管构建与静态检查：
-
-```powershell
-.\build.ps1 managed Release
-```
-
-校核内容包括 Bridge 版本、接口分类、解析几何、微分几何、原生声明与实现、Cdecl 与精确符号名称、选择逻辑、WinForms/WPF/Avalonia 视口宿主、原生源文件边界和完整发布包规则。
-
-原生编译和运行时 Smoke 测试：
-
-```powershell
-.\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-## 常见问题
-
-- `run.ps1` 运行的是旧程序：先重新执行对应 `build.ps1` target；运行脚本不会编译。
-- Avalonia 启动退出：查看 `src\CadAvalonia\bin\x64\<Configuration>\net8.0-windows\CAD-Avalonia.log`。
-- Native DLL 加载失败：使用正确 `-OcctRoot` 重新构建，并确认 OCCT/第三方 Runtime DLL 完整。
-- 修改 API、菜单或 Host 后优先执行 `build.ps1 validate`；需要验证真实 OCCT 建模时执行 `build.ps1 smoke`。
+如果程序不是最新版本，应先构建对应 target。
 
 ## 发布
 
-现有 `publish.ps1` 继续负责 WinForms 和 WPF 的部署完整发布包。Avalonia 已作为完整 CAD Demo 纳入构建、运行和 CI；是否加入正式发布包流程作为独立的打包任务处理。
-
-默认命令同时发布 WinForms 和 WPF，并生成 Windows x64 自包含程序；目标电脑不需要另外安装 .NET。
-
-发布包按可直接部署设计：两个可执行程序分别内嵌 .NET 运行时，`runtime` 包含 `OcctNative.dll` 以及递归解析得到的 OCCT、第三方库和 Visual C++ DLL 依赖闭包，`occt/src` 包含必须的 OCCT 资源。缺少任何必需原生依赖或 OCCT 资源时发布会直接失败；`package-contract.json` 与 `native-dependencies.txt` 用于说明和校核包内容。
+`publish.ps1` 当前正式输出 WinForms 和 WPF 的完整部署包。Avalonia 已纳入 build/run/CI，但暂未进入正式 publish target。
 
 ```powershell
-.\publish.ps1 -Zip -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-只发布其中一个程序：
-
-```powershell
+.\publish.ps1 all Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
 .\publish.ps1 winform Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
 .\publish.ps1 wpf Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-只有目标电脑已经安装 .NET 8 Desktop Runtime 时，才使用体积较小的框架依赖模式：
+发布包包含应用程序、匹配版本的托管 Wrapper/Host、`OcctNative.dll`、递归解析的 OCCT/第三方运行库、必要 OCCT 资源、`package-contract.json` 和 `native-dependencies.txt`。只有目标电脑已经安装匹配的 .NET 8 Desktop Runtime 时才建议使用 `-FrameworkDependent`。
 
-```powershell
-.\publish.ps1 all Release -FrameworkDependent -Zip -OcctRoot "D:\tools\occt-vc144-64"
-```
+## Demo 覆盖的主要能力
 
-`dotnet publish` 会通过项目引用包含对应的 `OcctNet` 和界面宿主程序集；`publish.ps1` 再补充完整原生依赖闭包及必需 OCCT 资源。`-FullResources`、`-Diagnostics` 仅在需要时开启。
+- 点选、框选、方向框选、多选和子形选择
+- 相机/视图状态、Z-up、Fit、屏幕/世界坐标转换、ViewCube 与 Triedron
+- Shaded/Wireframe/Shaded with Edges，以及精度、材质和光照控制
+- 稳定 ApplicationTag、变换、可见性、颜色、透明度和批量操作
+- 基础体、特征、布尔、扫掠、放样、拓扑与几何查询
+- 解析几何、微分几何、质量属性、距离/射线/投影和网格读取
+- BRep 文字以及长度、角度、半径、直径标注
+- STEP、IGES、BREP、STL 文件交换
+- 中英文桌面界面
+
+## 常见问题
+
+- `OCCT_ROOT is not configured`：设置 `$env:OCCT_ROOT`，或给需要 Native 的 target 传 `-OcctRoot`。
+- Native DLL 加载失败：使用正确 OCCT SDK 重新构建，并确保匹配的运行库存在。
+- Avalonia 启动异常：查看 `src\CadAvalonia\bin\x64\<Configuration>\net8.0-windows\CAD-Avalonia.log`。
+- 修改 API/Host/Menu 后先执行 `build.ps1 validate`；提交前优先执行 `build.ps1 ci`；有真实 OCCT SDK 时再执行 `build.ps1 smoke`。
+
+## 许可证
+
+项目使用 [PolyForm Noncommercial License 1.0.0](LICENSE)。Open CASCADE Technology 与第三方组件仍遵循各自许可证。
