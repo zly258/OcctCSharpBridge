@@ -2,6 +2,7 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Threading;
 using OcctNet;
 using DrawingColor = System.Drawing.Color;
 
@@ -56,7 +57,8 @@ public sealed class MainWindow : Window
         Grid.SetRow(toolbar, 0);
         root.Children.Add(toolbar);
 
-        _viewport.EngineInitialized += (_, _) => InitializeScene();
+        _viewport.EngineInitialized += (_, _) =>
+            Dispatcher.UIThread.Post(InitializeScene, DispatcherPriority.Background);
         _viewport.ObjectSelectionChanged += (_, args) =>
         {
             _status.Text = args.SelectedObject is { } selected
@@ -82,6 +84,7 @@ public sealed class MainWindow : Window
         root.Children.Add(statusBorder);
 
         Content = root;
+        Opened += (_, _) => Dispatcher.UIThread.Post(_viewport.RefreshNativeView, DispatcherPriority.Background);
     }
 
     private Button CreateButton(string text, Action action)
