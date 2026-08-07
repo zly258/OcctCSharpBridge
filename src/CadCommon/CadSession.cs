@@ -89,7 +89,7 @@ public sealed partial class CadSession
     }
 
     public OcctEngine Engine { get; }
-    public OcctObject? ActiveObject { get; set; }
+    public IOcctObject? ActiveObject { get; set; }
     public string? CurrentFilePath { get; private set; }
     public bool IsModified { get; private set; }
     public bool CanUndo => _historyAvailable && _historyPosition > 0;
@@ -335,7 +335,7 @@ public sealed partial class CadSession
                 var append = false;
                 foreach (var objectId in entry.SelectedObjectIds)
                 {
-                    var value = new OcctObject(objectId, Engine.GetObjectKind(objectId));
+                    var value = Engine.GetObject(objectId);
                     if (!Engine.Exists(value)) continue;
                     Engine.SelectObject(value, append);
                     append = true;
@@ -452,7 +452,7 @@ public sealed partial class CadSession
     {
         var shape = Engine.Import(filePath);
         SetGeneratedName(shape, Path.GetFileNameWithoutExtension(filePath));
-        ActiveObject = new OcctObject(shape.Id, OcctObjectKind.Shape);
+        ActiveObject = shape;
         return shape;
     }
 
@@ -508,7 +508,7 @@ public sealed partial class CadSession
         Engine.FitAll();
     }
 
-    public IReadOnlyList<KeyValuePair<string, string>> DescribeObject(OcctObject value)
+    public IReadOnlyList<KeyValuePair<string, string>> DescribeObject(IOcctObject value)
     {
         var rows = new List<KeyValuePair<string, string>>
         {
@@ -519,8 +519,8 @@ public sealed partial class CadSession
         if (value.Kind != OcctObjectKind.Shape) return rows;
         var shape = new OcctShape(value.Id);
         rows.Add(new(CadLocalization.Text("Object.Topology"), CadLocalization.ShapeType(Engine.GetShapeType(shape))));
-        rows.Add(new(CadLocalization.Text("Object.Validity"), Engine.IsValid(shape) ? CadLocalization.Text("Object.Valid") : CadLocalization.Text("Object.Invalid")));
-        var bounds = Engine.GetBounds(shape);
+        rows.Add(new(CadLocalization.Text("Object.Validity"), Engine.IsShapeValid(shape) ? CadLocalization.Text("Object.Valid") : CadLocalization.Text("Object.Invalid")));
+        var bounds = Engine.GetShapeBounds(shape);
         rows.Add(new(CadLocalization.Text("Object.SizeX"), bounds.SizeX.ToString("G8")));
         rows.Add(new(CadLocalization.Text("Object.SizeY"), bounds.SizeY.ToString("G8")));
         rows.Add(new(CadLocalization.Text("Object.SizeZ"), bounds.SizeZ.ToString("G8")));
@@ -585,7 +585,7 @@ public sealed partial class CadSession
             italic: values.Boolean("italic"));
         Engine.SetColor(text, Color.DarkSlateGray);
         SetGeneratedName(text, CadLocalization.CommandText(CadCommandId.Text));
-        ActiveObject = new OcctObject(text.Id, OcctObjectKind.Shape);
+        ActiveObject = text;
         return CadCommandResult.Created(CadLocalization.Text("Session.Created", CadLocalization.CommandText(CadCommandId.Text)), text);
     }
 
@@ -601,7 +601,7 @@ public sealed partial class CadSession
                 values.Number("arrowSize", 5),
                 values.Text("font", "Microsoft YaHei UI"));
             SetGeneratedName(dimension, CadLocalization.CommandText(CadCommandId.LengthDimension));
-            ActiveObject = new OcctObject(dimension.Id, OcctObjectKind.Shape);
+            ActiveObject = dimension;
             return CadCommandResult.Created(CadLocalization.Text("Session.Created", CadLocalization.CommandText(CadCommandId.LengthDimension)), dimension);
         }
         finally
@@ -624,7 +624,7 @@ public sealed partial class CadSession
                 values.Number("arrowSize", 5),
                 values.Text("font", "Microsoft YaHei UI"));
             SetGeneratedName(dimension, CadLocalization.CommandText(CadCommandId.AngleDimension));
-            ActiveObject = new OcctObject(dimension.Id, OcctObjectKind.Shape);
+            ActiveObject = dimension;
             return CadCommandResult.Created(CadLocalization.Text("Session.Created", CadLocalization.CommandText(CadCommandId.AngleDimension)), dimension);
         }
         finally
@@ -654,7 +654,7 @@ public sealed partial class CadSession
                     values.Text("font", "Microsoft YaHei UI"));
             var commandId = diameter ? CadCommandId.DiameterDimension : CadCommandId.RadiusDimension;
             SetGeneratedName(dimension, CadLocalization.CommandText(commandId));
-            ActiveObject = new OcctObject(dimension.Id, OcctObjectKind.Shape);
+            ActiveObject = dimension;
             return CadCommandResult.Created(CadLocalization.Text("Session.Created", CadLocalization.CommandText(commandId)), dimension);
         }
         finally
@@ -688,7 +688,7 @@ public sealed partial class CadSession
 
     private CadCommandResult AnalyzeBounds()
     {
-        var bounds = Engine.GetBounds(RequireShape());
+        var bounds = Engine.GetShapeBounds(RequireShape());
         var text = CadLocalization.CurrentLanguage == CadLanguage.ChineseSimplified
             ? $"最小点：({bounds.MinX:G8}, {bounds.MinY:G8}, {bounds.MinZ:G8})\n最大点：({bounds.MaxX:G8}, {bounds.MaxY:G8}, {bounds.MaxZ:G8})\n尺寸：{bounds.SizeX:G8} × {bounds.SizeY:G8} × {bounds.SizeZ:G8}\n中心：{bounds.Center}"
             : $"Minimum: ({bounds.MinX:G8}, {bounds.MinY:G8}, {bounds.MinZ:G8})\nMaximum: ({bounds.MaxX:G8}, {bounds.MaxY:G8}, {bounds.MaxZ:G8})\nSize: {bounds.SizeX:G8} × {bounds.SizeY:G8} × {bounds.SizeZ:G8}\nCenter: {bounds.Center}";
@@ -698,9 +698,9 @@ public sealed partial class CadSession
     private CadCommandResult AnalyzeMass()
     {
         var shape = RequireShape();
-        var linear = Engine.GetLinearProperties(shape);
-        var surface = Engine.GetSurfaceProperties(shape);
-        var volume = Engine.GetVolumeProperties(shape);
+        var linear = Engine.GetShapeLinearProperties(shape);
+        var surface = Engine.GetShapeSurfaceProperties(shape);
+        var volume = Engine.GetShapeVolumeProperties(shape);
         var text = CadLocalization.CurrentLanguage == CadLanguage.ChineseSimplified
             ? $"总长度：{linear.Mass:G10}\n总面积：{surface.Mass:G10}\n总体积：{volume.Mass:G10}\n体积重心：{volume.CenterOfMass}"
             : $"Total Length: {linear.Mass:G10}\nSurface Area: {surface.Mass:G10}\nVolume: {volume.Mass:G10}\nCentroid: {volume.CenterOfMass}";
@@ -718,7 +718,7 @@ public sealed partial class CadSession
     private CadCommandResult AnalyzeDistance()
     {
         var shapes = RequireShapes(2);
-        var result = Engine.Distance(shapes[0], shapes[1]);
+        var result = Engine.GetShapeDistance(shapes[0], shapes[1]);
         var text = CadLocalization.CurrentLanguage == CadLanguage.ChineseSimplified
             ? $"最短距离：{result.Distance:G10}\n对象 1 最近点：{result.PointOnFirst}\n对象 2 最近点：{result.PointOnSecond}"
             : $"Minimum Distance: {result.Distance:G10}\nClosest Point on Object 1: {result.PointOnFirst}\nClosest Point on Object 2: {result.PointOnSecond}";
@@ -727,7 +727,7 @@ public sealed partial class CadSession
 
     private CadCommandResult ValidateShape()
     {
-        var valid = Engine.IsValid(RequireShape());
+        var valid = Engine.IsShapeValid(RequireShape());
         return new(valid ? Local("Shape validation passed.", "形体检查通过。") : Local("Shape validation failed.", "形体检查未通过。"), Array.Empty<IOcctObject>(), valid ? Local("The shape passed BRepCheck validation.", "当前形体通过 BRepCheck 检查。") : Local("The shape contains invalid topology or geometry.", "当前形体存在无效拓扑或几何。"));
     }
 
@@ -1114,7 +1114,7 @@ public sealed partial class CadSession
     private CadCommandResult CreateShape(string baseName, OcctShape shape)
     {
         SetGeneratedName(shape, baseName);
-        ActiveObject = new OcctObject(shape.Id, OcctObjectKind.Shape);
+        ActiveObject = shape;
         return CadCommandResult.Created(CadLocalization.Text("Session.Created", baseName), shape);
     }
 
