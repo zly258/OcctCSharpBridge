@@ -47,11 +47,13 @@ public sealed class OcctViewportControl : Control
     private Point _selectionStart;
     private Point _selectionCurrent;
     private Size _lastNativeSize;
+    private bool _leftSelectionGesture;
     private bool _rectangleDragStarted;
     private bool _rotating;
     private bool _panning;
     private bool _selectingRectangle;
     private bool _releasingMouseCapture;
+    private bool _rectangleRestoreScheduled;
     private Rectangle? _selectionFrameClient;
     private long _lastHoverTimestamp;
     private long _lastWorldPointTimestamp;
@@ -109,8 +111,14 @@ public sealed class OcctViewportControl : Control
     protected override void OnResize(EventArgs e)
     {
         base.OnResize(e);
-        CancelRectangleSelection();
+
+        // WindowsFormsHost and first-focus DPI/layout negotiation can resize the HWND while
+        // the first rectangle gesture is active. Cancelling here made the first box select
+        // silently turn into no selection. Preserve the gesture and rebuild only its overlay.
+        var restoreRectangle = IsActiveRectangleGesture && _rectangleDragStarted;
+        if (restoreRectangle) HideSelectionFrame();
         ResizeNativeView();
+        if (restoreRectangle) ScheduleSelectionFrameRestore();
     }
 
     protected override void OnVisibleChanged(EventArgs e)
@@ -119,6 +127,8 @@ public sealed class OcctViewportControl : Control
         if (Visible)
         {
             ResizeNativeView(force: true);
+            if (IsActiveRectangleGesture && _rectangleDragStarted)
+                ScheduleSelectionFrameRestore();
         }
     }
 
@@ -150,9 +160,10 @@ public sealed class OcctViewportControl : Control
             CancelRectangleSelection();
             _selectionStart = e.Location;
             _selectionCurrent = e.Location;
+            _leftSelectionGesture = true;
             _rectangleDragStarted = false;
             _selectingRectangle = EnableRectangleSelection;
-            Capture = true;
+            if (_selectingRectangle) EnsureRectangleCapture();
         }
     }
 
@@ -171,9 +182,9 @@ public sealed class OcctViewportControl : Control
             var dy = e.Y - _lastMouse.Y;
             TryInvoke(() => _engine.Pan(dx, -dy));
         }
-        else if (_selectingRectangle
-                 && (Capture || Control.MouseButtons.HasFlag(MouseButtons.Left)))
+        else if (IsActiveRectangleGesture)
         {
+            EnsureRectangleCapture();
             _selectionCurrent = e.Location;
             UpdateSelectionFrame(e.Location);
         }
@@ -211,7 +222,7 @@ public sealed class OcctViewportControl : Control
             _panning = false;
             return;
         }
-        if (e.Button != MouseButtons.Left) return;
+        if (e.Button != MouseButtons.Left || !_leftSelectionGesture) return;
 
         var end = e.Location;
         var eventDistance = Math.Max(
@@ -237,8 +248,8 @@ public sealed class OcctViewportControl : Control
         };
 
         // MouseCaptureChanged may be raised before MouseUp, especially when this WinForms
-        // control is hosted by WPF. The recognized drag is stored independently so the
-        // gesture cannot silently degrade into a point selection.
+        // control is hosted by WPF. Keep a dedicated gesture flag until selection is committed.
+        _leftSelectionGesture = false;
         _selectingRectangle = false;
         _rectangleDragStarted = false;
         HideSelectionFrame();
@@ -269,13 +280,54 @@ public sealed class OcctViewportControl : Control
 
     protected override void OnMouseCaptureChanged(EventArgs e)
     {
-        if (!Capture && !_releasingMouseCapture && !_selectingRectangle)
+        if (!Capture && !_releasingMouseCapture)
         {
-            // Do not clear a recognized rectangle here. WinFormsHost and DPI/layout changes
-            // can deliver CaptureChanged before MouseUp; MouseUp must still finalize the box.
-            HideSelectionFrame();
+            if (IsActiveRectangleGesture)
+            {
+                // WPF's WindowsFormsHost and first-focus activation can transiently take
+                // capture. Recover it asynchronously instead of losing the first drag.
+                ScheduleRectangleCaptureRecovery();
+            }
+            else
+            {
+                HideSelectionFrame();
+            }
         }
         base.OnMouseCaptureChanged(e);
+    }
+
+    private bool IsActiveRectangleGesture =>
+        _leftSelectionGesture
+        && _selectingRectangle
+        && Control.MouseButtons.HasFlag(MouseButtons.Left);
+
+    private void EnsureRectangleCapture()
+    {
+        if (!IsActiveRectangleGesture || Capture || IsDisposed || Disposing || !IsHandleCreated)
+            return;
+        Capture = true;
+    }
+
+    private void ScheduleRectangleCaptureRecovery()
+    {
+        if (IsDisposed || Disposing || !IsHandleCreated) return;
+        BeginInvoke((Action)(() =>
+        {
+            if (IsActiveRectangleGesture)
+                EnsureRectangleCapture();
+        }));
+    }
+
+    private void ScheduleSelectionFrameRestore()
+    {
+        if (_rectangleRestoreScheduled || IsDisposed || Disposing || !IsHandleCreated) return;
+        _rectangleRestoreScheduled = true;
+        BeginInvoke((Action)(() =>
+        {
+            _rectangleRestoreScheduled = false;
+            if (IsActiveRectangleGesture && _rectangleDragStarted)
+                UpdateSelectionFrame(_selectionCurrent);
+        }));
     }
 
     private void ResizeNativeView(bool force = false)
@@ -340,6 +392,7 @@ public sealed class OcctViewportControl : Control
 
     private void CancelRectangleSelection()
     {
+        _leftSelectionGesture = false;
         _selectingRectangle = false;
         _rectangleDragStarted = false;
         _selectionCurrent = Point.Empty;

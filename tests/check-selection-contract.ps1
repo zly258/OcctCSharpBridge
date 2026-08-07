@@ -46,5 +46,21 @@ Assert-Contains $control 'RectangleSelectionThreshold { get; set; } = 3;' 'the t
 Assert-Contains $control 'OcctRectangleSelectionBehavior.Inclusive' 'inclusive rectangle selection as the default'
 Assert-Contains $control 'dragDistance > RectangleSelectionThreshold' 'Manhattan-distance gesture classification'
 Assert-Contains $control '!ModifierKeys.HasFlag(Keys.Shift)' 'Shift exclusion for left-button box selection'
+Assert-Contains $control 'private bool _leftSelectionGesture;' 'an explicit left-selection gesture state'
+Assert-Contains $control 'private bool IsActiveRectangleGesture =>' 'a capture-independent active rectangle state'
+Assert-Contains $control 'EnsureRectangleCapture();' 'capture recovery during rectangle dragging'
+Assert-Contains $control 'ScheduleRectangleCaptureRecovery();' 'asynchronous recovery after host capture loss'
+Assert-Contains $control 'ScheduleSelectionFrameRestore();' 'rubber-band restoration after host resize'
+Assert-Contains $control 'WindowsFormsHost and first-focus DPI/layout negotiation' 'the first-gesture resize guard'
 
-Write-Host '[selection] Point selection, box-selection coordinates, and default behavior validated.' -ForegroundColor Green
+$resizeStart = $control.IndexOf('protected override void OnResize(EventArgs e)', [StringComparison]::Ordinal)
+$visibleStart = $control.IndexOf('protected override void OnVisibleChanged(EventArgs e)', [StringComparison]::Ordinal)
+if ($resizeStart -lt 0 -or $visibleStart -le $resizeStart) {
+    throw 'Unable to inspect OcctViewportControl.OnResize().'
+}
+$resizeBlock = $control.Substring($resizeStart, $visibleStart - $resizeStart)
+if ($resizeBlock.Contains('CancelRectangleSelection();')) {
+    throw 'OnResize must preserve an active rectangle gesture instead of cancelling the first drag.'
+}
+
+Write-Host '[selection] Point selection, first-gesture capture recovery, box coordinates, and default behavior validated.' -ForegroundColor Green
