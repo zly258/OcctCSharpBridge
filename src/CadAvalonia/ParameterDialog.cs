@@ -2,7 +2,11 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
 using CadCommon;
+using Button = Avalonia.Controls.Button;
+using CheckBox = Avalonia.Controls.CheckBox;
+using ComboBox = Avalonia.Controls.ComboBox;
 using Control = Avalonia.Controls.Control;
+using TextBox = Avalonia.Controls.TextBox;
 
 namespace CadAvalonia;
 
