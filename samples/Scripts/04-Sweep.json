@@ -3,7 +3,7 @@
   "version": 1,
   "id": "ef04373f-8d3b-54c5-ae51-2f21834c1192",
   "name": "04-Sweep",
-  "description": "Circular profile swept along a B-Spline spine.",
+  "description": "Circular face profile swept along a B-Spline spine to produce a solid.",
   "lengthUnit": "mm",
   "angleUnit": "deg",
   "parameters": [
@@ -11,8 +11,9 @@
   ],
   "commands": [
     { "id": "6ab8e677-b422-5b79-862a-779d61aa4634", "type": "BSpline", "name": "Spine", "order": 10, "fields": { "points": { "literal": "0,0,0; 400,0,250; 800,350,500; 1200,350,900" }, "periodic": { "literal": "false" }, "tolerance": { "expression": "0.0000001" } } },
-    { "id": "2037fd5c-0977-510f-b6be-659e1bb1c336", "type": "Circle", "name": "Profile", "order": 20, "fields": { "center": { "literal": "0,0,0" }, "normal": { "literal": "1,0,0" }, "radius": { "expression": "PipeRadius" } } },
-    { "id": "72feafb5-0bca-5e24-8158-ad6abae4791f", "type": "Sweep", "name": "SweptBody", "order": 30, "fields": { "spine": { "referenceId": "6ab8e677-b422-5b79-862a-779d61aa4634" }, "profile": { "referenceId": "2037fd5c-0977-510f-b6be-659e1bb1c336" } } }
+    { "id": "2037fd5c-0977-510f-b6be-659e1bb1c336", "type": "Circle", "name": "ProfileCurve", "order": 20, "fields": { "center": { "literal": "0,0,0" }, "normal": { "literal": "1,0,0" }, "radius": { "expression": "PipeRadius" } } },
+    { "id": "d4f32e86-2e1f-4cad-91bd-fd81b8e3b104", "type": "Face", "name": "ProfileFace", "order": 30, "fields": { "profile": { "referenceId": "2037fd5c-0977-510f-b6be-659e1bb1c336" } } },
+    { "id": "72feafb5-0bca-5e24-8158-ad6abae4791f", "type": "Sweep", "name": "SweptBody", "order": 40, "fields": { "spine": { "referenceId": "6ab8e677-b422-5b79-862a-779d61aa4634" }, "profile": { "referenceId": "d4f32e86-2e1f-4cad-91bd-fd81b8e3b104" } } }
   ],
   "outputCommandIds": ["72feafb5-0bca-5e24-8158-ad6abae4791f"]
 }
