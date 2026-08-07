@@ -72,6 +72,57 @@ The teardown order is fixed: cancel interaction/capture → dispose `OcctEngine`
 - Deploy `OcctNet.dll`, the selected UI host assembly, and `OcctNative.dll` from the same build
 - A native session owns mutable state and must be used from one application thread at a time
 
+## First-time setup
+
+Clone the repository, switch to the demo branch, then configure the OCCT 7.9.0 SDK:
+
+```powershell
+git clone https://github.com/zly258/OcctCSharpBridge.git
+cd OcctCSharpBridge
+git switch demo
+$env:OCCT_ROOT = "D:\\tools\\occt-vc144-64"
+```
+
+### PowerShell scripts
+
+`build.ps1` is the build/validation entry point. Supported targets are `validate`, `native`, `managed`, `smoke`, `winform`, `wpf`, `avalonia`, and `all`. `validate` does not require an OCCT SDK; native/demo/smoke targets do.
+
+```powershell
+.\build.ps1 validate Release
+.\build.ps1 managed Release
+.\build.ps1 winform Release
+.\build.ps1 wpf Release
+.\build.ps1 avalonia Release
+.\build.ps1 all Release
+.\build.ps1 smoke Release
+```
+
+`run.ps1` starts an **already-built** executable; it does not rebuild the project. Syntax:
+
+```powershell
+.\run.ps1 <winform|wpf|avalonia> [Release] [-OcctRoot <path>]
+```
+
+Examples:
+
+```powershell
+.\run.ps1 winform
+.\run.ps1 wpf
+.\run.ps1 avalonia
+```
+
+`publish.ps1` creates deployment-complete packages for WinForms and WPF. Avalonia is currently covered by build/run/CI but is not yet part of the formal publish target.
+
+```powershell
+.\publish.ps1 all Release -Zip -OcctRoot "D:\\tools\\occt-vc144-64"
+.\publish.ps1 winform Release -Zip -OcctRoot "D:\\tools\\occt-vc144-64"
+.\publish.ps1 wpf Release -Zip -OcctRoot "D:\\tools\\occt-vc144-64"
+```
+
+### Display defaults
+
+WinForms and WPF start in shaded mode with face edges enabled. Use **View → Visual Styles → Shaded with Edges** to toggle face-boundary drawing independently from Shaded/Wireframe. The lightweight Avalonia demo also enables face boundaries by default.
+
 ## Build and run
 
 Set the OCCT SDK location once or pass it explicitly:
@@ -104,6 +155,13 @@ Native compilation and runtime smoke testing:
 ```powershell
 .\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
+
+## Troubleshooting
+
+- If `run.ps1` starts an old executable, rebuild the relevant target first; the runner does not compile.
+- If Avalonia exits during startup, inspect `src\CadAvalonia\bin\x64\<Configuration>\net8.0-windows\CAD-Avalonia.log`.
+- If native loading fails, rebuild with the correct `-OcctRoot` and make sure OCCT/third-party runtime DLLs are available.
+- `build.ps1 validate` is the fastest check after API/menu/host changes; `build.ps1 smoke` verifies real native modeling.
 
 ## Publish
 
