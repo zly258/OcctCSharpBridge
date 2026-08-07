@@ -274,6 +274,6 @@ public sealed partial class OcctEngine
         var array = shapes.ToArray();
         if (array.Length == 0) throw new ArgumentException("Collection must not be empty.", nameof(shapes));
         foreach (var shape in array) EnsureShape(shape);
-        return array.Select(value => value.Id).Distinct().ToArray();
+        return array.Select(value => value.Id).ToArray();
     }
 }
