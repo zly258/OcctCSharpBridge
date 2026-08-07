@@ -22,18 +22,24 @@ $expectedAbiVersion = [int]$contract.nativeAbiVersion
 $expectedOcctVersion = [string]$contract.occtVersion
 $expectedCmakeVersion = [string]$contract.cmakeMinimumVersion
 $expectedTargetFramework = [string]$contract.dotnet.targetFramework
-$expectedSdkVersion = [string]$contract.dotnet.sdkVersion
+$coreSdkVersion = [string]$contract.dotnet.sdkVersion
+$demoSdkVersion = [string]$contract.dotnet.demoSdkVersion
 $expectedLanguageVersion = [string]$contract.dotnet.languageVersion
 $expectedNativeCount = [int]$contract.api.nativeExports
 $expectedManagedCount = [int]$contract.api.managedPInvokes
 $expectedPublicTypeCount = [int]$contract.api.publicNetTypes
+
+$isDemoBranchLayout = Test-Path (Join-Path $RepositoryRoot "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj") -PathType Leaf
+$expectedSdkVersion = if ($isDemoBranchLayout) { $demoSdkVersion } else { $coreSdkVersion }
+$sdkPolicyName = if ($isDemoBranchLayout) { "demo" } else { "core" }
 
 foreach ($entry in ([ordered]@{
     bridgeVersion = $expectedVersion
     occtVersion = $expectedOcctVersion
     cmakeMinimumVersion = $expectedCmakeVersion
     targetFramework = $expectedTargetFramework
-    dotnetSdkVersion = $expectedSdkVersion
+    coreSdkVersion = $coreSdkVersion
+    demoSdkVersion = $demoSdkVersion
     languageVersion = $expectedLanguageVersion
 }).GetEnumerator()) {
     if ([string]::IsNullOrWhiteSpace([string]$entry.Value)) {
@@ -126,10 +132,11 @@ foreach ($path in $machineSpecificFiles) {
     }
 }
 
-Write-Host ("[version] Bridge {0}, ABI {1}, OCCT {2}, SDK {3}, API {4}/{5}, public types {6}." -f
+Write-Host ("[version] Bridge {0}, ABI {1}, OCCT {2}, {3} SDK {4}, API {5}/{6}, public types {7}." -f
     $expectedVersion,
     $expectedAbiVersion,
     $expectedOcctVersion,
+    $sdkPolicyName,
     $expectedSdkVersion,
     $expectedNativeCount,
     $expectedManagedCount,
