@@ -1,4 +1,4 @@
-﻿# OcctScript sample documents
+# OcctScript sample documents
 
 All sample files use the same versioned JSON document format and can be opened directly in `OcctScript.Editor`.
 
@@ -7,7 +7,7 @@ All sample files use the same versioned JSON document format and can be opened d
 | `01-Curves.json` | Line, polyline, circle, arc, ellipse, regular polygon, Bezier and B-Spline |
 | `02-Extrude.json` | Wire → face → solid and edge → face extrusion |
 | `03-Revolve.json` | Closed profile → face → revolved solid |
-| `04-Sweep.json` | Circular profile swept along a B-Spline spine |
+| `04-Sweep.json` | Circle → face → solid swept along a B-Spline spine |
 | `05-Loft.json` | Multi-section solid loft |
 | `06-Booleans.json` | Cut followed by fuse |
 | `07-Primitives-Transforms.json` | Cone, sphere, torus, wedge, move, mirror and scale |
