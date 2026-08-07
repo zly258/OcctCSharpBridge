@@ -1,19 +1,16 @@
-﻿using System.Runtime.InteropServices;
-
-namespace OcctNet;
+﻿namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
     public void SetApplicationTag(IOcctObject value, string applicationTag)
     {
-        ArgumentNullException.ThrowIfNull(value);
+        EnsureObject(value);
         CheckInitialized(() => NativeMethods.occt_set_object_application_tag(_handle, value.Id, applicationTag ?? string.Empty));
     }
 
     public string GetApplicationTag(IOcctObject value)
     {
-        ArgumentNullException.ThrowIfNull(value);
-        EnsureNotDisposed();
+        EnsureObject(value);
         return Marshal.PtrToStringUTF8(NativeMethods.occt_get_object_application_tag(_handle, value.Id)) ?? string.Empty;
     }
 
@@ -28,7 +25,7 @@ public sealed partial class OcctEngine
             return false;
         }
 
-        value = new OcctObject(id, GetObjectKind(id));
+        value = new OcctObject(id, GetObjectKind(id), _ownerId);
         return true;
     }
 }
