@@ -7,6 +7,7 @@ using Application = Avalonia.Application;
 
 namespace CadAvalonia;
 
+// The application shell is Avalonia; WinForms is used only for Windows system dialogs in MainWindow.
 public sealed class App : Application
 {
     public override void Initialize()
