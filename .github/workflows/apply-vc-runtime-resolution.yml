@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   apply:
-    if: contains(github.event.head_commit.message, 'Add deterministic desktop VC runtime migration')
+    if: contains(github.event.head_commit.message, 'Apply deterministic VC runtime packaging fix')
     runs-on: windows-latest
     steps:
       - name: Checkout
