@@ -17,6 +17,7 @@ foreach ($path in $requiredFiles) {
 }
 
 $nativeHeader = Get-Content "src/OcctNative/OcctNative.h" -Raw
+$modelingHeader = Get-Content "src/OcctNative/OcctModeling.h" -Raw
 $managed = Get-ChildItem "src/OcctNet" -Filter "OcctEngine.*.cs" | Get-Content -Raw | Out-String
 $requiredNative = @(
     "occt_set_object_application_tag",
@@ -29,9 +30,8 @@ $requiredNative = @(
     "occt_set_view_cube_language"
 )
 foreach ($name in $requiredNative) {
-    if ($nativeHeader -notmatch [regex]::Escape($name) -and $name -ne "occt_update_object_shape_from_model") {
-        throw "Missing native declaration: $name"
-    }
+    $source = if ($name -eq "occt_update_object_shape_from_model") { $modelingHeader } else { $nativeHeader }
+    if ($source -notmatch [regex]::Escape($name)) { throw "Missing native declaration: $name" }
 }
 
 $requiredManaged = @(
@@ -54,6 +54,19 @@ $winForms = Get-Content "src/OcctNet.WinForms/OcctViewportControl.cs" -Raw
 $wpf = Get-Content "src/OcctNet.Wpf/OcctWpfViewport.cs" -Raw
 if ($winForms -notmatch "EnableDefaultInteraction" -or $wpf -notmatch "EnableDefaultInteraction") {
     throw "EnableDefaultInteraction is not exposed by both UI hosts."
+}
+
+$coverage = Get-Content "docs/API_COVERAGE.md" -Raw
+$requiredCoverage = @(
+    'Native exports: `339`',
+    'Managed P/Invoke declarations: `339`',
+    'Public .NET types: `80`',
+    'occt_set_object_application_tag',
+    'occt_update_object_shape_from_model',
+    'OcctObjectTransformUpdate'
+)
+foreach ($token in $requiredCoverage) {
+    if (-not $coverage.Contains($token)) { throw "API inventory is missing: $token" }
 }
 
 Write-Host "Object integration API contract passed." -ForegroundColor Green
