@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>OcctScript.Editor</RootNamespace>
+    <AssemblyName>OcctScript.Editor</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\OcctNet\OcctNet.csproj" />
+    <ProjectReference Include="..\OcctNet.Wpf\OcctNet.Wpf.csproj" />
+    <ProjectReference Include="..\OcctScript.Domain\OcctScript.Domain.csproj" />
+    <ProjectReference Include="..\OcctScript.Expressions\OcctScript.Expressions.csproj" />
+    <ProjectReference Include="..\OcctScript.Serialization\OcctScript.Serialization.csproj" />
+    <ProjectReference Include="..\OcctScript.Application\OcctScript.Application.csproj" />
+    <ProjectReference Include="..\OcctScript.Geometry\OcctScript.Geometry.csproj" />
+  </ItemGroup>
+</Project>
