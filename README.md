@@ -2,13 +2,14 @@
 
 [Main SDK branch](https://github.com/zly258/OcctCSharpBridge/tree/main) · [简体中文](README.zh-CN.md) · [API inventory and usage guide](docs/API_COVERAGE.md)
 
-The `demo` branch adds WinForms and WPF reference applications to the reusable OCCT C# bridge. `src/OcctNative`, `src/OcctNet`, `src/OcctNet.WinForms`, `src/OcctNet.Wpf`, the reusable smoke project, and the two API inventories stay synchronized with `main`; application UI, scenarios, run scripts, publishing, and package validation remain demo-only.
+The `demo` branch adds WinForms, WPF, and Avalonia reference applications to the reusable OCCT C# bridge. `src/OcctNative`, `src/OcctNet`, and the reusable UI host assemblies follow the same layered design as `main`; application UI, scenarios, run scripts, publishing, and package validation remain demo-only.
 
 The managed wrapper is split into:
 
 - `OcctNet`: UI-independent viewer, modeling, topology, analytic geometry, differential geometry, analysis, healing, mesh, and exchange APIs.
 - `OcctNet.WinForms`: reusable `OcctViewportControl` bound directly to a Win32 HWND.
 - `OcctNet.Wpf`: reusable `OcctWpfViewport` with WPF dependency properties, event forwarding, DPI synchronization, and native resize coordination.
+- `OcctNet.Avalonia`: isolated Avalonia `NativeControlHost` integration. The current implementation targets Windows x64, creates its own child HWND and initializes `OcctEngine` directly on it. Mouse interaction is handled by the child HWND window procedure and render DPI is synchronized with `GetDpiForWindow`; no WinForms or WPF hosting layer is involved.
 
 `OcctModelingSession` is organized by responsibility: lifecycle, shape queries, topology, geometry queries, analytic geometry, differential geometry, construction, algorithms, analysis, mesh, exchange, and operation history. Canonical names describe the subject and parameter semantics; existing ambiguous names remain compatibility aliases.
 
@@ -27,10 +28,13 @@ OCAF/XDE is not included. Documents, JSON persistence, undo/redo, and command hi
   </tr>
 </table>
 
+Avalonia currently provides a lightweight host-validation demo covering a real OCCT scene, point/rectangle selection, rotation, pan, zoom, Z-up views, DPI synchronization, and native-window lifetime. The full CAD command UI remains in the WinForms and WPF demos.
+
 ## Features
 
-- Dedicated WinForms and WPF OCCT viewport hosts
+- Dedicated WinForms, WPF, and Avalonia OCCT viewport hosts
 - Point, rectangle, directional crossing, multi-selection, and subshape selection
+- Avalonia native child-HWND input handling, DPI synchronization, and deterministic OCCT/window teardown ordering
 - Viewport-state snapshots, camera persistence, Z-up views, selected-object fitting, and screen-to-plane projection
 - Batch color, transparency, visibility, display mode, line width, material, redisplay, and selection operations
 - Exact line, circle, ellipse, plane, cylinder, cone, sphere, and torus parameter queries
@@ -46,16 +50,25 @@ OCAF/XDE is not included. Documents, JSON persistence, undo/redo, and command hi
 
 Complex scenarios use display batching and remove profiles, cutters, paths, and construction geometry after completion so only final results remain in the scene.
 
+## Avalonia host notes
+
+The current native OCCT viewer uses Windows `WNT_Window`, so `OcctNet.Avalonia` is explicitly a **Windows x64 / HWND** host today. Avalonia itself is cross-platform, but this repository has not yet implemented Linux `Xw_Window` or macOS native-window backends and does not claim a cross-platform OCCT viewer at this stage.
+
+The OCCT viewport inside `NativeControlHost` is a separate native compositing layer, so normal Avalonia transparent controls should not be placed over the native 3D viewport. Rectangle selection remains rendered inside OCCT with `AIS_RubberBand`.
+
+The teardown order is fixed: cancel interaction/capture → dispose `OcctEngine` and the OCCT viewer → restore the child HWND WndProc → destroy the child HWND. This avoids destroying the native target before OCCT releases its graphics resources.
+
 ## Compatibility
 
 - OCCT: exactly `7.9.0`
 - .NET: `8.0`, Windows x64
+- Avalonia: `12.1.0`
 - Bridge version: `2.5.0`
 - Bridge ABI: `2`
-- API count: Native `327`, P/Invoke `327`
-- Viewer and interaction APIs: `209`
+- API count: Native `339`, P/Invoke `339`
+- Viewer and interaction APIs: `221`
 - Modeling APIs: `118`
-- Public .NET types: `75`
+- Public core .NET types: `80`
 - Deploy `OcctNet.dll`, the selected UI host assembly, and `OcctNative.dll` from the same build
 - A native session owns mutable state and must be used from one application thread at a time
 
@@ -68,6 +81,14 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 .\build.ps1 all Release
 .\run.ps1 winform
 .\run.ps1 wpf
+.\run.ps1 avalonia
+```
+
+Build and run only the Avalonia demo:
+
+```powershell
+.\build.ps1 avalonia Release -OcctRoot "D:\tools\occt-vc144-64"
+.\run.ps1 avalonia Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
 The managed-only path does not require an OCCT SDK:
@@ -76,7 +97,7 @@ The managed-only path does not require an OCCT SDK:
 .\build.ps1 managed Release
 ```
 
-Validation covers the bridge version, API organization, analytic geometry, differential geometry, native declarations and implementations, Cdecl and exact symbol spelling, selection, viewport hosts, native source boundaries, and deployment package contract.
+Validation covers the bridge version, API organization, analytic geometry, differential geometry, native declarations and implementations, Cdecl and exact symbol spelling, selection, WinForms/WPF/Avalonia viewport hosts, native source boundaries, and deployment package contract.
 
 Native compilation and runtime smoke testing:
 
@@ -85,6 +106,8 @@ Native compilation and runtime smoke testing:
 ```
 
 ## Publish
+
+The existing `publish.ps1` continues to produce deployment-complete WinForms and WPF packages. Avalonia is currently included in build, run, and CI as a host-validation demo but has not yet been added to the formal publishing flow.
 
 The default command publishes both WinForms and WPF as self-contained Windows x64 applications. Target computers do not need a separate .NET installation.
 
@@ -107,4 +130,4 @@ Create a smaller framework-dependent package only for computers that already hav
 .\publish.ps1 all Release -FrameworkDependent -Zip -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-`dotnet publish` includes `OcctNet`, `OcctNet.WinForms`, and `OcctNet.Wpf` through project references. `publish.ps1` then adds the complete native dependency closure and required OCCT resources. Enable `-FullResources` or `-Diagnostics` only when needed.
+`dotnet publish` includes the matching `OcctNet` and UI-host assemblies through project references. `publish.ps1` then adds the complete native dependency closure and required OCCT resources. Enable `-FullResources` or `-Diagnostics` only when needed.
