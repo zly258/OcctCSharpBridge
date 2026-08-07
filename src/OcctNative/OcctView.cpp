@@ -125,8 +125,4 @@ extern "C"
         });
     }
 
-    OcctObjectId occt_copy_selected_subshape(OcctHandle h)
-    {
-        return occt_copy_selected_subshape_at(h, 0);
-    }
 }
