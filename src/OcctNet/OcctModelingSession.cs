@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace OcctNet;
@@ -8,6 +9,9 @@ namespace OcctNet;
 /// </summary>
 public sealed partial class OcctModelingSession : IDisposable
 {
+    private static long s_nextOwnerId;
+
+    private readonly long _ownerId = Interlocked.Increment(ref s_nextOwnerId);
     private IntPtr _handle;
 
     public OcctModelingSession()
@@ -16,8 +20,10 @@ public sealed partial class OcctModelingSession : IDisposable
         OcctBridgeInfo.EnsureCompatible();
         _handle = ModelNativeMethods.occt_model_create();
         if (_handle == IntPtr.Zero)
-            throw new OcctException("Unable to create the native OCCT modeling session.");
+            throw new OcctException("Unable to create the native OCCT modeling session.", nameof(OcctModelingSession));
     }
+
+    internal long OwnerId => _ownerId;
 
     internal IntPtr NativeHandle
     {
@@ -48,15 +54,51 @@ public sealed partial class OcctModelingSession : IDisposable
             return Enumerable.Range(0, ShapeCount)
                 .Select(index => ModelNativeMethods.occt_model_shape_id_at(_handle, index))
                 .Where(id => id > 0)
-                .Select(id => new OcctModelShape(id))
+                .Select(id => new OcctModelShape(id, _ownerId))
                 .ToArray();
         }
     }
 
+    /// <summary>
+    /// Returns true when a shape is valid in this session. Shapes created by another session are always rejected.
+    /// Legacy unbound handles created with <c>new OcctModelShape(id)</c> are checked by native ID for compatibility.
+    /// </summary>
     public bool Exists(OcctModelShape shape)
     {
         EnsureNotDisposed();
-        return shape.IsValid && ModelNativeMethods.occt_model_shape_exists(_handle, shape.Id) != 0;
+        if (!shape.IsValid) return false;
+        if (shape.OwnerId != 0 && shape.OwnerId != _ownerId) return false;
+        return ModelNativeMethods.occt_model_shape_exists(_handle, shape.Id) != 0;
+    }
+
+    /// <summary>
+    /// Returns true when the shape was created or resolved by this session.
+    /// </summary>
+    public bool Owns(OcctModelShape shape) => shape.IsValid && shape.OwnerId == _ownerId;
+
+    /// <summary>
+    /// Resolves an existing native shape ID into a session-bound managed handle.
+    /// Use this instead of constructing a raw <see cref="OcctModelShape"/> when working with persisted IDs.
+    /// </summary>
+    public OcctModelShape GetShape(long id)
+    {
+        EnsureNotDisposed();
+        if (id <= 0 || ModelNativeMethods.occt_model_shape_exists(_handle, id) == 0)
+            throw new ArgumentOutOfRangeException(nameof(id), id, "The shape ID does not exist in this modeling session.");
+        return new OcctModelShape(id, _ownerId);
+    }
+
+    public bool TryGetShape(long id, out OcctModelShape shape)
+    {
+        EnsureNotDisposed();
+        if (id > 0 && ModelNativeMethods.occt_model_shape_exists(_handle, id) != 0)
+        {
+            shape = new OcctModelShape(id, _ownerId);
+            return true;
+        }
+
+        shape = default;
+        return false;
     }
 
     public void Delete(OcctModelShape shape)
@@ -101,36 +143,39 @@ public sealed partial class OcctModelingSession : IDisposable
     private void EnsureShape(OcctModelShape shape)
     {
         EnsureNotDisposed();
+        if (shape.OwnerId != 0 && shape.OwnerId != _ownerId)
+            throw new ArgumentException("Shape belongs to a different OcctModelingSession.", nameof(shape));
         if (!shape.IsValid || ModelNativeMethods.occt_model_shape_exists(_handle, shape.Id) == 0)
             throw new ArgumentException("Shape does not belong to this modeling session.", nameof(shape));
     }
 
-    private OcctModelShape CheckShape(long id)
+    private OcctModelShape CheckShape(long id, [CallerMemberName] string? operation = null)
     {
-        if (id <= 0) throw CreateException();
-        return new OcctModelShape(id);
+        if (id <= 0) throw CreateException(operation);
+        return new OcctModelShape(id, _ownerId);
     }
 
-    private OcctModelAlgorithmResult CheckAlgorithm(NativeModelAlgorithmResult native)
+    private OcctModelAlgorithmResult CheckAlgorithm(NativeModelAlgorithmResult native, [CallerMemberName] string? operation = null)
     {
-        if (native.Succeeded == 0 || native.ShapeId <= 0) throw CreateException();
+        if (native.Succeeded == 0 || native.ShapeId <= 0) throw CreateException(operation);
         return new OcctModelAlgorithmResult(this, native);
     }
 
-    private void Check(int result)
+    private void Check(int result, [CallerMemberName] string? operation = null)
     {
-        if (result == 0) throw CreateException();
+        if (result == 0) throw CreateException(operation);
     }
 
-    private OcctException CreateException()
+    private OcctException CreateException(string? operation = null)
     {
         var pointer = _handle == IntPtr.Zero
             ? IntPtr.Zero
             : ModelNativeMethods.occt_model_last_error(_handle);
-        var message = pointer == IntPtr.Zero ? null : Marshal.PtrToStringUTF8(pointer);
-        return new OcctException(string.IsNullOrWhiteSpace(message)
+        var nativeMessage = pointer == IntPtr.Zero ? null : Marshal.PtrToStringUTF8(pointer);
+        var message = string.IsNullOrWhiteSpace(nativeMessage)
             ? "The native OCCT modeling operation failed."
-            : message);
+            : nativeMessage;
+        return new OcctException(message, operation, nativeMessage);
     }
 
     private void EnsureNotDisposed() =>
