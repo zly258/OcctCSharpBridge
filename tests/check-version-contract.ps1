@@ -21,6 +21,7 @@ $expectedVersion = [string]$contract.bridgeVersion
 $expectedAbiVersion = [int]$contract.nativeAbiVersion
 $expectedOcctVersion = [string]$contract.occtVersion
 $expectedCmakeVersion = [string]$contract.cmakeMinimumVersion
+$expectedContactEmail = [string]$contract.contactEmail
 $expectedTargetFramework = [string]$contract.dotnet.targetFramework
 $coreSdkVersion = [string]$contract.dotnet.sdkVersion
 $demoSdkVersion = [string]$contract.dotnet.demoSdkVersion
@@ -37,6 +38,7 @@ foreach ($entry in ([ordered]@{
     bridgeVersion = $expectedVersion
     occtVersion = $expectedOcctVersion
     cmakeMinimumVersion = $expectedCmakeVersion
+    contactEmail = $expectedContactEmail
     targetFramework = $expectedTargetFramework
     coreSdkVersion = $coreSdkVersion
     demoSdkVersion = $demoSdkVersion
@@ -73,8 +75,8 @@ $contracts = [ordered]@{
         "<TargetFramework>$expectedTargetFramework</TargetFramework>",
         "<Platforms>x64</Platforms>"
     )
-    "README.md" = @($expectedVersion, $expectedOcctVersion)
-    "README.zh-CN.md" = @($expectedVersion, $expectedOcctVersion)
+    "README.md" = @($expectedVersion, $expectedOcctVersion, $expectedContactEmail)
+    "README.zh-CN.md" = @($expectedVersion, $expectedOcctVersion, $expectedContactEmail)
     "docs/API_COVERAGE.md" = @(
         "Native exports:",
         [string]$expectedNativeCount,
@@ -120,6 +122,43 @@ foreach ($contractEntry in $contracts.GetEnumerator()) {
     }
 }
 
+$cadLocalizationPath = Join-Path $RepositoryRoot "src\CadCommon\CadLocalization.cs"
+if (Test-Path $cadLocalizationPath -PathType Leaf) {
+    $cadLocalization = [System.IO.File]::ReadAllText($cadLocalizationPath)
+    if (-not $cadLocalization.Contains($expectedContactEmail)) {
+        throw "Software About contact does not match bridge-contract.json."
+    }
+}
+
+$publishPath = Join-Path $RepositoryRoot "publish.ps1"
+if (Test-Path $publishPath -PathType Leaf) {
+    $publishText = [System.IO.File]::ReadAllText($publishPath)
+    if (-not $publishText.Contains($expectedContactEmail)) {
+        throw "Published package contact does not match bridge-contract.json."
+    }
+}
+
+$legacyContact = "zhangly1403" + "@" + "qq.com"
+$contactScanFiles = [System.Collections.Generic.List[string]]::new()
+foreach ($fileName in @("README.md", "README.zh-CN.md", "publish.ps1")) {
+    $candidate = Join-Path $RepositoryRoot $fileName
+    if (Test-Path $candidate -PathType Leaf) {
+        $contactScanFiles.Add($candidate)
+    }
+}
+foreach ($rootName in @("src", "docs")) {
+    $root = Join-Path $RepositoryRoot $rootName
+    if (-not (Test-Path $root -PathType Container)) { continue }
+    Get-ChildItem $root -Recurse -File | Where-Object {
+        $_.Extension -in @(".cs", ".cpp", ".h", ".hxx", ".md", ".txt", ".json", ".xml", ".xaml", ".csproj")
+    } | ForEach-Object { $contactScanFiles.Add($_.FullName) }
+}
+foreach ($path in $contactScanFiles) {
+    if ([System.IO.File]::ReadAllText($path).Contains($legacyContact)) {
+        throw "Legacy contact email remains in $path."
+    }
+}
+
 $machineSpecificFiles = @(
     (Join-Path $RepositoryRoot "build.ps1"),
     (Join-Path $RepositoryRoot "src\OcctNative\CMakeLists.txt")
@@ -132,7 +171,7 @@ foreach ($path in $machineSpecificFiles) {
     }
 }
 
-Write-Host ("[version] Bridge {0}, ABI {1}, OCCT {2}, {3} SDK {4}, API {5}/{6}, public types {7}." -f
+Write-Host ("[version] Bridge {0}, ABI {1}, OCCT {2}, {3} SDK {4}, API {5}/{6}, public types {7}, contact {8}." -f
     $expectedVersion,
     $expectedAbiVersion,
     $expectedOcctVersion,
@@ -140,4 +179,5 @@ Write-Host ("[version] Bridge {0}, ABI {1}, OCCT {2}, {3} SDK {4}, API {5}/{6}, 
     $expectedSdkVersion,
     $expectedNativeCount,
     $expectedManagedCount,
-    $expectedPublicTypeCount) -ForegroundColor Green
+    $expectedPublicTypeCount,
+    $expectedContactEmail) -ForegroundColor Green
