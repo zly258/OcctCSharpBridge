@@ -10,6 +10,8 @@ $requiredFiles = @(
     "src/OcctNet/OcctEngine.View.cs",
     "src/OcctNet/OcctEngine.Selection.cs",
     "src/OcctNet/OcctEngine.Objects.cs",
+    "src/OcctNet/OcctEngine.Geometry.cs",
+    "src/OcctNet/OcctEngine.Features.cs",
     "src/OcctNet/OcctSafeHandles.cs",
     "src/OcctNet/OcctModelingSession.cs",
     "src/OcctNet/OcctModelingSession.ShapeQueries.cs",
@@ -85,6 +87,10 @@ $canonicalContracts = [ordered]@{
         "public int ObjectCount",
         "public IReadOnlyList<OcctShape> Shapes",
         "public bool Owns(",
+        "public IOcctObject GetObject(",
+        "public bool TryGetObject(",
+        "public OcctShape GetShape(",
+        "public bool TryGetShape(",
         "public OcctBounds GetBounds("
     )
     "src/OcctNet/OcctModelingSession.ShapeQueries.cs" = @(
@@ -130,6 +136,34 @@ foreach ($contract in $canonicalContracts.GetEnumerator()) {
         if (-not $text.Contains($token)) {
             throw "Canonical managed API is missing from $($contract.Key): $token"
         }
+    }
+}
+
+$engineGeometryText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctEngine.Geometry.cs"))
+if ($engineGeometryText.Contains("private static long[] ShapeIds")) {
+    throw "OcctEngine geometry ShapeIds must be instance-owned so object ownership can be validated."
+}
+foreach ($required in @(
+    "foreach (var shape in array) EnsureShape(shape);",
+    "EnsureShape(wire);",
+    "EnsureShape(shell);",
+    "OcctGuard.Positive(radius, nameof(radius));"
+)) {
+    if (-not $engineGeometryText.Contains($required)) {
+        throw "OcctEngine geometry safety contract is missing: $required"
+    }
+}
+
+$engineFeatureText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctEngine.Features.cs"))
+foreach ($required in @(
+    "EnsureShape(left);",
+    "EnsureShape(right);",
+    "EnsureShape(profile);",
+    "EnsureText(textObject);",
+    "EnsureDimension(dimension);"
+)) {
+    if (-not $engineFeatureText.Contains($required)) {
+        throw "OcctEngine feature ownership contract is missing: $required"
     }
 }
 
@@ -203,4 +237,4 @@ if (Compare-Object $expectedDocs $docs) {
     throw "The docs directory must contain only API_COVERAGE.md and API_COVERAGE.zh-CN.md."
 }
 
-Write-Host "[organization] Viewer/modeling categories, native responsibility boundaries, P/Invoke attributes and documentation layout validated." -ForegroundColor Green
+Write-Host "[organization] Viewer/modeling categories, ownership guards, native responsibility boundaries, P/Invoke attributes and documentation layout validated." -ForegroundColor Green
