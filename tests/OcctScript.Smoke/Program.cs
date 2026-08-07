@@ -144,7 +144,11 @@ static void VerifyBooleans()
     var common = Boolean(registry, BuiltInCommandCatalog.Common, "Common", 50, left, right);
     var section = Boolean(registry, BuiltInCommandCatalog.Section, "Section", 60, left, right);
     document.Commands.AddRange([left, right, fuse, cut, common, section]);
-    BuildAndAssert(document, (fuse, OcctShapeType.Solid), (cut, OcctShapeType.Solid), (common, OcctShapeType.Solid), (section, null));
+    BuildAndAssertBooleanGeometry(document,
+        (fuse, 1_500_000.0),
+        (cut, 500_000.0),
+        (common, 500_000.0),
+        section);
 }
 
 static void VerifyEdgeFeatures()
@@ -166,6 +170,44 @@ static void VerifyEdgeFeatures()
 static ScriptCommand Box(CommandRegistry registry, string name, int order)
 {
     var box = Command(registry, BuiltInCommandCatalog.Box, name, order); Expression(box, "width", "100"); Expression(box, "depth", "80"); Expression(box, "height", "60"); return box;
+}
+
+static void BuildAndAssertBooleanGeometry(
+    ScriptDocument document,
+    (ScriptCommand Command, double ExpectedVolume) fuse,
+    (ScriptCommand Command, double ExpectedVolume) cut,
+    (ScriptCommand Command, double ExpectedVolume) common,
+    ScriptCommand section)
+{
+    var expressions = new ExpressionEngine();
+    var parameters = new ParameterService(expressions).Evaluate(document);
+    Require(parameters.Errors.Count == 0, string.Join(Environment.NewLine, parameters.Errors.Values));
+    using var coordinator = new ScriptBuildCoordinator(expressionEngine: expressions);
+    var result = coordinator.Build(document, parameters.Values);
+    if (!result.Success)
+    {
+        var messages = result.Commands.SelectMany(x => x.Messages).Select(x => $"{x.Code}: {x.Message}");
+        throw new InvalidOperationException(string.Join(Environment.NewLine, messages));
+    }
+
+    foreach (var item in new[] { fuse, cut, common })
+    {
+        Require(result.Shapes.TryGetValue(item.Command.Id, out var shape), $"{item.Command.Name} did not produce a shape.");
+        Require(coordinator.Session.Exists(shape), $"Shape '{shape}' is not available in the modeling session.");
+        Require(coordinator.Session.IsValid(shape), $"{item.Command.Name} produced an invalid shape: {coordinator.Session.GetCheckReport(shape)}");
+        var solidCount = coordinator.Session.GetTopologyCount(shape, OcctShapeType.Solid);
+        Require(solidCount == 1, $"{item.Command.Name} produced {coordinator.Session.GetShapeType(shape)} containing {solidCount} solids; expected exactly one solid.");
+        var volume = coordinator.Session.GetVolumeProperties(shape).Mass;
+        var tolerance = Math.Max(1e-6, item.ExpectedVolume * 1e-9);
+        Require(Math.Abs(volume - item.ExpectedVolume) <= tolerance,
+            $"{item.Command.Name} volume was {volume:G17}, expected {item.ExpectedVolume:G17}.");
+    }
+
+    Require(result.Shapes.TryGetValue(section.Id, out var sectionShape), "Section did not produce a shape.");
+    Require(coordinator.Session.Exists(sectionShape), $"Shape '{sectionShape}' is not available in the modeling session.");
+    Require(coordinator.Session.IsValid(sectionShape), $"Section produced an invalid shape: {coordinator.Session.GetCheckReport(sectionShape)}");
+    Require(coordinator.Session.GetTopologyCount(sectionShape, OcctShapeType.Edge) > 0,
+        $"Section produced {coordinator.Session.GetShapeType(sectionShape)} without section edges.");
 }
 
 static void BuildAndAssert(ScriptDocument document, params (ScriptCommand Command, OcctShapeType? Type)[] expected)
