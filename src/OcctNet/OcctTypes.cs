@@ -160,35 +160,57 @@ public readonly record struct OcctEdgeEvaluation(OcctPoint3d Point, OcctVector3d
 
 public interface IOcctObject { long Id { get; } }
 
-public readonly record struct OcctObject(long Id, OcctObjectKind Kind) : IOcctObject
+public readonly record struct OcctObject : IOcctObject
 {
-    internal long OwnerId { get; init; }
-    internal OcctObject(long id, OcctObjectKind kind, long ownerId) : this(id, kind) => OwnerId = ownerId;
+    internal OcctObject(long id, OcctObjectKind kind, long ownerId)
+    {
+        Id = id;
+        Kind = kind;
+        OwnerId = ownerId;
+    }
+
+    public long Id { get; }
+    public OcctObjectKind Kind { get; }
+    internal long OwnerId { get; }
     public bool IsValid => Id > 0;
-    public bool IsBound => OwnerId != 0;
 }
 
-public readonly record struct OcctShape(long Id) : IOcctObject
+public readonly record struct OcctShape : IOcctObject
 {
-    internal long OwnerId { get; init; }
-    internal OcctShape(long id, long ownerId) : this(id) => OwnerId = ownerId;
+    internal OcctShape(long id, long ownerId)
+    {
+        Id = id;
+        OwnerId = ownerId;
+    }
+
+    public long Id { get; }
+    internal long OwnerId { get; }
     public bool IsValid => Id > 0;
-    public bool IsBound => OwnerId != 0;
     public override string ToString() => $"Shape {Id}";
 }
 
-public readonly record struct OcctText(long Id) : IOcctObject
+public readonly record struct OcctText : IOcctObject
 {
-    internal long OwnerId { get; init; }
-    internal OcctText(long id, long ownerId) : this(id) => OwnerId = ownerId;
+    internal OcctText(long id, long ownerId)
+    {
+        Id = id;
+        OwnerId = ownerId;
+    }
+
+    public long Id { get; }
+    internal long OwnerId { get; }
     public bool IsValid => Id > 0;
-    public bool IsBound => OwnerId != 0;
 }
 
-public readonly record struct OcctDimension(long Id) : IOcctObject
+public readonly record struct OcctDimension : IOcctObject
 {
-    internal long OwnerId { get; init; }
-    internal OcctDimension(long id, long ownerId) : this(id) => OwnerId = ownerId;
+    internal OcctDimension(long id, long ownerId)
+    {
+        Id = id;
+        OwnerId = ownerId;
+    }
+
+    public long Id { get; }
+    internal long OwnerId { get; }
     public bool IsValid => Id > 0;
-    public bool IsBound => OwnerId != 0;
 }
