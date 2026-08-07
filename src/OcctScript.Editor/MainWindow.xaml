@@ -2,109 +2,169 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:occt="clr-namespace:OcctNet;assembly=OcctNet.Wpf"
-        Title="{StaticResource Ui.AppTitle}"
-        Width="1500" Height="900" MinWidth="1100" MinHeight="680"
-        WindowStartupLocation="CenterScreen" FontFamily="Microsoft YaHei UI"
+        Title="{DynamicResource Ui.AppTitle}"
+        Width="1540" Height="920" MinWidth="1180" MinHeight="720"
+        WindowStartupLocation="CenterScreen"
         Closing="Window_Closing">
     <DockPanel>
         <Menu DockPanel.Dock="Top">
-            <MenuItem Header="{StaticResource Ui.File}">
-                <MenuItem Header="{StaticResource Ui.New}" Click="New_Click" InputGestureText="Ctrl+N" />
-                <MenuItem Header="{StaticResource Ui.Open}" Click="Open_Click" InputGestureText="Ctrl+O" />
-                <MenuItem Header="{StaticResource Ui.Save}" Click="Save_Click" InputGestureText="Ctrl+S" />
+            <MenuItem Header="{DynamicResource Ui.File}">
+                <MenuItem Header="{DynamicResource Ui.New}" Click="New_Click" InputGestureText="Ctrl+N" />
+                <MenuItem Header="{DynamicResource Ui.Open}" Click="Open_Click" InputGestureText="Ctrl+O" />
+                <MenuItem Header="{DynamicResource Ui.Save}" Click="Save_Click" InputGestureText="Ctrl+S" />
                 <Separator />
-                <MenuItem Header="{StaticResource Ui.Exit}" Click="Exit_Click" />
+                <MenuItem Header="{DynamicResource Ui.Exit}" Click="Exit_Click" />
             </MenuItem>
-            <MenuItem Header="{StaticResource Ui.Edit}">
-                <MenuItem x:Name="UndoMenuItem" Header="{StaticResource Ui.Undo}" Click="Undo_Click" InputGestureText="Ctrl+Z" />
-                <MenuItem x:Name="RedoMenuItem" Header="{StaticResource Ui.Redo}" Click="Redo_Click" InputGestureText="Ctrl+Y" />
+            <MenuItem Header="{DynamicResource Ui.Edit}">
+                <MenuItem x:Name="UndoMenuItem" Header="{DynamicResource Ui.Undo}" Click="Undo_Click" InputGestureText="Ctrl+Z" />
+                <MenuItem x:Name="RedoMenuItem" Header="{DynamicResource Ui.Redo}" Click="Redo_Click" InputGestureText="Ctrl+Y" />
             </MenuItem>
-            <MenuItem Header="{StaticResource Ui.Create}">
-                <MenuItem Header="{StaticResource Ui.AddBox}" Click="AddBox_Click" />
-                <MenuItem Header="{StaticResource Ui.AddCylinder}" Click="AddCylinder_Click" />
-                <MenuItem Header="{StaticResource Ui.AddParameter}" Click="AddParameter_Click" />
+            <MenuItem Header="{DynamicResource Ui.Create}">
+                <MenuItem Header="{DynamicResource Category.Curves}">
+                    <MenuItem Header="{DynamicResource Command.Vertex}" Tag="Vertex" Click="AddCommandMenu_Click" />
+                    <MenuItem Header="{DynamicResource Command.Line}" Tag="Line" Click="AddCommandMenu_Click" />
+                    <MenuItem Header="{DynamicResource Command.Polyline}" Tag="Polyline" Click="AddCommandMenu_Click" />
+                    <MenuItem Header="{DynamicResource Command.Circle}" Tag="Circle" Click="AddCommandMenu_Click" />
+                    <MenuItem Header="{DynamicResource Command.Arc}" Tag="Arc" Click="AddCommandMenu_Click" />
+                    <MenuItem Header="{DynamicResource Command.Rectangle}" Tag="Rectangle" Click="AddCommandMenu_Click" />
+                    <MenuItem Header="{DynamicResource Command.Wire}" Tag="Wire" Click="AddCommandMenu_Click" />
+                </MenuItem>
+                <MenuItem Header="{DynamicResource Category.Surfaces}">
+                    <MenuItem Header="{DynamicResource Command.Face}" Tag="Face" Click="AddCommandMenu_Click" />
+                    <MenuItem Header="{DynamicResource Command.PlaneFace}" Tag="PlaneFace" Click="AddCommandMenu_Click" />
+                </MenuItem>
+                <MenuItem Header="{DynamicResource Category.Solids}">
+                    <MenuItem Header="{DynamicResource Command.Box}" Tag="Box" Click="AddCommandMenu_Click" />
+                    <MenuItem Header="{DynamicResource Command.Cylinder}" Tag="Cylinder" Click="AddCommandMenu_Click" />
+                </MenuItem>
+                <MenuItem Header="{DynamicResource Category.Features}">
+                    <MenuItem Header="{DynamicResource Command.Extrude}" Tag="Extrude" Click="AddCommandMenu_Click" />
+                    <MenuItem Header="{DynamicResource Command.Revolve}" Tag="Revolve" Click="AddCommandMenu_Click" />
+                    <MenuItem Header="{DynamicResource Command.Sweep}" Tag="Sweep" Click="AddCommandMenu_Click" />
+                    <MenuItem Header="{DynamicResource Command.Loft}" Tag="Loft" Click="AddCommandMenu_Click" />
+                </MenuItem>
+                <MenuItem Header="{DynamicResource Category.Boolean}">
+                    <MenuItem Header="{DynamicResource Command.Fuse}" Tag="Fuse" Click="AddCommandMenu_Click" />
+                    <MenuItem Header="{DynamicResource Command.Cut}" Tag="Cut" Click="AddCommandMenu_Click" />
+                    <MenuItem Header="{DynamicResource Command.Common}" Tag="Common" Click="AddCommandMenu_Click" />
+                    <MenuItem Header="{DynamicResource Command.Section}" Tag="Section" Click="AddCommandMenu_Click" />
+                </MenuItem>
+                <Separator />
+                <MenuItem Header="{DynamicResource Ui.AddParameter}" Click="AddParameter_Click" />
             </MenuItem>
-            <MenuItem Header="{StaticResource Ui.View}">
-                <MenuItem Header="{StaticResource Ui.Isometric}" Click="Isometric_Click" />
-                <MenuItem Header="{StaticResource Ui.Front}" Click="Front_Click" />
-                <MenuItem Header="{StaticResource Ui.Top}" Click="Top_Click" />
-                <MenuItem Header="{StaticResource Ui.Fit}" Click="Fit_Click" />
+            <MenuItem Header="{DynamicResource Ui.View}">
+                <MenuItem Header="{DynamicResource Ui.Isometric}" Click="Isometric_Click" />
+                <MenuItem Header="{DynamicResource Ui.Front}" Click="Front_Click" />
+                <MenuItem Header="{DynamicResource Ui.Top}" Click="Top_Click" />
+                <MenuItem Header="{DynamicResource Ui.Left}" Click="Left_Click" />
+                <MenuItem Header="{DynamicResource Ui.Right}" Click="Right_Click" />
+                <Separator />
+                <MenuItem Header="{DynamicResource Ui.Fit}" Click="Fit_Click" />
             </MenuItem>
-            <MenuItem Header="{StaticResource Ui.Build}">
-                <MenuItem Header="{StaticResource Ui.Rebuild}" Click="Rebuild_Click" InputGestureText="F5" />
+            <MenuItem Header="{DynamicResource Ui.Build}">
+                <MenuItem Header="{DynamicResource Ui.Rebuild}" Click="Rebuild_Click" InputGestureText="F5" />
+            </MenuItem>
+            <MenuItem Header="{DynamicResource Ui.Language}">
+                <MenuItem x:Name="EnglishLanguageMenu" Header="{DynamicResource Ui.English}" Click="EnglishLanguage_Click" IsCheckable="True" />
+                <MenuItem x:Name="ChineseLanguageMenu" Header="{DynamicResource Ui.Chinese}" Click="ChineseLanguage_Click" IsCheckable="True" />
             </MenuItem>
         </Menu>
 
         <ToolBarTray DockPanel.Dock="Top">
             <ToolBar>
-                <Button Content="{StaticResource Ui.New}" Click="New_Click" />
-                <Button Content="{StaticResource Ui.Open}" Click="Open_Click" />
-                <Button Content="{StaticResource Ui.Save}" Click="Save_Click" />
+                <Button Content="{DynamicResource Ui.New}" Click="New_Click" />
+                <Button Content="{DynamicResource Ui.Open}" Click="Open_Click" />
+                <Button Content="{DynamicResource Ui.Save}" Click="Save_Click" />
                 <Separator />
-                <Button x:Name="UndoButton" Content="{StaticResource Ui.Undo}" Click="Undo_Click" />
-                <Button x:Name="RedoButton" Content="{StaticResource Ui.Redo}" Click="Redo_Click" />
+                <Button x:Name="UndoButton" Content="{DynamicResource Ui.Undo}" Click="Undo_Click" />
+                <Button x:Name="RedoButton" Content="{DynamicResource Ui.Redo}" Click="Redo_Click" />
                 <Separator />
-                <Button Content="{StaticResource Ui.AddBox}" Click="AddBox_Click" />
-                <Button Content="{StaticResource Ui.AddCylinder}" Click="AddCylinder_Click" />
-                <Button Content="{StaticResource Ui.AddParameter}" Click="AddParameter_Click" />
+                <Button Content="{DynamicResource Ui.AddSelected}" Click="AddSelectedCommand_Click" Style="{StaticResource PrimaryButtonStyle}" />
+                <Button Content="{DynamicResource Ui.AddParameter}" Click="AddParameter_Click" />
                 <Separator />
-                <Button Content="{StaticResource Ui.Rebuild}" Click="Rebuild_Click" />
-                <Button Content="{StaticResource Ui.Fit}" Click="Fit_Click" />
+                <Button Content="{DynamicResource Ui.Rebuild}" Click="Rebuild_Click" />
+                <Button Content="{DynamicResource Ui.Fit}" Click="Fit_Click" />
             </ToolBar>
         </ToolBarTray>
 
         <StatusBar DockPanel.Dock="Bottom">
-            <StatusBarItem><TextBlock x:Name="StatusText" Text="{StaticResource Ui.Ready}" /></StatusBarItem>
+            <StatusBarItem><TextBlock x:Name="StatusText" Text="{DynamicResource Ui.Ready}" /></StatusBarItem>
             <Separator />
             <StatusBarItem><TextBlock x:Name="DocumentPathText" Text="Untitled.ocsproj" /></StatusBarItem>
         </StatusBar>
 
-        <Grid Background="#F4F6F8">
+        <Grid Background="{StaticResource Brush.Window}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="280" MinWidth="220" />
+                <ColumnDefinition Width="310" MinWidth="250" />
                 <ColumnDefinition Width="5" />
-                <ColumnDefinition Width="*" MinWidth="400" />
+                <ColumnDefinition Width="*" MinWidth="430" />
                 <ColumnDefinition Width="5" />
-                <ColumnDefinition Width="330" MinWidth="280" />
+                <ColumnDefinition Width="370" MinWidth="310" />
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
                 <RowDefinition Height="5" />
-                <RowDefinition Height="180" MinHeight="100" />
+                <RowDefinition Height="190" MinHeight="120" />
             </Grid.RowDefinitions>
 
-            <Border Grid.Column="0" Margin="4" Background="White" BorderBrush="#CBD5E1" BorderThickness="1">
-                <Grid>
+            <Border Grid.Column="0" Margin="5" Style="{StaticResource PanelBorderStyle}">
+                <Grid Margin="4">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="6" />
                         <RowDefinition Height="1.1*" />
+                        <RowDefinition Height="6" />
+                        <RowDefinition Height="1.2*" />
                     </Grid.RowDefinitions>
-                    <GroupBox Header="{StaticResource Ui.Commands}" Margin="4">
+                    <GroupBox Header="{DynamicResource Ui.CommandLibrary}" Margin="0">
+                        <StackPanel>
+                            <ComboBox x:Name="CommandCatalogCombo"
+                                      DisplayMemberPath="DisplayText"
+                                      SelectionChanged="CommandCatalog_SelectionChanged" />
+                            <TextBlock x:Name="CommandCatalogDescription" Margin="4,5,4,3"
+                                       TextWrapping="Wrap" Style="{StaticResource MutedTextStyle}" />
+                            <Button Content="{DynamicResource Ui.AddSelected}" Click="AddSelectedCommand_Click"
+                                    HorizontalAlignment="Right" Style="{StaticResource PrimaryButtonStyle}" />
+                        </StackPanel>
+                    </GroupBox>
+                    <GridSplitter Grid.Row="1" Height="6" HorizontalAlignment="Stretch" Background="{StaticResource Brush.Border}" />
+                    <GroupBox Grid.Row="2" Header="{DynamicResource Ui.Model}" Margin="0">
                         <DockPanel>
-                            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right">
-                                <Button Content="{StaticResource Ui.AddBox}" Click="AddBox_Click" />
-                                <Button Content="{StaticResource Ui.AddCylinder}" Click="AddCylinder_Click" />
-                                <Button Content="{StaticResource Ui.Delete}" Click="DeleteCommand_Click" />
-                            </StackPanel>
-                            <ListBox x:Name="CommandList" Margin="2" DisplayMemberPath="Name"
-                                     SelectionChanged="CommandList_SelectionChanged" />
+                            <Button DockPanel.Dock="Bottom" Content="{DynamicResource Ui.Delete}" Click="DeleteCommand_Click" HorizontalAlignment="Right" />
+                            <ListBox x:Name="CommandList" Margin="2" SelectionMode="Extended"
+                                     SelectionChanged="CommandList_SelectionChanged">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Type}" FontSize="10" Foreground="{StaticResource Brush.Muted}" />
+                                            </StackPanel>
+                                            <CheckBox Grid.Column="1" IsChecked="{Binding IsEnabled}" IsHitTestVisible="False" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
                         </DockPanel>
                     </GroupBox>
-                    <GridSplitter Grid.Row="1" Height="6" HorizontalAlignment="Stretch" VerticalAlignment="Center" Background="#CBD5E1" />
-                    <GroupBox Grid.Row="2" Header="{StaticResource Ui.Parameters}" Margin="4">
+                    <GridSplitter Grid.Row="3" Height="6" HorizontalAlignment="Stretch" Background="{StaticResource Brush.Border}" />
+                    <GroupBox Grid.Row="4" Header="{DynamicResource Ui.Parameters}" Margin="0">
                         <DockPanel>
                             <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right">
-                                <Button Content="{StaticResource Ui.AddParameter}" Click="AddParameter_Click" />
-                                <Button Content="{StaticResource Ui.Delete}" Click="DeleteParameter_Click" />
+                                <Button Content="{DynamicResource Ui.AddParameter}" Click="AddParameter_Click" />
+                                <Button Content="{DynamicResource Ui.Delete}" Click="DeleteParameter_Click" />
                             </StackPanel>
                             <DataGrid x:Name="ParameterGrid" Margin="2" SelectionMode="Single"
                                       BeginningEdit="ParameterGrid_BeginningEdit"
                                       CellEditEnding="ParameterGrid_CellEditEnding">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="{StaticResource Ui.ParameterName}" Binding="{Binding Name}" IsReadOnly="True" Width="95" />
-                                    <DataGridTextColumn Header="{StaticResource Ui.Expression}" Binding="{Binding Expression}" SortMemberPath="Expression" Width="*" />
-                                    <DataGridTextColumn Header="{StaticResource Ui.Unit}" Binding="{Binding Unit}" IsReadOnly="True" Width="52" />
+                                    <DataGridTextColumn Header="{DynamicResource Ui.ParameterName}" Binding="{Binding Name}" SortMemberPath="Name" Width="95" />
+                                    <DataGridTextColumn Header="{DynamicResource Ui.Expression}" Binding="{Binding Expression}" SortMemberPath="Expression" Width="*" />
+                                    <DataGridTextColumn Header="{DynamicResource Ui.Unit}" Binding="{Binding Unit}" SortMemberPath="Unit" Width="55" />
                                 </DataGrid.Columns>
                             </DataGrid>
                         </DockPanel>
@@ -112,79 +172,104 @@
                 </Grid>
             </Border>
 
-            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="#CBD5E1" />
-            <Border Grid.Column="2" Margin="4" Background="#111827" BorderBrush="#CBD5E1" BorderThickness="1">
-                <occt:OcctWpfViewport x:Name="Viewport" />
-            </Border>
-            <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="#CBD5E1" />
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="{StaticResource Brush.Border}" />
 
-            <Border Grid.Column="4" Margin="4" Background="White" BorderBrush="#CBD5E1" BorderThickness="1">
-                <Grid Margin="8">
+            <Border Grid.Column="2" Margin="5" Background="#101827" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1">
+                <Grid>
+                    <occt:OcctWpfViewport x:Name="Viewport" />
+                    <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8" Padding="4"
+                            Background="#DDF8FAFC" CornerRadius="3">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="{DynamicResource Ui.Isometric}" Click="Isometric_Click" />
+                            <Button Content="{DynamicResource Ui.Front}" Click="Front_Click" />
+                            <Button Content="{DynamicResource Ui.Top}" Click="Top_Click" />
+                            <Button Content="{DynamicResource Ui.Fit}" Click="Fit_Click" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="{StaticResource Brush.Border}" />
+
+            <Border Grid.Column="4" Margin="5" Style="{StaticResource PanelBorderStyle}">
+                <Grid Margin="10">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <TextBlock Text="{StaticResource Ui.Properties}" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8" />
+                    <TextBlock Text="{DynamicResource Ui.Properties}" Style="{StaticResource SectionTitleStyle}" />
                     <Grid Grid.Row="1">
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="72" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                        <TextBlock Text="{StaticResource Ui.Name}" VerticalAlignment="Center" />
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="82" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                        <TextBlock Text="{DynamicResource Ui.Name}" VerticalAlignment="Center" />
                         <TextBox Grid.Column="1" Text="{Binding SelectedItem.Name, ElementName=CommandList, UpdateSourceTrigger=LostFocus}"
-                                 LostFocus="CommandName_LostFocus" />
+                                 GotKeyboardFocus="CommandName_GotKeyboardFocus" LostFocus="CommandName_LostFocus" />
+                        <TextBlock Grid.Row="1" Text="{DynamicResource Ui.Type}" VerticalAlignment="Center" />
+                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SelectedItem.Type, ElementName=CommandList}" IsReadOnly="True" />
+                        <TextBlock Grid.Row="2" Text="{DynamicResource Ui.Output}" VerticalAlignment="Center" />
+                        <TextBox x:Name="OutputTopologyText" Grid.Row="2" Grid.Column="1" IsReadOnly="True" />
                     </Grid>
                     <StackPanel Grid.Row="2">
-                        <CheckBox Margin="2,4" Content="{StaticResource Ui.Enabled}"
+                        <CheckBox Margin="2,5" Content="{DynamicResource Ui.Enabled}"
                                   IsChecked="{Binding SelectedItem.IsEnabled, ElementName=CommandList, Mode=TwoWay}"
                                   Click="CommandEnabled_Click" />
-                        <GroupBox Header="{StaticResource Ui.Transform}" Margin="0,4,0,8">
-                            <Grid Margin="4">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="78" /><ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="78" /><ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <TextBlock Text="{StaticResource Ui.PositionX}" VerticalAlignment="Center" />
-                                <TextBox Grid.Column="1" Text="{Binding SelectedItem.Transform.X, ElementName=CommandList, UpdateSourceTrigger=LostFocus}" LostFocus="Transform_LostFocus" />
-                                <TextBlock Grid.Column="2" Text="{StaticResource Ui.RotationX}" VerticalAlignment="Center" />
-                                <TextBox Grid.Column="3" Text="{Binding SelectedItem.Transform.RotationX, ElementName=CommandList, UpdateSourceTrigger=LostFocus}" LostFocus="Transform_LostFocus" />
-                                <TextBlock Grid.Row="1" Text="{StaticResource Ui.PositionY}" VerticalAlignment="Center" />
-                                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SelectedItem.Transform.Y, ElementName=CommandList, UpdateSourceTrigger=LostFocus}" LostFocus="Transform_LostFocus" />
-                                <TextBlock Grid.Row="1" Grid.Column="2" Text="{StaticResource Ui.RotationY}" VerticalAlignment="Center" />
-                                <TextBox Grid.Row="1" Grid.Column="3" Text="{Binding SelectedItem.Transform.RotationY, ElementName=CommandList, UpdateSourceTrigger=LostFocus}" LostFocus="Transform_LostFocus" />
-                                <TextBlock Grid.Row="2" Text="{StaticResource Ui.PositionZ}" VerticalAlignment="Center" />
-                                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding SelectedItem.Transform.Z, ElementName=CommandList, UpdateSourceTrigger=LostFocus}" LostFocus="Transform_LostFocus" />
-                                <TextBlock Grid.Row="2" Grid.Column="2" Text="{StaticResource Ui.RotationZ}" VerticalAlignment="Center" />
-                                <TextBox Grid.Row="2" Grid.Column="3" Text="{Binding SelectedItem.Transform.RotationZ, ElementName=CommandList, UpdateSourceTrigger=LostFocus}" LostFocus="Transform_LostFocus" />
-                                <TextBlock Grid.Row="3" Text="{StaticResource Ui.Scale}" VerticalAlignment="Center" />
-                                <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding SelectedItem.Transform.Scale, ElementName=CommandList, UpdateSourceTrigger=LostFocus}" LostFocus="Transform_LostFocus" />
-                            </Grid>
-                        </GroupBox>
+                        <TextBlock x:Name="SelectedCommandDescription" TextWrapping="Wrap" Margin="2,2,2,6"
+                                   Style="{StaticResource MutedTextStyle}" />
                     </StackPanel>
-                    <GroupBox Grid.Row="3" Header="{StaticResource Ui.Field}">
-                        <DataGrid x:Name="PropertyGrid" Margin="4"
+                    <GroupBox Grid.Row="3" Header="{DynamicResource Ui.Transform}" Margin="0,2,0,8">
+                        <Grid Margin="4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="72" /><ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="82" /><ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="{DynamicResource Ui.PositionX}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="{Binding SelectedItem.Transform.X, ElementName=CommandList, UpdateSourceTrigger=LostFocus}" GotKeyboardFocus="Transform_GotKeyboardFocus" LostFocus="Transform_LostFocus" />
+                            <TextBlock Grid.Column="2" Text="{DynamicResource Ui.RotationX}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="3" Text="{Binding SelectedItem.Transform.RotationX, ElementName=CommandList, UpdateSourceTrigger=LostFocus}" GotKeyboardFocus="Transform_GotKeyboardFocus" LostFocus="Transform_LostFocus" />
+                            <TextBlock Grid.Row="1" Text="{DynamicResource Ui.PositionY}" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SelectedItem.Transform.Y, ElementName=CommandList, UpdateSourceTrigger=LostFocus}" GotKeyboardFocus="Transform_GotKeyboardFocus" LostFocus="Transform_LostFocus" />
+                            <TextBlock Grid.Row="1" Grid.Column="2" Text="{DynamicResource Ui.RotationY}" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="1" Grid.Column="3" Text="{Binding SelectedItem.Transform.RotationY, ElementName=CommandList, UpdateSourceTrigger=LostFocus}" GotKeyboardFocus="Transform_GotKeyboardFocus" LostFocus="Transform_LostFocus" />
+                            <TextBlock Grid.Row="2" Text="{DynamicResource Ui.PositionZ}" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding SelectedItem.Transform.Z, ElementName=CommandList, UpdateSourceTrigger=LostFocus}" GotKeyboardFocus="Transform_GotKeyboardFocus" LostFocus="Transform_LostFocus" />
+                            <TextBlock Grid.Row="2" Grid.Column="2" Text="{DynamicResource Ui.RotationZ}" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="2" Grid.Column="3" Text="{Binding SelectedItem.Transform.RotationZ, ElementName=CommandList, UpdateSourceTrigger=LostFocus}" GotKeyboardFocus="Transform_GotKeyboardFocus" LostFocus="Transform_LostFocus" />
+                            <TextBlock Grid.Row="3" Text="{DynamicResource Ui.Scale}" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding SelectedItem.Transform.Scale, ElementName=CommandList, UpdateSourceTrigger=LostFocus}" GotKeyboardFocus="Transform_GotKeyboardFocus" LostFocus="Transform_LostFocus" />
+                        </Grid>
+                    </GroupBox>
+                    <GroupBox Grid.Row="4" Header="{DynamicResource Ui.Fields}" Margin="0">
+                        <DataGrid x:Name="PropertyGrid" Margin="3"
                                   BeginningEdit="PropertyGrid_BeginningEdit"
                                   CellEditEnding="PropertyGrid_CellEditEnding">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="{StaticResource Ui.Field}" Binding="{Binding Name}" IsReadOnly="True" Width="90" />
-                                <DataGridTextColumn Header="{StaticResource Ui.Expression}" Binding="{Binding Expression}" SortMemberPath="Expression" Width="*" />
-                                <DataGridTextColumn Header="{StaticResource Ui.Unit}" Binding="{Binding UnitType}" IsReadOnly="True" Width="55" />
+                                <DataGridTextColumn Header="{DynamicResource Ui.Field}" Binding="{Binding DisplayName}" IsReadOnly="True" Width="105" />
+                                <DataGridTextColumn Header="{DynamicResource Ui.Value}" Binding="{Binding ValueText}" SortMemberPath="ValueText" Width="*" />
+                                <DataGridTextColumn Header="{DynamicResource Ui.Type}" Binding="{Binding TypeText}" IsReadOnly="True" Width="80" />
+                                <DataGridTextColumn Header="{DynamicResource Ui.Unit}" Binding="{Binding UnitText}" IsReadOnly="True" Width="55" />
                             </DataGrid.Columns>
                         </DataGrid>
                     </GroupBox>
+                    <TextBlock Grid.Row="5" Text="{DynamicResource Ui.ReferenceHint}" Margin="2,7,2,0"
+                               TextWrapping="Wrap" Style="{StaticResource MutedTextStyle}" />
                 </Grid>
             </Border>
 
-            <GridSplitter Grid.Row="1" Grid.ColumnSpan="5" Height="5" HorizontalAlignment="Stretch" VerticalAlignment="Center" Background="#CBD5E1" />
-            <GroupBox Grid.Row="2" Grid.ColumnSpan="5" Header="{StaticResource Ui.Messages}" Margin="4">
-                <DataGrid x:Name="BuildMessageGrid" Margin="4" IsReadOnly="True">
+            <GridSplitter Grid.Row="1" Grid.ColumnSpan="5" Height="5" HorizontalAlignment="Stretch" Background="{StaticResource Brush.Border}" />
+            <GroupBox Grid.Row="2" Grid.ColumnSpan="5" Header="{DynamicResource Ui.Messages}" Margin="5">
+                <DataGrid x:Name="BuildMessageGrid" Margin="3" IsReadOnly="True">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="{StaticResource Ui.Level}" Binding="{Binding Level}" Width="80" />
-                        <DataGridTextColumn Header="{StaticResource Ui.Source}" Binding="{Binding Source}" Width="180" />
-                        <DataGridTextColumn Header="{StaticResource Ui.Message}" Binding="{Binding Message}" Width="*" />
+                        <DataGridTextColumn Header="{DynamicResource Ui.Level}" Binding="{Binding Level}" Width="90" />
+                        <DataGridTextColumn Header="{DynamicResource Ui.Source}" Binding="{Binding Source}" Width="200" />
+                        <DataGridTextColumn Header="{DynamicResource Ui.Message}" Binding="{Binding Message}" Width="*" />
                     </DataGrid.Columns>
                 </DataGrid>
             </GroupBox>
