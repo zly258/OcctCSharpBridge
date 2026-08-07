@@ -1,0 +1,21 @@
+{
+  "format": "OcctScript.Document",
+  "version": 1,
+  "id": "aa4b25c1-6257-56ba-a51e-cdb77bef06f8",
+  "name": "08-Edge-Features",
+  "description": "Fillet, chamfer and shell examples. Topology indices are zero-based.",
+  "lengthUnit": "mm",
+  "angleUnit": "deg",
+  "parameters": [
+    { "id": "c3030c19-fe45-5dd7-8960-b43fb5fd17c9", "name": "W", "type": "length", "expression": "900", "unit": "mm" },
+    { "id": "900674aa-48fb-5580-be46-6b897b5742bf", "name": "D", "type": "length", "expression": "650", "unit": "mm" },
+    { "id": "6ccdca8f-38f1-5294-98d5-f9c80cd0d852", "name": "H", "type": "length", "expression": "500", "unit": "mm" }
+  ],
+  "commands": [
+    { "id": "9ca646a6-8c83-5f55-a42c-ed7a32e9d56d", "type": "Box", "name": "Base", "order": 10, "fields": { "width": { "expression": "W" }, "depth": { "expression": "D" }, "height": { "expression": "H" } } },
+    { "id": "49d4cea5-2423-5294-ac02-fb79d75f2544", "type": "Fillet", "name": "Rounded", "order": 20, "fields": { "shape": { "referenceId": "9ca646a6-8c83-5f55-a42c-ed7a32e9d56d" }, "edgeIndices": { "literal": "0,1,2,3" }, "radius": { "expression": "45" } } },
+    { "id": "ffae5140-799a-589f-ada1-a7914418ebed", "type": "Chamfer", "name": "Chamfered", "order": 30, "fields": { "shape": { "referenceId": "9ca646a6-8c83-5f55-a42c-ed7a32e9d56d" }, "edgeIndices": { "literal": "4,5" }, "distance": { "expression": "35" } }, "transform": { "x": 1200, "y": 0, "z": 0, "rotationX": 0, "rotationY": 0, "rotationZ": 0, "scale": 1 } },
+    { "id": "d6d7abf1-5590-5178-be07-43cb2d310f39", "type": "Shell", "name": "Hollow", "order": 40, "fields": { "solid": { "referenceId": "9ca646a6-8c83-5f55-a42c-ed7a32e9d56d" }, "faceIndices": { "literal": "1" }, "thickness": { "expression": "-30" }, "tolerance": { "expression": "0.0001" } }, "transform": { "x": 2400, "y": 0, "z": 0, "rotationX": 0, "rotationY": 0, "rotationZ": 0, "scale": 1 } }
+  ],
+  "outputCommandIds": ["49d4cea5-2423-5294-ac02-fb79d75f2544", "ffae5140-799a-589f-ada1-a7914418ebed", "d6d7abf1-5590-5178-be07-43cb2d310f39"]
+}

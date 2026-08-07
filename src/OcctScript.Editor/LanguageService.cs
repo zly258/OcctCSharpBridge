@@ -18,15 +18,12 @@ internal static class LanguageService
         for (var index = resources.Count - 1; index >= 0; index--)
         {
             var source = resources[index].Source?.OriginalString ?? string.Empty;
-            if (source.Contains("Strings.en-US.xaml", StringComparison.OrdinalIgnoreCase) ||
-                source.Contains("Strings.zh-CN.xaml", StringComparison.OrdinalIgnoreCase))
+            if (source.Contains("Resources/Strings.", StringComparison.OrdinalIgnoreCase))
                 resources.RemoveAt(index);
         }
 
-        resources.Add(new ResourceDictionary
-        {
-            Source = new Uri($"Resources/Strings.{cultureName}.xaml", UriKind.Relative)
-        });
+        resources.Add(new ResourceDictionary { Source = new Uri($"Resources/Strings.{cultureName}.xaml", UriKind.Relative) });
+        resources.Add(new ResourceDictionary { Source = new Uri($"Resources/Strings.Script.{cultureName}.xaml", UriKind.Relative) });
         CurrentCulture = cultureName;
         var culture = CultureInfo.GetCultureInfo(cultureName);
         CultureInfo.DefaultThreadCurrentCulture = culture;

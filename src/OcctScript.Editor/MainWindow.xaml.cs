@@ -1,11 +1,7 @@
 ﻿using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Globalization;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
-using Microsoft.Win32;
 using OcctNet;
 using OcctScript.Application;
 using OcctScript.Application.History;
@@ -61,6 +57,7 @@ public partial class MainWindow : Window
 
         RegisterInputBindings();
         ApplyLanguage(LanguageService.English);
+        InstallDynamicMenus();
         PopulateCommandCatalog();
         CreateNewDocument();
     }
@@ -80,18 +77,14 @@ public partial class MainWindow : Window
         if (Viewport.Engine.IsInitialized) InitializeViewport();
     }
 
-    private void Viewport_EngineInitialized(object? sender, EventArgs e) =>
-        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(InitializeViewport));
+    private void Viewport_EngineInitialized(object? sender, EventArgs e) => Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(InitializeViewport));
 
     private void InitializeViewport()
     {
         if (viewportReady || !Viewport.Engine.IsInitialized) return;
         viewportReady = true;
         var engine = Viewport.Engine;
-        engine.SetGradientBackground(
-            DrawingColor.FromArgb(248, 250, 252),
-            DrawingColor.FromArgb(203, 213, 225),
-            OcctGradientFillMethod.Vertical);
+        engine.SetGradientBackground(DrawingColor.FromArgb(248, 250, 252), DrawingColor.FromArgb(203, 213, 225), OcctGradientFillMethod.Vertical);
         engine.SetDisplayMode(OcctDisplayMode.Shaded);
         engine.SetTriedronVisible(true);
         engine.SetViewCubeVisible(true);

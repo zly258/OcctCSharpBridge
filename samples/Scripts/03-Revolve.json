@@ -1,0 +1,19 @@
+{
+  "format": "OcctScript.Document",
+  "version": 1,
+  "id": "905c1eac-4da7-5bf8-81b1-62ced5d55281",
+  "name": "03-Revolve",
+  "description": "Closed profile revolved into a solid.",
+  "lengthUnit": "mm",
+  "angleUnit": "deg",
+  "parameters": [
+    { "id": "4c9fa90a-f82a-546c-b8a0-98bbb75270fc", "name": "Radius", "type": "length", "expression": "300", "unit": "mm" },
+    { "id": "c65953bc-48d2-53d6-a93f-884b07b1a963", "name": "Height", "type": "length", "expression": "700", "unit": "mm" }
+  ],
+  "commands": [
+    { "id": "cdb13aa1-b79f-5664-a513-620c9f0ca9ec", "type": "Polyline", "name": "Profile", "order": 10, "fields": { "points": { "literal": "Radius,0,0; Radius+140,0,0; Radius+140,0,Height; Radius,0,Height" }, "closed": { "literal": "true" } } },
+    { "id": "ad2efa8d-7994-5d41-b1b8-d3ab47791f26", "type": "Face", "name": "ProfileFace", "order": 20, "fields": { "profile": { "referenceId": "cdb13aa1-b79f-5664-a513-620c9f0ca9ec" } } },
+    { "id": "24ce9f40-d134-5417-9062-f3174522aa64", "type": "Revolve", "name": "RevolvedBody", "order": 30, "fields": { "profile": { "referenceId": "ad2efa8d-7994-5d41-b1b8-d3ab47791f26" }, "axisPoint": { "literal": "0,0,0" }, "axisDirection": { "literal": "0,0,1" }, "angle": { "expression": "360" } } }
+  ],
+  "outputCommandIds": ["24ce9f40-d134-5417-9062-f3174522aa64"]
+}

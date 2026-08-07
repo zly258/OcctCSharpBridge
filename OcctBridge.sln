@@ -5,8 +5,13 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") = "Solution Items", "Solution Items", "{CBACB41C-6B78-4FD8-9F3B-D7AF292A17D9}"
     ProjectSection(SolutionItems) = preProject
         .gitignore = .gitignore
+        Directory.Build.props = Directory.Build.props
         build.ps1 = build.ps1
         docs\API_COVERAGE.md = docs\API_COVERAGE.md
+        docs\API_COVERAGE.zh-CN.md = docs\API_COVERAGE.zh-CN.md
+        docs\script\README.md = docs\script\README.md
+        docs\script\COMMANDS.md = docs\script\COMMANDS.md
+        docs\script\JSON_FORMAT.md = docs\script\JSON_FORMAT.md
         LICENSE = LICENSE
         README.zh-CN.md = README.zh-CN.md
         README.md = README.md
@@ -31,6 +36,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctScript.Geometry", "src\OcctScript.Geometry\OcctScript.Geometry.csproj", "{71BF738A-4C62-4806-954F-4FEAE714B105}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctScript.Editor", "src\OcctScript.Editor\OcctScript.Editor.csproj", "{C1B5AFA9-6D44-4A12-9F40-EC3B13C6B106}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctScript.Smoke", "tests\OcctScript.Smoke\OcctScript.Smoke.csproj", "{6D70F6A8-C46A-47CE-8EBA-3B9117EBB107}"
 EndProject
 Global
     GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -78,6 +85,10 @@ Global
         {C1B5AFA9-6D44-4A12-9F40-EC3B13C6B106}.Debug|x64.Build.0 = Debug|x64
         {C1B5AFA9-6D44-4A12-9F40-EC3B13C6B106}.Release|x64.ActiveCfg = Release|x64
         {C1B5AFA9-6D44-4A12-9F40-EC3B13C6B106}.Release|x64.Build.0 = Release|x64
+        {6D70F6A8-C46A-47CE-8EBA-3B9117EBB107}.Debug|x64.ActiveCfg = Debug|x64
+        {6D70F6A8-C46A-47CE-8EBA-3B9117EBB107}.Debug|x64.Build.0 = Debug|x64
+        {6D70F6A8-C46A-47CE-8EBA-3B9117EBB107}.Release|x64.ActiveCfg = Release|x64
+        {6D70F6A8-C46A-47CE-8EBA-3B9117EBB107}.Release|x64.Build.0 = Release|x64
     EndGlobalSection
     GlobalSection(SolutionProperties) = preSolution
         HideSolutionNode = FALSE

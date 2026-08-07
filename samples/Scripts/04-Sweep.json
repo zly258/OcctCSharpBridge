@@ -1,0 +1,18 @@
+{
+  "format": "OcctScript.Document",
+  "version": 1,
+  "id": "ef04373f-8d3b-54c5-ae51-2f21834c1192",
+  "name": "04-Sweep",
+  "description": "Circular profile swept along a B-Spline spine.",
+  "lengthUnit": "mm",
+  "angleUnit": "deg",
+  "parameters": [
+    { "id": "f83324ee-b13a-5bbf-b114-ad73f287f074", "name": "PipeRadius", "type": "length", "expression": "70", "unit": "mm" }
+  ],
+  "commands": [
+    { "id": "6ab8e677-b422-5b79-862a-779d61aa4634", "type": "BSpline", "name": "Spine", "order": 10, "fields": { "points": { "literal": "0,0,0; 400,0,250; 800,350,500; 1200,350,900" }, "periodic": { "literal": "false" }, "tolerance": { "expression": "0.0000001" } } },
+    { "id": "2037fd5c-0977-510f-b6be-659e1bb1c336", "type": "Circle", "name": "Profile", "order": 20, "fields": { "center": { "literal": "0,0,0" }, "normal": { "literal": "1,0,0" }, "radius": { "expression": "PipeRadius" } } },
+    { "id": "72feafb5-0bca-5e24-8158-ad6abae4791f", "type": "Sweep", "name": "SweptBody", "order": 30, "fields": { "spine": { "referenceId": "6ab8e677-b422-5b79-862a-779d61aa4634" }, "profile": { "referenceId": "2037fd5c-0977-510f-b6be-659e1bb1c336" } } }
+  ],
+  "outputCommandIds": ["72feafb5-0bca-5e24-8158-ad6abae4791f"]
+}

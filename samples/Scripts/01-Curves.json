@@ -1,0 +1,24 @@
+{
+  "format": "OcctScript.Document",
+  "version": 1,
+  "id": "a1669b81-37b5-5fda-a908-57852bb904a4",
+  "name": "01-Curves",
+  "description": "Basic line and curve commands.",
+  "lengthUnit": "mm",
+  "angleUnit": "deg",
+  "parameters": [
+    { "id": "253ae526-4ad8-5bd2-b5d7-c6947318c8f9", "name": "L", "type": "length", "expression": "1000", "unit": "mm" },
+    { "id": "07bfbe9a-d7f7-5331-a8a0-7c4778cdc25f", "name": "R", "type": "length", "expression": "220", "unit": "mm" }
+  ],
+  "commands": [
+    { "id": "8945a671-be88-595f-b0c1-cae00e1fc4cb", "type": "Line", "name": "Line", "order": 10, "fields": { "start": { "literal": "0,0,0" }, "end": { "literal": "L,0,0" } } },
+    { "id": "a828da92-b50c-5316-bdcf-37c1b24f5d7e", "type": "Polyline", "name": "Polyline", "order": 20, "fields": { "points": { "literal": "0,150,0; L*0.35,350,0; L*0.7,180,0; L,400,0" }, "closed": { "literal": "false" } } },
+    { "id": "68baa984-1f9d-5999-8d32-c91992e99859", "type": "Circle", "name": "Circle", "order": 30, "fields": { "center": { "literal": "250,700,0" }, "normal": { "literal": "0,0,1" }, "radius": { "expression": "R" } } },
+    { "id": "45a29e3b-ac18-5391-a863-1caaec4ae8f8", "type": "Arc", "name": "Arc", "order": 40, "fields": { "start": { "literal": "600,650,0" }, "middle": { "literal": "800,850,0" }, "end": { "literal": "1000,650,0" } } },
+    { "id": "6c92bd5e-5e16-5003-acac-c28722ca824c", "type": "Ellipse", "name": "Ellipse", "order": 50, "fields": { "center": { "literal": "1350,250,0" }, "normal": { "literal": "0,0,1" }, "majorRadius": { "expression": "350" }, "minorRadius": { "expression": "180" } } },
+    { "id": "5fd75941-fe66-57d8-9c64-a2c4172111ac", "type": "RegularPolygon", "name": "Hexagon", "order": 60, "fields": { "center": { "literal": "1350,800,0" }, "normal": { "literal": "0,0,1" }, "xDirection": { "literal": "1,0,0" }, "radius": { "expression": "250" }, "sideCount": { "expression": "6" }, "makeFace": { "literal": "false" } } },
+    { "id": "fd88b51c-a8bf-548c-a60e-3924835fb14a", "type": "Bezier", "name": "Bezier", "order": 70, "fields": { "poles": { "literal": "1800,0,0; 2000,450,0; 2300,450,0; 2500,0,0" } } },
+    { "id": "d912c4b1-ca8f-55f9-998a-aacc10c3b4ce", "type": "BSpline", "name": "BSpline", "order": 80, "fields": { "points": { "literal": "1800,600,0; 1950,950,0; 2250,900,0; 2500,600,0" }, "periodic": { "literal": "false" }, "tolerance": { "expression": "0.0000001" } } }
+  ],
+  "outputCommandIds": ["8945a671-be88-595f-b0c1-cae00e1fc4cb", "a828da92-b50c-5316-bdcf-37c1b24f5d7e", "68baa984-1f9d-5999-8d32-c91992e99859", "45a29e3b-ac18-5391-a863-1caaec4ae8f8", "6c92bd5e-5e16-5003-acac-c28722ca824c", "5fd75941-fe66-57d8-9c64-a2c4172111ac", "fd88b51c-a8bf-548c-a60e-3924835fb14a", "d912c4b1-ca8f-55f9-998a-aacc10c3b4ce"]
+}

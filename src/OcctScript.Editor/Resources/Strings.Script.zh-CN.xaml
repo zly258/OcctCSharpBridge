@@ -1,0 +1,42 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+    <sys:String x:Key="Ui.Help">帮助</sys:String>
+    <sys:String x:Key="Ui.About">关于 OcctScript</sys:String>
+    <sys:String x:Key="Ui.Close">关闭</sys:String>
+    <sys:String x:Key="Ui.Required">必填</sys:String>
+    <sys:String x:Key="Ui.IndexHint">拓扑索引从 0 开始；多个索引使用逗号或分号分隔。</sys:String>
+    <sys:String x:Key="Category.Transform">变换</sys:String>
+    <sys:String x:Key="Command.Ellipse">椭圆</sys:String><sys:String x:Key="Description.Ellipse">根据圆心、法向和长短半径创建椭圆边。</sys:String>
+    <sys:String x:Key="Command.RegularPolygon">正多边形</sys:String><sys:String x:Key="Description.RegularPolygon">创建正多边形线框或平面。</sys:String>
+    <sys:String x:Key="Command.Bezier">Bezier 曲线</sys:String><sys:String x:Key="Description.Bezier">根据控制点创建 Bezier 曲线。</sys:String>
+    <sys:String x:Key="Command.BSpline">B-Spline 曲线</sys:String><sys:String x:Key="Description.BSpline">根据插值点创建 B-Spline 曲线。</sys:String>
+    <sys:String x:Key="Command.Cone">圆锥/圆台</sys:String><sys:String x:Key="Description.Cone">创建圆锥或圆台实体。</sys:String>
+    <sys:String x:Key="Command.Sphere">球体</sys:String><sys:String x:Key="Description.Sphere">创建球体实体。</sys:String>
+    <sys:String x:Key="Command.Torus">圆环体</sys:String><sys:String x:Key="Description.Torus">创建圆环体实体。</sys:String>
+    <sys:String x:Key="Command.Wedge">楔体</sys:String><sys:String x:Key="Description.Wedge">创建楔体实体。</sys:String>
+    <sys:String x:Key="Command.Compound">组合体</sys:String><sys:String x:Key="Description.Compound">将多个形体组合成一个 Compound。</sys:String>
+    <sys:String x:Key="Command.Sew">缝合曲面</sys:String><sys:String x:Key="Description.Sew">将多个面或壳缝合为连接形体。</sys:String>
+    <sys:String x:Key="Command.SolidFromShell">壳转实体</sys:String><sys:String x:Key="Description.SolidFromShell">由闭合壳创建实体。</sys:String>
+    <sys:String x:Key="Command.Fillet">倒圆角</sys:String><sys:String x:Key="Description.Fillet">按拓扑索引对实体边进行倒圆。</sys:String>
+    <sys:String x:Key="Command.Chamfer">倒角</sys:String><sys:String x:Key="Description.Chamfer">按拓扑索引对实体边进行倒角。</sys:String>
+    <sys:String x:Key="Command.Offset">偏移</sys:String><sys:String x:Key="Description.Offset">对面、壳或实体进行偏移。</sys:String>
+    <sys:String x:Key="Command.Shell">抽壳</sys:String><sys:String x:Key="Description.Shell">删除指定面并生成空心实体。</sys:String>
+    <sys:String x:Key="Command.Move">移动</sys:String><sys:String x:Key="Description.Move">创建引用形体的平移副本。</sys:String>
+    <sys:String x:Key="Command.RotateShape">旋转变换</sys:String><sys:String x:Key="Description.RotateShape">创建引用形体的旋转副本。</sys:String>
+    <sys:String x:Key="Command.ScaleShape">缩放变换</sys:String><sys:String x:Key="Description.ScaleShape">创建引用形体的等比例缩放副本。</sys:String>
+    <sys:String x:Key="Command.Mirror">镜像</sys:String><sys:String x:Key="Description.Mirror">按指定平面创建引用形体的镜像副本。</sys:String>
+    <sys:String x:Key="Field.Vector">向量</sys:String><sys:String x:Key="Field.PlanePoint">平面点</sys:String><sys:String x:Key="Field.PlaneNormal">平面法向</sys:String>
+    <sys:String x:Key="Field.MajorRadius">长半径</sys:String><sys:String x:Key="Field.MinorRadius">短半径</sys:String><sys:String x:Key="Field.Radius1">底半径</sys:String><sys:String x:Key="Field.Radius2">顶半径</sys:String>
+    <sys:String x:Key="Field.Dx">X 长度</sys:String><sys:String x:Key="Field.Dy">Y 长度</sys:String><sys:String x:Key="Field.Dz">Z 长度</sys:String><sys:String x:Key="Field.Ltx">顶部 X 长度</sys:String>
+    <sys:String x:Key="Field.Factor">比例</sys:String><sys:String x:Key="Field.SideCount">边数</sys:String><sys:String x:Key="Field.MakeFace">生成平面</sys:String><sys:String x:Key="Field.Periodic">周期</sys:String>
+    <sys:String x:Key="Field.Poles">控制点</sys:String><sys:String x:Key="Field.Shapes">形体</sys:String><sys:String x:Key="Field.Shell">壳</sys:String><sys:String x:Key="Field.Shape">形体</sys:String><sys:String x:Key="Field.Solid">实体</sys:String>
+    <sys:String x:Key="Field.EdgeIndices">边索引</sys:String><sys:String x:Key="Field.FaceIndices">面索引</sys:String><sys:String x:Key="Field.Offset">偏移量</sys:String><sys:String x:Key="Field.Thickness">厚度</sys:String>
+    <sys:String x:Key="About.Product">OcctScript 参数化编辑器</sys:String>
+    <sys:String x:Key="About.VersionLabel">初版</sys:String>
+    <sys:String x:Key="About.Version">0.1 Preview</sys:String>
+    <sys:String x:Key="About.Description">基于 OcctCSharpBridge 的轻量参数化 CAD 脚本编辑器。文档采用 JSON，不依赖 OCAF/XDE。</sys:String>
+    <sys:String x:Key="About.Technology">.NET 8 · WPF · Open CASCADE Technology 7.9.0</sys:String>
+    <sys:String x:Key="About.Bridge">OcctCSharpBridge 托管封装 2.5.0</sys:String>
+    <sys:String x:Key="About.Repository">仓库：zly258/OcctCSharpBridge</sys:String>
+</ResourceDictionary>

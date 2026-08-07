@@ -1,0 +1,21 @@
+{
+  "format": "OcctScript.Document",
+  "version": 1,
+  "id": "7439ffd3-8f32-577a-b3b1-c1205de2b7ea",
+  "name": "05-Loft",
+  "description": "Three circular sections lofted into a solid.",
+  "lengthUnit": "mm",
+  "angleUnit": "deg",
+  "parameters": [
+    { "id": "cb37e96c-86e8-5cd3-8bb1-92552237fa5c", "name": "R1", "type": "length", "expression": "180", "unit": "mm" },
+    { "id": "11015459-c49b-50a0-806a-927dfe19173e", "name": "R2", "type": "length", "expression": "280", "unit": "mm" },
+    { "id": "36231e21-3e19-57f4-9b6a-c2d765968146", "name": "R3", "type": "length", "expression": "120", "unit": "mm" }
+  ],
+  "commands": [
+    { "id": "a98906fe-b538-5a8e-ad26-c26f447e7663", "type": "Circle", "name": "Section1", "order": 10, "fields": { "center": { "literal": "0,0,0" }, "normal": { "literal": "0,0,1" }, "radius": { "expression": "R1" } } },
+    { "id": "31c23e99-7704-518b-be17-7911527d0937", "type": "Circle", "name": "Section2", "order": 20, "fields": { "center": { "literal": "0,0,400" }, "normal": { "literal": "0,0,1" }, "radius": { "expression": "R2" } } },
+    { "id": "d69d0959-c664-5e66-b4fd-d99d494b623a", "type": "Circle", "name": "Section3", "order": 30, "fields": { "center": { "literal": "0,0,800" }, "normal": { "literal": "0,0,1" }, "radius": { "expression": "R3" } } },
+    { "id": "fd5afab1-2e2d-5d0e-a48f-0163c91c1625", "type": "Loft", "name": "LoftBody", "order": 40, "fields": { "sections": { "referenceIds": ["a98906fe-b538-5a8e-ad26-c26f447e7663", "31c23e99-7704-518b-be17-7911527d0937", "d69d0959-c664-5e66-b4fd-d99d494b623a"] }, "makeSolid": { "literal": "true" }, "ruled": { "literal": "false" }, "tolerance": { "expression": "0.000001" } } }
+  ],
+  "outputCommandIds": ["fd5afab1-2e2d-5d0e-a48f-0163c91c1625"]
+}

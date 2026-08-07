@@ -1,16 +1,4 @@
-﻿using System.ComponentModel;
-using System.Globalization;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Threading;
-using Microsoft.Win32;
-using OcctNet;
-using OcctScript.Application;
-using OcctScript.Application.History;
-using OcctScript.Domain;
-using OcctScript.Geometry;
-using DrawingColor = System.Drawing.Color;
+﻿using OcctScript.Domain;
 
 namespace OcctScript.Editor;
 
@@ -20,11 +8,7 @@ public partial class MainWindow
     {
         var selectedType = (CommandCatalogCombo.SelectedItem as CommandCatalogItem)?.Type;
         var items = commandRegistry.GetAll()
-            .Select(definition => new CommandCatalogItem(
-                definition,
-                ResourceText(definition.DisplayNameKey),
-                ResourceText(definition.CategoryKey),
-                ResourceText(definition.DescriptionKey)))
+            .Select(definition => new CommandCatalogItem(definition, ResourceText(definition.DisplayNameKey), ResourceText(definition.CategoryKey), ResourceText(definition.DescriptionKey)))
             .OrderBy(x => x.Definition.Order)
             .ToArray();
         CommandCatalogCombo.ItemsSource = items;
@@ -54,7 +38,6 @@ public partial class MainWindow
             SelectedCommandDescription.Text = string.Empty;
             return;
         }
-
         var definition = commandRegistry.GetRequired(selectedCommand.Type);
         OutputTopologyText.Text = definition.OutputTopology.ToString();
         SelectedCommandDescription.Text = ResourceText(definition.DescriptionKey);
@@ -77,12 +60,16 @@ public partial class MainWindow
         }
     }
 
-    private string FieldHint(CommandFieldDefinition field) => field.FieldType switch
+    private string FieldHint(CommandFieldDefinition field)
     {
-        CommandFieldType.CommandReference or CommandFieldType.CommandReferenceList => ResourceText("Ui.ReferenceHint"),
-        CommandFieldType.Point3 or CommandFieldType.Vector3 or CommandFieldType.PointList => ResourceText("Ui.PointHint"),
-        _ => field.IsRequired ? "Required" : string.Empty
-    };
+        if (field.Name is "edgeIndices" or "faceIndices") return ResourceText("Ui.IndexHint");
+        return field.FieldType switch
+        {
+            CommandFieldType.CommandReference or CommandFieldType.CommandReferenceList => ResourceText("Ui.ReferenceHint"),
+            CommandFieldType.Point3 or CommandFieldType.Vector3 or CommandFieldType.PointList => ResourceText("Ui.PointHint"),
+            _ => field.IsRequired ? ResourceText("Ui.Required") : string.Empty
+        };
+    }
 
     private string FormatFieldValue(CommandValue value, CommandFieldType fieldType) => fieldType switch
     {

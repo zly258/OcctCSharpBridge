@@ -1,0 +1,22 @@
+{
+  "format": "OcctScript.Document",
+  "version": 1,
+  "id": "6f85aedf-b0c1-5f63-ac93-5c0e302047b6",
+  "name": "02-Extrude",
+  "description": "Wire to face to solid, plus edge to face extrusion.",
+  "lengthUnit": "mm",
+  "angleUnit": "deg",
+  "parameters": [
+    { "id": "172a1a24-23f6-5057-92ab-15d43192051b", "name": "Width", "type": "length", "expression": "1000", "unit": "mm" },
+    { "id": "6c16bb39-f53b-5760-931d-dd13b64846a4", "name": "Depth", "type": "length", "expression": "700", "unit": "mm" },
+    { "id": "3658adae-e67e-536e-a71f-79c173a82550", "name": "Height", "type": "length", "expression": "500", "unit": "mm" }
+  ],
+  "commands": [
+    { "id": "af133b1e-465d-575e-a572-a4027f4aa746", "type": "Rectangle", "name": "ProfileWire", "order": 10, "fields": { "origin": { "literal": "0,0,0" }, "xDirection": { "literal": "1,0,0" }, "normal": { "literal": "0,0,1" }, "width": { "expression": "Width" }, "height": { "expression": "Depth" } } },
+    { "id": "4859f3bf-2080-5d5e-b4df-149f85535e42", "type": "Face", "name": "ProfileFace", "order": 20, "fields": { "profile": { "referenceId": "af133b1e-465d-575e-a572-a4027f4aa746" } } },
+    { "id": "fd1b08d8-6e29-5ebd-9f04-e7df6afa198a", "type": "Extrude", "name": "Body", "order": 30, "fields": { "profile": { "referenceId": "4859f3bf-2080-5d5e-b4df-149f85535e42" }, "direction": { "literal": "0,0,1" }, "distance": { "expression": "Height" } } },
+    { "id": "407486ad-b3cd-5651-930c-30a2efb22b5d", "type": "Line", "name": "Edge", "order": 40, "fields": { "start": { "literal": "0,-250,0" }, "end": { "literal": "Width,-250,0" } } },
+    { "id": "7c3fa0d2-cb09-5500-b290-91da7d80380a", "type": "Extrude", "name": "SheetFromEdge", "order": 50, "fields": { "profile": { "referenceId": "407486ad-b3cd-5651-930c-30a2efb22b5d" }, "direction": { "literal": "0,0,1" }, "distance": { "expression": "Height*0.6" } } }
+  ],
+  "outputCommandIds": ["fd1b08d8-6e29-5ebd-9f04-e7df6afa198a", "7c3fa0d2-cb09-5500-b290-91da7d80380a"]
+}

@@ -1,0 +1,21 @@
+{
+  "format": "OcctScript.Document",
+  "version": 1,
+  "id": "01c42608-ba85-53ac-8bde-39c4caffec05",
+  "name": "06-Booleans",
+  "description": "Boolean cut followed by fuse.",
+  "lengthUnit": "mm",
+  "angleUnit": "deg",
+  "parameters": [
+    { "id": "f771043b-ee8a-59ca-b380-83c70ea457ca", "name": "Size", "type": "length", "expression": "700", "unit": "mm" },
+    { "id": "a0040bcf-25b5-5c44-a5f8-4a2d66e2e881", "name": "HoleRadius", "type": "length", "expression": "180", "unit": "mm" }
+  ],
+  "commands": [
+    { "id": "207a0891-a145-54aa-a3d8-141ae7723bba", "type": "Box", "name": "Base", "order": 10, "fields": { "width": { "expression": "Size" }, "depth": { "expression": "Size" }, "height": { "expression": "Size" } } },
+    { "id": "1b1bb8f2-e50b-534e-9ea3-68d33b3571fb", "type": "Cylinder", "name": "Tool", "order": 20, "fields": { "origin": { "literal": "Size/2,Size/2,-100" }, "axis": { "literal": "0,0,1" }, "radius": { "expression": "HoleRadius" }, "height": { "expression": "Size+200" } } },
+    { "id": "ff38dd00-e802-555c-8737-d5adf420a8bf", "type": "Cut", "name": "CutBody", "order": 30, "fields": { "left": { "referenceId": "207a0891-a145-54aa-a3d8-141ae7723bba" }, "right": { "referenceId": "1b1bb8f2-e50b-534e-9ea3-68d33b3571fb" }, "fuzzyValue": { "expression": "0" } } },
+    { "id": "454145d5-19d3-5d85-b1f7-911c5aa7f6db", "type": "Sphere", "name": "Sphere", "order": 40, "fields": { "center": { "literal": "Size*0.7,Size*0.7,Size*0.7" }, "radius": { "expression": "Size*0.38" } } },
+    { "id": "afbb7ac9-6448-54b7-a4c8-37640799866f", "type": "Fuse", "name": "FinalBody", "order": 50, "fields": { "left": { "referenceId": "ff38dd00-e802-555c-8737-d5adf420a8bf" }, "right": { "referenceId": "454145d5-19d3-5d85-b1f7-911c5aa7f6db" }, "fuzzyValue": { "expression": "0" } } }
+  ],
+  "outputCommandIds": ["afbb7ac9-6448-54b7-a4c8-37640799866f"]
+}

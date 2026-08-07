@@ -1,0 +1,22 @@
+{
+  "format": "OcctScript.Document",
+  "version": 1,
+  "id": "1b6bfbe8-5e5e-58bf-bcd6-1ab01cb6d507",
+  "name": "07-Primitives-Transforms",
+  "description": "Primitive solids plus explicit transform commands.",
+  "lengthUnit": "mm",
+  "angleUnit": "deg",
+  "parameters": [
+    { "id": "d27c6231-4a63-5985-8486-5bcf52c86718", "name": "R", "type": "length", "expression": "220", "unit": "mm" }
+  ],
+  "commands": [
+    { "id": "c2329c3b-c6a6-5db0-938f-11d6b61a660c", "type": "Cone", "name": "Cone", "order": 10, "fields": { "origin": { "literal": "0,0,0" }, "axis": { "literal": "0,0,1" }, "radius1": { "expression": "R" }, "radius2": { "expression": "R*0.45" }, "height": { "expression": "600" } } },
+    { "id": "38e48d3f-edd0-5a7d-977f-d41a32e1b0fc", "type": "Sphere", "name": "Sphere", "order": 20, "fields": { "center": { "literal": "700,0,250" }, "radius": { "expression": "R" } } },
+    { "id": "b101465f-75a7-575f-8bfe-acaa5c9072a4", "type": "Torus", "name": "Torus", "order": 30, "fields": { "center": { "literal": "1300,0,250" }, "axis": { "literal": "0,0,1" }, "majorRadius": { "expression": "R*1.7" }, "minorRadius": { "expression": "R*0.45" } } },
+    { "id": "d7337baf-7cd9-5342-9bb7-e92c78911d67", "type": "Wedge", "name": "Wedge", "order": 40, "fields": { "dx": { "expression": "600" }, "dy": { "expression": "400" }, "dz": { "expression": "350" }, "ltx": { "expression": "200" } }, "transform": { "x": 1800, "y": 0, "z": 0, "rotationX": 0, "rotationY": 0, "rotationZ": 0, "scale": 1 } },
+    { "id": "5e0e7349-f838-5f7f-a063-7df9137ab764", "type": "Move", "name": "MovedCone", "order": 50, "fields": { "shape": { "referenceId": "c2329c3b-c6a6-5db0-938f-11d6b61a660c" }, "vector": { "literal": "0,800,0" } } },
+    { "id": "81fc7cba-05b7-58cc-975b-334316f97a42", "type": "Mirror", "name": "MirroredSphere", "order": 60, "fields": { "shape": { "referenceId": "38e48d3f-edd0-5a7d-977f-d41a32e1b0fc" }, "planePoint": { "literal": "700,400,0" }, "planeNormal": { "literal": "0,1,0" } } },
+    { "id": "9dc7f770-0da1-5839-87d8-ce765bf05256", "type": "ScaleShape", "name": "ScaledTorus", "order": 70, "fields": { "shape": { "referenceId": "b101465f-75a7-575f-8bfe-acaa5c9072a4" }, "center": { "literal": "1300,0,250" }, "factor": { "expression": "1.25" } }, "transform": { "x": 0, "y": 800, "z": 0, "rotationX": 0, "rotationY": 0, "rotationZ": 0, "scale": 1 } }
+  ],
+  "outputCommandIds": ["d7337baf-7cd9-5342-9bb7-e92c78911d67", "5e0e7349-f838-5f7f-a063-7df9137ab764", "81fc7cba-05b7-58cc-975b-334316f97a42", "9dc7f770-0da1-5839-87d8-ce765bf05256"]
+}

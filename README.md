@@ -1,75 +1,163 @@
-﻿# OcctCSharpBridge
+﻿# OcctCSharpBridge · OcctScript
 
-[简体中文](README.zh-CN.md) · [WinForms/WPF demo](https://github.com/zly258/OcctCSharpBridge/tree/demo)
+[简体中文](README.zh-CN.md) · [main branch](https://github.com/zly258/OcctCSharpBridge/tree/main) · [demo branch](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
-A Windows x64 bridge from Open CASCADE Technology 7.9.0 to .NET 8. The reusable `main` branch contains only the native C ABI, managed wrapper, API checks, and interface inventory. WinForms and WPF applications are maintained on the `demo` branch.
+The `script` branch provides a usable first preview of **OcctScript**, a lightweight parametric CAD script editor built on the reusable `OcctCSharpBridge` wrapper.
 
-## Structure
+It keeps the low-level OCCT wrapper synchronized with `main`, while adding a JSON document model, parameters and expressions, dependency-driven command history, undo/redo, a WPF editor, bilingual UI, examples, and script smoke tests.
+
+OcctScript intentionally does **not** use OCAF/XDE. Documents, history and persistence belong to the application layer and are stored as readable JSON.
+
+## What is included
+
+- Windows x64, .NET 8 and Open CASCADE Technology 7.9.0.
+- WPF editor with embedded OCCT viewport.
+- English UI by default; switch to Simplified Chinese at runtime.
+- Versioned `.json` / `.ocsproj` document format.
+- Named parameters and expressions without `${...}` syntax.
+- Expression operators `+ - * / ^`, constants `PI` / `E`, and common math functions.
+- Metadata-driven command registry and property editor.
+- Command references, dependency sorting and circular-reference detection.
+- Topology-aware validation between commands.
+- Full rebuild from document history and document-level undo/redo.
+- Ready-to-open JSON samples under `samples/Scripts`.
+- `Help → About OcctScript`.
+- Script smoke tests using real `OcctModelingSession` geometry.
+
+## First-preview command set
+
+**Curves and wires:** `Vertex`, `Line`, `Polyline`, `Circle`, `Arc`, `Ellipse`, `RegularPolygon`, `Bezier`, `BSpline`, `Rectangle`, `Wire`
+
+**Surfaces:** `Face`, `PlaneFace`
+
+**Primitive and topology solids:** `Box`, `Cylinder`, `Cone`, `Sphere`, `Torus`, `Wedge`, `Compound`, `Sew`, `SolidFromShell`
+
+**Features:** `Extrude`, `Revolve`, `Sweep`, `Loft`, `Fillet`, `Chamfer`, `Offset`, `Shell`
+
+**Boolean:** `Fuse`, `Cut`, `Common`, `Section`
+
+**Explicit transforms:** `Move`, `RotateShape`, `ScaleShape`, `Mirror`
+
+Every command also has a generic post-build transform with X/Y/Z translation, X/Y/Z rotation and uniform scale.
+
+## Typical modeling chains
 
 ```text
-src/OcctNative         C++17 native bridge and stable C ABI
-src/OcctNet            UI-independent, type-safe .NET wrapper
-src/OcctNet.WinForms   Optional WinForms OCCT viewport control
-src/OcctNet.Wpf        Optional WPF OCCT viewport control
-tests            API consistency and native smoke scenarios
-docs             English and Chinese API inventories
+Line / Arc / Bezier / BSpline
+              ↓
+             Wire
+              ↓
+             Face
+              ↓
+           Extrude
+              ↓
+          Solid Body
+              ↓
+ Fillet / Chamfer / Shell
+              ↓
+       Boolean / Transform
 ```
 
-The wrapper provides two native session types:
+Other supported flows include edge → extruded face, profile → revolve, profile + spine → sweep, and multiple sections → loft.
 
-- `OcctEngine`: HWND viewer, AIS objects, selection, camera, display attributes, text, and dimensions.
-- `OcctViewportControl` is provided by `OcctNet.WinForms`; `OcctWpfViewport` is provided by `OcctNet.Wpf`.
-- `OcctModelingSession`: headless geometry, topology, algorithms, mesh, analysis, healing, and exchange.
+## Repository layout
 
-Batch color, transparency, visibility, display-mode, line-width, material, redisplay, and selection operations reduce repeated P/Invoke calls for large scenes. Viewport-state snapshots, selected-object fitting, reset operations, scene gravity points, and screen-to-plane projection support reusable CAD interaction tools. Exact analytic parameters plus curve/surface derivatives, periodicity and curvature support feature recognition, engineering rules and parametric reconstruction.
+```text
+src/OcctNative              C++17 OCCT bridge and stable C ABI
+src/OcctNet                 UI-independent managed wrapper
+src/OcctNet.WinForms        WinForms HWND viewport host
+src/OcctNet.Wpf             WPF viewport host
 
-The bridge intentionally excludes OCAF/XDE. Application documents, undo/redo, and JSON persistence belong to the consuming application rather than the geometry bridge.
+src/OcctScript.Domain       JSON document and command metadata
+src/OcctScript.Expressions  expression parser/evaluator
+src/OcctScript.Serialization JSON persistence
+src/OcctScript.Application  validation, parameters and undo/redo
+src/OcctScript.Geometry     dependency graph and OCCT builders
+src/OcctScript.Editor       WPF parametric editor
 
-## Compatibility contract
+samples/Scripts             ready-to-open JSON examples
+tests/OcctScript.Smoke      script/modeling smoke scenarios
+docs/script                 concise OcctScript documentation
+```
 
-- Required OCCT version: exactly `7.9.0`.
-- Managed target: `.NET 8`, Windows x64.
-- Bridge version: `2.5.0`; ABI: `2`.
-- Native bridge ABI: validated at runtime through `OcctBridgeInfo`.
-- Deploy `OcctNet.dll` and `OcctNative.dll` from the same build.
-- Native OCCT and third-party DLLs must be discoverable through the application directory or configured runtime paths.
+## Requirements
 
-## Build
+- Windows x64.
+- Visual Studio 2022 / MSVC.
+- .NET 8 SDK.
+- CMake 3.16 or newer.
+- Open CASCADE Technology 7.9.0 built for VC14 x64.
+- `OCCT_ROOT` pointing to the OCCT installation, or pass `-OcctRoot`.
+
+## Build the usable OcctScript preview
 
 ```powershell
-# Validate declarations, definitions, P/Invoke calling conventions, and API inventories.
-.\build.ps1 validate Release
-
-# Build the reusable managed wrapper.
-.\build.ps1 managed Release
-
-# Build native and managed components.
-.\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
-
-# Build and run native modeling smoke scenarios.
-.\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
+# Validates the bridge, builds native/managed/UI projects,
+# builds OcctScript.Editor, then builds and runs OcctScript.Smoke.
+.\build.ps1 script Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-## Reference
+Editor output:
 
-```xml
-<ItemGroup>
-  <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet\OcctNet.csproj" />
-  <!-- WinForms host. -->
-  <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet.WinForms\OcctNet.WinForms.csproj" />
-  <!-- WPF host; references the WinForms HWND host internally. -->
-  <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet.Wpf\OcctNet.Wpf.csproj" />
-</ItemGroup>
+```text
+src\OcctScript.Editor\bin\x64\Release\net8.0-windows\
 ```
 
-## API inventory
+`build.ps1 script` copies the matching `OcctNative.dll` into the editor and script-smoke output directories. Keep `OCCT_ROOT` configured when running so OCCT runtime DLLs can be resolved.
 
-- [English interface inventory](docs/API_COVERAGE.md)
+Build only the reusable managed wrapper with `./build.ps1 managed Release`.
+
+## Run the editor
+
+```powershell
+$env:OCCT_ROOT = "D:\tools\occt-vc144-64"
+.\src\OcctScript.Editor\bin\x64\Release\net8.0-windows\OcctScript.Editor.exe
+```
+
+The editor starts in English. Use **Language → 中文** to switch to Simplified Chinese.
+
+## Sample JSON
+
+Open any file in [`samples/Scripts`](samples/Scripts/README.md): `01-Curves.json`, `02-Extrude.json`, `03-Revolve.json`, `04-Sweep.json`, `05-Loft.json`, `06-Booleans.json`, `07-Primitives-Transforms.json`, `08-Edge-Features.json`.
+
+A minimal document is versioned and readable:
+
+```json
+{
+  "format": "OcctScript.Document",
+  "version": 1,
+  "name": "Example",
+  "lengthUnit": "mm",
+  "angleUnit": "deg",
+  "parameters": [],
+  "commands": [],
+  "outputCommandIds": []
+}
+```
+
+See [JSON format](docs/script/JSON_FORMAT.md) and [command reference](docs/script/COMMANDS.md).
+
+## Design boundaries of this first preview
+
+Included now: the basic line / surface / solid / feature workflow needed to create and reproduce ordinary parametric models.
+
+Intentionally excluded: steel/profile-specific generators; complex transition solids and specialized engineering sections; linear/circular/irregular arrays; a geometric-constraint sketch solver; OCAF/XDE document storage; assembly/product-structure authoring.
+
+These can be added later without changing the core JSON command model.
+
+## Bridge compatibility
+
+The synchronized wrapper targets OCCT `7.9.0`, .NET `8`, Windows x64, managed wrapper `2.5.0`, native ABI `2`.
+
+`OcctEngine` owns the interactive AIS/viewer session. `OcctModelingSession` owns headless geometry/topology/algorithm objects. OcctScript builds geometry in `OcctModelingSession` and copies resulting shapes into the WPF viewport.
+
+## Documentation
+
+- [OcctScript overview](docs/script/README.md)
+- [Command reference](docs/script/COMMANDS.md)
+- [JSON format](docs/script/JSON_FORMAT.md)
+- [OcctCSharpBridge API inventory](docs/API_COVERAGE.md)
 - [中文接口清单](docs/API_COVERAGE.zh-CN.md)
-
-Session disposal is idempotent and finalizer-safe. Instances still represent native mutable state and should not be used concurrently from multiple threads.
-
-`build.ps1 validate` fails when declarations, P/Invoke mappings, calling conventions, or inventory counts are stale. A scheduled workflow also verifies that reusable wrapper files remain identical between `main` and `demo`.
 
 ## License
 

@@ -1,6 +1,6 @@
 ﻿param(
     [Parameter(Position = 0)]
-    [ValidateSet("validate", "native", "managed", "smoke", "all")]
+    [ValidateSet("validate", "native", "managed", "smoke", "script", "all")]
     [string]$Target = "all",
 
     [Parameter(Position = 1)]
@@ -20,9 +20,7 @@ $OutputEncoding = $utf8
 $env:DOTNET_CLI_UI_LANGUAGE = "en-US"
 $env:VSLANG = "1033"
 
-if (Test-Path "$env:SystemRoot\System32\chcp.com") {
-    & "$env:SystemRoot\System32\chcp.com" 65001 | Out-Null
-}
+if (Test-Path "$env:SystemRoot\System32\chcp.com") { & "$env:SystemRoot\System32\chcp.com" 65001 | Out-Null }
 
 $Target = $Target.ToLowerInvariant()
 $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -35,6 +33,8 @@ $Projects = [ordered]@{
     WinForms = "src\OcctNet.WinForms\OcctNet.WinForms.csproj"
     Wpf = "src\OcctNet.Wpf\OcctNet.Wpf.csproj"
     Smoke = "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
+    ScriptEditor = "src\OcctScript.Editor\OcctScript.Editor.csproj"
+    ScriptSmoke = "tests\OcctScript.Smoke\OcctScript.Smoke.csproj"
 }
 
 $Checks = [ordered]@{
@@ -51,16 +51,12 @@ $Checks = [ordered]@{
 
 function Assert-Path {
     param([Parameter(Mandatory = $true)][string]$Path)
-    if (-not (Test-Path $Path)) {
-        throw "Required path was not found: $Path"
-    }
+    if (-not (Test-Path $Path)) { throw "Required path was not found: $Path" }
 }
 
 function Assert-Command {
     param([Parameter(Mandatory = $true)][string]$Name)
-    if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
-        throw "$Name was not found in PATH."
-    }
+    if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) { throw "$Name was not found in PATH." }
 }
 
 function Invoke-Checked {
@@ -70,9 +66,7 @@ function Invoke-Checked {
         [Parameter(Mandatory = $true)][string]$ErrorMessage
     )
     & $Command @Arguments
-    if ($LASTEXITCODE -ne 0) {
-        throw $ErrorMessage
-    }
+    if ($LASTEXITCODE -ne 0) { throw $ErrorMessage }
 }
 
 function Invoke-ContractChecks {
@@ -81,83 +75,42 @@ function Invoke-ContractChecks {
         Assert-Path $path
         Write-Host ("[{0}] Running {1}..." -f $check.Key.ToLowerInvariant(), $check.Value) -ForegroundColor Cyan
         & $path -RepositoryRoot $RepoRoot
-        if (-not $?) {
-            throw "$($check.Key) validation failed."
-        }
+        if (-not $?) { throw "$($check.Key) validation failed." }
     }
 }
 
 function Resolve-OcctConfiguration {
-    if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
-        throw "OCCT_ROOT is not configured. Pass -OcctRoot <path> or set the OCCT_ROOT environment variable."
-    }
-
+    if ([string]::IsNullOrWhiteSpace($OcctRoot)) { throw "OCCT_ROOT is not configured. Pass -OcctRoot <path> or set the OCCT_ROOT environment variable." }
     $script:OcctRoot = [System.IO.Path]::GetFullPath($OcctRoot)
     $script:OcctIncludeDir = Join-Path $script:OcctRoot "inc"
     $script:OcctLibDir = Join-Path $script:OcctRoot "win64\vc14\lib"
     $script:OcctBinDir = Join-Path $script:OcctRoot "win64\vc14\bin"
-
-    foreach ($path in @(
-        $script:OcctIncludeDir,
-        $script:OcctLibDir,
-        $script:OcctBinDir,
-        (Join-Path $script:OcctIncludeDir "Standard.hxx"),
-        (Join-Path $script:OcctLibDir "TKernel.lib"),
-        (Join-Path $script:OcctBinDir "TKernel.dll")
-    )) {
-        Assert-Path $path
-    }
+    foreach ($path in @($script:OcctIncludeDir, $script:OcctLibDir, $script:OcctBinDir, (Join-Path $script:OcctIncludeDir "Standard.hxx"), (Join-Path $script:OcctLibDir "TKernel.lib"), (Join-Path $script:OcctBinDir "TKernel.dll"))) { Assert-Path $path }
 }
 
 function Build-Native {
     Assert-Command "cmake"
     Resolve-OcctConfiguration
-
     Write-Host "[native] Configuring OCCT 7.9.0 bridge..." -ForegroundColor Cyan
-    Invoke-Checked "cmake" @(
-        "-S", $NativeSource,
-        "-B", $NativeBuild,
-        "-G", "Visual Studio 17 2022",
-        "-A", "x64",
-        "-DOCCT_ROOT=$script:OcctRoot",
-        "-DOCCT_INCLUDE_DIR=$script:OcctIncludeDir",
-        "-DOCCT_LIB_DIR=$script:OcctLibDir",
-        "-DOCCT_BIN_DIR=$script:OcctBinDir"
-    ) "CMake configure failed."
-
+    Invoke-Checked "cmake" @("-S", $NativeSource, "-B", $NativeBuild, "-G", "Visual Studio 17 2022", "-A", "x64", "-DOCCT_ROOT=$script:OcctRoot", "-DOCCT_INCLUDE_DIR=$script:OcctIncludeDir", "-DOCCT_LIB_DIR=$script:OcctLibDir", "-DOCCT_BIN_DIR=$script:OcctBinDir") "CMake configure failed."
     Write-Host "[native] Building $Configuration..." -ForegroundColor Cyan
-    Invoke-Checked "cmake" @(
-        "--build", $NativeBuild,
-        "--config", $Configuration,
-        "--parallel"
-    ) "Native build failed."
-
+    Invoke-Checked "cmake" @("--build", $NativeBuild, "--config", $Configuration, "--parallel") "Native build failed."
     Assert-Path $NativeDll
     Write-Host "Native: $NativeDll" -ForegroundColor Green
 }
 
 function Build-Project {
     param([Parameter(Mandatory = $true)][string]$Name)
-
     Assert-Command "dotnet"
     $relativePath = $Projects[$Name]
-    if ([string]::IsNullOrWhiteSpace($relativePath)) {
-        throw "Unknown project key: $Name"
-    }
-
+    if ([string]::IsNullOrWhiteSpace($relativePath)) { throw "Unknown project key: $Name" }
     $project = Join-Path $RepoRoot $relativePath
     Assert-Path $project
     $projectDirectory = Split-Path -Parent $project
     Remove-Item (Join-Path $projectDirectory "bin") -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item (Join-Path $projectDirectory "obj") -Recurse -Force -ErrorAction SilentlyContinue
-
     Write-Host "[$($Name.ToLowerInvariant())] Building $Configuration..." -ForegroundColor Cyan
-    Invoke-Checked "dotnet" @(
-        "build", $project,
-        "-c", $Configuration,
-        "-p:Platform=x64",
-        "--nologo"
-    ) "$Name build failed."
+    Invoke-Checked "dotnet" @("build", $project, "-c", $Configuration, "-p:Platform=x64", "--nologo") "$Name build failed."
 }
 
 function Build-Managed {
@@ -166,39 +119,52 @@ function Build-Managed {
     Build-Project "Wpf"
 }
 
-function Run-Smoke {
+function Copy-NativeToProjectOutput {
+    param([Parameter(Mandatory = $true)][string]$ProjectKey)
     Assert-Path $NativeDll
+    $project = Join-Path $RepoRoot $Projects[$ProjectKey]
+    $output = Join-Path (Split-Path -Parent $project) "bin\x64\$Configuration\net8.0-windows"
+    Assert-Path $output
+    Copy-Item $NativeDll (Join-Path $output "OcctNative.dll") -Force
+    return $output
+}
+
+function Run-Smoke {
     Build-Project "Smoke"
-
+    $smokeOutput = Copy-NativeToProjectOutput "Smoke"
     $smokeProject = Join-Path $RepoRoot $Projects.Smoke
-    $smokeOutput = Join-Path (Split-Path -Parent $smokeProject) "bin\x64\$Configuration\net8.0-windows"
-    Copy-Item $NativeDll (Join-Path $smokeOutput "OcctNative.dll") -Force
-
     $previousNativeDirectory = $env:OCCT_BRIDGE_NATIVE_DIR
     try {
         $env:OCCT_BRIDGE_NATIVE_DIR = $smokeOutput
         Write-Host "[smoke] Running native modeling scenarios..." -ForegroundColor Cyan
-        Invoke-Checked "dotnet" @(
-            "run",
-            "--project", $smokeProject,
-            "-c", $Configuration,
-            "-p:Platform=x64",
-            "--no-build"
-        ) "Smoke test failed."
+        Invoke-Checked "dotnet" @("run", "--project", $smokeProject, "-c", $Configuration, "-p:Platform=x64", "--no-build") "Smoke test failed."
     }
-    finally {
-        $env:OCCT_BRIDGE_NATIVE_DIR = $previousNativeDirectory
+    finally { $env:OCCT_BRIDGE_NATIVE_DIR = $previousNativeDirectory }
+}
+
+function Build-Script {
+    Build-Project "ScriptEditor"
+    $editorOutput = Copy-NativeToProjectOutput "ScriptEditor"
+    Write-Host "OcctScript editor: $editorOutput" -ForegroundColor Green
+}
+
+function Run-ScriptSmoke {
+    Build-Project "ScriptSmoke"
+    $smokeOutput = Copy-NativeToProjectOutput "ScriptSmoke"
+    $smokeProject = Join-Path $RepoRoot $Projects.ScriptSmoke
+    $previousNativeDirectory = $env:OCCT_BRIDGE_NATIVE_DIR
+    try {
+        $env:OCCT_BRIDGE_NATIVE_DIR = $smokeOutput
+        Write-Host "[script-smoke] Running parametric script scenarios..." -ForegroundColor Cyan
+        Invoke-Checked "dotnet" @("run", "--project", $smokeProject, "-c", $Configuration, "-p:Platform=x64", "--no-build") "OcctScript smoke test failed."
     }
+    finally { $env:OCCT_BRIDGE_NATIVE_DIR = $previousNativeDirectory }
 }
 
 Write-Host "Target:        $Target"
 Write-Host "Configuration: $Configuration"
-if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
-    Write-Host "OCCT root:     not configured (valid for validate/managed)" -ForegroundColor DarkGray
-}
-else {
-    Write-Host "OCCT root:     $OcctRoot" -ForegroundColor DarkGray
-}
+if ([string]::IsNullOrWhiteSpace($OcctRoot)) { Write-Host "OCCT root:     not configured (valid for validate/managed)" -ForegroundColor DarkGray }
+else { Write-Host "OCCT root:     $OcctRoot" -ForegroundColor DarkGray }
 
 Invoke-ContractChecks
 
@@ -206,15 +172,9 @@ switch ($Target) {
     "validate" { }
     "native" { Build-Native }
     "managed" { Build-Managed }
-    "smoke" {
-        Build-Native
-        Build-Managed
-        Run-Smoke
-    }
-    "all" {
-        Build-Native
-        Build-Managed
-    }
+    "smoke" { Build-Native; Build-Managed; Run-Smoke }
+    "script" { Build-Native; Build-Managed; Build-Script; Run-ScriptSmoke }
+    "all" { Build-Native; Build-Managed }
 }
 
 Write-Host "Build completed." -ForegroundColor Green
