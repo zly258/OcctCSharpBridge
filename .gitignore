@@ -70,8 +70,6 @@ project.assets.json
 *.ply
 *.gltf
 *.glb
-*.png
-*.bmp
 
 # OS files
 .DS_Store
