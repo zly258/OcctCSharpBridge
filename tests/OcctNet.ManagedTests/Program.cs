@@ -63,10 +63,10 @@ var viewerShapeA = new OcctShape(3, 2001);
 var viewerShapeB = new OcctShape(3, 2002);
 Assert(viewerShapeA.IsValid && viewerShapeB.IsValid, "Viewer shape validity regression.");
 Assert(viewerShapeA.OwnerId != viewerShapeB.OwnerId, "Viewer shape owner identity regression.");
+Assert(viewerShapeA.Kind == OcctObjectKind.Shape, "Viewer shape kind regression.");
 Assert(!default(OcctShape).IsValid, "Default viewer shape must be invalid.");
-Assert(new OcctObject(4, OcctObjectKind.Shape, 2001).IsValid, "Generic object binding regression.");
-Assert(new OcctText(5, 2001).IsValid, "Text binding regression.");
-Assert(new OcctDimension(6, 2001).IsValid, "Dimension binding regression.");
+Assert(new OcctText(5, 2001).Kind == OcctObjectKind.Text, "Text object kind regression.");
+Assert(new OcctDimension(6, 2001).Kind == OcctObjectKind.Dimension, "Dimension object kind regression.");
 
 var transform = OcctTransform3d.Translation(1, 2, 3);
 Assert(transform.IsFinite, "Transform finite-state regression.");

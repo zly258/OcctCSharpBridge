@@ -64,7 +64,7 @@ $canonicalContracts = [ordered]@{
     "src/OcctNet/OcctEngine.Selection.cs" = @(
         "public void Select(",
         "public void SelectRectangle(",
-        "public IReadOnlyList<OcctObject> SelectedObjects"
+        "public IReadOnlyList<IOcctObject> SelectedObjects"
     )
     "src/OcctNet/OcctEngine.Objects.cs" = @(
         "public IOcctObject GetObject(",
@@ -167,7 +167,8 @@ $forbiddenManagedTokens = @(
     "NativeHasUv",
     "NativeHasNormal",
     "NativeState",
-    "IsBound"
+    "IsBound",
+    "public readonly record struct OcctObject"
 )
 foreach ($token in $forbiddenManagedTokens) {
     if ($sourceText.Contains($token)) {
