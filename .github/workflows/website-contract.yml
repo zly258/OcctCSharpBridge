@@ -7,8 +7,6 @@ on:
     paths:
       - bridge-contract.json
       - .github/workflows/website-contract.yml
-  schedule:
-    - cron: "41 2 * * *"
   workflow_dispatch:
 
 permissions:
