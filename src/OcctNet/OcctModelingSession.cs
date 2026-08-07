@@ -12,15 +12,20 @@ public sealed partial class OcctModelingSession : IDisposable
     private static long s_nextOwnerId;
 
     private readonly long _ownerId = Interlocked.Increment(ref s_nextOwnerId);
+    private readonly OcctModelingSafeHandle _safeHandle;
     private IntPtr _handle;
 
     public OcctModelingSession()
     {
         OcctRuntime.Configure();
         OcctBridgeInfo.EnsureCompatible();
-        _handle = ModelNativeMethods.occt_model_create();
-        if (_handle == IntPtr.Zero)
+
+        var nativeHandle = ModelNativeMethods.occt_model_create();
+        if (nativeHandle == IntPtr.Zero)
             throw new OcctException("Unable to create the native OCCT modeling session.", nameof(OcctModelingSession));
+
+        _safeHandle = new OcctModelingSafeHandle(nativeHandle);
+        _handle = nativeHandle;
     }
 
     internal long OwnerId => _ownerId;
@@ -179,34 +184,11 @@ public sealed partial class OcctModelingSession : IDisposable
     }
 
     private void EnsureNotDisposed() =>
-        ObjectDisposedException.ThrowIf(Volatile.Read(ref _handle) == IntPtr.Zero, this);
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _handle) == IntPtr.Zero || _safeHandle.IsClosed, this);
 
     public void Dispose()
     {
-        ReleaseHandle(throwOnError: true);
-        GC.SuppressFinalize(this);
+        if (Interlocked.Exchange(ref _handle, IntPtr.Zero) == IntPtr.Zero) return;
+        _safeHandle.Dispose();
     }
-
-    private void ReleaseHandle(bool throwOnError)
-    {
-        var handle = Interlocked.Exchange(ref _handle, IntPtr.Zero);
-        if (handle == IntPtr.Zero) return;
-
-        if (throwOnError)
-        {
-            ModelNativeMethods.occt_model_destroy(handle);
-            return;
-        }
-
-        try
-        {
-            ModelNativeMethods.occt_model_destroy(handle);
-        }
-        catch
-        {
-            // Finalizers must not allow native unload failures to terminate the process.
-        }
-    }
-
-    ~OcctModelingSession() => ReleaseHandle(throwOnError: false);
 }
