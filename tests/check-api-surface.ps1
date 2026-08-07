@@ -18,6 +18,11 @@ $expectedModelingCount = [int]$contract.api.modeling
 
 $nativeRoot = Join-Path $RepositoryRoot "src\OcctNative"
 $managedRoot = Join-Path $RepositoryRoot "src\OcctNet"
+$publicManagedRoots = @(
+    $managedRoot,
+    (Join-Path $RepositoryRoot "src\OcctNet.WinForms"),
+    (Join-Path $RepositoryRoot "src\OcctNet.Wpf")
+)
 
 $headerFiles = @(
     Join-Path $nativeRoot "OcctNative.h"
@@ -25,7 +30,9 @@ $headerFiles = @(
     Join-Path $nativeRoot "OcctModeling.h"
 )
 $cppFiles = Get-ChildItem $nativeRoot -Filter "*.cpp" -File | Select-Object -ExpandProperty FullName
-$managedSourceFiles = Get-ChildItem $managedRoot -Filter "*.cs" -File | Select-Object -ExpandProperty FullName
+$managedSourceFiles = @($publicManagedRoots | ForEach-Object {
+    Get-ChildItem $_ -Filter "*.cs" -File | Select-Object -ExpandProperty FullName
+})
 $pinvokeFiles = Get-ChildItem $managedRoot -Filter "*NativeMethods*.cs" -File | Select-Object -ExpandProperty FullName
 
 foreach ($path in @($headerFiles + $cppFiles + $managedSourceFiles + $pinvokeFiles)) {
