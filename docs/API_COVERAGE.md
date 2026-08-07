@@ -5,9 +5,9 @@ This source-derived inventory lists the current native C ABI, C# P/Invoke mappin
 OCAF/XDE is intentionally excluded; documents, undo/redo, and JSON persistence are application-layer responsibilities.
 
 - OCCT: `7.9.0`
-- Native exports: `327`
-- Managed P/Invoke declarations: `327`
-- Public .NET types: `75`
+- Native exports: `328`
+- Managed P/Invoke declarations: `328`
+- Public .NET types: `76`
 
 ## API design and naming rules
 
@@ -211,7 +211,7 @@ Coverage includes:
 - `occt_bridge_version`
 - `occt_bridge_build_info`
 
-### OcctNative.h — Viewer and interaction (78)
+### OcctNative.h — Viewer and interaction (79)
 
 - `occt_auto_z_fit`
 - `occt_begin_update`
@@ -264,6 +264,7 @@ Coverage includes:
 - `occt_set_triedron_visible`
 - `occt_set_view`
 - `occt_set_view_cube_visible`
+- `occt_set_view_cube_language`
 - `occt_set_view_scale`
 - `occt_start_rotation`
 - `occt_window_fit`
@@ -622,6 +623,7 @@ Coverage includes:
 - `OcctSurfaceType`
 - `OcctUvBounds`
 - `OcctVector3d`
+- `OcctViewCubeLanguage`
 - `OcctViewOrientation`
 - `OcctZUpViewOrientation`
 
@@ -694,6 +696,7 @@ Coverage includes:
 - `OcctText`
 - `OcctUvBounds`
 - `OcctVector3d`
+- `OcctViewCubeLanguage`
 - `OcctViewOrientation`
 - `OcctZUpViewOrientation`
 - `OcctViewportControl`

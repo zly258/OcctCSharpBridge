@@ -82,6 +82,7 @@ public partial class MainWindow : System.Windows.Window
             _session.Engine.SetGradientBackground(DrawingColor.White, DrawingColor.FromArgb(202, 221, 238));
             _session.Engine.SetTriedronVisible(true);
             _session.Engine.SetViewCubeVisible(true);
+            ApplyViewCubeLanguage();
             _session.Engine.SetAntialiasing(true);
             _session.Engine.SetAutoZFitMode(true, 1.0);
             _session.Engine.SetSelectionTolerance(4);
@@ -872,6 +873,7 @@ public partial class MainWindow : System.Windows.Window
     {
         FontFamily = new System.Windows.Media.FontFamily(
             CadLocalization.CurrentLanguage == CadLanguage.ChineseSimplified ? "Microsoft YaHei UI" : "Segoe UI");
+        if (_session is not null) ExecuteSafe(ApplyViewCubeLanguage);
         Title = CadLocalization.Text("AppTitle.Wpf");
         ModelExplorerGroup.Header = CadLocalization.Text("Panel.ModelExplorer");
         PropertiesGroup.Header = CadLocalization.Text("Panel.Properties");
@@ -891,6 +893,15 @@ public partial class MainWindow : System.Windows.Window
         BuildToolbar();
         RefreshObjectTree();
         ShowObjectProperties(_session?.ActiveObject);
+    }
+
+    private void ApplyViewCubeLanguage()
+    {
+        if (_session is null) return;
+        _session.Engine.SetViewCubeLanguage(
+            CadLocalization.CurrentLanguage == CadLanguage.ChineseSimplified
+                ? OcctViewCubeLanguage.ChineseSimplified
+                : OcctViewCubeLanguage.English);
     }
 
     private void MainWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)

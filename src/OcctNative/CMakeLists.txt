@@ -39,6 +39,7 @@ add_library(OcctNative SHARED
     OcctView.cpp
     OcctViewportExtensions.cpp
     OcctViewportState.cpp
+    OcctViewCube.cpp
     OcctObjectBatch.cpp
     OcctDepth.cpp
     OcctQueries.cpp
