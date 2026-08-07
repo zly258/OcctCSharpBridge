@@ -10,13 +10,14 @@ OCAF/XDE is intentionally not used as the application document layer. Documents,
 
 - Windows x64
 - Open CASCADE Technology **7.9.0**, VC14 x64 layout
-- .NET SDK **8.0.423**, pinned by `global.json`
+- .NET SDK **10.0.302** for this branch, pinned by `global.json`
+- Target framework remains **`net8.0-windows`**
 - C# 12.0
 - CMake 3.21+
 - Avalonia `12.1.0`
 - Bridge version `2.5.0`, native ABI `2`
 
-`bridge-contract.json` is shared with `main` and is the authoritative source for Bridge/ABI/OCCT/.NET/API metadata. `global.json` fixes the SDK, while `Directory.Build.props` fixes the C# language/compiler policy. The `Wrapper Branch Sync` workflow verifies that these files and reusable wrapper sources stay synchronized with `main`.
+`bridge-contract.json` is shared with `main` and is the authoritative source for Bridge/ABI/OCCT/.NET/API metadata. It records both the core SDK used by `main` and the newer demo SDK required by Avalonia 12 analyzers. `global.json` is therefore intentionally branch-specific: `main` stays on .NET SDK 8.0.423, while `demo` uses 10.0.302. The target framework and C# language level remain .NET 8 and C# 12. `Wrapper Branch Sync` compares the reusable sources and shared contract, but deliberately does not compare `global.json`.
 
 ## Layering
 
@@ -125,6 +126,7 @@ Published packages include the selected application, matching managed wrapper/ho
 
 - `OCCT_ROOT is not configured`: set `$env:OCCT_ROOT` or pass `-OcctRoot` to a native target.
 - Native DLL load failure: rebuild with the correct OCCT SDK and ensure matching runtime dependencies are present.
+- Avalonia analyzer/compiler mismatch: use the branch-pinned .NET SDK from `global.json`; do not downgrade the target framework or disable analyzers.
 - Avalonia startup issue: inspect `src\CadAvalonia\bin\x64\<Configuration>\net8.0-windows\CAD-Avalonia.log`.
 - After API/host/menu changes, run `build.ps1 validate`; before pushing, prefer `build.ps1 ci`; use `build.ps1 smoke` when a real OCCT SDK is available.
 
