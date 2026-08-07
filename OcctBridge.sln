@@ -3,6 +3,14 @@
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") = "Solution Items", "Solution Items", "{CBACB41C-6B78-4FD8-9F3B-D7AF292A17D9}"
+    ProjectSection(SolutionItems) = preProject
+        .gitignore = .gitignore
+        build.ps1 = build.ps1
+        docs\API_COVERAGE.md = docs\API_COVERAGE.md
+        LICENSE = LICENSE
+        README.zh-CN.md = README.zh-CN.md
+        README.md = README.md
+    EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet", "src\OcctNet\OcctNet.csproj", "{217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3}"
 EndProject
