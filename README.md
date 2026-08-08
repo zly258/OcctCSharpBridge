@@ -2,7 +2,7 @@
 
 [Main SDK branch](https://github.com/zly258/OcctCSharpBridge/tree/main) · [简体中文](README.zh-CN.md) · [API coverage](docs/API_COVERAGE.md)
 
-The `demo` branch adds complete WinForms, WPF, and Avalonia CAD reference applications on top of the reusable bridge maintained with `main`. Shared native/.NET wrapper code and contract metadata are continuously compared with `main`; application UI, demo scenarios, run scripts, publishing, and package validation remain demo-only.
+The `demo` branch adds complete WinForms, WPF, and Avalonia CAD reference applications on top of the reusable bridge maintained with `main`. Shared native/.NET wrapper source and contract metadata are continuously compared with `main`; application UI, demo scenarios, run scripts, publishing, and application-package validation remain demo-only.
 
 Bridge **2.6.0 / ABI 3** is a breaking API cleanup. The demos use the canonical names directly; no compatibility alias layer is kept. Raw shape/object IDs are resolved through their owning `OcctEngine`/`OcctModelingSession`, managed modeling options use `bool`/enums, and the headless API includes OBB, topology identity, planar faces with holes, exact edge trimming, planar wire offset, and whole-shape mesh access.
 
@@ -21,6 +21,8 @@ OCAF/XDE is intentionally not used as the application document layer. Documents,
 
 `bridge-contract.json` is shared with `main` and is authoritative for Bridge/ABI/OCCT/.NET/API metadata. `global.json` is intentionally branch-specific: `main` uses .NET SDK 8.0.423, while `demo` uses 10.0.302 for Avalonia 12 analyzers. Both still target .NET 8 and C# 12.
 
+NuGet SDK packaging is intentionally **main-only**. The reusable projects on `demo` are explicitly non-packable; this branch packages runnable applications and their app-local Native dependency closure instead.
+
 ## Layering
 
 - `OcctNet`: interactive `OcctEngine`, headless `OcctModelingSession`, geometry/topology/analysis/mesh/exchange/runtime APIs.
@@ -33,6 +35,41 @@ OCAF/XDE is intentionally not used as the application document layer. Documents,
 Interactive objects use one typed abstraction: `IOcctObject` exposes `Id`, `Kind`, and `IsValid`, while actual instances are `OcctShape`, `OcctText`, or `OcctDimension`. There is no generic `OcctObject` wrapper and no public raw-ID constructor. CadCommon persists IDs but always resolves them through the owning `OcctEngine` before use.
 
 Avalonia remains a native Windows HWND host; the project does not claim Linux/macOS OCCT Viewer support.
+
+## Demo UI organization
+
+The three reference applications now use the same maintainable responsibility split instead of 50-60 KB monolithic window files:
+
+```text
+WinForms
+├─ MainForm.cs                 state, construction and event wiring
+├─ MainForm.Designer.cs        WinForms layout
+├─ MainForm.Layout.cs          splitter/startup layout policy
+├─ MainForm.Menus.cs           menus and toolbar
+├─ MainForm.Commands.cs        UI command actions
+├─ MainForm.Objects.cs         model tree and properties
+└─ MainForm.Localization.cs    bilingual UI
+
+WPF
+├─ MainWindow.xaml             layout and styles
+├─ MainWindow.xaml.cs          state, construction and event wiring
+├─ MainWindow.xaml.Menus.cs
+├─ MainWindow.xaml.Commands.cs
+├─ MainWindow.xaml.Objects.cs
+└─ MainWindow.xaml.Localization.cs
+
+Avalonia
+├─ MainWindow.cs               state, construction and event wiring
+├─ MainWindow.Layout.cs        programmatic layout
+├─ MainWindow.Menus.cs
+├─ MainWindow.Commands.cs
+├─ MainWindow.Objects.cs
+└─ MainWindow.Localization.cs
+```
+
+The workspace is consistent across all three demos: **model explorer on the left, viewport in the center, properties on the right, and a full-width command log at the bottom**. The command log uses a light background with dark text; it is not a black console-style panel. `tests/check-demo-ui-structure.ps1` prevents the main window files from growing back into monoliths and protects this layout contract.
+
+The refactor moved existing method bodies by responsibility; command IDs, selection behavior, document/session logic, modeling operations, shortcuts, file exchange, undo/redo, and viewer behavior were not removed.
 
 ## Preview
 
@@ -63,7 +100,7 @@ Expected OCCT layout: `inc`, `win64\vc14\lib`, `win64\vc14\bin`, and optionally 
 
 | Target | Purpose | OCCT SDK |
 | --- | --- | --- |
-| `validate` | Contract/source/package checks only | No |
+| `validate` | Contract/source/UI/publishing checks only | No |
 | `managed` | Core wrapper + WinForms/WPF/Avalonia hosts + `CadCommon` | No |
 | `ci` | Contract checks, managed regression tests, all 3 demos, Smoke compilation | No |
 | `native` | Build `OcctNative.dll` | Yes |
@@ -107,11 +144,11 @@ Published packages include required OCCT resources, `package-contract.json`, `na
 
 ## Tests
 
-PowerShell checks protect static/API contracts. `OcctNet.ManagedTests` runs without OCCT and verifies ownership, managed value semantics, option DTO mapping, guards, and runtime configuration. `OcctNet.Smoke` is retained because it is the real Native integration suite.
+PowerShell checks protect static/API/UI contracts. `OcctNet.ManagedTests` runs without OCCT and verifies ownership, managed value semantics, option DTO mapping, guards, and runtime configuration. `OcctNet.Smoke` is retained because it is the real Native integration suite.
 
 Recommended cadence:
 
-- `build.ps1 validate`: every API/source change.
+- `build.ps1 validate`: every API/source/UI change.
 - `build.ps1 ci`: before every push.
 - `build.ps1 smoke`: after Native/modeling/runtime changes and before release.
 - `publish.ps1 ...`: before redistribution.
