@@ -5,27 +5,75 @@
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$runtimePath = Join-Path $RepositoryRoot "src\OcctNet\OcctRuntime.cs"
-$diagnosticsPath = Join-Path $RepositoryRoot "src\OcctNet\OcctRuntime.Diagnostics.cs"
-$testPath = Join-Path $RepositoryRoot "tests\OcctNet.ManagedTests\RuntimeDiagnosticTests.cs"
-
-foreach ($path in @($runtimePath, $diagnosticsPath, $testPath)) {
-    if (-not (Test-Path $path -PathType Leaf)) {
-        throw "Runtime diagnostics contract file was not found: $path"
+$paths = [ordered]@{
+    Core = Join-Path $RepositoryRoot "src\OcctNet\OcctRuntime.cs"
+    Probing = Join-Path $RepositoryRoot "src\OcctNet\OcctRuntime.Probing.cs"
+    Environment = Join-Path $RepositoryRoot "src\OcctNet\OcctRuntime.Environment.cs"
+    Diagnostics = Join-Path $RepositoryRoot "src\OcctNet\OcctRuntime.Diagnostics.cs"
+    Test = Join-Path $RepositoryRoot "tests\OcctNet.ManagedTests\RuntimeDiagnosticTests.cs"
+}
+foreach ($entry in $paths.GetEnumerator()) {
+    if (-not (Test-Path $entry.Value -PathType Leaf)) {
+        throw "Runtime contract file was not found ($($entry.Key)): $($entry.Value)"
     }
 }
 
-$runtime = [System.IO.File]::ReadAllText($runtimePath)
-foreach ($token in @("public static partial class OcctRuntime", "GetDiagnosticReport")) {
-    if (-not $runtime.Contains($token)) {
-        throw "OcctRuntime compatibility contract is missing: $token"
+$core = [System.IO.File]::ReadAllText($paths.Core)
+foreach ($token in @(
+    "public static partial class OcctRuntime",
+    "public static void Configure()",
+    "ValidateExplicitConfiguration",
+    "ValidateReconfiguration"
+)) {
+    if (-not $core.Contains($token)) {
+        throw "OcctRuntime core contract is missing: $token"
+    }
+}
+foreach ($forbidden in @("GetDiagnosticReport", "ResolveNativeBridgeDirectory", "SetDefaultDllDirectories")) {
+    if ($core.Contains($forbidden)) {
+        throw "OcctRuntime core contains a responsibility that belongs in another partial: $forbidden"
     }
 }
 
-$diagnostics = [System.IO.File]::ReadAllText($diagnosticsPath)
+$probing = [System.IO.File]::ReadAllText($paths.Probing)
+foreach ($token in @(
+    "GetNativeLibraryCandidates",
+    "GetNativeLibraryCandidatesCore",
+    "ResolveNativeBridgeDirectory",
+    "ResolveOcctRoot",
+    "FindRepositoryRoot",
+    "FindResourceDirectory"
+)) {
+    if (-not $probing.Contains($token)) {
+        throw "OcctRuntime probing contract is missing: $token"
+    }
+}
+
+$environment = [System.IO.File]::ReadAllText($paths.Environment)
+foreach ($token in @(
+    "InitializeNativeSearchPolicy",
+    "AddRuntimeSearchPath",
+    "AddThirdPartyRuntimePaths",
+    "ConfigureResources",
+    "PrependPath",
+    "SetDefaultDllDirectories",
+    "AddDllDirectory",
+    "SetDllDirectory"
+)) {
+    if (-not $environment.Contains($token)) {
+        throw "OcctRuntime environment/search contract is missing: $token"
+    }
+}
+
+$diagnostics = [System.IO.File]::ReadAllText($paths.Diagnostics)
 foreach ($token in @(
     "OcctRuntimeDiagnosticInfo",
     "GetDiagnosticInfo",
+    "GetDiagnosticReport",
+    "ApplicationNativeBridgePath",
+    "ApplicationNativeBridgeExists",
+    "ApplicationOcctKernelPath",
+    "ApplicationOcctKernelExists",
     "OCCT_BRIDGE_NATIVE_DIR",
     "OCCT_ROOT",
     "CASROOT",
@@ -33,16 +81,22 @@ foreach ($token in @(
     "ConfiguredOcctKernelExists",
     "LoadedNativeBridgePath",
     "LoadedOcctKernelPath",
-    "DiagnosticReport",
-    "TryFindLoadedRuntimeModule"
+    "DiagnosticTryFindLoadedRuntimeModule"
 )) {
     if (-not $diagnostics.Contains($token)) {
         throw "Structured runtime diagnostics contract is missing: $token"
     }
 }
 
-$test = [System.IO.File]::ReadAllText($testPath)
-foreach ($token in @("OcctRuntime.GetDiagnosticInfo()", "DiagnosticReport", "Is64BitProcess")) {
+$test = [System.IO.File]::ReadAllText($paths.Test)
+foreach ($token in @(
+    "OcctRuntime.GetDiagnosticInfo()",
+    "OcctRuntime.GetDiagnosticReport()",
+    "ApplicationNativeBridgeExists",
+    "ApplicationOcctKernelExists",
+    "Runtime diagnostics changed environment variable",
+    "Is64BitProcess"
+)) {
     if (-not $test.Contains($token)) {
         throw "Runtime diagnostics managed regression coverage is missing: $token"
     }
@@ -53,6 +107,12 @@ foreach ($relativePath in @("docs/RUNTIME_DIAGNOSTICS.md", "docs/RUNTIME_DIAGNOS
     if (-not (Test-Path $path -PathType Leaf)) {
         throw "Runtime diagnostics documentation is missing: $relativePath"
     }
+    $documentation = [System.IO.File]::ReadAllText($path)
+    foreach ($token in @("ApplicationNativeBridge", "ApplicationOcctKernel", "GetDiagnosticInfo")) {
+        if (-not $documentation.Contains($token)) {
+            throw "Runtime diagnostics documentation contract is missing '$token': $relativePath"
+        }
+    }
 }
 
-Write-Host "[runtime-diagnostics] Structured snapshot and legacy text-report contracts validated." -ForegroundColor Green
+Write-Host "[runtime-diagnostics] Runtime configuration, probing, environment/search policy, app-local diagnostics, and side-effect-free reports validated." -ForegroundColor Green
