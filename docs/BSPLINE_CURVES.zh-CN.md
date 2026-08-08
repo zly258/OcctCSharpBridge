@@ -75,3 +75,5 @@ Managed 层还会额外拒绝异常结果，包括：
 ```powershell
 .\build.ps1 smoke Release -OcctRoot "<OCCT 7.9.0 根目录>"
 ```
+
+矩阵、坐标、包围盒和拓扑快捷接口的 Managed 使用方式见 [Managed 几何与变换工具](GEOMETRY_UTILITIES.zh-CN.md)。
