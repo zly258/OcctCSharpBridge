@@ -50,13 +50,28 @@ foreach ($token in @(
     "GetCommandAvailability",
     "EnsureCommandAvailable",
     "RequireShapeCount",
-    "RequireSubshapeCount",
+    "RequireSubshapeHits",
+    "Engine.GetSelectedHits()",
+    "hit.IsSubshape && hit.SubshapeType == requiredType",
     "IsProfileType",
     "exactly: true",
     "OcctShapeType.Solid or OcctShapeType.CompSolid"
 )) {
     if (-not $preconditions.Contains($token)) {
         throw "Demo command precondition contract is missing: $token"
+    }
+}
+
+if ($preconditions.Contains("RequireSubshapeCount")) {
+    throw "Subshape command validation must use structured selection hits rather than owner-object counts."
+}
+
+foreach ($dimensionRule in @(
+    "RequireSubshapeHits(commandId, selectedHits, 1, OcctShapeType.Edge)",
+    "RequireSubshapeHits(commandId, selectedHits, 2, OcctShapeType.Edge)"
+)) {
+    if (-not $preconditions.Contains($dimensionRule)) {
+        throw "Dimension precondition is not based on structured edge hits: $dimensionRule"
     }
 }
 
@@ -87,4 +102,4 @@ foreach ($entry in @(
     }
 }
 
-Write-Host "[demo-preconditions] Selection count, topology suitability, split UI early checks, and execution safeguards validated." -ForegroundColor Green
+Write-Host "[demo-preconditions] Selection count, topology suitability, structured subshape hits, split UI early checks, and execution safeguards validated." -ForegroundColor Green
