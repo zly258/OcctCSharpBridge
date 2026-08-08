@@ -60,6 +60,7 @@ $Checks = [ordered]@{
     Selection = "tests\check-selection-contract.ps1"
     NativeBuild = "tests\check-native-build-structure.ps1"
     ApiSurface = "tests\check-api-surface.ps1"
+    SdkPackage = "tests\check-sdk-package.ps1"
 }
 
 function Assert-Path {
@@ -191,6 +192,41 @@ function Build-Managed {
     Build-Project "Wpf"
 }
 
+function Test-ManagedPackage {
+    param(
+        [Parameter(Mandatory = $true)][string]$PackagePath,
+        [Parameter(Mandatory = $true)][string]$AssemblyName
+    )
+
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($PackagePath)
+    try {
+        $entries = @($archive.Entries | ForEach-Object { $_.FullName.Replace('\', '/') })
+        $nativeLeak = @($entries | Where-Object {
+            $_ -match '(^|/)OcctNative\.dll$' -or
+            $_ -match '(^|/)TK[^/]*\.dll$' -or
+            $_.StartsWith('runtimes/', [StringComparison]::OrdinalIgnoreCase)
+        })
+        if ($nativeLeak.Count -gt 0) {
+            throw "Managed package contains native runtime content: $($nativeLeak -join ', ')"
+        }
+
+        $managedDll = @($entries | Where-Object { $_ -match "^lib/.+/$([regex]::Escape($AssemblyName))\.dll$" })
+        $xmlDocs = @($entries | Where-Object { $_ -match "^lib/.+/$([regex]::Escape($AssemblyName))\.xml$" })
+        if ($managedDll.Count -ne 1) {
+            throw "Managed package does not contain exactly one $AssemblyName.dll under lib/."
+        }
+        if ($xmlDocs.Count -ne 1) {
+            throw "Managed package does not contain exactly one $AssemblyName.xml IntelliSense document under lib/."
+        }
+        if ('README.md' -notin $entries -or 'LICENSE' -notin $entries) {
+            throw "Managed package must include README.md and LICENSE."
+        }
+    }
+    finally {
+        $archive.Dispose()
+    }
+}
+
 function Pack-ManagedSdk {
     param([switch]$SkipBuild)
 
@@ -217,13 +253,20 @@ function Pack-ManagedSdk {
         ) "$name package creation failed."
     }
 
-    foreach ($packageId in @("OcctNet", "OcctNet.WinForms", "OcctNet.Wpf")) {
-        Assert-Path (Join-Path $PackageOutput "$packageId.$BridgeVersion.nupkg")
-        Assert-Path (Join-Path $PackageOutput "$packageId.$BridgeVersion.snupkg")
+    $packages = [ordered]@{
+        "OcctNet" = "OcctNet"
+        "OcctNet.WinForms" = "OcctNet.WinForms"
+        "OcctNet.Wpf" = "OcctNet.Wpf"
+    }
+    foreach ($entry in $packages.GetEnumerator()) {
+        $packagePath = Join-Path $PackageOutput "$($entry.Key).$BridgeVersion.nupkg"
+        Assert-Path $packagePath
+        Assert-Path (Join-Path $PackageOutput "$($entry.Key).$BridgeVersion.snupkg")
+        Test-ManagedPackage -PackagePath $packagePath -AssemblyName $entry.Value
     }
 
     Write-Host "Packages: $PackageOutput" -ForegroundColor Green
-    Write-Host "Note: managed packages do not bundle OCCT or OcctNative runtime binaries." -ForegroundColor Yellow
+    Write-Host "Managed packages validated: assemblies/XML docs only; no OCCT or OcctNative runtime bundled." -ForegroundColor Green
 }
 
 function Build-Ci {
