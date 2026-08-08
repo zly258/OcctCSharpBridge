@@ -50,7 +50,7 @@ build.ps1               校验、构建、打包、Smoke 统一入口
 
 两者可能拥有等价的 OCCT 能力，因为对象模型和使用场景不同；但 **同一个 façade 内不再保留旧名+新名两套接口**。
 
-交互对象统一使用 `IOcctObject`，提供 `Id`、`Kind`、`IsValid`；具体实例仅为 `OcctShape`、`OcctText`、`OcctDimension`。不再存在通用 `OcctObject` 包装，也没有公开裸 ID 构造器。加上 Headless 类型，目前可复用 SDK 共 **81 个公开 .NET 类型**。
+交互对象统一使用 `IOcctObject`，提供 `Id`、`Kind`、`IsValid`；具体实例仅为 `OcctShape`、`OcctText`、`OcctDimension`。不再存在通用 `OcctObject` 包装，也没有公开裸 ID 构造器。加上 Headless 类型，目前可复用 SDK 共 **83 个公开 .NET 类型**。
 
 ## 统一命名规则
 
@@ -185,11 +185,11 @@ Demo 发布脚本会复制应用本地 Native 依赖，并在生成最终包前�
 - Native ABI：`3`
 - OCCT：严格 `7.9.0`
 - Target：`.NET 8` / Windows x64
-- Native exports：`336`
-- Managed P/Invoke：`336`
-- Public .NET types：`81`
+- Native exports：`339`
+- Managed P/Invoke：`339`
+- Public .NET types：`83`
 - Viewer API：`212`
-- Modeling API：`124`
+- Modeling API：`127`
 
 `build.ps1 validate` 会在 API 数量、Native/PInvoke 映射、命名和职责边界、版本、SDK/包策略或文档漂移时直接失败。
 
