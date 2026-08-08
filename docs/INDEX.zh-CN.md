@@ -7,6 +7,7 @@
 | 文档 | 适合解决的问题 |
 |---|---|
 | [API 覆盖说明](API_COVERAGE.zh-CN.md) | 当前 Bridge/ABI/API 范围、所有权规则、Facade 职责和校验边界 |
+| [Viewer 结构化选择命中](SELECTION_HITS.zh-CN.md) | Selected/Detected AIS 实体的注册对象与 Subshape 结构化身份 |
 | [Managed 几何与变换工具](GEOMETRY_UTILITIES.zh-CN.md) | 点/向量、包围盒、UV 范围、仿射矩阵、Location 与 Transform |
 | [B-Spline 曲线与曲面检查](BSPLINE_CURVES.zh-CN.md) | Degree、Pole、Weight、Knot、Multiplicity 与曲面控制网格 |
 | [拓扑邻接与自由边界分析](TOPOLOGY_ANALYSIS.zh-CN.md) | 批量邻接、流形/非流形检查、严格自由边界分析 |
