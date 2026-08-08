@@ -4,7 +4,7 @@
 
 OcctCSharpBridge 是面向 Windows x64 的 **Open CASCADE Technology 7.9.0 → .NET 8** 桥接项目。`main` 分支只保留可复用 C++ Bridge、严格 C ABI、类型安全 C# 封装、WinForms/WPF 可复用视口宿主、契约测试、Native Smoke 场景和 Managed SDK 打包；完整 CAD 应用位于 `demo` 分支。
 
-**Bridge 2.6.0 / ABI 3** 已完成接口收口与能力扩展：删除兼容别名和公开裸 ID 构造方式，统一命名/所有权，并补充批量拓扑邻接、严格自由边界、B-Spline Curve/Surface 数据读取、Mesh Face 来源追溯、结构化 Runtime 诊断、OBB、精确 Trim、Wire Offset、带孔 Face、整 Shape Triangulation、Healing 与工程文件交换等能力。
+**Bridge 2.6.0 / ABI 3** 已完成接口收口与能力扩展：删除兼容别名和公开裸 ID 构造方式，统一命名与所有权，并补充批量 Edge/Face 分析、严格自由边界、结构化 Shape Inspection、B-Spline Curve/Surface 数据读取、Mesh Face 来源追溯、结构化 Runtime 诊断、OBB、Trim/Offset、Healing、Triangulation 和工程文件交换等能力。
 
 桥接层明确不使用 OCAF/XDE。Document、Entity、Command、Tool、Undo/Redo、JSON 持久化、捕捉等应用职责由上层实现。
 
@@ -38,7 +38,7 @@ src/OcctNative          C++17 Bridge 与 C ABI
 src/OcctNet             C# 核心封装
 src/OcctNet.WinForms    可复用 WinForms 视口宿主
 src/OcctNet.Wpf         可复用 WPF 视口宿主
-tests                   契约测试、Managed Test、Native Smoke
+tests                   契约检查、Managed Test、Native Smoke
 docs                    结构化 API/集成/Runtime 文档
 build.ps1               校验、构建、打包、Smoke 统一入口
 ```
@@ -46,24 +46,25 @@ build.ps1               校验、构建、打包、Smoke 统一入口
 托管层明确保留两个职责不同的入口：
 
 - `OcctEngine`：交互式 CAD/AIS/Viewer 会话，负责显示对象、选择、外观、相机、交互和标注；
-- `OcctModelingSession`：无界面建模内核，负责批处理、服务端、几何、拓扑、算法、网格、分析、修复、历史和工程文件交换。
+- `OcctModelingSession`：无界面建模内核，负责批处理、服务端、几何、拓扑、算法、网格、检查、修复、历史和工程文件交换。
 
-同一个 façade 内不再保留旧名+新名两套接口。当前可复用 SDK 共 **90 个公开 .NET 类型**。
+同一个 façade 内不保留旧名+新名两套接口。当前可复用 SDK 共 **94 个公开 .NET 类型**。
 
 ## 统一 API 规则
 
-- Shape：`GetShape...`、`IsShape...`、`SetShape...`
-- Edge：`GetEdge...`、`EvaluateEdge...`、`TrimEdge()`
-- Face：`GetFace...`、`EvaluateFace...`
+- Shape 查询：`GetShape...`、`IsShape...`、`SetShape...`
+- Edge 查询：`GetEdge...`、`EvaluateEdge...`、`TrimEdge()`
+- Face 查询：`GetFace...`、`EvaluateFace...`
+- 批量分析：`AnalyzeEdgeAdjacency()`、`AnalyzeFaces()`、`AnalyzeFreeBounds()`
+- 结构化检查：`InspectShape()`
 - 索引访问：`...At`
 - 构造：`Make...`
 - 算法：`Extrude()`、`OffsetShape()`、`OffsetWire()` 等操作动词
 - Mesh：`Triangulate()`、`GetFaceMesh()`、`GetShapeMesh()`、`GetShapeMeshData()`
-- 分析：`AnalyzeEdgeAdjacency()`、`AnalyzeFreeBounds()`
 
 所有 Shape/Object 都绑定所属 Engine/Session。持久化 ID 必须通过 `GetShape()`、`TryGetShape()`、`GetObject()`、`TryGetObject()` 解析，不能用裸 `long` 伪造托管对象。
 
-## Headless 示例
+## Headless 建模与检查
 
 ```csharp
 using var model = new OcctModelingSession();
@@ -77,34 +78,37 @@ var hole = model.MakeCylinder(
 
 var cut = model.Cut(plate, hole);
 var bounds = model.GetShapeOrientedBounds(cut.Shape, optimal: true);
-var topology = model.AnalyzeEdgeAdjacency(cut.Shape);
+var adjacency = model.AnalyzeEdgeAdjacency(cut.Shape);
+var faces = model.AnalyzeFaces(cut.Shape);
+var inspection = model.InspectShape(cut.Shape);
 var meshData = model.GetShapeMeshData(cut.Shape);
+
 model.ExportStep(cut.Shape, "plate.step");
 ```
+
+`AnalyzeFaces()` 在 Native 中一次遍历全部 Face，批量返回 SurfaceType、Orientation、Area、Tolerance、UV Bounds、AABB、EdgeCount 和 WireCount，避免大型 STEP/BIM 模型逐 Face、逐属性跨 P/Invoke。
+
+`InspectShape()` 将有效性、闭合性、容差、Check Report、Bounds、拓扑数量、批量 Edge 邻接、批量 Face 分析、严格自由边界和可选 Mesh 统计组合为 `OcctShapeInspectionReport`。它只返回**客观数据**，不在 Bridge 中硬编码项目自己的“通过/不通过”规则。Mesh Statistics 默认关闭，因为启用后会触发三角化。
 
 ### 批量拓扑与严格自由边界
 
 ```csharp
-var adjacency = model.AnalyzeEdgeAdjacency(cut.Shape);
-var boundaryCandidates = adjacency.BoundaryCandidates;
 var nonManifold = adjacency.NonManifoldEdges;
-
 var freeBounds = model.AnalyzeFreeBounds(cut.Shape, tolerance: 1e-6);
 ```
 
-`AnalyzeEdgeAdjacency()` 对整个 Root Shape 一次构建 Edge→不同 Face 的 Native 索引，适合大型 STEP/BIM 模型；真正判断 Shell 是否存在开口时再使用 `AnalyzeFreeBounds()`。
+`AnalyzeEdgeAdjacency()` 对整个 Root Shape 一次构建 Edge→不同 Face 的 Native 索引；真正判断 Shell 是否存在开口时再使用 `AnalyzeFreeBounds()`。
 
 ### Mesh Face 来源追溯
 
 ```csharp
-var meshData = model.GetShapeMeshData(cut.Shape);
 if (meshData.TryGetFaceForTriangle(hitTriangleIndex, out var sourceFace))
 {
     // 根据源 Face 查询 CAD/BIM 属性、做选择、分析或局部导出。
 }
 ```
 
-`GetShapeMesh()` 继续保持兼容；`GetShapeMeshData()` 额外记录每个源 Face 对应的连续 Node/Triangle 区间，不增加 Native ABI，也不为每个 Triangle 单独保存 FaceId。
+`GetShapeMesh()` 保持原接口；`GetShapeMeshData()` 额外记录每个源 Face 对应的连续 Node/Triangle 区间，不增加 Native ABI，也不为每个 Triangle 单独保存 FaceId。
 
 ### B-Spline 曲线与曲面
 
@@ -165,6 +169,8 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 
 GitHub 托管环境没有本项目真实 OCCT SDK，因此云端负责静态契约、Managed 构建/Test、Smoke 源码编译和 NuGet 包校验；真实 OCCT 几何/拓扑执行仍由本地 Native Smoke 保证。
 
+`tests` 下每个测试工程和 PowerShell 契约脚本的职责已整理到 [`tests/README.md`](tests/README.md)。只有在断言完整迁移到等价或更强门禁后才删除脚本，不按文件数量机械清理。
+
 ## Runtime 部署与诊断
 
 `OcctNet.dll`、对应 UI Host、`OcctNative.dll`、OCCT DLL 和第三方 DLL 必须来自**同一 Bridge 构建**。
@@ -207,11 +213,11 @@ Demo 发布脚本负责应用本地 Native 依赖和 Native Load 探针；Demo �
 - Native ABI：`3`
 - OCCT：严格 `7.9.0`
 - Target：`.NET 8` / Windows x64
-- Native exports：`345`
-- Managed P/Invoke：`345`
-- Public .NET types：`90`
+- Native exports：`346`
+- Managed P/Invoke：`346`
+- Public .NET types：`94`
 - Viewer API：`212`
-- Modeling API：`133`
+- Modeling API：`134`
 
 `build.ps1 validate` 会在 API 数量、Native/PInvoke 映射、命名/职责边界、版本、SDK/包策略或文档漂移时直接失败。
 
