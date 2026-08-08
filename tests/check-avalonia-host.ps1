@@ -9,15 +9,16 @@ $hostProject = Join-Path $RepositoryRoot "src\OcctNet.Avalonia\OcctNet.Avalonia.
 $hostControl = Join-Path $RepositoryRoot "src\OcctNet.Avalonia\OcctAvaloniaViewport.cs"
 $demoProject = Join-Path $RepositoryRoot "src\CadAvalonia\CadAvalonia.csproj"
 $demoManifest = Join-Path $RepositoryRoot "src\CadAvalonia\app.manifest"
-$demoWindow = Join-Path $RepositoryRoot "src\CadAvalonia\MainWindow.cs"
-$demoParameters = Join-Path $RepositoryRoot "src\CadAvalonia\ParameterDialog.cs"
-$demoProgram = Join-Path $RepositoryRoot "src\CadAvalonia\Program.cs"
-$wpfWindow = Join-Path $RepositoryRoot "src\CadWpf\MainWindow.xaml.cs"
+$demoRoot = Join-Path $RepositoryRoot "src\CadAvalonia"
+$demoWindow = Join-Path $demoRoot "MainWindow.cs"
+$demoParameters = Join-Path $demoRoot "ParameterDialog.cs"
+$demoProgram = Join-Path $demoRoot "Program.cs"
+$wpfRoot = Join-Path $RepositoryRoot "src\CadWpf"
 $buildScript = Join-Path $RepositoryRoot "build.ps1"
 
-foreach ($path in @($hostProject, $hostControl, $demoProject, $demoManifest, $demoWindow, $demoParameters, $demoProgram, $wpfWindow, $buildScript)) {
-    if (-not (Test-Path $path -PathType Leaf)) {
-        throw "Required Avalonia host/parity file was not found: $path"
+foreach ($path in @($hostProject, $hostControl, $demoProject, $demoManifest, $demoWindow, $demoParameters, $demoProgram, $wpfRoot, $buildScript)) {
+    if (-not (Test-Path $path)) {
+        throw "Required Avalonia host/parity path was not found: $path"
     }
 }
 
@@ -96,7 +97,14 @@ foreach ($token in @('Copy-OcctRuntimeDependencies', 'TKernel.dll', 'OcctThirdPa
     }
 }
 
-$demoText = [System.IO.File]::ReadAllText($demoWindow)
+# MainWindow is intentionally split by responsibility. Validate the complete partial
+# class instead of forcing all behavior back into one large source file.
+$demoWindowFiles = @(Get-ChildItem $demoRoot -Filter "MainWindow*.cs" -File | Sort-Object Name)
+if ($demoWindowFiles.Count -lt 5) {
+    throw "Avalonia MainWindow responsibilities are not split into the expected partial files."
+}
+$demoText = ($demoWindowFiles | ForEach-Object { [System.IO.File]::ReadAllText($_.FullName) }) -join "`n"
+
 foreach ($token in @(
     'OcctAvaloniaViewport',
     'new CadSession(_viewport.Engine)',
@@ -125,8 +133,9 @@ foreach ($token in @(
     }
 }
 
-# Keep every CadCommandId exposed by the WPF reference UI available in the Avalonia UI.
-$wpfText = [System.IO.File]::ReadAllText($wpfWindow)
+# WPF is split the same way; compare the complete partial class command surface.
+$wpfWindowFiles = @(Get-ChildItem $wpfRoot -Filter "MainWindow*.cs" -File | Sort-Object Name)
+$wpfText = ($wpfWindowFiles | ForEach-Object { [System.IO.File]::ReadAllText($_.FullName) }) -join "`n"
 $commandPattern = 'CadCommandId\.([A-Za-z0-9_]+)'
 $wpfCommands = @([regex]::Matches($wpfText, $commandPattern) | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
 $avaloniaCommands = @([regex]::Matches($demoText, $commandPattern) | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
@@ -143,11 +152,12 @@ foreach ($token in @('CadParameterDefinition', 'GetValuesAsync', 'CadParameterKi
     }
 }
 
-foreach ($path in @($hostProject, $hostControl, $demoProject, $demoManifest, $demoWindow, $demoParameters, $demoProgram)) {
+$utf8Files = @($hostProject, $hostControl, $demoProject, $demoManifest, $demoParameters, $demoProgram) + @($demoWindowFiles.FullName)
+foreach ($path in $utf8Files) {
     $bytes = [System.IO.File]::ReadAllBytes($path)
     if ($bytes.Length -lt 3 -or $bytes[0] -ne 0xEF -or $bytes[1] -ne 0xBB -or $bytes[2] -ne 0xBF) {
         throw "Avalonia source file is not UTF-8 with BOM: $path"
     }
 }
 
-Write-Host "[avalonia-host] Avalonia HWND host, full CAD demo parity, Windows manifest, startup diagnostics, and runtime deployment contracts validated." -ForegroundColor Green
+Write-Host "[avalonia-host] Avalonia HWND host, split CAD UI parity, Windows manifest, startup diagnostics, and runtime deployment contracts validated." -ForegroundColor Green
