@@ -7,6 +7,7 @@ This index covers the reusable bridge content shared by `main` and `demo`. NuGet
 | Document | Use it for |
 |---|---|
 | [API Coverage](API_COVERAGE.md) | Current Bridge/ABI/API scope, ownership rules, façade responsibilities, validation boundaries |
+| [Structured Viewer Selection Hits](SELECTION_HITS.md) | Registered object/subshape identity for selected and detected AIS entities |
 | [Managed Geometry and Transform Utilities](GEOMETRY_UTILITIES.md) | Point/vector math, bounds, UV ranges, affine matrices, locations and transforms |
 | [B-Spline Curve and Surface Inspection](BSPLINE_CURVES.md) | Degree, poles, weights, knots, multiplicities and surface control grids |
 | [Topology Adjacency and Free-Boundary Analysis](TOPOLOGY_ANALYSIS.md) | Batched adjacency, manifold/non-manifold checks and strict free-boundary analysis |

@@ -10,10 +10,10 @@ OCAF/XDE is intentionally excluded. Document persistence, undo/redo, application
 - Native bridge version: `2.6.0`
 - Native ABI: `3`
 - OCCT: `7.9.0`
-- Native exports: `346`
-- Managed P/Invoke declarations: `346`
-- Public .NET types: `94`
-- Viewer API: `212`
+- Native exports: `348`
+- Managed P/Invoke declarations: `348`
+- Public .NET types: `95`
+- Viewer API: `214`
 - Modeling API: `134`
 
 ## 2.6 API rules
@@ -52,6 +52,18 @@ The full WinForms/WPF/Avalonia CAD applications live on the `demo` branch, not i
 `OcctEngine` owns displayed AIS objects and the native viewer context. Its shape methods are appropriate when construction is part of an interactive CAD document and the result must immediately participate in visibility, selection, appearance, and manipulation.
 
 Coverage includes camera/view control, screen/world conversion, selection, object lifecycle, appearance, transformations, interactive primitives/features, annotations, and STEP/IGES/BREP/STL exchange. Lighting uses the strongly typed `OcctSceneLightingSettings` API; the older simplified lighting overload and redundant C ABI aliases were removed in ABI 3.
+
+Selection now exposes structured runtime identity rather than forcing applications to reconstruct it from selected object IDs:
+
+- `GetSelectedHits()` returns the current registered AIS selection as `OcctSelectionHit` values.
+- `TryGetDetectedHit()` returns the current registered detected/hovered AIS entity when available.
+- `OcctSelectionHit` contains `Owner`, `SubshapeType`, and `SubshapeIndex`; whole-object selection uses `Shape / -1`.
+- selected-hit retrieval uses one two-call batch ABI (`occt_selected_hits`) instead of `count + hit_at(index)` N+1 P/Invoke crossings.
+- detected-hit absence is represented by `false`; native failures still use the normal bridge error contract.
+- no placeholder hit-point property is exposed because the current viewer path does not provide one with sufficiently clear semantics.
+- runtime subshape indices follow the same `TopExp_Explorer` ordering as `GetSubshapeAt()` and are explicitly not persistent naming.
+
+See [Structured Viewer Selection Hits](SELECTION_HITS.md).
 
 ## Headless `OcctModelingSession`
 
@@ -158,7 +170,7 @@ Cloud CI has no project OCCT SDK, so it validates declarations and managed code 
 - Counts come from `bridge-contract.json`.
 - Managed projects and managed-only regression tests run in CI.
 - Managed geometry/transform helpers and structured runtime diagnostics are regression-tested without loading OCCT.
-- B-Spline, topology, mesh provenance, batched Face analysis, and shape inspection have explicit static contract coverage.
+- Structured selected/detected-hit identity, B-Spline, topology, mesh provenance, batched Face analysis, and shape inspection have explicit static contract coverage.
 - Smoke projects are compiled in cloud CI; real Native execution remains a local Windows gate.
 - `main` and `demo` reusable wrapper content is compared directly.
 

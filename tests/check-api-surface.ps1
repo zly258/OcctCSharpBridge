@@ -29,6 +29,7 @@ $publicManagedRoots = @(
 $headerFiles = @(
     Join-Path $nativeRoot "OcctNative.h"
     Join-Path $nativeRoot "OcctSelectionOverlay.h"
+    Join-Path $nativeRoot "OcctSelectionState.h"
     Join-Path $nativeRoot "OcctModeling.h"
     Join-Path $nativeRoot "OcctModelingExtensions.h"
     Join-Path $nativeRoot "OcctModelingBSpline.h"
