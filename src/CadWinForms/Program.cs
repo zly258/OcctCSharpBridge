@@ -48,16 +48,8 @@ internal static class Program
     private static void ShowFatalException(Exception exception, string source)
     {
         var logPath = CrashReporter.Write(ApplicationName, exception, source);
-        var logLabel = CadLocalization.CurrentLanguage == CadLanguage.ChineseSimplified ? "日志" : "Log";
-        var prefix = CadLocalization.CurrentLanguage == CadLanguage.ChineseSimplified
-            ? "程序发生未处理异常："
-            : "An unhandled application error occurred: ";
-        var logMessage = string.IsNullOrWhiteSpace(logPath)
-            ? string.Empty
-            : $"{Environment.NewLine}{Environment.NewLine}{logLabel}: {logPath}";
-
         MessageBox.Show(
-            $"{prefix}{exception.Message}{logMessage}",
+            CrashReporter.BuildUserMessage(exception, logPath),
             CadLocalization.Text("Dialog.ErrorTitle"),
             MessageBoxButtons.OK,
             MessageBoxIcon.Error);

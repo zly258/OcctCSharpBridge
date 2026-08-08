@@ -19,15 +19,7 @@ public partial class App : System.Windows.Application
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         var logPath = CrashReporter.Write(ApplicationName, e.Exception, "DispatcherUnhandledException");
-        var logLabel = CadLocalization.CurrentLanguage == CadLanguage.ChineseSimplified ? "日志" : "Log";
-        var prefix = CadLocalization.CurrentLanguage == CadLanguage.ChineseSimplified
-            ? "程序发生未处理异常："
-            : "An unhandled application error occurred: ";
-        var logMessage = string.IsNullOrWhiteSpace(logPath)
-            ? string.Empty
-            : $"{Environment.NewLine}{Environment.NewLine}{logLabel}: {logPath}";
-
-        var message = $"{prefix}{e.Exception.Message}{logMessage}";
+        var message = CrashReporter.BuildUserMessage(e.Exception, logPath);
         if (MainWindow is { } owner)
         {
             System.Windows.MessageBox.Show(
