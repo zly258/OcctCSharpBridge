@@ -95,11 +95,10 @@ public static partial class OcctRuntime
 
     /// <summary>
     /// Returns a human-readable runtime report suitable for logs and deployment diagnostics.
+    /// Reading the report does not configure the runtime or load the native bridge.
     /// </summary>
     public static string GetDiagnosticReport()
     {
-        Configure();
-
         var builder = new StringBuilder();
         builder.AppendLine($"Configured: {_configured}");
         builder.AppendLine($"Base directory: {AppContext.BaseDirectory}");
