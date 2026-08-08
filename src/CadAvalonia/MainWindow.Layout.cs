@@ -34,8 +34,10 @@ public sealed partial class MainWindow
     {
         var root = new Grid
         {
-            RowDefinitions = new RowDefinitions("Auto,Auto,*,Auto")
+            RowDefinitions = new RowDefinitions("Auto,Auto,*,5,160,Auto")
         };
+        root.RowDefinitions[2].MinHeight = 420;
+        root.RowDefinitions[4].MinHeight = 110;
 
         Grid.SetRow(_mainMenu, 0);
         root.Children.Add(_mainMenu);
@@ -99,13 +101,6 @@ public sealed partial class MainWindow
         Grid.SetColumn(rightSplitter, 3);
         workspace.Children.Add(rightSplitter);
 
-        var right = new Grid
-        {
-            RowDefinitions = new RowDefinitions("3*,5,2*")
-        };
-        right.RowDefinitions[0].MinHeight = 250;
-        right.RowDefinitions[2].MinHeight = 170;
-
         _propertiesGroup.Margin = new Thickness(4);
         _propertiesGroup.Padding = new Thickness(4);
         _propertiesGroup.Content = new ScrollViewer
@@ -113,28 +108,26 @@ public sealed partial class MainWindow
             Content = _propertyPanel,
             VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto
         };
-        Grid.SetRow(_propertiesGroup, 0);
-        right.Children.Add(_propertiesGroup);
+        Grid.SetColumn(_propertiesGroup, 4);
+        workspace.Children.Add(_propertiesGroup);
 
-        var horizontalSplitter = new GridSplitter
+        Grid.SetRow(workspace, 2);
+        root.Children.Add(workspace);
+
+        var logSplitter = new GridSplitter
         {
             Height = 5,
             HorizontalAlignment = AvaloniaHorizontalAlignment.Stretch,
             Background = new SolidColorBrush(AvaloniaColor.Parse("#C7CDD3"))
         };
-        Grid.SetRow(horizontalSplitter, 1);
-        right.Children.Add(horizontalSplitter);
+        Grid.SetRow(logSplitter, 3);
+        root.Children.Add(logSplitter);
 
-        _commandLineGroup.Margin = new Thickness(4);
+        _commandLineGroup.Margin = new Thickness(4, 0, 4, 4);
         _commandLineGroup.Padding = new Thickness(4);
         _commandLineGroup.Content = _logBox;
-        Grid.SetRow(_commandLineGroup, 2);
-        right.Children.Add(_commandLineGroup);
-
-        Grid.SetColumn(right, 4);
-        workspace.Children.Add(right);
-        Grid.SetRow(workspace, 2);
-        root.Children.Add(workspace);
+        Grid.SetRow(_commandLineGroup, 4);
+        root.Children.Add(_commandLineGroup);
 
         var statusGrid = new Grid
         {
@@ -155,7 +148,7 @@ public sealed partial class MainWindow
         statusGrid.Children.Add(_commandStatus);
         statusGrid.Children.Add(_selectionStatus);
         statusGrid.Children.Add(_coordinateStatus);
-        Grid.SetRow(statusGrid, 3);
+        Grid.SetRow(statusGrid, 5);
         root.Children.Add(statusGrid);
 
         return root;
