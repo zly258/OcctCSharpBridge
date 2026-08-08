@@ -12,4 +12,12 @@ internal static partial class ModelNativeMethods
         int boundaryKind,
         int splitClosed,
         int splitOpen);
+
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern int occt_model_shape_edge_adjacency(
+        IntPtr handle,
+        long shapeId,
+        [Out] NativeModelEdgeAdjacency[]? items,
+        int capacity,
+        out int count);
 }
