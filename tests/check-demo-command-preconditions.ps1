@@ -14,10 +14,24 @@ function Read-RequiredText {
     return [System.IO.File]::ReadAllText($path)
 }
 
+function Read-PartialSet {
+    param(
+        [Parameter(Mandatory = $true)][string]$RelativeDirectory,
+        [Parameter(Mandatory = $true)][string]$Pattern
+    )
+
+    $directory = Join-Path $RepositoryRoot $RelativeDirectory
+    $files = @(Get-ChildItem $directory -Filter $Pattern -File | Sort-Object Name)
+    if ($files.Count -eq 0) {
+        throw "No partial source files matched $RelativeDirectory/$Pattern"
+    }
+    return ($files | ForEach-Object { [System.IO.File]::ReadAllText($_.FullName) }) -join "`n"
+}
+
 $preconditions = Read-RequiredText "src\CadCommon\CadSession.Preconditions.cs"
 $session = Read-RequiredText "src\CadCommon\CadSession.cs"
-$winForms = Read-RequiredText "src\CadWinForms\MainForm.cs"
-$wpf = Read-RequiredText "src\CadWpf\MainWindow.xaml.cs"
+$winForms = Read-PartialSet "src\CadWinForms" "MainForm*.cs"
+$wpf = Read-PartialSet "src\CadWpf" "MainWindow*.cs"
 
 foreach ($command in @(
     "Extrude", "Revolve", "Sweep", "Loft",
@@ -73,4 +87,4 @@ foreach ($entry in @(
     }
 }
 
-Write-Host "[demo-preconditions] Selection count, topology suitability, early UI checks, and execution safeguards validated." -ForegroundColor Green
+Write-Host "[demo-preconditions] Selection count, topology suitability, split UI early checks, and execution safeguards validated." -ForegroundColor Green
