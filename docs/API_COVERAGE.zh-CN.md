@@ -12,7 +12,7 @@ OcctCSharpBridge 2.6 面向 Windows x64 与 OCCT 7.9.0，托管层明确分为�
 - OCCT：`7.9.0`
 - Native exports: `336`
 - Managed P/Invoke declarations: `336`
-- Public .NET types: `81`
+- Public .NET types: `82`
 - Viewer API：`212`
 - Modeling API：`124`
 
@@ -67,7 +67,9 @@ C ABI 中的 0/1 标志不再直接暴露为公开 `int`。托管层使用 `bool
 - AABB 和 `GetShapeOrientedBounds()` 定向包围盒 OBB。
 - 线/面/体质量属性和 Shape 距离。
 - Location 读取与写入。
-- 子拓扑、外环、内环、祖先拓扑查询。
+- 通用子拓扑、外环、内环、祖先拓扑查询。
+- 常用集合快捷接口：`GetVertices()`、`GetEdges()`、`GetWires()`、`GetFaces()`、`GetShells()`、`GetSolids()`、`GetCompSolids()`、`GetCompounds()`。
+- 局部拓扑快捷接口：`GetEdgeVertices()`、`GetWireEdges()`、`GetFaceEdges()`、`GetFaceVertices()` 与 `GetTopologyCounts()`。
 - `IsSameShape()` / `IsPartnerShape()` 直接暴露 OCCT 的拓扑身份语义。
 
 ### 几何与微分几何
@@ -96,6 +98,20 @@ C ABI 中的 0/1 标志不再直接暴露为公开 `int`。托管层使用 `bool
 
 提供 STEP、IGES、BREP、STL 导入导出和按文件类型自动导入；STL 导出可显式控制线性/角度离散精度。
 
+## 纯 Managed 几何工具
+
+`OcctGeometryExtensions` 围绕现有 Bridge 值类型增加不依赖 Native OCCT 的轻量级计算：
+
+- 点插值以及点/向量带容差比较；
+- 向量夹角、投影和正交分量；
+- AABB 有效性、包含、相交、扩展、合并、体积和对角线长度；
+- UV 参数范围有效性、中心和包含判断；
+- 距离结果的分离向量、中点和容差判断；
+- 仿射点/向量变换、矩阵组合、求逆、平移、旋转和均匀缩放；
+- `OcctModelLocation` 与 `OcctTransform3d` 双向转换。
+
+角度统一使用弧度。矩阵采用行优先仿射矩阵和列向量语义，`left.Multiply(right)` 表示先执行 `right`。详细示例见 [Managed 几何与变换工具](GEOMETRY_UTILITIES.zh-CN.md)。
+
 ## 生命周期与运行时
 
 - `OcctEngine` 和 `OcctModelingSession` 内部使用 `SafeHandle`。
@@ -112,6 +128,7 @@ GitHub 云端没有 OCCT SDK，因此 CI 不伪装执行 Native 建模，而是�
 - 所有 P/Invoke 均为 Cdecl + ExactSpelling。
 - API 数量严格读取 `bridge-contract.json`。
 - 所有 Managed 项目编译，并执行纯 Managed 回归测试。
+- Managed 几何与变换工具无需 OCCT Runtime 即可执行回归测试。
 - `main` / `demo` 的共享封装内容逐项比较。
 
 正式发布前必须在安装 OCCT 7.9.0 的 Windows 环境执行：
