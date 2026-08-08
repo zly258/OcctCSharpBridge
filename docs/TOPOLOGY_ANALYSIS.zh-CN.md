@@ -1,36 +1,72 @@
 ﻿# 拓扑邻接与自由边界分析
 
-OcctCSharpBridge 针对 CAD/BIM 模型质量检查提供两层互补能力：**低成本邻接筛选**与更严格的 **OCCT 自由边界分析**。
+OcctCSharpBridge 针对 CAD/BIM 模型质量检查提供三层能力：单个子拓扑查询、**批量 Edge→Face 邻接分析**和更严格的 **OCCT 自由边界分析**。
 
-## 快速邻接筛选
+## 单个邻接查询
 
-快捷接口组合现有子拓扑/祖先拓扑能力，不增加新的 Native ABI：
+只检查一个选中子拓扑时，可直接使用：
 
 ```csharp
 var adjacentFaces = model.GetAdjacentFaces(rootShape, edge);
 var incidentEdges = model.GetIncidentEdges(rootShape, vertex);
 var incidentFaces = model.GetIncidentFaces(rootShape, vertex);
-
-var boundaryCandidates = model.GetBoundaryEdgeCandidates(rootShape);
-var manifoldEdges = model.GetManifoldInteriorEdges(rootShape);
-var nonManifoldEdges = model.GetNonManifoldEdges(rootShape);
 ```
 
-Edge 分类依据其在指定 Root Shape 中的祖先 Face 数量：
+这组接口适合交互式检查或少量查询。
 
-- 1 个相邻 Face：边界候选；
-- 2 个相邻 Face：普通流形内部边；
-- 3 个及以上相邻 Face：非流形候选。
+## 批量邻接分析
 
-需要自定义数量区间时可使用 `GetEdgesByAdjacentFaceCount()`。
+同一个 Root Shape 需要检查大量 Edge 时，优先只调用一次 `AnalyzeEdgeAdjacency()`：
 
-### 为什么叫 Candidate
+```csharp
+var adjacency = model.AnalyzeEdgeAdjacency(rootShape);
 
-“只有一个祖先 Face”是非常有用的快速筛选信号，但周期曲面 Seam Edge、导入模型的特殊拓扑等情况可能让简单邻接计数不足以作为最终几何结论。因此接口明确命名为 `GetBoundaryEdgeCandidates()`，而不是过度承诺的 `GetBoundaryEdges()`。
+foreach (var entry in adjacency.Entries)
+{
+    Console.WriteLine($"{entry.Edge.Id}: {entry.AdjacentFaceCount} faces");
+}
+
+var boundaryCandidates = adjacency.BoundaryCandidates;
+var manifoldEdges = adjacency.ManifoldInteriorEdges;
+var nonManifoldEdges = adjacency.NonManifoldEdges;
+```
+
+`OcctEdgeAdjacencyInfo` 提供：
+
+- `Edge`；
+- `AdjacentFaceCount`；
+- `IsIsolated`；
+- `IsBoundaryCandidate`；
+- `IsManifoldInterior`；
+- `IsNonManifold`。
+
+`OcctEdgeAdjacencyResult` 保存完整不可变快照，并提供预分类集合及 `GetEdgesByAdjacentFaceCount(min,max)`。
+
+Native 层只为整个 Root Shape 构建一次 `TopExp::MapShapesAndUniqueAncestors()` Edge→Face 索引；同一个 Face 即使因 Seam 等拓扑情况多次引用 Edge，也只按一个**不同祖先 Face**计数。Managed 层采用一次数量查询 + 一次数组填充，不再为每一条 Edge 重复跨 P/Invoke 并重建祖先映射。
+
+现有快捷接口已经自动复用批量路径，调用方式保持不变：
+
+```csharp
+model.GetBoundaryEdgeCandidates(rootShape);
+model.GetManifoldInteriorEdges(rootShape);
+model.GetNonManifoldEdges(rootShape);
+model.GetEdgesByAdjacentFaceCount(rootShape, minimum, maximum);
+```
+
+分类规则为：
+
+- 0 个相邻 Face：孤立 Edge；
+- 1 个不同相邻 Face：边界候选；
+- 2 个不同相邻 Face：普通流形内部边；
+- 3 个及以上不同相邻 Face：非流形候选。
+
+### 为什么仍然叫 Candidate
+
+“只有一个不同祖先 Face”是非常有用的快速筛选信号，但周期曲面 Seam Edge、导入模型的特殊拓扑等情况仍可能让邻接计数不足以作为最终几何结论。因此 `GetBoundaryEdgeCandidates()` 和 `BoundaryCandidates` 继续明确使用 Candidate 语义。
 
 ## 严格自由边界分析
 
-当后续决策依赖 OCCT 自由边界算法时，使用 `AnalyzeFreeBounds()`：
+真正判断 Shell 是否有开口、缝隙或是否需要 Sewing/Healing 时，使用 `AnalyzeFreeBounds()`：
 
 ```csharp
 var result = model.AnalyzeFreeBounds(
@@ -50,50 +86,42 @@ foreach (var wire in result.OpenWires)
 }
 ```
 
-`OcctFreeBoundsResult` 包含：
-
-- `Tolerance`；
-- `ClosedWires`；
-- `OpenWires`；
-- `ClosedWireCount`；
-- `OpenWireCount`；
-- `TotalWireCount`；
-- `HasFreeBounds`；
-- `HasOpenFreeBounds`。
-
-返回的 Wire 与被分析 Shape 仍属于同一个 `OcctModelingSession`，所有权规则不变。
+`OcctFreeBoundsResult` 保存本次 Tolerance、Closed/Open Wire、数量和快捷判断属性；返回 Wire 与原 Shape 仍属于同一个 `OcctModelingSession`。
 
 ## Tolerance
 
-Tolerance 与模型单位有关。默认值为 `1e-7`，适合作为精细几何分析的起点；但 STEP/IGES 等导入模型经常需要根据项目单位、源系统精度和模型实际容差来确定，不应把某个全局值机械套用到所有工程。
-
-如果自由边界结果用于自动通过/不通过判断，应记录实际使用的 Tolerance。`OcctFreeBoundsResult.Tolerance` 会保留本次分析参数，便于审图和质量记录追溯。
+自由边界 Tolerance 与模型单位有关。默认值为 `1e-7`，但 STEP/IGES 等导入模型应根据项目单位、源系统精度和实际模型容差确定。`OcctFreeBoundsResult.Tolerance` 会保留实际参数，便于自动审图和质量记录追溯。
 
 ## 典型工程流程
 
-一套较稳妥的模型质量检查流程可以是：
+建议流程：
 
-1. 使用 `GetTopologyCounts()` 快速获取结构摘要；
-2. 使用 `GetNonManifoldEdges()` 定位明显非流形问题；
-3. 使用 `GetBoundaryEdgeCandidates()` 做低成本筛选；
-4. 在真正判断 Shell 是否存在开口、是否需要 Sewing/Healing 前调用 `AnalyzeFreeBounds()`；
-5. 确需修复时再进入现有 Validation / Healing 能力。
+1. `GetTopologyCounts()` 获取结构摘要；
+2. 对待检查模型或 Shell 调用一次 `AnalyzeEdgeAdjacency()`；
+3. 使用 `NonManifoldEdges` 定位明显非流形问题；
+4. 使用 `BoundaryCandidates` 做低成本开口筛选；
+5. 在最终判断开口前调用 `AnalyzeFreeBounds()`；
+6. 确需修复时再进入现有 Validation / Healing。
 
-对于超大导入模型，当前 Managed 邻接快捷接口优先保证 API 清晰度，并不是最少 Native 调用方案。后续可增加批量邻接分析接口，在不改变高层语义的前提下优化性能。
+对于大型导入模型，如果需要多种 Edge 分类，建议保留并复用同一个 `OcctEdgeAdjacencyResult`，不要重复调用多个快捷分类方法。
 
 ## Native 实现
 
-严格分析独立维护在 `OcctModelingTopologyAnalysis.h/.cpp`，底层使用 OCCT `ShapeAnalysis_FreeBounds`。
+拓扑分析独立维护在 `OcctModelingTopologyAnalysis.h/.cpp`。
 
-新增一个 ABI 3 增量接口：
+ABI 3 增量接口：
 
-- `occt_model_shape_free_bounds`
-
-该接口通过 `boundaryKind` 选择返回 Closed 或 Open Wire Compound；高层 `AnalyzeFreeBounds()` 分别读取两类结果后直接返回 Wire 集合，不把临时 Compound 泄漏给业务层。
+- `occt_model_shape_edge_adjacency`：批量 Edge→不同 Face 数量；
+- `occt_model_shape_free_bounds`：使用 `ShapeAnalysis_FreeBounds` 提取严格 Closed/Open 自由边界。
 
 ## 验证
 
-云端 CI 校验 Native 声明、定义、P/Invoke 与高层接口一致性，并编译 Smoke 项目；真实 OCCT 执行由 `tests/OcctNet.Smoke/FreeBoundsSmoke.cs` 覆盖，需要在安装 OCCT 7.9.0 的 Windows 环境执行：
+云端 CI 校验 Native 声明、定义、P/Invoke 与高层接口，并编译 Smoke 项目。真实 OCCT 执行由以下测试覆盖：
+
+- `tests/OcctNet.Smoke/EdgeAdjacencySmoke.cs`；
+- `tests/OcctNet.Smoke/FreeBoundsSmoke.cs`。
+
+在安装 OCCT 7.9.0 的 Windows 环境执行：
 
 ```powershell
 .\build.ps1 smoke Release -OcctRoot "<OCCT 7.9.0 根目录>"
