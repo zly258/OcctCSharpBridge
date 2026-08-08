@@ -75,6 +75,32 @@ $contracts = [ordered]@{
         "OcctModelSurfaceCurvature",
         "StructLayout(LayoutKind.Sequential)"
     )
+    "src/OcctNative/OcctModelingExtensions.cpp" = @(
+        "Geom_BSplineCurve",
+        "occt_model_edge_bspline_info",
+        "occt_model_edge_bspline_pole_at",
+        "occt_model_edge_bspline_knot_at"
+    )
+    "src/OcctNet/ModelNativeMethods.Extensions.cs" = @(
+        "occt_model_edge_bspline_info",
+        "occt_model_edge_bspline_pole_at",
+        "occt_model_edge_bspline_knot_at",
+        "CallingConvention.Cdecl",
+        "ExactSpelling = true"
+    )
+    "src/OcctNet/OcctModelingSession.Extensions.cs" = @(
+        "GetBSplineCurveData",
+        "OcctBSplineCurveData",
+        "Native B-Spline knots must be strictly increasing"
+    )
+    "src/OcctNet/OcctModelingExtensionTypes.cs" = @(
+        "OcctBSplineCurveData",
+        "Poles",
+        "Weights",
+        "Knots",
+        "Multiplicities",
+        "OcctModelBSplineCurveInfoNative"
+    )
 }
 
 foreach ($contract in $contracts.GetEnumerator()) {
@@ -91,4 +117,4 @@ foreach ($contract in $contracts.GetEnumerator()) {
     }
 }
 
-Write-Host "[geometry] Analytic and differential geometry contracts validated." -ForegroundColor Green
+Write-Host "[geometry] Analytic, differential, and B-Spline geometry contracts validated." -ForegroundColor Green
