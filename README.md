@@ -2,11 +2,11 @@
 
 [简体中文](README.zh-CN.md) · [Documentation](docs/INDEX.md) · [Desktop demos](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
-OcctCSharpBridge is a Windows x64 bridge from **Open CASCADE Technology 7.9.0** to **.NET 8**. The `main` branch contains the reusable C++ bridge, strict C ABI, type-safe managed wrapper, optional WinForms/WPF viewport hosts, contract checks, native smoke scenarios, and managed SDK packaging. Complete CAD applications are maintained on the `demo` branch.
+OcctCSharpBridge is a Windows x64 bridge from **Open CASCADE Technology 7.9.0** to **.NET 8**. The `main` branch contains the reusable C++ bridge, strict C ABI, type-safe managed wrapper, optional WinForms/WPF viewport hosts, contract checks, Native Smoke scenarios, and managed SDK packaging. Complete CAD applications are maintained on the `demo` branch.
 
-Bridge **2.6.0 / ABI 3** is a cleanup and expansion release. Compatibility aliases and public raw-ID constructors were removed, naming and ownership were normalized, and the reusable headless API now covers topology analysis, B-Spline curve/surface inspection, mesh provenance, structured runtime diagnostics, OBB, exact trimming, planar offset, faces with holes, whole-shape triangulation, healing, and engineering file exchange.
+Bridge **2.6.0 / ABI 3** is a cleanup and expansion release: compatibility aliases and public raw-ID construction were removed; naming, ownership, and deployment contracts were normalized; and the headless wrapper now includes batched topology/Face analysis, strict free-boundary analysis, structured Shape inspection, B-Spline curve/surface inspection, mesh Face provenance, structured runtime diagnostics, OBB, trimming/offset, healing, triangulation, and engineering file exchange.
 
-OCAF/XDE is intentionally excluded. Document entities, command history, undo/redo, JSON persistence, application tools, snapping, and other product concepts belong to the consuming application.
+OCAF/XDE is intentionally excluded. Application Documents, domain Entities, Command/Tool systems, undo/redo, snapping, and JSON persistence belong to the consuming application.
 
 ## Requirements
 
@@ -34,38 +34,37 @@ D:\tools\occt-vc144-64\
 bridge-contract.json    Bridge/ABI/OCCT/.NET/API source of truth
 global.json             Pinned .NET SDK
 Directory.Build.props   Shared compiler policy
-src/OcctNative          C++17 native bridge and C ABI
+src/OcctNative          C++17 Native bridge and C ABI
 src/OcctNet             Core managed wrapper
 src/OcctNet.WinForms    Reusable WinForms viewport host
 src/OcctNet.Wpf         Reusable WPF viewport host
-tests                   Contract checks, managed tests, native smoke project
+tests                   Contract checks, Managed tests, Native Smoke project
 docs                    Organized API/integration/runtime guides
 build.ps1               Validation/build/pack/smoke entry point
 ```
 
 The managed wrapper intentionally exposes two façades:
 
-- `OcctEngine`: interactive CAD/AIS/viewer session. It owns displayed objects, selection, appearance, camera, interaction, annotations, and interactive document geometry.
-- `OcctModelingSession`: headless geometry/topology kernel for batch processing, services, algorithms, meshing, analysis, healing, history, and engineering file exchange.
+- `OcctEngine`: interactive CAD/AIS/viewer session for displayed objects, selection, appearance, camera, interaction, and annotations.
+- `OcctModelingSession`: headless geometry/topology kernel for batch processing, services, algorithms, meshing, inspection, healing, history, and engineering file exchange.
 
-These façades may expose equivalent OCCT operations because their object models are different by design. Bridge 2.6 does **not** keep multiple compatibility names inside one façade.
-
-Interactive objects use one public abstraction: `IOcctObject` exposes `Id`, `Kind`, and `IsValid`; actual instances are `OcctShape`, `OcctText`, or `OcctDimension`. Together with headless and host types, the reusable SDK currently exposes **90 public .NET types**.
+Equivalent OCCT operations may exist in both façades because the ownership models are intentionally different. Bridge 2.6 does **not** keep multiple compatibility names inside one façade. The reusable SDK currently exposes **94 public .NET types**.
 
 ## Canonical API naming
 
 - Shape queries: `GetShape...`, `IsShape...`, `SetShape...`
 - Edge queries: `GetEdge...`, `EvaluateEdge...`, `TrimEdge()`
 - Face queries: `GetFace...`, `EvaluateFace...`
+- Batch analysis: `AnalyzeEdgeAdjacency()`, `AnalyzeFaces()`, `AnalyzeFreeBounds()`
+- Structured inspection: `InspectShape()`
 - Indexed topology: `...At`, for example `GetSubshapeAt()`
 - Construction: `Make...`
-- Algorithms: verbs such as `Extrude()`, `OffsetShape()`, `OffsetWire()`
+- Algorithms: operation verbs such as `Extrude()`, `OffsetShape()`, `OffsetWire()`
 - Mesh: `Triangulate()`, `GetFaceMesh()`, `GetShapeMesh()`, `GetShapeMeshData()`
-- Analysis: `AnalyzeEdgeAdjacency()`, `AnalyzeFreeBounds()`
 
-Managed handles are always owned by the engine/session that produced them. Raw IDs are resolved using `GetShape()`, `TryGetShape()`, `GetObject()`, or `TryGetObject()`; they are not used to construct fake managed handles.
+Managed handles are always owned by the engine/session that produced them. Raw IDs are resolved through `GetShape()`, `TryGetShape()`, `GetObject()`, or `TryGetObject()`; callers cannot construct fake public handles from a `long`.
 
-## Headless modeling example
+## Headless modeling and inspection
 
 ```csharp
 using var model = new OcctModelingSession();
@@ -79,40 +78,46 @@ var hole = model.MakeCylinder(
 
 var cut = model.Cut(plate, hole);
 var bounds = model.GetShapeOrientedBounds(cut.Shape, optimal: true);
-var topology = model.AnalyzeEdgeAdjacency(cut.Shape);
+var adjacency = model.AnalyzeEdgeAdjacency(cut.Shape);
+var faces = model.AnalyzeFaces(cut.Shape);
+var inspection = model.InspectShape(cut.Shape);
 var meshData = model.GetShapeMeshData(cut.Shape);
+
 model.ExportStep(cut.Shape, "plate.step");
 ```
 
-For triangle picking or BIM/CAD property mapping, resolve a combined mesh triangle back to its source Face:
+`AnalyzeFaces()` batches common Face metadata—surface type, orientation, area, tolerance, U/V bounds, AABB, edge count, and wire count—into one Native result instead of repeatedly crossing P/Invoke per Face/property.
+
+`InspectShape()` composes shape validity/closure/tolerance, check report, topology counts, batched edge adjacency, batched Face analysis, strict free bounds, and optional mesh statistics into `OcctShapeInspectionReport`. It deliberately returns **facts**, not project-specific pass/fail policy. Mesh statistics are opt-in because they invoke triangulation.
+
+For triangle picking or BIM/CAD property mapping:
 
 ```csharp
 if (meshData.TryGetFaceForTriangle(hitTriangleIndex, out var face))
 {
-    // Use face for selection, properties, analysis, or selective export.
+    // Use the source Face for selection, properties, analysis, or selective export.
 }
 ```
 
-For model-quality checks, use the batch adjacency snapshot first and the stricter free-boundary algorithm when a final opening/gap decision is required:
+For model-quality checks, use batched adjacency as the inexpensive first pass and strict free-boundary analysis for opening/gap decisions:
 
 ```csharp
-var adjacency = model.AnalyzeEdgeAdjacency(cut.Shape);
 var nonManifold = adjacency.NonManifoldEdges;
 var freeBounds = model.AnalyzeFreeBounds(cut.Shape, tolerance: 1e-6);
 ```
 
-B-Spline definitions can be inspected without leaking OCCT handles:
+B-Spline definitions remain managed snapshots rather than leaked OCCT handles:
 
 ```csharp
 var curveData = model.GetBSplineCurveData(edge);
 var surfaceData = model.GetBSplineSurfaceData(face);
 ```
 
-See the [documentation index](docs/INDEX.md) for organized guides on API coverage, B-Splines, topology analysis, mesh provenance, geometry utilities, and runtime diagnostics.
+See the [documentation index](docs/INDEX.md) for API coverage, geometry utilities, B-Splines, topology, Shape inspection, mesh provenance, and runtime diagnostics.
 
 ## Build and validation
 
-Clone and configure the local OCCT SDK when Native work is required:
+When Native work is required:
 
 ```powershell
 git clone https://github.com/zly258/OcctCSharpBridge.git
@@ -131,12 +136,12 @@ General syntax:
 | `validate` | API/version/organization/PInvoke/host/package contracts | No |
 | `managed` | Build reusable managed wrapper + hosts | No |
 | `pack` | Build and validate local managed NuGet + symbol packages | No |
-| `ci` | Contract checks + managed builds/tests + Smoke compile + package validation | No |
+| `ci` | Contract checks + Managed builds/tests + Smoke compile + package validation | No |
 | `native` | Build `OcctNative.dll` with CMake/MSVC | Yes |
-| `smoke` | Build and run real OCCT native modeling scenarios | Yes |
-| `all` | Build native bridge and reusable managed hosts | Yes |
+| `smoke` | Build and run real OCCT Native scenarios | Yes |
+| `all` | Build Native bridge and reusable managed hosts | Yes |
 
-Preferred no-SDK pre-push check:
+Preferred no-SDK pre-push gate:
 
 ```powershell
 .\build.ps1 ci Release
@@ -148,25 +153,27 @@ Create the three local managed SDK packages explicitly with:
 .\build.ps1 pack Release
 ```
 
-Packages are written to `artifacts/packages`. Package versions come from `bridge-contract.json`, include XML IntelliSense documentation and symbol packages, and are checked to ensure they do **not** contain `OcctNative.dll`, OCCT `TK*.dll`, or a `runtimes/` native payload. NuGet packaging is intentionally a **main-branch SDK concern only**; the `demo` branch is non-packable and owns complete application publishing instead. See [PACKAGING.md](docs/PACKAGING.md).
+Packages are written to `artifacts/packages`. Package versions come from `bridge-contract.json`, include XML IntelliSense documentation and symbol packages, and are checked to ensure they do **not** contain `OcctNative.dll`, OCCT `TK*.dll`, or a `runtimes/` Native payload. NuGet packaging is intentionally a **main-only SDK concern**; the `demo` branch owns complete application publishing instead. See [PACKAGING.md](docs/PACKAGING.md).
 
-Strongest local validation before release:
+The strongest release gate is local because GitHub-hosted CI does not contain this project's OCCT SDK:
 
 ```powershell
 .\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-GitHub-hosted CI does not contain the project OCCT SDK. Cloud CI therefore validates static contracts, all Managed projects/tests, Smoke source compilation, and main-branch NuGet packages; actual OCCT geometry/topology execution remains the local Native release gate.
+Cloud CI validates static contracts, all Managed projects/tests, Smoke source compilation, and main-branch NuGet packages. It does not claim to execute real OCCT geometry without the SDK/runtime.
+
+The purpose of every test project and PowerShell contract script is documented in [`tests/README.md`](tests/README.md); small scripts are retained only when they protect a distinct contract.
 
 ## Runtime deployment and diagnostics
 
-Keep `OcctNet.dll`, the selected viewport host, `OcctNative.dll`, OCCT runtime DLLs, and required third-party DLLs from the **same Bridge build**. Do not mix managed/native binaries from different ABI revisions.
+Keep `OcctNet.dll`, the selected viewport host, `OcctNative.dll`, OCCT runtime DLLs, and required third-party DLLs from the **same Bridge build**. Do not mix managed/native binaries across ABI revisions.
 
-`OcctRuntime.GetDiagnosticReport()` is a side-effect-free human-readable report. `OcctRuntime.GetDiagnosticInfo()` returns structured app-local/configured/loaded bridge and `TKernel.dll` paths, existence states, process/OS architecture, and the same detailed report without configuring or loading the runtime. See [Structured Runtime Diagnostics](docs/RUNTIME_DIAGNOSTICS.md).
+`OcctRuntime.GetDiagnosticReport()` is a side-effect-free human-readable report. `OcctRuntime.GetDiagnosticInfo()` returns structured app-local/configured/loaded bridge and `TKernel.dll` paths, existence states, process/OS architecture, and the detailed report without configuring or loading the runtime. See [Structured Runtime Diagnostics](docs/RUNTIME_DIAGNOSTICS.md).
 
 ## Desktop demos
 
-The `main` branch does not contain complete CAD applications. Use the `demo` branch for WinForms, WPF, and Avalonia examples:
+The `main` branch does not contain complete CAD applications. Use `demo` for WinForms, WPF, and Avalonia examples:
 
 ```powershell
 git switch demo
@@ -177,11 +184,9 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 .\run.ps1 avalonia
 ```
 
-The Demo release script packages application-local Native dependencies and validates Native loading before producing the final package. Demo projects are deliberately non-packable as NuGet packages.
+Demo publishing resolves application-local Native dependencies and validates Native loading before producing a distributable package. Demo projects are deliberately non-packable as NuGet packages.
 
 ## Referencing from another project
-
-During development, reference the projects directly:
 
 ```xml
 <ItemGroup>
@@ -202,11 +207,11 @@ Authoritative metadata is in `bridge-contract.json`:
 - Native ABI: `3`
 - OCCT: exactly `7.9.0`
 - Target: `.NET 8`, Windows x64
-- Native exports: `345`
-- Managed P/Invoke declarations: `345`
-- Public .NET types: `90`
+- Native exports: `346`
+- Managed P/Invoke declarations: `346`
+- Public .NET types: `94`
 - Viewer API: `212`
-- Modeling API: `133`
+- Modeling API: `134`
 
 `build.ps1 validate` fails when metadata, declarations, P/Invoke mappings, naming/organization contracts, SDK/package policy, or required documentation drift.
 
@@ -219,10 +224,10 @@ Set `$env:OCCT_ROOT` or pass `-OcctRoot`.
 Verify the expected `win64\vc14\lib` and `win64\vc14\bin` layout and OCCT 7.9.0.
 
 **Managed build succeeds but Native loading fails**  
-A managed build or NuGet package does not deploy OCCT. Use the Demo publish process or deploy the matching Native/OCCT/third-party dependency closure beside the executable, then inspect `OcctRuntime.GetDiagnosticInfo()`.
+A Managed build or NuGet package does not deploy OCCT. Use the Demo publish process or deploy the matching Native/OCCT/third-party dependency closure beside the executable, then inspect `OcctRuntime.GetDiagnosticInfo()`.
 
 **Need a runnable CAD example**  
-Use the `demo` branch; keep application-specific document/tool code out of `main`.
+Use the `demo` branch; keep application-specific Document/Tool code out of `main`.
 
 ## License
 
