@@ -62,6 +62,28 @@ public sealed class OcctShapeMeshData
         return FaceRanges[faceIndex];
     }
 
+    public bool TryGetFaceForNode(int nodeIndex, out OcctModelShape face)
+    {
+        if ((uint)nodeIndex >= (uint)NodeCount)
+        {
+            face = default;
+            return false;
+        }
+
+        return TryFindFace(
+            nodeIndex,
+            static range => range.NodeStart,
+            static range => range.NodeEndExclusive,
+            out face);
+    }
+
+    public OcctModelShape GetFaceForNode(int nodeIndex)
+    {
+        if (!TryGetFaceForNode(nodeIndex, out var face))
+            throw new ArgumentOutOfRangeException(nameof(nodeIndex));
+        return face;
+    }
+
     public bool TryGetFaceForTriangle(int triangleIndex, out OcctModelShape face)
     {
         if ((uint)triangleIndex >= (uint)TriangleCount)
@@ -70,18 +92,38 @@ public sealed class OcctShapeMeshData
             return false;
         }
 
+        return TryFindFace(
+            triangleIndex,
+            static range => range.TriangleStart,
+            static range => range.TriangleEndExclusive,
+            out face);
+    }
+
+    public OcctModelShape GetFaceForTriangle(int triangleIndex)
+    {
+        if (!TryGetFaceForTriangle(triangleIndex, out var face))
+            throw new ArgumentOutOfRangeException(nameof(triangleIndex));
+        return face;
+    }
+
+    private bool TryFindFace(
+        int index,
+        Func<OcctShapeMeshFaceRange, int> getStart,
+        Func<OcctShapeMeshFaceRange, int> getEndExclusive,
+        out OcctModelShape face)
+    {
         var low = 0;
         var high = FaceRanges.Count - 1;
         while (low <= high)
         {
             var middle = low + ((high - low) / 2);
             var range = FaceRanges[middle];
-            if (triangleIndex < range.TriangleStart)
+            if (index < getStart(range))
             {
                 high = middle - 1;
                 continue;
             }
-            if (triangleIndex >= range.TriangleEndExclusive)
+            if (index >= getEndExclusive(range))
             {
                 low = middle + 1;
                 continue;
@@ -93,12 +135,5 @@ public sealed class OcctShapeMeshData
 
         face = default;
         return false;
-    }
-
-    public OcctModelShape GetFaceForTriangle(int triangleIndex)
-    {
-        if (!TryGetFaceForTriangle(triangleIndex, out var face))
-            throw new ArgumentOutOfRangeException(nameof(triangleIndex));
-        return face;
     }
 }
