@@ -10,11 +10,11 @@ OcctCSharpBridge 2.6 面向 Windows x64 与 OCCT 7.9.0，托管层明确分为�
 - 原生桥接版本：`2.6.0`
 - Native ABI：`3`
 - OCCT：`7.9.0`
-- Native exports: `339`
-- Managed P/Invoke declarations: `339`
-- Public .NET types: `83`
+- Native exports：`343`
+- Managed P/Invoke declarations：`343`
+- Public .NET types：`84`
 - Viewer API：`212`
-- Modeling API：`127`
+- Modeling API：`131`
 
 ## 2.6 命名与封装规则
 
@@ -69,9 +69,10 @@ C ABI 中的 0/1 标志不再直接暴露为公开 `int`。托管层使用 `bool
 - Location 读取与写入。
 - 通用子拓扑、外环、内环、祖先拓扑查询。
 - 常用集合快捷接口：`GetVertices()`、`GetEdges()`、`GetWires()`、`GetFaces()`、`GetShells()`、`GetSolids()`、`GetCompSolids()`、`GetCompounds()`。
-- 局部拓扑快捷接口：GetEdgeVertices()、GetWireEdges()、GetFaceEdges()、GetFaceVertices() 与 GetTopologyCounts()。
-- 邻接接口：GetAdjacentFaces()、GetIncidentEdges()、GetIncidentFaces()，并可通过 GetBoundaryEdgeCandidates()、GetManifoldInteriorEdges()、GetNonManifoldEdges()、GetEdgesByAdjacentFaceCount() 按相邻 Face 数量检查 Edge。
-- GetBoundaryEdgeCandidates() 明确表示拓扑候选集合；周期曲面的 Seam Edge 仍可能需要更严格的 Native 自由边界分析。
+- 局部拓扑快捷接口：`GetEdgeVertices()`、`GetWireEdges()`、`GetFaceEdges()`、`GetFaceVertices()` 与 `GetTopologyCounts()`。
+- 邻接接口：`GetAdjacentFaces()`、`GetIncidentEdges()`、`GetIncidentFaces()`。
+- 可按相邻 Face 数量使用 `GetBoundaryEdgeCandidates()`、`GetManifoldInteriorEdges()`、`GetNonManifoldEdges()`、`GetEdgesByAdjacentFaceCount()` 对 Edge 分类。
+- `GetBoundaryEdgeCandidates()` 明确表示**拓扑候选集合**；周期曲面的 Seam Edge 仍可能需要更严格的 Native 自由边界分析，不能简单等同于绝对开口边。
 - `IsSameShape()` / `IsPartnerShape()` 直接暴露 OCCT 的拓扑身份语义。
 
 ### 几何与微分几何
@@ -81,8 +82,10 @@ C ABI 中的 0/1 标志不再直接暴露为公开 `int`。托管层使用 `bool
 - 原始曲线参数范围、导数、切向、法向、曲率和曲率中心。
 - Face U/V 范围、周期性、偏导、法向、主曲率/平均曲率/高斯曲率。
 - 点投影到 Edge/Face、射线相交、Solid 点分类。
-- TrimEdge() 使用 OCCT 原始参数直接裁剪曲线 Edge。
-- GetBSplineCurveData() 返回不可变 B-Spline 定义快照，包括次数、有理/周期标志、控制点、权重、不同 Knot 与重数；Managed 集合统一使用 0 起始索引。详见 [B-Spline 曲线检查](BSPLINE_CURVES.zh-CN.md)。
+- `TrimEdge()` 使用 OCCT 原始参数直接裁剪曲线 Edge。
+- `GetBSplineCurveData()` 返回不可变 B-Spline 曲线快照，包括 Degree、有理/周期标志、控制点、权重、不同 Knot 与重数。
+- `GetBSplineSurfaceData()` 返回不可变 B-Spline 曲面快照，包括 U/V Degree、有理/周期标志、Pole/Weight 控制网格、U/V Knot 与重数。曲面扁平 Pole 存储采用 U 主序、V 方向连续变化，并提供 `GetPole(u,v)` / `GetWeight(u,v)` 直接访问二维控制网格。
+- Managed B-Spline 集合统一使用 0 起始索引，Native 内部转换为 OCCT 的 1 起始索引。详见 [B-Spline 曲线与曲面检查](BSPLINE_CURVES.zh-CN.md)。
 
 ### 建模算法
 
@@ -132,6 +135,7 @@ GitHub 云端没有 OCCT SDK，因此 CI 不伪装执行 Native 建模，而是�
 - API 数量严格读取 `bridge-contract.json`。
 - 所有 Managed 项目编译，并执行纯 Managed 回归测试。
 - Managed 几何与变换工具无需 OCCT Runtime 即可执行回归测试。
+- B-Spline Curve/Surface 的 Native 声明、定义、P/Invoke 与高层 API 做静态一致性校验。
 - `main` / `demo` 的共享封装内容逐项比较。
 
 正式发布前必须在安装 OCCT 7.9.0 的 Windows 环境执行：
@@ -140,4 +144,4 @@ GitHub 云端没有 OCCT SDK，因此 CI 不伪装执行 Native 建模，而是�
 .\build.ps1 smoke Release -OcctRoot "<OCCT 7.9.0 根目录>"
 ```
 
-Native Smoke 覆盖 ABI/版本加载、Boolean、拓扑、解析/微分几何、B-Spline 数据提取、OBB、Shape 身份、带孔 Face、Edge Trim、Wire Offset、整 Shape 网格、Loft、Healing 以及 BREP/STEP 往返。
+Native Smoke 覆盖 ABI/版本加载、Boolean、拓扑、解析/微分几何、B-Spline 曲线/曲面数据提取、OBB、Shape 身份、带孔 Face、Edge Trim、Wire Offset、整 Shape 网格、Loft、Healing 以及 BREP/STEP 往返。
