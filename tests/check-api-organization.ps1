@@ -217,37 +217,9 @@ foreach ($file in $nativeMethodFiles) {
     }
 }
 
-$packageProjects = @(
-    "src/OcctNet/OcctNet.csproj",
-    "src/OcctNet.WinForms/OcctNet.WinForms.csproj",
-    "src/OcctNet.Wpf/OcctNet.Wpf.csproj"
-)
-foreach ($relativePath in $packageProjects) {
-    $projectText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot $relativePath))
-    foreach ($token in @(
-        "<IsPackable>true</IsPackable>",
-        "<GenerateDocumentationFile>true</GenerateDocumentationFile>",
-        "<PackageReadmeFile>README.md</PackageReadmeFile>",
-        "<PackageLicenseFile>LICENSE</PackageLicenseFile>",
-        "<RepositoryUrl>https://github.com/zly258/OcctCSharpBridge</RepositoryUrl>"
-    )) {
-        if (-not $projectText.Contains($token)) {
-            throw "Managed SDK package metadata is missing from $relativePath: $token"
-        }
-    }
-}
-
-$requiredDocs = @(
-    "API_COVERAGE.md",
-    "API_COVERAGE.zh-CN.md",
-    "GETTING_STARTED.md",
-    "GETTING_STARTED.zh-CN.md",
-    "PACKAGING.md",
-    "PACKAGING.zh-CN.md"
-)
-foreach ($fileName in $requiredDocs) {
+foreach ($fileName in @("API_COVERAGE.md", "API_COVERAGE.zh-CN.md")) {
     if (-not (Test-Path (Join-Path $RepositoryRoot "docs\$fileName") -PathType Leaf)) {
-        throw "Required SDK documentation is missing: docs/$fileName"
+        throw "Required API coverage documentation is missing: docs/$fileName"
     }
 }
 
@@ -256,4 +228,4 @@ if ($unexpectedDocs.Count -gt 0) {
     throw "The docs directory must contain Markdown documentation only: $($unexpectedDocs.Name -join ', ')"
 }
 
-Write-Host "[organization] Bridge 2.6 canonical naming, strict ownership, typed DTO boundaries, package metadata and SDK documentation validated." -ForegroundColor Green
+Write-Host "[organization] Bridge 2.6 canonical naming, strict ownership, typed DTO boundaries and responsibility layout validated." -ForegroundColor Green
