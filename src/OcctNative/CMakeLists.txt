@@ -83,12 +83,14 @@ add_library(OcctNative SHARED
     OcctModelingAnalyticGeometry.cpp
     OcctModelingDifferentialGeometry.cpp
     OcctModelingExtensions.cpp
+    OcctModelingBSpline.cpp
     OcctInternal.hxx
     OcctModelingInternal.hxx
     OcctNative.h
     OcctSelectionOverlay.h
     OcctModeling.h
-    OcctModelingExtensions.h)
+    OcctModelingExtensions.h
+    OcctModelingBSpline.h)
 
 target_compile_definitions(OcctNative PRIVATE NOMINMAX _CRT_SECURE_NO_WARNINGS)
 if(MSVC)
