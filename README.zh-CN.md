@@ -72,12 +72,15 @@ Avalonia
 ## 界面预览
 
 <table>
-  <tr><th>WinForms</th><th>WPF</th></tr>
+  <tr><th>WinForms</th><th>WPF</th><th>Avalonia</th></tr>
   <tr>
-    <td><img src="assets/previews/winform-demo-zh.webp" alt="OCCT CAD WinForms 中文界面" width="100%"></td>
-    <td><img src="assets/previews/wpf-demo-zh.webp" alt="OCCT CAD WPF 中文界面" width="100%"></td>
+    <td><img src="assets/previews/winform-demo-zh.png" alt="OCCT CAD WinForms 中文界面" width="100%"></td>
+    <td><img src="assets/previews/wpf-demo-zh.png" alt="OCCT CAD WPF 中文界面" width="100%"></td>
+    <td><img src="assets/previews/avalonia-demo-zh.png" alt="OCCT CAD Avalonia 中文界面" width="100%"></td>
   </tr>
 </table>
+
+三套预览统一引用 `assets/previews/` 下正式保留的无损 PNG 文件，不再引用已淘汰的 WebP 文件名。
 
 Avalonia 与 WPF 共用 `CadSession` 和 `CadCommandCatalog`，覆盖模型创建、选择、模型树、属性、撤销重做、文件交换、标注、分析、视图/显示控制、示例、快捷键和中英文 UI。
 
