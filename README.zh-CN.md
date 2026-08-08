@@ -139,6 +139,14 @@ GitHub 托管环境没有项目 OCCT SDK，因此只执行完整 Managed/静态�
 .\publish.ps1 avalonia Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
+排查 Native 依赖时，可额外生成一次诊断发布包：
+
+```powershell
+.\publish.ps1 all Release -Zip -Diagnostics -OcctRoot "D:\tools\occt-vc144-64"
+```
+
+`-Diagnostics` 会额外生成 `native-resolution.txt`（记录 Native 依赖实际解析到的源路径）和 `runtime-manifest.txt`（记录发布文件大小与 SHA-256）。该开关默认关闭，因为 `native-resolution.txt` 可能包含构建机绝对路径；对外发送前应检查并按需脱敏。
+
 发布器递归解析 `OcctNative.dll`、OCCT TK、第三方库和 VC++ Runtime 的 PE 依赖闭包，并将 Native DLL 复制到每个 EXE 同目录。生成包前先执行 `dumpbin` 闭包检查，再在独立进程中用受限搜索路径实际 `LoadLibraryExW`；会产生 Win32 126 的包会在发布阶段直接失败。
 
 发布包还包含 OCCT Resources、`package-contract.json`、`native-dependencies.txt` 和可获取的许可证信息。
@@ -172,7 +180,7 @@ PowerShell 负责 API/静态/UI 契约；`OcctNet.ManagedTests` 无需 OCCT，�
 - `Unable to load OcctNative.dll ... Win32 126`：三个 Demo 现在都会在错误对话框中显示进程架构、应用目录，以及 EXE 同目录的 `OcctNative.dll` / `TKernel.dll` 是否存在，同时把完整 OCCT Runtime 诊断写入崩溃日志。
   - `OcctNative.dll [缺失]`：发布包不完整；不要手工复制单个 DLL，使用当前 `demo/publish.ps1` 重新发布。
   - `OcctNative.dll [存在]` 但 `TKernel.dll [缺失]`：OCCT Native 依赖闭包不完整，重新发布完整包。
-  - 两者均为 `[存在]` 但仍是 Win32 126：通常是更深层的 OCCT、第三方库或 Visual C++ Runtime 缺失/版本不匹配。检查 `native-dependencies.txt`，并查看 `%LOCALAPPDATA%\OcctCSharpBridge\Logs` 下的崩溃日志。
+  - 两者均为 `[存在]` 但仍是 Win32 126：通常是更深层的 OCCT、第三方库或 Visual C++ Runtime 缺失/版本不匹配。先检查 `native-dependencies.txt`；如果原因仍不明确，使用 `-Diagnostics` 重新发布，并检查 `native-resolution.txt`、`runtime-manifest.txt` 以及 `%LOCALAPPDATA%\OcctCSharpBridge\Logs` 下的崩溃日志。
 - Avalonia Analyzer/编译器不匹配：使用本分支 `global.json` 固定 SDK。
 - Avalonia 启动异常：同时查看 `src\CadAvalonia\bin\x64\<Configuration>\net8.0-windows\CAD-Avalonia.log` 和上述共享崩溃日志。
 
