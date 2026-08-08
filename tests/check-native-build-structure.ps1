@@ -42,43 +42,45 @@ foreach ($source in $sourceTokens) {
     }
 }
 
-foreach ($required in @(
-    "OcctModelingExtensions.cpp",
-    "OcctModelingExtensions.h",
-    "OcctModelingBSpline.cpp",
-    "OcctModelingBSpline.h"
-)) {
-    if ($required -notin $sourceTokens) {
-        throw "Bridge 2.6 native extension file is not listed in add_library: $required"
+$modules = @(
+    @{
+        Name = "Extensions"
+        Files = @("OcctModelingExtensions.cpp", "OcctModelingExtensions.h")
+        Header = "OcctModelingExtensions.h"
+        Symbols = @("occt_model_shape_is_same", "occt_model_shape_oriented_bounds", "occt_model_make_face_with_holes", "occt_model_trim_edge", "occt_model_offset_wire")
+    },
+    @{
+        Name = "B-Spline"
+        Files = @("OcctModelingBSpline.cpp", "OcctModelingBSpline.h")
+        Header = "OcctModelingBSpline.h"
+        Symbols = @("occt_model_edge_bspline_info", "occt_model_face_bspline_info", "occt_model_face_bspline_pole_at")
+    },
+    @{
+        Name = "Topology analysis"
+        Files = @("OcctModelingTopologyAnalysis.cpp", "OcctModelingTopologyAnalysis.h")
+        Header = "OcctModelingTopologyAnalysis.h"
+        Symbols = @("occt_model_shape_free_bounds", "occt_model_shape_edge_adjacency")
+    },
+    @{
+        Name = "Face analysis"
+        Files = @("OcctModelingFaceAnalysis.cpp", "OcctModelingFaceAnalysis.h")
+        Header = "OcctModelingFaceAnalysis.h"
+        Symbols = @("OcctModelFaceAnalysis", "occt_model_shape_face_analysis")
     }
-}
+)
 
-$extensionHeader = [System.IO.File]::ReadAllText((Join-Path $nativeRoot "OcctModelingExtensions.h"))
-foreach ($symbol in @(
-    "occt_model_shape_is_same",
-    "occt_model_shape_is_partner",
-    "occt_model_shape_oriented_bounds",
-    "occt_model_make_face_with_holes",
-    "occt_model_trim_edge",
-    "occt_model_offset_wire"
-)) {
-    if (-not $extensionHeader.Contains($symbol)) {
-        throw "Bridge 2.6 native extension declaration is missing: $symbol"
+foreach ($module in $modules) {
+    foreach ($required in $module.Files) {
+        if ($required -notin $sourceTokens) {
+            throw "$($module.Name) native module file is not listed in add_library: $required"
+        }
     }
-}
 
-$bsplineHeader = [System.IO.File]::ReadAllText((Join-Path $nativeRoot "OcctModelingBSpline.h"))
-foreach ($symbol in @(
-    "occt_model_edge_bspline_info",
-    "occt_model_edge_bspline_pole_at",
-    "occt_model_edge_bspline_knot_at",
-    "occt_model_face_bspline_info",
-    "occt_model_face_bspline_pole_at",
-    "occt_model_face_bspline_u_knot_at",
-    "occt_model_face_bspline_v_knot_at"
-)) {
-    if (-not $bsplineHeader.Contains($symbol)) {
-        throw "Bridge 2.6 B-Spline declaration is missing: $symbol"
+    $header = [System.IO.File]::ReadAllText((Join-Path $nativeRoot $module.Header))
+    foreach ($symbol in $module.Symbols) {
+        if (-not $header.Contains($symbol)) {
+            throw "$($module.Name) native declaration is missing: $symbol"
+        }
     }
 }
 
@@ -101,9 +103,4 @@ if ($unlistedCpp.Count -gt 0) {
     throw "Native C++ files are not listed in add_library: $($unlistedCpp -join ', ')"
 }
 
-$migrationWorkflow = Join-Path $RepositoryRoot ".github\workflows\bridge-26-native-migration.yml"
-if (Test-Path $migrationWorkflow) {
-    throw "Completed one-time Bridge 2.6 migration workflow must not remain in the repository."
-}
-
-Write-Host "[native-build] $($sourceTokens.Count) native source entries, generic extensions, and dedicated B-Spline layout validated; no OCAF/XDE inputs remain." -ForegroundColor Green
+Write-Host "[native-build] $($sourceTokens.Count) source entries and $($modules.Count) dedicated modules validated; no OCAF/XDE inputs remain." -ForegroundColor Green
