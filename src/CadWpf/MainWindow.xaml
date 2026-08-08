@@ -70,37 +70,37 @@
         </StatusBar>
 
         <Grid Margin="2">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="260" MinWidth="220"/>
-                <ColumnDefinition Width="5"/>
-                <ColumnDefinition Width="*" MinWidth="520"/>
-                <ColumnDefinition Width="5"/>
-                <ColumnDefinition Width="330" MinWidth="280"/>
-            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" MinHeight="420"/>
+                <RowDefinition Height="5"/>
+                <RowDefinition Height="160" MinHeight="110"/>
+            </Grid.RowDefinitions>
 
-            <GroupBox x:Name="ModelExplorerGroup" Grid.Column="0" Header="Model Explorer">
-                <TreeView x:Name="ObjectTree"/>
-            </GroupBox>
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="260" MinWidth="220"/>
+                    <ColumnDefinition Width="5"/>
+                    <ColumnDefinition Width="*" MinWidth="520"/>
+                    <ColumnDefinition Width="5"/>
+                    <ColumnDefinition Width="330" MinWidth="280"/>
+                </Grid.ColumnDefinitions>
 
-            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="#C7CDD3"/>
+                <GroupBox x:Name="ModelExplorerGroup" Grid.Column="0" Header="Model Explorer">
+                    <TreeView x:Name="ObjectTree"/>
+                </GroupBox>
 
-            <Border Grid.Column="2" Margin="4" BorderBrush="#AEB6BE" BorderThickness="1" Background="#E8EDF2">
-                <occt:OcctWpfViewport x:Name="Viewport"
-                                      EnableRectangleSelection="True"
-                                      RectangleSelectionThreshold="5"
-                                      SynchronizeRenderDpi="True"/>
-            </Border>
+                <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="#C7CDD3"/>
 
-            <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch" Background="#C7CDD3"/>
+                <Border Grid.Column="2" Margin="4" BorderBrush="#AEB6BE" BorderThickness="1" Background="#E8EDF2">
+                    <occt:OcctWpfViewport x:Name="Viewport"
+                                          EnableRectangleSelection="True"
+                                          RectangleSelectionThreshold="5"
+                                          SynchronizeRenderDpi="True"/>
+                </Border>
 
-            <Grid Grid.Column="4">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="3*" MinHeight="250"/>
-                    <RowDefinition Height="5"/>
-                    <RowDefinition Height="2*" MinHeight="170"/>
-                </Grid.RowDefinitions>
+                <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch" Background="#C7CDD3"/>
 
-                <GroupBox x:Name="PropertiesGroup" Header="Properties" Grid.Row="0">
+                <GroupBox x:Name="PropertiesGroup" Grid.Column="4" Header="Properties">
                     <DataGrid x:Name="PropertyGrid"
                               IsReadOnly="True"
                               AutoGenerateColumns="False"
@@ -119,24 +119,27 @@
                         </DataGrid.Columns>
                     </DataGrid>
                 </GroupBox>
-
-                <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" Background="#C7CDD3"/>
-
-                <GroupBox x:Name="CommandLineGroup" Header="Command Line" Grid.Row="2">
-                    <TextBox x:Name="LogBox"
-                             IsReadOnly="True"
-                             AcceptsReturn="True"
-                             AcceptsTab="True"
-                             TextWrapping="NoWrap"
-                             FontFamily="Consolas"
-                             FontSize="12"
-                             Background="#101820"
-                             Foreground="#D8E2EA"
-                             BorderBrush="#48525B"
-                             VerticalScrollBarVisibility="Auto"
-                             HorizontalScrollBarVisibility="Auto"/>
-                </GroupBox>
             </Grid>
+
+            <GridSplitter Grid.Row="1"
+                          Height="5"
+                          HorizontalAlignment="Stretch"
+                          Background="#C7CDD3"/>
+
+            <GroupBox x:Name="CommandLineGroup" Header="Command Line" Grid.Row="2">
+                <TextBox x:Name="LogBox"
+                         IsReadOnly="True"
+                         AcceptsReturn="True"
+                         AcceptsTab="True"
+                         TextWrapping="NoWrap"
+                         FontFamily="Consolas"
+                         FontSize="12"
+                         Background="White"
+                         Foreground="#20262C"
+                         BorderBrush="#CBD1D6"
+                         VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Auto"/>
+            </GroupBox>
         </Grid>
     </DockPanel>
 </Window>
