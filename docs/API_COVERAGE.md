@@ -12,7 +12,7 @@ OCAF/XDE is intentionally excluded. Document persistence, undo/redo, application
 - OCCT: `7.9.0`
 - Native exports: `336`
 - Managed P/Invoke declarations: `336`
-- Public .NET types: `81`
+- Public .NET types: `82`
 - Viewer API: `212`
 - Modeling API: `124`
 
@@ -41,7 +41,7 @@ Native 0/1 flags are not exposed as managed `int` options. Public modeling optio
 |---|---|
 | `OcctNet` | Core types, interactive engine, headless modeling session, runtime loading |
 | `OcctNet.WinForms` | Reusable WinForms OCCT viewport host |
-| `OcctNet.Wpf` | Reusable WPF viewport host |
+| `OcctNet.Wpf` | Reusable WPF OCCT viewport host |
 
 The full WinForms/WPF/Avalonia CAD applications live on the `demo` branch, not in `main`.
 
@@ -67,7 +67,9 @@ Coverage includes camera/view control, screen/world conversion, selection, objec
 - Axis-aligned bounds and `GetShapeOrientedBounds()` OBB.
 - Linear/surface/volume mass properties and shape distance.
 - Location read/write.
-- Subshape traversal, outer/inner wires, ancestor queries.
+- Generic subshape traversal, outer/inner wires, ancestor queries.
+- Convenience collections: `GetVertices()`, `GetEdges()`, `GetWires()`, `GetFaces()`, `GetShells()`, `GetSolids()`, `GetCompSolids()`, and `GetCompounds()`.
+- Local topology helpers: `GetEdgeVertices()`, `GetWireEdges()`, `GetFaceEdges()`, `GetFaceVertices()`, and `GetTopologyCounts()`.
 - `IsSameShape()` and `IsPartnerShape()` expose OCCT topological identity semantics.
 
 ### Geometry and differential geometry
@@ -97,6 +99,20 @@ Coverage includes camera/view control, screen/world conversion, selection, objec
 
 STEP, IGES, BREP, and STL import/export are exposed directly, plus generic file import. STL export accepts explicit tessellation parameters.
 
+## Pure managed geometry utilities
+
+`OcctGeometryExtensions` adds allocation-light calculations around existing bridge value types without invoking Native OCCT:
+
+- point interpolation and tolerance-aware point/vector comparison;
+- vector angle, projection, and rejection;
+- AABB validation, containment, intersection, expansion, union, volume, and diagonal length;
+- UV-bound validation, center, and containment;
+- distance-result separation vector, midpoint, and tolerance test;
+- affine point/vector transformation, composition, inversion, translation, rotation, and uniform scale;
+- conversion between `OcctModelLocation` and `OcctTransform3d`.
+
+Angles are radians. Matrix multiplication uses row-major affine matrices with column-vector semantics: `left.Multiply(right)` applies `right` first. See [Managed Geometry and Transform Utilities](GEOMETRY_UTILITIES.md).
+
 ## Runtime and ownership
 
 - `OcctEngine` and `OcctModelingSession` use `SafeHandle` internally.
@@ -113,6 +129,7 @@ Cloud CI has no OCCT SDK, so it validates declarations and managed code rather t
 - Every P/Invoke uses Cdecl and exact symbol spelling.
 - Counts come from `bridge-contract.json`.
 - Managed projects and managed-only regression tests run in CI.
+- Managed geometry/transform helpers are regression-tested without an OCCT runtime.
 - `main` and `demo` reusable wrapper content is compared directly.
 
 Before release, run on Windows with OCCT 7.9.0:
