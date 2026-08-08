@@ -2,9 +2,9 @@
 
 [English](README.md) · [中文 API 覆盖说明](docs/API_COVERAGE.zh-CN.md) · [主 SDK 分支](https://github.com/zly258/OcctCSharpBridge/tree/main)
 
-`demo` 分支在与 `main` 同步维护的 Bridge 之上提供完整 WinForms、WPF、Avalonia CAD 示例应用。Native/.NET 公共封装与契约持续和 `main` 比较；应用 UI、Demo 场景、运行/发布脚本和包校核只保留在本分支。
+`demo` 分支在与 `main` 同步维护的 Bridge 之上提供完整 WinForms、WPF、Avalonia CAD 示例应用。Native/.NET 公共封装源码与契约持续和 `main` 比较；应用 UI、Demo 场景、运行/发布脚本和应用发布校核只保留在本分支。
 
-**Bridge 2.6.0 / ABI 3** 是破坏性 API 收口版本。Demo 已直接使用规范接口，不保留兼容 Alias。Shape/Object 必须绑定所属 `OcctEngine` / `OcctModelingSession`，公开建模参数使用 `bool`/枚举；Headless API 新增 OBB、拓扑身份、带孔平面、Edge 精确裁剪、Wire Offset 和整 Shape Mesh。
+**Bridge 2.6.0 / ABI 3** 是破坏性 API 收口版本。Demo 已直接使用规范接口，不保留兼容 Alias。Shape/Object 必须绑定所属 `OcctEngine` / `OcctModelingSession`，公开建模参数使用 `bool`/枚举；Headless API 包含 OBB、拓扑身份、带孔平面、Edge 精确裁剪、Wire Offset 和整 Shape Mesh。
 
 桥接层不使用 OCAF/XDE。Document、Entity、Command、Undo/Redo、JSON 持久化和 Tool 等应用职责由上层程序实现。
 
@@ -21,6 +21,8 @@
 
 `bridge-contract.json` 与 `main` 共享，是版本、ABI、OCCT、.NET 和 API 数量的唯一契约来源。`global.json` 按分支设置：`main` 使用 8.0.423，`demo` 使用 10.0.302 以满足 Avalonia 12 Analyzer；两边仍统一目标为 .NET 8 / C# 12。
 
+**NuGet SDK 打包只属于 `main` 分支。** `demo` 中三个可复用项目明确设置 `IsPackable=false`；本分支负责的是可运行桌面应用以及 app-local Native 依赖闭包发布，不承担 NuGet SDK 发布。
+
 ## 分层
 
 - `OcctNet`：交互式 `OcctEngine`、Headless `OcctModelingSession`、几何/拓扑/分析/网格/文件交换/运行时。
@@ -31,6 +33,41 @@
 - `CadWinForms`、`CadWpf`、`CadAvalonia`：可直接运行的参考应用。
 
 当前 Avalonia Viewer 仍基于 Windows HWND，不声明 Linux/macOS OCCT Viewer 支持。
+
+## Demo 界面代码组织
+
+三个示例已经统一从原来的 50～60 KB 单窗口大文件拆分为按职责组织的 partial 文件：
+
+```text
+WinForms
+├─ MainForm.cs                 状态、构造、事件连接
+├─ MainForm.Designer.cs        WinForms 布局
+├─ MainForm.Layout.cs          Splitter/启动布局策略
+├─ MainForm.Menus.cs           菜单与工具栏
+├─ MainForm.Commands.cs        UI 命令动作
+├─ MainForm.Objects.cs         模型树与属性
+└─ MainForm.Localization.cs    中英文界面
+
+WPF
+├─ MainWindow.xaml             布局与样式
+├─ MainWindow.xaml.cs          状态、构造、事件连接
+├─ MainWindow.xaml.Menus.cs
+├─ MainWindow.xaml.Commands.cs
+├─ MainWindow.xaml.Objects.cs
+└─ MainWindow.xaml.Localization.cs
+
+Avalonia
+├─ MainWindow.cs               状态、构造、事件连接
+├─ MainWindow.Layout.cs        程序化布局
+├─ MainWindow.Menus.cs
+├─ MainWindow.Commands.cs
+├─ MainWindow.Objects.cs
+└─ MainWindow.Localization.cs
+```
+
+三套 Demo 的工作区现在统一为：**左侧模型树 + 中间视口 + 右侧属性 + 底部横跨全宽的命令日志**。日志统一使用白色/浅色背景和深色文字，不再采用黑色 Console 风格背景。
+
+这次调整以“方法体按职责移动”为主，没有删除 Command ID、选择行为、Document/Session 逻辑、建模能力、快捷键、文件交换、Undo/Redo 或 Viewer 功能。`tests/check-demo-ui-structure.ps1` 会限制主窗口重新膨胀，并持续校验底部浅色日志布局。
 
 ## 界面预览
 
@@ -61,7 +98,7 @@ OCCT 目录应包含 `inc`、`win64\vc14\lib`、`win64\vc14\bin`，以及可选 
 
 | Target | 作用 | OCCT SDK |
 | --- | --- | --- |
-| `validate` | 契约、源码和发布规则校验 | 否 |
+| `validate` | 契约、源码、UI 结构和发布规则校验 | 否 |
 | `managed` | Core + WinForms/WPF/Avalonia Host + `CadCommon` | 否 |
 | `ci` | 契约检查 + Managed Test + 三个 Demo + Smoke 编译 | 否 |
 | `native` | 构建 `OcctNative.dll` | 是 |
@@ -105,11 +142,11 @@ GitHub 托管环境没有项目 OCCT SDK，因此只执行完整 Managed/静态�
 
 ## 测试
 
-PowerShell 负责 API/静态契约；`OcctNet.ManagedTests` 无需 OCCT，检查 Owner、值类型、强类型 Options、Guard 和 Runtime 配置；`OcctNet.Smoke` 负责真实 Native 集成。
+PowerShell 负责 API/静态/UI 契约；`OcctNet.ManagedTests` 无需 OCCT，检查 Owner、值类型、强类型 Options、Guard 和 Runtime 配置；`OcctNet.Smoke` 负责真实 Native 集成。
 
 建议：
 
-- API/源码改动后：`build.ps1 validate`
+- API/源码/UI 改动后：`build.ps1 validate`
 - 提交前：`build.ps1 ci`
 - Native/建模/Runtime 改动后：`build.ps1 smoke`
 - 对外发布前：`publish.ps1 ...`
