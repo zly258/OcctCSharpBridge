@@ -18,7 +18,7 @@ internal static class BSplineSurfaceSmoke
         var loft = model.Loft(sections, makeSolid: false, ruled: false, tolerance: 1e-6).Shape;
         var bsplineFace = model.GetFaces(loft)
             .FirstOrDefault(face => model.GetFaceSurfaceType(face) == OcctSurfaceType.BSpline);
-        if (bsplineFace is null)
+        if (!bsplineFace.IsValid)
             throw new InvalidOperationException("Loft did not produce a B-Spline face for surface inspection.");
 
         var data = model.GetBSplineSurfaceData(bsplineFace);
