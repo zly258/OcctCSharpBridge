@@ -217,10 +217,43 @@ foreach ($file in $nativeMethodFiles) {
     }
 }
 
-$docs = @(Get-ChildItem (Join-Path $RepositoryRoot "docs") -File | Select-Object -ExpandProperty Name | Sort-Object)
-$expectedDocs = @("API_COVERAGE.md", "API_COVERAGE.zh-CN.md")
-if (Compare-Object $expectedDocs $docs) {
-    throw "The docs directory must contain only API_COVERAGE.md and API_COVERAGE.zh-CN.md."
+$packageProjects = @(
+    "src/OcctNet/OcctNet.csproj",
+    "src/OcctNet.WinForms/OcctNet.WinForms.csproj",
+    "src/OcctNet.Wpf/OcctNet.Wpf.csproj"
+)
+foreach ($relativePath in $packageProjects) {
+    $projectText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot $relativePath))
+    foreach ($token in @(
+        "<IsPackable>true</IsPackable>",
+        "<GenerateDocumentationFile>true</GenerateDocumentationFile>",
+        "<PackageReadmeFile>README.md</PackageReadmeFile>",
+        "<PackageLicenseFile>LICENSE</PackageLicenseFile>",
+        "<RepositoryUrl>https://github.com/zly258/OcctCSharpBridge</RepositoryUrl>"
+    )) {
+        if (-not $projectText.Contains($token)) {
+            throw "Managed SDK package metadata is missing from $relativePath: $token"
+        }
+    }
 }
 
-Write-Host "[organization] Bridge 2.6 canonical naming, strict ownership, typed DTO boundaries and responsibility layout validated." -ForegroundColor Green
+$requiredDocs = @(
+    "API_COVERAGE.md",
+    "API_COVERAGE.zh-CN.md",
+    "GETTING_STARTED.md",
+    "GETTING_STARTED.zh-CN.md",
+    "PACKAGING.md",
+    "PACKAGING.zh-CN.md"
+)
+foreach ($fileName in $requiredDocs) {
+    if (-not (Test-Path (Join-Path $RepositoryRoot "docs\$fileName") -PathType Leaf)) {
+        throw "Required SDK documentation is missing: docs/$fileName"
+    }
+}
+
+$unexpectedDocs = @(Get-ChildItem (Join-Path $RepositoryRoot "docs") -File | Where-Object { $_.Extension -ne ".md" })
+if ($unexpectedDocs.Count -gt 0) {
+    throw "The docs directory must contain Markdown documentation only: $($unexpectedDocs.Name -join ', ')"
+}
+
+Write-Host "[organization] Bridge 2.6 canonical naming, strict ownership, typed DTO boundaries, package metadata and SDK documentation validated." -ForegroundColor Green
