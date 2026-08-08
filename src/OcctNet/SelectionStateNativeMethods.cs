@@ -2,8 +2,10 @@
 
 namespace OcctNet;
 
-internal static partial class NativeMethods
+internal static class SelectionStateNativeMethods
 {
+    private const string LibraryName = "OcctNative";
+
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_selected_hits(
         IntPtr handle,

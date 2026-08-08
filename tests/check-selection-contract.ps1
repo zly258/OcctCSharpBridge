@@ -30,8 +30,10 @@ $selectionHeader = Read-Text (Join-Path $RepositoryRoot "src\OcctNative\OcctSele
 $overlay = Read-Text (Join-Path $RepositoryRoot "src\OcctNative\OcctSelectionOverlay.cpp")
 $control = Read-Text (Join-Path $RepositoryRoot "src\OcctNet.WinForms\OcctViewportControl.cs")
 $managedHits = Read-Text (Join-Path $RepositoryRoot "src\OcctNet\OcctEngine.SelectionHits.cs")
+$managedOverlay = Read-Text (Join-Path $RepositoryRoot "src\OcctNet\OcctEngine.SelectionOverlay.cs")
 $managedTypes = Read-Text (Join-Path $RepositoryRoot "src\OcctNet\OcctSelectionHitTypes.cs")
-$managedNative = Read-Text (Join-Path $RepositoryRoot "src\OcctNet\NativeMethods.SelectionHits.cs")
+$managedStateNative = Read-Text (Join-Path $RepositoryRoot "src\OcctNet\SelectionStateNativeMethods.cs")
+$managedOverlayNative = Read-Text (Join-Path $RepositoryRoot "src\OcctNet\SelectionOverlayNativeMethods.cs")
 
 Assert-Contains $engine 'AIS_SelectionScheme_Add : AIS_SelectionScheme_Replace' 'add/replace selection schemes'
 Assert-Contains $engine 'SelectRectangle(' 'the standard OCCT SelectRectangle call'
@@ -73,13 +75,26 @@ Assert-Contains $managedTypes 'public bool IsSubshape => SubshapeIndex >= 0;' 'm
 if ($managedTypes.Contains('Point)') -or $managedTypes.Contains('OcctPoint3d? Point')) {
     throw 'Managed selection hit must not expose an unimplemented hit-point property.'
 }
-Assert-Contains $managedNative 'occt_selected_hits' 'batched selected-hit P/Invoke'
-Assert-Contains $managedNative 'occt_detected_hit' 'detected-hit P/Invoke'
+Assert-Contains $managedStateNative 'internal static class SelectionStateNativeMethods' 'dedicated selection-state native-method class'
+Assert-Contains $managedStateNative 'occt_selected_hits' 'batched selected-hit P/Invoke'
+Assert-Contains $managedStateNative 'occt_detected_hit' 'detected-hit P/Invoke'
+Assert-Contains $managedOverlayNative 'internal static class SelectionOverlayNativeMethods' 'dedicated selection-overlay native-method class'
+Assert-Contains $managedOverlayNative 'occt_show_selection_rectangle' 'overlay show P/Invoke'
 Assert-Contains $managedHits 'public IReadOnlyList<OcctSelectionHit> GetSelectedHits()' 'managed selected-hit API'
 Assert-Contains $managedHits 'public bool TryGetDetectedHit(out OcctSelectionHit hit)' 'managed detected-hit API'
-Assert-Contains $managedHits 'Check(NativeMethods.occt_selected_hits(_handle, null, 0, out var count));' 'two-call selected-hit count query'
-Assert-Contains $managedHits 'Check(NativeMethods.occt_detected_hit(_handle, out var native, out var hasHit));' 'normal native error propagation'
+Assert-Contains $managedHits 'Check(SelectionStateNativeMethods.occt_selected_hits(_handle, null, 0, out var count));' 'two-call selected-hit count query'
+Assert-Contains $managedHits 'Check(SelectionStateNativeMethods.occt_detected_hit(_handle, out var native, out var hasHit));' 'normal native error propagation'
 Assert-Contains $managedHits 'GetObject(native.OwnerObjectId)' 'managed owner-object resolution'
+Assert-Contains $managedOverlay 'SelectionOverlayNativeMethods.occt_show_selection_rectangle' 'overlay API/native responsibility separation'
+
+foreach ($obsoletePath in @(
+    "src\OcctNet\SelectionNativeMethods.cs",
+    "src\OcctNet\NativeMethods.SelectionHits.cs"
+)) {
+    if (Test-Path (Join-Path $RepositoryRoot $obsoletePath)) {
+        throw "Obsolete selection native-method file must not remain: $obsoletePath"
+    }
+}
 
 Assert-Contains $control 'RectangleSelectionThreshold { get; set; } = 3;' 'the three-pixel reference threshold'
 Assert-Contains $control 'OcctRectangleSelectionBehavior.Inclusive' 'inclusive rectangle selection as the default'
@@ -102,4 +117,4 @@ if ($resizeBlock.Contains('CancelRectangleSelection();')) {
     throw 'OnResize must preserve an active rectangle gesture instead of cancelling the first drag.'
 }
 
-Write-Host '[selection] Point/box selection, batched selected/detected hits, subshape-index contract, and first-gesture capture recovery validated.' -ForegroundColor Green
+Write-Host '[selection] Overlay/state native methods, point/box selection, batched selected/detected hits, subshape-index contract, and first-gesture capture recovery validated.' -ForegroundColor Green

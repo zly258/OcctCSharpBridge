@@ -23,7 +23,7 @@ public sealed partial class OcctEngine
         if (lineWidth <= 0.0)
             throw new ArgumentOutOfRangeException(nameof(lineWidth), "Line width must be greater than zero.");
 
-        CheckInitialized(() => SelectionNativeMethods.occt_show_selection_rectangle(
+        CheckInitialized(() => SelectionOverlayNativeMethods.occt_show_selection_rectangle(
             _handle,
             x1,
             y1,
@@ -41,5 +41,5 @@ public sealed partial class OcctEngine
 
     /// <summary>Removes the OCCT-native rubber-band selection overlay.</summary>
     public void HideSelectionRectangle() =>
-        CheckInitialized(() => SelectionNativeMethods.occt_hide_selection_rectangle(_handle));
+        CheckInitialized(() => SelectionOverlayNativeMethods.occt_hide_selection_rectangle(_handle));
 }
