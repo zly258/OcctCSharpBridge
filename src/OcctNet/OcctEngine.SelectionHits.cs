@@ -46,9 +46,16 @@ public sealed partial class OcctEngine
         if (native.SubshapeIndex < -1)
             throw new InvalidOperationException("Selection hit contains an invalid subshape index.");
 
-        return new OcctSelectionHit(
-            GetObject(native.OwnerObjectId),
-            (OcctShapeType)native.SubshapeType,
-            native.SubshapeIndex);
+        var subshapeType = (OcctShapeType)native.SubshapeType;
+        if (native.SubshapeIndex == -1 && subshapeType != OcctShapeType.Shape)
+            throw new InvalidOperationException("Whole-object selection hits must use Shape with subshape index -1.");
+        if (native.SubshapeIndex >= 0 && subshapeType == OcctShapeType.Shape)
+            throw new InvalidOperationException("Subshape selection hits must contain a concrete topology type.");
+
+        var owner = GetObject(native.OwnerObjectId);
+        if (native.SubshapeIndex >= 0 && owner.Kind != OcctObjectKind.Shape)
+            throw new InvalidOperationException("Subshape selection hits must be owned by a shape object.");
+
+        return new OcctSelectionHit(owner, subshapeType, native.SubshapeIndex);
     }
 }
