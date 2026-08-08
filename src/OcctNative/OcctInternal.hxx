@@ -9,10 +9,12 @@
 #include <AIS_ViewCube.hxx>
 #include <Aspect_DisplayConnection.hxx>
 #include <Graphic3d_GraphicDriver.hxx>
+#include <Graphic3d_NameOfMaterial.hxx>
 #include <GProp_GProps.hxx>
 #include <OpenGl_GraphicDriver.hxx>
 #include <Quantity_Color.hxx>
 #include <Standard_Failure.hxx>
+#include <TopAbs_ShapeEnum.hxx>
 #include <TopoDS_Shape.hxx>
 #include <V3d_AmbientLight.hxx>
 #include <V3d_DirectionalLight.hxx>
