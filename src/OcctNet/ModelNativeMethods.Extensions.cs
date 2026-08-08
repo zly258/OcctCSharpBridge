@@ -39,4 +39,26 @@ internal static partial class ModelNativeMethods
         double altitude,
         int joinType,
         int openResult);
+
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern int occt_model_edge_bspline_info(
+        IntPtr handle,
+        long edgeId,
+        out OcctModelBSplineCurveInfoNative result);
+
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern int occt_model_edge_bspline_pole_at(
+        IntPtr handle,
+        long edgeId,
+        int index,
+        out OcctPoint3d pole,
+        out double weight);
+
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern int occt_model_edge_bspline_knot_at(
+        IntPtr handle,
+        long edgeId,
+        int index,
+        out double knot,
+        out int multiplicity);
 }
