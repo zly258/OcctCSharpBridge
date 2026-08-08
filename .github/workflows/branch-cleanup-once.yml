@@ -1,0 +1,51 @@
+﻿name: One-time obsolete branch cleanup
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: contains(github.event.head_commit.message, 'Run one-time obsolete branch cleanup')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Delete verified obsolete branches
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          branches=(
+            "agent/structured-selection-hit"
+            "cleanup/demo-preview-docs"
+            "feature/ocstation-headless-exchange-compat"
+            "fix/demo-readme-preview-paths"
+            "fix/demo-selection-hit-consumption"
+            "fix/selection-hit-invariants"
+            "headless-model-io"
+            "headless-model-io-main"
+            "refactor/split-engine-native-sources"
+            "sync/demo-selection-hit-invariants"
+            "sync/demo-split-engine-native-sources"
+            "cleanup/obsolete-branches"
+          )
+
+          for branch in "${branches[@]}"; do
+            if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+              echo "Deleting $branch"
+              git push origin --delete "$branch"
+            else
+              echo "Already absent: $branch"
+            fi
+          done
+
+          echo "Long-lived branches intentionally retained: main, demo, website"
