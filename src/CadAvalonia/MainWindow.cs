@@ -91,9 +91,9 @@ public sealed partial class MainWindow : Window
             TextWrapping = TextWrapping.NoWrap,
             FontFamily = new AvaloniaFontFamily("Consolas"),
             FontSize = 12,
-            Background = new SolidColorBrush(AvaloniaColor.Parse("#101820")),
-            Foreground = new SolidColorBrush(AvaloniaColor.Parse("#D8E2EA")),
-            BorderBrush = new SolidColorBrush(AvaloniaColor.Parse("#48525B"))
+            Background = AvaloniaBrushes.White,
+            Foreground = new SolidColorBrush(AvaloniaColor.Parse("#20262C")),
+            BorderBrush = new SolidColorBrush(AvaloniaColor.Parse("#CBD1D6"))
         };
         _commandStatus = new TextBlock { MinWidth = 320, VerticalAlignment = VerticalAlignment.Center };
         _selectionStatus = new TextBlock { MinWidth = 170, VerticalAlignment = VerticalAlignment.Center };

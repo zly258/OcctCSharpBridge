@@ -16,7 +16,6 @@ partial class MainForm
     private ToolStripStatusLabel _coordinateStatus = null!;
     private SplitContainer _mainSplitContainer = null!;
     private SplitContainer _centerRightSplitContainer = null!;
-    private SplitContainer _rightSplitContainer = null!;
     private GroupBox _objectGroup = null!;
     private GroupBox _propertyGroup = null!;
     private GroupBox _logGroup = null!;
@@ -50,7 +49,6 @@ partial class MainForm
         _coordinateStatus = new ToolStripStatusLabel();
         _mainSplitContainer = new SplitContainer();
         _centerRightSplitContainer = new SplitContainer();
-        _rightSplitContainer = new SplitContainer();
         _objectGroup = new GroupBox();
         _propertyGroup = new GroupBox();
         _logGroup = new GroupBox();
@@ -71,10 +69,6 @@ partial class MainForm
         _centerRightSplitContainer.Panel1.SuspendLayout();
         _centerRightSplitContainer.Panel2.SuspendLayout();
         _centerRightSplitContainer.SuspendLayout();
-        ((ISupportInitialize)_rightSplitContainer).BeginInit();
-        _rightSplitContainer.Panel1.SuspendLayout();
-        _rightSplitContainer.Panel2.SuspendLayout();
-        _rightSplitContainer.SuspendLayout();
         _objectGroup.SuspendLayout();
         _propertyGroup.SuspendLayout();
         _logGroup.SuspendLayout();
@@ -88,16 +82,18 @@ partial class MainForm
         _rootLayout.Controls.Add(_menu, 0, 0);
         _rootLayout.Controls.Add(_toolBar, 0, 1);
         _rootLayout.Controls.Add(_mainSplitContainer, 0, 2);
-        _rootLayout.Controls.Add(_statusBar, 0, 3);
+        _rootLayout.Controls.Add(_logGroup, 0, 3);
+        _rootLayout.Controls.Add(_statusBar, 0, 4);
         _rootLayout.Dock = DockStyle.Fill;
         _rootLayout.GrowStyle = TableLayoutPanelGrowStyle.FixedSize;
         _rootLayout.Location = new Point(0, 0);
         _rootLayout.Margin = new Padding(0);
         _rootLayout.Name = "_rootLayout";
-        _rootLayout.RowCount = 4;
+        _rootLayout.RowCount = 5;
         _rootLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _rootLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34F));
         _rootLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        _rootLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 160F));
         _rootLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _rootLayout.Size = new Size(1440, 900);
         _rootLayout.TabIndex = 0;
@@ -238,7 +234,7 @@ partial class MainForm
         //
         // _centerRightSplitContainer.Panel2
         //
-        _centerRightSplitContainer.Panel2.Controls.Add(_rightSplitContainer);
+        _centerRightSplitContainer.Panel2.Controls.Add(_propertyGroup);
         _centerRightSplitContainer.Size = new Size(1159, 809);
         _centerRightSplitContainer.SplitterDistance = 824;
         _centerRightSplitContainer.SplitterWidth = 5;
@@ -256,31 +252,6 @@ partial class MainForm
         _viewport.Size = new Size(824, 809);
         _viewport.TabIndex = 0;
         //
-        // _rightSplitContainer
-        //
-        _rightSplitContainer.Dock = DockStyle.Fill;
-        _rightSplitContainer.FixedPanel = FixedPanel.None;
-        _rightSplitContainer.Location = new Point(0, 0);
-        _rightSplitContainer.Margin = new Padding(0);
-        _rightSplitContainer.Name = "_rightSplitContainer";
-        _rightSplitContainer.Orientation = Orientation.Horizontal;
-        _rightSplitContainer.Panel1MinSize = 240;
-        _rightSplitContainer.Panel2MinSize = 170;
-        //
-        // _rightSplitContainer.Panel1
-        //
-        _rightSplitContainer.Panel1.Controls.Add(_propertyGroup);
-        _rightSplitContainer.Panel1.Padding = new Padding(0, 0, 0, 2);
-        //
-        // _rightSplitContainer.Panel2
-        //
-        _rightSplitContainer.Panel2.Controls.Add(_logGroup);
-        _rightSplitContainer.Panel2.Padding = new Padding(0, 2, 0, 0);
-        _rightSplitContainer.Size = new Size(330, 809);
-        _rightSplitContainer.SplitterDistance = 500;
-        _rightSplitContainer.SplitterWidth = 5;
-        _rightSplitContainer.TabIndex = 0;
-        //
         // _propertyGroup
         //
         _propertyGroup.Controls.Add(_propertyGrid);
@@ -290,7 +261,7 @@ partial class MainForm
         _propertyGroup.MinimumSize = new Size(280, 220);
         _propertyGroup.Name = "_propertyGroup";
         _propertyGroup.Padding = new Padding(8, 7, 8, 8);
-        _propertyGroup.Size = new Size(330, 498);
+        _propertyGroup.Size = new Size(330, 809);
         _propertyGroup.TabIndex = 0;
         _propertyGroup.TabStop = false;
         _propertyGroup.Text = "Properties";
@@ -340,12 +311,12 @@ partial class MainForm
         //
         _logGroup.Controls.Add(_logBox);
         _logGroup.Dock = DockStyle.Fill;
-        _logGroup.Location = new Point(0, 2);
-        _logGroup.Margin = new Padding(0);
-        _logGroup.MinimumSize = new Size(280, 160);
+        _logGroup.Location = new Point(4, 0);
+        _logGroup.Margin = new Padding(4, 0, 4, 4);
+        _logGroup.MinimumSize = new Size(0, 120);
         _logGroup.Name = "_logGroup";
         _logGroup.Padding = new Padding(8, 7, 8, 8);
-        _logGroup.Size = new Size(330, 305);
+        _logGroup.Size = new Size(1432, 156);
         _logGroup.TabIndex = 0;
         _logGroup.TabStop = false;
         _logGroup.Text = "Command Line";
@@ -354,18 +325,19 @@ partial class MainForm
         //
         _logBox.AcceptsReturn = true;
         _logBox.AcceptsTab = true;
-        _logBox.BackColor = Color.FromArgb(16, 24, 32);
+        _logBox.BackColor = SystemColors.Window;
         _logBox.Dock = DockStyle.Fill;
         _logBox.Font = new Font("Consolas", 9F);
-        _logBox.ForeColor = Color.FromArgb(216, 226, 234);
+        _logBox.ForeColor = SystemColors.WindowText;
         _logBox.Location = new Point(8, 23);
         _logBox.Multiline = true;
         _logBox.Name = "_logBox";
         _logBox.ReadOnly = true;
         _logBox.ScrollBars = ScrollBars.Both;
-        _logBox.Size = new Size(314, 274);
+        _logBox.Size = new Size(1416, 125);
         _logBox.TabIndex = 0;
         _logBox.WordWrap = false;
+        _logBox.BorderStyle = BorderStyle.FixedSingle;
         //
         // _selectionCombo
         //
@@ -399,10 +371,6 @@ partial class MainForm
         _centerRightSplitContainer.Panel2.ResumeLayout(false);
         ((ISupportInitialize)_centerRightSplitContainer).EndInit();
         _centerRightSplitContainer.ResumeLayout(false);
-        _rightSplitContainer.Panel1.ResumeLayout(false);
-        _rightSplitContainer.Panel2.ResumeLayout(false);
-        ((ISupportInitialize)_rightSplitContainer).EndInit();
-        _rightSplitContainer.ResumeLayout(false);
         _objectGroup.ResumeLayout(false);
         _propertyGroup.ResumeLayout(false);
         _logGroup.ResumeLayout(false);
