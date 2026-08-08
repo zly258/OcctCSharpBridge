@@ -10,11 +10,11 @@ OcctCSharpBridge 2.6 面向 Windows x64 与 OCCT 7.9.0，托管层明确分为�
 - 原生桥接版本：`2.6.0`
 - Native ABI：`3`
 - OCCT：`7.9.0`
-- Native exports：`344`
-- Managed P/Invoke declarations：`344`
-- Public .NET types：`86`
+- Native exports：`345`
+- Managed P/Invoke declarations：`345`
+- Public .NET types：`88`
 - Viewer API：`212`
-- Modeling API：`132`
+- Modeling API：`133`
 
 ## 2.6 命名与封装规则
 
@@ -70,10 +70,10 @@ C ABI 中的 0/1 标志不再直接暴露为公开 `int`。托管层使用 `bool
 - 通用子拓扑、外环、内环、祖先拓扑查询。
 - 常用集合快捷接口：`GetVertices()`、`GetEdges()`、`GetWires()`、`GetFaces()`、`GetShells()`、`GetSolids()`、`GetCompSolids()`、`GetCompounds()`。
 - 局部拓扑快捷接口：`GetEdgeVertices()`、`GetWireEdges()`、`GetFaceEdges()`、`GetFaceVertices()` 与 `GetTopologyCounts()`。
-- 邻接接口：`GetAdjacentFaces()`、`GetIncidentEdges()`、`GetIncidentFaces()`。
-- 可按相邻 Face 数量使用 `GetBoundaryEdgeCandidates()`、`GetManifoldInteriorEdges()`、`GetNonManifoldEdges()`、`GetEdgesByAdjacentFaceCount()` 对 Edge 分类。
+- 单个邻接接口：`GetAdjacentFaces()`、`GetIncidentEdges()`、`GetIncidentFaces()`。
+- `AnalyzeEdgeAdjacency()` 为整个 Root Shape 一次建立 Edge→不同 Face 的 Native 索引，返回 `OcctEdgeAdjacencyResult`，直接给出孤立边、边界候选、普通流形内部边和非流形边分类。现有 `GetBoundaryEdgeCandidates()`、`GetManifoldInteriorEdges()`、`GetNonManifoldEdges()`、`GetEdgesByAdjacentFaceCount()` 已自动复用该批量路径。
 - `GetBoundaryEdgeCandidates()` 明确表示**拓扑候选集合**；周期曲面的 Seam Edge 等情况仍可能需要严格自由边界算法进一步确认。
-- `AnalyzeFreeBounds()` 使用 OCCT `ShapeAnalysis_FreeBounds`，返回包含 `ClosedWires`、`OpenWires` 和本次 Tolerance 的 `OcctFreeBoundsResult`，适合 Shell 开口、缝隙和自由边界的最终判断。详见 [拓扑邻接与自由边界分析](TOPOLOGY_ANALYSIS.zh-CN.md)。
+- `AnalyzeFreeBounds()` 使用 OCCT `ShapeAnalysis_FreeBounds`，返回包含 `ClosedWires`、`OpenWires` 和本次 Tolerance 的 `OcctFreeBoundsResult`。详见 [拓扑邻接与自由边界分析](TOPOLOGY_ANALYSIS.zh-CN.md)。
 - `IsSameShape()` / `IsPartnerShape()` 直接暴露 OCCT 的拓扑身份语义。
 
 ### 几何与微分几何
@@ -85,8 +85,8 @@ C ABI 中的 0/1 标志不再直接暴露为公开 `int`。托管层使用 `bool
 - 点投影到 Edge/Face、射线相交、Solid 点分类。
 - `TrimEdge()` 使用 OCCT 原始参数直接裁剪曲线 Edge。
 - `GetBSplineCurveData()` 返回不可变 B-Spline 曲线快照，包括 Degree、有理/周期标志、控制点、权重、不同 Knot 与重数。
-- `GetBSplineSurfaceData()` 返回不可变 B-Spline 曲面快照，包括 U/V Degree、有理/周期标志、Pole/Weight 控制网格、U/V Knot 与重数。曲面扁平 Pole 存储采用 U 主序、V 方向连续变化，并提供 `GetPole(u,v)` / `GetWeight(u,v)` 直接访问二维控制网格。
-- Managed B-Spline 集合统一使用 0 起始索引，Native 内部转换为 OCCT 的 1 起始索引。详见 [B-Spline 曲线与曲面检查](BSPLINE_CURVES.zh-CN.md)。
+- `GetBSplineSurfaceData()` 返回不可变 B-Spline 曲面快照，包括 U/V Degree、有理/周期标志、Pole/Weight 控制网格、U/V Knot 与重数，并提供 `GetPole(u,v)` / `GetWeight(u,v)`。
+- Managed B-Spline 集合统一使用 0 起始索引。详见 [B-Spline 曲线与曲面检查](BSPLINE_CURVES.zh-CN.md)。
 
 ### 建模算法
 
@@ -107,41 +107,26 @@ C ABI 中的 0/1 标志不再直接暴露为公开 `int`。托管层使用 `bool
 
 ## 纯 Managed 几何工具
 
-`OcctGeometryExtensions` 围绕现有 Bridge 值类型增加不依赖 Native OCCT 的轻量级计算：
-
-- 点插值以及点/向量带容差比较；
-- 向量夹角、投影和正交分量；
-- AABB 有效性、包含、相交、扩展、合并、体积和对角线长度；
-- UV 参数范围有效性、中心和包含判断；
-- 距离结果的分离向量、中点和容差判断；
-- 仿射点/向量变换、矩阵组合、求逆、平移、旋转和均匀缩放；
-- `OcctModelLocation` 与 `OcctTransform3d` 双向转换。
-
-角度统一使用弧度。矩阵采用行优先仿射矩阵和列向量语义，`left.Multiply(right)` 表示先执行 `right`。详细示例见 [Managed 几何与变换工具](GEOMETRY_UTILITIES.zh-CN.md)。
+`OcctGeometryExtensions` 围绕现有 Bridge 值类型增加不依赖 Native OCCT 的轻量级计算：点/向量计算、AABB、UV、距离结果、仿射变换，以及 `OcctModelLocation` 与 `OcctTransform3d` 双向转换。详见 [Managed 几何与变换工具](GEOMETRY_UTILITIES.zh-CN.md)。
 
 ## 生命周期与运行时
 
 - `OcctEngine` 和 `OcctModelingSession` 内部使用 `SafeHandle`。
-- 所有 Shape/Object 带内部 Owner Token。
-- 跨 Engine / 跨 Session 误用在进入 Native 前直接拒绝。
-- `OcctRuntime` 优先解析应用目录中的 Native 文件。
-- `OcctRuntime.GetDiagnosticReport()` 继续保留完整文本诊断。
-- `OcctRuntime.GetDiagnosticInfo()` 返回强类型 `OcctRuntimeDiagnosticInfo` 快照，包括进程/系统架构、配置的 Bridge/OCCT 路径及存在状态、当前进程实际加载的 `OcctNative.dll` / `TKernel.dll` 路径，以及原始文本报告；调用本身不会强制加载 Native。详见 [结构化 Runtime 诊断](RUNTIME_DIAGNOSTICS.zh-CN.md)。
+- 所有 Shape/Object 带内部 Owner Token；跨 Engine / Session 误用在进入 Native 前拒绝。
+- `OcctRuntime.GetDiagnosticReport()` 保留完整文本诊断且读取无副作用。
+- `OcctRuntime.GetDiagnosticInfo()` 返回强类型 `OcctRuntimeDiagnosticInfo` 快照，调用本身不会配置或强制加载 Native。详见 [结构化 Runtime 诊断](RUNTIME_DIAGNOSTICS.zh-CN.md)。
 - Native 错误统一转换为带 Operation 和 NativeMessage 的 `OcctException`。
 
 ## 校验边界
 
-GitHub 云端没有项目 OCCT SDK，因此 CI 不伪装执行 Native 建模，而是校验：
+GitHub 云端没有项目 OCCT SDK，因此 CI 校验：
 
-- Native 声明与 C# P/Invoke 符号完全对应；
-- 所有 P/Invoke 均为 Cdecl + ExactSpelling；
-- API 数量严格读取 `bridge-contract.json`；
-- 所有 Managed 项目编译，并执行纯 Managed 回归测试；
-- Managed 几何与变换工具无需 OCCT Runtime 即可执行回归测试；
-- 结构化 Runtime 诊断无需加载 Native OCCT 即可执行回归测试；
-- B-Spline Curve/Surface 的 Native 声明、定义、P/Invoke 与高层 API 做静态一致性校验；
-- 邻接/自由边界分析具有独立静态契约检查；
-- `main` / `demo` 的共享封装内容逐项比较。
+- Native 声明与 C# P/Invoke 完全对应，全部使用 Cdecl + ExactSpelling；
+- API 数量读取 `bridge-contract.json`；
+- Managed 项目编译并执行纯 Managed 回归测试；
+- B-Spline Curve/Surface 做静态一致性校验；
+- 批量 Edge 邻接与严格自由边界具有独立静态契约检查；
+- `main` / `demo` 共享封装逐项比较。
 
 正式发布前必须在安装 OCCT 7.9.0 的 Windows 环境执行：
 
@@ -149,4 +134,4 @@ GitHub 云端没有项目 OCCT SDK，因此 CI 不伪装执行 Native 建模，�
 .\build.ps1 smoke Release -OcctRoot "<OCCT 7.9.0 根目录>"
 ```
 
-Native Smoke 覆盖 ABI/版本加载、Boolean、拓扑、严格自由边界分析、解析/微分几何、B-Spline 曲线/曲面数据提取、OBB、Shape 身份、带孔 Face、Edge Trim、Wire Offset、整 Shape 网格、Loft、Healing 以及 BREP/STEP 往返。
+Native Smoke 覆盖 ABI/版本加载、Boolean、批量邻接、严格自由边界、解析/微分几何、B-Spline 曲线/曲面、OBB、Shape 身份、带孔 Face、Edge Trim、Wire Offset、整 Shape 网格、Loft、Healing 以及 BREP/STEP 往返。
