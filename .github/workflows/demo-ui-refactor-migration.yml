@@ -1,0 +1,168 @@
+﻿name: Demo UI Refactor Migration
+
+on:
+  push:
+    branches: [demo]
+    paths:
+      - .github/workflows/demo-ui-refactor-migration.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: demo
+      - name: Split large demo windows into partial files
+        shell: pwsh
+        run: |
+          @'
+          from pathlib import Path
+          import re
+
+          def find_member(text, name):
+              patterns = [
+                  rf'\n    (?:private|protected)\s+(?:static\s+)?(?:async\s+)?[^\n;={{]+\b{re.escape(name)}\s*\(',
+                  rf'\n    (?:private|protected)\s+(?:static\s+)?(?:async\s+)?(?:Task|void|bool|Control|MenuItem|ContextMenu|OcctShape\?|ToolStripMenuItem|TreeViewItem|Controls\.[A-Za-z0-9_<>?]+)[^\n]*\b{re.escape(name)}\s*\('
+              ]
+              match = None
+              for pattern in patterns:
+                  match = re.search(pattern, text)
+                  if match:
+                      break
+              if not match:
+                  raise RuntimeError(f'Member not found: {name}')
+              start = match.start() + 1
+              brace = text.find('{', match.end())
+              if brace < 0:
+                  raise RuntimeError(f'Block start not found: {name}')
+              depth = 0
+              i = brace
+              in_string = False
+              verbatim = False
+              escape = False
+              while i < len(text):
+                  ch = text[i]
+                  nxt = text[i + 1] if i + 1 < len(text) else ''
+                  if in_string:
+                      if verbatim:
+                          if ch == '"' and nxt == '"':
+                              i += 2
+                              continue
+                          if ch == '"':
+                              in_string = False
+                              verbatim = False
+                      else:
+                          if escape:
+                              escape = False
+                          elif ch == '\\':
+                              escape = True
+                          elif ch == '"':
+                              in_string = False
+                      i += 1
+                      continue
+                  if ch == '@' and nxt == '"':
+                      in_string = True
+                      verbatim = True
+                      i += 2
+                      continue
+                  if ch == '"':
+                      in_string = True
+                      i += 1
+                      continue
+                  if ch == '/' and nxt == '/':
+                      line_end = text.find('\n', i + 2)
+                      i = len(text) if line_end < 0 else line_end
+                      continue
+                  if ch == '/' and nxt == '*':
+                      end = text.find('*/', i + 2)
+                      i = len(text) if end < 0 else end + 2
+                      continue
+                  if ch == '{':
+                      depth += 1
+                  elif ch == '}':
+                      depth -= 1
+                      if depth == 0:
+                          return start, i + 1, text[start:i + 1]
+                  i += 1
+              raise RuntimeError(f'Block end not found: {name}')
+
+          def split(path, class_line, groups, make_partial=False):
+              file = Path(path)
+              text = file.read_text(encoding='utf-8-sig')
+              if make_partial:
+                  text = text.replace(class_line, class_line.replace(' class ', ' partial class '), 1)
+              namespace_match = re.search(r'\nnamespace ([^;]+);\n', text)
+              if not namespace_match:
+                  raise RuntimeError(f'Namespace not found: {path}')
+              usings = text[:namespace_match.start() + 1]
+              namespace = namespace_match.group(1)
+              class_name = re.search(r'class\s+(\w+)', class_line).group(1)
+              modifier = 'public sealed partial class' if 'sealed' in class_line else 'public partial class'
+
+              extracted = {}
+              for group, names in groups.items():
+                  members = []
+                  for name in names:
+                      start, end, block = find_member(text, name)
+                      members.append(block)
+                      text = text[:start] + text[end:]
+                  extracted[group] = members
+
+              file.write_text(text, encoding='utf-8-sig')
+              for group, members in extracted.items():
+                  target = file.with_name(f'{file.stem}.{group}{file.suffix}')
+                  body = '\n\n'.join(members)
+                  target.write_text(
+                      usings + f'namespace {namespace};\n\n{modifier} {class_name}\n{{\n{body}\n}}\n',
+                      encoding='utf-8-sig')
+
+          split(
+              'src/CadWinForms/MainForm.cs',
+              'public sealed partial class MainForm : Form',
+              {
+                  'Layout': ['OnShown','OnResize','ScheduleInitialPanelLayout','ApplyInitialPanelLayout','TrySetSplitterDistance'],
+                  'Menus': ['BuildMenus','BuildViewMenu','BuildDepthMenu','BuildMaterialMenu','BuildSelectionMenu','BuildToolBar','AddCommands','BuildLightingMenu','BuildSelectionAppearanceMenu'],
+                  'Commands': ['ApplyDepthBias','ReportCommandPrecondition','RunCommand','NewDocument','OpenDocument','ImportDocument','SaveDocument','ExportSelected','ExportViewImage','SetPerspectiveFov','SetDisplayPrecision','ApplyLightingPreset','SetAdvancedLighting','SetSelectionHighlightColor','SetHoverHighlightColor','SetSelectionTolerance','SetBackgroundColor','SetSelectionMode','SetActiveVisibility','SetActiveColor','SetActiveMaterial','ConfirmDiscardChanges','Undo','Redo','UpdateHistoryUi','MainFormClosing','MainFormKeyDown'],
+                  'Objects': ['BuildTreeContextMenu','RefreshObjectTree','ObjectTreeAfterSelect','ObjectTreeAfterCheck','ShowObjectProperties','SelectTreeNode','ActiveShape'],
+                  'Localization': ['SetLanguage','ApplyLanguage','ApplyViewCubeLanguage','ShowMouseHelp','ShowAbout','MaterialDisplayName']
+              })
+
+          split(
+              'src/CadWpf/MainWindow.xaml.cs',
+              'public partial class MainWindow : System.Windows.Window',
+              {
+                  'Menus': ['BuildMenus','BuildViewMenu','BuildDepthMenu','BuildMaterialMenu','BuildSelectionMenu','BuildToolbar','AddCommands','BuildLightingMenu','BuildSelectionAppearanceMenu'],
+                  'Commands': ['ApplyDepthBias','ReportCommandPrecondition','RunCommand','NewDocument','OpenDocument','ImportDocument','SaveDocument','ExportSelected','ExportViewImage','SetPerspectiveFov','SetDisplayPrecision','ApplyLightingPreset','SetAdvancedLighting','SetSelectionHighlightColor','SetHoverHighlightColor','SetSelectionTolerance','SetBackgroundColor','SetSelectionMode','SetObjectColor','SetObjectMaterial','ConfirmDiscardChanges','Undo','Redo','UpdateHistoryUi','MainWindowClosing','MainWindowPreviewKeyDown'],
+                  'Objects': ['RefreshObjectTree','BuildObjectContextMenu','ObjectVisibilityChanged','ObjectTreeSelectedItemChanged','ShowObjectProperties','SelectTreeNode','ActiveShape'],
+                  'Localization': ['SetLanguage','ApplyLanguage','ApplyViewCubeLanguage','ShowMouseHelp','ShowAbout','MaterialDisplayName']
+              })
+
+          split(
+              'src/CadAvalonia/MainWindow.cs',
+              'public sealed class MainWindow : Window',
+              {
+                  'Layout': ['BuildLayout'],
+                  'Menus': ['BuildMenus','BuildViewMenu','BuildDepthMenu','BuildLightingMenu','BuildMaterialMenu','BuildSelectionMenu','BuildSelectionAppearanceMenu','BuildToolbar','AddCommands'],
+                  'Commands': ['RunCommandAsync','ReportCommandPrecondition','NewDocument','OpenDocument','ImportDocument','SaveDocument','ExportSelected','ExportViewImage','SetPerspectiveFovAsync','SetDisplayPrecisionAsync','SetAdvancedLightingAsync','ApplyLightingPreset','ApplyDepthBias','SetSelectionHighlightColor','SetHoverHighlightColor','SetSelectionToleranceAsync','SetBackgroundColor','SetSelectionMode','SetObjectColor','SetObjectMaterialAsync','ConfirmDiscardChanges','Undo','Redo','UpdateHistoryUi','MainWindowClosing','MainWindowKeyDown'],
+                  'Objects': ['RefreshObjectTree','BuildObjectContextMenu','ObjectTreeSelectionChanged','ShowObjectProperties','SelectTreeNode','ActiveShape'],
+                  'Localization': ['SetLanguage','ApplyLanguage','ApplyViewCubeLanguage','ShowMouseHelp','ShowAbout','MaterialDisplayName']
+              },
+              make_partial=True)
+          '@ | Set-Content -Path split_demo.py -Encoding utf8
+          python split_demo.py
+          Remove-Item split_demo.py
+      - name: Commit refactor
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/CadWinForms src/CadWpf src/CadAvalonia
+          git commit -m "Split demo window responsibilities" 
+          git push origin HEAD:demo
