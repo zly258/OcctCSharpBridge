@@ -5,13 +5,13 @@ public sealed partial class OcctEngine
     public IReadOnlyList<OcctSelectionHit> GetSelectedHits()
     {
         EnsureInitialized();
-        Check(NativeMethods.occt_selected_hits(_handle, null, 0, out var count));
+        Check(SelectionStateNativeMethods.occt_selected_hits(_handle, null, 0, out var count));
         if (count == 0) return Array.Empty<OcctSelectionHit>();
         if (count < 0)
             throw new InvalidOperationException("Native selection hit count is invalid.");
 
         var nativeHits = new NativeOcctSelectionHit[count];
-        Check(NativeMethods.occt_selected_hits(_handle, nativeHits, nativeHits.Length, out var filledCount));
+        Check(SelectionStateNativeMethods.occt_selected_hits(_handle, nativeHits, nativeHits.Length, out var filledCount));
         if (filledCount < 0 || filledCount > nativeHits.Length)
             throw new InvalidOperationException("Native selection hit result count is invalid.");
 
@@ -24,7 +24,7 @@ public sealed partial class OcctEngine
     public bool TryGetDetectedHit(out OcctSelectionHit hit)
     {
         EnsureInitialized();
-        Check(NativeMethods.occt_detected_hit(_handle, out var native, out var hasHit));
+        Check(SelectionStateNativeMethods.occt_detected_hit(_handle, out var native, out var hasHit));
         if (hasHit == 0)
         {
             hit = default;
