@@ -1,0 +1,50 @@
+﻿name: Add Runtime Diagnostics Check Once
+
+on:
+  push:
+    branches:
+      - demo
+    paths:
+      - .github/workflows/add-runtime-check-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: demo
+
+      - name: Add runtime diagnostics validation and remove migration workflow
+        shell: pwsh
+        run: |
+          $path = 'build.ps1'
+          $text = [System.IO.File]::ReadAllText($path)
+          $entry = '    RuntimeDiagnostics = "tests\check-runtime-diagnostics.ps1"'
+          if (-not $text.Contains($entry)) {
+              $topologyAnchor = '    TopologyAnalysis = "tests\check-topology-analysis.ps1"'
+              $geometryAnchor = '    Geometry = "tests\check-geometry-api.ps1"'
+              if ($text.Contains($topologyAnchor)) {
+                  $text = $text.Replace($topologyAnchor, "$topologyAnchor`r`n$entry")
+              }
+              elseif ($text.Contains($geometryAnchor)) {
+                  $text = $text.Replace($geometryAnchor, "$geometryAnchor`r`n$entry")
+              }
+              else {
+                  throw 'Contract-check anchor was not found in build.ps1.'
+              }
+          }
+          [System.IO.File]::WriteAllText($path, $text, [System.Text.UTF8Encoding]::new($true))
+          Remove-Item '.github/workflows/add-runtime-check-once.yml'
+
+      - name: Commit build validation wiring
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add build.ps1 .github/workflows/add-runtime-check-once.yml
+          git commit -m "Run runtime diagnostics contract checks"
+          git push origin HEAD:demo
