@@ -21,7 +21,7 @@ $required = [ordered]@{
         "SetRenderingMethod", "SetFaceBoundariesVisible", "GetViewportState",
         "ResetView", "FitSelected", "GetSceneGravityPoint", "ScreenToPlane"
     )
-    "src/OcctNet/OcctRuntime.cs" = @(
+    "src/OcctNet/OcctRuntime.Probing.cs" = @(
         "portableRuntimeDirectory", "portableOcctRoot"
     )
 }
@@ -35,9 +35,9 @@ foreach ($entry in $required.GetEnumerator()) {
     }
 }
 
-$runtime = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctRuntime.cs"))
+$runtimeEnvironment = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctRuntime.Environment.cs"))
 foreach ($forbidden in @("CSF_TObjMessage", "CSF_XCAFDefaults", "CSF_XmlOcafResource")) {
-    if ($runtime.Contains($forbidden)) { throw "OCAF/XDE runtime configuration remains: $forbidden" }
+    if ($runtimeEnvironment.Contains($forbidden)) { throw "OCAF/XDE runtime configuration remains: $forbidden" }
 }
 
-Write-Host "[viewport] Extended view, selection, rendering, and portable-runtime contracts validated." -ForegroundColor Green
+Write-Host "[viewport] Extended view, selection, rendering, and split portable-runtime contracts validated." -ForegroundColor Green
