@@ -75,4 +75,75 @@ foreach ($relativePath in @(
     }
 }
 
-Write-Host "[package] Demo publishing, app-local native closure, VC runtime resolution, restricted LoadLibrary probe, and main-only NuGet boundary validated." -ForegroundColor Green
+# README screenshots are branch-specific assets. Pin the rendered URLs to the demo
+# branch and verify every referenced PNG has a matching repository file so a rename,
+# language mix-up, or relative-path regression fails validation immediately.
+$previewPrefix = "https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/"
+$previewContracts = @(
+    @{
+        Readme = "README.md"
+        Expected = @(
+            "winform-demo-en.png",
+            "wpf-demo-en.png",
+            "avalonia-demo-en.png"
+        )
+        ForbiddenSuffix = "-zh.png"
+    },
+    @{
+        Readme = "README.zh-CN.md"
+        Expected = @(
+            "winform-demo-zh.png",
+            "wpf-demo-zh.png",
+            "avalonia-demo-zh.png"
+        )
+        ForbiddenSuffix = "-en.png"
+    }
+)
+
+foreach ($contract in $previewContracts) {
+    $readmePath = Join-Path $RepositoryRoot $contract.Readme
+    if (-not (Test-Path $readmePath -PathType Leaf)) {
+        throw "Demo README was not found: $($contract.Readme)"
+    }
+
+    $readmeText = [System.IO.File]::ReadAllText($readmePath)
+    if ($readmeText -match '(?i)\.webp(?:["''?#]|$)') {
+        throw "Legacy WebP preview reference remains in $($contract.Readme)."
+    }
+
+    $previewUrls = @(
+        [regex]::Matches($readmeText, '<img\s+[^>]*src="([^"]+)"', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase) |
+            ForEach-Object { $_.Groups[1].Value } |
+            Where-Object { $_ -like '*assets/previews/*' }
+    )
+
+    if ($previewUrls.Count -ne 3) {
+        throw "$($contract.Readme) must reference exactly three demo preview images; found $($previewUrls.Count)."
+    }
+
+    foreach ($fileName in $contract.Expected) {
+        $expectedUrl = $previewPrefix + $fileName
+        if ($previewUrls -notcontains $expectedUrl) {
+            throw "$($contract.Readme) is missing canonical preview URL: $expectedUrl"
+        }
+
+        $assetPath = Join-Path $RepositoryRoot ("assets\previews\" + $fileName)
+        if (-not (Test-Path $assetPath -PathType Leaf)) {
+            throw "README preview asset does not exist: assets/previews/$fileName"
+        }
+    }
+
+    foreach ($url in $previewUrls) {
+        if (-not $url.StartsWith($previewPrefix, [System.StringComparison]::Ordinal)) {
+            throw "$($contract.Readme) preview URL is not pinned to the demo branch: $url"
+        }
+        if (-not $url.EndsWith('.png', [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "$($contract.Readme) preview must use PNG: $url"
+        }
+        if ($url.EndsWith($contract.ForbiddenSuffix, [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "$($contract.Readme) references the wrong language preview: $url"
+        }
+    }
+}
+
+Write-Host "[package] Demo publishing, app-local native closure, VC runtime resolution, restricted LoadLibrary probe, main-only NuGet boundary, and README preview paths validated." -ForegroundColor Green
