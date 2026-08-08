@@ -59,15 +59,7 @@ public sealed partial class MainForm
             330,
             keepSecondPanel: true);
 
-        var preferredPropertyHeight = Math.Max(
-            260,
-            (int)(_rightSplitContainer.ClientSize.Height * 0.62));
-        var rightApplied = TrySetSplitterDistance(
-            _rightSplitContainer,
-            preferredPropertyHeight,
-            keepSecondPanel: false);
-
-        return mainApplied && centerRightApplied && rightApplied;
+        return mainApplied && centerRightApplied;
     }
 
     private static bool TrySetSplitterDistance(
