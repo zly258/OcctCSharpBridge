@@ -4,6 +4,7 @@
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+Import-Module (Join-Path $PSScriptRoot "ContractTestHelpers.psm1") -Force
 
 $contracts = [ordered]@{
     "src/OcctNative/OcctModelingTopologyAnalysis.h" = @(
@@ -86,25 +87,11 @@ $contracts = [ordered]@{
     )
 }
 
-foreach ($contract in $contracts.GetEnumerator()) {
-    $path = Join-Path $RepositoryRoot $contract.Key
-    if (-not (Test-Path $path -PathType Leaf)) {
-        throw "Topology analysis contract file was not found: $($contract.Key)"
-    }
+Assert-ContractMap -RepositoryRoot $RepositoryRoot -Contracts $contracts -ContractName "Topology analysis contract"
 
-    $text = [System.IO.File]::ReadAllText($path)
-    foreach ($token in $contract.Value) {
-        if (-not $text.Contains($token)) {
-            throw "Topology analysis token is missing from $($contract.Key): $token"
-        }
-    }
-}
-
-$cmake = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src\OcctNative\CMakeLists.txt"))
+$cmake = Get-ContractText -RepositoryRoot $RepositoryRoot -RelativePath "src/OcctNative/CMakeLists.txt"
 foreach ($token in @("OcctModelingTopologyAnalysis.cpp", "OcctModelingTopologyAnalysis.h", "TKShHealing")) {
-    if (-not $cmake.Contains($token)) {
-        throw "Native topology analysis build contract is missing: $token"
-    }
+    Assert-TextContains -Text $cmake -Token $token -Message "Native topology analysis build contract is missing: $token"
 }
 
 Write-Host "[topology-analysis] Batched edge adjacency and strict ShapeAnalysis_FreeBounds contracts validated." -ForegroundColor Green

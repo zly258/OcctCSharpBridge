@@ -4,6 +4,7 @@
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+Import-Module (Join-Path $PSScriptRoot "ContractTestHelpers.psm1") -Force
 
 $required = [ordered]@{
     "src/OcctNative/OcctViewportExtensions.cpp" = @(
@@ -26,18 +27,11 @@ $required = [ordered]@{
     )
 }
 
-foreach ($entry in $required.GetEnumerator()) {
-    $path = Join-Path $RepositoryRoot $entry.Key
-    if (-not (Test-Path $path -PathType Leaf)) { throw "Viewport API file is missing: $($entry.Key)" }
-    $text = [System.IO.File]::ReadAllText($path)
-    foreach ($token in $entry.Value) {
-        if (-not $text.Contains($token)) { throw "Viewport API token is missing: $token ($($entry.Key))" }
-    }
-}
+Assert-ContractMap -RepositoryRoot $RepositoryRoot -Contracts $required -ContractName "Viewport API"
 
-$runtimeEnvironment = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctRuntime.Environment.cs"))
+$runtimeEnvironment = Get-ContractText -RepositoryRoot $RepositoryRoot -RelativePath "src/OcctNet/OcctRuntime.Environment.cs"
 foreach ($forbidden in @("CSF_TObjMessage", "CSF_XCAFDefaults", "CSF_XmlOcafResource")) {
-    if ($runtimeEnvironment.Contains($forbidden)) { throw "OCAF/XDE runtime configuration remains: $forbidden" }
+    Assert-TextNotContains -Text $runtimeEnvironment -Token $forbidden -Message "OCAF/XDE runtime configuration remains: $forbidden"
 }
 
 Write-Host "[viewport] Extended view, selection, rendering, and split portable-runtime contracts validated." -ForegroundColor Green
