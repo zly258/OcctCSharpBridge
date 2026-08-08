@@ -1,6 +1,8 @@
 ﻿# 结构化 Runtime 诊断
 
-`OcctRuntime.GetDiagnosticReport()` 继续保留完整的人类可读文本报告。Bridge 2.6 新增 `OcctRuntime.GetDiagnosticInfo()`，用于 UI、自动检查、启动诊断和支持信息收集，避免业务代码解析日志字符串。
+`OcctRuntime.GetDiagnosticReport()` 继续保留完整的人类可读报告；`OcctRuntime.GetDiagnosticInfo()` 提供强类型、无副作用的运行时快照，适合启动诊断、UI、自动检查和支持信息收集。
+
+两个诊断接口都**不会配置 Runtime、不会修改 DLL 搜索路径、不会修改 OCCT 环境变量，也不会强制加载 `OcctNative.dll`**。
 
 ## 获取诊断快照
 
@@ -8,47 +10,71 @@
 var info = OcctRuntime.GetDiagnosticInfo();
 
 Console.WriteLine(info.ProcessArchitecture);
-Console.WriteLine(info.ConfiguredNativeDirectory);
-Console.WriteLine(info.ConfiguredNativeBridgeExists);
+Console.WriteLine(info.ApplicationNativeBridgePath);
+Console.WriteLine(info.ApplicationNativeBridgeExists);
+Console.WriteLine(info.ApplicationOcctKernelPath);
+Console.WriteLine(info.ApplicationOcctKernelExists);
 Console.WriteLine(info.LoadedNativeBridgePath);
 Console.WriteLine(info.LoadedOcctKernelPath);
 ```
 
-`GetDiagnosticInfo()` **不会主动加载** `OcctNative.dll` 或 OCCT。Loaded 字段只反映当前进程中已经实际加载的模块。
+## 三层诊断语义
 
-## 主要字段
+诊断快照刻意区分三个不同问题。
 
-`OcctRuntimeDiagnosticInfo` 包含：
+### 1. App-local 发布目录状态
 
-- 快照时间、.NET Framework 描述、操作系统描述；
-- 进程架构与操作系统架构；
-- `Is64BitProcess`；
-- 应用 BaseDirectory 与 CurrentDirectory；
-- `OCCT_BRIDGE_NATIVE_DIR` 配置；
-- `OCCT_ROOT` 与 `CASROOT` 配置；
-- 配置得到的 `OcctNative.dll` 路径，以及文件是否实际存在；
-- 配置得到的 OCCT `TKernel.dll` 路径，以及文件是否实际存在；
-- 当前进程实际加载的 `OcctNative.dll` 路径；
-- 当前进程实际加载的 `TKernel.dll` 路径；
-- `NativeBridgeLoaded`、`OcctKernelLoaded` 快捷标志；
-- 原有完整 `DiagnosticReport` 文本。
+下面字段直接检查 EXE 所在目录，不依赖环境变量：
 
-`Configured...Exists` 使用可空布尔值：
+- `ApplicationNativeBridgePath`；
+- `ApplicationNativeBridgeExists`；
+- `ApplicationOcctKernelPath`；
+- `ApplicationOcctKernelExists`。
+
+正常 Portable Demo 发布会把 `OcctNative.dll`、`TKernel.dll`、所需 OCCT 模块、VC++ Runtime 和第三方 Native DLL 放在 EXE 同目录。因此在第一次 Native 调用之前，就可以先判断发布目录是否明显缺文件。
+
+### 2. 显式/环境配置状态
+
+同时报告：
+
+- `ConfiguredNativeDirectory`：来自 `OCCT_BRIDGE_NATIVE_DIR`；
+- `ConfiguredOcctRoot`：来自 `OCCT_ROOT`；
+- `ConfiguredCasRoot`：来自 `CASROOT`；
+- `ConfiguredNativeBridgePath` 与可空 `ConfiguredNativeBridgeExists`；
+- `ConfiguredOcctKernelPath` 与可空 `ConfiguredOcctKernelExists`。
+
+可空 Exists 语义为：
 
 - `null`：对应环境路径没有配置；
-- `false`：已经配置路径，但预期文件不存在；
-- `true`：预期文件确实存在于该配置路径。
+- `false`：配置了路径，但预期文件不存在；
+- `true`：预期文件确实存在。
+
+### 3. 当前进程实际加载状态
+
+当模块已经进入进程后，还会报告：
+
+- `LoadedNativeBridgePath`；
+- `LoadedOcctKernelPath`；
+- `NativeBridgeLoaded`；
+- `OcctKernelLoaded`。
+
+第一次 Native 调用之前 `NativeBridgeLoaded == false` 并不代表错误，因为 `GetDiagnosticInfo()` 本身不会触发加载。
 
 ## 排查 Win32 126
 
-启动阶段可以先做结构化判断：
+推荐先做结构化判断：
 
 ```csharp
 var info = OcctRuntime.GetDiagnosticInfo();
 
+if (!info.ApplicationNativeBridgeExists)
+{
+    // EXE 同目录没有 OcctNative.dll。
+}
+
 if (info.ConfiguredNativeBridgeExists == false)
 {
-    // OCCT_BRIDGE_NATIVE_DIR 已配置，但目录下没有 OcctNative.dll。
+    // OCCT_BRIDGE_NATIVE_DIR 已配置，但目录中没有 OcctNative.dll。
 }
 
 if (info.ConfiguredOcctKernelExists == false)
@@ -62,35 +88,56 @@ if (info.NativeBridgeLoaded && !info.OcctKernelLoaded)
 }
 ```
 
-第一次 Native 调用之前，`NativeBridgeLoaded == false` **不代表错误**，因为诊断快照本身不会强制触发 Native Load。
+Native 操作成功以后，实际 Loaded 路径特别适合判断进程是否意外加载了其他目录中的旧 DLL。
 
-成功执行 Native 操作之后，`LoadedNativeBridgePath` / `LoadedOcctKernelPath` 可以帮助判断是否意外加载了其他目录里的旧 DLL 或错误 Runtime 副本。
+## 文本报告
+
+`GetDiagnosticReport()` 仍适合直接写日志或复制完整诊断块，内容包括：
+
+- Runtime 是否已配置；
+- BaseDirectory；
+- app-local Bridge/Kernel 是否存在；
+- 已配置的 Native/OCCT 路径；
+- Repository Probing 状态；
+- Native Bridge 候选路径；
+- 关键 OCCT Resource 环境变量。
+
+报告是纯观察行为。读取报告不得修改 `PATH`、`OCCT_BRIDGE_NATIVE_DIR`、`OCCT_ROOT` 或 `CASROOT`。
+
+## Runtime 代码组织
+
+Runtime 职责已经拆开，不再继续堆在一个大文件：
+
+```text
+OcctRuntime.cs                 配置状态与重配置冲突校验
+OcctRuntime.Probing.cs         Bridge/OCCT/仓库/资源路径探测
+OcctRuntime.Environment.cs     DLL Search Policy、PATH、OCCT Resource 环境变量
+OcctRuntime.Diagnostics.cs     结构化诊断与文本报告
+```
+
+这是内部职责整理；对外仍然是同一个 `OcctRuntime` 静态 partial 类型，不增加平行 RuntimeManager。
 
 ## 桌面 UI 集成
 
-WinForms、WPF、Avalonia 应用可以直接把强类型字段展示在“启动诊断 / 故障排查”区域，把完整 `DiagnosticReport` 放在“详细信息”中。
-
-建议摘要优先显示：
+WinForms、WPF、Avalonia 的启动诊断区域建议优先显示：
 
 1. 进程架构；
-2. Bridge 配置路径 + 是否存在；
-3. OCCT Kernel 配置路径 + 是否存在；
-4. 实际 Loaded Bridge 路径；
-5. 实际 Loaded OCCT Kernel 路径。
+2. app-local Bridge/Kernel 是否存在；
+3. 配置 Bridge/Kernel 是否存在；
+4. 实际 Loaded Bridge/Kernel 路径；
+5. 完整 `DiagnosticReport` 放在详细信息中。
 
-这比解析中英文日志文本稳定得多，也更方便后续 OCStation 或其他宿主统一复用。
+比解析中英文日志字符串更稳定。
 
 ## 路径隐私
 
-诊断信息包含本机文件路径。将诊断内容发到 Issue、邮件或外部支持渠道之前，应根据需要检查并脱敏用户名、工程目录、网络共享路径等环境信息。
+诊断信息包含本机文件路径。将内容发到 Issue、邮件或外部支持渠道之前，应按需要检查并脱敏用户名、工程目录、网络共享路径等环境信息。
 
-## 与发布检查的关系
+## 与发布校验的关系
 
-结构化 Runtime 快照不会替代发布打包校验。`demo` 的 `publish.ps1` 仍负责解析 Native 依赖闭包，并在发布前执行受限 `LoadLibraryExW` 探针。
+Runtime 诊断不会替代发布校验。`demo` 的 `publish.ps1` 仍负责解析 Native 依赖闭包，并在发布前执行受限 `LoadLibraryExW` 探针。
 
-两者解决的问题不同：
+- **Publish Validation**：判断发布包是否具有完整可加载的依赖闭包；
+- **Runtime Diagnostics**：判断当前进程此刻看到了什么路径、实际加载了什么模块。
 
-- **Publish 校验**：这个发布包放到干净机器上是否具备完整依赖；
-- **Runtime 诊断**：当前这个进程此刻看到了什么配置、实际加载了什么 DLL。
-
-正式发布优先使用 app-local Native Runtime；开发环境确需指定独立 Runtime 时再使用 `OCCT_BRIDGE_NATIVE_DIR`、`OCCT_ROOT` 或 `CASROOT`。
+正式发布优先使用 app-local Native Runtime；只有开发/部署布局明确需要时才使用 `OCCT_BRIDGE_NATIVE_DIR`、`OCCT_ROOT` 或 `CASROOT`。
