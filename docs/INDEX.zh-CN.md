@@ -9,7 +9,8 @@
 | [API 覆盖说明](API_COVERAGE.zh-CN.md) | 当前 Bridge/ABI/API 范围、所有权规则、Facade 职责和校验边界 |
 | [Managed 几何与变换工具](GEOMETRY_UTILITIES.zh-CN.md) | 点/向量、包围盒、UV 范围、仿射矩阵、Location 与 Transform |
 | [B-Spline 曲线与曲面检查](BSPLINE_CURVES.zh-CN.md) | Degree、Pole、Weight、Knot、Multiplicity 与曲面控制网格 |
-| [拓扑邻接与自由边界分析](TOPOLOGY_ANALYSIS.zh-CN.md) | 邻接筛选、流形/非流形检查、严格自由边界分析 |
+| [拓扑邻接与自由边界分析](TOPOLOGY_ANALYSIS.zh-CN.md) | 批量邻接、流形/非流形检查、严格自由边界分析 |
+| [Shape Mesh Face 来源追溯](MESH_PROVENANCE.zh-CN.md) | 合并 Mesh 的源 Face 区间、拾取与 CAD/BIM 属性映射 |
 | [结构化 Runtime 诊断](RUNTIME_DIAGNOSTICS.zh-CN.md) | 启动/部署排查、配置路径、实际 Loaded DLL、Win32 126 分析 |
 
 ## API 分层
@@ -59,4 +60,4 @@ Bridge 明确保持三层职责：
 
 ## 兼容性规则
 
-Bridge `2.6.0` 使用 Native ABI `3`。本轮扩充均采用 ABI 3 增量接口，不静默复用或改变已有 ABI 3 函数签名。部署时仍应保证 `OcctNet`、对应 UI Host、`OcctNative.dll`、OCCT Runtime 和第三方 DLL 来自同一套兼容构建。
+Bridge `2.6.0` 使用 Native ABI `3`。本轮新增 Native 能力均采用 ABI 3 增量接口，不静默复用或改变已有 ABI 3 函数签名；Mesh 来源追溯这类纯 Managed 增强不改变 Native ABI。部署时仍应保证 `OcctNet`、对应 UI Host、`OcctNative.dll`、OCCT Runtime 和第三方 DLL 来自同一套兼容构建。
