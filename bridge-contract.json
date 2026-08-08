@@ -13,10 +13,10 @@
     "languageVersion": "12.0"
   },
   "api": {
-    "nativeExports": 343,
-    "managedPInvokes": 343,
-    "publicNetTypes": 84,
+    "nativeExports": 344,
+    "managedPInvokes": 344,
+    "publicNetTypes": 86,
     "viewer": 212,
-    "modeling": 131
+    "modeling": 132
   }
 }
