@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md) · [Desktop demos](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
-OcctCSharpBridge is a Windows x64 bridge from **Open CASCADE Technology 7.9.0** to **.NET 8**. The `main` branch contains the reusable C++ bridge, strict C ABI, type-safe managed wrapper, optional WinForms/WPF viewport hosts, contract checks, and native smoke scenarios. Complete CAD applications are maintained on the `demo` branch.
+OcctCSharpBridge is a Windows x64 bridge from **Open CASCADE Technology 7.9.0** to **.NET 8**. The `main` branch contains the reusable C++ bridge, strict C ABI, type-safe managed wrapper, optional WinForms/WPF viewport hosts, contract checks, native smoke scenarios, and the managed SDK packaging definition. Complete CAD applications are maintained on the `demo` branch.
 
 Bridge **2.6.0 / ABI 3** is a breaking cleanup release: compatibility aliases and public raw-ID handle constructors were removed, managed native flags were replaced by `bool`/enums, naming was normalized, and the headless modeling API gained OBB, topology identity, planar faces with holes, exact edge trimming, planar wire offset, and whole-shape mesh extraction.
 
@@ -39,8 +39,8 @@ src/OcctNet             Core managed wrapper
 src/OcctNet.WinForms    Reusable WinForms viewport host
 src/OcctNet.Wpf         Reusable WPF viewport host
 tests                   Contract checks, managed tests, native smoke project
-docs                    English/Chinese API coverage
-build.ps1               Validation/build/smoke entry point
+docs                    API coverage, getting started, packaging/runtime guides
+build.ps1               Validation/build/pack/smoke entry point
 ```
 
 The managed wrapper intentionally exposes two façades:
@@ -91,7 +91,7 @@ var face = model.MakePlanarFace(outer, new[] { inner });
 var offset = model.OffsetWire(outer, 5.0, joinType: OcctJoinType.Arc);
 ```
 
-See [API_COVERAGE.md](docs/API_COVERAGE.md) for the organized capability guide.
+See [API_COVERAGE.md](docs/API_COVERAGE.md) for the organized capability guide and [GETTING_STARTED.md](docs/GETTING_STARTED.md) for a compact integration walkthrough.
 
 ## Build and validation
 
@@ -111,9 +111,10 @@ General syntax:
 
 | Target | Purpose | OCCT SDK |
 |---|---|---|
-| `validate` | API/version/organization/PInvoke/host contracts | No |
+| `validate` | API/version/organization/PInvoke/host/package contracts | No |
 | `managed` | Build reusable managed wrapper + hosts | No |
-| `ci` | Contract checks + managed builds + managed regression tests + Smoke compile | No |
+| `pack` | Build and validate local managed NuGet + symbol packages | No |
+| `ci` | Contract checks + managed builds/tests + Smoke compile + package validation | No |
 | `native` | Build `OcctNative.dll` with CMake/MSVC | Yes |
 | `smoke` | Build and run real OCCT native modeling scenarios | Yes |
 | `all` | Build native bridge and reusable managed hosts | Yes |
@@ -124,13 +125,21 @@ Preferred no-SDK pre-push check:
 .\build.ps1 ci Release
 ```
 
+Create the three local managed SDK packages explicitly with:
+
+```powershell
+.\build.ps1 pack Release
+```
+
+Packages are written to `artifacts/packages`. Package versions come from `bridge-contract.json`, include XML IntelliSense documentation and symbol packages, and are checked to ensure they do **not** contain `OcctNative.dll`, OCCT `TK*.dll`, or a `runtimes/` native payload. NuGet packaging is intentionally a **main-branch SDK concern only**; the `demo` branch is non-packable and owns complete application publishing instead. See [PACKAGING.md](docs/PACKAGING.md).
+
 Strongest local validation before release:
 
 ```powershell
 .\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-GitHub-hosted CI cannot provide the project-specific OCCT SDK, so the repository deliberately does not keep a permanently skipped cloud Native workflow. Native execution is a local release gate; cloud CI validates the complete managed/static contract.
+GitHub-hosted CI cannot provide the project-specific OCCT SDK, so the repository deliberately does not keep a permanently skipped cloud Native workflow. Native execution is a local release gate; cloud CI validates the complete managed/static contract and main-branch managed packages.
 
 ## Runtime deployment
 
@@ -151,9 +160,11 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 .\run.ps1 avalonia
 ```
 
-The Demo release script packages application-local Native dependencies and validates Native loading before producing the final package.
+The Demo release script packages application-local Native dependencies and validates Native loading before producing the final package. Demo projects are deliberately non-packable as NuGet packages.
 
 ## Referencing from another project
+
+During development, reference the projects directly:
 
 ```xml
 <ItemGroup>
@@ -163,6 +174,8 @@ The Demo release script packages application-local Native dependencies and valid
   <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet.Wpf\OcctNet.Wpf.csproj" />
 </ItemGroup>
 ```
+
+For a local NuGet feed, run `build.ps1 pack` on `main` and add `artifacts/packages` as a package source. The consuming application must still deploy the matching Native Bridge/OCCT runtime.
 
 ## Compatibility contract
 
@@ -178,7 +191,7 @@ Authoritative metadata is in `bridge-contract.json`:
 - Viewer API: `212`
 - Modeling API: `124`
 
-`build.ps1 validate` fails when these values, declarations, P/Invoke mappings, naming/organization contracts, SDK policy, or documentation drift.
+`build.ps1 validate` fails when these values, declarations, P/Invoke mappings, naming/organization contracts, SDK/package policy, or documentation drift.
 
 ## Troubleshooting
 
@@ -189,7 +202,7 @@ Set `$env:OCCT_ROOT` or pass `-OcctRoot`.
 Verify the expected `win64\vc14\lib` and `win64\vc14\bin` layout and OCCT 7.9.0.
 
 **Managed build succeeds but Native loading fails**  
-A managed build does not deploy OCCT. Use the Demo publish process or deploy the matching Native/OCCT/third-party dependency closure beside the executable.
+A managed build or NuGet package does not deploy OCCT. Use the Demo publish process or deploy the matching Native/OCCT/third-party dependency closure beside the executable.
 
 **Need a runnable CAD example**  
 Use the `demo` branch; keep application-specific document/tool code out of `main`.
