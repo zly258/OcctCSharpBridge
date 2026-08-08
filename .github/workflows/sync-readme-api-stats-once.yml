@@ -1,0 +1,51 @@
+﻿name: Sync README API Statistics Once
+
+on:
+  push:
+    branches:
+      - demo
+    paths:
+      - .github/workflows/sync-readme-api-stats-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: demo
+
+      - name: Update README statistics and remove migration workflow
+        shell: pwsh
+        run: |
+          $utf8Bom = [System.Text.UTF8Encoding]::new($true)
+          foreach ($path in @('README.md', 'README.zh-CN.md')) {
+              $text = [System.IO.File]::ReadAllText($path)
+              $pairs = @(
+                  @('Native exports: `339`', 'Native exports: `343`'),
+                  @('Native exports：`339`', 'Native exports：`343`'),
+                  @('Managed P/Invoke: `339`', 'Managed P/Invoke: `343`'),
+                  @('Managed P/Invoke：`339`', 'Managed P/Invoke：`343`'),
+                  @('Public .NET types: `83`', 'Public .NET types: `84`'),
+                  @('Public .NET types：`83`', 'Public .NET types：`84`'),
+                  @('Modeling API: `127`', 'Modeling API: `131`'),
+                  @('Modeling API：`127`', 'Modeling API：`131`')
+              )
+              foreach ($pair in $pairs) {
+                  if ($text.Contains($pair[0])) { $text = $text.Replace($pair[0], $pair[1]) }
+              }
+              [System.IO.File]::WriteAllText($path, $text, $utf8Bom)
+          }
+          Remove-Item '.github/workflows/sync-readme-api-stats-once.yml'
+
+      - name: Commit synchronized README statistics
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md README.zh-CN.md .github/workflows/sync-readme-api-stats-once.yml
+          git commit -m "Sync expanded demo README API statistics"
+          git push origin HEAD:demo
