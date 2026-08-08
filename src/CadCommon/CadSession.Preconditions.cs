@@ -52,14 +52,17 @@ public sealed partial class CadSession
             return RequireObjectCount(commandId, selectedEntries.Length, 1, exactly: false);
 
         if (commandId is CadCommandId.LengthDimension
+            or CadCommandId.AngleDimension
             or CadCommandId.RadiusDimension
             or CadCommandId.DiameterDimension)
         {
-            return RequireSubshapeCount(commandId, selectedEntries, 1);
+            var selectedHits = Engine.GetSelectedHits()
+                .Where(hit => Engine.Exists(hit.Owner))
+                .DistinctBy(hit => (hit.Owner.Id, hit.SubshapeType, hit.SubshapeIndex))
+                .ToArray();
+            var required = commandId == CadCommandId.AngleDimension ? 2 : 1;
+            return RequireSubshapeHits(commandId, selectedHits, required, OcctShapeType.Edge);
         }
-
-        if (commandId == CadCommandId.AngleDimension)
-            return RequireSubshapeCount(commandId, selectedEntries, 2);
 
         if (commandId is CadCommandId.Extrude or CadCommandId.Revolve)
         {
@@ -183,21 +186,31 @@ public sealed partial class CadSession
             $"“{command}”需要{(exactly ? "恰好" : "至少")}选择 {required} 个形体，当前已选择 {actual} 个。"));
     }
 
-    private static CadCommandAvailability RequireSubshapeCount(
+    private static CadCommandAvailability RequireSubshapeHits(
         CadCommandId commandId,
-        IReadOnlyCollection<IOcctObject> selectedEntries,
-        int required)
+        IReadOnlyCollection<OcctSelectionHit> selectedHits,
+        int required,
+        OcctShapeType requiredType)
     {
         var command = CadLocalization.CommandText(commandId);
-        if (selectedEntries.Count == required
-            && selectedEntries.All(value => value.Kind == OcctObjectKind.Shape))
-        {
+        var matchingHits = selectedHits
+            .Where(hit => hit.IsSubshape && hit.SubshapeType == requiredType)
+            .ToArray();
+
+        if (selectedHits.Count == required && matchingHits.Length == required)
             return CadCommandAvailability.Available;
-        }
+
+        var typeName = requiredType switch
+        {
+            OcctShapeType.Edge => Local("edge", "边"),
+            OcctShapeType.Face => Local("face", "面"),
+            OcctShapeType.Vertex => Local("vertex", "顶点"),
+            _ => Local("subshape", "子形")
+        };
 
         return CadCommandAvailability.Unavailable(Local(
-            $"Switch to edge selection and select exactly {required} edge{(required == 1 ? string.Empty : "s")} before running {command}.",
-            $"请切换到边选择模式，并恰好选择 {required} 条边，再执行“{command}”。"));
+            $"Switch to {typeName} selection and select exactly {required} {typeName}{(required == 1 ? string.Empty : "s")} before running {command}.",
+            $"请切换到{typeName}选择模式，并恰好选择 {required} 个{typeName}，再执行“{command}”。"));
     }
 
     private static bool IsProfileType(OcctShapeType type) =>
