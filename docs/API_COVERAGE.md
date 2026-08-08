@@ -10,11 +10,11 @@ OCAF/XDE is intentionally excluded. Document persistence, undo/redo, application
 - Native bridge version: `2.6.0`
 - Native ABI: `3`
 - OCCT: `7.9.0`
-- Native exports: `336`
-- Managed P/Invoke declarations: `336`
-- Public .NET types: `82`
+- Native exports: `339`
+- Managed P/Invoke declarations: `339`
+- Public .NET types: `83`
 - Viewer API: `212`
-- Modeling API: `124`
+- Modeling API: `127`
 
 ## 2.6 API rules
 
@@ -69,7 +69,9 @@ Coverage includes camera/view control, screen/world conversion, selection, objec
 - Location read/write.
 - Generic subshape traversal, outer/inner wires, ancestor queries.
 - Convenience collections: `GetVertices()`, `GetEdges()`, `GetWires()`, `GetFaces()`, `GetShells()`, `GetSolids()`, `GetCompSolids()`, and `GetCompounds()`.
-- Local topology helpers: `GetEdgeVertices()`, `GetWireEdges()`, `GetFaceEdges()`, `GetFaceVertices()`, and `GetTopologyCounts()`.
+- Local topology helpers: GetEdgeVertices(), GetWireEdges(), GetFaceEdges(), GetFaceVertices(), and GetTopologyCounts().
+- Adjacency helpers: GetAdjacentFaces(), GetIncidentEdges(), GetIncidentFaces(), plus edge classification by adjacent-face count through GetBoundaryEdgeCandidates(), GetManifoldInteriorEdges(), GetNonManifoldEdges(), and GetEdgesByAdjacentFaceCount().
+- GetBoundaryEdgeCandidates() is intentionally a topological candidate set; periodic seam topology can require stricter native free-boundary analysis.
 - `IsSameShape()` and `IsPartnerShape()` expose OCCT topological identity semantics.
 
 ### Geometry and differential geometry
@@ -80,7 +82,8 @@ Coverage includes camera/view control, screen/world conversion, selection, objec
 - Edge parameter ranges, derivatives, tangent/normal, curvature, and center of curvature.
 - Face U/V bounds, periodicity, derivatives, normals, and principal/mean/Gaussian curvature.
 - Point projection to edge/face, ray intersections, and solid point classification.
-- `TrimEdge()` creates an edge from an exact sub-range of the source curve.
+- TrimEdge() creates an edge from an exact sub-range of the source curve.
+- GetBSplineCurveData() returns an immutable B-Spline definition snapshot: degree, rational/periodic flags, poles, weights, distinct knots, and multiplicities. Managed collections use zero-based indexing. See [B-Spline Curve Inspection](BSPLINE_CURVES.md).
 
 ### Modeling algorithms
 
@@ -138,4 +141,4 @@ Before release, run on Windows with OCCT 7.9.0:
 .\build.ps1 smoke Release -OcctRoot "<OCCT 7.9.0 root>"
 ```
 
-The native smoke suite covers ABI/version loading, Booleans, topology, analytic/differential geometry, OBB, shape identity, face-with-hole construction, edge trimming, planar wire offset, whole-shape triangulation, loft, healing, and BREP/STEP round trips.
+The native smoke suite covers ABI/version loading, Booleans, topology, analytic/differential geometry, B-Spline data extraction, OBB, shape identity, face-with-hole construction, edge trimming, planar wire offset, whole-shape triangulation, loft, healing, and BREP/STEP round trips.
