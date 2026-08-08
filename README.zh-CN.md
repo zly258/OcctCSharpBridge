@@ -4,7 +4,7 @@
 
 OcctCSharpBridge 是面向 Windows x64 的 **Open CASCADE Technology 7.9.0 → .NET 8** 桥接项目。`main` 分支只保留可复用 C++ Bridge、严格 C ABI、类型安全 C# 封装、WinForms/WPF 可复用视口宿主、契约测试、Native Smoke 场景和 Managed SDK 打包；完整 CAD 应用位于 `demo` 分支。
 
-**Bridge 2.6.0 / ABI 3** 已完成接口收口与能力扩展：删除兼容别名和公开裸 ID 构造方式，统一命名与所有权，并补充批量 Edge/Face 分析、严格自由边界、结构化 Shape Inspection、B-Spline Curve/Surface 数据读取、Mesh Face 来源追溯、结构化 Runtime 诊断、OBB、Trim/Offset、Healing、Triangulation 和工程文件交换等能力。
+**Bridge 2.6.0 / ABI 3** 已完成接口收口与能力扩展：删除兼容别名和公开裸 ID 构造方式，统一命名与所有权，并补充 Viewer 结构化 Selected/Detected 身份、批量 Edge/Face 分析、严格自由边界、结构化 Shape Inspection、B-Spline Curve/Surface 数据读取、Mesh Face 来源追溯、结构化 Runtime 诊断、OBB、Trim/Offset、Healing、Triangulation 和工程文件交换等能力。
 
 桥接层明确不使用 OCAF/XDE。Document、Entity、Command、Tool、Undo/Redo、JSON 持久化、捕捉等应用职责由上层实现。
 
@@ -45,10 +45,10 @@ build.ps1               校验、构建、打包、Smoke 统一入口
 
 托管层明确保留两个职责不同的入口：
 
-- `OcctEngine`：交互式 CAD/AIS/Viewer 会话，负责显示对象、选择、外观、相机、交互和标注；
+- `OcctEngine`：交互式 CAD/AIS/Viewer 会话，负责显示对象、结构化 Selection 身份、外观、相机、交互和标注；
 - `OcctModelingSession`：无界面建模内核，负责批处理、服务端、几何、拓扑、算法、网格、检查、修复、历史和工程文件交换。
 
-同一个 façade 内不保留旧名+新名两套接口。当前可复用 SDK 共 **94 个公开 .NET 类型**。
+同一个 façade 内不保留旧名+新名两套接口。当前可复用 SDK 共 **95 个公开 .NET 类型**。
 
 ## 统一 API 规则
 
@@ -63,6 +63,20 @@ build.ps1               校验、构建、打包、Smoke 统一入口
 - Mesh：`Triangulate()`、`GetFaceMesh()`、`GetShapeMesh()`、`GetShapeMeshData()`
 
 所有 Shape/Object 都绑定所属 Engine/Session。持久化 ID 必须通过 `GetShape()`、`TryGetShape()`、`GetObject()`、`TryGetObject()` 解析，不能用裸 `long` 伪造托管对象。
+
+## Viewer 结构化 Selection
+
+`OcctEngine` 可以直接返回 Selected/Detected AIS 身份，上层无需处理 OCCT Owner 或根据裸 ID 自行反查：
+
+```csharp
+var hits = engine.GetSelectedHits();
+if (engine.TryGetDetectedHit(out var hover) && hover.IsSubshape)
+{
+    Console.WriteLine($"{hover.Owner.Id}: {hover.SubshapeType} #{hover.SubshapeIndex}");
+}
+```
+
+`GetSelectedHits()` 使用两次调用的批量 Native ABI，不会随着选择数量变成 N+1 次 P/Invoke。`OcctSelectionHit` 只暴露真实存在的 `Owner`、`SubshapeType` 和运行时 `SubshapeIndex`，不预留永远为空的命中点字段。Subshape Index 与 `GetSubshapeAt()` 使用相同拓扑顺序，但**不是 Persistent Naming**。详见 [Viewer 结构化选择命中](docs/SELECTION_HITS.zh-CN.md)。
 
 ## Headless 建模与检查
 
@@ -213,10 +227,10 @@ Demo 发布脚本负责应用本地 Native 依赖和 Native Load 探针；Demo �
 - Native ABI：`3`
 - OCCT：严格 `7.9.0`
 - Target：`.NET 8` / Windows x64
-- Native exports：`346`
-- Managed P/Invoke：`346`
-- Public .NET types：`94`
-- Viewer API：`212`
+- Native exports：`348`
+- Managed P/Invoke：`348`
+- Public .NET types：`95`
+- Viewer API：`214`
 - Modeling API：`134`
 
 `build.ps1 validate` 会在 API 数量、Native/PInvoke 映射、命名/职责边界、版本、SDK/包策略或文档漂移时直接失败。
