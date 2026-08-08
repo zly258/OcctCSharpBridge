@@ -146,6 +146,32 @@ foreach ($contract in $previewContracts) {
     }
 }
 
+# Keep the user-facing Win32 126 troubleshooting instructions aligned with the shared
+# startup diagnostics so a future UI refactor cannot leave stale README guidance.
+$troubleshootingContracts = [ordered]@{
+    "README.md" = @(
+        'OcctNative.dll [missing]',
+        'TKernel.dll [missing]',
+        'native-dependencies.txt',
+        '%LOCALAPPDATA%\OcctCSharpBridge\Logs'
+    )
+    "README.zh-CN.md" = @(
+        'OcctNative.dll [缺失]',
+        'TKernel.dll [缺失]',
+        'native-dependencies.txt',
+        '%LOCALAPPDATA%\OcctCSharpBridge\Logs'
+    )
+}
+
+foreach ($readmeContract in $troubleshootingContracts.GetEnumerator()) {
+    $readmeText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot $readmeContract.Key))
+    foreach ($token in $readmeContract.Value) {
+        if (-not $readmeText.Contains($token)) {
+            throw "Native troubleshooting documentation is missing from $($readmeContract.Key): $token"
+        }
+    }
+}
+
 # All three demo hosts must surface actionable app-local native diagnostics instead of
 # showing only the raw DllNotFoundException/Win32 126 message.
 $crashReporterPath = Join-Path $RepositoryRoot "src\CadCommon\CrashReporter.cs"
@@ -199,4 +225,4 @@ foreach ($hostContract in $hostDiagnostics.GetEnumerator()) {
     }
 }
 
-Write-Host "[package] Demo publishing, app-local native closure, VC runtime resolution, restricted LoadLibrary probe, shared Win32 126 diagnostics, main-only NuGet boundary, and README preview paths validated." -ForegroundColor Green
+Write-Host "[package] Demo publishing, app-local native closure, VC runtime resolution, restricted LoadLibrary probe, shared Win32 126 diagnostics, protected troubleshooting docs, main-only NuGet boundary, and README preview paths validated." -ForegroundColor Green
