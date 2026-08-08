@@ -53,6 +53,8 @@ foreach ($token in @(
     "RequireSubshapeHits",
     "Engine.GetSelectedHits()",
     "hit.IsSubshape && hit.SubshapeType == requiredType",
+    "var required = commandId == CadCommandId.AngleDimension ? 2 : 1;",
+    "RequireSubshapeHits(commandId, selectedHits, required, OcctShapeType.Edge)",
     "IsProfileType",
     "exactly: true",
     "OcctShapeType.Solid or OcctShapeType.CompSolid"
@@ -66,13 +68,11 @@ if ($preconditions.Contains("RequireSubshapeCount")) {
     throw "Subshape command validation must use structured selection hits rather than owner-object counts."
 }
 
-foreach ($dimensionRule in @(
-    "RequireSubshapeHits(commandId, selectedHits, 1, OcctShapeType.Edge)",
-    "RequireSubshapeHits(commandId, selectedHits, 2, OcctShapeType.Edge)"
-)) {
-    if (-not $preconditions.Contains($dimensionRule)) {
-        throw "Dimension precondition is not based on structured edge hits: $dimensionRule"
-    }
+if (-not $preconditions.Contains("commandId is CadCommandId.LengthDimension") -or
+    -not $preconditions.Contains("or CadCommandId.AngleDimension") -or
+    -not $preconditions.Contains("or CadCommandId.RadiusDimension") -or
+    -not $preconditions.Contains("or CadCommandId.DiameterDimension")) {
+    throw "All dimension commands must share the structured edge-hit precondition path."
 }
 
 if (-not $session.Contains("public sealed partial class CadSession")) {
