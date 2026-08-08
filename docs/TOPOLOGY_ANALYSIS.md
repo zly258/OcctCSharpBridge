@@ -1,32 +1,68 @@
 ﻿# Topology Adjacency and Free-Boundary Analysis
 
-OcctCSharpBridge exposes two complementary levels of topology inspection for CAD/BIM quality checks: inexpensive adjacency-based screening and stricter OCCT free-boundary analysis.
+OcctCSharpBridge exposes complementary topology-inspection levels for CAD/BIM quality checks: direct local queries, batched edge-to-face adjacency analysis, and strict OCCT free-boundary analysis.
 
-## Fast adjacency screening
+## Local adjacency queries
 
-The convenience API composes the existing subshape/ancestor primitives without adding a native ABI call:
+Use the direct helpers when only one selected subshape needs inspection:
 
 ```csharp
 var adjacentFaces = model.GetAdjacentFaces(rootShape, edge);
 var incidentEdges = model.GetIncidentEdges(rootShape, vertex);
 var incidentFaces = model.GetIncidentFaces(rootShape, vertex);
-
-var boundaryCandidates = model.GetBoundaryEdgeCandidates(rootShape);
-var manifoldEdges = model.GetManifoldInteriorEdges(rootShape);
-var nonManifoldEdges = model.GetNonManifoldEdges(rootShape);
 ```
 
-The edge classifiers are based on the number of ancestor faces in the supplied root shape:
+These methods are convenient for interactive inspection and isolated queries.
 
-- 1 adjacent face → boundary candidate;
-- 2 adjacent faces → manifold interior edge;
-- 3 or more adjacent faces → non-manifold candidate.
+## Batch adjacency analysis
 
-`GetEdgesByAdjacentFaceCount()` is available when a custom range is needed.
+When many edges of the same root shape must be classified, call `AnalyzeEdgeAdjacency()` once:
+
+```csharp
+var adjacency = model.AnalyzeEdgeAdjacency(rootShape);
+
+foreach (var entry in adjacency.Entries)
+{
+    Console.WriteLine($"{entry.Edge.Id}: {entry.AdjacentFaceCount} faces");
+}
+
+var boundaryCandidates = adjacency.BoundaryCandidates;
+var manifoldEdges = adjacency.ManifoldInteriorEdges;
+var nonManifoldEdges = adjacency.NonManifoldEdges;
+```
+
+`OcctEdgeAdjacencyInfo` provides:
+
+- `Edge`
+- `AdjacentFaceCount`
+- `IsIsolated`
+- `IsBoundaryCandidate`
+- `IsManifoldInterior`
+- `IsNonManifold`
+
+`OcctEdgeAdjacencyResult` provides the complete immutable snapshot plus preclassified edge collections and `GetEdgesByAdjacentFaceCount(min,max)`.
+
+The native implementation uses one `TopExp::MapShapesAndUniqueAncestors()` Edge→Face map for the root shape. Distinct ancestor faces are counted once, including seam situations where the same face can reference an edge more than once. The managed buffer protocol performs one count query and one fill call; it does not rebuild the ancestor map for every edge.
+
+The existing convenience methods now reuse this batch path:
+
+```csharp
+model.GetBoundaryEdgeCandidates(rootShape);
+model.GetManifoldInteriorEdges(rootShape);
+model.GetNonManifoldEdges(rootShape);
+model.GetEdgesByAdjacentFaceCount(rootShape, minimum, maximum);
+```
+
+The classification rules remain:
+
+- 0 adjacent faces → isolated edge;
+- 1 distinct adjacent face → boundary candidate;
+- 2 distinct adjacent faces → manifold interior edge;
+- 3 or more distinct adjacent faces → non-manifold candidate.
 
 ### Why the API says “candidate”
 
-An edge with one ancestor face is a useful screening signal, but periodic/seam topology and imported-model peculiarities can make a simple adjacency count too strong as a final geometric conclusion. For that reason `GetBoundaryEdgeCandidates()` is intentionally not named `GetBoundaryEdges()`.
+An edge with one distinct ancestor face is a useful screening signal, but periodic/seam topology and imported-model peculiarities can make an adjacency count too strong as a final geometric conclusion. For that reason `GetBoundaryEdgeCandidates()` and `BoundaryCandidates` deliberately use candidate terminology.
 
 ## Strict free-boundary analysis
 
@@ -50,48 +86,42 @@ foreach (var wire in result.OpenWires)
 }
 ```
 
-`OcctFreeBoundsResult` contains:
-
-- `Tolerance`
-- `ClosedWires`
-- `OpenWires`
-- `ClosedWireCount`
-- `OpenWireCount`
-- `TotalWireCount`
-- `HasFreeBounds`
-- `HasOpenFreeBounds`
-
-The returned wires remain owned by the same `OcctModelingSession` as the analyzed shape.
+`OcctFreeBoundsResult` contains the tolerance, closed/open wire collections, counts, and convenience flags. Returned wires remain owned by the same `OcctModelingSession` as the analyzed shape.
 
 ## Tolerance
 
-Tolerance is model-unit dependent. The default is `1e-7`, matching the bridge's fine geometric-analysis convention, but imported STEP/IGES models often require a value chosen from project/model tolerances rather than a hard-coded global value.
-
-Always record the tolerance when free-boundary results are used for automated acceptance/rejection. `OcctFreeBoundsResult.Tolerance` preserves the actual value used for that reason.
+Free-boundary tolerance is model-unit dependent. The default is `1e-7`, but imported STEP/IGES models often require a value chosen from project/model tolerances rather than one global hard-coded value. `OcctFreeBoundsResult.Tolerance` preserves the actual value used so automated quality results can be traced.
 
 ## Typical engineering use
 
 A practical model-quality pipeline can be:
 
-1. Use `GetTopologyCounts()` for a fast structural summary.
-2. Use `GetNonManifoldEdges()` to find obvious topology defects.
-3. Use `GetBoundaryEdgeCandidates()` for inexpensive screening.
-4. Use `AnalyzeFreeBounds()` before deciding that a shell has openings or requires healing/sewing.
-5. Use existing validation/healing APIs when repair is required.
+1. Use `GetTopologyCounts()` for a structural summary.
+2. Call `AnalyzeEdgeAdjacency()` once for the model or shell being checked.
+3. Use `NonManifoldEdges` for obvious topology defects.
+4. Use `BoundaryCandidates` for inexpensive opening screening.
+5. Use `AnalyzeFreeBounds()` before deciding that a shell has true openings or requires healing/sewing.
+6. Use existing validation/healing APIs when repair is required.
 
-For large imported models, adjacency convenience methods currently favor API clarity over minimum native-call count. A future batch adjacency API can optimize that path without changing these high-level semantics.
+For large imported models, prefer retaining one `OcctEdgeAdjacencyResult` when several classifications are needed instead of calling multiple convenience methods separately.
 
 ## Native implementation
 
-Strict analysis is isolated in `OcctModelingTopologyAnalysis.h/.cpp` and uses OCCT `ShapeAnalysis_FreeBounds`. One additive ABI 3 function returns either the closed-wire or open-wire compound selected by `boundaryKind`:
+Topology analysis is isolated in `OcctModelingTopologyAnalysis.h/.cpp`.
 
-- `occt_model_shape_free_bounds`
+Additive ABI 3 functions:
 
-The high-level method invokes the same ABI for both categories and returns managed wire collections rather than exposing the temporary compounds.
+- `occt_model_shape_edge_adjacency` — batched Edge→distinct-Face counts;
+- `occt_model_shape_free_bounds` — strict closed/open free-boundary extraction using `ShapeAnalysis_FreeBounds`.
 
 ## Verification
 
-Cloud CI checks the native declaration/definition/PInvoke/high-level contract and compiles the Smoke project. Real OCCT execution is covered by `tests/OcctNet.Smoke/FreeBoundsSmoke.cs` and requires the local native release gate:
+Cloud CI checks native declaration/definition/PInvoke/high-level contracts and compiles the Smoke project. Real OCCT execution is covered by:
+
+- `tests/OcctNet.Smoke/EdgeAdjacencySmoke.cs`
+- `tests/OcctNet.Smoke/FreeBoundsSmoke.cs`
+
+Run the local native release gate on Windows with OCCT 7.9.0:
 
 ```powershell
 .\build.ps1 smoke Release -OcctRoot "<OCCT 7.9.0 root>"
