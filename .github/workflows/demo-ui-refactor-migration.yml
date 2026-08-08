@@ -32,9 +32,6 @@ jobs:
           def write(path, text):
               Path(path).write_text(text, encoding='utf-8-sig')
 
-          # WinForms: property panel remains on the right; command log becomes a
-          # full-width bottom panel above the status bar. Functional controls/events
-          # are unchanged.
           path = 'src/CadWinForms/MainForm.Designer.cs'
           text = read(path)
           text = text.replace('    private SplitContainer _rightSplitContainer = null!;\n', '')
@@ -67,30 +64,11 @@ jobs:
           text = text.replace('        _logBox.ForeColor = Color.FromArgb(216, 226, 234);', '        _logBox.ForeColor = SystemColors.WindowText;')
           text = text.replace('        _logBox.Size = new Size(314, 274);', '        _logBox.Size = new Size(1416, 125);')
           text = text.replace('        _logBox.WordWrap = false;', '        _logBox.WordWrap = false;\n        _logBox.BorderStyle = BorderStyle.FixedSingle;')
-          text = text.replace('        _statusBar.Location = new Point(0, 876);', '        _statusBar.Location = new Point(0, 876);')
           text = text.replace(
               '        _centerRightSplitContainer.ResumeLayout(false);\n        _rightSplitContainer.Panel1.ResumeLayout(false);\n        _rightSplitContainer.Panel2.ResumeLayout(false);\n        ((ISupportInitialize)_rightSplitContainer).EndInit();\n        _rightSplitContainer.ResumeLayout(false);',
               '        _centerRightSplitContainer.ResumeLayout(false);')
           write(path, text)
 
-          # WinForms startup splitter logic no longer owns a right-side vertical split.
-          path = 'src/CadWinForms/MainForm.Layout.cs'
-          text = read(path)
-          old = '''        var preferredPropertyHeight = Math.Max(
-              260,
-              (int)(_rightSplitContainer.ClientSize.Height * 0.62));
-          var rightApplied = TrySetSplitterDistance(
-              _rightSplitContainer,
-              preferredPropertyHeight,
-              keepSecondPanel: false);
-
-          return mainApplied && centerRightApplied && rightApplied;'''
-          if old not in text:
-              raise RuntimeError('WinForms initial right-panel layout block was not found.')
-          text = text.replace(old, '        return mainApplied && centerRightApplied;')
-          write(path, text)
-
-          # Avalonia log palette only. Layout itself is maintained in MainWindow.Layout.cs.
           path = 'src/CadAvalonia/MainWindow.cs'
           text = read(path)
           text = text.replace('Background = new SolidColorBrush(AvaloniaColor.Parse("#101820")),', 'Background = AvaloniaBrushes.White,')
