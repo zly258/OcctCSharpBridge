@@ -141,6 +141,14 @@ GitHub-hosted CI has no project OCCT SDK, so it runs managed/static contracts an
 .\publish.ps1 avalonia Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
+For dependency troubleshooting, republish once with diagnostics enabled:
+
+```powershell
+.\publish.ps1 all Release -Zip -Diagnostics -OcctRoot "D:\tools\occt-vc144-64"
+```
+
+`-Diagnostics` additionally writes `native-resolution.txt` (the source path selected for resolved native dependencies) and `runtime-manifest.txt` (packaged file size and SHA-256). It is intentionally opt-in because `native-resolution.txt` can contain absolute paths from the build machine; review/redact it before sharing externally.
+
 The publisher resolves the PE dependency closure of `OcctNative.dll`, OCCT modules, third-party DLLs, and Visual C++ runtime components. Native DLLs are copied beside every executable rather than relying only on a sibling runtime directory. A static `dumpbin` closure check and fresh-process restricted `LoadLibraryExW` probe reject packages that would fail with clean-machine Win32 126.
 
 Published packages include required OCCT resources, `package-contract.json`, `native-dependencies.txt`, and available license notices. Use `-FrameworkDependent` only when the target machine already has the .NET 8 Desktop Runtime.
@@ -174,7 +182,7 @@ Recommended cadence:
 - `Unable to load OcctNative.dll ... Win32 126`: all three demos now show the process architecture, application directory, and app-local `OcctNative.dll` / `TKernel.dll` status in the fatal dialog and write the full OCCT runtime report to the crash log.
   - `OcctNative.dll [missing]`: the application package is incomplete; republish with the current `demo/publish.ps1` instead of copying individual DLLs.
   - `OcctNative.dll [found]` but `TKernel.dll [missing]`: the OCCT Native dependency closure is incomplete; republish the package.
-  - both are `[found]` but Win32 126 remains: a deeper OCCT, third-party, or Visual C++ runtime dependency is missing or mismatched. Check `native-dependencies.txt` and the crash log under `%LOCALAPPDATA%\OcctCSharpBridge\Logs`.
+  - both are `[found]` but Win32 126 remains: a deeper OCCT, third-party, or Visual C++ runtime dependency is missing or mismatched. Check `native-dependencies.txt`; if the cause is still unclear, republish with `-Diagnostics` and inspect `native-resolution.txt`, `runtime-manifest.txt`, and the crash log under `%LOCALAPPDATA%\OcctCSharpBridge\Logs`.
 - Avalonia analyzer/compiler mismatch: use the branch-pinned SDK from `global.json`.
 - Avalonia startup issue: inspect `src\CadAvalonia\bin\x64\<Configuration>\net8.0-windows\CAD-Avalonia.log` plus the shared crash log above.
 
