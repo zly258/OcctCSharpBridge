@@ -185,11 +185,11 @@ Demo 发布脚本会复制应用本地 Native 依赖，并在生成最终包前�
 - Native ABI：`3`
 - OCCT：严格 `7.9.0`
 - Target：`.NET 8` / Windows x64
-- Native exports：`339`
-- Managed P/Invoke：`339`
-- Public .NET types：`83`
+- Native exports：`343`
+- Managed P/Invoke：`343`
+- Public .NET types：`84`
 - Viewer API：`212`
-- Modeling API：`127`
+- Modeling API：`131`
 
 `build.ps1 validate` 会在 API 数量、Native/PInvoke 映射、命名和职责边界、版本、SDK/包策略或文档漂移时直接失败。
 

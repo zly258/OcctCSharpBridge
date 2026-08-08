@@ -185,11 +185,11 @@ Authoritative metadata is in `bridge-contract.json`:
 - Native ABI: `3`
 - OCCT: exactly `7.9.0`
 - Target: `.NET 8`, Windows x64
-- Native exports: `339`
+- Native exports: `343`
 - Managed P/Invoke declarations: `336`
-- Public .NET types: `83`
+- Public .NET types: `84`
 - Viewer API: `212`
-- Modeling API: `127`
+- Modeling API: `131`
 
 `build.ps1 validate` fails when these values, declarations, P/Invoke mappings, naming/organization contracts, SDK/package policy, or documentation drift.
 
