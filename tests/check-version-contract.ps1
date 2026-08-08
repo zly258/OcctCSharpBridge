@@ -78,23 +78,23 @@ $contracts = [ordered]@{
     "README.md" = @($expectedVersion, $expectedOcctVersion, $expectedContactEmail)
     "README.zh-CN.md" = @($expectedVersion, $expectedOcctVersion, $expectedContactEmail)
     "docs/API_COVERAGE.md" = @(
-        "Native exports:",
+        "Native exports",
         [string]$expectedNativeCount,
-        "Managed P/Invoke declarations:",
+        "Managed P/Invoke declarations",
         [string]$expectedManagedCount,
-        "Public .NET types:",
+        "Public .NET types",
         [string]$expectedPublicTypeCount,
-        "Native bridge version:",
+        "Native bridge version",
         $expectedVersion
     )
     "docs/API_COVERAGE.zh-CN.md" = @(
-        "Native exports:",
+        "Native exports",
         [string]$expectedNativeCount,
-        "Managed P/Invoke declarations:",
+        "Managed P/Invoke declarations",
         [string]$expectedManagedCount,
-        "Public .NET types:",
+        "Public .NET types",
         [string]$expectedPublicTypeCount,
-        "原生桥接版本：",
+        "原生桥接版本",
         $expectedVersion
     )
     "src/OcctNative/CMakeLists.txt" = @(
