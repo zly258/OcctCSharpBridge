@@ -76,6 +76,7 @@ jobs:
             "tests/check-runtime-diagnostics.ps1",
             "tests/check-native-build-structure.ps1",
             "tests/check-selection-contract.ps1",
+            "tests/check-ui-hosts.ps1",
             "tests/check-version-contract.ps1",
             "tests/check-viewport-api.ps1"
           )
