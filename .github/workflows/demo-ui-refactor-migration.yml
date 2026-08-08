@@ -19,150 +19,92 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: demo
-      - name: Split large demo windows into partial files
+      - name: Normalize WinForms and Avalonia workspace layout
         shell: pwsh
         run: |
           @'
           from pathlib import Path
           import re
 
-          def find_member(text, name):
-              patterns = [
-                  rf'\n    (?:private|protected)\s+(?:static\s+)?(?:async\s+)?[^\n;={{]+\b{re.escape(name)}\s*\(',
-                  rf'\n    (?:private|protected)\s+(?:static\s+)?(?:async\s+)?(?:Task|void|bool|Control|MenuItem|ContextMenu|OcctShape\?|ToolStripMenuItem|TreeViewItem|Controls\.[A-Za-z0-9_<>?]+)[^\n]*\b{re.escape(name)}\s*\('
-              ]
-              match = None
-              for pattern in patterns:
-                  match = re.search(pattern, text)
-                  if match:
-                      break
-              if not match:
-                  raise RuntimeError(f'Member not found: {name}')
-              start = match.start() + 1
-              brace = text.find('{', match.end())
-              if brace < 0:
-                  raise RuntimeError(f'Block start not found: {name}')
-              depth = 0
-              i = brace
-              in_string = False
-              verbatim = False
-              escape = False
-              while i < len(text):
-                  ch = text[i]
-                  nxt = text[i + 1] if i + 1 < len(text) else ''
-                  if in_string:
-                      if verbatim:
-                          if ch == '"' and nxt == '"':
-                              i += 2
-                              continue
-                          if ch == '"':
-                              in_string = False
-                              verbatim = False
-                      else:
-                          if escape:
-                              escape = False
-                          elif ch == '\\':
-                              escape = True
-                          elif ch == '"':
-                              in_string = False
-                      i += 1
-                      continue
-                  if ch == '@' and nxt == '"':
-                      in_string = True
-                      verbatim = True
-                      i += 2
-                      continue
-                  if ch == '"':
-                      in_string = True
-                      i += 1
-                      continue
-                  if ch == '/' and nxt == '/':
-                      line_end = text.find('\n', i + 2)
-                      i = len(text) if line_end < 0 else line_end
-                      continue
-                  if ch == '/' and nxt == '*':
-                      end = text.find('*/', i + 2)
-                      i = len(text) if end < 0 else end + 2
-                      continue
-                  if ch == '{':
-                      depth += 1
-                  elif ch == '}':
-                      depth -= 1
-                      if depth == 0:
-                          return start, i + 1, text[start:i + 1]
-                  i += 1
-              raise RuntimeError(f'Block end not found: {name}')
+          def read(path):
+              return Path(path).read_text(encoding='utf-8-sig')
 
-          def split(path, class_line, groups, make_partial=False):
-              file = Path(path)
-              text = file.read_text(encoding='utf-8-sig')
-              if make_partial:
-                  text = text.replace(class_line, class_line.replace(' class ', ' partial class '), 1)
-              namespace_match = re.search(r'\nnamespace ([^;]+);\n', text)
-              if not namespace_match:
-                  raise RuntimeError(f'Namespace not found: {path}')
-              usings = text[:namespace_match.start() + 1]
-              namespace = namespace_match.group(1)
-              class_name = re.search(r'class\s+(\w+)', class_line).group(1)
-              modifier = 'public sealed partial class' if 'sealed' in class_line else 'public partial class'
+          def write(path, text):
+              Path(path).write_text(text, encoding='utf-8-sig')
 
-              extracted = {}
-              for group, names in groups.items():
-                  members = []
-                  for name in names:
-                      start, end, block = find_member(text, name)
-                      members.append(block)
-                      text = text[:start] + text[end:]
-                  extracted[group] = members
+          # WinForms: property panel remains on the right; command log becomes a
+          # full-width bottom panel above the status bar. Functional controls/events
+          # are unchanged.
+          path = 'src/CadWinForms/MainForm.Designer.cs'
+          text = read(path)
+          text = text.replace('    private SplitContainer _rightSplitContainer = null!;\n', '')
+          text = text.replace('        _rightSplitContainer = new SplitContainer();\n', '')
+          text = text.replace('        ((ISupportInitialize)_rightSplitContainer).BeginInit();\n        _rightSplitContainer.Panel1.SuspendLayout();\n        _rightSplitContainer.Panel2.SuspendLayout();\n        _rightSplitContainer.SuspendLayout();\n', '')
+          text = text.replace(
+              '        _rootLayout.Controls.Add(_mainSplitContainer, 0, 2);\n        _rootLayout.Controls.Add(_statusBar, 0, 3);',
+              '        _rootLayout.Controls.Add(_mainSplitContainer, 0, 2);\n        _rootLayout.Controls.Add(_logGroup, 0, 3);\n        _rootLayout.Controls.Add(_statusBar, 0, 4);')
+          text = text.replace('        _rootLayout.RowCount = 4;', '        _rootLayout.RowCount = 5;')
+          text = text.replace(
+              '        _rootLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));\n        _rootLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));',
+              '        _rootLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));\n        _rootLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 160F));\n        _rootLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));')
+          text = text.replace(
+              '        _centerRightSplitContainer.Panel2.Controls.Add(_rightSplitContainer);',
+              '        _centerRightSplitContainer.Panel2.Controls.Add(_propertyGroup);')
 
-              file.write_text(text, encoding='utf-8-sig')
-              for group, members in extracted.items():
-                  target = file.with_name(f'{file.stem}.{group}{file.suffix}')
-                  body = '\n\n'.join(members)
-                  target.write_text(
-                      usings + f'namespace {namespace};\n\n{modifier} {class_name}\n{{\n{body}\n}}\n',
-                      encoding='utf-8-sig')
+          pattern = re.compile(
+              r'        //\n        // _rightSplitContainer\n        //\n.*?(?=        //\n        // _propertyGroup\n        //)',
+              re.S)
+          text, count = pattern.subn('', text)
+          if count != 1:
+              raise RuntimeError(f'Expected one WinForms right splitter block, found {count}')
 
-          split(
-              'src/CadWinForms/MainForm.cs',
-              'public sealed partial class MainForm : Form',
-              {
-                  'Layout': ['OnShown','OnResize','ScheduleInitialPanelLayout','ApplyInitialPanelLayout','TrySetSplitterDistance'],
-                  'Menus': ['BuildMenus','BuildViewMenu','BuildDepthMenu','BuildMaterialMenu','BuildSelectionMenu','BuildToolBar','AddCommands','BuildLightingMenu','BuildSelectionAppearanceMenu'],
-                  'Commands': ['ApplyDepthBias','ReportCommandPrecondition','RunCommand','NewDocument','OpenDocument','ImportDocument','SaveDocument','ExportSelected','ExportViewImage','SetPerspectiveFov','SetDisplayPrecision','ApplyLightingPreset','SetAdvancedLighting','SetSelectionHighlightColor','SetHoverHighlightColor','SetSelectionTolerance','SetBackgroundColor','SetSelectionMode','SetActiveVisibility','SetActiveColor','SetActiveMaterial','ConfirmDiscardChanges','Undo','Redo','UpdateHistoryUi','MainFormClosing','MainFormKeyDown'],
-                  'Objects': ['BuildTreeContextMenu','RefreshObjectTree','ObjectTreeAfterSelect','ObjectTreeAfterCheck','ShowObjectProperties','SelectTreeNode','ActiveShape'],
-                  'Localization': ['SetLanguage','ApplyLanguage','ApplyViewCubeLanguage','ShowMouseHelp','ShowAbout','MaterialDisplayName']
-              })
+          text = text.replace('        _propertyGroup.Size = new Size(330, 498);', '        _propertyGroup.Size = new Size(330, 809);')
+          text = text.replace('        _logGroup.Location = new Point(0, 2);', '        _logGroup.Location = new Point(4, 0);')
+          text = text.replace('        _logGroup.Margin = new Padding(0);', '        _logGroup.Margin = new Padding(4, 0, 4, 4);')
+          text = text.replace('        _logGroup.MinimumSize = new Size(280, 160);', '        _logGroup.MinimumSize = new Size(0, 120);')
+          text = text.replace('        _logGroup.Size = new Size(330, 305);', '        _logGroup.Size = new Size(1432, 156);')
+          text = text.replace('        _logBox.BackColor = Color.FromArgb(16, 24, 32);', '        _logBox.BackColor = SystemColors.Window;')
+          text = text.replace('        _logBox.ForeColor = Color.FromArgb(216, 226, 234);', '        _logBox.ForeColor = SystemColors.WindowText;')
+          text = text.replace('        _logBox.Size = new Size(314, 274);', '        _logBox.Size = new Size(1416, 125);')
+          text = text.replace('        _logBox.WordWrap = false;', '        _logBox.WordWrap = false;\n        _logBox.BorderStyle = BorderStyle.FixedSingle;')
+          text = text.replace('        _statusBar.Location = new Point(0, 876);', '        _statusBar.Location = new Point(0, 876);')
+          text = text.replace(
+              '        _centerRightSplitContainer.ResumeLayout(false);\n        _rightSplitContainer.Panel1.ResumeLayout(false);\n        _rightSplitContainer.Panel2.ResumeLayout(false);\n        ((ISupportInitialize)_rightSplitContainer).EndInit();\n        _rightSplitContainer.ResumeLayout(false);',
+              '        _centerRightSplitContainer.ResumeLayout(false);')
+          write(path, text)
 
-          split(
-              'src/CadWpf/MainWindow.xaml.cs',
-              'public partial class MainWindow : System.Windows.Window',
-              {
-                  'Menus': ['BuildMenus','BuildViewMenu','BuildDepthMenu','BuildMaterialMenu','BuildSelectionMenu','BuildToolbar','AddCommands','BuildLightingMenu','BuildSelectionAppearanceMenu'],
-                  'Commands': ['ApplyDepthBias','ReportCommandPrecondition','RunCommand','NewDocument','OpenDocument','ImportDocument','SaveDocument','ExportSelected','ExportViewImage','SetPerspectiveFov','SetDisplayPrecision','ApplyLightingPreset','SetAdvancedLighting','SetSelectionHighlightColor','SetHoverHighlightColor','SetSelectionTolerance','SetBackgroundColor','SetSelectionMode','SetObjectColor','SetObjectMaterial','ConfirmDiscardChanges','Undo','Redo','UpdateHistoryUi','MainWindowClosing','MainWindowPreviewKeyDown'],
-                  'Objects': ['RefreshObjectTree','BuildObjectContextMenu','ObjectVisibilityChanged','ObjectTreeSelectedItemChanged','ShowObjectProperties','SelectTreeNode','ActiveShape'],
-                  'Localization': ['SetLanguage','ApplyLanguage','ApplyViewCubeLanguage','ShowMouseHelp','ShowAbout','MaterialDisplayName']
-              })
+          # WinForms startup splitter logic no longer owns a right-side vertical split.
+          path = 'src/CadWinForms/MainForm.Layout.cs'
+          text = read(path)
+          old = '''        var preferredPropertyHeight = Math.Max(
+              260,
+              (int)(_rightSplitContainer.ClientSize.Height * 0.62));
+          var rightApplied = TrySetSplitterDistance(
+              _rightSplitContainer,
+              preferredPropertyHeight,
+              keepSecondPanel: false);
 
-          split(
-              'src/CadAvalonia/MainWindow.cs',
-              'public sealed class MainWindow : Window',
-              {
-                  'Layout': ['BuildLayout'],
-                  'Menus': ['BuildMenus','BuildViewMenu','BuildDepthMenu','BuildLightingMenu','BuildMaterialMenu','BuildSelectionMenu','BuildSelectionAppearanceMenu','BuildToolbar','AddCommands'],
-                  'Commands': ['RunCommandAsync','ReportCommandPrecondition','NewDocument','OpenDocument','ImportDocument','SaveDocument','ExportSelected','ExportViewImage','SetPerspectiveFovAsync','SetDisplayPrecisionAsync','SetAdvancedLightingAsync','ApplyLightingPreset','ApplyDepthBias','SetSelectionHighlightColor','SetHoverHighlightColor','SetSelectionToleranceAsync','SetBackgroundColor','SetSelectionMode','SetObjectColor','SetObjectMaterialAsync','ConfirmDiscardChanges','Undo','Redo','UpdateHistoryUi','MainWindowClosing','MainWindowKeyDown'],
-                  'Objects': ['RefreshObjectTree','BuildObjectContextMenu','ObjectTreeSelectionChanged','ShowObjectProperties','SelectTreeNode','ActiveShape'],
-                  'Localization': ['SetLanguage','ApplyLanguage','ApplyViewCubeLanguage','ShowMouseHelp','ShowAbout','MaterialDisplayName']
-              },
-              make_partial=True)
-          '@ | Set-Content -Path split_demo.py -Encoding utf8
-          python split_demo.py
-          Remove-Item split_demo.py
-      - name: Commit refactor
+          return mainApplied && centerRightApplied && rightApplied;'''
+          if old not in text:
+              raise RuntimeError('WinForms initial right-panel layout block was not found.')
+          text = text.replace(old, '        return mainApplied && centerRightApplied;')
+          write(path, text)
+
+          # Avalonia log palette only. Layout itself is maintained in MainWindow.Layout.cs.
+          path = 'src/CadAvalonia/MainWindow.cs'
+          text = read(path)
+          text = text.replace('Background = new SolidColorBrush(AvaloniaColor.Parse("#101820")),', 'Background = AvaloniaBrushes.White,')
+          text = text.replace('Foreground = new SolidColorBrush(AvaloniaColor.Parse("#D8E2EA")),', 'Foreground = new SolidColorBrush(AvaloniaColor.Parse("#20262C")),')
+          text = text.replace('BorderBrush = new SolidColorBrush(AvaloniaColor.Parse("#48525B"))', 'BorderBrush = new SolidColorBrush(AvaloniaColor.Parse("#CBD1D6"))')
+          write(path, text)
+          '@ | Set-Content -Path migrate_layout.py -Encoding utf8
+          python migrate_layout.py
+          Remove-Item migrate_layout.py
+      - name: Commit layout refactor
         shell: pwsh
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/CadWinForms src/CadWpf src/CadAvalonia
-          git commit -m "Split demo window responsibilities" 
+          git add src/CadWinForms src/CadAvalonia
+          git commit -m "Move demo command logs to bottom"
           git push origin HEAD:demo
