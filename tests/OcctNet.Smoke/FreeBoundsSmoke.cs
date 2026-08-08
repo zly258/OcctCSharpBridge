@@ -7,7 +7,8 @@ internal static class FreeBoundsSmoke
     internal static void Run()
     {
         using var model = new OcctModelingSession();
-        var face = model.MakeRectangleFace(120, 80);
+        var outerWire = model.MakeRectangleWire(120, 80);
+        var face = model.MakePlanarFace(outerWire);
 
         var candidates = model.GetBoundaryEdgeCandidates(face);
         if (candidates.Count != 4)
