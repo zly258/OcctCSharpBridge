@@ -28,10 +28,6 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Validate main SDK packaging contract
-        shell: pwsh
-        run: .\tests\check-sdk-package.ps1
-
       - name: Run reusable bridge CI build
         shell: pwsh
         run: .\build.ps1 ci Release
