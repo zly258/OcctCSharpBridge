@@ -85,6 +85,7 @@ add_library(OcctNative SHARED
     OcctModelingExtensions.cpp
     OcctModelingBSpline.cpp
     OcctModelingTopologyAnalysis.cpp
+    OcctModelingFaceAnalysis.cpp
     OcctInternal.hxx
     OcctModelingInternal.hxx
     OcctNative.h
@@ -92,7 +93,8 @@ add_library(OcctNative SHARED
     OcctModeling.h
     OcctModelingExtensions.h
     OcctModelingBSpline.h
-    OcctModelingTopologyAnalysis.h)
+    OcctModelingTopologyAnalysis.h
+    OcctModelingFaceAnalysis.h)
 
 target_compile_definitions(OcctNative PRIVATE NOMINMAX _CRT_SECURE_NO_WARNINGS)
 if(MSVC)
@@ -102,9 +104,6 @@ endif()
 target_include_directories(OcctNative SYSTEM PRIVATE "${OCCT_INCLUDE_DIR}")
 target_link_directories(OcctNative PRIVATE "${OCCT_LIB_DIR}")
 
-# These modules are part of the public bridge capability set, not opportunistic options.
-# Failing during CMake configuration is preferable to building against a partial SDK and
-# discovering a missing TK*.dll only after the package is copied to another workstation.
 set(occt_required_libraries
     TKernel TKMath TKG2d TKG3d TKGeomBase TKBRep TKGeomAlgo TKTopAlgo
     TKPrim TKBO TKBool TKFillet TKOffset TKMesh TKShHealing
