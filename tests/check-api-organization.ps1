@@ -45,9 +45,7 @@ foreach ($relativePath in $requiredFiles) {
     }
 }
 
-$forbiddenFiles = @(
-    "src/OcctNet/OcctEngine.ApiAliases.cs"
-)
+$forbiddenFiles = @("src/OcctNet/OcctEngine.ApiAliases.cs")
 foreach ($relativePath in $forbiddenFiles) {
     if (Test-Path (Join-Path $RepositoryRoot $relativePath)) {
         throw "Compatibility alias file is not allowed in Bridge 2.6: $relativePath"
@@ -55,85 +53,16 @@ foreach ($relativePath in $forbiddenFiles) {
 }
 
 $canonicalContracts = [ordered]@{
-    "src/OcctNet/OcctEngine.View.cs" = @(
-        "public void Initialize(",
-        "public void SetView(",
-        "public void SetProjection(",
-        "public OcctCameraState GetCamera("
-    )
-    "src/OcctNet/OcctEngine.Selection.cs" = @(
-        "public void Select(",
-        "public void SelectRectangle(",
-        "public IReadOnlyList<IOcctObject> SelectedObjects"
-    )
-    "src/OcctNet/OcctEngine.Objects.cs" = @(
-        "public IOcctObject GetObject(",
-        "public OcctShape GetShape(",
-        "public bool IsShapeValid(",
-        "public OcctBounds GetShapeBounds(",
-        "public OcctDistanceResult GetShapeDistance(",
-        "public OcctShape GetSubshapeAt(",
-        "public OcctCurveType GetEdgeCurveType(",
-        "public OcctSurfaceType GetFaceSurfaceType(",
-        "public OcctUvBounds GetFaceUvBounds("
-    )
-    "src/OcctNet/OcctModelingSession.ShapeQueries.cs" = @(
-        "GetShapeOrientation",
-        "IsShapeClosed",
-        "IsShapeValid",
-        "GetShapeMaximumTolerance",
-        "GetShapeCheckReport",
-        "GetShapeBounds",
-        "GetShapeDistance",
-        "GetShapeLocation",
-        "SetShapeLocation"
-    )
-    "src/OcctNet/OcctModelingSession.Topology.cs" = @(
-        "GetSubshapeAt",
-        "GetSubshapes",
-        "GetOuterWire",
-        "GetInnerWires",
-        "GetAncestors"
-    )
-    "src/OcctNet/OcctModelingSession.GeometryQueries.cs" = @(
-        "EvaluateEdge(",
-        "GetEdgeCurveType",
-        "GetFaceSurfaceType",
-        "GetFaceUvBounds",
-        "EvaluateFace("
-    )
-    "src/OcctNet/OcctModelingSession.Mesh.cs" = @(
-        "public void Triangulate(",
-        "ClearTriangulation",
-        "GetFaceMesh",
-        "GetShapeMesh"
-    )
-    "src/OcctNet/OcctModelingSession.Extensions.cs" = @(
-        "IsSameShape",
-        "IsPartnerShape",
-        "GetShapeOrientedBounds",
-        "MakePlanarFace",
-        "TrimEdge",
-        "OffsetWire"
-    )
-    "src/OcctNet/OcctModelingSession.Exchange.cs" = @(
-        "ImportStep",
-        "ImportIges",
-        "ImportBrep",
-        "ImportStl",
-        "ExportStep",
-        "ExportIges",
-        "ExportBrep",
-        "ExportStl"
-    )
-    "src/OcctNet/ModelNativeMethods.Extensions.cs" = @(
-        "occt_model_shape_is_same",
-        "occt_model_shape_is_partner",
-        "occt_model_shape_oriented_bounds",
-        "occt_model_make_face_with_holes",
-        "occt_model_trim_edge",
-        "occt_model_offset_wire"
-    )
+    "src/OcctNet/OcctEngine.View.cs" = @("public void Initialize(", "public void SetView(", "public void SetProjection(", "public OcctCameraState GetCamera(")
+    "src/OcctNet/OcctEngine.Selection.cs" = @("public void Select(", "public void SelectRectangle(", "public IReadOnlyList<IOcctObject> SelectedObjects")
+    "src/OcctNet/OcctEngine.Objects.cs" = @("public IOcctObject GetObject(", "public OcctShape GetShape(", "public bool IsShapeValid(", "public OcctBounds GetShapeBounds(", "public OcctDistanceResult GetShapeDistance(", "public OcctShape GetSubshapeAt(", "public OcctCurveType GetEdgeCurveType(", "public OcctSurfaceType GetFaceSurfaceType(", "public OcctUvBounds GetFaceUvBounds(")
+    "src/OcctNet/OcctModelingSession.ShapeQueries.cs" = @("GetShapeOrientation", "IsShapeClosed", "IsShapeValid", "GetShapeMaximumTolerance", "GetShapeCheckReport", "GetShapeBounds", "GetShapeDistance", "GetShapeLocation", "SetShapeLocation")
+    "src/OcctNet/OcctModelingSession.Topology.cs" = @("GetSubshapeAt", "GetSubshapes", "GetOuterWire", "GetInnerWires", "GetAncestors")
+    "src/OcctNet/OcctModelingSession.GeometryQueries.cs" = @("EvaluateEdge(", "GetEdgeCurveType", "GetFaceSurfaceType", "GetFaceUvBounds", "EvaluateFace(")
+    "src/OcctNet/OcctModelingSession.Mesh.cs" = @("public void Triangulate(", "ClearTriangulation", "GetFaceMesh", "GetShapeMesh")
+    "src/OcctNet/OcctModelingSession.Extensions.cs" = @("IsSameShape", "IsPartnerShape", "GetShapeOrientedBounds", "MakePlanarFace", "TrimEdge", "OffsetWire")
+    "src/OcctNet/OcctModelingSession.Exchange.cs" = @("ImportStep", "ImportIges", "ImportBrep", "ImportStl", "ExportStep", "ExportIges", "ExportBrep", "ExportStl")
+    "src/OcctNet/ModelNativeMethods.Extensions.cs" = @("occt_model_shape_is_same", "occt_model_shape_is_partner", "occt_model_shape_oriented_bounds", "occt_model_make_face_with_holes", "occt_model_trim_edge", "occt_model_offset_wire")
 }
 foreach ($contract in $canonicalContracts.GetEnumerator()) {
     $text = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot $contract.Key))
@@ -145,35 +74,25 @@ foreach ($contract in $canonicalContracts.GetEnumerator()) {
 }
 
 $sourceRoot = Join-Path $RepositoryRoot "src/OcctNet"
-$sourceText = (Get-ChildItem $sourceRoot -Filter "*.cs" -File | ForEach-Object {
-    [System.IO.File]::ReadAllText($_.FullName)
-}) -join "`n"
+$sourceText = (Get-ChildItem $sourceRoot -Filter "*.cs" -File | ForEach-Object { [System.IO.File]::ReadAllText($_.FullName) }) -join "`n"
 
 $forbiddenManagedTokens = @(
-    "public OcctBounds GetBounds(",
-    "public OcctDistanceResult Distance(",
-    "public OcctShape GetSubshape(",
-    "EvaluateEdgeNormalized",
-    "EvaluateFaceAtParameters",
-    "public OcctCurveType GetCurveType(",
-    "public OcctSurfaceType GetSurfaceType(",
-    "public OcctUvBounds GetUvBounds(",
-    "public void Mesh(",
-    "public void ClearMesh(",
-    "UseParallelProcessing",
-    "NonDestructiveMode",
-    "RelativeDeflection",
-    "UseParallelMeshing",
-    "NativeHasUv",
-    "NativeHasNormal",
-    "NativeState",
-    "IsBound",
-    "public readonly record struct OcctObject :"
+    "public OcctBounds GetBounds(", "public OcctDistanceResult Distance(", "public OcctShape GetSubshape(",
+    "EvaluateEdgeNormalized", "EvaluateFaceAtParameters", "public OcctCurveType GetCurveType(",
+    "public OcctSurfaceType GetSurfaceType(", "public OcctUvBounds GetUvBounds(", "public void Mesh(",
+    "public void ClearMesh(", "UseParallelProcessing", "NonDestructiveMode", "RelativeDeflection",
+    "UseParallelMeshing", "NativeHasUv", "NativeHasNormal", "NativeState", "public readonly record struct OcctObject :"
 )
 foreach ($token in $forbiddenManagedTokens) {
     if ($sourceText.Contains($token)) {
         throw "Bridge 2.6 compatibility/native-leak token remains in public wrapper: $token"
     }
+}
+
+# IsBound was an older leaked OCCT-style member name. Match it as an identifier/call instead of
+# using substring search so valid APIs such as IsBoundaryCandidate are not rejected.
+if ($sourceText -match '(?<![A-Za-z0-9_])IsBound\s*(?:\(|=>|\{|;)') {
+    throw "Bridge 2.6 compatibility/native-leak identifier remains in public wrapper: IsBound"
 }
 
 $engineBaseText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctEngine.cs"))
