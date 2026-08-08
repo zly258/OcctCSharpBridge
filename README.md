@@ -76,13 +76,13 @@ The refactor moved existing method bodies by responsibility; command IDs, select
 <table>
   <tr><th>WinForms</th><th>WPF</th><th>Avalonia</th></tr>
   <tr>
-    <td><img src="assets/previews/winform-demo-en.png" alt="OCCT CAD WinForms English demo" width="100%"></td>
-    <td><img src="assets/previews/wpf-demo-en.png" alt="OCCT CAD WPF English demo" width="100%"></td>
-    <td><img src="assets/previews/avalonia-demo-en.png" alt="OCCT CAD Avalonia English demo" width="100%"></td>
+    <td><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-en.png" alt="OCCT CAD WinForms English demo" width="100%"></td>
+    <td><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-en.png" alt="OCCT CAD WPF English demo" width="100%"></td>
+    <td><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-demo-en.png" alt="OCCT CAD Avalonia English demo" width="100%"></td>
   </tr>
 </table>
 
-All three previews use the canonical lossless PNG files under `assets/previews/`; the README does not reference the retired WebP preview names.
+All three previews use the canonical lossless PNG files under `assets/previews/`; the README pins the image URLs to the `demo` branch so GitHub rendering and copied README views cannot resolve them against the wrong branch.
 
 Avalonia uses the same `CadSession` and `CadCommandCatalog` layer as WPF and exposes the same main CAD workflow: model creation, selection, model explorer, properties, undo/redo, file exchange, annotations, analysis, view/display controls, samples, shortcuts, and bilingual UI.
 
