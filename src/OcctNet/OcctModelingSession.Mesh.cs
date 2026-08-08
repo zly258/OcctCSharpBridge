@@ -56,6 +56,15 @@ public sealed partial class OcctModelingSession
 
     public OcctMesh GetShapeMesh(
         OcctModelShape shape,
+        OcctModelMeshParameters? parameters = null) =>
+        GetShapeMeshData(shape, parameters).Mesh;
+
+    /// <summary>
+    /// Builds one combined mesh while preserving the contiguous node and triangle ranges
+    /// contributed by every source face.
+    /// </summary>
+    public OcctShapeMeshData GetShapeMeshData(
+        OcctModelShape shape,
         OcctModelMeshParameters? parameters = null)
     {
         EnsureShape(shape);
@@ -63,22 +72,36 @@ public sealed partial class OcctModelingSession
 
         var nodes = new List<OcctModelMeshNode>();
         var triangles = new List<OcctModelMeshTriangle>();
-        foreach (var face in GetSubshapes(shape, OcctShapeType.Face))
+        var faces = GetSubshapes(shape, OcctShapeType.Face);
+        var ranges = new List<OcctShapeMeshFaceRange>(faces.Count);
+
+        foreach (var face in faces)
         {
             var faceMesh = GetFaceMesh(face);
-            var nodeOffset = nodes.Count;
+            var nodeStart = nodes.Count;
+            var triangleStart = triangles.Count;
+
             nodes.AddRange(faceMesh.Nodes);
             foreach (var triangle in faceMesh.Triangles)
             {
                 triangles.Add(new OcctModelMeshTriangle
                 {
-                    Node1 = triangle.Node1 + nodeOffset,
-                    Node2 = triangle.Node2 + nodeOffset,
-                    Node3 = triangle.Node3 + nodeOffset
+                    Node1 = triangle.Node1 + nodeStart,
+                    Node2 = triangle.Node2 + nodeStart,
+                    Node3 = triangle.Node3 + nodeStart
                 });
             }
+
+            ranges.Add(new OcctShapeMeshFaceRange(
+                face,
+                nodeStart,
+                faceMesh.Nodes.Count,
+                triangleStart,
+                faceMesh.Triangles.Count));
         }
 
-        return new OcctMesh(nodes, triangles);
+        return new OcctShapeMeshData(
+            new OcctMesh(nodes, triangles),
+            ranges.ToArray());
     }
 }
