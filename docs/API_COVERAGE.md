@@ -41,7 +41,7 @@ Native 0/1 flags are not exposed as managed `int` options. Public modeling optio
 |---|---|
 | `OcctNet` | Core types, interactive engine, headless modeling session, runtime loading |
 | `OcctNet.WinForms` | Reusable WinForms OCCT viewport host |
-| `OcctNet.Wpf` | Reusable WPF OCCT viewport host |
+| `OcctNet.Wpf` | Reusable WPF viewport host |
 
 The full WinForms/WPF/Avalonia CAD applications live on the `demo` branch, not in `main`.
 
