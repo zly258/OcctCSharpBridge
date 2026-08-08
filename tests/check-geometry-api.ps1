@@ -123,6 +123,40 @@ $contracts = [ordered]@{
         "OcctModelBSplineCurveInfoNative",
         "OcctModelBSplineSurfaceInfoNative"
     )
+    "src/OcctNet/OcctModelingSession.Mesh.cs" = @(
+        "GetFaceMesh",
+        "GetShapeMesh(",
+        "GetShapeMeshData",
+        "OcctShapeMeshFaceRange",
+        "new OcctShapeMeshData"
+    )
+    "src/OcctNet/OcctMeshProvenanceTypes.cs" = @(
+        "OcctShapeMeshFaceRange",
+        "OcctShapeMeshData",
+        "FaceRanges",
+        "TryGetFaceForNode",
+        "GetFaceForNode",
+        "TryGetFaceForTriangle",
+        "GetFaceForTriangle"
+    )
+    "tests/OcctNet.Smoke/ShapeMeshProvenanceSmoke.cs" = @(
+        "GetShapeMeshData",
+        "FaceRanges",
+        "GetFaceForNode",
+        "GetFaceForTriangle"
+    )
+    "docs/MESH_PROVENANCE.md" = @(
+        "Shape Mesh Face Provenance",
+        "GetShapeMeshData()",
+        "OcctShapeMeshFaceRange",
+        "TryGetFaceForTriangle"
+    )
+    "docs/MESH_PROVENANCE.zh-CN.md" = @(
+        "Shape Mesh Face 来源追溯",
+        "GetShapeMeshData()",
+        "OcctShapeMeshFaceRange",
+        "TryGetFaceForTriangle"
+    )
 }
 
 foreach ($contract in $contracts.GetEnumerator()) {
@@ -139,4 +173,4 @@ foreach ($contract in $contracts.GetEnumerator()) {
     }
 }
 
-Write-Host "[geometry] Analytic, differential, and dedicated B-Spline curve/surface contracts validated." -ForegroundColor Green
+Write-Host "[geometry] Analytic, differential, B-Spline, and shape-mesh provenance contracts validated." -ForegroundColor Green
