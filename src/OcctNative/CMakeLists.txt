@@ -90,6 +90,7 @@ add_library(OcctNative SHARED
     OcctModelingInternal.hxx
     OcctNative.h
     OcctSelectionOverlay.h
+    OcctSelectionState.h
     OcctModeling.h
     OcctModelingExtensions.h
     OcctModelingBSpline.h

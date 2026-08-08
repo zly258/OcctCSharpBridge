@@ -10,10 +10,10 @@ OcctCSharpBridge 2.6 面向 Windows x64 与 OCCT 7.9.0，托管层明确分为�
 - 原生桥接版本：`2.6.0`
 - Native ABI：`3`
 - OCCT：`7.9.0`
-- Native exports：`346`
-- Managed P/Invoke declarations：`346`
-- Public .NET types：`94`
-- Viewer API：`212`
+- Native exports：`348`
+- Managed P/Invoke declarations：`348`
+- Public .NET types：`95`
+- Viewer API：`214`
 - Modeling API：`134`
 
 ## 2.6 封装规则
@@ -42,6 +42,24 @@ OcctCSharpBridge 2.6 面向 Windows x64 与 OCCT 7.9.0，托管层明确分为�
 | `OcctNet.Wpf` | 可复用 WPF OCCT 视口宿主 |
 
 完整 WinForms/WPF/Avalonia CAD Demo 只位于 `demo` 分支。
+
+## `OcctEngine`
+
+### Viewer 与结构化 Selection
+
+`OcctEngine` 管理 AIS 对象和 Viewer 上下文，负责视图、选择、对象显示/交互、外观、变换、标注以及 STEP/IGES/BREP/STL 交换。
+
+结构化选择不再要求应用根据裸 Object ID 自行反查：
+
+- `GetSelectedHits()` 返回当前已注册 AIS Selection 的 `OcctSelectionHit`；
+- `TryGetDetectedHit()` 返回当前检测/悬停的已注册 AIS 实体；
+- `OcctSelectionHit` 只包含 `Owner`、`SubshapeType`、`SubshapeIndex` 与 `IsSubshape`，整对象选择统一表示为 `Shape / -1`；
+- Selected Hit 使用统一的两次调用批量 ABI `occt_selected_hits`，不采用 `count + hit_at(index)` 的 N+1 P/Invoke 模式；
+- Detected Hit 未命中时返回 `false`，Native 失败仍通过 Bridge 统一错误契约传播；
+- 当前实现没有稳定命中点数据来源，因此不暴露永远为空的 `Point` 占位属性；
+- Runtime Subshape Index 与 `GetSubshapeAt()` 使用同一 `TopExp_Explorer` 顺序，但它不是 Persistent Naming，不能直接作为长期唯一拓扑引用持久化。
+
+详见 [Viewer 结构化选择命中](SELECTION_HITS.zh-CN.md)。
 
 ## `OcctModelingSession`
 
@@ -114,7 +132,7 @@ GitHub 云端没有项目 OCCT SDK，因此 CI 重点校验：
 - Native 声明、定义和 C# P/Invoke 一致，P/Invoke 均使用 Cdecl + ExactSpelling；
 - API 数量来自 `bridge-contract.json`；
 - Managed 项目编译并执行纯 Managed 回归测试；
-- B-Spline、批量邻接、自由边界、Mesh 来源追溯、批量 Face 分析和 Shape Inspection 具有静态契约检查；
+- Viewer 结构化 Selected/Detected Hit、B-Spline、批量邻接、自由边界、Mesh 来源追溯、批量 Face 分析和 Shape Inspection 具有静态契约检查；
 - Smoke 项目保持可编译，真实 Native 执行仍是本地 Windows 发布门禁；
 - `main` / `demo` 共享封装逐项比较。
 
