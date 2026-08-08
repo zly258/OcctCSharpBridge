@@ -57,4 +57,22 @@ if ($runtimeIndex -lt 0 -or $appLocalIndex -lt 0 -or $probeIndex -lt 0 -or $prob
     throw "Package validation must resolve the closure, deploy app-local native DLLs, then run the native load probe."
 }
 
-Write-Host "[package] WinForms/WPF/Avalonia publishing, app-local native closure, VC runtime resolution and restricted LoadLibrary probe validated." -ForegroundColor Green
+# NuGet SDK packaging belongs only to main. Demo projects are application/reference
+# sources and must not accidentally inherit main's packable project metadata.
+foreach ($relativePath in @(
+    "src\OcctNet\OcctNet.csproj",
+    "src\OcctNet.WinForms\OcctNet.WinForms.csproj",
+    "src\OcctNet.Wpf\OcctNet.Wpf.csproj"
+)) {
+    $projectText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot $relativePath))
+    if (-not $projectText.Contains('<IsPackable>false</IsPackable>')) {
+        throw "Demo reusable project must remain non-packable; NuGet packaging is main-only: $relativePath"
+    }
+    foreach ($forbidden in @('<PackageReadmeFile>', '<PackageLicenseFile>', '<RepositoryUrl>')) {
+        if ($projectText.Contains($forbidden)) {
+            throw "Main-only NuGet metadata leaked into demo project ${relativePath}: $forbidden"
+        }
+    }
+}
+
+Write-Host "[package] Demo publishing, app-local native closure, VC runtime resolution, restricted LoadLibrary probe, and main-only NuGet boundary validated." -ForegroundColor Green
