@@ -80,4 +80,51 @@ public sealed partial class OcctModelingSession
             (int)joinType,
             openResult ? 1 : 0));
     }
+
+    public OcctBSplineCurveData GetBSplineCurveData(OcctModelShape edge)
+    {
+        EnsureShape(edge);
+        Check(ModelNativeMethods.occt_model_edge_bspline_info(_handle, edge.Id, out var info));
+        if (info.Degree < 1 || info.PoleCount < 2 || info.KnotCount < 2)
+            throw new InvalidOperationException("Native B-Spline metadata is invalid.");
+
+        var poles = new OcctPoint3d[info.PoleCount];
+        var weights = new double[info.PoleCount];
+        for (var index = 0; index < poles.Length; index++)
+        {
+            Check(ModelNativeMethods.occt_model_edge_bspline_pole_at(
+                _handle,
+                edge.Id,
+                index,
+                out poles[index],
+                out weights[index]));
+            if (!poles[index].IsFinite || !double.IsFinite(weights[index]) || weights[index] <= 0)
+                throw new InvalidOperationException("Native B-Spline pole data is invalid.");
+        }
+
+        var knots = new double[info.KnotCount];
+        var multiplicities = new int[info.KnotCount];
+        for (var index = 0; index < knots.Length; index++)
+        {
+            Check(ModelNativeMethods.occt_model_edge_bspline_knot_at(
+                _handle,
+                edge.Id,
+                index,
+                out knots[index],
+                out multiplicities[index]));
+            if (!double.IsFinite(knots[index]) || multiplicities[index] <= 0)
+                throw new InvalidOperationException("Native B-Spline knot data is invalid.");
+            if (index > 0 && knots[index] <= knots[index - 1])
+                throw new InvalidOperationException("Native B-Spline knots must be strictly increasing.");
+        }
+
+        return new OcctBSplineCurveData(
+            info.Degree,
+            info.Rational != 0,
+            info.Periodic != 0,
+            poles,
+            weights,
+            knots,
+            multiplicities);
+    }
 }
