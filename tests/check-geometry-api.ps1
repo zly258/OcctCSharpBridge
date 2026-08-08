@@ -17,9 +17,7 @@ $contracts = [ordered]@{
         "occt_model_face_torus_geometry"
     )
     "src/OcctNet/ModelNativeMethods.AnalyticGeometry.cs" = @(
-        "occt_model_edge_line_geometry",
-        "occt_model_face_torus_geometry",
-        "CallingConvention.Cdecl"
+        "occt_model_edge_line_geometry", "occt_model_face_torus_geometry", "CallingConvention.Cdecl"
     )
     "src/OcctNet/OcctModelingSession.AnalyticGeometry.cs" = @(
         "GetLineGeometry", "GetCircleGeometry", "GetEllipseGeometry", "GetPlaneGeometry",
@@ -71,6 +69,15 @@ $contracts = [ordered]@{
         "OcctBSplineCurveData", "OcctBSplineSurfaceData", "UPoleCount", "VPoleCount",
         "GetPole", "GetWeight", "UKnots", "VKnots",
         "OcctModelBSplineCurveInfoNative", "OcctModelBSplineSurfaceInfoNative"
+    )
+    "src/OcctNet/OcctGeometryExtensions.Core.cs" = @(
+        "public static partial class OcctGeometryExtensions", "Lerp", "AngleTo", "ProjectOnto",
+        "GetVolume", "GetDiagonalLength", "Expanded", "Union", "GetCenter", "IsWithin"
+    )
+    "src/OcctNet/OcctGeometryExtensions.Transform.cs" = @(
+        "public static partial class OcctGeometryExtensions", "IsAffine", "TransformPoint", "Multiply",
+        "TryInvert", "ToTransform3d", "ToModelLocation", "CreateTranslationLocation",
+        "CreateUniformScaleLocation", "CreateRotationLocation", "CreateRotationTransform"
     )
     "src/OcctNet/OcctModelingSession.Mesh.cs" = @(
         "GetFaceMesh", "GetShapeMesh(", "GetShapeMeshData", "OcctShapeMeshFaceRange", "new OcctShapeMeshData"
@@ -140,4 +147,9 @@ foreach ($contract in $contracts.GetEnumerator()) {
     }
 }
 
-Write-Host "[geometry] Analytic, differential, B-Spline, mesh provenance, batch face analysis, and shape inspection contracts validated." -ForegroundColor Green
+$legacyGeometryExtensions = Join-Path $RepositoryRoot "src\OcctNet\OcctGeometryExtensions.cs"
+if (Test-Path $legacyGeometryExtensions -PathType Leaf) {
+    throw "Monolithic OcctGeometryExtensions.cs must not be reintroduced; keep core and transform helpers in dedicated partial files."
+}
+
+Write-Host "[geometry] Analytic, differential, B-Spline, managed geometry modules, mesh provenance, batch face analysis, and shape inspection contracts validated." -ForegroundColor Green
