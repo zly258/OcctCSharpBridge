@@ -1,6 +1,8 @@
 ﻿# Structured Runtime Diagnostics
 
-`OcctRuntime.GetDiagnosticReport()` remains the detailed human-readable report. Bridge 2.6 also exposes `OcctRuntime.GetDiagnosticInfo()` for UI, automated checks, support bundles, and startup diagnostics that should not parse report text.
+`OcctRuntime.GetDiagnosticReport()` remains the detailed human-readable report. `OcctRuntime.GetDiagnosticInfo()` provides a typed, side-effect-free snapshot for startup diagnostics, UI, automated checks, and support bundles.
+
+Neither diagnostic API configures the runtime, changes DLL search paths, changes OCCT environment variables, or forces `OcctNative.dll` to load.
 
 ## Capture a snapshot
 
@@ -8,47 +10,71 @@
 var info = OcctRuntime.GetDiagnosticInfo();
 
 Console.WriteLine(info.ProcessArchitecture);
-Console.WriteLine(info.ConfiguredNativeDirectory);
-Console.WriteLine(info.ConfiguredNativeBridgeExists);
+Console.WriteLine(info.ApplicationNativeBridgePath);
+Console.WriteLine(info.ApplicationNativeBridgeExists);
+Console.WriteLine(info.ApplicationOcctKernelPath);
+Console.WriteLine(info.ApplicationOcctKernelExists);
 Console.WriteLine(info.LoadedNativeBridgePath);
 Console.WriteLine(info.LoadedOcctKernelPath);
 ```
 
-`GetDiagnosticInfo()` does **not** force `OcctNative.dll` or OCCT to load. Loaded-module fields only describe modules that are already present in the current process.
+## Diagnostic layers
 
-## Main fields
+The snapshot deliberately separates three different questions.
 
-`OcctRuntimeDiagnosticInfo` includes:
+### 1. App-local package state
 
-- capture time, framework description, OS description;
-- process and OS architecture;
-- `Is64BitProcess`;
-- application base directory and current directory;
-- configured `OCCT_BRIDGE_NATIVE_DIR`;
-- configured `OCCT_ROOT` and `CASROOT`;
-- the configured `OcctNative.dll` path and whether it currently exists;
-- the configured OCCT `TKernel.dll` path and whether it currently exists;
-- the actual loaded `OcctNative.dll` path, when already loaded;
-- the actual loaded `TKernel.dll` path, when already loaded;
-- `NativeBridgeLoaded` and `OcctKernelLoaded` convenience flags;
-- the original `DiagnosticReport` string.
+These fields describe the executable directory without relying on environment variables:
 
-The `Configured...Exists` properties are nullable:
+- `ApplicationNativeBridgePath`
+- `ApplicationNativeBridgeExists`
+- `ApplicationOcctKernelPath`
+- `ApplicationOcctKernelExists`
 
-- `null`: the corresponding environment-based path is not configured;
+A normal portable Demo package places `OcctNative.dll`, `TKernel.dll`, the required OCCT modules, VC++ runtime components, and third-party native dependencies beside the executable. These fields therefore help diagnose package layout **before the first Native call**.
+
+### 2. Explicit/environment configuration
+
+The snapshot also reports:
+
+- `ConfiguredNativeDirectory` from `OCCT_BRIDGE_NATIVE_DIR`;
+- `ConfiguredOcctRoot` from `OCCT_ROOT`;
+- `ConfiguredCasRoot` from `CASROOT`;
+- `ConfiguredNativeBridgePath` and nullable `ConfiguredNativeBridgeExists`;
+- `ConfiguredOcctKernelPath` and nullable `ConfiguredOcctKernelExists`.
+
+The nullable existence properties mean:
+
+- `null`: no corresponding environment-derived path is configured;
 - `false`: a path is configured but the expected file is absent;
 - `true`: the expected file exists at that configured location.
 
+### 3. Actual process state
+
+When modules have already been loaded, diagnostics report:
+
+- `LoadedNativeBridgePath`;
+- `LoadedOcctKernelPath`;
+- `NativeBridgeLoaded`;
+- `OcctKernelLoaded`.
+
+Do not interpret `NativeBridgeLoaded == false` as an error before the first Native operation. `GetDiagnosticInfo()` intentionally does not trigger a load.
+
 ## Diagnosing Win32 126
 
-A practical startup check is:
+A useful sequence is:
 
 ```csharp
 var info = OcctRuntime.GetDiagnosticInfo();
 
+if (!info.ApplicationNativeBridgeExists)
+{
+    // The executable directory does not contain OcctNative.dll.
+}
+
 if (info.ConfiguredNativeBridgeExists == false)
 {
-    // OCCT_BRIDGE_NATIVE_DIR points somewhere that does not contain OcctNative.dll.
+    // OCCT_BRIDGE_NATIVE_DIR points to a directory without OcctNative.dll.
 }
 
 if (info.ConfiguredOcctKernelExists == false)
@@ -58,34 +84,60 @@ if (info.ConfiguredOcctKernelExists == false)
 
 if (info.NativeBridgeLoaded && !info.OcctKernelLoaded)
 {
-    // The bridge is present but one or more OCCT runtime dependencies may still be unresolved.
+    // The bridge is in the process but one or more OCCT runtime dependencies may be unresolved.
 }
 ```
 
-Do not interpret `NativeBridgeLoaded == false` as an error before the first native operation. The snapshot deliberately does not trigger a load.
+After a successful Native operation, loaded-module paths are particularly useful for detecting an old DLL that was loaded from another application directory.
 
-After a successful native operation, `LoadedNativeBridgePath` and `LoadedOcctKernelPath` are useful for detecting accidental loading from another application directory or an old runtime copy.
+## Text report
+
+`GetDiagnosticReport()` remains useful when a complete diagnostic block is easier to attach to a log. It includes:
+
+- configuration state;
+- base directory;
+- app-local bridge/kernel presence;
+- configured Native/OCCT paths;
+- repository probing state;
+- Native bridge candidates;
+- key OCCT resource environment variables.
+
+The report is observational only. Reading it must not mutate `PATH`, `OCCT_BRIDGE_NATIVE_DIR`, `OCCT_ROOT`, or `CASROOT`.
+
+## Runtime code organization
+
+Runtime responsibilities are intentionally split instead of accumulating in one large file:
+
+```text
+OcctRuntime.cs                 configuration state and conflict validation
+OcctRuntime.Probing.cs         bridge/OCCT/repository/resource path discovery
+OcctRuntime.Environment.cs     DLL search policy, PATH and OCCT resource variables
+OcctRuntime.Diagnostics.cs     structured and text diagnostics
+```
+
+This is an internal organization change; the public `OcctRuntime` API remains one static partial type.
 
 ## Desktop UI integration
 
-WinForms, WPF, and Avalonia applications can present the structured fields directly in a startup diagnostics dialog or troubleshooting panel while keeping the full `DiagnosticReport` behind a “details” view.
-
-Recommended summary fields are:
+WinForms, WPF, and Avalonia applications can show a compact startup diagnostics panel using:
 
 1. process architecture;
-2. configured bridge path + existence;
-3. configured OCCT kernel path + existence;
-4. loaded bridge path;
-5. loaded OCCT kernel path.
+2. app-local bridge/kernel existence;
+3. configured bridge/kernel existence;
+4. loaded bridge/kernel paths;
+5. full `DiagnosticReport` behind a details view.
 
-This is more stable than parsing localized console/log text.
+This is more stable than parsing localized console output.
 
 ## Path privacy
 
-Diagnostic information contains local filesystem paths. Before attaching it to an issue or external support message, review/redact user names, project paths, network shares, or other environment-specific information if needed.
+Diagnostic information contains local filesystem paths. Review or redact user names, project folders, network shares, and other environment-specific details before posting a report externally.
 
-## Relationship to deployment
+## Relationship to publishing
 
-The structured snapshot does not replace packaging validation. Demo `publish.ps1` still resolves the native dependency closure and runs the restricted `LoadLibraryExW` probe before redistribution. Runtime diagnostics answer a different question: **what configuration and modules does this particular process see now?**
+Runtime diagnostics do not replace package validation. Demo `publish.ps1` still resolves the Native dependency closure and runs a restricted `LoadLibraryExW` probe before redistribution.
 
-For packaged applications, prefer app-local native runtime deployment. Use `OCCT_BRIDGE_NATIVE_DIR`, `OCCT_ROOT`, or `CASROOT` when an explicit development/runtime layout is intentional.
+- **Publish validation** asks whether the package contains a loadable dependency closure.
+- **Runtime diagnostics** asks what paths and modules this particular process sees now.
+
+For redistributed applications, prefer app-local Native runtime deployment. Use `OCCT_BRIDGE_NATIVE_DIR`, `OCCT_ROOT`, or `CASROOT` only when an explicit development/runtime layout is intentional.
