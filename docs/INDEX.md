@@ -9,7 +9,8 @@ This index covers the reusable bridge content shared by `main` and `demo`. NuGet
 | [API Coverage](API_COVERAGE.md) | Current Bridge/ABI/API scope, ownership rules, façade responsibilities, validation boundaries |
 | [Managed Geometry and Transform Utilities](GEOMETRY_UTILITIES.md) | Point/vector math, bounds, UV ranges, affine matrices, locations and transforms |
 | [B-Spline Curve and Surface Inspection](BSPLINE_CURVES.md) | Degree, poles, weights, knots, multiplicities and surface control grids |
-| [Topology Adjacency and Free-Boundary Analysis](TOPOLOGY_ANALYSIS.md) | Adjacency screening, manifold/non-manifold checks and strict free-boundary analysis |
+| [Topology Adjacency and Free-Boundary Analysis](TOPOLOGY_ANALYSIS.md) | Batched adjacency, manifold/non-manifold checks and strict free-boundary analysis |
+| [Shape Mesh Face Provenance](MESH_PROVENANCE.md) | Combined-mesh source-Face ranges, picking and CAD/BIM property mapping |
 | [Structured Runtime Diagnostics](RUNTIME_DIAGNOSTICS.md) | Startup/runtime troubleshooting, configured paths, loaded modules and Win32 126 diagnostics |
 
 ## API layers
@@ -59,4 +60,4 @@ Static project site. Its public API statistics are validated against `main/bridg
 
 ## Compatibility rule
 
-Bridge `2.6.0` uses Native ABI `3`. New capabilities in this expansion are additive ABI 3 functions; existing ABI 3 signatures are not silently repurposed. Managed callers should still deploy `OcctNet`, UI host assemblies, `OcctNative.dll`, OCCT runtime DLLs, and third-party dependencies from one compatible build.
+Bridge `2.6.0` uses Native ABI `3`. New Native capabilities in this expansion are additive ABI 3 functions; existing ABI 3 signatures are not silently repurposed. Managed-only additions such as mesh provenance do not change the Native ABI. Managed callers should still deploy `OcctNet`, UI host assemblies, `OcctNative.dll`, OCCT runtime DLLs, and third-party dependencies from one compatible build.
