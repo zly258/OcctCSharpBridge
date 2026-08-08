@@ -108,4 +108,34 @@ foreach ($token in @('#101820', '#D8E2EA', '#48525B')) {
     }
 }
 
-Write-Host "[demo-ui] WinForms, WPF and Avalonia use split responsibilities with full-width bottom light log panels." -ForegroundColor Green
+# README previews are part of the demo UI documentation contract. Keep references on the
+# canonical lossless PNG assets that are actually committed under assets/previews.
+$previewContracts = [ordered]@{
+    "README.md" = @(
+        "assets/previews/winform-demo-en.png",
+        "assets/previews/wpf-demo-en.png",
+        "assets/previews/avalonia-demo-en.png"
+    )
+    "README.zh-CN.md" = @(
+        "assets/previews/winform-demo-zh.png",
+        "assets/previews/wpf-demo-zh.png",
+        "assets/previews/avalonia-demo-zh.png"
+    )
+}
+foreach ($entry in $previewContracts.GetEnumerator()) {
+    $readmePath = Join-Path $RepositoryRoot $entry.Key
+    $readme = [System.IO.File]::ReadAllText($readmePath)
+    if ($readme.Contains("assets/previews/") -and $readme.Contains(".webp")) {
+        throw "Demo README still references retired WebP preview assets: $($entry.Key)"
+    }
+    foreach ($relativePreview in $entry.Value) {
+        if (-not $readme.Contains($relativePreview)) {
+            throw "Demo README preview reference is missing: $($entry.Key) -> $relativePreview"
+        }
+        if (-not (Test-Path (Join-Path $RepositoryRoot $relativePreview) -PathType Leaf)) {
+            throw "Demo README preview file does not exist: $relativePreview"
+        }
+    }
+}
+
+Write-Host "[demo-ui] WinForms, WPF and Avalonia use split responsibilities, full-width bottom light log panels, and canonical PNG README previews." -ForegroundColor Green
