@@ -38,6 +38,50 @@ public sealed partial class OcctModelingSession
     public IReadOnlyList<OcctModelShape> GetFaceVertices(OcctModelShape face) =>
         GetSubshapes(face, OcctShapeType.Vertex);
 
+    public IReadOnlyList<OcctModelShape> GetAdjacentFaces(OcctModelShape root, OcctModelShape edge) =>
+        GetAncestors(root, edge, OcctShapeType.Face);
+
+    public IReadOnlyList<OcctModelShape> GetIncidentEdges(OcctModelShape root, OcctModelShape vertex) =>
+        GetAncestors(root, vertex, OcctShapeType.Edge);
+
+    public IReadOnlyList<OcctModelShape> GetIncidentFaces(OcctModelShape root, OcctModelShape vertex) =>
+        GetAncestors(root, vertex, OcctShapeType.Face);
+
+    /// <summary>
+    /// Returns edges that are referenced by exactly one face in <paramref name="root"/>.
+    /// These are useful free-boundary candidates, but periodic seam topology should be checked
+    /// before treating every returned edge as an open geometric boundary.
+    /// </summary>
+    public IReadOnlyList<OcctModelShape> GetBoundaryEdgeCandidates(OcctModelShape root) =>
+        GetEdgesByAdjacentFaceCount(root, 1, 1);
+
+    public IReadOnlyList<OcctModelShape> GetManifoldInteriorEdges(OcctModelShape root) =>
+        GetEdgesByAdjacentFaceCount(root, 2, 2);
+
+    public IReadOnlyList<OcctModelShape> GetNonManifoldEdges(OcctModelShape root) =>
+        GetEdgesByAdjacentFaceCount(root, 3, int.MaxValue);
+
+    public IReadOnlyList<OcctModelShape> GetEdgesByAdjacentFaceCount(
+        OcctModelShape root,
+        int minimumFaceCount,
+        int maximumFaceCount)
+    {
+        EnsureShape(root);
+        ArgumentOutOfRangeException.ThrowIfNegative(minimumFaceCount);
+        if (maximumFaceCount < minimumFaceCount)
+            throw new ArgumentOutOfRangeException(nameof(maximumFaceCount), maximumFaceCount, "Maximum face count must be greater than or equal to the minimum face count.");
+
+        var result = new List<OcctModelShape>();
+        foreach (var edge in GetEdges(root))
+        {
+            var adjacentFaceCount = GetAncestors(root, edge, OcctShapeType.Face).Count;
+            if (adjacentFaceCount >= minimumFaceCount && adjacentFaceCount <= maximumFaceCount)
+                result.Add(edge);
+        }
+
+        return result;
+    }
+
     public IReadOnlyDictionary<OcctShapeType, int> GetTopologyCounts(OcctModelShape shape)
     {
         EnsureShape(shape);
