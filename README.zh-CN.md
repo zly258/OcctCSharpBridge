@@ -74,13 +74,13 @@ Avalonia
 <table>
   <tr><th>WinForms</th><th>WPF</th><th>Avalonia</th></tr>
   <tr>
-    <td><img src="assets/previews/winform-demo-zh.png" alt="OCCT CAD WinForms 中文界面" width="100%"></td>
-    <td><img src="assets/previews/wpf-demo-zh.png" alt="OCCT CAD WPF 中文界面" width="100%"></td>
-    <td><img src="assets/previews/avalonia-demo-zh.png" alt="OCCT CAD Avalonia 中文界面" width="100%"></td>
+    <td><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-zh.png" alt="OCCT CAD WinForms 中文界面" width="100%"></td>
+    <td><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-zh.png" alt="OCCT CAD WPF 中文界面" width="100%"></td>
+    <td><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-demo-zh.png" alt="OCCT CAD Avalonia 中文界面" width="100%"></td>
   </tr>
 </table>
 
-三套预览统一引用 `assets/previews/` 下正式保留的无损 PNG 文件，不再引用已淘汰的 WebP 文件名。
+三套预览统一引用 `assets/previews/` 下正式保留的无损 PNG，并将图片 URL 显式固定到 `demo` 分支，避免 GitHub 页面、复制后的 README 或其他分支上下文把相对路径解析到错误位置。
 
 Avalonia 与 WPF 共用 `CadSession` 和 `CadCommandCatalog`，覆盖模型创建、选择、模型树、属性、撤销重做、文件交换、标注、分析、视图/显示控制、示例、快捷键和中英文 UI。
 
