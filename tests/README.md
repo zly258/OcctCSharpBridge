@@ -34,7 +34,7 @@ Smoke scenarios are kept small and capability-oriented: topology, B-Spline, free
 | `check-ui-hosts.ps1` | Host-specific WinForms/WPF/Avalonia expectations where applicable |
 | `check-sdk-package.ps1` | Main-branch NuGet/package metadata and package content policy |
 
-The scripts are deliberately separated by responsibility so failures identify the broken contract instead of producing one monolithic validation script.
+The scripts are deliberately separated by responsibility so failures identify the broken contract instead of producing one monolithic validation script. Repeated file/token assertion plumbing lives in `ContractTestHelpers.psm1`; it is infrastructure only and is not a separate validation layer.
 
 ## Cleanup rule
 
