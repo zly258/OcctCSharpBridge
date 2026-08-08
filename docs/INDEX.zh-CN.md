@@ -10,6 +10,7 @@
 | [Managed 几何与变换工具](GEOMETRY_UTILITIES.zh-CN.md) | 点/向量、包围盒、UV 范围、仿射矩阵、Location 与 Transform |
 | [B-Spline 曲线与曲面检查](BSPLINE_CURVES.zh-CN.md) | Degree、Pole、Weight、Knot、Multiplicity 与曲面控制网格 |
 | [拓扑邻接与自由边界分析](TOPOLOGY_ANALYSIS.zh-CN.md) | 批量邻接、流形/非流形检查、严格自由边界分析 |
+| [批量 Face 分析与 Shape 检查](SHAPE_INSPECTION.zh-CN.md) | 大模型 Face 批量统计与不绑定业务规则的结构化审模快照 |
 | [Shape Mesh Face 来源追溯](MESH_PROVENANCE.zh-CN.md) | 合并 Mesh 的源 Face 区间、拾取与 CAD/BIM 属性映射 |
 | [结构化 Runtime 诊断](RUNTIME_DIAGNOSTICS.zh-CN.md) | 启动/部署排查、配置路径、实际 Loaded DLL、Win32 126 分析 |
 
@@ -31,6 +32,8 @@ Bridge 明确保持三层职责：
 - **Managed 回归测试**：不需要 OCCT SDK，验证所有权、值类型、Runtime 与纯 Managed 工具；
 - **Smoke 项目编译**：保证真实 Native 场景与托管接口保持源码兼容；
 - **本地 Native Smoke**：真正加载 OCCT 7.9.0 并执行几何/拓扑算法，是正式发布前的 Native 门禁。
+
+各测试工程与 PowerShell 契约检查的保留职责见 [`tests/README.md`](../tests/README.md)。
 
 执行与云端一致的 Managed 门禁：
 
@@ -60,4 +63,4 @@ Bridge 明确保持三层职责：
 
 ## 兼容性规则
 
-Bridge `2.6.0` 使用 Native ABI `3`。本轮新增 Native 能力均采用 ABI 3 增量接口，不静默复用或改变已有 ABI 3 函数签名；Mesh 来源追溯这类纯 Managed 增强不改变 Native ABI。部署时仍应保证 `OcctNet`、对应 UI Host、`OcctNative.dll`、OCCT Runtime 和第三方 DLL 来自同一套兼容构建。
+Bridge `2.6.0` 使用 Native ABI `3`。新增 Native 能力采用 ABI 3 增量接口，不静默复用或改变已有 ABI 3 函数签名；Mesh 来源追溯与 ShapeInspection 组合层这类 Managed 增强本身不额外改变 Native ABI。部署时仍应保证 `OcctNet`、对应 UI Host、`OcctNative.dll`、OCCT Runtime 和第三方 DLL 来自同一套兼容构建。
