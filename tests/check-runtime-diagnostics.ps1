@@ -29,9 +29,15 @@ foreach ($token in @(
         throw "OcctRuntime core contract is missing: $token"
     }
 }
-foreach ($forbidden in @("GetDiagnosticReport", "ResolveNativeBridgeDirectory", "SetDefaultDllDirectories")) {
-    if ($core.Contains($forbidden)) {
-        throw "OcctRuntime core contains a responsibility that belongs in another partial: $forbidden"
+foreach ($forbiddenDefinition in @(
+    "public static string GetDiagnosticReport(",
+    "private static IReadOnlyList<string> GetNativeLibraryCandidatesCore(",
+    "private static string? ResolveNativeBridgeDirectory(",
+    "private static string? ResolveOcctRoot(",
+    "private static void InitializeNativeSearchPolicy("
+)) {
+    if ($core.Contains($forbiddenDefinition)) {
+        throw "OcctRuntime core contains an implementation that belongs in another partial: $forbiddenDefinition"
     }
 }
 
