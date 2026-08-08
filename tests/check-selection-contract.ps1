@@ -24,7 +24,7 @@ function Assert-Contains {
     }
 }
 
-$engine = Read-Text (Join-Path $RepositoryRoot "src\OcctNative\OcctEngine.cpp")
+$engineSelection = Read-Text (Join-Path $RepositoryRoot "src\OcctNative\OcctEngineSelection.cpp")
 $selectionState = Read-Text (Join-Path $RepositoryRoot "src\OcctNative\OcctSelectionState.cpp")
 $selectionHeader = Read-Text (Join-Path $RepositoryRoot "src\OcctNative\OcctSelectionState.h")
 $overlay = Read-Text (Join-Path $RepositoryRoot "src\OcctNative\OcctSelectionOverlay.cpp")
@@ -35,10 +35,10 @@ $managedTypes = Read-Text (Join-Path $RepositoryRoot "src\OcctNet\OcctSelectionH
 $managedStateNative = Read-Text (Join-Path $RepositoryRoot "src\OcctNet\SelectionStateNativeMethods.cs")
 $managedOverlayNative = Read-Text (Join-Path $RepositoryRoot "src\OcctNet\SelectionOverlayNativeMethods.cs")
 
-Assert-Contains $engine 'AIS_SelectionScheme_Add : AIS_SelectionScheme_Replace' 'add/replace selection schemes'
-Assert-Contains $engine 'SelectRectangle(' 'the standard OCCT SelectRectangle call'
-Assert-Contains $engine 'UpdateCurrentViewer();' 'viewer updates after selection'
-if ($engine.Contains('AIS_SelectionScheme_XOR')) {
+Assert-Contains $engineSelection 'AIS_SelectionScheme_Add : AIS_SelectionScheme_Replace' 'add/replace selection schemes'
+Assert-Contains $engineSelection 'SelectRectangle(' 'the standard OCCT SelectRectangle call'
+Assert-Contains $engineSelection 'UpdateCurrentViewer();' 'viewer updates after selection'
+if ($engineSelection.Contains('AIS_SelectionScheme_XOR')) {
     throw 'Point selection must not use XOR; Ctrl selection follows the reference Add behavior.'
 }
 
@@ -117,4 +117,4 @@ if ($resizeBlock.Contains('CancelRectangleSelection();')) {
     throw 'OnResize must preserve an active rectangle gesture instead of cancelling the first drag.'
 }
 
-Write-Host '[selection] Overlay/state native methods, point/box selection, batched selected/detected hits, subshape-index contract, and first-gesture capture recovery validated.' -ForegroundColor Green
+Write-Host '[selection] Split base selection, overlay/state native methods, point/box selection, batched selected/detected hits, subshape-index contract, and first-gesture capture recovery validated.' -ForegroundColor Green

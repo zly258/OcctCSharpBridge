@@ -42,6 +42,31 @@ foreach ($source in $sourceTokens) {
     }
 }
 
+$engineModules = @(
+    @{ File = "OcctEngine.cpp"; Symbols = @("occt_create", "occt_initialize", "occt_begin_update") },
+    @{ File = "OcctEngineView.cpp"; Symbols = @("occt_fit_all", "occt_set_view", "occt_screen_to_world") },
+    @{ File = "OcctEngineSelection.cpp"; Symbols = @("occt_select", "occt_select_rectangle_ex", "occt_selected_at") },
+    @{ File = "OcctEngineObjects.cpp"; Symbols = @("occt_object_count", "occt_delete_objects", "occt_clear") },
+    @{ File = "OcctEngineShapes.cpp"; Symbols = @("occt_shape_bounds", "occt_get_subshape", "occt_translate") }
+)
+
+foreach ($module in $engineModules) {
+    if ($module.File -notin $sourceTokens) {
+        throw "Split native engine module is not listed in add_library: $($module.File)"
+    }
+    $moduleText = [System.IO.File]::ReadAllText((Join-Path $nativeRoot $module.File))
+    foreach ($symbol in $module.Symbols) {
+        if (-not $moduleText.Contains($symbol)) {
+            throw "Split native engine module $($module.File) is missing expected responsibility symbol: $symbol"
+        }
+    }
+}
+
+$engineCorePath = Join-Path $nativeRoot "OcctEngine.cpp"
+if ((Get-Item $engineCorePath).Length -gt 26000) {
+    throw "OcctEngine.cpp has grown beyond the lifecycle/shared-helper boundary; keep view, selection, object, and shape responsibilities split."
+}
+
 $modules = @(
     @{
         Name = "Extensions"
@@ -103,4 +128,4 @@ if ($unlistedCpp.Count -gt 0) {
     throw "Native C++ files are not listed in add_library: $($unlistedCpp -join ', ')"
 }
 
-Write-Host "[native-build] $($sourceTokens.Count) source entries and $($modules.Count) dedicated modules validated; no OCAF/XDE inputs remain." -ForegroundColor Green
+Write-Host "[native-build] $($sourceTokens.Count) source entries, $($engineModules.Count) split engine modules, and $($modules.Count) dedicated modeling modules validated; no OCAF/XDE inputs remain." -ForegroundColor Green
