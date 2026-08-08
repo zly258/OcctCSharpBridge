@@ -9,16 +9,23 @@ $contracts = [ordered]@{
     "src/OcctNative/OcctModelingTopologyAnalysis.h" = @(
         "OcctModelFreeBoundary_Closed",
         "OcctModelFreeBoundary_Open",
-        "occt_model_shape_free_bounds"
+        "OcctModelEdgeAdjacency",
+        "occt_model_shape_free_bounds",
+        "occt_model_shape_edge_adjacency"
     )
     "src/OcctNative/OcctModelingTopologyAnalysis.cpp" = @(
         "ShapeAnalysis_FreeBounds",
         "occt_model_shape_free_bounds",
         "analysis.GetClosedWires()",
-        "analysis.GetOpenWires()"
+        "analysis.GetOpenWires()",
+        "occt_model_shape_edge_adjacency",
+        "MapShapesAndUniqueAncestors",
+        "TopAbs_EDGE",
+        "TopAbs_FACE"
     )
     "src/OcctNet/ModelNativeMethods.TopologyAnalysis.cs" = @(
         "occt_model_shape_free_bounds",
+        "occt_model_shape_edge_adjacency",
         "CallingConvention.Cdecl",
         "ExactSpelling = true"
     )
@@ -28,14 +35,22 @@ $contracts = [ordered]@{
         "splitOpen",
         "OcctFreeBoundsResult",
         "GetWires(closedCompound)",
-        "GetWires(openCompound)"
+        "GetWires(openCompound)",
+        "AnalyzeEdgeAdjacency",
+        "NativeModelEdgeAdjacency",
+        "OcctEdgeAdjacencyResult"
     )
     "src/OcctNet/OcctTopologyAnalysisTypes.cs" = @(
         "OcctFreeBoundsResult",
         "ClosedWires",
         "OpenWires",
         "HasFreeBounds",
-        "HasOpenFreeBounds"
+        "HasOpenFreeBounds",
+        "OcctEdgeAdjacencyInfo",
+        "OcctEdgeAdjacencyResult",
+        "BoundaryCandidates",
+        "ManifoldInteriorEdges",
+        "NonManifoldEdges"
     )
     "src/OcctNet/OcctModelingSession.TopologyConvenience.cs" = @(
         "GetAdjacentFaces",
@@ -43,7 +58,8 @@ $contracts = [ordered]@{
         "GetIncidentFaces",
         "GetBoundaryEdgeCandidates",
         "GetManifoldInteriorEdges",
-        "GetNonManifoldEdges"
+        "GetNonManifoldEdges",
+        "AnalyzeEdgeAdjacency(root)"
     )
     "tests/OcctNet.Smoke/FreeBoundsSmoke.cs" = @(
         "GetBoundaryEdgeCandidates",
@@ -51,16 +67,21 @@ $contracts = [ordered]@{
         "ClosedWireCount",
         "OpenWireCount"
     )
+    "tests/OcctNet.Smoke/EdgeAdjacencySmoke.cs" = @(
+        "AnalyzeEdgeAdjacency",
+        "ManifoldInteriorEdges",
+        "BoundaryCandidates"
+    )
     "docs/TOPOLOGY_ANALYSIS.md" = @(
-        "Fast adjacency screening",
+        "Batch adjacency analysis",
         "Strict free-boundary analysis",
-        "GetBoundaryEdgeCandidates()",
+        "AnalyzeEdgeAdjacency()",
         "AnalyzeFreeBounds()"
     )
     "docs/TOPOLOGY_ANALYSIS.zh-CN.md" = @(
-        "快速邻接筛选",
+        "批量邻接分析",
         "严格自由边界分析",
-        "GetBoundaryEdgeCandidates()",
+        "AnalyzeEdgeAdjacency()",
         "AnalyzeFreeBounds()"
     )
 }
@@ -86,4 +107,4 @@ foreach ($token in @("OcctModelingTopologyAnalysis.cpp", "OcctModelingTopologyAn
     }
 }
 
-Write-Host "[topology-analysis] Adjacency screening and strict ShapeAnalysis_FreeBounds contracts validated." -ForegroundColor Green
+Write-Host "[topology-analysis] Batched edge adjacency and strict ShapeAnalysis_FreeBounds contracts validated." -ForegroundColor Green
