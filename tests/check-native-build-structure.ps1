@@ -44,7 +44,9 @@ foreach ($source in $sourceTokens) {
 
 foreach ($required in @(
     "OcctModelingExtensions.cpp",
-    "OcctModelingExtensions.h"
+    "OcctModelingExtensions.h",
+    "OcctModelingBSpline.cpp",
+    "OcctModelingBSpline.h"
 )) {
     if ($required -notin $sourceTokens) {
         throw "Bridge 2.6 native extension file is not listed in add_library: $required"
@@ -62,6 +64,21 @@ foreach ($symbol in @(
 )) {
     if (-not $extensionHeader.Contains($symbol)) {
         throw "Bridge 2.6 native extension declaration is missing: $symbol"
+    }
+}
+
+$bsplineHeader = [System.IO.File]::ReadAllText((Join-Path $nativeRoot "OcctModelingBSpline.h"))
+foreach ($symbol in @(
+    "occt_model_edge_bspline_info",
+    "occt_model_edge_bspline_pole_at",
+    "occt_model_edge_bspline_knot_at",
+    "occt_model_face_bspline_info",
+    "occt_model_face_bspline_pole_at",
+    "occt_model_face_bspline_u_knot_at",
+    "occt_model_face_bspline_v_knot_at"
+)) {
+    if (-not $bsplineHeader.Contains($symbol)) {
+        throw "Bridge 2.6 B-Spline declaration is missing: $symbol"
     }
 }
 
@@ -89,4 +106,4 @@ if (Test-Path $migrationWorkflow) {
     throw "Completed one-time Bridge 2.6 migration workflow must not remain in the repository."
 }
 
-Write-Host "[native-build] $($sourceTokens.Count) native source entries and Bridge 2.6 extension layout validated; no OCAF/XDE inputs remain." -ForegroundColor Green
+Write-Host "[native-build] $($sourceTokens.Count) native source entries, generic extensions, and dedicated B-Spline layout validated; no OCAF/XDE inputs remain." -ForegroundColor Green
