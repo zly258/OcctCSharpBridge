@@ -6,7 +6,7 @@ namespace OcctNet;
 /// <summary>
 /// Configures the OCCT runtime before the native bridge is loaded.
 /// </summary>
-public static class OcctRuntime
+public static partial class OcctRuntime
 {
     private const string NativeLibraryFileName = "OcctNative.dll";
     private const uint LoadLibrarySearchDefaultDirs = 0x00001000;
