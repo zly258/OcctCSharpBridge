@@ -22,140 +22,107 @@ $contracts = [ordered]@{
         "CallingConvention.Cdecl"
     )
     "src/OcctNet/OcctModelingSession.AnalyticGeometry.cs" = @(
-        "GetLineGeometry",
-        "GetCircleGeometry",
-        "GetEllipseGeometry",
-        "GetPlaneGeometry",
-        "GetCylinderGeometry",
-        "GetConeGeometry",
-        "GetSphereGeometry",
-        "GetTorusGeometry"
+        "GetLineGeometry", "GetCircleGeometry", "GetEllipseGeometry", "GetPlaneGeometry",
+        "GetCylinderGeometry", "GetConeGeometry", "GetSphereGeometry", "GetTorusGeometry"
     )
     "src/OcctNet/OcctAnalyticGeometryTypes.cs" = @(
-        "OcctLineGeometry",
-        "OcctCircleGeometry",
-        "OcctEllipseGeometry",
-        "OcctPlaneGeometry",
-        "OcctCylinderGeometry",
-        "OcctConeGeometry",
-        "OcctSphereGeometry",
-        "OcctTorusGeometry",
+        "OcctLineGeometry", "OcctCircleGeometry", "OcctEllipseGeometry", "OcctPlaneGeometry",
+        "OcctCylinderGeometry", "OcctConeGeometry", "OcctSphereGeometry", "OcctTorusGeometry",
         "StructLayout(LayoutKind.Sequential)"
     )
     "src/OcctNative/OcctModelingDifferentialGeometry.cpp" = @(
-        "BRepLProp_CLProps",
-        "BRepLProp_SLProps",
-        "occt_model_edge_parameter_range",
-        "occt_model_edge_differential",
-        "occt_model_edge_curvature",
-        "occt_model_face_periodicity",
-        "occt_model_face_differential",
-        "occt_model_face_curvature"
+        "BRepLProp_CLProps", "BRepLProp_SLProps", "occt_model_edge_parameter_range",
+        "occt_model_edge_differential", "occt_model_edge_curvature", "occt_model_face_periodicity",
+        "occt_model_face_differential", "occt_model_face_curvature"
     )
     "src/OcctNet/ModelNativeMethods.DifferentialGeometry.cs" = @(
-        "occt_model_edge_parameter_range",
-        "occt_model_face_curvature",
-        "CallingConvention.Cdecl",
-        "ExactSpelling = true"
+        "occt_model_edge_parameter_range", "occt_model_face_curvature", "CallingConvention.Cdecl", "ExactSpelling = true"
     )
     "src/OcctNet/OcctModelingSession.DifferentialGeometry.cs" = @(
-        "GetEdgeParameterRange",
-        "EvaluateEdgeAtParameter",
-        "GetEdgeCurvature",
-        "GetFacePeriodicity",
-        "EvaluateFaceDifferential",
-        "GetFaceCurvature"
+        "GetEdgeParameterRange", "EvaluateEdgeAtParameter", "GetEdgeCurvature",
+        "GetFacePeriodicity", "EvaluateFaceDifferential", "GetFaceCurvature"
     )
     "src/OcctNet/OcctDifferentialGeometryTypes.cs" = @(
-        "OcctModelParameterRange",
-        "OcctModelCurveDifferential",
-        "OcctModelCurveCurvature",
-        "OcctModelSurfacePeriodicity",
-        "OcctModelSurfaceDifferential",
-        "OcctModelSurfaceCurvature",
+        "OcctModelParameterRange", "OcctModelCurveDifferential", "OcctModelCurveCurvature",
+        "OcctModelSurfacePeriodicity", "OcctModelSurfaceDifferential", "OcctModelSurfaceCurvature",
         "StructLayout(LayoutKind.Sequential)"
     )
     "src/OcctNative/OcctModelingBSpline.cpp" = @(
-        "Geom_BSplineCurve",
-        "Geom_BSplineSurface",
-        "occt_model_edge_bspline_info",
-        "occt_model_edge_bspline_pole_at",
-        "occt_model_edge_bspline_knot_at",
-        "occt_model_face_bspline_info",
-        "occt_model_face_bspline_pole_at",
-        "occt_model_face_bspline_u_knot_at",
-        "occt_model_face_bspline_v_knot_at"
+        "Geom_BSplineCurve", "Geom_BSplineSurface", "occt_model_edge_bspline_info",
+        "occt_model_edge_bspline_pole_at", "occt_model_edge_bspline_knot_at",
+        "occt_model_face_bspline_info", "occt_model_face_bspline_pole_at",
+        "occt_model_face_bspline_u_knot_at", "occt_model_face_bspline_v_knot_at"
     )
     "src/OcctNative/OcctModelingBSpline.h" = @(
-        "OcctModelBSplineCurveInfo",
-        "OcctModelBSplineSurfaceInfo",
-        "occt_model_edge_bspline_info",
-        "occt_model_face_bspline_info"
+        "OcctModelBSplineCurveInfo", "OcctModelBSplineSurfaceInfo",
+        "occt_model_edge_bspline_info", "occt_model_face_bspline_info"
     )
     "src/OcctNet/ModelNativeMethods.BSpline.cs" = @(
-        "occt_model_edge_bspline_info",
-        "occt_model_edge_bspline_pole_at",
-        "occt_model_edge_bspline_knot_at",
-        "occt_model_face_bspline_info",
-        "occt_model_face_bspline_pole_at",
-        "occt_model_face_bspline_u_knot_at",
-        "occt_model_face_bspline_v_knot_at",
-        "CallingConvention.Cdecl",
-        "ExactSpelling = true"
+        "occt_model_edge_bspline_info", "occt_model_edge_bspline_pole_at",
+        "occt_model_edge_bspline_knot_at", "occt_model_face_bspline_info",
+        "occt_model_face_bspline_pole_at", "occt_model_face_bspline_u_knot_at",
+        "occt_model_face_bspline_v_knot_at", "CallingConvention.Cdecl", "ExactSpelling = true"
     )
     "src/OcctNet/OcctModelingSession.BSpline.cs" = @(
-        "GetBSplineCurveData",
-        "GetBSplineSurfaceData",
-        "OcctBSplineCurveData",
-        "OcctBSplineSurfaceData",
-        "EnsureValidPole",
-        "EnsureValidKnot"
+        "GetBSplineCurveData", "GetBSplineSurfaceData", "OcctBSplineCurveData",
+        "OcctBSplineSurfaceData", "EnsureValidPole", "EnsureValidKnot"
     )
     "src/OcctNet/OcctBSplineTypes.cs" = @(
-        "OcctBSplineCurveData",
-        "OcctBSplineSurfaceData",
-        "UPoleCount",
-        "VPoleCount",
-        "GetPole",
-        "GetWeight",
-        "UKnots",
-        "VKnots",
-        "OcctModelBSplineCurveInfoNative",
-        "OcctModelBSplineSurfaceInfoNative"
+        "OcctBSplineCurveData", "OcctBSplineSurfaceData", "UPoleCount", "VPoleCount",
+        "GetPole", "GetWeight", "UKnots", "VKnots",
+        "OcctModelBSplineCurveInfoNative", "OcctModelBSplineSurfaceInfoNative"
     )
     "src/OcctNet/OcctModelingSession.Mesh.cs" = @(
-        "GetFaceMesh",
-        "GetShapeMesh(",
-        "GetShapeMeshData",
-        "OcctShapeMeshFaceRange",
-        "new OcctShapeMeshData"
+        "GetFaceMesh", "GetShapeMesh(", "GetShapeMeshData", "OcctShapeMeshFaceRange", "new OcctShapeMeshData"
     )
     "src/OcctNet/OcctMeshProvenanceTypes.cs" = @(
-        "OcctShapeMeshFaceRange",
-        "OcctShapeMeshData",
-        "FaceRanges",
-        "TryGetFaceForNode",
-        "GetFaceForNode",
-        "TryGetFaceForTriangle",
-        "GetFaceForTriangle"
+        "OcctShapeMeshFaceRange", "OcctShapeMeshData", "FaceRanges", "TryGetFaceForNode",
+        "GetFaceForNode", "TryGetFaceForTriangle", "GetFaceForTriangle"
+    )
+    "src/OcctNative/OcctModelingFaceAnalysis.h" = @(
+        "OcctModelFaceAnalysis", "occt_model_shape_face_analysis", "maximumTolerance", "uvBounds", "bounds"
+    )
+    "src/OcctNative/OcctModelingFaceAnalysis.cpp" = @(
+        "BRepAdaptor_Surface", "BRepGProp::SurfaceProperties", "BRepTools::UVBounds",
+        "occt_model_shape_face_analysis", "TopExp::MapShapes(root, TopAbs_FACE"
+    )
+    "src/OcctNet/ModelNativeMethods.FaceAnalysis.cs" = @(
+        "occt_model_shape_face_analysis", "NativeModelFaceAnalysis", "CallingConvention.Cdecl", "ExactSpelling = true"
+    )
+    "src/OcctNet/OcctModelingSession.FaceAnalysis.cs" = @(
+        "AnalyzeFaces", "OcctFaceAnalysisResult", "NativeModelFaceAnalysis", "Native face analysis count changed"
+    )
+    "src/OcctNet/OcctFaceAnalysisTypes.cs" = @(
+        "OcctFaceAnalysisInfo", "OcctFaceAnalysisResult", "SurfaceTypeCounts", "TotalArea",
+        "MaximumTolerance", "GetFacesBySurfaceType", "NativeModelFaceAnalysis"
+    )
+    "src/OcctNet/OcctModelingSession.ShapeInspection.cs" = @(
+        "InspectShape", "AnalyzeEdgeAdjacency", "AnalyzeFaces", "AnalyzeFreeBounds",
+        "GenerateMeshStatistics", "GetShapeMeshData"
+    )
+    "src/OcctNet/OcctShapeInspectionTypes.cs" = @(
+        "OcctShapeInspectionOptions", "OcctShapeInspectionReport", "IncludeFreeBounds",
+        "GenerateMeshStatistics", "EdgeAdjacency", "FaceAnalysis", "IncludesMeshStatistics"
     )
     "tests/OcctNet.Smoke/ShapeMeshProvenanceSmoke.cs" = @(
-        "GetShapeMeshData",
-        "FaceRanges",
-        "GetFaceForNode",
-        "GetFaceForTriangle"
+        "GetShapeMeshData", "FaceRanges", "GetFaceForNode", "GetFaceForTriangle"
+    )
+    "tests/OcctNet.Smoke/ShapeInspectionSmoke.cs" = @(
+        "AnalyzeFaces", "InspectShape", "SurfaceTypeCounts", "GenerateMeshStatistics", "MeshTriangleCount"
     )
     "docs/MESH_PROVENANCE.md" = @(
-        "Shape Mesh Face Provenance",
-        "GetShapeMeshData()",
-        "OcctShapeMeshFaceRange",
-        "TryGetFaceForTriangle"
+        "Shape Mesh Face Provenance", "GetShapeMeshData()", "OcctShapeMeshFaceRange", "TryGetFaceForTriangle"
     )
     "docs/MESH_PROVENANCE.zh-CN.md" = @(
-        "Shape Mesh Face 来源追溯",
-        "GetShapeMeshData()",
-        "OcctShapeMeshFaceRange",
-        "TryGetFaceForTriangle"
+        "Shape Mesh Face 来源追溯", "GetShapeMeshData()", "OcctShapeMeshFaceRange", "TryGetFaceForTriangle"
+    )
+    "docs/SHAPE_INSPECTION.md" = @(
+        "Batch Face Analysis and Shape Inspection", "AnalyzeFaces()", "InspectShape()", "OcctShapeInspectionReport",
+        "occt_model_shape_face_analysis"
+    )
+    "docs/SHAPE_INSPECTION.zh-CN.md" = @(
+        "批量 Face 分析与 Shape 检查", "AnalyzeFaces()", "InspectShape()", "OcctShapeInspectionReport",
+        "occt_model_shape_face_analysis"
     )
 }
 
@@ -173,4 +140,4 @@ foreach ($contract in $contracts.GetEnumerator()) {
     }
 }
 
-Write-Host "[geometry] Analytic, differential, B-Spline, and shape-mesh provenance contracts validated." -ForegroundColor Green
+Write-Host "[geometry] Analytic, differential, B-Spline, mesh provenance, batch face analysis, and shape inspection contracts validated." -ForegroundColor Green
