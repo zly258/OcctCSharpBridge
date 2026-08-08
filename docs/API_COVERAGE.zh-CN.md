@@ -10,11 +10,11 @@ OcctCSharpBridge 2.6 面向 Windows x64 与 OCCT 7.9.0，托管层明确分为�
 - 原生桥接版本：`2.6.0`
 - Native ABI：`3`
 - OCCT：`7.9.0`
-- Native exports：`345`
-- Managed P/Invoke declarations：`345`
-- Public .NET types：`90`
+- Native exports：`346`
+- Managed P/Invoke declarations：`346`
+- Public .NET types：`94`
 - Viewer API：`212`
-- Modeling API：`133`
+- Modeling API：`134`
 
 ## 2.6 封装规则
 
@@ -23,11 +23,13 @@ OcctCSharpBridge 2.6 面向 Windows x64 与 OCCT 7.9.0，托管层明确分为�
 | Shape 查询 | `GetShape...` / `IsShape...` / `SetShape...` | `GetShapeBounds()` |
 | Edge 查询 | `GetEdge...` / `EvaluateEdge...` | `GetEdgeCurveType()` |
 | Face 查询 | `GetFace...` / `EvaluateFace...` | `GetFaceUvBounds()` |
+| 批量分析 | `Analyze...` | `AnalyzeFaces()`、`AnalyzeEdgeAdjacency()` |
+| 结构化检查 | `Inspect...` | `InspectShape()` |
 | 索引访问 | `...At` | `GetSubshapeAt()` |
 | 构造 | `Make...` | `MakePlanarFace()` |
 | 算法 | 操作动词 | `Extrude()`、`OffsetWire()` |
 | 网格 | Triangulation 语义 | `Triangulate()`、`GetShapeMeshData()` |
-| C ABI | 唯一 `occt_...` 符号 | `occt_model_trim_edge` |
+| C ABI | 唯一 `occt_...` 符号 | `occt_model_shape_face_analysis` |
 
 公开 Shape/Object 必须属于创建它的 Engine/Session。业务代码不能通过裸 `long` 构造 `OcctShape` / `OcctModelShape`。Native 0/1 参数在 Managed 公共 API 中使用 `bool` 或枚举表达。
 
@@ -65,16 +67,27 @@ OcctCSharpBridge 2.6 面向 Windows x64 与 OCCT 7.9.0，托管层明确分为�
 
 `GetBSplineCurveData()` 与 `GetBSplineSurfaceData()` 提供 Degree、Pole、Weight、Knot、Multiplicity，以及 Surface 的 U/V 控制网格。Managed 集合统一使用 0 起始索引。详见 [B-Spline 曲线与曲面检查](BSPLINE_CURVES.zh-CN.md)。
 
+### 批量 Face 分析与结构化检查
+
+- `AnalyzeFaces()` 在 Native 中一次遍历全部 Face，返回 `OcctFaceAnalysisResult`，避免每个 Face 分别跨 P/Invoke 查询多个属性；
+- `OcctFaceAnalysisInfo` 包含源 Face、SurfaceType、Orientation、Area、Tolerance、UV Bounds、AABB、去重 Edge 数量和 Wire 数量；
+- `OcctFaceAnalysisResult` 提供总面积、最大 Face 容差、SurfaceType 数量统计与按类型筛选；
+- `InspectShape()` 把 Shape 有效性、闭合性、容差、Check Report、Bounds、拓扑数量、批量 Edge 邻接、批量 Face 分析、可选自由边界和可选 Mesh 统计组合为 `OcctShapeInspectionReport`；
+- `InspectShape()` 只返回客观数据，不在 Bridge 中硬编码“通过/不通过”业务规则；
+- Mesh Statistics 默认关闭，因为显式启用后会走正常三角化路径并可能创建/刷新 Triangulation Cache。
+
+详见 [批量 Face 分析与 Shape 检查](SHAPE_INSPECTION.zh-CN.md)。
+
 ### 三角网格与 Face 来源追溯
 
 - `Triangulate()`：生成 OCCT Triangulation；
 - `GetFaceMesh()`：读取单个 Face 网格；
 - `GetShapeMesh()`：保持原有兼容 API，返回一个合并 `OcctMesh`；
 - `GetShapeMeshData()`：返回同一个合并 Mesh，并额外保存每个源 Face 对应的连续 Node/Triangle 区间；
-- `OcctShapeMeshData.GetFaceForNode()` / `GetFaceForTriangle()`：根据合并 Mesh 索引反查源 `OcctModelShape` Face；
+- `OcctShapeMeshData.GetFaceForNode()` / `GetFaceForTriangle()`：根据合并 Mesh 索引反查源 Face；
 - 来源追溯不增加新的 Native ABI，也不为每个 Triangle 额外保存一个 FaceId 数组。
 
-这使合并 Mesh 可直接用于 Triangle 拾取、BIM/CAD 属性映射、Face 级结果着色、局部分析和选择性导出。详见 [Shape Mesh Face 来源追溯](MESH_PROVENANCE.zh-CN.md)。
+详见 [Shape Mesh Face 来源追溯](MESH_PROVENANCE.zh-CN.md)。
 
 ### 文件交换
 
@@ -101,8 +114,8 @@ GitHub 云端没有项目 OCCT SDK，因此 CI 重点校验：
 - Native 声明、定义和 C# P/Invoke 一致，P/Invoke 均使用 Cdecl + ExactSpelling；
 - API 数量来自 `bridge-contract.json`；
 - Managed 项目编译并执行纯 Managed 回归测试；
-- B-Spline、批量邻接、自由边界和 Mesh 来源追溯具有静态契约检查；
-- Smoke 项目保持可编译；
+- B-Spline、批量邻接、自由边界、Mesh 来源追溯、批量 Face 分析和 Shape Inspection 具有静态契约检查；
+- Smoke 项目保持可编译，真实 Native 执行仍是本地 Windows 发布门禁；
 - `main` / `demo` 共享封装逐项比较。
 
 正式发布前仍必须在安装 OCCT 7.9.0 的 Windows 环境执行真实 Native 门禁：
@@ -111,4 +124,4 @@ GitHub 云端没有项目 OCCT SDK，因此 CI 重点校验：
 .\build.ps1 smoke Release -OcctRoot "<OCCT 7.9.0 根目录>"
 ```
 
-Native Smoke 覆盖 ABI/版本、Boolean、批量邻接、严格自由边界、解析/微分几何、B-Spline、Mesh 来源追溯、OBB、Shape 身份、带孔 Face、Trim、Offset、Loft、Healing 和 BREP/STEP 往返。
+Native Smoke 覆盖 ABI/版本、Boolean、邻接/自由边界、解析/微分几何、B-Spline、Face/Shape Inspection、Mesh 来源追溯、OBB、Shape 身份、Trim/Offset、Loft、Healing 和 BREP/STEP 往返。
