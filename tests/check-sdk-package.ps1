@@ -28,7 +28,7 @@ foreach ($relativePath in $projects) {
         "<SymbolPackageFormat>snupkg</SymbolPackageFormat>"
     )) {
         if (-not $text.Contains($token)) {
-            throw "Managed SDK package metadata is missing from $relativePath: $token"
+            throw "Managed SDK package metadata is missing from ${relativePath}: $token"
         }
     }
 }
