@@ -47,23 +47,22 @@ public sealed partial class CadSession
             .DistinctBy(value => value.Id)
             .Select(value => Engine.GetShape(value.Id))
             .ToArray();
-        var selectedHits = Engine.GetSelectedHits()
-            .Where(hit => Engine.Exists(hit.Owner))
-            .DistinctBy(hit => (hit.Owner.Id, hit.SubshapeType, hit.SubshapeIndex))
-            .ToArray();
 
         if (commandId == CadCommandId.Delete)
             return RequireObjectCount(commandId, selectedEntries.Length, 1, exactly: false);
 
         if (commandId is CadCommandId.LengthDimension
+            or CadCommandId.AngleDimension
             or CadCommandId.RadiusDimension
             or CadCommandId.DiameterDimension)
         {
-            return RequireSubshapeHits(commandId, selectedHits, 1, OcctShapeType.Edge);
+            var selectedHits = Engine.GetSelectedHits()
+                .Where(hit => Engine.Exists(hit.Owner))
+                .DistinctBy(hit => (hit.Owner.Id, hit.SubshapeType, hit.SubshapeIndex))
+                .ToArray();
+            var required = commandId == CadCommandId.AngleDimension ? 2 : 1;
+            return RequireSubshapeHits(commandId, selectedHits, required, OcctShapeType.Edge);
         }
-
-        if (commandId == CadCommandId.AngleDimension)
-            return RequireSubshapeHits(commandId, selectedHits, 2, OcctShapeType.Edge);
 
         if (commandId is CadCommandId.Extrude or CadCommandId.Revolve)
         {
