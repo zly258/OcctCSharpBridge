@@ -50,7 +50,11 @@ foreach ($token in @(
     "GetCommandAvailability",
     "EnsureCommandAvailable",
     "RequireShapeCount",
-    "RequireSubshapeCount",
+    "RequireSubshapeHits",
+    "Engine.GetSelectedHits()",
+    "hit.IsSubshape && hit.SubshapeType == requiredType",
+    "var required = commandId == CadCommandId.AngleDimension ? 2 : 1;",
+    "RequireSubshapeHits(commandId, selectedHits, required, OcctShapeType.Edge)",
     "IsProfileType",
     "exactly: true",
     "OcctShapeType.Solid or OcctShapeType.CompSolid"
@@ -58,6 +62,17 @@ foreach ($token in @(
     if (-not $preconditions.Contains($token)) {
         throw "Demo command precondition contract is missing: $token"
     }
+}
+
+if ($preconditions.Contains("RequireSubshapeCount")) {
+    throw "Subshape command validation must use structured selection hits rather than owner-object counts."
+}
+
+if (-not $preconditions.Contains("commandId is CadCommandId.LengthDimension") -or
+    -not $preconditions.Contains("or CadCommandId.AngleDimension") -or
+    -not $preconditions.Contains("or CadCommandId.RadiusDimension") -or
+    -not $preconditions.Contains("or CadCommandId.DiameterDimension")) {
+    throw "All dimension commands must share the structured edge-hit precondition path."
 }
 
 if (-not $session.Contains("public sealed partial class CadSession")) {
@@ -87,4 +102,4 @@ foreach ($entry in @(
     }
 }
 
-Write-Host "[demo-preconditions] Selection count, topology suitability, split UI early checks, and execution safeguards validated." -ForegroundColor Green
+Write-Host "[demo-preconditions] Selection count, topology suitability, structured subshape hits, split UI early checks, and execution safeguards validated." -ForegroundColor Green
