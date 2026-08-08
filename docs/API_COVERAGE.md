@@ -12,7 +12,7 @@ OCAF/XDE is intentionally excluded. Document persistence, undo/redo, application
 - OCCT: `7.9.0`
 - Native exports: `345`
 - Managed P/Invoke declarations: `345`
-- Public .NET types: `88`
+- Public .NET types: `90`
 - Viewer API: `212`
 - Modeling API: `133`
 
@@ -28,7 +28,7 @@ Bridge 2.6 removes compatibility aliases instead of carrying multiple names for 
 | Indexed topology | `...At` suffix | `GetSubshapeAt()` |
 | Construction | `Make...` | `MakePlanarFace()` |
 | Algorithms | operation verb | `Extrude()`, `OffsetWire()` |
-| Mesh | triangulation vocabulary | `Triangulate()`, `GetShapeMesh()` |
+| Mesh | triangulation vocabulary | `Triangulate()`, `GetShapeMeshData()` |
 | Native C ABI | exact `occt_...` symbol | `occt_model_trim_edge` |
 
 Public object handles are session/engine owned. Raw `long` IDs cannot be used to construct `OcctShape` or `OcctModelShape`; persisted IDs must be resolved through `GetShape()`, `TryGetShape()`, or `GetObject()`.
@@ -98,9 +98,16 @@ Coverage includes camera/view control, screen/world conversion, selection, objec
 - `OffsetWire()` for planar wire offset with arc/tangent/intersection join rules.
 - Thick solid, same-domain unification, shape healing, and operation history.
 
-### Triangulation
+### Triangulation and provenance
 
-`Triangulate()` creates OCCT triangulation using managed `OcctModelMeshParameters`. `GetFaceMesh()` returns one face mesh; `GetShapeMesh()` combines all face triangulations into one `OcctMesh` with adjusted triangle indices. `ClearTriangulation()` removes cached triangulation.
+- `Triangulate()` creates OCCT triangulation using managed `OcctModelMeshParameters`.
+- `GetFaceMesh()` returns one Face mesh.
+- `GetShapeMesh()` remains the compatibility API for one combined `OcctMesh`.
+- `GetShapeMeshData()` returns the same combined mesh plus `OcctShapeMeshFaceRange` entries that preserve each source Face's contiguous node/triangle contribution.
+- `OcctShapeMeshData.GetFaceForNode()` and `GetFaceForTriangle()` resolve combined mesh indices back to source `OcctModelShape` Faces without adding a Native ABI call or a per-triangle FaceId array.
+- `ClearTriangulation()` removes cached triangulation.
+
+See [Shape Mesh Face Provenance](MESH_PROVENANCE.md).
 
 ### Exchange
 
@@ -141,6 +148,7 @@ Cloud CI has no project OCCT SDK, so it validates declarations and managed code 
 - Managed geometry/transform helpers and structured runtime diagnostics are regression-tested without loading OCCT.
 - B-Spline curve/surface declaration, definition, P/Invoke, and high-level API parity is checked statically.
 - Batched edge adjacency and strict free-boundary topology analysis have a dedicated static contract check.
+- Shape-mesh provenance source organization, Smoke coverage, and bilingual documentation are part of the geometry contract check.
 - `main` and `demo` reusable wrapper content is compared directly.
 
 Before release, run on Windows with OCCT 7.9.0:
@@ -149,4 +157,4 @@ Before release, run on Windows with OCCT 7.9.0:
 .\build.ps1 smoke Release -OcctRoot "<OCCT 7.9.0 root>"
 ```
 
-The native smoke suite covers ABI/version loading, Booleans, batched adjacency, strict free-boundary analysis, analytic/differential geometry, B-Spline curve/surface data extraction, OBB, shape identity, face-with-hole construction, edge trimming, planar wire offset, whole-shape triangulation, loft, healing, and BREP/STEP round trips.
+The native smoke suite covers ABI/version loading, Booleans, batched adjacency, strict free-boundary analysis, analytic/differential geometry, B-Spline curve/surface data extraction, mesh provenance, OBB, shape identity, face-with-hole construction, edge trimming, planar wire offset, whole-shape triangulation, loft, healing, and BREP/STEP round trips.
