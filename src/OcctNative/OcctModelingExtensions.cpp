@@ -3,7 +3,6 @@
 
 #include <BRepOffsetAPI_MakeOffset.hxx>
 #include <Bnd_OBB.hxx>
-#include <Geom_BSplineCurve.hxx>
 
 using namespace OcctModelingInternal;
 
@@ -33,18 +32,6 @@ namespace
         if (shape.ShapeType() != TopAbs_EDGE)
             throw std::invalid_argument("Input must be an edge.");
         return TopoDS::Edge(shape);
-    }
-
-    Handle(Geom_BSplineCurve) requireBSplineCurve(ModelSession* model, OcctObjectId edgeId)
-    {
-        const BRepAdaptor_Curve adaptor(requireEdge(model, edgeId));
-        if (adaptor.GetType() != GeomAbs_BSpline)
-            throw std::invalid_argument("Edge curve is not a B-Spline.");
-
-        Handle(Geom_BSplineCurve) curve = adaptor.BSpline();
-        if (curve.IsNull())
-            throw std::runtime_error("B-Spline curve data is unavailable.");
-        return curve;
     }
 }
 
@@ -195,69 +182,6 @@ extern "C"
             if (!maker.IsDone() || maker.Shape().IsNull())
                 throw std::runtime_error("Planar wire offset failed.");
             return maker.Shape();
-        });
-    }
-
-    int occt_model_edge_bspline_info(
-        OcctModelHandle handle,
-        OcctObjectId edgeId,
-        OcctModelBSplineCurveInfo* result)
-    {
-        ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
-        {
-            const Handle(Geom_BSplineCurve) curve = requireBSplineCurve(model, edgeId);
-            result->degree = curve->Degree();
-            result->poleCount = curve->NbPoles();
-            result->knotCount = curve->NbKnots();
-            result->rational = curve->IsRational() ? 1 : 0;
-            result->periodic = curve->IsPeriodic() ? 1 : 0;
-        });
-    }
-
-    int occt_model_edge_bspline_pole_at(
-        OcctModelHandle handle,
-        OcctObjectId edgeId,
-        int index,
-        OcctPoint3d* pole,
-        double* weight)
-    {
-        ModelSession* model = modelOf(handle);
-        if (pole == nullptr || weight == nullptr) return 0;
-        return execute(model, [&]
-        {
-            const Handle(Geom_BSplineCurve) curve = requireBSplineCurve(model, edgeId);
-            if (index < 0 || index >= curve->NbPoles())
-                throw std::out_of_range("B-Spline pole index is out of range.");
-
-            const int occtIndex = index + 1;
-            const gp_Pnt point = curve->Pole(occtIndex);
-            pole->x = point.X();
-            pole->y = point.Y();
-            pole->z = point.Z();
-            *weight = curve->Weight(occtIndex);
-        });
-    }
-
-    int occt_model_edge_bspline_knot_at(
-        OcctModelHandle handle,
-        OcctObjectId edgeId,
-        int index,
-        double* knot,
-        int* multiplicity)
-    {
-        ModelSession* model = modelOf(handle);
-        if (knot == nullptr || multiplicity == nullptr) return 0;
-        return execute(model, [&]
-        {
-            const Handle(Geom_BSplineCurve) curve = requireBSplineCurve(model, edgeId);
-            if (index < 0 || index >= curve->NbKnots())
-                throw std::out_of_range("B-Spline knot index is out of range.");
-
-            const int occtIndex = index + 1;
-            *knot = curve->Knot(occtIndex);
-            *multiplicity = curve->Multiplicity(occtIndex);
         });
     }
 }
