@@ -4,6 +4,7 @@
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+Import-Module (Join-Path $PSScriptRoot "ContractTestHelpers.psm1") -Force
 
 $contracts = [ordered]@{
     "src/OcctNative/OcctModelingAnalyticGeometry.cpp" = @(
@@ -133,19 +134,7 @@ $contracts = [ordered]@{
     )
 }
 
-foreach ($contract in $contracts.GetEnumerator()) {
-    $path = Join-Path $RepositoryRoot $contract.Key
-    if (-not (Test-Path $path -PathType Leaf)) {
-        throw "Geometry API file was not found: $($contract.Key)"
-    }
-
-    $text = [System.IO.File]::ReadAllText($path)
-    foreach ($token in $contract.Value) {
-        if (-not $text.Contains($token)) {
-            throw "Geometry API token is missing from $($contract.Key): $token"
-        }
-    }
-}
+Assert-ContractMap -RepositoryRoot $RepositoryRoot -Contracts $contracts -ContractName "Geometry API"
 
 $legacyGeometryExtensions = Join-Path $RepositoryRoot "src\OcctNet\OcctGeometryExtensions.cs"
 if (Test-Path $legacyGeometryExtensions -PathType Leaf) {

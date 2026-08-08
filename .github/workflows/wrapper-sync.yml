@@ -66,6 +66,7 @@ jobs:
             "docs/RUNTIME_DIAGNOSTICS.md",
             "docs/RUNTIME_DIAGNOSTICS.zh-CN.md",
             "tests/README.md",
+            "tests/ContractTestHelpers.psm1",
             "tests/OcctNet.ManagedTests",
             "tests/OcctNet.Smoke",
             "tests/check-api-organization.ps1",
