@@ -186,15 +186,15 @@ $hostDiagnostics = [ordered]@{
     )
 }
 
-foreach ($host in $hostDiagnostics.GetEnumerator()) {
-    $hostPath = Join-Path $RepositoryRoot $host.Key
+foreach ($hostContract in $hostDiagnostics.GetEnumerator()) {
+    $hostPath = Join-Path $RepositoryRoot $hostContract.Key
     if (-not (Test-Path $hostPath -PathType Leaf)) {
-        throw "Demo host diagnostic file was not found: $($host.Key)"
+        throw "Demo host diagnostic file was not found: $($hostContract.Key)"
     }
     $hostText = [System.IO.File]::ReadAllText($hostPath)
-    foreach ($token in $host.Value) {
+    foreach ($token in $hostContract.Value) {
         if (-not $hostText.Contains($token)) {
-            throw "Demo host does not use the shared native startup diagnostics: $($host.Key) -> $token"
+            throw "Demo host does not use the shared native startup diagnostics: $($hostContract.Key) -> $token"
         }
     }
 }
