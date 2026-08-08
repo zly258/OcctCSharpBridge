@@ -10,11 +10,11 @@ OCAF/XDE is intentionally excluded. Document persistence, undo/redo, application
 - Native bridge version: `2.6.0`
 - Native ABI: `3`
 - OCCT: `7.9.0`
-- Native exports: `343`
-- Managed P/Invoke declarations: `343`
-- Public .NET types: `84`
+- Native exports: `344`
+- Managed P/Invoke declarations: `344`
+- Public .NET types: `86`
 - Viewer API: `212`
-- Modeling API: `131`
+- Modeling API: `132`
 
 ## 2.6 API rules
 
@@ -39,7 +39,7 @@ Native 0/1 flags are not exposed as managed `int` options. Public modeling optio
 
 | Assembly | Responsibility |
 |---|---|
-| `OcctNet` | Core types, interactive engine, headless modeling session, runtime loading |
+| `OcctNet` | Core types, interactive engine, headless modeling session, runtime loading and diagnostics |
 | `OcctNet.WinForms` | Reusable WinForms OCCT viewport host |
 | `OcctNet.Wpf` | Reusable WPF OCCT viewport host |
 
@@ -72,7 +72,8 @@ Coverage includes camera/view control, screen/world conversion, selection, objec
 - Local topology helpers: `GetEdgeVertices()`, `GetWireEdges()`, `GetFaceEdges()`, `GetFaceVertices()`, and `GetTopologyCounts()`.
 - Adjacency helpers: `GetAdjacentFaces()`, `GetIncidentEdges()`, and `GetIncidentFaces()`.
 - Edge classification by adjacent-face count: `GetBoundaryEdgeCandidates()`, `GetManifoldInteriorEdges()`, `GetNonManifoldEdges()`, and `GetEdgesByAdjacentFaceCount()`.
-- `GetBoundaryEdgeCandidates()` intentionally returns topological candidates; periodic seam topology may require a stricter native free-boundary analysis before every returned edge is treated as an open geometric edge.
+- `GetBoundaryEdgeCandidates()` intentionally returns topological candidates; periodic seam topology may require a stricter free-boundary analysis before every returned edge is treated as an open geometric edge.
+- `AnalyzeFreeBounds()` runs OCCT `ShapeAnalysis_FreeBounds` and returns `OcctFreeBoundsResult` with closed and open free-boundary wires plus the tolerance used. This is the strict analysis path for shell-gap/opening decisions. See [Topology Adjacency and Free-Boundary Analysis](TOPOLOGY_ANALYSIS.md).
 - `IsSameShape()` and `IsPartnerShape()` expose OCCT topological identity semantics.
 
 ### Geometry and differential geometry
@@ -124,19 +125,23 @@ Angles are radians. Matrix multiplication uses row-major affine matrices with co
 - `OcctEngine` and `OcctModelingSession` use `SafeHandle` internally.
 - Every managed object/shape returned by the bridge carries an internal owner token.
 - Cross-engine and cross-session object use is rejected before native invocation.
-- `OcctRuntime` resolves application-local runtime files first and provides `GetDiagnosticReport()` for deployment failures.
+- `OcctRuntime` resolves application-local runtime files first.
+- `OcctRuntime.GetDiagnosticReport()` remains the full human-readable troubleshooting report.
+- `OcctRuntime.GetDiagnosticInfo()` returns a typed `OcctRuntimeDiagnosticInfo` snapshot with process/OS architecture, configured bridge/OCCT paths and existence states, already-loaded `OcctNative.dll` / `TKernel.dll` paths, and the original text report. The snapshot does not force native loading. See [Structured Runtime Diagnostics](RUNTIME_DIAGNOSTICS.md).
 - Native errors become `OcctException` with operation and native-message metadata.
 
 ## Validation
 
-Cloud CI has no OCCT SDK, so it validates declarations and managed code rather than pretending to run native geometry:
+Cloud CI has no project OCCT SDK, so it validates declarations and managed code rather than pretending to run native geometry:
 
-- Native declarations and C# P/Invoke symbols are byte-for-name consistent.
+- Native declarations and C# P/Invoke symbols are name-for-name consistent.
 - Every P/Invoke uses Cdecl and exact symbol spelling.
 - Counts come from `bridge-contract.json`.
 - Managed projects and managed-only regression tests run in CI.
 - Managed geometry/transform helpers are regression-tested without an OCCT runtime.
+- Structured runtime diagnostics are regression-tested without loading Native OCCT.
 - B-Spline curve/surface declaration, definition, P/Invoke, and high-level API parity is checked statically.
+- Adjacency/free-boundary topology analysis has a dedicated static contract check.
 - `main` and `demo` reusable wrapper content is compared directly.
 
 Before release, run on Windows with OCCT 7.9.0:
@@ -145,4 +150,4 @@ Before release, run on Windows with OCCT 7.9.0:
 .\build.ps1 smoke Release -OcctRoot "<OCCT 7.9.0 root>"
 ```
 
-The native smoke suite covers ABI/version loading, Booleans, topology, analytic/differential geometry, B-Spline curve/surface data extraction, OBB, shape identity, face-with-hole construction, edge trimming, planar wire offset, whole-shape triangulation, loft, healing, and BREP/STEP round trips.
+The native smoke suite covers ABI/version loading, Booleans, topology, strict free-boundary analysis, analytic/differential geometry, B-Spline curve/surface data extraction, OBB, shape identity, face-with-hole construction, edge trimming, planar wire offset, whole-shape triangulation, loft, healing, and BREP/STEP round trips.
