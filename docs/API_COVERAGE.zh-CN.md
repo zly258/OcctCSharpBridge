@@ -10,11 +10,11 @@ OcctCSharpBridge 2.6 面向 Windows x64 与 OCCT 7.9.0，托管层明确分为�
 - 原生桥接版本：`2.6.0`
 - Native ABI：`3`
 - OCCT：`7.9.0`
-- Native exports：`343`
-- Managed P/Invoke declarations：`343`
-- Public .NET types：`84`
+- Native exports：`344`
+- Managed P/Invoke declarations：`344`
+- Public .NET types：`86`
 - Viewer API：`212`
-- Modeling API：`131`
+- Modeling API：`132`
 
 ## 2.6 命名与封装规则
 
@@ -31,7 +31,7 @@ OcctCSharpBridge 2.6 面向 Windows x64 与 OCCT 7.9.0，托管层明确分为�
 | 网格 | 使用 Triangulation 语义 | `Triangulate()`、`GetShapeMesh()` |
 | C ABI | 保持唯一 `occt_...` 符号 | `occt_model_trim_edge` |
 
-公开对象必须属于其创建的 `OcctEngine` 或 `OcctModelingSession`。不再允许业务代码通过一个裸 `long` 构造 `OcctShape` / `OcctModelShape`；持久化 ID 应通过 `GetShape()`、`TryGetShape()`、`GetObject()` 重新解析并绑定所有权。
+公开对象必须属于其创建的 `OcctEngine` 或 `OcctModelingSession`。不再允许业务代码通过裸 `long` 构造 `OcctShape` / `OcctModelShape`；持久化 ID 应通过 `GetShape()`、`TryGetShape()`、`GetObject()` 重新解析并绑定所有权。
 
 C ABI 中的 0/1 标志不再直接暴露为公开 `int`。托管层使用 `bool` 和枚举，内部 Native DTO 负责 P/Invoke 布局转换。
 
@@ -39,7 +39,7 @@ C ABI 中的 0/1 标志不再直接暴露为公开 `int`。托管层使用 `bool
 
 | 程序集 | 职责 |
 |---|---|
-| `OcctNet` | 基础类型、交互式 Engine、Headless ModelingSession、运行时加载 |
+| `OcctNet` | 基础类型、交互式 Engine、Headless ModelingSession、运行时加载与诊断 |
 | `OcctNet.WinForms` | 可复用 WinForms OCCT 视口宿主 |
 | `OcctNet.Wpf` | 可复用 WPF OCCT 视口宿主 |
 
@@ -72,7 +72,8 @@ C ABI 中的 0/1 标志不再直接暴露为公开 `int`。托管层使用 `bool
 - 局部拓扑快捷接口：`GetEdgeVertices()`、`GetWireEdges()`、`GetFaceEdges()`、`GetFaceVertices()` 与 `GetTopologyCounts()`。
 - 邻接接口：`GetAdjacentFaces()`、`GetIncidentEdges()`、`GetIncidentFaces()`。
 - 可按相邻 Face 数量使用 `GetBoundaryEdgeCandidates()`、`GetManifoldInteriorEdges()`、`GetNonManifoldEdges()`、`GetEdgesByAdjacentFaceCount()` 对 Edge 分类。
-- `GetBoundaryEdgeCandidates()` 明确表示**拓扑候选集合**；周期曲面的 Seam Edge 仍可能需要更严格的 Native 自由边界分析，不能简单等同于绝对开口边。
+- `GetBoundaryEdgeCandidates()` 明确表示**拓扑候选集合**；周期曲面的 Seam Edge 等情况仍可能需要严格自由边界算法进一步确认。
+- `AnalyzeFreeBounds()` 使用 OCCT `ShapeAnalysis_FreeBounds`，返回包含 `ClosedWires`、`OpenWires` 和本次 Tolerance 的 `OcctFreeBoundsResult`，适合 Shell 开口、缝隙和自由边界的最终判断。详见 [拓扑邻接与自由边界分析](TOPOLOGY_ANALYSIS.zh-CN.md)。
 - `IsSameShape()` / `IsPartnerShape()` 直接暴露 OCCT 的拓扑身份语义。
 
 ### 几何与微分几何
@@ -123,19 +124,23 @@ C ABI 中的 0/1 标志不再直接暴露为公开 `int`。托管层使用 `bool
 - `OcctEngine` 和 `OcctModelingSession` 内部使用 `SafeHandle`。
 - 所有 Shape/Object 带内部 Owner Token。
 - 跨 Engine / 跨 Session 误用在进入 Native 前直接拒绝。
-- `OcctRuntime` 优先解析应用目录中的 Native 文件，并提供 `GetDiagnosticReport()` 排查 Win32 126 等部署问题。
+- `OcctRuntime` 优先解析应用目录中的 Native 文件。
+- `OcctRuntime.GetDiagnosticReport()` 继续保留完整文本诊断。
+- `OcctRuntime.GetDiagnosticInfo()` 返回强类型 `OcctRuntimeDiagnosticInfo` 快照，包括进程/系统架构、配置的 Bridge/OCCT 路径及存在状态、当前进程实际加载的 `OcctNative.dll` / `TKernel.dll` 路径，以及原始文本报告；调用本身不会强制加载 Native。详见 [结构化 Runtime 诊断](RUNTIME_DIAGNOSTICS.zh-CN.md)。
 - Native 错误统一转换为带 Operation 和 NativeMessage 的 `OcctException`。
 
 ## 校验边界
 
-GitHub 云端没有 OCCT SDK，因此 CI 不伪装执行 Native 建模，而是校验：
+GitHub 云端没有项目 OCCT SDK，因此 CI 不伪装执行 Native 建模，而是校验：
 
-- Native 声明与 C# P/Invoke 符号完全对应。
-- 所有 P/Invoke 均为 Cdecl + ExactSpelling。
-- API 数量严格读取 `bridge-contract.json`。
-- 所有 Managed 项目编译，并执行纯 Managed 回归测试。
-- Managed 几何与变换工具无需 OCCT Runtime 即可执行回归测试。
-- B-Spline Curve/Surface 的 Native 声明、定义、P/Invoke 与高层 API 做静态一致性校验。
+- Native 声明与 C# P/Invoke 符号完全对应；
+- 所有 P/Invoke 均为 Cdecl + ExactSpelling；
+- API 数量严格读取 `bridge-contract.json`；
+- 所有 Managed 项目编译，并执行纯 Managed 回归测试；
+- Managed 几何与变换工具无需 OCCT Runtime 即可执行回归测试；
+- 结构化 Runtime 诊断无需加载 Native OCCT 即可执行回归测试；
+- B-Spline Curve/Surface 的 Native 声明、定义、P/Invoke 与高层 API 做静态一致性校验；
+- 邻接/自由边界分析具有独立静态契约检查；
 - `main` / `demo` 的共享封装内容逐项比较。
 
 正式发布前必须在安装 OCCT 7.9.0 的 Windows 环境执行：
@@ -144,4 +149,4 @@ GitHub 云端没有 OCCT SDK，因此 CI 不伪装执行 Native 建模，而是�
 .\build.ps1 smoke Release -OcctRoot "<OCCT 7.9.0 根目录>"
 ```
 
-Native Smoke 覆盖 ABI/版本加载、Boolean、拓扑、解析/微分几何、B-Spline 曲线/曲面数据提取、OBB、Shape 身份、带孔 Face、Edge Trim、Wire Offset、整 Shape 网格、Loft、Healing 以及 BREP/STEP 往返。
+Native Smoke 覆盖 ABI/版本加载、Boolean、拓扑、严格自由边界分析、解析/微分几何、B-Spline 曲线/曲面数据提取、OBB、Shape 身份、带孔 Face、Edge Trim、Wire Offset、整 Shape 网格、Loft、Healing 以及 BREP/STEP 往返。
