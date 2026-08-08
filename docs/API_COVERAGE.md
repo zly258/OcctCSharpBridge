@@ -10,11 +10,11 @@ OCAF/XDE is intentionally excluded. Document persistence, undo/redo, application
 - Native bridge version: `2.6.0`
 - Native ABI: `3`
 - OCCT: `7.9.0`
-- Native exports: `339`
-- Managed P/Invoke declarations: `339`
-- Public .NET types: `83`
+- Native exports: `343`
+- Managed P/Invoke declarations: `343`
+- Public .NET types: `84`
 - Viewer API: `212`
-- Modeling API: `127`
+- Modeling API: `131`
 
 ## 2.6 API rules
 
@@ -41,7 +41,7 @@ Native 0/1 flags are not exposed as managed `int` options. Public modeling optio
 |---|---|
 | `OcctNet` | Core types, interactive engine, headless modeling session, runtime loading |
 | `OcctNet.WinForms` | Reusable WinForms OCCT viewport host |
-| `OcctNet.Wpf` | Reusable WPF viewport host |
+| `OcctNet.Wpf` | Reusable WPF OCCT viewport host |
 
 The full WinForms/WPF/Avalonia CAD applications live on the `demo` branch, not in `main`.
 
@@ -69,9 +69,10 @@ Coverage includes camera/view control, screen/world conversion, selection, objec
 - Location read/write.
 - Generic subshape traversal, outer/inner wires, ancestor queries.
 - Convenience collections: `GetVertices()`, `GetEdges()`, `GetWires()`, `GetFaces()`, `GetShells()`, `GetSolids()`, `GetCompSolids()`, and `GetCompounds()`.
-- Local topology helpers: GetEdgeVertices(), GetWireEdges(), GetFaceEdges(), GetFaceVertices(), and GetTopologyCounts().
-- Adjacency helpers: GetAdjacentFaces(), GetIncidentEdges(), GetIncidentFaces(), plus edge classification by adjacent-face count through GetBoundaryEdgeCandidates(), GetManifoldInteriorEdges(), GetNonManifoldEdges(), and GetEdgesByAdjacentFaceCount().
-- GetBoundaryEdgeCandidates() is intentionally a topological candidate set; periodic seam topology can require stricter native free-boundary analysis.
+- Local topology helpers: `GetEdgeVertices()`, `GetWireEdges()`, `GetFaceEdges()`, `GetFaceVertices()`, and `GetTopologyCounts()`.
+- Adjacency helpers: `GetAdjacentFaces()`, `GetIncidentEdges()`, and `GetIncidentFaces()`.
+- Edge classification by adjacent-face count: `GetBoundaryEdgeCandidates()`, `GetManifoldInteriorEdges()`, `GetNonManifoldEdges()`, and `GetEdgesByAdjacentFaceCount()`.
+- `GetBoundaryEdgeCandidates()` intentionally returns topological candidates; periodic seam topology may require a stricter native free-boundary analysis before every returned edge is treated as an open geometric edge.
 - `IsSameShape()` and `IsPartnerShape()` expose OCCT topological identity semantics.
 
 ### Geometry and differential geometry
@@ -82,8 +83,10 @@ Coverage includes camera/view control, screen/world conversion, selection, objec
 - Edge parameter ranges, derivatives, tangent/normal, curvature, and center of curvature.
 - Face U/V bounds, periodicity, derivatives, normals, and principal/mean/Gaussian curvature.
 - Point projection to edge/face, ray intersections, and solid point classification.
-- TrimEdge() creates an edge from an exact sub-range of the source curve.
-- GetBSplineCurveData() returns an immutable B-Spline definition snapshot: degree, rational/periodic flags, poles, weights, distinct knots, and multiplicities. Managed collections use zero-based indexing. See [B-Spline Curve Inspection](BSPLINE_CURVES.md).
+- `TrimEdge()` creates an edge from an exact sub-range of the source curve.
+- `GetBSplineCurveData()` returns an immutable B-Spline curve snapshot containing degree, rational/periodic flags, poles, weights, distinct knots, and multiplicities.
+- `GetBSplineSurfaceData()` returns an immutable B-Spline surface snapshot containing U/V degree, rational/periodic flags, pole/weight grid, U/V knots, and multiplicities. Surface pole storage is U-major with V varying fastest, while `GetPole(u,v)` / `GetWeight(u,v)` provide direct grid access.
+- Managed B-Spline collections are zero-based even though OCCT indexes poles and knots from one. See [B-Spline Curve and Surface Inspection](BSPLINE_CURVES.md).
 
 ### Modeling algorithms
 
@@ -133,6 +136,7 @@ Cloud CI has no OCCT SDK, so it validates declarations and managed code rather t
 - Counts come from `bridge-contract.json`.
 - Managed projects and managed-only regression tests run in CI.
 - Managed geometry/transform helpers are regression-tested without an OCCT runtime.
+- B-Spline curve/surface declaration, definition, P/Invoke, and high-level API parity is checked statically.
 - `main` and `demo` reusable wrapper content is compared directly.
 
 Before release, run on Windows with OCCT 7.9.0:
@@ -141,4 +145,4 @@ Before release, run on Windows with OCCT 7.9.0:
 .\build.ps1 smoke Release -OcctRoot "<OCCT 7.9.0 root>"
 ```
 
-The native smoke suite covers ABI/version loading, Booleans, topology, analytic/differential geometry, B-Spline data extraction, OBB, shape identity, face-with-hole construction, edge trimming, planar wire offset, whole-shape triangulation, loft, healing, and BREP/STEP round trips.
+The native smoke suite covers ABI/version loading, Booleans, topology, analytic/differential geometry, B-Spline curve/surface data extraction, OBB, shape identity, face-with-hole construction, edge trimming, planar wire offset, whole-shape triangulation, loft, healing, and BREP/STEP round trips.
