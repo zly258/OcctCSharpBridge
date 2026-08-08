@@ -1,6 +1,6 @@
 ﻿param(
     [Parameter(Position = 0)]
-    [ValidateSet("validate", "native", "managed", "smoke", "ci", "all")]
+    [ValidateSet("validate", "native", "managed", "pack", "smoke", "ci", "all")]
     [string]$Target = "all",
 
     [Parameter(Position = 1)]
@@ -29,6 +29,7 @@ $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $NativeSource = Join-Path $RepoRoot "src\OcctNative"
 $NativeBuild = Join-Path $RepoRoot "build\native"
 $NativeDll = Join-Path $NativeBuild "bin\$Configuration\OcctNative.dll"
+$PackageOutput = Join-Path $RepoRoot "artifacts\packages"
 $ContractPath = Join-Path $RepoRoot "bridge-contract.json"
 
 if (-not (Test-Path $ContractPath -PathType Leaf)) {
@@ -47,6 +48,8 @@ $Projects = [ordered]@{
     ManagedTests = "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj"
     Smoke = "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
 }
+
+$PackageProjects = @("Core", "WinForms", "Wpf")
 
 $Checks = [ordered]@{
     Version = "tests\check-version-contract.ps1"
@@ -161,11 +164,13 @@ function Build-Project {
     Remove-Item (Join-Path $projectDirectory "bin") -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item (Join-Path $projectDirectory "obj") -Recurse -Force -ErrorAction SilentlyContinue
 
-    Write-Host "[$($Name.ToLowerInvariant())] Building $Configuration..." -ForegroundColor Cyan
+    Write-Host "[$($Name.ToLowerInvariant())] Building $Configuration / $BridgeVersion..." -ForegroundColor Cyan
     Invoke-Checked "dotnet" @(
         "build", $project,
         "-c", $Configuration,
         "-p:Platform=x64",
+        "-p:Version=$BridgeVersion",
+        "-p:PackageVersion=$BridgeVersion",
         "--nologo"
     ) "$Name build failed."
 }
@@ -186,11 +191,47 @@ function Build-Managed {
     Build-Project "Wpf"
 }
 
+function Pack-ManagedSdk {
+    param([switch]$SkipBuild)
+
+    Assert-Command "dotnet"
+    if (-not $SkipBuild) {
+        Build-Managed
+    }
+
+    Remove-Item $PackageOutput -Recurse -Force -ErrorAction SilentlyContinue
+    New-Item -ItemType Directory -Path $PackageOutput -Force | Out-Null
+
+    foreach ($name in $PackageProjects) {
+        $project = Join-Path $RepoRoot $Projects[$name]
+        Write-Host "[pack] Packing $name $BridgeVersion..." -ForegroundColor Cyan
+        Invoke-Checked "dotnet" @(
+            "pack", $project,
+            "-c", $Configuration,
+            "-p:Platform=x64",
+            "-p:Version=$BridgeVersion",
+            "-p:PackageVersion=$BridgeVersion",
+            "--no-build",
+            "--nologo",
+            "-o", $PackageOutput
+        ) "$name package creation failed."
+    }
+
+    foreach ($packageId in @("OcctNet", "OcctNet.WinForms", "OcctNet.Wpf")) {
+        Assert-Path (Join-Path $PackageOutput "$packageId.$BridgeVersion.nupkg")
+        Assert-Path (Join-Path $PackageOutput "$packageId.$BridgeVersion.snupkg")
+    }
+
+    Write-Host "Packages: $PackageOutput" -ForegroundColor Green
+    Write-Host "Note: managed packages do not bundle OCCT or OcctNative runtime binaries." -ForegroundColor Yellow
+}
+
 function Build-Ci {
     Build-Managed
     Build-Project "ManagedTests"
     Run-ManagedTests
     Build-Project "Smoke"
+    Pack-ManagedSdk -SkipBuild
 }
 
 function Run-Smoke {
@@ -210,6 +251,7 @@ function Run-Smoke {
             "--project", $smokeProject,
             "-c", $Configuration,
             "-p:Platform=x64",
+            "-p:Version=$BridgeVersion",
             "--no-build"
         ) "Smoke test failed."
     }
@@ -223,7 +265,7 @@ Write-Host "Configuration: $Configuration"
 Write-Host "Bridge:        $BridgeVersion"
 Write-Host "SDK:           $SdkVersion" -ForegroundColor DarkGray
 if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
-    Write-Host "OCCT root:     not configured (valid for validate/managed/ci)" -ForegroundColor DarkGray
+    Write-Host "OCCT root:     not configured (valid for validate/managed/pack/ci)" -ForegroundColor DarkGray
 }
 else {
     Write-Host "OCCT root:     $OcctRoot" -ForegroundColor DarkGray
@@ -235,6 +277,7 @@ switch ($Target) {
     "validate" { }
     "native" { Build-Native }
     "managed" { Build-Managed }
+    "pack" { Pack-ManagedSdk }
     "ci" { Build-Ci }
     "smoke" {
         Build-Native
