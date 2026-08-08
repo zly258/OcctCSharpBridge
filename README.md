@@ -4,7 +4,7 @@
 
 OcctCSharpBridge is a Windows x64 bridge from **Open CASCADE Technology 7.9.0** to **.NET 8**. The `main` branch contains the reusable C++ bridge, strict C ABI, type-safe managed wrapper, optional WinForms/WPF viewport hosts, contract checks, Native Smoke scenarios, and managed SDK packaging. Complete CAD applications are maintained on the `demo` branch.
 
-Bridge **2.6.0 / ABI 3** is a cleanup and expansion release: compatibility aliases and public raw-ID construction were removed; naming, ownership, and deployment contracts were normalized; and the headless wrapper now includes batched topology/Face analysis, strict free-boundary analysis, structured Shape inspection, B-Spline curve/surface inspection, mesh Face provenance, structured runtime diagnostics, OBB, trimming/offset, healing, triangulation, and engineering file exchange.
+Bridge **2.6.0 / ABI 3** is a cleanup and expansion release: compatibility aliases and public raw-ID construction were removed; naming, ownership, and deployment contracts were normalized; and the wrapper now includes structured selected/detected AIS identity, batched topology/Face analysis, strict free-boundary analysis, structured Shape inspection, B-Spline curve/surface inspection, mesh Face provenance, structured runtime diagnostics, OBB, trimming/offset, healing, triangulation, and engineering file exchange.
 
 OCAF/XDE is intentionally excluded. Application Documents, domain Entities, Command/Tool systems, undo/redo, snapping, and JSON persistence belong to the consuming application.
 
@@ -45,10 +45,10 @@ build.ps1               Validation/build/pack/smoke entry point
 
 The managed wrapper intentionally exposes two façades:
 
-- `OcctEngine`: interactive CAD/AIS/viewer session for displayed objects, selection, appearance, camera, interaction, and annotations.
+- `OcctEngine`: interactive CAD/AIS/viewer session for displayed objects, structured selection identity, appearance, camera, interaction, and annotations.
 - `OcctModelingSession`: headless geometry/topology kernel for batch processing, services, algorithms, meshing, inspection, healing, history, and engineering file exchange.
 
-Equivalent OCCT operations may exist in both façades because the ownership models are intentionally different. Bridge 2.6 does **not** keep multiple compatibility names inside one façade. The reusable SDK currently exposes **94 public .NET types**.
+Equivalent OCCT operations may exist in both façades because the ownership models are intentionally different. Bridge 2.6 does **not** keep multiple compatibility names inside one façade. The reusable SDK currently exposes **95 public .NET types**.
 
 ## Canonical API naming
 
@@ -63,6 +63,20 @@ Equivalent OCCT operations may exist in both façades because the ownership mode
 - Mesh: `Triangulate()`, `GetFaceMesh()`, `GetShapeMesh()`, `GetShapeMeshData()`
 
 Managed handles are always owned by the engine/session that produced them. Raw IDs are resolved through `GetShape()`, `TryGetShape()`, `GetObject()`, or `TryGetObject()`; callers cannot construct fake public handles from a `long`.
+
+## Interactive structured selection
+
+`OcctEngine` can return selected/detected AIS identity without exposing OCCT owners or forcing applications to reverse-map raw IDs:
+
+```csharp
+var hits = engine.GetSelectedHits();
+if (engine.TryGetDetectedHit(out var hover) && hover.IsSubshape)
+{
+    Console.WriteLine($"{hover.Owner.Id}: {hover.SubshapeType} #{hover.SubshapeIndex}");
+}
+```
+
+`GetSelectedHits()` uses a two-call batch Native ABI rather than one P/Invoke per selected entity. `OcctSelectionHit` exposes only `Owner`, `SubshapeType`, and runtime `SubshapeIndex`; it deliberately does not expose a placeholder hit point. Runtime indices follow the same topology ordering as `GetSubshapeAt()` but are **not persistent naming**. See [Structured Viewer Selection Hits](docs/SELECTION_HITS.md).
 
 ## Headless modeling and inspection
 
@@ -113,7 +127,7 @@ var curveData = model.GetBSplineCurveData(edge);
 var surfaceData = model.GetBSplineSurfaceData(face);
 ```
 
-See the [documentation index](docs/INDEX.md) for API coverage, geometry utilities, B-Splines, topology, Shape inspection, mesh provenance, and runtime diagnostics.
+See the [documentation index](docs/INDEX.md) for selection hits, API coverage, geometry utilities, B-Splines, topology, Shape inspection, mesh provenance, and runtime diagnostics.
 
 ## Build and validation
 
@@ -207,10 +221,10 @@ Authoritative metadata is in `bridge-contract.json`:
 - Native ABI: `3`
 - OCCT: exactly `7.9.0`
 - Target: `.NET 8`, Windows x64
-- Native exports: `346`
-- Managed P/Invoke declarations: `346`
-- Public .NET types: `94`
-- Viewer API: `212`
+- Native exports: `348`
+- Managed P/Invoke declarations: `348`
+- Public .NET types: `95`
+- Viewer API: `214`
 - Modeling API: `134`
 
 `build.ps1 validate` fails when metadata, declarations, P/Invoke mappings, naming/organization contracts, SDK/package policy, or required documentation drift.
