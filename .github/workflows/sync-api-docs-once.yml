@@ -1,0 +1,77 @@
+﻿name: Sync Expanded API Docs Once
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/sync-api-docs-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Update API documentation
+        shell: pwsh
+        run: |
+          $utf8Bom = [System.Text.UTF8Encoding]::new($true)
+
+          function Update-TextFile([string]$path, [hashtable]$replacements) {
+              $text = [System.IO.File]::ReadAllText($path)
+              foreach ($entry in $replacements.GetEnumerator()) {
+                  if (-not $text.Contains($entry.Key)) {
+                      throw "Expected text was not found in ${path}: $($entry.Key)"
+                  }
+                  $text = $text.Replace($entry.Key, $entry.Value)
+              }
+              [System.IO.File]::WriteAllText($path, $text, $utf8Bom)
+          }
+
+          Update-TextFile 'docs/API_COVERAGE.md' ([ordered]@{
+              '- Native exports: `336`' = '- Native exports: `339`'
+              '- Managed P/Invoke declarations: `336`' = '- Managed P/Invoke declarations: `339`'
+              '- Public .NET types: `82`' = '- Public .NET types: `83`'
+              '- Modeling API: `124`' = '- Modeling API: `127`'
+              '- Local topology helpers: `GetEdgeVertices()`, `GetWireEdges()`, `GetFaceEdges()`, `GetFaceVertices()`, and `GetTopologyCounts()`.' = "- Local topology helpers: `GetEdgeVertices()`, `GetWireEdges()`, `GetFaceEdges()`, `GetFaceVertices()`, and `GetTopologyCounts()`.`r`n- Adjacency helpers: `GetAdjacentFaces()`, `GetIncidentEdges()`, `GetIncidentFaces()`, plus edge classification by adjacent-face count through `GetBoundaryEdgeCandidates()`, `GetManifoldInteriorEdges()`, `GetNonManifoldEdges()`, and `GetEdgesByAdjacentFaceCount()`.`r`n- `GetBoundaryEdgeCandidates()` is intentionally a topological candidate set; periodic seam topology can require stricter native free-boundary analysis."
+              '- `TrimEdge()` creates an edge from an exact sub-range of the source curve.' = "- `TrimEdge()` creates an edge from an exact sub-range of the source curve.`r`n- `GetBSplineCurveData()` returns an immutable B-Spline definition snapshot: degree, rational/periodic flags, poles, weights, distinct knots, and multiplicities. Managed collections use zero-based indexing. See [B-Spline Curve Inspection](BSPLINE_CURVES.md)."
+              'The native smoke suite covers ABI/version loading, Booleans, topology, analytic/differential geometry, OBB,' = 'The native smoke suite covers ABI/version loading, Booleans, topology, analytic/differential geometry, B-Spline data extraction, OBB,'
+          })
+
+          Update-TextFile 'docs/API_COVERAGE.zh-CN.md' ([ordered]@{
+              '- Native exports: `336`' = '- Native exports: `339`'
+              '- Managed P/Invoke declarations: `336`' = '- Managed P/Invoke declarations: `339`'
+              '- Public .NET types: `82`' = '- Public .NET types: `83`'
+              '- Modeling API：`124`' = '- Modeling API：`127`'
+              '- 局部拓扑快捷接口：`GetEdgeVertices()`、`GetWireEdges()`、`GetFaceEdges()`、`GetFaceVertices()` 与 `GetTopologyCounts()`。' = "- 局部拓扑快捷接口：`GetEdgeVertices()`、`GetWireEdges()`、`GetFaceEdges()`、`GetFaceVertices()` 与 `GetTopologyCounts()`。`r`n- 邻接接口：`GetAdjacentFaces()`、`GetIncidentEdges()`、`GetIncidentFaces()`，并可通过 `GetBoundaryEdgeCandidates()`、`GetManifoldInteriorEdges()`、`GetNonManifoldEdges()`、`GetEdgesByAdjacentFaceCount()` 按相邻 Face 数量检查 Edge。`r`n- `GetBoundaryEdgeCandidates()` 明确表示拓扑候选集合；周期曲面的 Seam Edge 仍可能需要更严格的 Native 自由边界分析。"
+              '- `TrimEdge()` 使用 OCCT 原始参数直接裁剪曲线 Edge。' = "- `TrimEdge()` 使用 OCCT 原始参数直接裁剪曲线 Edge。`r`n- `GetBSplineCurveData()` 返回不可变 B-Spline 定义快照，包括次数、有理/周期标志、控制点、权重、不同 Knot 与重数；Managed 集合统一使用 0 起始索引。详见 [B-Spline 曲线检查](BSPLINE_CURVES.zh-CN.md)。"
+              'Native Smoke 覆盖 ABI/版本加载、Boolean、拓扑、解析/微分几何、OBB、' = 'Native Smoke 覆盖 ABI/版本加载、Boolean、拓扑、解析/微分几何、B-Spline 数据提取、OBB、'
+          })
+
+          foreach ($path in @('README.md', 'README.zh-CN.md')) {
+              $text = [System.IO.File]::ReadAllText($path)
+              $text = $text -replace '(Native exports[：:]\s*`)336(`)', '${1}339${2}'
+              $text = $text -replace '(Managed P/Invoke[：:]\s*`)336(`)', '${1}339${2}'
+              $text = $text -replace '(Public \.NET types[：:]\s*`)81(`)', '${1}83${2}'
+              $text = $text -replace '(Modeling API[：:]\s*`)124(`)', '${1}127${2}'
+              $text = $text -replace '\b81 个公开 \.NET 类型\b', '83 个公开 .NET 类型'
+              $text = $text -replace '\b81 public \.NET types\b', '83 public .NET types'
+              [System.IO.File]::WriteAllText($path, $text, $utf8Bom)
+          }
+
+          Remove-Item '.github/workflows/sync-api-docs-once.yml'
+
+      - name: Commit synchronized documentation
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/API_COVERAGE.md docs/API_COVERAGE.zh-CN.md README.md README.zh-CN.md .github/workflows/sync-api-docs-once.yml
+          git commit -m "Sync 2.6 expanded API documentation"
+          git push origin HEAD:main
