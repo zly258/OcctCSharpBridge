@@ -34,4 +34,50 @@ extern "C"
             return TopoDS_Shape(analysis.GetOpenWires());
         });
     }
+
+    int occt_model_shape_edge_adjacency(
+        OcctModelHandle handle,
+        OcctObjectId shapeId,
+        OcctModelEdgeAdjacency* items,
+        int capacity,
+        int* count)
+    {
+        ModelSession* model = modelOf(handle);
+        if (count == nullptr) return 0;
+        return execute(model, [&]
+        {
+            if (capacity < 0)
+                throw std::invalid_argument("Edge adjacency capacity must not be negative.");
+
+            const TopoDS_Shape& root = model->requireShape(shapeId);
+            TopTools_IndexedMapOfShape edges;
+            TopExp::MapShapes(root, TopAbs_EDGE, edges);
+            *count = edges.Extent();
+
+            if (items == nullptr)
+            {
+                if (capacity != 0)
+                    throw std::invalid_argument("Edge adjacency output is null but capacity is non-zero.");
+                return;
+            }
+            if (capacity < *count)
+                throw std::out_of_range("Edge adjacency output capacity is too small.");
+
+            TopTools_IndexedDataMapOfShapeListOfShape edgeFaces;
+            TopExp::MapShapesAndUniqueAncestors(
+                root,
+                TopAbs_EDGE,
+                TopAbs_FACE,
+                edgeFaces,
+                Standard_False);
+
+            for (int index = 1; index <= edges.Extent(); ++index)
+            {
+                const TopoDS_Shape& edge = edges(index);
+                items[index - 1].edgeId = model->addShape(edge);
+                items[index - 1].adjacentFaceCount =
+                    edgeFaces.Contains(edge) ? edgeFaces.FindFromKey(edge).Size() : 0;
+            }
+        });
+    }
 }
