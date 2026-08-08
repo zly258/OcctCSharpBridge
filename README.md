@@ -171,9 +171,12 @@ Recommended cadence:
 ## Troubleshooting
 
 - `OCCT_ROOT is not configured`: set `$env:OCCT_ROOT` or pass `-OcctRoot` to a Native target.
-- `Unable to load OcctNative.dll ... Win32 126`: republish with current `publish.ps1`; each application directory must contain the matching ABI 3 Native dependency closure.
+- `Unable to load OcctNative.dll ... Win32 126`: all three demos now show the process architecture, application directory, and app-local `OcctNative.dll` / `TKernel.dll` status in the fatal dialog and write the full OCCT runtime report to the crash log.
+  - `OcctNative.dll [missing]`: the application package is incomplete; republish with the current `demo/publish.ps1` instead of copying individual DLLs.
+  - `OcctNative.dll [found]` but `TKernel.dll [missing]`: the OCCT Native dependency closure is incomplete; republish the package.
+  - both are `[found]` but Win32 126 remains: a deeper OCCT, third-party, or Visual C++ runtime dependency is missing or mismatched. Check `native-dependencies.txt` and the crash log under `%LOCALAPPDATA%\OcctCSharpBridge\Logs`.
 - Avalonia analyzer/compiler mismatch: use the branch-pinned SDK from `global.json`.
-- Avalonia startup issue: inspect `src\CadAvalonia\bin\x64\<Configuration>\net8.0-windows\CAD-Avalonia.log`.
+- Avalonia startup issue: inspect `src\CadAvalonia\bin\x64\<Configuration>\net8.0-windows\CAD-Avalonia.log` plus the shared crash log above.
 
 ## License
 
