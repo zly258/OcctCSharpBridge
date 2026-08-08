@@ -217,10 +217,15 @@ foreach ($file in $nativeMethodFiles) {
     }
 }
 
-$docs = @(Get-ChildItem (Join-Path $RepositoryRoot "docs") -File | Select-Object -ExpandProperty Name | Sort-Object)
-$expectedDocs = @("API_COVERAGE.md", "API_COVERAGE.zh-CN.md")
-if (Compare-Object $expectedDocs $docs) {
-    throw "The docs directory must contain only API_COVERAGE.md and API_COVERAGE.zh-CN.md."
+foreach ($fileName in @("API_COVERAGE.md", "API_COVERAGE.zh-CN.md")) {
+    if (-not (Test-Path (Join-Path $RepositoryRoot "docs\$fileName") -PathType Leaf)) {
+        throw "Required API coverage documentation is missing: docs/$fileName"
+    }
+}
+
+$unexpectedDocs = @(Get-ChildItem (Join-Path $RepositoryRoot "docs") -File | Where-Object { $_.Extension -ne ".md" })
+if ($unexpectedDocs.Count -gt 0) {
+    throw "The docs directory must contain Markdown documentation only: $($unexpectedDocs.Name -join ', ')"
 }
 
 Write-Host "[organization] Bridge 2.6 canonical naming, strict ownership, typed DTO boundaries and responsibility layout validated." -ForegroundColor Green
