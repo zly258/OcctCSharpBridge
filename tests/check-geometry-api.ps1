@@ -75,31 +75,53 @@ $contracts = [ordered]@{
         "OcctModelSurfaceCurvature",
         "StructLayout(LayoutKind.Sequential)"
     )
-    "src/OcctNative/OcctModelingExtensions.cpp" = @(
+    "src/OcctNative/OcctModelingBSpline.cpp" = @(
         "Geom_BSplineCurve",
-        "occt_model_edge_bspline_info",
-        "occt_model_edge_bspline_pole_at",
-        "occt_model_edge_bspline_knot_at"
-    )
-    "src/OcctNet/ModelNativeMethods.Extensions.cs" = @(
+        "Geom_BSplineSurface",
         "occt_model_edge_bspline_info",
         "occt_model_edge_bspline_pole_at",
         "occt_model_edge_bspline_knot_at",
+        "occt_model_face_bspline_info",
+        "occt_model_face_bspline_pole_at",
+        "occt_model_face_bspline_u_knot_at",
+        "occt_model_face_bspline_v_knot_at"
+    )
+    "src/OcctNative/OcctModelingBSpline.h" = @(
+        "OcctModelBSplineCurveInfo",
+        "OcctModelBSplineSurfaceInfo",
+        "occt_model_edge_bspline_info",
+        "occt_model_face_bspline_info"
+    )
+    "src/OcctNet/ModelNativeMethods.BSpline.cs" = @(
+        "occt_model_edge_bspline_info",
+        "occt_model_edge_bspline_pole_at",
+        "occt_model_edge_bspline_knot_at",
+        "occt_model_face_bspline_info",
+        "occt_model_face_bspline_pole_at",
+        "occt_model_face_bspline_u_knot_at",
+        "occt_model_face_bspline_v_knot_at",
         "CallingConvention.Cdecl",
         "ExactSpelling = true"
     )
-    "src/OcctNet/OcctModelingSession.Extensions.cs" = @(
+    "src/OcctNet/OcctModelingSession.BSpline.cs" = @(
         "GetBSplineCurveData",
+        "GetBSplineSurfaceData",
         "OcctBSplineCurveData",
-        "Native B-Spline knots must be strictly increasing"
+        "OcctBSplineSurfaceData",
+        "EnsureValidPole",
+        "EnsureValidKnot"
     )
-    "src/OcctNet/OcctModelingExtensionTypes.cs" = @(
+    "src/OcctNet/OcctBSplineTypes.cs" = @(
         "OcctBSplineCurveData",
-        "Poles",
-        "Weights",
-        "Knots",
-        "Multiplicities",
-        "OcctModelBSplineCurveInfoNative"
+        "OcctBSplineSurfaceData",
+        "UPoleCount",
+        "VPoleCount",
+        "GetPole",
+        "GetWeight",
+        "UKnots",
+        "VKnots",
+        "OcctModelBSplineCurveInfoNative",
+        "OcctModelBSplineSurfaceInfoNative"
     )
 }
 
@@ -117,4 +139,4 @@ foreach ($contract in $contracts.GetEnumerator()) {
     }
 }
 
-Write-Host "[geometry] Analytic, differential, and B-Spline geometry contracts validated." -ForegroundColor Green
+Write-Host "[geometry] Analytic, differential, and dedicated B-Spline curve/surface contracts validated." -ForegroundColor Green
