@@ -146,4 +146,57 @@ foreach ($contract in $previewContracts) {
     }
 }
 
-Write-Host "[package] Demo publishing, app-local native closure, VC runtime resolution, restricted LoadLibrary probe, main-only NuGet boundary, and README preview paths validated." -ForegroundColor Green
+# All three demo hosts must surface actionable app-local native diagnostics instead of
+# showing only the raw DllNotFoundException/Win32 126 message.
+$crashReporterPath = Join-Path $RepositoryRoot "src\CadCommon\CrashReporter.cs"
+if (-not (Test-Path $crashReporterPath -PathType Leaf)) {
+    throw "Shared CrashReporter was not found."
+}
+$crashReporter = [System.IO.File]::ReadAllText($crashReporterPath)
+foreach ($token in @(
+    'BuildUserMessage',
+    'OcctRuntime.GetDiagnosticInfo()',
+    'OcctRuntime.GetDiagnosticReport()',
+    'ApplicationNativeBridgePath',
+    'ApplicationOcctKernelPath',
+    'DllNotFoundException',
+    'BadImageFormatException',
+    'EntryPointNotFoundException',
+    'Win32 126',
+    'demo/publish.ps1'
+)) {
+    if (-not $crashReporter.Contains($token)) {
+        throw "Native startup diagnostic contract is missing from CrashReporter: $token"
+    }
+}
+
+$hostDiagnostics = [ordered]@{
+    "src\CadWinForms\Program.cs" = @(
+        'CrashReporter.Write(ApplicationName, exception, source)',
+        'CrashReporter.BuildUserMessage(exception, logPath)'
+    )
+    "src\CadWpf\App.xaml.cs" = @(
+        'CrashReporter.Write(ApplicationName, e.Exception, "DispatcherUnhandledException")',
+        'CrashReporter.BuildUserMessage(e.Exception, logPath)'
+    )
+    "src\CadAvalonia\Program.cs" = @(
+        'CrashReporter.Write(ApplicationName, exception, message)',
+        'CrashReporter.BuildUserMessage(exception, logPath)',
+        'args.SetObserved();'
+    )
+}
+
+foreach ($host in $hostDiagnostics.GetEnumerator()) {
+    $hostPath = Join-Path $RepositoryRoot $host.Key
+    if (-not (Test-Path $hostPath -PathType Leaf)) {
+        throw "Demo host diagnostic file was not found: $($host.Key)"
+    }
+    $hostText = [System.IO.File]::ReadAllText($hostPath)
+    foreach ($token in $host.Value) {
+        if (-not $hostText.Contains($token)) {
+            throw "Demo host does not use the shared native startup diagnostics: $($host.Key) -> $token"
+        }
+    }
+}
+
+Write-Host "[package] Demo publishing, app-local native closure, VC runtime resolution, restricted LoadLibrary probe, shared Win32 126 diagnostics, main-only NuGet boundary, and README preview paths validated." -ForegroundColor Green

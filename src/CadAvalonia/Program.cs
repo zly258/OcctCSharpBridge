@@ -1,11 +1,13 @@
 ﻿using System.Runtime.InteropServices;
 using Avalonia;
+using CadCommon;
 
 namespace CadAvalonia;
 
 internal static class Program
 {
-    private static readonly string LogPath = Path.Combine(AppContext.BaseDirectory, "CAD-Avalonia.log");
+    private const string ApplicationName = "CAD-Avalonia";
+    private static readonly string TraceLogPath = Path.Combine(AppContext.BaseDirectory, "CAD-Avalonia.log");
 
     [STAThread]
     public static void Main(string[] args)
@@ -42,7 +44,7 @@ internal static class Program
         try
         {
             File.AppendAllText(
-                LogPath,
+                TraceLogPath,
                 $"[{DateTimeOffset.Now:O}] {message}{Environment.NewLine}",
                 new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
         }
@@ -56,13 +58,15 @@ internal static class Program
     {
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
         {
-            var exception = args.ExceptionObject as Exception ?? new Exception(args.ExceptionObject?.ToString() ?? "Unknown fatal error.");
-            AppendLog("Unhandled AppDomain exception", exception);
+            var exception = args.ExceptionObject as Exception
+                ?? new Exception(args.ExceptionObject?.ToString() ?? "Unknown fatal error.");
+            CrashReporter.Write(ApplicationName, exception, "AppDomain.UnhandledException");
         };
 
         TaskScheduler.UnobservedTaskException += (_, args) =>
         {
-            AppendLog("Unobserved task exception", args.Exception);
+            CrashReporter.Write(ApplicationName, args.Exception, "TaskScheduler.UnobservedTaskException");
+            args.SetObserved();
         };
     }
 
@@ -85,26 +89,11 @@ internal static class Program
 
     private static void ReportFatal(string message, Exception exception)
     {
-        AppendLog(message, exception);
-
-        var details = $"{message}\n\n{exception.GetType().Name}: {exception.Message}\n\nLog: {LogPath}";
+        Trace($"{message} {exception}");
+        var logPath = CrashReporter.Write(ApplicationName, exception, message);
+        var details = CrashReporter.BuildUserMessage(exception, logPath);
         if (OperatingSystem.IsWindows())
             MessageBoxW(IntPtr.Zero, details, "CAD-Avalonia startup error", 0x00000010);
-    }
-
-    private static void AppendLog(string message, Exception exception)
-    {
-        try
-        {
-            File.AppendAllText(
-                LogPath,
-                $"[{DateTimeOffset.Now:O}] {message}{Environment.NewLine}{exception}{Environment.NewLine}{Environment.NewLine}",
-                new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
-        }
-        catch
-        {
-            // Diagnostics must never hide the original startup failure.
-        }
     }
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
