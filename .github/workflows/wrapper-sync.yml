@@ -49,6 +49,8 @@ jobs:
             "src/OcctNative",
             "docs/API_COVERAGE.md",
             "docs/API_COVERAGE.zh-CN.md",
+            "docs/GEOMETRY_UTILITIES.md",
+            "docs/GEOMETRY_UTILITIES.zh-CN.md",
             "tests/OcctNet.ManagedTests",
             "tests/OcctNet.Smoke",
             "tests/check-api-organization.ps1",
