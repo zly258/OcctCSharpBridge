@@ -38,4 +38,46 @@ public sealed partial class OcctModelingSession
             GetWires(closedCompound),
             GetWires(openCompound));
     }
+
+    /// <summary>
+    /// Builds one native edge-to-face topology map and returns the adjacency count for every edge.
+    /// Use this snapshot when several edge classifications are required for the same root shape.
+    /// </summary>
+    public OcctEdgeAdjacencyResult AnalyzeEdgeAdjacency(OcctModelShape root)
+    {
+        EnsureShape(root);
+        Check(ModelNativeMethods.occt_model_shape_edge_adjacency(
+            _handle,
+            root.Id,
+            null,
+            0,
+            out var edgeCount));
+        if (edgeCount < 0)
+            throw new InvalidOperationException("Native edge adjacency count is invalid.");
+        if (edgeCount == 0)
+            return new OcctEdgeAdjacencyResult(root, Array.Empty<OcctEdgeAdjacencyInfo>());
+
+        var nativeEntries = new NativeModelEdgeAdjacency[edgeCount];
+        Check(ModelNativeMethods.occt_model_shape_edge_adjacency(
+            _handle,
+            root.Id,
+            nativeEntries,
+            nativeEntries.Length,
+            out var returnedCount));
+        if (returnedCount != edgeCount)
+            throw new InvalidOperationException($"Native edge adjacency count changed during analysis: expected {edgeCount}, returned {returnedCount}.");
+
+        var entries = new OcctEdgeAdjacencyInfo[edgeCount];
+        for (var index = 0; index < nativeEntries.Length; index++)
+        {
+            var native = nativeEntries[index];
+            if (native.EdgeId <= 0 || native.AdjacentFaceCount < 0)
+                throw new InvalidOperationException("Native edge adjacency data is invalid.");
+            entries[index] = new OcctEdgeAdjacencyInfo(
+                new OcctModelShape(native.EdgeId, _ownerId),
+                native.AdjacentFaceCount);
+        }
+
+        return new OcctEdgeAdjacencyResult(root, entries);
+    }
 }
