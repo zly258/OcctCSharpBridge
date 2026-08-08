@@ -84,6 +84,10 @@ Assert-Contains $managedHits 'public IReadOnlyList<OcctSelectionHit> GetSelected
 Assert-Contains $managedHits 'public bool TryGetDetectedHit(out OcctSelectionHit hit)' 'managed detected-hit API'
 Assert-Contains $managedHits 'Check(SelectionStateNativeMethods.occt_selected_hits(_handle, null, 0, out var count));' 'two-call selected-hit count query'
 Assert-Contains $managedHits 'Check(SelectionStateNativeMethods.occt_detected_hit(_handle, out var native, out var hasHit));' 'normal native error propagation'
+Assert-Contains $managedHits 'var subshapeType = (OcctShapeType)native.SubshapeType;' 'typed managed selection-hit validation'
+Assert-Contains $managedHits 'native.SubshapeIndex == -1 && subshapeType != OcctShapeType.Shape' 'whole-object Shape/-1 invariant'
+Assert-Contains $managedHits 'native.SubshapeIndex >= 0 && subshapeType == OcctShapeType.Shape' 'concrete subshape type invariant'
+Assert-Contains $managedHits 'native.SubshapeIndex >= 0 && owner.Kind != OcctObjectKind.Shape' 'shape-owner invariant for subshape hits'
 Assert-Contains $managedHits 'GetObject(native.OwnerObjectId)' 'managed owner-object resolution'
 Assert-Contains $managedOverlay 'SelectionOverlayNativeMethods.occt_show_selection_rectangle' 'overlay API/native responsibility separation'
 
@@ -117,4 +121,4 @@ if ($resizeBlock.Contains('CancelRectangleSelection();')) {
     throw 'OnResize must preserve an active rectangle gesture instead of cancelling the first drag.'
 }
 
-Write-Host '[selection] Split base selection, overlay/state native methods, point/box selection, batched selected/detected hits, subshape-index contract, and first-gesture capture recovery validated.' -ForegroundColor Green
+Write-Host '[selection] Split base selection, overlay/state native methods, structured hit invariants, point/box selection, batched selected/detected hits, subshape-index contract, and first-gesture capture recovery validated.' -ForegroundColor Green
