@@ -22,6 +22,15 @@ extern "C"
         double halfSizeZ;
     };
 
+    struct OcctModelBSplineCurveInfo
+    {
+        int degree;
+        int poleCount;
+        int knotCount;
+        int rational;
+        int periodic;
+    };
+
     OCCTBRIDGE_API int occt_model_shape_is_same(
         OcctModelHandle handle,
         OcctObjectId firstId,
@@ -57,4 +66,23 @@ extern "C"
         double altitude,
         int joinType,
         int openResult);
+
+    OCCTBRIDGE_API int occt_model_edge_bspline_info(
+        OcctModelHandle handle,
+        OcctObjectId edgeId,
+        OcctModelBSplineCurveInfo* result);
+
+    OCCTBRIDGE_API int occt_model_edge_bspline_pole_at(
+        OcctModelHandle handle,
+        OcctObjectId edgeId,
+        int index,
+        OcctPoint3d* pole,
+        double* weight);
+
+    OCCTBRIDGE_API int occt_model_edge_bspline_knot_at(
+        OcctModelHandle handle,
+        OcctObjectId edgeId,
+        int index,
+        double* knot,
+        int* multiplicity);
 }
