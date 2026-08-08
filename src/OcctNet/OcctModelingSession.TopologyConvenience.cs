@@ -48,7 +48,7 @@ public sealed partial class OcctModelingSession
         GetAncestors(root, vertex, OcctShapeType.Face);
 
     /// <summary>
-    /// Returns edges that are referenced by exactly one face in <paramref name="root"/>.
+    /// Returns edges that are referenced by exactly one distinct face in <paramref name="root"/>.
     /// These are useful free-boundary candidates, but periodic seam topology should be checked
     /// before treating every returned edge as an open geometric boundary.
     /// </summary>
@@ -66,20 +66,12 @@ public sealed partial class OcctModelingSession
         int minimumFaceCount,
         int maximumFaceCount)
     {
-        EnsureShape(root);
         ArgumentOutOfRangeException.ThrowIfNegative(minimumFaceCount);
         if (maximumFaceCount < minimumFaceCount)
             throw new ArgumentOutOfRangeException(nameof(maximumFaceCount), maximumFaceCount, "Maximum face count must be greater than or equal to the minimum face count.");
 
-        var result = new List<OcctModelShape>();
-        foreach (var edge in GetEdges(root))
-        {
-            var adjacentFaceCount = GetAncestors(root, edge, OcctShapeType.Face).Count;
-            if (adjacentFaceCount >= minimumFaceCount && adjacentFaceCount <= maximumFaceCount)
-                result.Add(edge);
-        }
-
-        return result;
+        return AnalyzeEdgeAdjacency(root)
+            .GetEdgesByAdjacentFaceCount(minimumFaceCount, maximumFaceCount);
     }
 
     public IReadOnlyDictionary<OcctShapeType, int> GetTopologyCounts(OcctModelShape shape)
