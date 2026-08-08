@@ -24,11 +24,11 @@
       f2Title: 'Headless Modeling',
       f2Text: 'Primitives, Boolean operations, extrude, revolve, sweep, loft, fillet, chamfer, offset, shelling, healing and history.',
       f3Title: 'CAD Selection & Input',
-      f3Text: 'Point and rectangle selection, application-driven selection sets, selectability, raw input forwarding and switchable default interaction.',
+      f3Text: 'Point and rectangle selection, structured selected/detected identities, application-driven selection sets, selectability, raw input forwarding and switchable default interaction.',
       f4Title: 'Stable Object Identity',
       f4Text: 'ApplicationTag binds application EntityIds to Viewer objects, while geometry can be updated in place without losing presentation state.',
       f5Title: 'Geometry Queries & Analysis',
-      f5Text: 'Topology traversal, analytic geometry, derivatives, curvature, mass properties, projection, ray tests, distance and mesh data.',
+      f5Text: 'Topology traversal, batched adjacency/Face analysis, structured inspection, analytic geometry, curvature, projection, distance and mesh provenance.',
       f6Title: 'Engineering Exchange',
       f6Text: 'Shape-oriented STEP, IGES, BREP and STL import/export without coupling the bridge to an application document model.',
       archEyebrow: 'DESIGN',
@@ -91,11 +91,11 @@
       f2Title: '无窗口建模',
       f2Text: '基础体、布尔、拉伸、旋转、扫掠、放样、圆角、倒角、偏移、抽壳、修复与历史关系。',
       f3Title: 'CAD 选择与输入',
-      f3Text: '点选、框选、选择集同步、可选择状态、原始输入转发，以及可切换的默认交互。',
+      f3Text: '点选、框选、Selected/Detected 结构化身份、选择集同步、可选择状态、原始输入转发，以及可切换的默认交互。',
       f4Title: '稳定对象关联',
       f4Text: 'ApplicationTag 将应用层 EntityId 与 Viewer 对象稳定关联，几何可原位更新而不破坏显示状态。',
       f5Title: '几何查询与分析',
-      f5Text: '拓扑遍历、解析几何、导数、曲率、质量属性、投影、射线、距离和网格数据。',
+      f5Text: '拓扑遍历、批量邻接/Face 分析、结构化检查、解析几何、曲率、投影、距离和 Mesh Face 来源追溯。',
       f6Title: '工程文件交换',
       f6Text: '面向 Shape 的 STEP、IGES、BREP、STL 导入导出，不把桥接层耦合到应用文档模型。',
       archEyebrow: 'DESIGN',
@@ -155,7 +155,6 @@
   }
 
   function setPreviewLanguage(image) {
-    image.dataset.fallbackUsed = 'false';
     image.dataset.placeholderUsed = 'false';
     image.alt = language === 'zh' ? (image.dataset.altZh || image.alt) : (image.dataset.altEn || image.alt);
     const source = language === 'zh' ? image.dataset.srcZh : image.dataset.srcEn;
@@ -165,12 +164,6 @@
   previews.forEach((image) => {
     image.addEventListener('error', () => {
       if (image.dataset.placeholderUsed === 'true') return;
-      const fallback = language === 'zh' ? image.dataset.fallbackZh : image.dataset.fallbackEn;
-      if (fallback && image.dataset.fallbackUsed !== 'true') {
-        image.dataset.fallbackUsed = 'true';
-        image.src = fallback;
-        return;
-      }
       image.dataset.placeholderUsed = 'true';
       image.src = placeholderSource(image);
     });
