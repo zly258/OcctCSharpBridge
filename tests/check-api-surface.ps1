@@ -24,11 +24,15 @@ $publicManagedRoots = @(
     (Join-Path $RepositoryRoot "src\OcctNet.Wpf")
 )
 
+# Public C ABI declarations are intentionally split by responsibility. Keep this list
+# explicit so a new ABI module must be consciously added to surface validation.
 $headerFiles = @(
     Join-Path $nativeRoot "OcctNative.h"
     Join-Path $nativeRoot "OcctSelectionOverlay.h"
     Join-Path $nativeRoot "OcctModeling.h"
     Join-Path $nativeRoot "OcctModelingExtensions.h"
+    Join-Path $nativeRoot "OcctModelingBSpline.h"
+    Join-Path $nativeRoot "OcctModelingTopologyAnalysis.h"
 )
 $cppFiles = Get-ChildItem $nativeRoot -Filter "*.cpp" -File | Select-Object -ExpandProperty FullName
 $managedSourceFiles = @($publicManagedRoots | ForEach-Object {
@@ -164,9 +168,9 @@ foreach ($documentationFile in $documentationFiles) {
         throw "API inventory was not found: $documentationFile"
     }
     $documentation = [System.IO.File]::ReadAllText($documentationFile)
-    $nativeCount = [regex]::Match($documentation, 'Native exports:\s*`?(\d+)`?').Groups[1].Value
-    $managedCount = [regex]::Match($documentation, 'Managed P/Invoke declarations:\s*`?(\d+)`?').Groups[1].Value
-    $publicTypeCount = [regex]::Match($documentation, 'Public \.NET types:\s*`?(\d+)`?').Groups[1].Value
+    $nativeCount = [regex]::Match($documentation, 'Native exports\s*[:：]\s*`?(\d+)`?').Groups[1].Value
+    $managedCount = [regex]::Match($documentation, 'Managed P/Invoke declarations\s*[:：]\s*`?(\d+)`?').Groups[1].Value
+    $publicTypeCount = [regex]::Match($documentation, 'Public \.NET types\s*[:：]\s*`?(\d+)`?').Groups[1].Value
     if ([string]::IsNullOrWhiteSpace($nativeCount) -or [string]::IsNullOrWhiteSpace($managedCount) -or [string]::IsNullOrWhiteSpace($publicTypeCount)) {
         throw "API inventory counts could not be parsed: $documentationFile"
     }
