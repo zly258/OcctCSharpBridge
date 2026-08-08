@@ -51,6 +51,8 @@ jobs:
             "docs/API_COVERAGE.zh-CN.md",
             "docs/GEOMETRY_UTILITIES.md",
             "docs/GEOMETRY_UTILITIES.zh-CN.md",
+            "docs/BSPLINE_CURVES.md",
+            "docs/BSPLINE_CURVES.zh-CN.md",
             "tests/OcctNet.ManagedTests",
             "tests/OcctNet.Smoke",
             "tests/check-api-organization.ps1",
