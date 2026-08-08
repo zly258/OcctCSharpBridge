@@ -56,6 +56,7 @@ $Checks = [ordered]@{
     Organization = "tests\check-api-organization.ps1"
     Geometry = "tests\check-geometry-api.ps1"
     TopologyAnalysis = "tests\check-topology-analysis.ps1"
+    RuntimeDiagnostics = "tests\check-runtime-diagnostics.ps1"
     UiHosts = "tests\check-ui-hosts.ps1"
     Viewport = "tests\check-viewport-api.ps1"
     Selection = "tests\check-selection-contract.ps1"
