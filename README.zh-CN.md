@@ -169,9 +169,12 @@ PowerShell 负责 API/静态/UI 契约；`OcctNet.ManagedTests` 无需 OCCT，�
 ## 常见问题
 
 - `OCCT_ROOT is not configured`：设置 `$env:OCCT_ROOT` 或给 Native target 传 `-OcctRoot`。
-- `Unable to load OcctNative.dll ... Win32 126`：使用当前 `publish.ps1` 重新发布，确保 EXE 同目录具有匹配 ABI 3 的 Native 依赖闭包。
+- `Unable to load OcctNative.dll ... Win32 126`：三个 Demo 现在都会在错误对话框中显示进程架构、应用目录，以及 EXE 同目录的 `OcctNative.dll` / `TKernel.dll` 是否存在，同时把完整 OCCT Runtime 诊断写入崩溃日志。
+  - `OcctNative.dll [缺失]`：发布包不完整；不要手工复制单个 DLL，使用当前 `demo/publish.ps1` 重新发布。
+  - `OcctNative.dll [存在]` 但 `TKernel.dll [缺失]`：OCCT Native 依赖闭包不完整，重新发布完整包。
+  - 两者均为 `[存在]` 但仍是 Win32 126：通常是更深层的 OCCT、第三方库或 Visual C++ Runtime 缺失/版本不匹配。检查 `native-dependencies.txt`，并查看 `%LOCALAPPDATA%\OcctCSharpBridge\Logs` 下的崩溃日志。
 - Avalonia Analyzer/编译器不匹配：使用本分支 `global.json` 固定 SDK。
-- Avalonia 启动异常：查看 `src\CadAvalonia\bin\x64\<Configuration>\net8.0-windows\CAD-Avalonia.log`。
+- Avalonia 启动异常：同时查看 `src\CadAvalonia\bin\x64\<Configuration>\net8.0-windows\CAD-Avalonia.log` 和上述共享崩溃日志。
 
 ## 许可证
 
