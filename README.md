@@ -50,7 +50,7 @@ The managed wrapper intentionally exposes two façades:
 
 These two façades may expose equivalent OCCT operations because their object models are different by design. Bridge 2.6 does **not** keep multiple compatibility names inside the same façade.
 
-Interactive objects use one public abstraction: `IOcctObject` exposes `Id`, `Kind`, and `IsValid`; actual instances are `OcctShape`, `OcctText`, or `OcctDimension`. There is no generic object wrapper and no public raw-ID object constructor. Together with the headless types, the reusable SDK currently exposes **83 public .NET types**.
+Interactive objects use one public abstraction: `IOcctObject` exposes `Id`, `Kind`, and `IsValid`; actual instances are `OcctShape`, `OcctText`, or `OcctDimension`. There is no generic object wrapper and no public raw-ID object constructor. Together with the headless types, the reusable SDK currently exposes **86 public .NET types**.
 
 ## Canonical API naming
 
@@ -185,11 +185,11 @@ Authoritative metadata is in `bridge-contract.json`:
 - Native ABI: `3`
 - OCCT: exactly `7.9.0`
 - Target: `.NET 8`, Windows x64
-- Native exports: `343`
-- Managed P/Invoke declarations: `336`
-- Public .NET types: `84`
+- Native exports: `344`
+- Managed P/Invoke declarations: `344`
+- Public .NET types: `86`
 - Viewer API: `212`
-- Modeling API: `131`
+- Modeling API: `132`
 
 `build.ps1 validate` fails when these values, declarations, P/Invoke mappings, naming/organization contracts, SDK/package policy, or documentation drift.
 
