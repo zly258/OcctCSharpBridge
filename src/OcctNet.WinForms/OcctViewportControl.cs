@@ -1,4 +1,5 @@
-﻿using System.Drawing;
+﻿using System.ComponentModel;
+using System.Drawing;
 using System.Windows.Forms;
 
 namespace OcctNet;
@@ -71,6 +72,7 @@ public sealed class OcctViewportControl : Control
 
     public OcctEngine Engine => _engine ?? throw new InvalidOperationException("The OCCT viewport handle has not been created yet.");
 
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public bool EnableDefaultInteraction
     {
         get => _enableDefaultInteraction;
@@ -87,12 +89,25 @@ public sealed class OcctViewportControl : Control
         }
     }
 
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public bool EnableRectangleSelection { get; set; } = true;
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public int RectangleSelectionThreshold { get; set; } = 3;
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public OcctRectangleSelectionBehavior RectangleSelectionBehavior { get; set; } = OcctRectangleSelectionBehavior.Inclusive;
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public Color RectangleSelectionLineColor { get; set; } = Color.FromArgb(35, 120, 210);
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public Color RectangleSelectionFillColor { get; set; } = Color.FromArgb(95, 165, 230);
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public double RectangleSelectionFillTransparency { get; set; } = 0.82;
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public double RectangleSelectionLineWidth { get; set; } = 1.0;
 
     public event EventHandler<OcctShape?>? SelectionChanged;
