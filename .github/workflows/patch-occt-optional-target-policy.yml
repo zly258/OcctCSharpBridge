@@ -1,0 +1,46 @@
+name: Patch OCCT optional target policy
+
+on:
+  push:
+    branches:
+      - fix/occt-optional-target-policy
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/occt-optional-target-policy
+          fetch-depth: 0
+
+      - name: Update shared build policy
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('tests/check-native-build-structure.ps1')
+          text = path.read_text(encoding='utf-8-sig')
+          old = "if (-not $buildScriptText.Contains('validate/managed/pack/ci do not require OCCT')) { throw \"build.ps1 must preserve OCCT-optional managed/validation targets.\" }"
+          new = "$hasMainOcctOptionalPolicy = $buildScriptText.Contains('validate/managed/pack/ci do not require OCCT')\n$hasDemoOcctOptionalPolicy = $buildScriptText.Contains('validate/managed/ci do not require OCCT')\nif (-not ($hasMainOcctOptionalPolicy -or $hasDemoOcctOptionalPolicy)) { throw \"build.ps1 must preserve OCCT-optional managed/validation targets.\" }"
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one target-policy block, found {text.count(old)}')
+          path.write_text('\ufeff' + text.replace(old, new, 1), encoding='utf-8')
+          PY
+
+      - name: Commit and remove workflow
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git rm .github/workflows/patch-occt-optional-target-policy.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/check-native-build-structure.ps1
+          git commit -m "Support main and demo OCCT optional targets"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push origin HEAD:fix/occt-optional-target-policy
