@@ -16,19 +16,12 @@ $expectedOcctVersion = [string]$contract.occtVersion
 $expectedCmakeVersion = [string]$contract.cmakeMinimumVersion
 $expectedContactEmail = [string]$contract.contactEmail
 $expectedTargetFramework = [string]$contract.dotnet.targetFramework
-$coreSdkVersion = [string]$contract.dotnet.sdkVersion
-$demoSdkVersion = [string]$contract.dotnet.demoSdkVersion
+$expectedSdkVersion = [string]$contract.dotnet.sdkVersion
 $expectedLanguageVersion = [string]$contract.dotnet.languageVersion
 $expectedNativeCount = [int]$contract.api.nativeExports
 $expectedManagedCount = [int]$contract.api.managedPInvokes
 $expectedPublicTypeCount = [int]$contract.api.publicNetTypes
 $expectedCompatibilityTypeCount = [int]$contract.api.compatibilityPublicNetTypes
-
-# Avalonia is now a reusable host in both branches. CadCommon, not Avalonia, identifies
-# the demo/application layout and therefore the newer demo SDK policy.
-$isDemoBranchLayout = Test-Path (Join-Path $RepositoryRoot "src\CadCommon\CadCommon.csproj") -PathType Leaf
-$expectedSdkVersion = if ($isDemoBranchLayout) { $demoSdkVersion } else { $coreSdkVersion }
-$sdkPolicyName = if ($isDemoBranchLayout) { "demo" } else { "core" }
 
 foreach ($entry in ([ordered]@{
     bridgeVersion = $expectedVersion
@@ -36,8 +29,7 @@ foreach ($entry in ([ordered]@{
     cmakeMinimumVersion = $expectedCmakeVersion
     contactEmail = $expectedContactEmail
     targetFramework = $expectedTargetFramework
-    coreSdkVersion = $coreSdkVersion
-    demoSdkVersion = $demoSdkVersion
+    sdkVersion = $expectedSdkVersion
     languageVersion = $expectedLanguageVersion
 }).GetEnumerator()) {
     if ([string]::IsNullOrWhiteSpace([string]$entry.Value)) { throw "Bridge contract value is missing: $($entry.Key)" }
@@ -72,8 +64,8 @@ $contracts = [ordered]@{
         "<TargetFramework>$expectedTargetFramework</TargetFramework>",
         "<AssemblyName>OcctNet.Avalonia</AssemblyName>"
     )
-    "README.md" = @($expectedVersion, $expectedOcctVersion, $expectedContactEmail)
-    "README.zh-CN.md" = @($expectedVersion, $expectedOcctVersion, $expectedContactEmail)
+    "README.md" = @($expectedVersion, $expectedOcctVersion, $expectedSdkVersion, $expectedContactEmail)
+    "README.zh-CN.md" = @($expectedVersion, $expectedOcctVersion, $expectedSdkVersion, $expectedContactEmail)
     "docs/API_COVERAGE.md" = @(
         "Native exports", [string]$expectedNativeCount,
         "Managed P/Invoke declarations", [string]$expectedManagedCount,
@@ -155,12 +147,12 @@ foreach ($path in $machineSpecificFiles) {
     }
 }
 
-Write-Host ("[version] Bridge {0}, ABI {1}, OCCT {2}, {3} SDK {4}, API {5}/{6}, primary types {7}, compatibility types {8}, contact {9}." -f
+Write-Host ("[version] Bridge {0}, ABI {1}, OCCT {2}, build SDK {3}, target {4}, API {5}/{6}, primary types {7}, compatibility types {8}, contact {9}." -f
     $expectedVersion,
     $expectedAbiVersion,
     $expectedOcctVersion,
-    $sdkPolicyName,
     $expectedSdkVersion,
+    $expectedTargetFramework,
     $expectedNativeCount,
     $expectedManagedCount,
     $expectedPublicTypeCount,
