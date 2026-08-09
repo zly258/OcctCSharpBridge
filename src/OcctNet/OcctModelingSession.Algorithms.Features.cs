@@ -2,69 +2,6 @@
 
 public sealed partial class OcctModelingSession
 {
-    public OcctModelAlgorithmResult Boolean(
-        OcctBooleanOperation operation,
-        OcctModelShape left,
-        OcctModelShape right,
-        OcctModelBooleanOptions? options = null)
-    {
-        EnsureShape(left);
-        EnsureShape(right);
-        if (!Enum.IsDefined(operation)) throw new ArgumentOutOfRangeException(nameof(operation));
-        var actual = options ?? OcctModelBooleanOptions.Default;
-        ValidateBooleanOptions(actual, nameof(options));
-        var native = actual.ToNative();
-        return CheckAlgorithm(ModelNativeMethods.occt_model_boolean(
-            _handle,
-            (int)operation,
-            left.Id,
-            right.Id,
-            in native));
-    }
-
-    public OcctModelAlgorithmResult Fuse(
-        OcctModelShape left,
-        OcctModelShape right,
-        OcctModelBooleanOptions? options = null) =>
-        Boolean(OcctBooleanOperation.Fuse, left, right, options);
-
-    public OcctModelAlgorithmResult Cut(
-        OcctModelShape left,
-        OcctModelShape right,
-        OcctModelBooleanOptions? options = null) =>
-        Boolean(OcctBooleanOperation.Cut, left, right, options);
-
-    public OcctModelAlgorithmResult Common(
-        OcctModelShape left,
-        OcctModelShape right,
-        OcctModelBooleanOptions? options = null) =>
-        Boolean(OcctBooleanOperation.Common, left, right, options);
-
-    public OcctModelAlgorithmResult Section(
-        OcctModelShape left,
-        OcctModelShape right,
-        OcctModelBooleanOptions? options = null) =>
-        Boolean(OcctBooleanOperation.Section, left, right, options);
-
-    public OcctModelAlgorithmResult Split(
-        IEnumerable<OcctModelShape> objects,
-        IEnumerable<OcctModelShape> tools,
-        OcctModelBooleanOptions? options = null)
-    {
-        var objectIds = ShapeIds(objects);
-        var toolIds = ShapeIds(tools);
-        var actual = options ?? OcctModelBooleanOptions.Default;
-        ValidateBooleanOptions(actual, nameof(options));
-        var native = actual.ToNative();
-        return CheckAlgorithm(ModelNativeMethods.occt_model_split(
-            _handle,
-            objectIds,
-            objectIds.Length,
-            toolIds,
-            toolIds.Length,
-            in native));
-    }
-
     public OcctModelAlgorithmResult Extrude(OcctModelShape profile, OcctVector3d vector)
     {
         EnsureShape(profile);
@@ -189,48 +126,5 @@ public sealed partial class OcctModelingSession
             indices.Length,
             thickness,
             tolerance));
-    }
-
-    public OcctModelAlgorithmResult UnifySameDomain(
-        OcctModelShape shape,
-        bool unifyEdges = true,
-        bool unifyFaces = true,
-        bool concatenateBSplines = false)
-    {
-        EnsureShape(shape);
-        return CheckAlgorithm(ModelNativeMethods.occt_model_unify_same_domain(
-            _handle,
-            shape.Id,
-            unifyEdges ? 1 : 0,
-            unifyFaces ? 1 : 0,
-            concatenateBSplines ? 1 : 0));
-    }
-
-    public OcctModelAlgorithmResult FixShape(
-        OcctModelShape shape,
-        double precision = 1e-7,
-        double minTolerance = 1e-7,
-        double maxTolerance = 1.0)
-    {
-        EnsureShape(shape);
-        OcctGuard.Positive(precision, nameof(precision));
-        OcctGuard.NonNegative(minTolerance, nameof(minTolerance));
-        OcctGuard.Positive(maxTolerance, nameof(maxTolerance));
-        if (minTolerance > maxTolerance)
-            throw new ArgumentException("minTolerance must not exceed maxTolerance.", nameof(minTolerance));
-        return CheckAlgorithm(ModelNativeMethods.occt_model_fix_shape(
-            _handle,
-            shape.Id,
-            precision,
-            minTolerance,
-            maxTolerance));
-    }
-
-    private static void ValidateBooleanOptions(OcctModelBooleanOptions options, string parameterName)
-    {
-        OcctGuard.NonNegative(options.FuzzyValue, $"{parameterName}.{nameof(options.FuzzyValue)}");
-        OcctGuard.Positive(options.AngularTolerance, $"{parameterName}.{nameof(options.AngularTolerance)}");
-        if (!Enum.IsDefined(options.Glue))
-            throw new ArgumentOutOfRangeException(parameterName, options.Glue, "Boolean glue mode is invalid.");
     }
 }
