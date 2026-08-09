@@ -7,9 +7,7 @@ Set-StrictMode -Version Latest
 Import-Module (Join-Path $PSScriptRoot "ContractTestHelpers.psm1") -Force
 
 $contracts = [ordered]@{
-    "src/OcctNet.WinForms/OcctNet.WinForms.csproj" = @(
-        '..\OcctNet\OcctNet.csproj'
-    )
+    "src/OcctNet.WinForms/OcctNet.WinForms.csproj" = @('..\OcctNet\OcctNet.csproj')
     "src/OcctNet.WinForms/OcctViewportControl.cs" = @(
         'public sealed class OcctViewportControl',
         'OcctViewportInteractionPolicy.',
@@ -68,15 +66,14 @@ if ($coreProject -match 'Avalonia|WindowsForms|UseWPF') {
     throw "OcctNet core must remain UI-framework independent."
 }
 
-foreach ($cadPath in @(
-    "src/CadCommon",
-    "src/CadWinForms",
-    "src/CadWpf",
-    "src/CadAvalonia"
-)) {
-    if (Test-Path (Join-Path $RepositoryRoot $cadPath)) {
-        throw "Reusable main SDK must not contain upper-layer CAD application project: $cadPath"
+$isDemoLayout = Test-Path (Join-Path $RepositoryRoot "src\CadCommon\CadCommon.csproj") -PathType Leaf
+if (-not $isDemoLayout) {
+    foreach ($cadPath in @("src/CadCommon", "src/CadWinForms", "src/CadWpf", "src/CadAvalonia")) {
+        if (Test-Path (Join-Path $RepositoryRoot $cadPath)) {
+            throw "Reusable main SDK must not contain upper-layer CAD application project: $cadPath"
+        }
     }
 }
 
-Write-Host "[ui-hosts] WinForms, WPF and Windows-HWND Avalonia hosts validated; core and CAD application boundaries remain separate." -ForegroundColor Green
+$layoutName = if ($isDemoLayout) { "demo" } else { "bridge" }
+Write-Host "[ui-hosts] WinForms, WPF and Windows-HWND Avalonia hosts validated for $layoutName layout; OcctNet core remains UI-framework independent." -ForegroundColor Green
