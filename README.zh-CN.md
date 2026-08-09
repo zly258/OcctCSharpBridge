@@ -13,13 +13,13 @@
 - Windows x64
 - Open CASCADE Technology **7.9.0**，VC14 x64 目录结构
 - 本分支 .NET SDK **10.0.302**，由 `global.json` 固定
-- 目标框架 **`net8.0-windows`**
-- C# 12.0
+- 目标框架 **`net10.0-windows`**
+- C# 14.0
 - CMake 3.21+
 - Avalonia `12.1.0`
 - Bridge `2.6.0`，Native ABI `3`
 
-`bridge-contract.json` 与 `main` 共享，是版本、ABI、OCCT、.NET 和 API 数量的唯一契约来源。`global.json` 在 `main` 与 `demo` 均统一使用 .NET SDK **10.0.302**；对外目标仍为 **`net8.0-windows` / C# 12**。较新的 SDK 只用于构建工具链，不提高使用方的目标框架要求。
+`bridge-contract.json` 与 `main` 共享，是版本、ABI、OCCT、.NET 和 API 数量的唯一契约来源。两个分支统一使用 .NET SDK **10.0.302**、目标 **`net10.0-windows`**、C# **14.0**。Framework-dependent 桌面程序需要 .NET Desktop Runtime **10.x**；运行时遵循正常的补丁版本前滚规则，不固定到某一个 `10.0.x` 补丁。
 
 **NuGet SDK 打包只属于 `main` 分支。** `demo` 中四个共享 Bridge/Host 项目以及四个 `OcctDemo.*` 项目均不承担 NuGet SDK 发布；本分支只负责可运行桌面示例及 app-local Native 依赖闭包发布。
 
@@ -182,7 +182,7 @@ PowerShell 负责 API/静态/UI 契约；`OcctNet.ManagedTests` 无需 OCCT，�
   - `OcctNative.dll [存在]` 但 `TKernel.dll [缺失]`：OCCT Native 依赖闭包不完整，重新发布完整包。
   - 两者均为 `[存在]` 但仍是 Win32 126：通常是更深层的 OCCT、第三方库或 Visual C++ Runtime 缺失/版本不匹配。先检查 `native-dependencies.txt`；如果原因仍不明确，使用 `-Diagnostics` 重新发布，并检查 `native-resolution.txt`、`runtime-manifest.txt` 以及 `%LOCALAPPDATA%\OcctCSharpBridge\Logs` 下的崩溃日志。
 - Avalonia Analyzer/编译器不匹配：使用本分支 `global.json` 固定 SDK。
-- Avalonia 启动异常：同时查看 `src\OcctDemo.Avalonia\bin\x64\<Configuration>\net8.0-windows\CAD-Avalonia.log` 和上述共享崩溃日志。
+- Avalonia 启动异常：同时查看 `src\OcctDemo.Avalonia\bin\x64\<Configuration>\net10.0-windows\CAD-Avalonia.log` 和上述共享崩溃日志。
 
 ## 许可证
 
