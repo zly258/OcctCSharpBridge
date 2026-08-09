@@ -1,0 +1,61 @@
+﻿name: Website Contract Fix Once
+
+on:
+  push:
+    branches:
+      - website
+    paths:
+      - .github/workflows/website-contract-fix-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout website
+        uses: actions/checkout@v6
+        with:
+          ref: website
+          fetch-depth: 1
+
+      - name: Correct visible contract values and remove workflow
+        shell: python
+        run: |
+          from pathlib import Path
+
+          index_path = Path("index.html")
+          index = index_path.read_text(encoding="utf-8-sig")
+          old_stat = '<article><strong>95</strong><span data-i18n="statTypes">'
+          new_stat = '<article><strong>99</strong><span data-i18n="statTypes">'
+          if old_stat in index:
+              index = index.replace(old_stat, new_stat)
+          if new_stat not in index:
+              raise SystemExit("Expected public .NET type statistic was not found.")
+          index_path.write_text(index, encoding="utf-8-sig")
+
+          app_path = Path("app.js")
+          app = app_path.read_text(encoding="utf-8-sig")
+          app = app.replace(
+              "WinForms、WPF、Avalonia 与 Avalonia 的 CAD 交互",
+              "WinForms、WPF 与 Avalonia 的 CAD 交互")
+          app = app.replace(
+              "WinForms、WPF、Avalonia 与 Avalonia 示例",
+              "WinForms、WPF 与 Avalonia 示例")
+          if "Avalonia 与 Avalonia" in app:
+              raise SystemExit("Duplicate Avalonia wording remains.")
+          app_path.write_text(app, encoding="utf-8-sig")
+
+          Path(".github/workflows/website-contract-fix-once.yml").unlink()
+
+      - name: Commit correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Correct final website contract values"
+          git push origin HEAD:website
