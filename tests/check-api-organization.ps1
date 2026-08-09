@@ -35,7 +35,9 @@ $requiredFiles = @(
     "src/OcctNet/OcctModelingSession.Geometry.Primitives.cs",
     "src/OcctNet/OcctModelingSession.Geometry.Assembly.cs",
     "src/OcctNet/OcctModelingSession.Geometry.Transform.cs",
-    "src/OcctNet/OcctModelingSession.Algorithms.cs",
+    "src/OcctNet/OcctModelingSession.Algorithms.Boolean.cs",
+    "src/OcctNet/OcctModelingSession.Algorithms.Features.cs",
+    "src/OcctNet/OcctModelingSession.Algorithms.Healing.cs",
     "src/OcctNet/OcctModelingSession.Analysis.cs",
     "src/OcctNet/OcctModelingSession.Mesh.cs",
     "src/OcctNet/OcctModelingSession.Exchange.cs",
@@ -57,6 +59,10 @@ $requiredFiles = @(
     "src/OcctNet/ModelNativeMethods.Geometry.Primitives.cs",
     "src/OcctNet/ModelNativeMethods.Geometry.Assembly.cs",
     "src/OcctNet/ModelNativeMethods.Geometry.Transform.cs",
+    "src/OcctNet/ModelNativeMethods.Algorithms.Boolean.cs",
+    "src/OcctNet/ModelNativeMethods.Algorithms.Features.cs",
+    "src/OcctNet/ModelNativeMethods.Algorithms.Healing.cs",
+    "src/OcctNet/ModelNativeMethods.History.cs",
     "src/OcctNet/ModelNativeMethods.Analysis.cs",
     "src/OcctNet/ModelNativeMethods.Mesh.cs",
     "src/OcctNet/ModelNativeMethods.Exchange.cs",
@@ -74,7 +80,9 @@ $forbiddenFiles = @(
     "src/OcctNet/OcctEngine.Geometry.cs",
     "src/OcctNet/NativeMethods.Modeling.cs",
     "src/OcctNet/OcctModelingSession.Geometry.cs",
-    "src/OcctNet/ModelNativeMethods.Geometry.cs"
+    "src/OcctNet/ModelNativeMethods.Geometry.cs",
+    "src/OcctNet/OcctModelingSession.Algorithms.cs",
+    "src/OcctNet/ModelNativeMethods.Algorithms.cs"
 )
 foreach ($relativePath in $forbiddenFiles) {
     if (Test-Path (Join-Path $RepositoryRoot $relativePath)) {
@@ -113,6 +121,13 @@ $canonicalContracts = [ordered]@{
     "src/OcctNet/ModelNativeMethods.Geometry.Primitives.cs" = @("occt_model_make_box", "occt_model_make_cylinder", "occt_model_make_cone", "occt_model_make_sphere", "occt_model_make_torus", "occt_model_make_wedge")
     "src/OcctNet/ModelNativeMethods.Geometry.Assembly.cs" = @("occt_model_make_compound", "occt_model_make_wire", "occt_model_sew", "occt_model_make_solid_from_shell")
     "src/OcctNet/ModelNativeMethods.Geometry.Transform.cs" = @("occt_model_translate", "occt_model_rotate", "occt_model_scale", "occt_model_mirror_plane")
+    "src/OcctNet/OcctModelingSession.Algorithms.Boolean.cs" = @("public OcctModelAlgorithmResult Boolean(", "public OcctModelAlgorithmResult Fuse(", "public OcctModelAlgorithmResult Cut(", "public OcctModelAlgorithmResult Common(", "public OcctModelAlgorithmResult Section(", "public OcctModelAlgorithmResult Split(")
+    "src/OcctNet/OcctModelingSession.Algorithms.Features.cs" = @("public OcctModelAlgorithmResult Extrude(", "public OcctModelAlgorithmResult Revolve(", "public OcctModelAlgorithmResult Sweep(", "public OcctModelAlgorithmResult Loft(", "public OcctModelAlgorithmResult FilletEdges(", "public OcctModelAlgorithmResult ChamferEdges(", "public OcctModelAlgorithmResult OffsetShape(", "public OcctModelAlgorithmResult MakeThickSolid(")
+    "src/OcctNet/OcctModelingSession.Algorithms.Healing.cs" = @("public OcctModelAlgorithmResult UnifySameDomain(", "public OcctModelAlgorithmResult FixShape(")
+    "src/OcctNet/ModelNativeMethods.Algorithms.Boolean.cs" = @("occt_model_boolean", "occt_model_split")
+    "src/OcctNet/ModelNativeMethods.Algorithms.Features.cs" = @("occt_model_extrude", "occt_model_revolve", "occt_model_sweep", "occt_model_loft", "occt_model_fillet_edges", "occt_model_chamfer_edges", "occt_model_offset", "occt_model_thick_solid")
+    "src/OcctNet/ModelNativeMethods.Algorithms.Healing.cs" = @("occt_model_unify_same_domain", "occt_model_fix_shape")
+    "src/OcctNet/ModelNativeMethods.History.cs" = @("occt_model_history_generated_count", "occt_model_history_generated_at", "occt_model_history_modified_count", "occt_model_history_modified_at", "occt_model_history_is_removed")
     "src/OcctNet/OcctModelingSession.ShapeQueries.cs" = @("GetShapeOrientation", "IsShapeClosed", "IsShapeValid", "GetShapeMaximumTolerance", "GetShapeCheckReport", "GetShapeBounds", "GetShapeDistance", "GetShapeLocation", "SetShapeLocation")
     "src/OcctNet/OcctModelingSession.Topology.cs" = @("GetSubshapeAt", "GetSubshapes", "GetOuterWire", "GetInnerWires", "GetAncestors")
     "src/OcctNet/OcctModelingSession.GeometryQueries.cs" = @("EvaluateEdge(", "GetEdgeCurveType", "GetFaceSurfaceType", "GetFaceUvBounds", "EvaluateFace(")
@@ -170,6 +185,14 @@ Assert-NoResponsibilityTokens "src/OcctNet/ModelNativeMethods.Geometry.Planar.cs
 Assert-NoResponsibilityTokens "src/OcctNet/ModelNativeMethods.Geometry.Primitives.cs" @("occt_model_make_arc_center", "occt_model_make_face_from_wire", "occt_model_make_wire", "occt_model_translate") "curve/planar/assembly/transform PInvoke"
 Assert-NoResponsibilityTokens "src/OcctNet/ModelNativeMethods.Geometry.Assembly.cs" @("occt_model_make_circle", "occt_model_make_plane_face", "occt_model_make_sphere", "occt_model_translate") "curve/planar/primitive/transform PInvoke"
 Assert-NoResponsibilityTokens "src/OcctNet/ModelNativeMethods.Geometry.Transform.cs" @("occt_model_make_line", "occt_model_make_plane_face", "occt_model_make_box", "occt_model_make_compound") "geometry construction PInvoke"
+
+Assert-NoResponsibilityTokens "src/OcctNet/OcctModelingSession.Algorithms.Boolean.cs" @("public OcctModelAlgorithmResult Extrude(", "public OcctModelAlgorithmResult FixShape(") "feature/healing"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctModelingSession.Algorithms.Features.cs" @("public OcctModelAlgorithmResult Boolean(", "public OcctModelAlgorithmResult FixShape(") "boolean/healing"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctModelingSession.Algorithms.Healing.cs" @("public OcctModelAlgorithmResult Boolean(", "public OcctModelAlgorithmResult Extrude(") "boolean/feature"
+Assert-NoResponsibilityTokens "src/OcctNet/ModelNativeMethods.Algorithms.Boolean.cs" @("occt_model_extrude", "occt_model_fix_shape", "occt_model_history_") "feature/healing/history PInvoke"
+Assert-NoResponsibilityTokens "src/OcctNet/ModelNativeMethods.Algorithms.Features.cs" @("occt_model_boolean", "occt_model_fix_shape", "occt_model_history_") "boolean/healing/history PInvoke"
+Assert-NoResponsibilityTokens "src/OcctNet/ModelNativeMethods.Algorithms.Healing.cs" @("occt_model_boolean", "occt_model_extrude", "occt_model_history_") "boolean/feature/history PInvoke"
+Assert-NoResponsibilityTokens "src/OcctNet/ModelNativeMethods.History.cs" @("occt_model_boolean", "occt_model_extrude", "occt_model_fix_shape") "algorithm PInvoke"
 
 Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.Features.cs" @("MakeTextShape(", "MakeLengthAnnotationShape(", "AddText(", "SetText(", "AddLengthDimension(") "annotation"
 Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.AnnotationShapes.cs" @("public OcctText AddText(", "public OcctDimension AddLengthDimension(") "interactive annotation"
