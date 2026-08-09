@@ -27,7 +27,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OcctNet\OcctNet.csproj" />
-    <PackageReference Include="Avalonia" Version="12.1.0" />
+    <!-- This host has no Avalonia XAML/source-generator surface. Avalonia 12.1 analyzers
+         require a newer Roslyn than the main branch's contracted .NET 8 SDK, so only
+         analyzer assets are excluded; compile/runtime assets remain referenced normally. -->
+    <PackageReference Include="Avalonia" Version="12.1.0" ExcludeAssets="analyzers" />
     <None Include="..\..\README.md" Pack="true" PackagePath="/" Link="README.md" />
     <None Include="..\..\LICENSE" Pack="true" PackagePath="/" Link="LICENSE" />
   </ItemGroup>
