@@ -1,0 +1,126 @@
+﻿name: Demo CadSession Split Once
+
+on:
+  push:
+    branches:
+      - refactor/demo-cad-session-cleanup
+    paths:
+      - .github/workflows/demo-session-split-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  split:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout demo refactor branch
+        uses: actions/checkout@v6
+        with:
+          ref: refactor/demo-cad-session-cleanup
+          fetch-depth: 0
+
+      - name: Split CadSession by responsibility
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+
+          $path = 'src/CadCommon/CadSession.cs'
+          $lines = [System.IO.File]::ReadAllLines((Resolve-Path $path))
+
+          function Find-LineIndex([string]$needle) {
+            for ($index = 0; $index -lt $lines.Length; $index++) {
+              if ($lines[$index].Contains($needle)) { return $index }
+            }
+            throw "CadSession split marker was not found: $needle"
+          }
+
+          function Slice([int]$start, [int]$endExclusive) {
+            if ($start -lt 0 -or $endExclusive -lt $start -or $endExclusive -gt $lines.Length) {
+              throw "Invalid CadSession slice: $start..$endExclusive"
+            }
+            if ($start -eq $endExclusive) { return @() }
+            return @($lines[$start..($endExclusive - 1)])
+          }
+
+          function Write-Utf8Bom([string]$target, [string[]]$content) {
+            $text = [string]::Join("`r`n", $content) + "`r`n"
+            [System.IO.File]::WriteAllText($target, $text, [System.Text.UTF8Encoding]::new($true))
+          }
+
+          $execute = Find-LineIndex 'public CadCommandResult Execute('
+          $undo = Find-LineIndex 'public void Undo()'
+          $newDocument = Find-LineIndex 'public void NewDocument()'
+          $createRectangle = Find-LineIndex 'private CadCommandResult CreateRectangle('
+          $analyzeBounds = Find-LineIndex 'private CadCommandResult AnalyzeBounds()'
+          $demoPrimitives = Find-LineIndex 'private CadCommandResult DemoPrimitives()'
+          $local = Find-LineIndex 'private static string Local('
+
+          $ordered = @($execute, $undo, $newDocument, $createRectangle, $analyzeBounds, $demoPrimitives, $local)
+          for ($index = 1; $index -lt $ordered.Count; $index++) {
+            if ($ordered[$index] -le $ordered[$index - 1]) {
+              throw 'CadSession split markers are not in the expected order.'
+            }
+          }
+
+          $core = @()
+          $core += Slice 0 $execute
+          $core += Slice $newDocument $createRectangle
+          $core += Slice $local $lines.Length
+          Write-Utf8Bom $path $core
+
+          $prefix = @(
+            'using OcctNet;',
+            '',
+            'namespace CadCommon;',
+            '',
+            'public sealed partial class CadSession',
+            '{'
+          )
+
+          $commands = @(
+            'using System.Drawing;',
+            'using OcctNet;',
+            '',
+            'namespace CadCommon;',
+            '',
+            'public sealed partial class CadSession',
+            '{'
+          )
+          $commands += Slice $execute $undo
+          $commands += Slice $createRectangle $analyzeBounds
+          $commands += '}'
+          Write-Utf8Bom 'src/CadCommon/CadSession.Commands.cs' $commands
+
+          $history = @($prefix)
+          $history += Slice $undo $newDocument
+          $history += '}'
+          Write-Utf8Bom 'src/CadCommon/CadSession.History.cs' $history
+
+          $analysis = @($prefix)
+          $analysis += Slice $analyzeBounds $demoPrimitives
+          $analysis += '}'
+          Write-Utf8Bom 'src/CadCommon/CadSession.Analysis.cs' $analysis
+
+          $demos = @(
+            'using System.Drawing;',
+            'using OcctNet;',
+            '',
+            'namespace CadCommon;',
+            '',
+            'public sealed partial class CadSession',
+            '{'
+          )
+          $demos += Slice $demoPrimitives $local
+          $demos += '}'
+          Write-Utf8Bom 'src/CadCommon/CadSession.Demos.cs' $demos
+
+          Remove-Item '.github/workflows/demo-session-split-once.yml' -Force
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/CadCommon/CadSession.cs src/CadCommon/CadSession.Commands.cs src/CadCommon/CadSession.History.cs src/CadCommon/CadSession.Analysis.cs src/CadCommon/CadSession.Demos.cs .github/workflows/demo-session-split-once.yml
+          git commit -m 'Split CadSession by existing responsibilities'
+          git push origin HEAD:refactor/demo-cad-session-cleanup
