@@ -149,6 +149,17 @@ internal static class PublicApiSnapshot
         if (!type.IsGenericType) return type.FullName ?? type.Name;
 
         var definitionName = type.GetGenericTypeDefinition().FullName ?? type.Name;
+        // The WindowsDesktop reference pack changed the generated WinForms IHandle<T>
+        // FullName between .NET 8 and .NET 10. It is inherited framework metadata, not
+        // an OcctNet API change, so keep the established snapshot spelling stable.
+        if (string.Equals(
+                definitionName,
+                "Windows.Win32.Foundation.IHandle`1",
+                StringComparison.Ordinal))
+        {
+            definitionName = "IHandle`1";
+        }
+
         var tick = definitionName.IndexOf('`');
         if (tick >= 0) definitionName = definitionName[..tick];
         return definitionName + "<" + string.Join(",", type.GetGenericArguments().Select(FormatType)) + ">";
