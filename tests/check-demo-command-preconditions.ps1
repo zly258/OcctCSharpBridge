@@ -30,6 +30,7 @@ function Read-PartialSet {
 
 $preconditions = Read-RequiredText "src\CadCommon\CadSession.Preconditions.cs"
 $session = Read-RequiredText "src\CadCommon\CadSession.cs"
+$commands = Read-RequiredText "src\CadCommon\CadSession.Commands.cs"
 $winForms = Read-PartialSet "src\CadWinForms" "MainForm*.cs"
 $wpf = Read-PartialSet "src\CadWpf" "MainWindow*.cs"
 
@@ -75,13 +76,15 @@ if (-not $preconditions.Contains("commandId is CadCommandId.LengthDimension") -o
     throw "All dimension commands must share the structured edge-hit precondition path."
 }
 
-if (-not $session.Contains("public sealed partial class CadSession")) {
-    throw "CadSession must be partial so command preconditions stay in a dedicated category file."
+if (-not $session.Contains("public sealed partial class CadSession") -or
+    -not $commands.Contains("public sealed partial class CadSession")) {
+    throw "CadSession core and command responsibilities must remain partials of the same session type."
 }
-if (-not $session.Contains("EnsureCommandAvailable(commandId);")) {
-    throw "CadSession.Execute must enforce preconditions for non-UI callers."
+if (-not $commands.Contains("public CadCommandResult Execute(") -or
+    -not $commands.Contains("EnsureCommandAvailable(commandId);")) {
+    throw "CadSession.Commands.Execute must enforce preconditions for non-UI callers."
 }
-if ($session.Contains("if (selectedObjectIds.Count == 0 && ActiveObject")) {
+if ($commands.Contains("if (selectedObjectIds.Count == 0 && ActiveObject")) {
     throw "Command history must not silently substitute ActiveObject for an explicit selection."
 }
 
@@ -102,4 +105,4 @@ foreach ($entry in @(
     }
 }
 
-Write-Host "[demo-preconditions] Selection count, topology suitability, structured subshape hits, split UI early checks, and execution safeguards validated." -ForegroundColor Green
+Write-Host "[demo-preconditions] Selection count, topology suitability, structured subshape hits, split command dispatch, UI early checks, and execution safeguards validated." -ForegroundColor Green
