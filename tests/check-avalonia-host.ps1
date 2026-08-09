@@ -24,7 +24,7 @@ foreach ($path in @($hostProject, $hostControl, $demoProject, $demoManifest, $de
 
 $hostProjectText = [System.IO.File]::ReadAllText($hostProject)
 foreach ($token in @(
-    '<TargetFramework>net8.0-windows</TargetFramework>',
+    '<TargetFramework>net10.0-windows</TargetFramework>',
     '<PlatformTarget>x64</PlatformTarget>',
     '<AssemblyName>OcctNet.Avalonia</AssemblyName>',
     '<PackageReference Include="Avalonia" Version="12.1.0" />',
