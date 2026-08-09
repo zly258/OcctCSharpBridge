@@ -5,6 +5,16 @@
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
+$contractPath = Join-Path $RepositoryRoot "bridge-contract.json"
+if (-not (Test-Path $contractPath -PathType Leaf)) {
+    throw "Bridge contract file is missing: bridge-contract.json"
+}
+$contract = Get-Content $contractPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$targetFramework = [string]$contract.dotnet.targetFramework
+if ([string]::IsNullOrWhiteSpace($targetFramework)) {
+    throw "Bridge contract target framework is missing."
+}
+
 $hostProject = Join-Path $RepositoryRoot "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj"
 $hostControl = Join-Path $RepositoryRoot "src\OcctNet.Avalonia\OcctAvaloniaViewport.cs"
 $demoProject = Join-Path $RepositoryRoot "src\OcctDemo.Avalonia\OcctDemo.Avalonia.csproj"
@@ -24,7 +34,7 @@ foreach ($path in @($hostProject, $hostControl, $demoProject, $demoManifest, $de
 
 $hostProjectText = [System.IO.File]::ReadAllText($hostProject)
 foreach ($token in @(
-    '<TargetFramework>net10.0-windows</TargetFramework>',
+    "<TargetFramework>$targetFramework</TargetFramework>",
     '<PlatformTarget>x64</PlatformTarget>',
     '<AssemblyName>OcctNet.Avalonia</AssemblyName>',
     '<PackageReference Include="Avalonia" Version="12.1.0" />',
@@ -63,6 +73,7 @@ if ($hostText.Contains('WindowsFormsHost') -or $hostText.Contains('System.Window
 
 $demoProjectText = [System.IO.File]::ReadAllText($demoProject)
 foreach ($token in @(
+    "<TargetFramework>$targetFramework</TargetFramework>",
     'Avalonia.Fonts.Inter',
     '<ApplicationManifest>app.manifest</ApplicationManifest>',
     '<UseWindowsForms>true</UseWindowsForms>',
@@ -91,7 +102,7 @@ foreach ($token in @('CAD-Avalonia.log', 'EnsureNativeBridgeIsDiscoverable', 'Wi
 }
 
 $buildText = [System.IO.File]::ReadAllText($buildScript)
-foreach ($token in @('Copy-OcctRuntimeDependencies', 'TKernel.dll', 'OcctThirdPartyDir')) {
+foreach ($token in @('Copy-OcctRuntimeDependencies', 'TKernel.dll', 'OcctThirdPartyDir', '$TargetFramework = [string]$Contract.dotnet.targetFramework')) {
     if (-not $buildText.Contains($token)) {
         throw "Avalonia runtime deployment contract is missing: $token"
     }
@@ -160,4 +171,4 @@ foreach ($path in $utf8Files) {
     }
 }
 
-Write-Host "[avalonia-host] Avalonia HWND host, split CAD UI parity, Windows manifest, startup diagnostics, and runtime deployment contracts validated." -ForegroundColor Green
+Write-Host "[avalonia-host] Avalonia HWND host, split CAD UI parity, $targetFramework, Windows manifest, startup diagnostics, and runtime deployment contracts validated." -ForegroundColor Green
