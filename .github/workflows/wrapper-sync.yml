@@ -36,14 +36,15 @@ jobs:
       - name: Compare reusable wrapper source
         shell: pwsh
         run: |
-          # Branch-specific policy is intentionally excluded:
-          # - global.json: demo uses its application SDK policy.
-          # - *.csproj: NuGet packaging metadata exists only on main; demo wrapper projects are non-packable.
-          # - build.ps1: main builds/packages the SDK; demo builds/publishes applications.
+          # Branch-specific application/packaging policy is intentionally excluded:
+          # - reusable *.csproj files are packable on main and non-packable on demo.
+          # - build.ps1 packages the SDK on main and builds/publishes applications on demo.
           # - main SDK guides and demo application docs may have different execution details.
+          # The .NET build SDK itself is a shared bridge contract and must stay identical.
           $fixedPaths = @(
             ".editorconfig",
             ".gitattributes",
+            "global.json",
             "bridge-contract.json",
             "Directory.Build.props",
             "src/OcctNative",
