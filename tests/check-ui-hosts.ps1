@@ -66,11 +66,22 @@ if ($coreProject -match 'Avalonia|WindowsForms|UseWPF') {
     throw "OcctNet core must remain UI-framework independent."
 }
 
-$isDemoLayout = Test-Path (Join-Path $RepositoryRoot "src\CadCommon\CadCommon.csproj") -PathType Leaf
+$newDemoProject = Join-Path $RepositoryRoot "src\OcctDemo.Common\OcctDemo.Common.csproj"
+$legacyDemoProject = Join-Path $RepositoryRoot "src\CadCommon\CadCommon.csproj"
+$isDemoLayout = (Test-Path $newDemoProject -PathType Leaf) -or (Test-Path $legacyDemoProject -PathType Leaf)
 if (-not $isDemoLayout) {
-    foreach ($cadPath in @("src/CadCommon", "src/CadWinForms", "src/CadWpf", "src/CadAvalonia")) {
-        if (Test-Path (Join-Path $RepositoryRoot $cadPath)) {
-            throw "Reusable main SDK must not contain upper-layer CAD application project: $cadPath"
+    foreach ($demoPath in @(
+        "src/OcctDemo.Common",
+        "src/OcctDemo.WinForms",
+        "src/OcctDemo.Wpf",
+        "src/OcctDemo.Avalonia",
+        "src/CadCommon",
+        "src/CadWinForms",
+        "src/CadWpf",
+        "src/CadAvalonia"
+    )) {
+        if (Test-Path (Join-Path $RepositoryRoot $demoPath)) {
+            throw "Reusable main SDK must not contain upper-layer demo application project: $demoPath"
         }
     }
 }
