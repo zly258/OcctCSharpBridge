@@ -1,6 +1,4 @@
-﻿using System.ComponentModel;
-
-namespace OcctNet;
+﻿namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
@@ -20,13 +18,6 @@ public sealed partial class OcctEngine
         Check(NativeMethods.occt_shape_bounds(_handle, shape.Id, out var result));
         return result;
     }
-
-    /// <summary>
-    /// Bridge 2.5 source-compatibility entry point. New code should use
-    /// <see cref="GetShapeBounds(OcctShape)"/>.
-    /// </summary>
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public OcctBounds GetBounds(OcctShape shape) => GetShapeBounds(shape);
 
     public OcctMassProperties GetShapeLinearProperties(OcctShape shape) =>
         GetProperties(shape, NativeMethods.occt_shape_linear_properties);
