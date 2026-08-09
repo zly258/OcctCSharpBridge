@@ -8,7 +8,7 @@ OcctCSharpBridge intentionally separates the **managed SDK** from the **native O
 .\build.ps1 pack Release
 ```
 
-Four SDK packages are produced:
+Four SDK packages are produced for the target framework declared by `bridge-contract.json` (currently **`net10.0-windows`**):
 
 ```text
 artifacts/packages/
@@ -22,7 +22,7 @@ artifacts/packages/
 └─ OcctNet.Avalonia.<version>.snupkg
 ```
 
-The version comes from `bridge-contract.json`.
+The package version and managed target contract come from `bridge-contract.json`; package validation does not duplicate the target framework as an independent constant.
 
 ## Package responsibilities
 
@@ -49,9 +49,15 @@ Explicitly excluded:
 - OCCT `TK*.dll` libraries;
 - third-party OCCT runtime DLLs;
 - OCCT resource directories;
-- CadCommon or complete CAD application code.
+- `OcctDemo.*` orchestration/application code or any complete CAD application code.
 
 `tests/check-sdk-package.ps1` and `build.ps1 pack` enforce these boundaries.
+
+## .NET runtime requirement
+
+The current packages target `net10.0-windows`. Framework-dependent desktop applications therefore require the .NET Desktop Runtime 10.x. Normal .NET patch roll-forward applies; the SDK is pinned to 10.0.302 for reproducible builds, while consuming applications are not pinned to one exact `10.0.x` runtime patch.
+
+Self-contained application publishing, when desired, is an application-level concern on `demo`; the reusable managed NuGet packages remain framework packages and do not embed a .NET runtime.
 
 ## Why native runtime deployment stays separate
 
@@ -76,7 +82,7 @@ var report = OcctRuntime.GetDiagnosticReport();
 
 ## Application publishing
 
-Complete desktop publishing belongs to `demo`, because only the application layer knows the actual executables, CadCommon, resources, and app-local native dependency closure.
+Complete desktop publishing belongs to `demo`, because only the application layer knows the actual executables, `OcctDemo.Common`, application resources, and app-local native dependency closure.
 
 On a Windows machine with OCCT 7.9.0, run the native release gate first:
 
