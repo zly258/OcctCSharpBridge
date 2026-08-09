@@ -8,7 +8,8 @@ Set-StrictMode -Version Latest
 $projects = @(
     "src/OcctNet/OcctNet.csproj",
     "src/OcctNet.WinForms/OcctNet.WinForms.csproj",
-    "src/OcctNet.Wpf/OcctNet.Wpf.csproj"
+    "src/OcctNet.Wpf/OcctNet.Wpf.csproj",
+    "src/OcctNet.Avalonia/OcctNet.Avalonia.csproj"
 )
 
 foreach ($relativePath in $projects) {
@@ -33,6 +34,17 @@ foreach ($relativePath in $projects) {
     }
 }
 
+$avaloniaProject = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet.Avalonia/OcctNet.Avalonia.csproj"))
+foreach ($token in @(
+    '<TargetFramework>net8.0-windows</TargetFramework>',
+    '<AssemblyName>OcctNet.Avalonia</AssemblyName>',
+    '<PackageReference Include="Avalonia" Version="12.1.0" />'
+)) {
+    if (-not $avaloniaProject.Contains($token)) {
+        throw "Avalonia host package contract is missing: $token"
+    }
+}
+
 foreach ($relativePath in @(
     "docs/GETTING_STARTED.md",
     "docs/GETTING_STARTED.zh-CN.md",
@@ -47,6 +59,8 @@ foreach ($relativePath in @(
 $buildScript = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "build.ps1"))
 foreach ($token in @(
     'ValidateSet("validate", "native", "managed", "pack", "smoke", "ci", "all")',
+    'Avalonia = "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj"',
+    '$PackageProjects = @("Core", "WinForms", "Wpf", "Avalonia")',
     '"pack" { Pack-ManagedSdk }',
     'Pack-ManagedSdk -SkipBuild',
     'artifacts\packages'
@@ -56,4 +70,4 @@ foreach ($token in @(
     }
 }
 
-Write-Host "[package] Main-branch managed SDK packaging metadata, documentation and pack target validated." -ForegroundColor Green
+Write-Host "[package] Four reusable managed SDK packages, documentation and pack target validated." -ForegroundColor Green
