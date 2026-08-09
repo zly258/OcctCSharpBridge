@@ -96,6 +96,8 @@ add_library(OcctNative SHARED
     OcctModelingGeometry.Transform.cpp
     OcctModelingAlgorithms.cpp
     OcctModelingAnalysis.cpp
+    OcctModelingMesh.cpp
+    OcctModelingExchange.cpp
     OcctModelingAnalyticGeometry.cpp
     OcctModelingDifferentialGeometry.cpp
     OcctModelingExtensions.cpp
