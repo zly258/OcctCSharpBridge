@@ -18,6 +18,7 @@ using Forms = System.Windows.Forms;
 using Button = Avalonia.Controls.Button;
 using CheckBox = Avalonia.Controls.CheckBox;
 using ContextMenu = Avalonia.Controls.ContextMenu;
+using Menu = Avalonia.Controls.Menu;
 using MenuItem = Avalonia.Controls.MenuItem;
 using ComboBox = Avalonia.Controls.ComboBox;
 using Control = Avalonia.Controls.Control;
@@ -187,9 +188,6 @@ public sealed partial class MainWindow : Window
         RefreshObjectTree();
         UpdateHistoryUi();
     }
-
-
-
 
 
 
