@@ -12,6 +12,8 @@ $requiredFiles = @(
     "src/OcctNet/OcctEngine.Objects.cs",
     "src/OcctNet/OcctEngine.Geometry.cs",
     "src/OcctNet/OcctEngine.Features.cs",
+    "src/OcctNet/OcctEngine.AnnotationShapes.cs",
+    "src/OcctNet/OcctEngine.Annotations.cs",
     "src/OcctNet/OcctSafeHandles.cs",
     "src/OcctNet/OcctModelingSession.cs",
     "src/OcctNet/OcctModelingSession.ShapeQueries.cs",
@@ -56,6 +58,9 @@ $canonicalContracts = [ordered]@{
     "src/OcctNet/OcctEngine.View.cs" = @("public void Initialize(", "public void SetView(", "public void SetProjection(", "public OcctCameraState GetCamera(")
     "src/OcctNet/OcctEngine.Selection.cs" = @("public void Select(", "public void SelectRectangle(", "public IReadOnlyList<IOcctObject> SelectedObjects")
     "src/OcctNet/OcctEngine.Objects.cs" = @("public IOcctObject GetObject(", "public OcctShape GetShape(", "public bool IsShapeValid(", "public OcctBounds GetShapeBounds(", "public OcctDistanceResult GetShapeDistance(", "public OcctShape GetSubshapeAt(", "public OcctCurveType GetEdgeCurveType(", "public OcctSurfaceType GetFaceSurfaceType(", "public OcctUvBounds GetFaceUvBounds(")
+    "src/OcctNet/OcctEngine.Features.cs" = @("public OcctShape Boolean(", "public OcctShape Extrude(", "public OcctShape FilletEdges(", "public OcctShape MakeThickSolid(", "public OcctShape DrillHole(")
+    "src/OcctNet/OcctEngine.AnnotationShapes.cs" = @("public OcctShape MakeTextShape(", "public OcctShape MakeLengthAnnotationShape(", "public OcctShape MakeAngleAnnotationShape(", "public OcctShape MakeRadiusAnnotationShape(", "public OcctShape MakeDiameterAnnotationShape(")
+    "src/OcctNet/OcctEngine.Annotations.cs" = @("public OcctText AddText(", "public void SetText(", "public void SetDimensionFlyout(", "public OcctDimension AddLengthDimension(", "public OcctDimension AddAngleDimension(", "public OcctDimension AddRadiusDimension(", "public OcctDimension AddDiameterDimension(")
     "src/OcctNet/OcctModelingSession.ShapeQueries.cs" = @("GetShapeOrientation", "IsShapeClosed", "IsShapeValid", "GetShapeMaximumTolerance", "GetShapeCheckReport", "GetShapeBounds", "GetShapeDistance", "GetShapeLocation", "SetShapeLocation")
     "src/OcctNet/OcctModelingSession.Topology.cs" = @("GetSubshapeAt", "GetSubshapes", "GetOuterWire", "GetInnerWires", "GetAncestors")
     "src/OcctNet/OcctModelingSession.GeometryQueries.cs" = @("EvaluateEdge(", "GetEdgeCurveType", "GetFaceSurfaceType", "GetFaceUvBounds", "EvaluateFace(")
@@ -70,6 +75,27 @@ foreach ($contract in $canonicalContracts.GetEnumerator()) {
         if (-not $text.Contains($token)) {
             throw "Canonical managed API is missing from $($contract.Key): $token"
         }
+    }
+}
+
+$featureText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctEngine.Features.cs"))
+foreach ($misplaced in @("MakeTextShape(", "MakeLengthAnnotationShape(", "AddText(", "SetText(", "AddLengthDimension(")) {
+    if ($featureText.Contains($misplaced)) {
+        throw "OcctEngine.Features.cs contains annotation responsibility: $misplaced"
+    }
+}
+
+$annotationShapeText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctEngine.AnnotationShapes.cs"))
+foreach ($misplaced in @("public OcctText AddText(", "public OcctDimension AddLengthDimension(")) {
+    if ($annotationShapeText.Contains($misplaced)) {
+        throw "OcctEngine.AnnotationShapes.cs contains interactive annotation responsibility: $misplaced"
+    }
+}
+
+$annotationText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctEngine.Annotations.cs"))
+foreach ($misplaced in @("public OcctShape Boolean(", "public OcctShape MakeTextShape(")) {
+    if ($annotationText.Contains($misplaced)) {
+        throw "OcctEngine.Annotations.cs contains modeling/BRep annotation responsibility: $misplaced"
     }
 }
 
