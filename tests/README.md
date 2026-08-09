@@ -14,7 +14,7 @@ Native-free regression tests that run in cloud CI without an OCCT SDK. They cove
 
 `PublicApi.approved.txt` is an intentional compatibility baseline. If a public constructor, method, parameter/default value, property, event, field/enum value, base type, or interface changes, the generated snapshot differs. Update the baseline only after reviewing that the API change is intentional. This complements count-based checks: a method signature can change while the number of methods/types remains unchanged.
 
-The snapshot includes the separately tracked Bridge 2.5 compatibility surface as well as the primary 2.6 API.
+The snapshot includes the separately tracked Bridge 2.5 compatibility surface as well as the primary 2.6 API. Normal CI always compares against the committed baseline. The `OCCT_UPDATE_PUBLIC_API_SNAPSHOT` environment variable exists only for an explicit review/approval workflow that writes a replacement baseline; it is not enabled by `build.ps1` during ordinary validation.
 
 ## 2. `OcctNet.Smoke`
 
@@ -40,7 +40,7 @@ Smoke scenarios remain capability-oriented: ABI/version loading, topology, B-Spl
 | `check-topology-analysis.ps1` | Edge adjacency and strict free-boundary contract |
 | `check-native-build-structure.ps1` | Native CMake/module completeness, narrow modeling-internal boundaries, OCCT 7.9 toolkit policy, OCAF/XDE exclusion |
 | `check-runtime-diagnostics.ps1` | Structured diagnostics plus legacy text-report compatibility |
-| `check-version-contract.ps1` | Bridge/ABI/OCCT/.NET/CMake/version metadata and main-vs-demo SDK layout consistency |
+| `check-version-contract.ps1` | Bridge/ABI/OCCT/.NET/CMake/version metadata and shared main/demo build-SDK consistency |
 | `check-selection-contract.ps1` | Selection semantics and native/managed selection contract |
 | `check-viewport-api.ps1` | Reusable viewer/viewport API contract |
 | `check-ui-hosts.ps1` | WinForms/WPF/Windows-HWND Avalonia host boundaries and core UI-framework independence |
