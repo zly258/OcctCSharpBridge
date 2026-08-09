@@ -1,9 +1,11 @@
 ﻿# 快速开始
 
-OcctCSharpBridge 2.6 面向 **Windows x64**、**.NET 8** 和 **Open CASCADE Technology 7.9.0**。Managed API 主要分为两个入口：
+OcctCSharpBridge 2.6 面向 **Windows x64**、**.NET 8** 和 **Open CASCADE Technology 7.9.0**。核心 Managed API 有两个入口：
 
-- `OcctModelingSession`：无界面建模、拓扑、几何分析、三角网格、修复和文件交换。
-- `OcctEngine`：AIS/Viewer、相机、选择、显示、注释和交互式 CAD 操作。
+- `OcctModelingSession`：Headless 建模、拓扑、分析、网格、修复和文件交换；
+- `OcctEngine`：AIS/Viewer、相机、选择、显示、注释和交互式 OCCT 对象。
+
+WinForms、WPF、Avalonia 只是可选 Viewport Host。Document、Command、Tool 等 CAD 应用层职责不属于 Bridge，见 [架构边界](ARCHITECTURE_BOUNDARIES.zh-CN.md)。
 
 ## 1. 构建 Managed SDK
 
@@ -11,11 +13,38 @@ OcctCSharpBridge 2.6 面向 **Windows x64**、**.NET 8** 和 **Open CASCADE Tech
 .\build.ps1 managed Release
 ```
 
-该步骤不需要安装 OCCT。Managed 程序集版本统一读取 `bridge-contract.json`。
+不需要 OCCT SDK。会构建：
 
-## 2. 配置 OCCT 运行时
+```text
+OcctNet
+OcctNet.WinForms
+OcctNet.Wpf
+OcctNet.Avalonia
+```
 
-如果运行时没有与应用程序一起部署，请在创建第一个 Engine 或 ModelingSession 前配置：
+Avalonia Host 当前仍是 Windows HWND Adapter。
+
+## 2. OCCT SDK 与 Runtime
+
+Native 构建约定默认 OCCT 根目录：
+
+```text
+D:\tools\occt-vc144-64
+```
+
+默认目录存在时可以直接执行：
+
+```powershell
+.\build.ps1 all Release
+```
+
+如果 SDK 在其它位置：
+
+```powershell
+.\build.ps1 all Release -OcctRoot "E:\SDK\occt-7.9.0"
+```
+
+运行应用时，如果 Native Runtime 没有 app-local 部署，可在创建第一个 Engine/ModelingSession 前显式配置：
 
 ```csharp
 OcctRuntime.Configure(
@@ -23,15 +52,13 @@ OcctRuntime.Configure(
     nativeBridgeDirectory: @"D:\workspace\OcctCSharpBridge\build\native\bin\Release");
 ```
 
-正式发布包优先使用应用目录中的 `OcctNative.dll`。同时支持 `OCCT_ROOT`、`CASROOT` 和 `OCCT_BRIDGE_NATIVE_DIR`。
-
-如果出现 Win32 126 等部署问题，建议把运行时诊断信息写入日志：
+`OCCT_ROOT`、`CASROOT` 和 `OCCT_BRIDGE_NATIVE_DIR` 仍受支持。部署排查使用：
 
 ```csharp
 Console.WriteLine(OcctRuntime.GetDiagnosticReport());
 ```
 
-## 3. 无界面建模
+## 3. Headless 建模
 
 ```csharp
 using var model = new OcctModelingSession();
@@ -45,18 +72,16 @@ var hole = model.MakeCylinder(
 
 var result = model.Cut(box, hole);
 var bounds = model.GetShapeBounds(result.Shape);
-
 model.Triangulate(result.Shape);
-var mesh = model.GetShapeMesh(result.Shape);
-
+var mesh = model.GetShapeMeshData(result.Shape);
 model.ExportStep(result.Shape, @"D:\temp\part.step");
 ```
 
-ModelingSession 返回的 Shape 与该 Session 强绑定。仅在确实需要持久化时保存 Native ID；恢复时使用 `GetShape` / `TryGetShape`，不要自行构造裸句柄。
+`OcctModelShape` 与创建它的 Session 强绑定；不要通过裸 ID 伪造 Shape。
 
 ## 4. 交互式 Viewer
 
-`OcctEngine` 在执行 Viewer 操作前需要有效的原生窗口句柄：
+直接使用 `OcctEngine` 时需要原生窗口句柄：
 
 ```csharp
 using var engine = new OcctEngine();
@@ -66,9 +91,17 @@ engine.SetProjection(OcctProjectionType.Orthographic);
 engine.FitAll();
 ```
 
-WinForms/WPF 项目优先使用 `OcctNet.WinForms` 和 `OcctNet.Wpf` 中的可复用 Viewport Host，不要在业务项目重复实现 HWND 托管逻辑。
+应用通常直接使用对应 Host：
 
-## 5. Headless 模型显示到 Viewer
+```text
+WinForms  → OcctViewportControl
+WPF       → OcctWpfViewport
+Avalonia  → OcctAvaloniaViewport   (Windows HWND)
+```
+
+不要在每个业务项目重复实现 OCCT HWND 生命周期、框选和基本 Viewer 输入连接。
+
+## 5. Headless Shape 显示到 Viewer
 
 ```csharp
 using var model = new OcctModelingSession();
@@ -79,22 +112,24 @@ engine.Initialize(hwnd);
 var displayed = engine.Display(model, shape, fit: true);
 ```
 
-显示后的 `OcctShape` 属于目标 `OcctEngine`；原始 `OcctModelShape` 仍属于原 ModelingSession。
+显示后的 `OcctShape` 属于目标 `OcctEngine`；原始 `OcctModelShape` 仍属于 ModelingSession。
 
-## 6. 发布前验证
+## 6. 校验
 
-Managed 校验：
+不需要 OCCT SDK 的完整 Managed 门禁：
 
 ```powershell
 .\build.ps1 ci Release
 ```
 
-在安装了 OCCT 7.9.0 的机器执行 Native 校验：
+它覆盖静态契约、四个 Managed SDK、Managed 回归、公共 API 签名快照、Smoke 编译和 NuGet 包校验。
+
+真实 Native 发布门禁：
 
 ```powershell
 .\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-Native Smoke 覆盖 Bridge/ABI 一致性、建模、三角网格、拓扑、BREP 往返和 STEP 往返。
+只有后者能证明本机 OCCT 7.9.0 的 C++ 编译/链接、DLL 加载和真实几何/拓扑执行。
 
-Managed 包和 Native Runtime 的部署关系见 [PACKAGING.zh-CN.md](PACKAGING.zh-CN.md)。
+Managed 包与 Native Runtime 的关系见 [打包与运行时部署](PACKAGING.zh-CN.md)。
