@@ -78,6 +78,9 @@ jobs:
 
           index = Path("index.html").read_text(encoding="utf-8-sig")
           app = Path("app.js").read_text(encoding="utf-8-sig")
+          if "Avalonia 与 Avalonia" in app:
+              raise SystemExit("Duplicate Avalonia host wording found in Chinese translations")
+
           keys = sorted(set(re.findall(r'data-i18n="([A-Za-z0-9_]+)"', index)))
           missing_keys = [key for key in keys if len(re.findall(rf"\b{re.escape(key)}\s*:", app)) < 2]
           if missing_keys:
