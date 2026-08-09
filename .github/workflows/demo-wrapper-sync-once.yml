@@ -1,0 +1,152 @@
+﻿name: Demo Wrapper Sync Once
+
+on:
+  push:
+    branches:
+      - refactor/demo-cad-session-cleanup
+    paths:
+      - .github/workflows/demo-wrapper-sync-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout demo cleanup branch
+        uses: actions/checkout@v6
+        with:
+          ref: refactor/demo-cad-session-cleanup
+          fetch-depth: 0
+          path: demo
+
+      - name: Checkout latest main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 1
+          path: main
+
+      - name: Synchronize reusable bridge source
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+
+          $root = (Resolve-Path '.').Path
+          $demo = Join-Path $root 'demo'
+          $main = Join-Path $root 'main'
+
+          function Copy-FileExact([string]$relative) {
+            $source = Join-Path $main $relative
+            $target = Join-Path $demo $relative
+            if (-not (Test-Path $source -PathType Leaf)) { throw "Missing main shared file: $relative" }
+            $parent = Split-Path -Parent $target
+            if ($parent) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
+            Copy-Item $source $target -Force
+          }
+
+          function Mirror-DirectoryExact([string]$relative) {
+            $source = Join-Path $main $relative
+            $target = Join-Path $demo $relative
+            if (-not (Test-Path $source -PathType Container)) { throw "Missing main shared directory: $relative" }
+            Remove-Item $target -Recurse -Force -ErrorAction SilentlyContinue
+            New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force | Out-Null
+            Copy-Item $source $target -Recurse -Force
+          }
+
+          function Mirror-CsFiles([string]$relative) {
+            $source = Join-Path $main $relative
+            $target = Join-Path $demo $relative
+            if (-not (Test-Path $source -PathType Container)) { throw "Missing main managed source directory: $relative" }
+            if (-not (Test-Path $target -PathType Container)) { throw "Missing demo managed source directory: $relative" }
+
+            $sourceRoot = (Resolve-Path $source).Path
+            $targetRoot = (Resolve-Path $target).Path
+            $mainFiles = @(
+              Get-ChildItem $sourceRoot -Filter '*.cs' -File -Recurse |
+                ForEach-Object { $_.FullName.Substring($sourceRoot.Length + 1).Replace('\','/') } |
+                Sort-Object
+            )
+            $demoFiles = @(
+              Get-ChildItem $targetRoot -Filter '*.cs' -File -Recurse |
+                ForEach-Object { $_.FullName.Substring($targetRoot.Length + 1).Replace('\','/') } |
+                Sort-Object
+            )
+
+            foreach ($stale in @($demoFiles | Where-Object { $_ -notin $mainFiles })) {
+              Remove-Item (Join-Path $targetRoot $stale) -Force
+            }
+            foreach ($file in $mainFiles) {
+              $sourceFile = Join-Path $sourceRoot $file
+              $targetFile = Join-Path $targetRoot $file
+              New-Item -ItemType Directory -Path (Split-Path -Parent $targetFile) -Force | Out-Null
+              Copy-Item $sourceFile $targetFile -Force
+            }
+          }
+
+          foreach ($file in @(
+            '.editorconfig',
+            '.gitattributes',
+            'global.json',
+            'bridge-contract.json',
+            'Directory.Build.props',
+            '.github/workflows/wrapper-sync.yml',
+            'docs/INDEX.md',
+            'docs/INDEX.zh-CN.md',
+            'docs/ARCHITECTURE_BOUNDARIES.md',
+            'docs/ARCHITECTURE_BOUNDARIES.zh-CN.md',
+            'docs/API_COVERAGE.md',
+            'docs/API_COVERAGE.zh-CN.md',
+            'docs/SELECTION_HITS.md',
+            'docs/SELECTION_HITS.zh-CN.md',
+            'docs/GEOMETRY_UTILITIES.md',
+            'docs/GEOMETRY_UTILITIES.zh-CN.md',
+            'docs/BSPLINE_CURVES.md',
+            'docs/BSPLINE_CURVES.zh-CN.md',
+            'docs/TOPOLOGY_ANALYSIS.md',
+            'docs/TOPOLOGY_ANALYSIS.zh-CN.md',
+            'docs/SHAPE_INSPECTION.md',
+            'docs/SHAPE_INSPECTION.zh-CN.md',
+            'docs/MESH_PROVENANCE.md',
+            'docs/MESH_PROVENANCE.zh-CN.md',
+            'docs/RUNTIME_DIAGNOSTICS.md',
+            'docs/RUNTIME_DIAGNOSTICS.zh-CN.md',
+            'tests/README.md',
+            'tests/ContractTestHelpers.psm1',
+            'tests/check-api-organization.ps1',
+            'tests/check-api-surface.ps1',
+            'tests/check-geometry-api.ps1',
+            'tests/check-topology-analysis.ps1',
+            'tests/check-runtime-diagnostics.ps1',
+            'tests/check-native-build-structure.ps1',
+            'tests/check-selection-contract.ps1',
+            'tests/check-ui-hosts.ps1',
+            'tests/check-version-contract.ps1',
+            'tests/check-viewport-api.ps1'
+          )) { Copy-FileExact $file }
+
+          Mirror-DirectoryExact 'src/OcctNative'
+          Mirror-DirectoryExact 'tests/OcctNet.ManagedTests'
+          Mirror-DirectoryExact 'tests/OcctNet.Smoke'
+
+          foreach ($directory in @(
+            'src/OcctNet',
+            'src/OcctNet.WinForms',
+            'src/OcctNet.Wpf',
+            'src/OcctNet.Avalonia'
+          )) { Mirror-CsFiles $directory }
+
+          Remove-Item (Join-Path $demo '.github/workflows/demo-wrapper-sync-once.yml') -Force
+
+          Push-Location $demo
+          try {
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add -A
+            git commit -m 'Sync reusable bridge architecture from main'
+            git push origin HEAD:refactor/demo-cad-session-cleanup
+          }
+          finally { Pop-Location }
