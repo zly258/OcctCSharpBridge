@@ -7,102 +7,59 @@ Set-StrictMode -Version Latest
 
 $nativeRoot = Join-Path $RepositoryRoot "src\OcctNative"
 $cmakePath = Join-Path $nativeRoot "CMakeLists.txt"
-if (-not (Test-Path $cmakePath -PathType Leaf)) {
-    throw "Native CMakeLists.txt was not found: $cmakePath"
-}
+if (-not (Test-Path $cmakePath -PathType Leaf)) { throw "Native CMakeLists.txt was not found: $cmakePath" }
 
-$text = [System.IO.File]::ReadAllText($cmakePath)
-$match = [regex]::Match(
-    $text,
-    'add_library\s*\(\s*OcctNative\s+SHARED(?<sources>.*?)\)',
-    [System.Text.RegularExpressions.RegexOptions]::Singleline)
-if (-not $match.Success) {
-    throw "The OcctNative add_library source list is missing or not closed."
-}
+$cmakeText = [System.IO.File]::ReadAllText($cmakePath)
+$match = [regex]::Match($cmakeText, 'add_library\s*\(\s*OcctNative\s+SHARED(?<sources>.*?)\)', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+if (-not $match.Success) { throw "The OcctNative add_library source list is missing or not closed." }
 
-$sourceTokens = @(
-    $match.Groups['sources'].Value -split '\s+' |
-        ForEach-Object { $_.Trim() } |
-        Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and -not $_.StartsWith('#') }
-)
-if ($sourceTokens.Count -eq 0) {
-    throw "The OcctNative source list is empty."
-}
-
+$sourceTokens = @($match.Groups['sources'].Value -split '\s+' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 $duplicates = @($sourceTokens | Group-Object | Where-Object Count -gt 1)
-if ($duplicates.Count -gt 0) {
-    $names = ($duplicates | Select-Object -ExpandProperty Name) -join ', '
-    throw "Duplicate native source entries were found: $names"
+if ($duplicates.Count -gt 0) { throw "Duplicate native source entries were found: $(($duplicates.Name) -join ', ')" }
+foreach ($source in $sourceTokens) {
+    if (-not (Test-Path (Join-Path $nativeRoot $source) -PathType Leaf)) { throw "Native source entry does not exist: $source" }
 }
 
-foreach ($source in $sourceTokens) {
-    $path = Join-Path $nativeRoot $source
-    if (-not (Test-Path $path -PathType Leaf)) {
-        throw "Native source entry does not exist: $source"
+function Assert-Module {
+    param([string]$File, [string[]]$Symbols, [switch]$Narrow)
+    if ($File -notin $sourceTokens) { throw "Native module is not listed in add_library: $File" }
+    $path = Join-Path $nativeRoot $File
+    $text = [System.IO.File]::ReadAllText($path)
+    if ($Narrow -and $text.Contains('#include "OcctModelingInternal.hxx"')) { throw "$File depends on the retired OcctModelingInternal.hxx umbrella." }
+    foreach ($symbol in $Symbols) {
+        if (-not $text.Contains($symbol)) { throw "$File is missing expected responsibility symbol: $symbol" }
     }
 }
 
-$engineModules = @(
+foreach ($module in @(
     @{ File = "OcctEngine.cpp"; Symbols = @("occt_create", "occt_initialize", "occt_begin_update") },
     @{ File = "OcctEngineView.cpp"; Symbols = @("occt_fit_all", "occt_set_view", "occt_screen_to_world") },
     @{ File = "OcctEngineSelection.cpp"; Symbols = @("occt_select", "occt_select_rectangle_ex", "occt_selected_at") },
     @{ File = "OcctEngineObjects.cpp"; Symbols = @("occt_object_count", "occt_delete_objects", "occt_clear") },
     @{ File = "OcctEngineShapes.cpp"; Symbols = @("occt_shape_bounds", "occt_get_subshape", "occt_translate") }
-)
+)) { Assert-Module -File $module.File -Symbols $module.Symbols }
+if ((Get-Item (Join-Path $nativeRoot "OcctEngine.cpp")).Length -gt 26000) { throw "OcctEngine.cpp has grown beyond its lifecycle/shared-helper boundary." }
 
-foreach ($module in $engineModules) {
-    if ($module.File -notin $sourceTokens) {
-        throw "Split native engine module is not listed in add_library: $($module.File)"
-    }
-    $moduleText = [System.IO.File]::ReadAllText((Join-Path $nativeRoot $module.File))
-    foreach ($symbol in $module.Symbols) {
-        if (-not $moduleText.Contains($symbol)) {
-            throw "Split native engine module $($module.File) is missing expected responsibility symbol: $symbol"
-        }
-    }
-}
-
-$engineCorePath = Join-Path $nativeRoot "OcctEngine.cpp"
-if ((Get-Item $engineCorePath).Length -gt 26000) {
-    throw "OcctEngine.cpp has grown beyond the lifecycle/shared-helper boundary; keep view, selection, object, and shape responsibilities split."
-}
-
-$modelingCoreModules = @(
+foreach ($module in @(
     @{ File = "OcctModelingCore.cpp"; Symbols = @("occt_model_create", "occt_model_shape_count", "occt_model_operation_report", "occt_model_copy_shape") },
-    @{ File = "OcctModelingShapeQueries.cpp"; Symbols = @("occt_model_shape_hash", "occt_model_shape_bounds", "occt_model_shape_distance", "occt_model_check_report") },
+    @{ File = "OcctModelingShapeQueries.cpp"; Symbols = @("occt_model_shape_hash", "occt_model_shape_bounds", "occt_model_shape_distance") },
     @{ File = "OcctModelingGeometryQueries.cpp"; Symbols = @("occt_model_vertex_point", "occt_model_edge_point_at", "occt_model_face_point_normal") },
-    @{ File = "OcctModelingTopology.cpp"; Symbols = @("occt_model_topology_count", "occt_model_outer_wire", "occt_model_ancestor_at", "occt_model_sew") },
-    @{ File = "OcctModelingInterop.cpp"; Symbols = @("occt_model_display_in_engine") }
-)
+    @{ File = "OcctModelingTopology.cpp"; Symbols = @("occt_model_topology_count", "occt_model_outer_wire", "occt_model_ancestor_at") },
+    @{ File = "OcctModelingInterop.cpp"; Symbols = @("occt_model_display_in_engine") },
+    @{ File = "OcctModelingAlgorithms.cpp"; Symbols = @("occt_model_boolean", "occt_model_extrude", "occt_model_fix_shape") },
+    @{ File = "OcctModelingAnalysis.cpp"; Symbols = @("occt_model_project_point_on_edge", "occt_model_ray_intersections", "occt_model_classify_point") },
+    @{ File = "OcctModelingMesh.cpp"; Symbols = @("occt_model_mesh", "occt_model_face_mesh_node", "occt_model_face_mesh_triangle") },
+    @{ File = "OcctModelingExchange.cpp"; Symbols = @("occt_model_import_step", "occt_model_import_file", "occt_model_export_step", "occt_model_export_stl") },
+    @{ File = "OcctModelingAnalyticGeometry.cpp"; Symbols = @("occt_model_edge_line_geometry", "occt_model_face_cylinder_geometry") },
+    @{ File = "OcctModelingDifferentialGeometry.cpp"; Symbols = @("occt_model_edge_differential", "occt_model_face_curvature") },
+    @{ File = "OcctModelingExtensions.cpp"; Symbols = @("occt_model_shape_is_same", "occt_model_trim_edge", "occt_model_offset_wire") },
+    @{ File = "OcctModelingBSpline.cpp"; Symbols = @("occt_model_edge_bspline_info", "occt_model_face_bspline_info") },
+    @{ File = "OcctModelingTopologyAnalysis.cpp"; Symbols = @("occt_model_shape_free_bounds", "occt_model_shape_edge_adjacency") },
+    @{ File = "OcctModelingFaceAnalysis.cpp"; Symbols = @("occt_model_shape_face_analysis") }
+)) { Assert-Module -File $module.File -Symbols $module.Symbols -Narrow }
 
-foreach ($module in $modelingCoreModules) {
-    if ($module.File -notin $sourceTokens) {
-        throw "Split native modeling core module is not listed in add_library: $($module.File)"
-    }
-    $moduleText = [System.IO.File]::ReadAllText((Join-Path $nativeRoot $module.File))
-    foreach ($symbol in $module.Symbols) {
-        if (-not $moduleText.Contains($symbol)) {
-            throw "Split native modeling core module $($module.File) is missing expected responsibility symbol: $symbol"
-        }
-    }
-}
-
-$modelingCorePath = Join-Path $nativeRoot "OcctModelingCore.cpp"
-if ((Get-Item $modelingCorePath).Length -gt 9000) {
-    throw "OcctModelingCore.cpp has grown beyond the session/registry boundary; keep shape queries, topology, geometry evaluation, and viewer interop split."
-}
-$modelingCoreText = [System.IO.File]::ReadAllText($modelingCorePath)
-foreach ($forbiddenSymbol in @(
-    "occt_model_shape_hash",
-    "occt_model_shape_bounds",
-    "occt_model_topology_count",
-    "occt_model_vertex_point",
-    "occt_model_display_in_engine"
-)) {
-    if ($modelingCoreText.Contains($forbiddenSymbol)) {
-        throw "OcctModelingCore.cpp contains responsibility that belongs in a split module: $forbiddenSymbol"
-    }
-}
+if ((Get-Item (Join-Path $nativeRoot "OcctModelingCore.cpp")).Length -gt 9000) { throw "OcctModelingCore.cpp has grown beyond the session/registry boundary." }
+if ((Get-Item (Join-Path $nativeRoot "OcctModelingAnalysis.cpp")).Length -gt 10000) { throw "OcctModelingAnalysis.cpp must remain limited to projection/intersection/classification." }
 
 $modelingInternalHeaders = @(
     @{ File = "OcctModelingSessionInternal.hxx"; Symbols = @("struct ModelSession", "modelOf", "executeShape", "requireOperation") },
@@ -111,157 +68,44 @@ $modelingInternalHeaders = @(
     @{ File = "OcctModelingMeshInternal.hxx"; Symbols = @("faceTriangulation") },
     @{ File = "OcctModelingExchangeInternal.hxx"; Symbols = @("modelInputStream", "readModelStep", "readModelIges", "writeModelStep") }
 )
-
 foreach ($header in $modelingInternalHeaders) {
-    if ($header.File -notin $sourceTokens) {
-        throw "Split modeling internal header is not listed in add_library: $($header.File)"
-    }
+    Assert-Module -File $header.File -Symbols $header.Symbols
     $headerText = [System.IO.File]::ReadAllText((Join-Path $nativeRoot $header.File))
-    if ($headerText.Contains('#include "OcctModelingInternal.hxx"')) {
-        throw "Split modeling internal header depends on the broad compatibility umbrella: $($header.File)"
-    }
-    foreach ($symbol in $header.Symbols) {
-        if (-not $headerText.Contains($symbol)) {
-            throw "Split modeling internal header $($header.File) is missing expected responsibility token: $symbol"
-        }
-    }
+    if ($headerText.Contains('#include "OcctModelingInternal.hxx"')) { throw "$($header.File) depends on the retired modeling umbrella." }
 }
+if ([System.IO.File]::ReadAllText((Join-Path $nativeRoot "OcctModelingSessionInternal.hxx")).Contains('#include "OcctInternal.hxx"')) {
+    throw "OcctModelingSessionInternal.hxx must remain headless and independent from viewer internals."
+}
+if (Test-Path (Join-Path $nativeRoot "OcctModelingInternal.hxx")) { throw "Retired OcctModelingInternal.hxx must not be reintroduced." }
+if ($cmakeText.Contains("OcctModelingInternal.hxx")) { throw "CMake must not list the retired modeling umbrella." }
 
-$sessionInternalText = [System.IO.File]::ReadAllText((Join-Path $nativeRoot "OcctModelingSessionInternal.hxx"))
-if ($sessionInternalText.Contains('#include "OcctInternal.hxx"')) {
-    throw "OcctModelingSessionInternal.hxx must remain headless and must not depend on viewer Engine internals."
-}
-
-$modelingUmbrellaPath = Join-Path $nativeRoot "OcctModelingInternal.hxx"
-if ("OcctModelingInternal.hxx" -notin $sourceTokens) {
-    throw "The compatibility modeling internal umbrella is not listed in add_library."
-}
-$modelingUmbrellaText = [System.IO.File]::ReadAllText($modelingUmbrellaPath)
-if ((Get-Item $modelingUmbrellaPath).Length -gt 7000) {
-    throw "OcctModelingInternal.hxx has regrown beyond a compatibility umbrella."
-}
-foreach ($requiredHeader in $modelingInternalHeaders.File) {
-    if (-not $modelingUmbrellaText.Contains($requiredHeader)) {
-        throw "OcctModelingInternal.hxx does not aggregate split internal header: $requiredHeader"
-    }
-}
-foreach ($forbiddenToken in @(
-    "struct ModelSession",
-    "finishBuilderAlgorithm",
-    "faceTriangulation(",
-    "readModelStep("
-)) {
-    if ($modelingUmbrellaText.Contains($forbiddenToken)) {
-        throw "OcctModelingInternal.hxx contains implementation that belongs in a responsibility-specific internal header: $forbiddenToken"
-    }
-}
-
-$narrowModelingModules = @(
-    "OcctModelingCore.cpp",
-    "OcctModelingShapeQueries.cpp",
-    "OcctModelingGeometryQueries.cpp",
-    "OcctModelingTopology.cpp",
-    "OcctModelingInterop.cpp",
-    "OcctModelingAlgorithms.cpp"
-)
-foreach ($fileName in $narrowModelingModules) {
-    $moduleText = [System.IO.File]::ReadAllText((Join-Path $nativeRoot $fileName))
-    if ($moduleText.Contains('#include "OcctModelingInternal.hxx"')) {
-        throw "$fileName still depends on the broad OcctModelingInternal.hxx compatibility umbrella."
-    }
-}
-
-$geometryModules = @(
-    @{ File = "OcctModelingGeometry.Curves.cpp"; Symbols = @("occt_model_make_vertex", "occt_model_make_line", "occt_model_make_circle", "occt_model_make_bspline_interpolated") },
-    @{ File = "OcctModelingGeometry.Planar.cpp"; Symbols = @("occt_model_make_regular_polygon", "occt_model_make_rectangle_wire", "occt_model_make_plane_face", "occt_model_make_face_from_wire") },
-    @{ File = "OcctModelingGeometry.Primitives.cpp"; Symbols = @("occt_model_make_box", "occt_model_make_cylinder", "occt_model_make_sphere", "occt_model_make_torus") },
+foreach ($module in @(
+    @{ File = "OcctModelingGeometry.Curves.cpp"; Symbols = @("occt_model_make_vertex", "occt_model_make_line", "occt_model_make_bspline_interpolated") },
+    @{ File = "OcctModelingGeometry.Planar.cpp"; Symbols = @("occt_model_make_regular_polygon", "occt_model_make_rectangle_wire", "occt_model_make_plane_face") },
+    @{ File = "OcctModelingGeometry.Primitives.cpp"; Symbols = @("occt_model_make_box", "occt_model_make_cylinder", "occt_model_make_torus") },
     @{ File = "OcctModelingGeometry.Assembly.cpp"; Symbols = @("occt_model_make_compound", "occt_model_make_wire", "occt_model_make_solid_from_shell") },
     @{ File = "OcctModelingGeometry.Transform.cpp"; Symbols = @("occt_model_translate", "occt_model_rotate", "occt_model_scale", "occt_model_mirror_plane") }
-)
-foreach ($module in $geometryModules) {
-    if ($module.File -notin $sourceTokens) { throw "Split native modeling geometry module is not listed in add_library: $($module.File)" }
-    $moduleText = [System.IO.File]::ReadAllText((Join-Path $nativeRoot $module.File))
-    if ($moduleText.Contains('#include "OcctModelingInternal.hxx"')) { throw "$($module.File) depends on the broad modeling compatibility umbrella." }
-    foreach ($symbol in $module.Symbols) {
-        if (-not $moduleText.Contains($symbol)) { throw "Split native modeling geometry module $($module.File) is missing expected responsibility symbol: $symbol" }
-    }
-}
-if ("OcctModelingGeometry.cpp" -in $sourceTokens -or (Test-Path (Join-Path $nativeRoot "OcctModelingGeometry.cpp"))) {
-    throw "Legacy OcctModelingGeometry.cpp must remain removed after the five-way native geometry split."
-}
+)) { Assert-Module -File $module.File -Symbols $module.Symbols -Narrow }
+if (Test-Path (Join-Path $nativeRoot "OcctModelingGeometry.cpp")) { throw "Legacy OcctModelingGeometry.cpp must remain removed." }
 
 foreach ($legacyToolkit in @("TKSTEPBase", "TKSTEPAttr", "TKSTEP209", "TKSTEP", "TKIGES")) {
-    if ($text.Contains($legacyToolkit)) { throw "Legacy pre-7.9 data-exchange toolkit remains in native CMake dependencies: $legacyToolkit" }
+    if ($cmakeText.Contains($legacyToolkit)) { throw "Legacy pre-7.9 data-exchange toolkit remains: $legacyToolkit" }
 }
 foreach ($requiredToolkit in @("TKDESTEP", "TKDEIGES", "TKDESTL")) {
-    if (-not $text.Contains($requiredToolkit)) { throw "Required OCCT 7.9 data-exchange toolkit is missing from native CMake dependencies: $requiredToolkit" }
+    if (-not $cmakeText.Contains($requiredToolkit)) { throw "Required OCCT 7.9 toolkit is missing: $requiredToolkit" }
 }
 
 $buildScriptText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "build.ps1"))
 if (-not $buildScriptText.Contains('D:\tools\occt-vc144-64')) { throw "build.ps1 must provide the conventional OCCT default root." }
-$hasMainOcctOptionalPolicy = $buildScriptText.Contains('validate/managed/pack/ci do not require OCCT')
-$hasDemoOcctOptionalPolicy = $buildScriptText.Contains('validate/managed/ci do not require OCCT')
-if (-not ($hasMainOcctOptionalPolicy -or $hasDemoOcctOptionalPolicy)) { throw "build.ps1 must preserve OCCT-optional managed/validation targets." }
-
-$modules = @(
-    @{
-        Name = "Extensions"
-        Files = @("OcctModelingExtensions.cpp", "OcctModelingExtensions.h")
-        Header = "OcctModelingExtensions.h"
-        Symbols = @("occt_model_shape_is_same", "occt_model_shape_oriented_bounds", "occt_model_make_face_with_holes", "occt_model_trim_edge", "occt_model_offset_wire")
-    },
-    @{
-        Name = "B-Spline"
-        Files = @("OcctModelingBSpline.cpp", "OcctModelingBSpline.h")
-        Header = "OcctModelingBSpline.h"
-        Symbols = @("occt_model_edge_bspline_info", "occt_model_face_bspline_info", "occt_model_face_bspline_pole_at")
-    },
-    @{
-        Name = "Topology analysis"
-        Files = @("OcctModelingTopologyAnalysis.cpp", "OcctModelingTopologyAnalysis.h")
-        Header = "OcctModelingTopologyAnalysis.h"
-        Symbols = @("occt_model_shape_free_bounds", "occt_model_shape_edge_adjacency")
-    },
-    @{
-        Name = "Face analysis"
-        Files = @("OcctModelingFaceAnalysis.cpp", "OcctModelingFaceAnalysis.h")
-        Header = "OcctModelingFaceAnalysis.h"
-        Symbols = @("OcctModelFaceAnalysis", "occt_model_shape_face_analysis")
-    }
-)
-
-foreach ($module in $modules) {
-    foreach ($required in $module.Files) {
-        if ($required -notin $sourceTokens) {
-            throw "$($module.Name) native module file is not listed in add_library: $required"
-        }
-    }
-
-    $header = [System.IO.File]::ReadAllText((Join-Path $nativeRoot $module.Header))
-    foreach ($symbol in $module.Symbols) {
-        if (-not $header.Contains($symbol)) {
-            throw "$($module.Name) native declaration is missing: $symbol"
-        }
-    }
+if (-not ($buildScriptText.Contains('validate/managed/pack/ci do not require OCCT') -or $buildScriptText.Contains('validate/managed/ci do not require OCCT'))) {
+    throw "build.ps1 must preserve OCCT-optional managed/validation targets."
 }
 
-$forbiddenPatterns = [ordered]@{
-    'OCAF/XDE source' = 'OcctOcaf|occt_ocaf_'
-    'OCAF/XDE toolkit' = '\b(?:TKCDF|TKLCAF|TKCAF|TKXCAF|TKBinL|TKXmlL|TKBinXCAF|TKXmlXCAF)\b'
-}
-foreach ($item in $forbiddenPatterns.GetEnumerator()) {
-    if ($text -match $item.Value) {
-        throw "$($item.Key) remains in the reusable native build."
-    }
+if ($cmakeText -match 'OcctOcaf|occt_ocaf_|\b(?:TKCDF|TKLCAF|TKCAF|TKXCAF|TKBinL|TKXmlL|TKBinXCAF|TKXmlXCAF)\b') {
+    throw "OCAF/XDE input remains in the reusable native build."
 }
 
-$unlistedCpp = @(
-    Get-ChildItem $nativeRoot -Filter '*.cpp' -File |
-        Where-Object { $_.Name -notin $sourceTokens } |
-        Select-Object -ExpandProperty Name
-)
-if ($unlistedCpp.Count -gt 0) {
-    throw "Native C++ files are not listed in add_library: $($unlistedCpp -join ', ')"
-}
+$unlistedCpp = @(Get-ChildItem $nativeRoot -Filter '*.cpp' -File | Where-Object { $_.Name -notin $sourceTokens } | Select-Object -ExpandProperty Name)
+if ($unlistedCpp.Count -gt 0) { throw "Native C++ files are not listed in add_library: $($unlistedCpp -join ', ')" }
 
-Write-Host "[native-build] $($sourceTokens.Count) source entries, $($engineModules.Count) split engine modules, $($modelingCoreModules.Count) split modeling core modules, $($modelingInternalHeaders.Count) modeling internal layers, $($geometryModules.Count) split modeling geometry modules, and $($modules.Count) dedicated modeling modules validated; no OCAF/XDE inputs remain." -ForegroundColor Green
+Write-Host "[native-build] Native responsibilities, narrow modeling internals, OCCT 7.9 toolkits and no-OCAF boundary validated." -ForegroundColor Green

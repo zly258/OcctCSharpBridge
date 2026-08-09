@@ -6,16 +6,9 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $contractPath = Join-Path $RepositoryRoot "bridge-contract.json"
-if (-not (Test-Path $contractPath -PathType Leaf)) {
-    throw "Bridge contract file was not found: bridge-contract.json"
-}
-
-try {
-    $contract = Get-Content $contractPath -Raw -Encoding UTF8 | ConvertFrom-Json
-}
-catch {
-    throw "bridge-contract.json is not valid JSON: $($_.Exception.Message)"
-}
+if (-not (Test-Path $contractPath -PathType Leaf)) { throw "Bridge contract file was not found: bridge-contract.json" }
+try { $contract = Get-Content $contractPath -Raw -Encoding UTF8 | ConvertFrom-Json }
+catch { throw "bridge-contract.json is not valid JSON: $($_.Exception.Message)" }
 
 $expectedVersion = [string]$contract.bridgeVersion
 $expectedAbiVersion = [int]$contract.nativeAbiVersion
@@ -23,16 +16,12 @@ $expectedOcctVersion = [string]$contract.occtVersion
 $expectedCmakeVersion = [string]$contract.cmakeMinimumVersion
 $expectedContactEmail = [string]$contract.contactEmail
 $expectedTargetFramework = [string]$contract.dotnet.targetFramework
-$coreSdkVersion = [string]$contract.dotnet.sdkVersion
-$demoSdkVersion = [string]$contract.dotnet.demoSdkVersion
+$expectedSdkVersion = [string]$contract.dotnet.sdkVersion
 $expectedLanguageVersion = [string]$contract.dotnet.languageVersion
 $expectedNativeCount = [int]$contract.api.nativeExports
 $expectedManagedCount = [int]$contract.api.managedPInvokes
 $expectedPublicTypeCount = [int]$contract.api.publicNetTypes
-
-$isDemoBranchLayout = Test-Path (Join-Path $RepositoryRoot "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj") -PathType Leaf
-$expectedSdkVersion = if ($isDemoBranchLayout) { $demoSdkVersion } else { $coreSdkVersion }
-$sdkPolicyName = if ($isDemoBranchLayout) { "demo" } else { "core" }
+$expectedCompatibilityTypeCount = [int]$contract.api.compatibilityPublicNetTypes
 
 foreach ($entry in ([ordered]@{
     bridgeVersion = $expectedVersion
@@ -40,13 +29,10 @@ foreach ($entry in ([ordered]@{
     cmakeMinimumVersion = $expectedCmakeVersion
     contactEmail = $expectedContactEmail
     targetFramework = $expectedTargetFramework
-    coreSdkVersion = $coreSdkVersion
-    demoSdkVersion = $demoSdkVersion
+    sdkVersion = $expectedSdkVersion
     languageVersion = $expectedLanguageVersion
 }).GetEnumerator()) {
-    if ([string]::IsNullOrWhiteSpace([string]$entry.Value)) {
-        throw "Bridge contract value is missing: $($entry.Key)"
-    }
+    if ([string]::IsNullOrWhiteSpace([string]$entry.Value)) { throw "Bridge contract value is missing: $($entry.Key)" }
 }
 
 foreach ($entry in ([ordered]@{
@@ -54,10 +40,9 @@ foreach ($entry in ([ordered]@{
     nativeExports = $expectedNativeCount
     managedPInvokes = $expectedManagedCount
     publicNetTypes = $expectedPublicTypeCount
+    compatibilityPublicNetTypes = $expectedCompatibilityTypeCount
 }).GetEnumerator()) {
-    if ([int]$entry.Value -le 0) {
-        throw "Bridge contract numeric value must be positive: $($entry.Key)"
-    }
+    if ([int]$entry.Value -le 0) { throw "Bridge contract numeric value must be positive: $($entry.Key)" }
 }
 
 $contracts = [ordered]@{
@@ -75,27 +60,25 @@ $contracts = [ordered]@{
         "<TargetFramework>$expectedTargetFramework</TargetFramework>",
         "<Platforms>x64</Platforms>"
     )
-    "README.md" = @($expectedVersion, $expectedOcctVersion, $expectedContactEmail)
-    "README.zh-CN.md" = @($expectedVersion, $expectedOcctVersion, $expectedContactEmail)
+    "src/OcctNet.Avalonia/OcctNet.Avalonia.csproj" = @(
+        "<TargetFramework>$expectedTargetFramework</TargetFramework>",
+        "<AssemblyName>OcctNet.Avalonia</AssemblyName>"
+    )
+    "README.md" = @($expectedVersion, $expectedOcctVersion, $expectedSdkVersion, $expectedContactEmail)
+    "README.zh-CN.md" = @($expectedVersion, $expectedOcctVersion, $expectedSdkVersion, $expectedContactEmail)
     "docs/API_COVERAGE.md" = @(
-        "Native exports",
-        [string]$expectedNativeCount,
-        "Managed P/Invoke declarations",
-        [string]$expectedManagedCount,
-        "Public .NET types",
-        [string]$expectedPublicTypeCount,
-        "Native bridge version",
-        $expectedVersion
+        "Native exports", [string]$expectedNativeCount,
+        "Managed P/Invoke declarations", [string]$expectedManagedCount,
+        "Public .NET types", [string]$expectedPublicTypeCount,
+        "Compatibility .NET types", [string]$expectedCompatibilityTypeCount,
+        "Native bridge version", $expectedVersion
     )
     "docs/API_COVERAGE.zh-CN.md" = @(
-        "Native exports",
-        [string]$expectedNativeCount,
-        "Managed P/Invoke declarations",
-        [string]$expectedManagedCount,
-        "Public .NET types",
-        [string]$expectedPublicTypeCount,
-        "原生桥接版本",
-        $expectedVersion
+        "Native exports", [string]$expectedNativeCount,
+        "Managed P/Invoke declarations", [string]$expectedManagedCount,
+        "Public .NET types", [string]$expectedPublicTypeCount,
+        "Compatibility .NET types", [string]$expectedCompatibilityTypeCount,
+        "原生桥接版本", $expectedVersion
     )
     "src/OcctNative/CMakeLists.txt" = @(
         "cmake_minimum_required(VERSION $expectedCmakeVersion)",
@@ -111,40 +94,30 @@ $contracts = [ordered]@{
 
 foreach ($contractEntry in $contracts.GetEnumerator()) {
     $path = Join-Path $RepositoryRoot $contractEntry.Key
-    if (-not (Test-Path $path -PathType Leaf)) {
-        throw "Version contract file was not found: $($contractEntry.Key)"
-    }
+    if (-not (Test-Path $path -PathType Leaf)) { throw "Version contract file was not found: $($contractEntry.Key)" }
     $content = [System.IO.File]::ReadAllText($path)
     foreach ($token in $contractEntry.Value) {
-        if (-not $content.Contains([string]$token)) {
-            throw "Version contract is stale in $($contractEntry.Key): $token"
-        }
+        if (-not $content.Contains([string]$token)) { throw "Version contract is stale in $($contractEntry.Key): $token" }
     }
 }
 
 $cadLocalizationPath = Join-Path $RepositoryRoot "src\CadCommon\CadLocalization.cs"
 if (Test-Path $cadLocalizationPath -PathType Leaf) {
     $cadLocalization = [System.IO.File]::ReadAllText($cadLocalizationPath)
-    if (-not $cadLocalization.Contains($expectedContactEmail)) {
-        throw "Software About contact does not match bridge-contract.json."
-    }
+    if (-not $cadLocalization.Contains($expectedContactEmail)) { throw "Software About contact does not match bridge-contract.json." }
 }
 
 $publishPath = Join-Path $RepositoryRoot "publish.ps1"
 if (Test-Path $publishPath -PathType Leaf) {
     $publishText = [System.IO.File]::ReadAllText($publishPath)
-    if (-not $publishText.Contains($expectedContactEmail)) {
-        throw "Published package contact does not match bridge-contract.json."
-    }
+    if (-not $publishText.Contains($expectedContactEmail)) { throw "Published package contact does not match bridge-contract.json." }
 }
 
 $legacyContact = "zhangly1403" + "@" + "qq.com"
 $contactScanFiles = [System.Collections.Generic.List[string]]::new()
 foreach ($fileName in @("README.md", "README.zh-CN.md", "publish.ps1")) {
     $candidate = Join-Path $RepositoryRoot $fileName
-    if (Test-Path $candidate -PathType Leaf) {
-        $contactScanFiles.Add($candidate)
-    }
+    if (Test-Path $candidate -PathType Leaf) { $contactScanFiles.Add($candidate) }
 }
 foreach ($rootName in @("src", "docs")) {
     $root = Join-Path $RepositoryRoot $rootName
@@ -154,9 +127,7 @@ foreach ($rootName in @("src", "docs")) {
     } | ForEach-Object { $contactScanFiles.Add($_.FullName) }
 }
 foreach ($path in $contactScanFiles) {
-    if ([System.IO.File]::ReadAllText($path).Contains($legacyContact)) {
-        throw "Legacy contact email remains in $path."
-    }
+    if ([System.IO.File]::ReadAllText($path).Contains($legacyContact)) { throw "Legacy contact email remains in $path." }
 }
 
 $machineSpecificFiles = @(
@@ -169,24 +140,21 @@ foreach ($path in $machineSpecificFiles) {
     $content = [System.IO.File]::ReadAllText($path)
     $matches = [regex]::Matches($content, '(?i)[A-Z]:[\\/]tools[\\/]occt[^"''\r\n ]*')
     foreach ($match in $matches) {
-        if ($match.Value -notmatch $allowedDefaultOcctPathPattern) {
-            throw "An unsupported machine-specific OCCT path remains in ${path}: $($match.Value)"
-        }
+        if ($match.Value -notmatch $allowedDefaultOcctPathPattern) { throw "An unsupported machine-specific OCCT path remains in ${path}: $($match.Value)" }
         $isBuildScript = $path.EndsWith('build.ps1', [System.StringComparison]::OrdinalIgnoreCase)
         $isNativeCMake = $path.EndsWith('src\OcctNative\CMakeLists.txt', [System.StringComparison]::OrdinalIgnoreCase)
-        if (-not ($isBuildScript -or $isNativeCMake)) {
-            throw "The conventional OCCT default path may only appear in build.ps1 or native CMakeLists.txt; found in $path."
-        }
+        if (-not ($isBuildScript -or $isNativeCMake)) { throw "The conventional OCCT default path may only appear in build.ps1 or native CMakeLists.txt; found in $path." }
     }
 }
 
-Write-Host ("[version] Bridge {0}, ABI {1}, OCCT {2}, {3} SDK {4}, API {5}/{6}, public types {7}, contact {8}." -f
+Write-Host ("[version] Bridge {0}, ABI {1}, OCCT {2}, build SDK {3}, target {4}, API {5}/{6}, primary types {7}, compatibility types {8}, contact {9}." -f
     $expectedVersion,
     $expectedAbiVersion,
     $expectedOcctVersion,
-    $sdkPolicyName,
     $expectedSdkVersion,
+    $expectedTargetFramework,
     $expectedNativeCount,
     $expectedManagedCount,
     $expectedPublicTypeCount,
+    $expectedCompatibilityTypeCount,
     $expectedContactEmail) -ForegroundColor Green

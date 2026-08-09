@@ -36,19 +36,22 @@ jobs:
       - name: Compare reusable wrapper source
         shell: pwsh
         run: |
-          # Branch-specific policy is intentionally excluded:
-          # - global.json: demo needs the newer Avalonia SDK.
-          # - *.csproj: NuGet packaging metadata exists only on main.
-          # - build.ps1: main builds the SDK; demo builds/publishes applications.
-          # - main SDK guides and demo application docs have different audiences.
+          # Branch-specific application/packaging policy is intentionally excluded:
+          # - reusable *.csproj files are packable on main and non-packable on demo.
+          # - build.ps1 packages the SDK on main and builds/publishes applications on demo.
+          # - main SDK guides and demo application docs may have different execution details.
+          # The .NET build SDK itself is a shared bridge contract and must stay identical.
           $fixedPaths = @(
             ".editorconfig",
             ".gitattributes",
+            "global.json",
             "bridge-contract.json",
             "Directory.Build.props",
             "src/OcctNative",
             "docs/INDEX.md",
             "docs/INDEX.zh-CN.md",
+            "docs/ARCHITECTURE_BOUNDARIES.md",
+            "docs/ARCHITECTURE_BOUNDARIES.zh-CN.md",
             "docs/API_COVERAGE.md",
             "docs/API_COVERAGE.zh-CN.md",
             "docs/SELECTION_HITS.md",
@@ -88,7 +91,7 @@ jobs:
             if ($LASTEXITCODE -ne 0) { $failed = $true }
           }
 
-          foreach ($directory in @("src/OcctNet", "src/OcctNet.WinForms", "src/OcctNet.Wpf")) {
+          foreach ($directory in @("src/OcctNet", "src/OcctNet.WinForms", "src/OcctNet.Wpf", "src/OcctNet.Avalonia")) {
             $mainRoot = Join-Path "main" $directory
             $demoRoot = Join-Path "demo" $directory
             $mainFiles = @(
@@ -120,4 +123,4 @@ jobs:
           if ($failed) {
             throw "main and demo reusable wrapper source are not synchronized."
           }
-          Write-Host "main and demo reusable wrapper source are synchronized; branch-specific packaging/app policy is intentionally independent." -ForegroundColor Green
+          Write-Host "main and demo reusable wrapper source are synchronized; branch-specific packaging/application policy remains intentionally independent." -ForegroundColor Green
