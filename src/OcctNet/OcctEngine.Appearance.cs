@@ -54,27 +54,28 @@ public sealed partial class OcctEngine
     [EditorBrowsable(EditorBrowsableState.Never)]
     public void SetSceneLighting(
         double ambientIntensity,
-        double keyIntensity,
-        double fillIntensity,
-        double headlightIntensity) =>
+        double directionalIntensity,
+        OcctVector3d direction,
+        bool headlight)
+    {
+        var directional = new OcctDirectionalLightSettings(
+            directionalIntensity > 0,
+            Color.White,
+            directionalIntensity,
+            direction);
+        var disabled = new OcctDirectionalLightSettings(
+            false,
+            Color.White,
+            0,
+            new OcctVector3d(0, 0, -1));
+
         SetSceneLighting(new OcctSceneLightingSettings(
             Color.White,
             ambientIntensity,
-            new OcctDirectionalLightSettings(
-                headlightIntensity > 0,
-                Color.White,
-                headlightIntensity,
-                new OcctVector3d(0, 0, -1)),
-            new OcctDirectionalLightSettings(
-                keyIntensity > 0,
-                Color.White,
-                keyIntensity,
-                new OcctVector3d(-1, -1, -2)),
-            new OcctDirectionalLightSettings(
-                fillIntensity > 0,
-                Color.White,
-                fillIntensity,
-                new OcctVector3d(1, 1, -1))));
+            headlight ? directional : disabled,
+            headlight ? disabled : directional,
+            disabled));
+    }
 
     public void ApplyLightingPreset(OcctLightingPreset preset) =>
         SetSceneLighting(OcctLightingPresets.Create(preset));
