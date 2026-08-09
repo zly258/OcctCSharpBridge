@@ -53,6 +53,8 @@ jobs:
           found = [token for token in obsolete if token in all_text]
           if found:
               raise SystemExit(f"Obsolete script branch references found: {', '.join(found)}")
+          if "Avalonia 与 Avalonia" in app:
+              raise SystemExit("Duplicate Avalonia host wording found in Chinese translations.")
 
           expected_stats = {
               "statNative": str(contract["api"]["nativeExports"]),
