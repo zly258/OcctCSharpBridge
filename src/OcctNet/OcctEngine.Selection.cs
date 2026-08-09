@@ -37,7 +37,31 @@ public sealed partial class OcctEngine
         CheckInitialized(() => NativeMethods.occt_set_selection_mode(_handle, (int)mode));
     }
 
-    public IReadOnlyList<IOcctObject> SelectedObjects
+    /// <summary>
+    /// Compatibility selection handles that preserve the Bridge 2.5 object-ID
+    /// workflow. New code that requires strict engine ownership should use
+    /// <see cref="SelectedOwnedObjects"/>.
+    /// </summary>
+    public IReadOnlyList<OcctObject> SelectedObjects
+    {
+        get
+        {
+            EnsureInitialized();
+            var count = NativeMethods.occt_selected_count(_handle);
+            var result = new List<OcctObject>(Math.Max(count, 0));
+            for (var index = 0; index < count; index++)
+            {
+                var id = NativeMethods.occt_selected_at(_handle, index);
+                if (id > 0) result.Add(new OcctObject(id, GetObjectKind(id)));
+            }
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// Owner-aware selected objects for Bridge 2.6 code.
+    /// </summary>
+    public IReadOnlyList<IOcctObject> SelectedOwnedObjects
     {
         get
         {
@@ -65,7 +89,23 @@ public sealed partial class OcctEngine
         }
     }
 
-    public IOcctObject? FirstSelectedObject
+    /// <summary>
+    /// Compatibility first-selected handle. New owner-aware code should use
+    /// <see cref="FirstSelectedOwnedObject"/>.
+    /// </summary>
+    public OcctObject? FirstSelectedObject
+    {
+        get
+        {
+            EnsureInitialized();
+            var id = NativeMethods.occt_selected_at(_handle, 0);
+            return id > 0
+                ? new OcctObject(id, GetObjectKind(id))
+                : null;
+        }
+    }
+
+    public IOcctObject? FirstSelectedOwnedObject
     {
         get
         {

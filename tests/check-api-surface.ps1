@@ -112,6 +112,17 @@ $publicTypeNames = @(
     }
 ) | Sort-Object -Unique
 
+# OcctObject is a deliberately isolated source-compatibility handle for Bridge 2.5
+# viewer consumers. It is public, but it is not part of the Bridge 2.6 primary API
+# type metric published by bridge-contract.json and the website.
+$compatibilityTypeNames = @("OcctObject")
+$primaryPublicTypeNames = @($publicTypeNames | Where-Object { $_ -notin $compatibilityTypeNames })
+foreach ($compatibilityType in $compatibilityTypeNames) {
+    if ($compatibilityType -notin $publicTypeNames) {
+        throw "Required compatibility type is missing: $compatibilityType"
+    }
+}
+
 Assert-NoDuplicates "native declarations" $declarationRaw
 Assert-NoDuplicates "native definitions" $definitionRaw
 Assert-NoDuplicates "C# P/Invoke declarations" $pinvokeRaw
@@ -156,9 +167,10 @@ if ($declarations.Count -ne $expectedNativeCount) {
 if ($pinvokes.Count -ne $expectedManagedCount) {
     throw "Managed P/Invoke count differs from bridge-contract.json: actual=$($pinvokes.Count), expected=$expectedManagedCount."
 }
-if ($publicTypeNames.Count -ne $expectedPublicTypeCount) {
-    Write-Host ("[api] Public .NET types detected: {0}" -f ($publicTypeNames -join ', ')) -ForegroundColor Yellow
-    throw "Public .NET type count differs from bridge-contract.json: actual=$($publicTypeNames.Count), expected=$expectedPublicTypeCount."
+if ($primaryPublicTypeNames.Count -ne $expectedPublicTypeCount) {
+    Write-Host ("[api] Primary public .NET types detected: {0}" -f ($primaryPublicTypeNames -join ', ')) -ForegroundColor Yellow
+    Write-Host ("[api] Compatibility .NET types excluded from metric: {0}" -f ($compatibilityTypeNames -join ', ')) -ForegroundColor Yellow
+    throw "Primary public .NET type count differs from bridge-contract.json: actual=$($primaryPublicTypeNames.Count), expected=$expectedPublicTypeCount."
 }
 
 $documentationFiles = @(
@@ -201,6 +213,7 @@ if ($groups.Modeling.Count -ne $expectedModelingCount) {
 foreach ($group in $groups.GetEnumerator()) {
     Write-Host ("[api] {0}: {1}" -f $group.Key, $group.Value.Count) -ForegroundColor Cyan
 }
-Write-Host "[api] Public .NET types: $($publicTypeNames.Count)" -ForegroundColor Cyan
+Write-Host "[api] Primary public .NET types: $($primaryPublicTypeNames.Count)" -ForegroundColor Cyan
+Write-Host "[api] Compatibility .NET types: $($compatibilityTypeNames.Count) ($($compatibilityTypeNames -join ', '))" -ForegroundColor DarkGray
 
-Write-Host ("API surface validation passed against bridge-contract.json ({0} native / {1} managed / {2} public types)." -f $expectedNativeCount, $expectedManagedCount, $expectedPublicTypeCount) -ForegroundColor Green
+Write-Host ("API surface validation passed against bridge-contract.json ({0} native / {1} managed / {2} primary public types)." -f $expectedNativeCount, $expectedManagedCount, $expectedPublicTypeCount) -ForegroundColor Green
