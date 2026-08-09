@@ -16,7 +16,10 @@ $requiredFiles = @(
     "src/OcctNet/OcctEngine.ObjectTransform.cs",
     "src/OcctNet/OcctEngine.ShapeQueries.cs",
     "src/OcctNet/OcctEngine.ShapeTransform.cs",
-    "src/OcctNet/OcctEngine.Geometry.cs",
+    "src/OcctNet/OcctEngine.Geometry.Curves.cs",
+    "src/OcctNet/OcctEngine.Geometry.Planar.cs",
+    "src/OcctNet/OcctEngine.Geometry.Primitives.cs",
+    "src/OcctNet/OcctEngine.Geometry.Assembly.cs",
     "src/OcctNet/OcctEngine.Features.cs",
     "src/OcctNet/OcctEngine.AnnotationShapes.cs",
     "src/OcctNet/OcctEngine.Annotations.cs",
@@ -38,7 +41,11 @@ $requiredFiles = @(
     "src/OcctNet/NativeMethods.cs",
     "src/OcctNet/NativeMethods.View.cs",
     "src/OcctNet/NativeMethods.Objects.cs",
-    "src/OcctNet/NativeMethods.Modeling.cs",
+    "src/OcctNet/NativeMethods.Geometry.Curves.cs",
+    "src/OcctNet/NativeMethods.Geometry.Planar.cs",
+    "src/OcctNet/NativeMethods.Geometry.Primitives.cs",
+    "src/OcctNet/NativeMethods.Geometry.Assembly.cs",
+    "src/OcctNet/NativeMethods.Features.cs",
     "src/OcctNet/NativeMethods.Annotations.cs",
     "src/OcctNet/NativeMethods.Exchange.cs",
     "src/OcctNet/ModelNativeMethods.Analysis.cs",
@@ -53,10 +60,14 @@ foreach ($relativePath in $requiredFiles) {
     }
 }
 
-$forbiddenFiles = @("src/OcctNet/OcctEngine.ApiAliases.cs")
+$forbiddenFiles = @(
+    "src/OcctNet/OcctEngine.ApiAliases.cs",
+    "src/OcctNet/OcctEngine.Geometry.cs",
+    "src/OcctNet/NativeMethods.Modeling.cs"
+)
 foreach ($relativePath in $forbiddenFiles) {
     if (Test-Path (Join-Path $RepositoryRoot $relativePath)) {
-        throw "Compatibility alias file is not allowed in Bridge 2.6: $relativePath"
+        throw "Legacy/compatibility aggregate file is not allowed in Bridge 2.6: $relativePath"
     }
 }
 
@@ -69,9 +80,18 @@ $canonicalContracts = [ordered]@{
     "src/OcctNet/OcctEngine.ObjectInteraction.cs" = @("public void SetSelectable(", "public bool IsSelectable(", "public void Highlight(", "public void Unhighlight(")
     "src/OcctNet/OcctEngine.ShapeQueries.cs" = @("public bool IsShapeValid(", "public OcctBounds GetShapeBounds(", "public OcctDistanceResult GetShapeDistance(", "public OcctShape GetSubshapeAt(", "public OcctCurveType GetEdgeCurveType(", "public OcctSurfaceType GetFaceSurfaceType(", "public OcctUvBounds GetFaceUvBounds(")
     "src/OcctNet/OcctEngine.ShapeTransform.cs" = @("public OcctShape Copy(", "public OcctShape Translate(", "public OcctShape Rotate(", "public OcctShape Scale(", "public OcctShape MirrorPlane(")
+    "src/OcctNet/OcctEngine.Geometry.Curves.cs" = @("public OcctShape MakeVertex(", "public OcctShape MakeLine(", "public OcctShape MakePolyline(", "public OcctShape MakeCircle(", "public OcctShape MakeArc(", "public OcctShape MakeEllipse(", "public OcctShape MakeBezier(", "public OcctShape MakeInterpolatedBSpline(")
+    "src/OcctNet/OcctEngine.Geometry.Planar.cs" = @("public OcctShape MakeRegularPolygon(", "public OcctShape MakeRectangleWire(", "public OcctShape MakeFace(", "public OcctShape MakePlaneFace(")
+    "src/OcctNet/OcctEngine.Geometry.Primitives.cs" = @("public OcctShape MakeBox(", "public OcctShape MakeCylinder(", "public OcctShape MakeSphere(", "public OcctShape MakeCone(", "public OcctShape MakeTorus(", "public OcctShape MakeWedge(")
+    "src/OcctNet/OcctEngine.Geometry.Assembly.cs" = @("public OcctShape MakeCompound(", "public OcctShape MakeWire(", "public OcctShape Sew(", "public OcctShape MakeSolidFromShell(", "private long[] ShapeIds(")
     "src/OcctNet/OcctEngine.Features.cs" = @("public OcctShape Boolean(", "public OcctShape Extrude(", "public OcctShape FilletEdges(", "public OcctShape MakeThickSolid(", "public OcctShape DrillHole(")
     "src/OcctNet/OcctEngine.AnnotationShapes.cs" = @("public OcctShape MakeTextShape(", "public OcctShape MakeLengthAnnotationShape(", "public OcctShape MakeAngleAnnotationShape(", "public OcctShape MakeRadiusAnnotationShape(", "public OcctShape MakeDiameterAnnotationShape(")
     "src/OcctNet/OcctEngine.Annotations.cs" = @("public OcctText AddText(", "public void SetText(", "public void SetDimensionFlyout(", "public OcctDimension AddLengthDimension(", "public OcctDimension AddAngleDimension(", "public OcctDimension AddRadiusDimension(", "public OcctDimension AddDiameterDimension(")
+    "src/OcctNet/NativeMethods.Geometry.Curves.cs" = @("occt_make_vertex", "occt_make_line", "occt_make_circle", "occt_make_arc_center", "occt_make_bspline_interpolated")
+    "src/OcctNet/NativeMethods.Geometry.Planar.cs" = @("occt_make_regular_polygon", "occt_make_rectangle_wire", "occt_make_face_from_wire", "occt_make_plane_face")
+    "src/OcctNet/NativeMethods.Geometry.Primitives.cs" = @("occt_make_box", "occt_make_cylinder", "occt_make_sphere", "occt_make_cone", "occt_make_torus", "occt_make_wedge")
+    "src/OcctNet/NativeMethods.Geometry.Assembly.cs" = @("occt_make_compound", "occt_make_wire", "occt_sew_shapes", "occt_make_solid_from_shell")
+    "src/OcctNet/NativeMethods.Features.cs" = @("occt_boolean", "occt_extrude", "occt_revolve", "occt_sweep", "occt_loft", "occt_fillet_edges", "occt_chamfer_edges")
     "src/OcctNet/OcctModelingSession.ShapeQueries.cs" = @("GetShapeOrientation", "IsShapeClosed", "IsShapeValid", "GetShapeMaximumTolerance", "GetShapeCheckReport", "GetShapeBounds", "GetShapeDistance", "GetShapeLocation", "SetShapeLocation")
     "src/OcctNet/OcctModelingSession.Topology.cs" = @("GetSubshapeAt", "GetSubshapes", "GetOuterWire", "GetInnerWires", "GetAncestors")
     "src/OcctNet/OcctModelingSession.GeometryQueries.cs" = @("EvaluateEdge(", "GetEdgeCurveType", "GetFaceSurfaceType", "GetFaceUvBounds", "EvaluateFace(")
@@ -89,52 +109,39 @@ foreach ($contract in $canonicalContracts.GetEnumerator()) {
     }
 }
 
-$objectRegistryText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctEngine.Objects.cs"))
-foreach ($misplaced in @("GetName(", "SetColor(", "Highlight(", "IsShapeValid(", "GetShapeBounds(", "GetSubshapeAt(", "public OcctShape Copy(")) {
-    if ($objectRegistryText.Contains($misplaced)) {
-        throw "OcctEngine.Objects.cs contains non-registry responsibility: $misplaced"
+function Assert-NoResponsibilityTokens {
+    param(
+        [string]$RelativePath,
+        [string[]]$Tokens,
+        [string]$Responsibility
+    )
+
+    $text = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot $RelativePath))
+    foreach ($token in $Tokens) {
+        if ($text.Contains($token)) {
+            throw "$RelativePath contains $Responsibility responsibility: $token"
+        }
     }
 }
 
-$objectInteractionText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctEngine.ObjectInteraction.cs"))
-if ($objectInteractionText.Contains("SetViewCubeLanguage(")) {
-    throw "OcctEngine.ObjectInteraction.cs contains view responsibility: SetViewCubeLanguage("
-}
+Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.Objects.cs" @("GetName(", "SetColor(", "Highlight(", "IsShapeValid(", "GetShapeBounds(", "GetSubshapeAt(", "public OcctShape Copy(") "non-registry"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.ObjectInteraction.cs" @("SetViewCubeLanguage(") "view"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.ShapeQueries.cs" @("public OcctShape Copy(", "public void SetColor(", "public void Delete(") "mutation/object"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.ShapeTransform.cs" @("IsShapeValid(", "GetShapeBounds(", "public void SetLocalTransformation(") "query/view-local transform"
 
-$shapeQueriesText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctEngine.ShapeQueries.cs"))
-foreach ($misplaced in @("public OcctShape Copy(", "public void SetColor(", "public void Delete(")) {
-    if ($shapeQueriesText.Contains($misplaced)) {
-        throw "OcctEngine.ShapeQueries.cs contains mutation/object responsibility: $misplaced"
-    }
-}
+Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.Geometry.Curves.cs" @("public OcctShape MakeBox(", "public OcctShape MakeFace(", "public OcctShape MakeCompound(", "public OcctShape Boolean(") "primitive/planar/assembly/feature"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.Geometry.Planar.cs" @("public OcctShape MakeBezier(", "public OcctShape MakeCylinder(", "public OcctShape MakeCompound(", "public OcctShape Boolean(") "curve/primitive/assembly/feature"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.Geometry.Primitives.cs" @("public OcctShape MakeArc(", "public OcctShape MakeFace(", "public OcctShape MakeWire(", "public OcctShape Boolean(") "curve/planar/assembly/feature"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.Geometry.Assembly.cs" @("public OcctShape MakeCircle(", "public OcctShape MakePlaneFace(", "public OcctShape MakeSphere(", "public OcctShape Boolean(") "curve/planar/primitive/feature"
+Assert-NoResponsibilityTokens "src/OcctNet/NativeMethods.Geometry.Curves.cs" @("occt_make_box", "occt_make_face_from_wire", "occt_make_compound", "occt_boolean") "primitive/planar/assembly/feature PInvoke"
+Assert-NoResponsibilityTokens "src/OcctNet/NativeMethods.Geometry.Planar.cs" @("occt_make_bezier", "occt_make_cylinder", "occt_make_compound", "occt_boolean") "curve/primitive/assembly/feature PInvoke"
+Assert-NoResponsibilityTokens "src/OcctNet/NativeMethods.Geometry.Primitives.cs" @("occt_make_arc_center", "occt_make_face_from_wire", "occt_make_wire", "occt_boolean") "curve/planar/assembly/feature PInvoke"
+Assert-NoResponsibilityTokens "src/OcctNet/NativeMethods.Geometry.Assembly.cs" @("occt_make_circle", "occt_make_plane_face", "occt_make_sphere", "occt_boolean") "curve/planar/primitive/feature PInvoke"
+Assert-NoResponsibilityTokens "src/OcctNet/NativeMethods.Features.cs" @("occt_make_line", "occt_make_plane_face", "occt_make_box", "occt_make_compound") "geometry PInvoke"
 
-$shapeTransformText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctEngine.ShapeTransform.cs"))
-foreach ($misplaced in @("IsShapeValid(", "GetShapeBounds(", "public void SetLocalTransformation(")) {
-    if ($shapeTransformText.Contains($misplaced)) {
-        throw "OcctEngine.ShapeTransform.cs contains query/view-local transform responsibility: $misplaced"
-    }
-}
-
-$featureText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctEngine.Features.cs"))
-foreach ($misplaced in @("MakeTextShape(", "MakeLengthAnnotationShape(", "AddText(", "SetText(", "AddLengthDimension(")) {
-    if ($featureText.Contains($misplaced)) {
-        throw "OcctEngine.Features.cs contains annotation responsibility: $misplaced"
-    }
-}
-
-$annotationShapeText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctEngine.AnnotationShapes.cs"))
-foreach ($misplaced in @("public OcctText AddText(", "public OcctDimension AddLengthDimension(")) {
-    if ($annotationShapeText.Contains($misplaced)) {
-        throw "OcctEngine.AnnotationShapes.cs contains interactive annotation responsibility: $misplaced"
-    }
-}
-
-$annotationText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctEngine.Annotations.cs"))
-foreach ($misplaced in @("public OcctShape Boolean(", "public OcctShape MakeTextShape(")) {
-    if ($annotationText.Contains($misplaced)) {
-        throw "OcctEngine.Annotations.cs contains modeling/BRep annotation responsibility: $misplaced"
-    }
-}
+Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.Features.cs" @("MakeTextShape(", "MakeLengthAnnotationShape(", "AddText(", "SetText(", "AddLengthDimension(") "annotation"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.AnnotationShapes.cs" @("public OcctText AddText(", "public OcctDimension AddLengthDimension(") "interactive annotation"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.Annotations.cs" @("public OcctShape Boolean(", "public OcctShape MakeTextShape(") "modeling/BRep annotation"
 
 $sourceRoot = Join-Path $RepositoryRoot "src/OcctNet"
 $sourceText = (Get-ChildItem $sourceRoot -Filter "*.cs" -File | ForEach-Object { [System.IO.File]::ReadAllText($_.FullName) }) -join "`n"
@@ -152,8 +159,6 @@ foreach ($token in $forbiddenManagedTokens) {
     }
 }
 
-# IsBound was an older leaked OCCT-style member name. Match it as an identifier/call instead of
-# using substring search so valid APIs such as IsBoundaryCandidate are not rejected.
 if ($sourceText -match '(?<![A-Za-z0-9_])IsBound\s*(?:\(|=>|\{|;)') {
     throw "Bridge 2.6 compatibility/native-leak identifier remains in public wrapper: IsBound"
 }
