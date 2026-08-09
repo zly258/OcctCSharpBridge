@@ -29,9 +29,13 @@ list(GET REQUIRED_OCCT_VERSION_PARTS 0 REQUIRED_OCCT_MAJOR)
 list(GET REQUIRED_OCCT_VERSION_PARTS 1 REQUIRED_OCCT_MINOR)
 list(GET REQUIRED_OCCT_VERSION_PARTS 2 REQUIRED_OCCT_MAINTENANCE)
 
+set(OCCT_DEFAULT_ROOT "D:/tools/occt-vc144-64" CACHE PATH "Default OCCT installation root used when OCCT_ROOT is not supplied")
 set(OCCT_ROOT "$ENV{OCCT_ROOT}" CACHE PATH "OCCT installation root")
-if(NOT OCCT_ROOT)
-    message(FATAL_ERROR "OCCT_ROOT is not configured. Pass -DOCCT_ROOT=<path> or set the OCCT_ROOT environment variable.")
+if(NOT OCCT_ROOT AND OCCT_DEFAULT_ROOT)
+    set(OCCT_ROOT "${OCCT_DEFAULT_ROOT}" CACHE PATH "OCCT installation root" FORCE)
+endif()
+if(NOT OCCT_ROOT OR NOT EXISTS "${OCCT_ROOT}")
+    message(FATAL_ERROR "OCCT SDK root was not found: ${OCCT_ROOT}. Set OCCT_ROOT, pass -DOCCT_ROOT=<path>, or install OCCT at ${OCCT_DEFAULT_ROOT}.")
 endif()
 set(OCCT_INCLUDE_DIR "${OCCT_ROOT}/inc" CACHE PATH "OCCT include directory")
 set(OCCT_LIB_DIR "${OCCT_ROOT}/win64/vc14/lib" CACHE PATH "OCCT library directory")
@@ -85,7 +89,11 @@ add_library(OcctNative SHARED
     OcctModelingGeometryQueries.cpp
     OcctModelingTopology.cpp
     OcctModelingInterop.cpp
-    OcctModelingGeometry.cpp
+    OcctModelingGeometry.Curves.cpp
+    OcctModelingGeometry.Planar.cpp
+    OcctModelingGeometry.Primitives.cpp
+    OcctModelingGeometry.Assembly.cpp
+    OcctModelingGeometry.Transform.cpp
     OcctModelingAlgorithms.cpp
     OcctModelingAnalysis.cpp
     OcctModelingAnalyticGeometry.cpp
@@ -121,8 +129,7 @@ target_link_directories(OcctNative PRIVATE "${OCCT_LIB_DIR}")
 set(occt_required_libraries
     TKernel TKMath TKG2d TKG3d TKGeomBase TKBRep TKGeomAlgo TKTopAlgo
     TKPrim TKBO TKBool TKFillet TKOffset TKMesh TKShHealing
-    TKService TKV3d TKOpenGl TKXSBase TKDE TKDESTEP TKDEIGES TKDESTL
-    TKSTEPBase TKSTEPAttr TKSTEP209 TKSTEP TKIGES)
+    TKService TKV3d TKOpenGl TKXSBase TKDE TKDESTEP TKDEIGES TKDESTL)
 
 foreach(library_name IN LISTS occt_required_libraries)
     if(NOT EXISTS "${OCCT_LIB_DIR}/${library_name}.lib")

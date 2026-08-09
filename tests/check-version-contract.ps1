@@ -164,10 +164,19 @@ $machineSpecificFiles = @(
     (Join-Path $RepositoryRoot "src\OcctNative\CMakeLists.txt")
 ) + @(Get-ChildItem (Join-Path $RepositoryRoot "src\OcctNet") -Filter "*.cs" -File | Select-Object -ExpandProperty FullName)
 
+$allowedDefaultOcctPathPattern = '(?i)^D:[\\/]tools[\\/]occt-vc144-64$'
 foreach ($path in $machineSpecificFiles) {
     $content = [System.IO.File]::ReadAllText($path)
-    if ($content -match '(?i)[A-Z]:[\\/]tools[\\/]occt') {
-        throw "A machine-specific OCCT path remains in $path."
+    $matches = [regex]::Matches($content, '(?i)[A-Z]:[\\/]tools[\\/]occt[^"''\r\n ]*')
+    foreach ($match in $matches) {
+        if ($match.Value -notmatch $allowedDefaultOcctPathPattern) {
+            throw "An unsupported machine-specific OCCT path remains in ${path}: $($match.Value)"
+        }
+        $isBuildScript = $path.EndsWith('build.ps1', [System.StringComparison]::OrdinalIgnoreCase)
+        $isNativeCMake = $path.EndsWith('src\OcctNative\CMakeLists.txt', [System.StringComparison]::OrdinalIgnoreCase)
+        if (-not ($isBuildScript -or $isNativeCMake)) {
+            throw "The conventional OCCT default path may only appear in build.ps1 or native CMakeLists.txt; found in $path."
+        }
     }
 }
 
