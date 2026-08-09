@@ -171,6 +171,38 @@ foreach ($fileName in $narrowModelingModules) {
     }
 }
 
+$geometryModules = @(
+    @{ File = "OcctModelingGeometry.Curves.cpp"; Symbols = @("occt_model_make_vertex", "occt_model_make_line", "occt_model_make_circle", "occt_model_make_bspline_interpolated") },
+    @{ File = "OcctModelingGeometry.Planar.cpp"; Symbols = @("occt_model_make_regular_polygon", "occt_model_make_rectangle_wire", "occt_model_make_plane_face", "occt_model_make_face_from_wire") },
+    @{ File = "OcctModelingGeometry.Primitives.cpp"; Symbols = @("occt_model_make_box", "occt_model_make_cylinder", "occt_model_make_sphere", "occt_model_make_torus") },
+    @{ File = "OcctModelingGeometry.Assembly.cpp"; Symbols = @("occt_model_make_compound", "occt_model_make_wire", "occt_model_make_solid_from_shell") },
+    @{ File = "OcctModelingGeometry.Transform.cpp"; Symbols = @("occt_model_translate", "occt_model_rotate", "occt_model_scale", "occt_model_mirror_plane") }
+)
+foreach ($module in $geometryModules) {
+    if ($module.File -notin $sourceTokens) { throw "Split native modeling geometry module is not listed in add_library: $($module.File)" }
+    $moduleText = [System.IO.File]::ReadAllText((Join-Path $nativeRoot $module.File))
+    if ($moduleText.Contains('#include "OcctModelingInternal.hxx"')) { throw "$($module.File) depends on the broad modeling compatibility umbrella." }
+    foreach ($symbol in $module.Symbols) {
+        if (-not $moduleText.Contains($symbol)) { throw "Split native modeling geometry module $($module.File) is missing expected responsibility symbol: $symbol" }
+    }
+}
+if ("OcctModelingGeometry.cpp" -in $sourceTokens -or (Test-Path (Join-Path $nativeRoot "OcctModelingGeometry.cpp"))) {
+    throw "Legacy OcctModelingGeometry.cpp must remain removed after the five-way native geometry split."
+}
+
+foreach ($legacyToolkit in @("TKSTEPBase", "TKSTEPAttr", "TKSTEP209", "TKSTEP", "TKIGES")) {
+    if ($text.Contains($legacyToolkit)) { throw "Legacy pre-7.9 data-exchange toolkit remains in native CMake dependencies: $legacyToolkit" }
+}
+foreach ($requiredToolkit in @("TKDESTEP", "TKDEIGES", "TKDESTL")) {
+    if (-not $text.Contains($requiredToolkit)) { throw "Required OCCT 7.9 data-exchange toolkit is missing from native CMake dependencies: $requiredToolkit" }
+}
+
+$buildScriptText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "build.ps1"))
+if (-not $buildScriptText.Contains('D:\tools\occt-vc144-64')) { throw "build.ps1 must provide the conventional OCCT default root." }
+$hasMainOcctOptionalPolicy = $buildScriptText.Contains('validate/managed/pack/ci do not require OCCT')
+$hasDemoOcctOptionalPolicy = $buildScriptText.Contains('validate/managed/ci do not require OCCT')
+if (-not ($hasMainOcctOptionalPolicy -or $hasDemoOcctOptionalPolicy)) { throw "build.ps1 must preserve OCCT-optional managed/validation targets." }
+
 $modules = @(
     @{
         Name = "Extensions"
@@ -232,4 +264,4 @@ if ($unlistedCpp.Count -gt 0) {
     throw "Native C++ files are not listed in add_library: $($unlistedCpp -join ', ')"
 }
 
-Write-Host "[native-build] $($sourceTokens.Count) source entries, $($engineModules.Count) split engine modules, $($modelingCoreModules.Count) split modeling core modules, $($modelingInternalHeaders.Count) modeling internal layers, and $($modules.Count) dedicated modeling modules validated; no OCAF/XDE inputs remain." -ForegroundColor Green
+Write-Host "[native-build] $($sourceTokens.Count) source entries, $($engineModules.Count) split engine modules, $($modelingCoreModules.Count) split modeling core modules, $($modelingInternalHeaders.Count) modeling internal layers, $($geometryModules.Count) split modeling geometry modules, and $($modules.Count) dedicated modeling modules validated; no OCAF/XDE inputs remain." -ForegroundColor Green
