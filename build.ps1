@@ -26,6 +26,10 @@ if (Test-Path "$env:SystemRoot\System32\chcp.com") {
 
 $Target = $Target.ToLowerInvariant()
 $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$DefaultOcctRoot = "D:\tools\occt-vc144-64"
+if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
+    $OcctRoot = $DefaultOcctRoot
+}
 $NativeSource = Join-Path $RepoRoot "src\OcctNative"
 $NativeBuild = Join-Path $RepoRoot "build\native"
 $NativeDll = Join-Path $NativeBuild "bin\$Configuration\OcctNative.dll"
@@ -150,11 +154,10 @@ function Invoke-ContractChecks {
 }
 
 function Resolve-OcctConfiguration {
-    if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
-        throw "OCCT_ROOT is not configured. Pass -OcctRoot <path> or set the OCCT_ROOT environment variable."
-    }
-
     $script:ResolvedOcctRoot = [System.IO.Path]::GetFullPath($OcctRoot)
+    if (-not (Test-Path $script:ResolvedOcctRoot -PathType Container)) {
+        throw "OCCT SDK root was not found: $script:ResolvedOcctRoot. Set OCCT_ROOT, pass -OcctRoot <path>, or install OCCT at $DefaultOcctRoot. validate/managed/ci do not require OCCT."
+    }
     $script:OcctIncludeDir = Join-Path $script:ResolvedOcctRoot "inc"
     $script:OcctLibDir = Join-Path $script:ResolvedOcctRoot "win64\vc14\lib"
     $script:OcctBinDir = Join-Path $script:ResolvedOcctRoot "win64\vc14\bin"
@@ -328,12 +331,8 @@ Write-Host "Target:        $Target"
 Write-Host "Configuration: $Configuration"
 Write-Host "Bridge:        $BridgeVersion"
 Write-Host "SDK:           $SdkVersion" -ForegroundColor DarkGray
-if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
-    Write-Host "OCCT root:     not configured (valid for validate/managed/ci)" -ForegroundColor DarkGray
-}
-else {
-    Write-Host "OCCT root:     $OcctRoot" -ForegroundColor DarkGray
-}
+$occtRootSource = if ($env:OCCT_ROOT) { "environment" } elseif ($OcctRoot -eq $DefaultOcctRoot) { "default" } else { "argument" }
+Write-Host "OCCT root:     $OcctRoot ($occtRootSource)" -ForegroundColor DarkGray
 
 Invoke-ContractChecks
 
