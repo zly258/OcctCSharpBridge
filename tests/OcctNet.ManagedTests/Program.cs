@@ -67,6 +67,12 @@ Assert(viewerShapeA.Kind == OcctObjectKind.Shape, "Viewer shape kind regression.
 Assert(!default(OcctShape).IsValid, "Default viewer shape must be invalid.");
 Assert(new OcctText(5, 2001).Kind == OcctObjectKind.Text, "Text object kind regression.");
 Assert(new OcctDimension(6, 2001).Kind == OcctObjectKind.Dimension, "Dimension object kind regression.");
+var legacyObject = new OcctObject(9, OcctObjectKind.Shape);
+Assert(legacyObject.IsValid, "Legacy object validity regression.");
+Assert(legacyObject.Id == 9 && legacyObject.Kind == OcctObjectKind.Shape, "Legacy object identity regression.");
+Assert(!default(OcctObject).IsValid, "Default legacy object must be invalid.");
+IOcctObject legacyInterface = legacyObject;
+Assert(legacyInterface.Id == legacyObject.Id && legacyInterface.Kind == legacyObject.Kind, "Legacy object interface regression.");
 
 var transform = OcctTransform3d.Translation(1, 2, 3);
 Assert(transform.IsFinite, "Transform finite-state regression.");

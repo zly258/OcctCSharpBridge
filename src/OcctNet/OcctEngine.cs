@@ -84,10 +84,32 @@ public sealed partial class OcctEngine : IDisposable
     {
         ArgumentNullException.ThrowIfNull(value);
         EnsureNotDisposed();
+
+        if (value is OcctObject legacy)
+        {
+            if (!MatchesLegacyObject(legacy))
+            {
+                throw new ArgumentException(
+                    "Legacy object ID/kind does not resolve to an object in this OcctEngine.",
+                    nameof(value));
+            }
+            return;
+        }
+
         if (GetOwnerId(value) != _ownerId)
             throw new ArgumentException("Object does not belong to this OcctEngine.", nameof(value));
         if (value.Id <= 0 || NativeMethods.occt_object_exists(_handle, value.Id) == 0)
             throw new ArgumentException("Object no longer exists in this OcctEngine.", nameof(value));
+    }
+
+    private bool MatchesLegacyObject(OcctObject value)
+    {
+        EnsureNotDisposed();
+        if (!value.IsValid || NativeMethods.occt_object_exists(_handle, value.Id) == 0)
+            return false;
+
+        var actualKind = (OcctObjectKind)NativeMethods.occt_object_kind(_handle, value.Id);
+        return value.Kind == OcctObjectKind.Unknown || value.Kind == actualKind;
     }
 
     private void EnsureShape(OcctShape shape)
