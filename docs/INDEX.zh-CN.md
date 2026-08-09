@@ -1,12 +1,15 @@
 ﻿# OcctCSharpBridge 文档索引
 
-本索引只组织 `main` 与 `demo` 共享的可复用 Bridge 文档。NuGet 产品化仍然只属于 `main`；完整桌面应用与发布脚本仍然只属于 `demo`。
+本索引组织 `main` 与 `demo` 共享的 **OCCT Bridge 文档**。NuGet 产品化只属于 `main`；完整 CAD 应用、CadCommon、运行/发布脚本属于 `demo`。
 
 ## 建议阅读顺序
 
 | 文档 | 适合解决的问题 |
 |---|---|
+| [架构边界：Bridge 与 CAD 应用层](ARCHITECTURE_BOUNDARIES.zh-CN.md) | `main` / `demo` 职责、为什么 Document/Command/Tool 不进入 Bridge、UI Host 的共享边界 |
 | [API 覆盖说明](API_COVERAGE.zh-CN.md) | 当前 Bridge/ABI/API 范围、所有权规则、Facade 职责和校验边界 |
+| [快速开始](GETTING_STARTED.zh-CN.md) | 引用核心包与 WinForms/WPF/Avalonia Host、部署 Runtime |
+| [打包说明](PACKAGING.zh-CN.md) | main-only NuGet、包内容与 Native Runtime 边界 |
 | [Viewer 结构化选择命中](SELECTION_HITS.zh-CN.md) | Selected/Detected AIS 实体的注册对象与 Subshape 结构化身份 |
 | [Managed 几何与变换工具](GEOMETRY_UTILITIES.zh-CN.md) | 点/向量、包围盒、UV 范围、仿射矩阵、Location 与 Transform |
 | [B-Spline 曲线与曲面检查](BSPLINE_CURVES.zh-CN.md) | Degree、Pole、Weight、Knot、Multiplicity 与曲面控制网格 |
@@ -19,30 +22,26 @@
 
 Bridge 明确保持三层职责：
 
-1. **交互式 Viewer / 文档对象层**：`OcctEngine` 与可复用 UI Host；
+1. **交互式 Viewer/Object 层**：`OcctEngine`；
 2. **Headless 建模层**：`OcctModelingSession`，负责几何、拓扑、算法、网格、分析与文件交换；
-3. **纯 Managed 工具层**：不要求加载 OCCT 的值类型与轻量级计算。
+3. **可复用 UI Host 层**：WinForms、WPF、Windows-HWND Avalonia，仅负责把 UI 窗口与输入连接到 `OcctEngine`。
 
-应用层 Document、Entity、Command、Tool、Undo/Redo、JSON 持久化等职责不要重新塞回 Bridge。
+Document、Entity、Feature Tree、Command、Tool、Undo/Redo、Snap/Grip、JSON 持久化等应用职责不进入 Bridge。
 
 ## 校验层级
 
-仓库明确区分不同校验能证明什么：
-
-- **静态契约检查**：文件组织、C ABI/PInvoke 对应、命名、数量和文档要求；
-- **Managed 回归测试**：不需要 OCCT SDK，验证所有权、值类型、Runtime 与纯 Managed 工具；
+- **静态契约检查**：文件组织、C ABI/PInvoke 对应、命名、数量、分支边界和文档要求；
+- **Managed 回归测试**：不加载 OCCT，验证所有权、值类型、Runtime、纯 Managed 工具与公共 API 签名快照；
 - **Smoke 项目编译**：保证真实 Native 场景与托管接口保持源码兼容；
 - **本地 Native Smoke**：真正加载 OCCT 7.9.0 并执行几何/拓扑算法，是正式发布前的 Native 门禁。
 
-各测试工程与 PowerShell 契约检查的保留职责见 [`tests/README.md`](../tests/README.md)。
-
-执行与云端一致的 Managed 门禁：
+各测试工程与契约检查的职责见 [`tests/README.md`](../tests/README.md)。
 
 ```powershell
 .\build.ps1 ci Release
 ```
 
-在安装 OCCT SDK 的 Windows 机器上执行真实 Native 发布门禁：
+真实 Native 发布门禁：
 
 ```powershell
 .\build.ps1 smoke Release -OcctRoot "<OCCT 7.9.0 根目录>"
@@ -52,11 +51,11 @@ Bridge 明确保持三层职责：
 
 ### `main`
 
-只保留可复用 Native/.NET Bridge、WinForms/WPF Host、测试、API 文档，以及 **main-only NuGet** 产品化。
+只保留可复用 Native/.NET Bridge、`OcctNet.WinForms`、`OcctNet.Wpf`、`OcctNet.Avalonia`、测试、API 文档和 **main-only NuGet** 产品化。不得加入 CadCommon、完整 CAD 应用或应用级 Document/Command/Tool 框架。
 
 ### `demo`
 
-在同一套可复用 Bridge 源码之上增加 CadCommon、完整 WinForms/WPF/Avalonia 参考应用、运行/发布脚本和应用包校验。该分支中的可复用项目继续保持 `IsPackable=false`。
+在同一套可复用 Bridge 源码之上增加 `CadCommon` 和完整 WinForms/WPF/Avalonia 参考应用、运行/发布脚本及应用包校验。该分支中的可复用项目保持 `IsPackable=false`。
 
 ### `website`
 
@@ -64,4 +63,4 @@ Bridge 明确保持三层职责：
 
 ## 兼容性规则
 
-Bridge `2.6.0` 使用 Native ABI `3`。新增 Native 能力采用 ABI 3 增量接口，不静默复用或改变已有 ABI 3 函数签名；Mesh 来源追溯与 ShapeInspection 组合层这类 Managed 增强本身不额外改变 Native ABI。部署时仍应保证 `OcctNet`、对应 UI Host、`OcctNative.dll`、OCCT Runtime 和第三方 DLL 来自同一套兼容构建。
+Bridge `2.6.0` 使用 Native ABI `3`。内部 cpp/header 拆分不改变已有 ABI 3 函数签名。Bridge 2.5 的 `OcctObject` 兼容类型在 2.x 中继续保留，但不再扩展新的 legacy API；新代码使用 owner-aware 对象接口。部署时应保证 `OcctNet`、对应 UI Host、`OcctNative.dll`、OCCT Runtime 与第三方 DLL 来自同一兼容构建。
