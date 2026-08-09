@@ -10,6 +10,12 @@ $requiredFiles = @(
     "src/OcctNet/OcctEngine.View.cs",
     "src/OcctNet/OcctEngine.Selection.cs",
     "src/OcctNet/OcctEngine.Objects.cs",
+    "src/OcctNet/OcctEngine.ObjectIdentity.cs",
+    "src/OcctNet/OcctEngine.ObjectAppearance.cs",
+    "src/OcctNet/OcctEngine.ObjectInteraction.cs",
+    "src/OcctNet/OcctEngine.ObjectTransform.cs",
+    "src/OcctNet/OcctEngine.ShapeQueries.cs",
+    "src/OcctNet/OcctEngine.ShapeTransform.cs",
     "src/OcctNet/OcctEngine.Geometry.cs",
     "src/OcctNet/OcctEngine.Features.cs",
     "src/OcctNet/OcctEngine.AnnotationShapes.cs",
@@ -55,9 +61,14 @@ foreach ($relativePath in $forbiddenFiles) {
 }
 
 $canonicalContracts = [ordered]@{
-    "src/OcctNet/OcctEngine.View.cs" = @("public void Initialize(", "public void SetView(", "public void SetProjection(", "public OcctCameraState GetCamera(")
+    "src/OcctNet/OcctEngine.View.cs" = @("public void Initialize(", "public void SetView(", "public void SetProjection(", "public void SetViewCubeLanguage(", "public OcctCameraState GetCamera(")
     "src/OcctNet/OcctEngine.Selection.cs" = @("public void Select(", "public void SelectRectangle(", "public IReadOnlyList<IOcctObject> SelectedObjects")
-    "src/OcctNet/OcctEngine.Objects.cs" = @("public IOcctObject GetObject(", "public OcctShape GetShape(", "public bool IsShapeValid(", "public OcctBounds GetShapeBounds(", "public OcctDistanceResult GetShapeDistance(", "public OcctShape GetSubshapeAt(", "public OcctCurveType GetEdgeCurveType(", "public OcctSurfaceType GetFaceSurfaceType(", "public OcctUvBounds GetFaceUvBounds(")
+    "src/OcctNet/OcctEngine.Objects.cs" = @("public int ObjectCount", "public IReadOnlyList<IOcctObject> Objects", "public IOcctObject GetObject(", "public OcctShape GetShape(", "public void Delete(", "public void Clear(")
+    "src/OcctNet/OcctEngine.ObjectIdentity.cs" = @("public string GetName(", "public void SetName(", "public void SetApplicationTag(", "public string GetApplicationTag(", "public bool TryGetObjectByApplicationTag(")
+    "src/OcctNet/OcctEngine.ObjectAppearance.cs" = @("public void SetColor(", "public void SetTransparency(", "public void SetVisible(", "public void SetDisplayMode(IOcctObject", "public void SetMaterial(", "public void Redisplay(")
+    "src/OcctNet/OcctEngine.ObjectInteraction.cs" = @("public void SetSelectable(", "public bool IsSelectable(", "public void Highlight(", "public void Unhighlight(")
+    "src/OcctNet/OcctEngine.ShapeQueries.cs" = @("public bool IsShapeValid(", "public OcctBounds GetShapeBounds(", "public OcctDistanceResult GetShapeDistance(", "public OcctShape GetSubshapeAt(", "public OcctCurveType GetEdgeCurveType(", "public OcctSurfaceType GetFaceSurfaceType(", "public OcctUvBounds GetFaceUvBounds(")
+    "src/OcctNet/OcctEngine.ShapeTransform.cs" = @("public OcctShape Copy(", "public OcctShape Translate(", "public OcctShape Rotate(", "public OcctShape Scale(", "public OcctShape MirrorPlane(")
     "src/OcctNet/OcctEngine.Features.cs" = @("public OcctShape Boolean(", "public OcctShape Extrude(", "public OcctShape FilletEdges(", "public OcctShape MakeThickSolid(", "public OcctShape DrillHole(")
     "src/OcctNet/OcctEngine.AnnotationShapes.cs" = @("public OcctShape MakeTextShape(", "public OcctShape MakeLengthAnnotationShape(", "public OcctShape MakeAngleAnnotationShape(", "public OcctShape MakeRadiusAnnotationShape(", "public OcctShape MakeDiameterAnnotationShape(")
     "src/OcctNet/OcctEngine.Annotations.cs" = @("public OcctText AddText(", "public void SetText(", "public void SetDimensionFlyout(", "public OcctDimension AddLengthDimension(", "public OcctDimension AddAngleDimension(", "public OcctDimension AddRadiusDimension(", "public OcctDimension AddDiameterDimension(")
@@ -75,6 +86,32 @@ foreach ($contract in $canonicalContracts.GetEnumerator()) {
         if (-not $text.Contains($token)) {
             throw "Canonical managed API is missing from $($contract.Key): $token"
         }
+    }
+}
+
+$objectRegistryText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctEngine.Objects.cs"))
+foreach ($misplaced in @("GetName(", "SetColor(", "Highlight(", "IsShapeValid(", "GetShapeBounds(", "GetSubshapeAt(", "public OcctShape Copy(")) {
+    if ($objectRegistryText.Contains($misplaced)) {
+        throw "OcctEngine.Objects.cs contains non-registry responsibility: $misplaced"
+    }
+}
+
+$objectInteractionText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctEngine.ObjectInteraction.cs"))
+if ($objectInteractionText.Contains("SetViewCubeLanguage(")) {
+    throw "OcctEngine.ObjectInteraction.cs contains view responsibility: SetViewCubeLanguage("
+}
+
+$shapeQueriesText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctEngine.ShapeQueries.cs"))
+foreach ($misplaced in @("public OcctShape Copy(", "public void SetColor(", "public void Delete(")) {
+    if ($shapeQueriesText.Contains($misplaced)) {
+        throw "OcctEngine.ShapeQueries.cs contains mutation/object responsibility: $misplaced"
+    }
+}
+
+$shapeTransformText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet/OcctEngine.ShapeTransform.cs"))
+foreach ($misplaced in @("IsShapeValid(", "GetShapeBounds(", "public void SetLocalTransformation(")) {
+    if ($shapeTransformText.Contains($misplaced)) {
+        throw "OcctEngine.ShapeTransform.cs contains query/view-local transform responsibility: $misplaced"
     }
 }
 
