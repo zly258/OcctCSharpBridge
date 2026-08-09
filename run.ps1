@@ -24,14 +24,25 @@ if (Test-Path "$env:SystemRoot\System32\chcp.com") {
 }
 
 $Target = $Target.ToLowerInvariant()
+$RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$DefaultOcctRoot = "D:\tools\occt-vc144-64"
 if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
-    throw "OCCT_ROOT is not configured. Pass -OcctRoot <path> or set the OCCT_ROOT environment variable."
+    $OcctRoot = $DefaultOcctRoot
+}
+
+$ContractPath = Join-Path $RepoRoot "bridge-contract.json"
+if (-not (Test-Path $ContractPath -PathType Leaf)) {
+    throw "Bridge contract file was not found: $ContractPath"
+}
+$Contract = Get-Content $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$TargetFramework = [string]$Contract.dotnet.targetFramework
+if ([string]::IsNullOrWhiteSpace($TargetFramework)) {
+    throw "Bridge contract target framework is missing."
 }
 
 $OcctRoot = [System.IO.Path]::GetFullPath($OcctRoot)
 $OcctBinDir = Join-Path $OcctRoot "win64\vc14\bin"
 $OcctThirdPartyDir = Join-Path $OcctRoot "3rdparty-vc14-64"
-$RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 function Add-PathEntry {
     param([Parameter(Mandatory = $true)][string]$Directory)
@@ -84,9 +95,9 @@ if (-not (Test-Path $OcctBinDir -PathType Container)) {
 }
 
 $apps = @{
-    winform = "src\OcctDemo.WinForms\bin\x64\$Configuration\net8.0-windows\CAD-Winform.exe"
-    wpf = "src\OcctDemo.Wpf\bin\x64\$Configuration\net8.0-windows\CAD-WPF.exe"
-    avalonia = "src\OcctDemo.Avalonia\bin\x64\$Configuration\net8.0-windows\CAD-Avalonia.exe"
+    winform = "src\OcctDemo.WinForms\bin\x64\$Configuration\$TargetFramework\CAD-Winform.exe"
+    wpf = "src\OcctDemo.Wpf\bin\x64\$Configuration\$TargetFramework\CAD-WPF.exe"
+    avalonia = "src\OcctDemo.Avalonia\bin\x64\$Configuration\$TargetFramework\CAD-Avalonia.exe"
 }
 
 $executable = Join-Path $RepoRoot $apps[$Target]
@@ -115,7 +126,8 @@ if (Test-Path $OcctThirdPartyDir -PathType Container) {
 }
 
 Write-Host "Application: $executable"
-Write-Host "OCCT root:  $OcctRoot" -ForegroundColor DarkGray
+Write-Host "Target:      $TargetFramework" -ForegroundColor DarkGray
+Write-Host "OCCT root:   $OcctRoot" -ForegroundColor DarkGray
 
 $logPath = Join-Path $applicationDirectory "CAD-Avalonia.log"
 if ($Target -eq "avalonia" -and (Test-Path $logPath -PathType Leaf)) {
