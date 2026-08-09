@@ -1,0 +1,140 @@
+﻿name: Demo Net10 Finalize Once
+
+on:
+  push:
+    branches:
+      - fix/demo-net10-runtime-contract
+    paths:
+      - .github/workflows/demo-net10-finalize-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          ref: fix/demo-net10-runtime-contract
+          fetch-depth: 0
+
+      - name: Finalize demo .NET 10 docs and contracts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          $utf8Bom = [System.Text.UTF8Encoding]::new($true)
+
+          function Replace-Required([string]$path, [string]$old, [string]$new) {
+            $full = Resolve-Path $path
+            $text = [System.IO.File]::ReadAllText($full)
+            if (-not $text.Contains($old)) { throw "Expected text not found in ${path}: $old" }
+            $text = $text.Replace($old, $new)
+            [System.IO.File]::WriteAllText($full, $text, $utf8Bom)
+          }
+
+          Replace-Required 'README.md' '- Target framework **`net8.0-windows`**' '- Target framework **`net10.0-windows`**'
+          Replace-Required 'README.md' '- C# 12.0' '- C# 14.0'
+          Replace-Required 'README.md' '`bridge-contract.json` is shared with `main` and is authoritative for Bridge/ABI/OCCT/.NET/API metadata. `global.json` uses .NET SDK **10.0.302** on both `main` and `demo`; the published target remains **`net8.0-windows` / C# 12**. The newer build SDK is tooling only and does not raise the consumer target framework.' '`bridge-contract.json` is shared with `main` and is authoritative for Bridge/ABI/OCCT/.NET/API metadata. Both branches use .NET SDK **10.0.302**, target **`net10.0-windows`**, and compile with **C# 14.0**. Framework-dependent desktop applications require .NET Desktop Runtime **10.x**; normal .NET patch roll-forward applies, so consumers are not pinned to one exact `10.0.x` patch.'
+          Replace-Required 'README.md' 'Use `-FrameworkDependent` only when the target machine already has the .NET 8 Desktop Runtime.' 'Use `-FrameworkDependent` only when the target machine already has the .NET Desktop Runtime 10.x. The repository pins SDK 10.0.302 for reproducible builds, not one exact runtime patch.'
+          Replace-Required 'README.md' 'src\OcctDemo.Avalonia\bin\x64\<Configuration>\net8.0-windows\CAD-Avalonia.log' 'src\OcctDemo.Avalonia\bin\x64\<Configuration>\net10.0-windows\CAD-Avalonia.log'
+
+          Replace-Required 'README.zh-CN.md' '- 目标框架 **`net8.0-windows`**' '- 目标框架 **`net10.0-windows`**'
+          Replace-Required 'README.zh-CN.md' '- C# 12.0' '- C# 14.0'
+          Replace-Required 'README.zh-CN.md' '`bridge-contract.json` 与 `main` 共享，是版本、ABI、OCCT、.NET 和 API 数量的唯一契约来源。`global.json` 在 `main` 与 `demo` 均统一使用 .NET SDK **10.0.302**；对外目标仍为 **`net8.0-windows` / C# 12**。较新的 SDK 只用于构建工具链，不提高使用方的目标框架要求。' '`bridge-contract.json` 与 `main` 共享，是版本、ABI、OCCT、.NET 和 API 数量的唯一契约来源。两个分支统一使用 .NET SDK **10.0.302**、目标 **`net10.0-windows`**、C# **14.0**。Framework-dependent 桌面程序需要 .NET Desktop Runtime **10.x**；运行时遵循正常的补丁版本前滚规则，不固定到某一个 `10.0.x` 补丁。'
+          Replace-Required 'README.zh-CN.md' 'src\OcctDemo.Avalonia\bin\x64\<Configuration>\net8.0-windows\CAD-Avalonia.log' 'src\OcctDemo.Avalonia\bin\x64\<Configuration>\net10.0-windows\CAD-Avalonia.log'
+
+          $packagePath = Resolve-Path 'tests/check-demo-package.ps1'
+          $packageText = [System.IO.File]::ReadAllText($packagePath)
+          $marker = '$publishPath = Join-Path $RepositoryRoot "publish.ps1"'
+          if (-not $packageText.Contains($marker)) { throw 'check-demo-package publish marker was not found.' }
+          $prefix = @'
+          $contractPath = Join-Path $RepositoryRoot "bridge-contract.json"
+          if (-not (Test-Path $contractPath -PathType Leaf)) { throw "bridge-contract.json was not found." }
+          $contract = Get-Content $contractPath -Raw -Encoding UTF8 | ConvertFrom-Json
+          $targetFramework = [string]$contract.dotnet.targetFramework
+          if ([string]::IsNullOrWhiteSpace($targetFramework)) { throw "Bridge contract target framework is missing." }
+
+          $runPath = Join-Path $RepositoryRoot "run.ps1"
+          if (-not (Test-Path $runPath -PathType Leaf)) { throw "run.ps1 was not found." }
+          $runText = [System.IO.File]::ReadAllText($runPath)
+          foreach ($token in @(
+              '$Contract = Get-Content $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json',
+              '$TargetFramework = [string]$Contract.dotnet.targetFramework',
+              'src\OcctDemo.WinForms\bin\x64\$Configuration\$TargetFramework\CAD-Winform.exe',
+              'src\OcctDemo.Wpf\bin\x64\$Configuration\$TargetFramework\CAD-WPF.exe',
+              'src\OcctDemo.Avalonia\bin\x64\$Configuration\$TargetFramework\CAD-Avalonia.exe'
+          )) {
+              if (-not $runText.Contains($token)) { throw "Demo run target-framework contract is missing: $token" }
+          }
+          if ($runText.Contains('net8.0-windows')) { throw "Legacy net8.0-windows output path remains in run.ps1." }
+
+          '@
+          $packageText = $packageText.Replace($marker, $prefix + $marker)
+
+          $oldBlock = @'
+          foreach ($relativePath in @(
+              "src\OcctNet\OcctNet.csproj",
+              "src\OcctNet.WinForms\OcctNet.WinForms.csproj",
+              "src\OcctNet.Wpf\OcctNet.Wpf.csproj"
+          )) {
+              $projectText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot $relativePath))
+              if (-not $projectText.Contains('<IsPackable>false</IsPackable>')) {
+                  throw "Demo reusable project must remain non-packable; NuGet packaging is main-only: $relativePath"
+              }
+              foreach ($forbidden in @('<PackageReadmeFile>', '<PackageLicenseFile>', '<RepositoryUrl>')) {
+                  if ($projectText.Contains($forbidden)) {
+                      throw "Main-only NuGet metadata leaked into demo project ${relativePath}: $forbidden"
+                  }
+              }
+          }
+          '@
+          $newBlock = @'
+          foreach ($relativePath in @(
+              "src\OcctNet\OcctNet.csproj",
+              "src\OcctNet.WinForms\OcctNet.WinForms.csproj",
+              "src\OcctNet.Wpf\OcctNet.Wpf.csproj",
+              "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj",
+              "src\OcctDemo.Common\OcctDemo.Common.csproj",
+              "src\OcctDemo.WinForms\OcctDemo.WinForms.csproj",
+              "src\OcctDemo.Wpf\OcctDemo.Wpf.csproj",
+              "src\OcctDemo.Avalonia\OcctDemo.Avalonia.csproj"
+          )) {
+              $projectPath = Join-Path $RepositoryRoot $relativePath
+              if (-not (Test-Path $projectPath -PathType Leaf)) { throw "Demo managed project was not found: $relativePath" }
+              $projectText = [System.IO.File]::ReadAllText($projectPath)
+              if (-not $projectText.Contains("<TargetFramework>$targetFramework</TargetFramework>")) {
+                  throw "Demo managed project target framework does not match bridge-contract.json: $relativePath"
+              }
+              if (-not $projectText.Contains('<IsPackable>false</IsPackable>')) {
+                  throw "Demo managed project must remain non-packable; NuGet packaging is main-only: $relativePath"
+              }
+              foreach ($forbidden in @('<PackageReadmeFile>', '<PackageLicenseFile>', '<RepositoryUrl>')) {
+                  if ($projectText.Contains($forbidden)) {
+                      throw "Main-only NuGet metadata leaked into demo project ${relativePath}: $forbidden"
+                  }
+              }
+          }
+          '@
+          if (-not $packageText.Contains($oldBlock)) { throw 'Legacy demo non-packable contract block was not found.' }
+          $packageText = $packageText.Replace($oldBlock, $newBlock)
+          $packageText = $packageText.Replace(
+            '[package] Demo publishing, app-local native closure, VC runtime resolution, restricted LoadLibrary probe, shared Win32 126 diagnostics, protected troubleshooting docs, main-only NuGet boundary, and README preview paths validated.',
+            '[package] Demo publishing, contract-driven TFM/run paths, eight non-packable managed projects, app-local native closure, VC runtime resolution, restricted LoadLibrary probe, shared Win32 126 diagnostics, protected troubleshooting docs, and README preview paths validated.')
+          [System.IO.File]::WriteAllText($packagePath, $packageText, $utf8Bom)
+
+          git add README.md README.zh-CN.md tests/check-demo-package.ps1
+          git commit -m 'Finalize demo .NET 10 runtime contract'
+          git push origin HEAD:fix/demo-net10-runtime-contract
+
+      - name: Remove one-time workflow
+        shell: pwsh
+        run: |
+          git pull --ff-only
+          git rm .github/workflows/demo-net10-finalize-once.yml
+          git commit -m 'Remove one-time demo .NET 10 finalizer'
+          git push origin HEAD:fix/demo-net10-runtime-contract
