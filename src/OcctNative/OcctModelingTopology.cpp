@@ -1,4 +1,9 @@
-﻿#include "OcctModelingInternal.hxx"
+﻿#include "OcctModelingShapeInternal.hxx"
+
+#include <BRepBuilderAPI_Sewing.hxx>
+#include <BRepTools.hxx>
+#include <TopTools_IndexedDataMapOfShapeListOfShape.hxx>
+#include <TopTools_ListIteratorOfListOfShape.hxx>
 
 using namespace OcctModelingInternal;
 
