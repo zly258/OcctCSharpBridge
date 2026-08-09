@@ -60,9 +60,25 @@ $contracts = [ordered]@{
         "<TargetFramework>$expectedTargetFramework</TargetFramework>",
         "<Platforms>x64</Platforms>"
     )
+    "src/OcctNet.WinForms/OcctNet.WinForms.csproj" = @(
+        "<TargetFramework>$expectedTargetFramework</TargetFramework>",
+        "<PlatformTarget>x64</PlatformTarget>"
+    )
+    "src/OcctNet.Wpf/OcctNet.Wpf.csproj" = @(
+        "<TargetFramework>$expectedTargetFramework</TargetFramework>",
+        "<PlatformTarget>x64</PlatformTarget>"
+    )
     "src/OcctNet.Avalonia/OcctNet.Avalonia.csproj" = @(
         "<TargetFramework>$expectedTargetFramework</TargetFramework>",
         "<AssemblyName>OcctNet.Avalonia</AssemblyName>"
+    )
+    "tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj" = @(
+        "<TargetFramework>$expectedTargetFramework</TargetFramework>",
+        "<PlatformTarget>x64</PlatformTarget>"
+    )
+    "tests/OcctNet.Smoke/OcctNet.Smoke.csproj" = @(
+        "<TargetFramework>$expectedTargetFramework</TargetFramework>",
+        "<PlatformTarget>x64</PlatformTarget>"
     )
     "README.md" = @($expectedVersion, $expectedOcctVersion, $expectedSdkVersion, $expectedContactEmail)
     "README.zh-CN.md" = @($expectedVersion, $expectedOcctVersion, $expectedSdkVersion, $expectedContactEmail)
@@ -101,10 +117,30 @@ foreach ($contractEntry in $contracts.GetEnumerator()) {
     }
 }
 
-$cadLocalizationPath = Join-Path $RepositoryRoot "src\CadCommon\CadLocalization.cs"
-if (Test-Path $cadLocalizationPath -PathType Leaf) {
-    $cadLocalization = [System.IO.File]::ReadAllText($cadLocalizationPath)
-    if (-not $cadLocalization.Contains($expectedContactEmail)) { throw "Software About contact does not match bridge-contract.json." }
+foreach ($relativePath in @(
+    "src/OcctDemo.Common/OcctDemo.Common.csproj",
+    "src/OcctDemo.WinForms/OcctDemo.WinForms.csproj",
+    "src/OcctDemo.Wpf/OcctDemo.Wpf.csproj",
+    "src/OcctDemo.Avalonia/OcctDemo.Avalonia.csproj"
+)) {
+    $path = Join-Path $RepositoryRoot $relativePath
+    if (-not (Test-Path $path -PathType Leaf)) { continue }
+    $text = [System.IO.File]::ReadAllText($path)
+    if (-not $text.Contains("<TargetFramework>$expectedTargetFramework</TargetFramework>")) {
+        throw "Demo project target framework does not match bridge-contract.json: $relativePath"
+    }
+}
+
+foreach ($relativePath in @(
+    "src/OcctDemo.Common/DemoLocalization.cs",
+    "src/CadCommon/CadLocalization.cs"
+)) {
+    $path = Join-Path $RepositoryRoot $relativePath
+    if (-not (Test-Path $path -PathType Leaf)) { continue }
+    $localization = [System.IO.File]::ReadAllText($path)
+    if (-not $localization.Contains($expectedContactEmail)) {
+        throw "Software About contact does not match bridge-contract.json: $relativePath"
+    }
 }
 
 $publishPath = Join-Path $RepositoryRoot "publish.ps1"
@@ -147,12 +183,13 @@ foreach ($path in $machineSpecificFiles) {
     }
 }
 
-Write-Host ("[version] Bridge {0}, ABI {1}, OCCT {2}, build SDK {3}, target {4}, API {5}/{6}, primary types {7}, compatibility types {8}, contact {9}." -f
+Write-Host ("[version] Bridge {0}, ABI {1}, OCCT {2}, build SDK {3}, target {4}, C# {5}, API {6}/{7}, primary types {8}, compatibility types {9}, contact {10}." -f
     $expectedVersion,
     $expectedAbiVersion,
     $expectedOcctVersion,
     $expectedSdkVersion,
     $expectedTargetFramework,
+    $expectedLanguageVersion,
     $expectedNativeCount,
     $expectedManagedCount,
     $expectedPublicTypeCount,
