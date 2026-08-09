@@ -172,8 +172,10 @@ foreach ($path in $machineSpecificFiles) {
         if ($match.Value -notmatch $allowedDefaultOcctPathPattern) {
             throw "An unsupported machine-specific OCCT path remains in ${path}: $($match.Value)"
         }
-        if (-not $path.EndsWith('build.ps1', [System.StringComparison]::OrdinalIgnoreCase)) {
-            throw "The conventional OCCT default path may only appear in build.ps1; found in $path."
+        $isBuildScript = $path.EndsWith('build.ps1', [System.StringComparison]::OrdinalIgnoreCase)
+        $isNativeCMake = $path.EndsWith('src\OcctNative\CMakeLists.txt', [System.StringComparison]::OrdinalIgnoreCase)
+        if (-not ($isBuildScript -or $isNativeCMake)) {
+            throw "The conventional OCCT default path may only appear in build.ps1 or native CMakeLists.txt; found in $path."
         }
     }
 }
