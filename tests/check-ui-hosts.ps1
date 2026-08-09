@@ -34,7 +34,7 @@ $contracts = [ordered]@{
     "src/OcctNet.Avalonia/OcctNet.Avalonia.csproj" = @(
         '<TargetFramework>net8.0-windows</TargetFramework>',
         '..\OcctNet\OcctNet.csproj',
-        '<PackageReference Include="Avalonia" Version="12.1.0" ExcludeAssets="analyzers" />',
+        '<PackageReference Include="Avalonia" Version="12.1.0" />',
         '<AssemblyName>OcctNet.Avalonia</AssemblyName>'
     )
     "src/OcctNet.Avalonia/OcctAvaloniaViewport.cs" = @(
