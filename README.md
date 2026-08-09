@@ -29,10 +29,10 @@ NuGet SDK packaging is intentionally **main-only**. The reusable projects on `de
 - `OcctNet.WinForms`: reusable native-HWND `OcctViewportControl`.
 - `OcctNet.Wpf`: reusable `OcctWpfViewport`.
 - `OcctNet.Avalonia`: Windows x64 Avalonia `NativeControlHost` with its own child HWND.
-- `CadCommon`: shared application/session/command/document layer.
-- `CadWinForms`, `CadWpf`, `CadAvalonia`: runnable reference applications.
+- `OcctDemo.Common`: shared application/session/command/document layer.
+- `OcctDemo.WinForms`, `OcctDemo.Wpf`, `OcctDemo.Avalonia`: runnable reference applications.
 
-Interactive objects use one typed abstraction: `IOcctObject` exposes `Id`, `Kind`, and `IsValid`, while actual instances are `OcctShape`, `OcctText`, or `OcctDimension`. There is no generic `OcctObject` wrapper and no public raw-ID constructor. CadCommon persists IDs but always resolves them through the owning `OcctEngine` before use.
+Interactive objects use one typed abstraction: `IOcctObject` exposes `Id`, `Kind`, and `IsValid`, while actual instances are `OcctShape`, `OcctText`, or `OcctDimension`. There is no generic `OcctObject` wrapper and no public raw-ID constructor. OcctDemo.Common persists IDs but always resolves them through the owning `OcctEngine` before use.
 
 Avalonia remains a native Windows HWND host; the project does not claim Linux/macOS OCCT Viewer support.
 
@@ -84,7 +84,7 @@ The refactor moved existing method bodies by responsibility; command IDs, select
 
 All three previews use the canonical lossless PNG files under `assets/previews/`; the README pins the image URLs to the `demo` branch so GitHub rendering and copied README views cannot resolve them against the wrong branch.
 
-Avalonia uses the same `CadSession` and `CadCommandCatalog` layer as WPF and exposes the same main CAD workflow: model creation, selection, model explorer, properties, undo/redo, file exchange, annotations, analysis, view/display controls, samples, shortcuts, and bilingual UI.
+Avalonia uses the same `DemoSession` and `DemoCommandCatalog` layer as WPF and exposes the same main CAD workflow: model creation, selection, model explorer, properties, undo/redo, file exchange, annotations, analysis, view/display controls, samples, shortcuts, and bilingual UI.
 
 ## First-time setup
 
@@ -104,7 +104,7 @@ Expected OCCT layout: `inc`, `win64\vc14\lib`, `win64\vc14\bin`, and optionally 
 | Target | Purpose | OCCT SDK |
 | --- | --- | --- |
 | `validate` | Contract/source/UI/publishing checks only | No |
-| `managed` | Core wrapper + WinForms/WPF/Avalonia hosts + `CadCommon` | No |
+| `managed` | Core wrapper + WinForms/WPF/Avalonia hosts + `OcctDemo.Common` | No |
 | `ci` | Contract checks, managed regression tests, all 3 demos, Smoke compilation | No |
 | `native` | Build `OcctNative.dll` | Yes |
 | `winform` / `wpf` / `avalonia` | Build selected runnable demo | Yes |
@@ -184,7 +184,7 @@ Recommended cadence:
   - `OcctNative.dll [found]` but `TKernel.dll [missing]`: the OCCT Native dependency closure is incomplete; republish the package.
   - both are `[found]` but Win32 126 remains: a deeper OCCT, third-party, or Visual C++ runtime dependency is missing or mismatched. Check `native-dependencies.txt`; if the cause is still unclear, republish with `-Diagnostics` and inspect `native-resolution.txt`, `runtime-manifest.txt`, and the crash log under `%LOCALAPPDATA%\OcctCSharpBridge\Logs`.
 - Avalonia analyzer/compiler mismatch: use the branch-pinned SDK from `global.json`.
-- Avalonia startup issue: inspect `src\CadAvalonia\bin\x64\<Configuration>\net8.0-windows\CAD-Avalonia.log` plus the shared crash log above.
+- Avalonia startup issue: inspect `src\OcctDemo.Avalonia\bin\x64\<Configuration>\net8.0-windows\CAD-Avalonia.log` plus the shared crash log above.
 
 ## License
 

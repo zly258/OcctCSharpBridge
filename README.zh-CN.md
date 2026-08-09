@@ -29,8 +29,8 @@
 - `OcctNet.WinForms`：可复用 `OcctViewportControl`。
 - `OcctNet.Wpf`：可复用 `OcctWpfViewport`。
 - `OcctNet.Avalonia`：Windows x64 `NativeControlHost` + 子 HWND。
-- `CadCommon`：三个 Demo 共用的 Document/Session/Command 应用层。
-- `CadWinForms`、`CadWpf`、`CadAvalonia`：可直接运行的参考应用。
+- `OcctDemo.Common`：三个 Demo 共用的 Document/Session/Command 应用层。
+- `OcctDemo.WinForms`、`OcctDemo.Wpf`、`OcctDemo.Avalonia`：可直接运行的参考应用。
 
 当前 Avalonia Viewer 仍基于 Windows HWND，不声明 Linux/macOS OCCT Viewer 支持。
 
@@ -82,7 +82,7 @@ Avalonia
 
 三套预览统一引用 `assets/previews/` 下正式保留的无损 PNG，并将图片 URL 显式固定到 `demo` 分支，避免 GitHub 页面、复制后的 README 或其他分支上下文把相对路径解析到错误位置。
 
-Avalonia 与 WPF 共用 `CadSession` 和 `CadCommandCatalog`，覆盖模型创建、选择、模型树、属性、撤销重做、文件交换、标注、分析、视图/显示控制、示例、快捷键和中英文 UI。
+Avalonia 与 WPF 共用 `DemoSession` 和 `DemoCommandCatalog`，覆盖模型创建、选择、模型树、属性、撤销重做、文件交换、标注、分析、视图/显示控制、示例、快捷键和中英文 UI。
 
 ## 首次配置
 
@@ -102,7 +102,7 @@ OCCT 目录应包含 `inc`、`win64\vc14\lib`、`win64\vc14\bin`，以及可选 
 | Target | 作用 | OCCT SDK |
 | --- | --- | --- |
 | `validate` | 契约、源码、UI 结构和发布规则校验 | 否 |
-| `managed` | Core + WinForms/WPF/Avalonia Host + `CadCommon` | 否 |
+| `managed` | Core + WinForms/WPF/Avalonia Host + `OcctDemo.Common` | 否 |
 | `ci` | 契约检查 + Managed Test + 三个 Demo + Smoke 编译 | 否 |
 | `native` | 构建 `OcctNative.dll` | 是 |
 | `winform` / `wpf` / `avalonia` | 构建指定 Demo | 是 |
@@ -182,7 +182,7 @@ PowerShell 负责 API/静态/UI 契约；`OcctNet.ManagedTests` 无需 OCCT，�
   - `OcctNative.dll [存在]` 但 `TKernel.dll [缺失]`：OCCT Native 依赖闭包不完整，重新发布完整包。
   - 两者均为 `[存在]` 但仍是 Win32 126：通常是更深层的 OCCT、第三方库或 Visual C++ Runtime 缺失/版本不匹配。先检查 `native-dependencies.txt`；如果原因仍不明确，使用 `-Diagnostics` 重新发布，并检查 `native-resolution.txt`、`runtime-manifest.txt` 以及 `%LOCALAPPDATA%\OcctCSharpBridge\Logs` 下的崩溃日志。
 - Avalonia Analyzer/编译器不匹配：使用本分支 `global.json` 固定 SDK。
-- Avalonia 启动异常：同时查看 `src\CadAvalonia\bin\x64\<Configuration>\net8.0-windows\CAD-Avalonia.log` 和上述共享崩溃日志。
+- Avalonia 启动异常：同时查看 `src\OcctDemo.Avalonia\bin\x64\<Configuration>\net8.0-windows\CAD-Avalonia.log` 和上述共享崩溃日志。
 
 ## 许可证
 
