@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md) · [Documentation](docs/INDEX.md) · [Architecture boundaries](docs/ARCHITECTURE_BOUNDARIES.md) · [Desktop demos](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
-OcctCSharpBridge is a Windows x64 **Open CASCADE Technology 7.9.0 → .NET 8** bridge. `main` contains only reusable OCCT native/.NET wrappers, WinForms/WPF/Avalonia viewport hosts, contract tests, Native Smoke scenarios, and managed SDK packaging. Complete CAD applications and upper-layer CAD frameworks live on `demo`.
+OcctCSharpBridge is a Windows x64 **Open CASCADE Technology 7.9.0 → .NET 10** bridge. `main` contains only reusable OCCT native/.NET wrappers, WinForms/WPF/Avalonia viewport hosts, contract tests, Native Smoke scenarios, and managed SDK packaging. Complete CAD applications and upper-layer CAD frameworks live on `demo`.
 
 Bridge **2.6.0 / Native ABI 3** follows one deliberate boundary: **the bridge exposes OCCT capabilities and viewport adapters, not an application CAD framework.** OCAF/XDE, Document, Feature/Entity, Command, Tool, Undo/Redo, Snap/Grip, project persistence, and product UI do not belong in `main`.
 
@@ -10,11 +10,15 @@ Bridge **2.6.0 / Native ABI 3** follows one deliberate boundary: **the bridge ex
 
 - Windows x64
 - Visual Studio 2022 / MSVC v143-compatible toolchain
-- .NET SDK **10.0.302** (`global.json`); published assemblies still target `net8.0-windows`
-- C# 12.0
+- .NET SDK **10.0.302** (`global.json`)
+- .NET Desktop Runtime **10.x** for framework-dependent desktop applications
+- Target framework **`net10.0-windows`**
+- C# **14.0**
 - CMake 3.21+
 - Open CASCADE Technology **7.9.0**, VC14 x64 layout
 - PowerShell 5.1+ or PowerShell 7+
+
+A newer .NET 10 patch runtime is valid through normal framework patch roll-forward; the repository does not pin consuming applications to one exact `10.0.x` runtime patch.
 
 The conventional OCCT root is:
 
@@ -42,7 +46,7 @@ docs                     API, architecture, deployment, diagnostics
 build.ps1                validate/build/pack/smoke entry point
 ```
 
-`main` must not contain `CadCommon`, complete CAD applications, DocumentManager, CommandBus, ToolManager, or similar product-layer implementations. See [Architecture Boundaries](docs/ARCHITECTURE_BOUNDARIES.md).
+`main` must not contain `OcctDemo.*`, complete CAD applications, DocumentManager, CommandBus, ToolManager, or similar product-layer implementations. See [Architecture Boundaries](docs/ARCHITECTURE_BOUNDARIES.md).
 
 ## Managed façades
 
@@ -75,6 +79,9 @@ Authoritative values come from `bridge-contract.json`:
 - Bridge: `2.6.0`
 - Native ABI: `3`
 - OCCT: exactly `7.9.0`
+- .NET SDK: `10.0.302`
+- Target framework: `net10.0-windows`
+- C#: `14.0`
 - Native exports: `348`
 - Managed P/Invoke declarations: `348`
 - Public .NET types: `99`
@@ -185,7 +192,7 @@ git switch demo
 .\run.ps1 avalonia
 ```
 
-`demo` may contain `CadCommon`, a simple Command catalog/dispatcher, History, and interactive Tool examples, but those remain application reference code rather than `OcctNet` public API.
+`demo` contains the explicitly named `OcctDemo.Common` orchestration layer and three `OcctDemo.*` applications. Those are reference-application code, not `OcctNet` public API and not a reusable CAD framework.
 
 ## Runtime diagnostics
 

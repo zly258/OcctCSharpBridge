@@ -8,7 +8,7 @@ OcctCSharpBridge 明确区分 **Managed SDK** 与 **Native OCCT Runtime**。`mai
 .\build.ps1 pack Release
 ```
 
-输出四套 SDK：
+输出四套 SDK，目标框架统一来自 `bridge-contract.json`（当前为 **`net10.0-windows`**）：
 
 ```text
 artifacts/packages/
@@ -22,7 +22,7 @@ artifacts/packages/
 └─ OcctNet.Avalonia.<version>.snupkg
 ```
 
-版本统一来自 `bridge-contract.json`。
+Package Version 与 Managed Target Contract 都统一来自 `bridge-contract.json`；包校验脚本不再单独硬编码另一份 Target Framework。
 
 ## 包职责
 
@@ -47,9 +47,15 @@ Avalonia 包当前仍是 Windows-only Host，不表示 Native Viewer 已跨平�
 - OCCT `TK*.dll`；
 - OCCT 第三方 Runtime DLL；
 - OCCT Resource 目录；
-- CadCommon 或任何完整 CAD 应用代码。
+- `OcctDemo.*` 编排/应用代码或任何完整 CAD 应用代码。
 
 `tests/check-sdk-package.ps1` 和 `build.ps1 pack` 会校验这些边界。
+
+## .NET Runtime 要求
+
+当前 Managed 包目标为 `net10.0-windows`。Framework-dependent 桌面程序因此需要 .NET Desktop Runtime 10.x。构建 SDK 固定为 10.0.302 以保证构建一致性；运行应用时遵循正常的 .NET 10 补丁版本前滚规则，不要求固定到某一个 `10.0.x` Runtime 补丁。
+
+如果需要 Self-contained 发布，由 `demo` 应用层根据实际交付方式决定；可复用 Managed NuGet 本身不捆绑 .NET Runtime。
 
 ## 为什么 Native Runtime 单独部署
 
@@ -74,7 +80,7 @@ var report = OcctRuntime.GetDiagnosticReport();
 
 ## 应用发布
 
-完整桌面应用发布只属于 `demo`，因为只有应用层知道具体 EXE、CadCommon、资源和 app-local Native 依赖闭包。
+完整桌面应用发布只属于 `demo`，因为只有应用层知道具体 EXE、`OcctDemo.Common`、应用资源和 app-local Native 依赖闭包。
 
 正式发布前在安装 OCCT 7.9.0 的 Windows 机器执行：
 

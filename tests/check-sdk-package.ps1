@@ -5,6 +5,16 @@
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
+$contractPath = Join-Path $RepositoryRoot "bridge-contract.json"
+if (-not (Test-Path $contractPath -PathType Leaf)) {
+    throw "Bridge contract file is missing: bridge-contract.json"
+}
+$contract = Get-Content $contractPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$targetFramework = [string]$contract.dotnet.targetFramework
+if ([string]::IsNullOrWhiteSpace($targetFramework)) {
+    throw "Bridge contract target framework is missing."
+}
+
 $projects = @(
     "src/OcctNet/OcctNet.csproj",
     "src/OcctNet.WinForms/OcctNet.WinForms.csproj",
@@ -20,6 +30,7 @@ foreach ($relativePath in $projects) {
 
     $text = [System.IO.File]::ReadAllText($path)
     foreach ($token in @(
+        "<TargetFramework>$targetFramework</TargetFramework>",
         "<IsPackable>true</IsPackable>",
         "<GenerateDocumentationFile>true</GenerateDocumentationFile>",
         "<PackageReadmeFile>README.md</PackageReadmeFile>",
@@ -36,7 +47,6 @@ foreach ($relativePath in $projects) {
 
 $avaloniaProject = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet.Avalonia/OcctNet.Avalonia.csproj"))
 foreach ($token in @(
-    '<TargetFramework>net10.0-windows</TargetFramework>',
     '<AssemblyName>OcctNet.Avalonia</AssemblyName>',
     '<PackageReference Include="Avalonia" Version="12.1.0" />'
 )) {
@@ -70,4 +80,4 @@ foreach ($token in @(
     }
 }
 
-Write-Host "[package] Four reusable managed SDK packages, documentation and pack target validated." -ForegroundColor Green
+Write-Host "[package] Four reusable $targetFramework managed SDK packages, documentation and pack target validated." -ForegroundColor Green
