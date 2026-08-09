@@ -36,7 +36,7 @@ foreach ($relativePath in $projects) {
 
 $avaloniaProject = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctNet.Avalonia/OcctNet.Avalonia.csproj"))
 foreach ($token in @(
-    '<TargetFramework>net8.0-windows</TargetFramework>',
+    '<TargetFramework>net10.0-windows</TargetFramework>',
     '<AssemblyName>OcctNet.Avalonia</AssemblyName>',
     '<PackageReference Include="Avalonia" Version="12.1.0" />'
 )) {
