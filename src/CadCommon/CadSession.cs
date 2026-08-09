@@ -103,7 +103,7 @@ public sealed partial class CadSession
 
     public int ApplyDepthBiasToSelection(CadDepthBiasPreset preset)
     {
-        var targets = Engine.SelectedObjects
+        var targets = Engine.SelectedObjectsOwned
             .Where(value => value.Kind == OcctObjectKind.Shape)
             .DistinctBy(value => value.Id)
             .ToList();
@@ -329,7 +329,7 @@ public sealed partial class CadSession
 
     private List<OcctShape> SelectedShapes()
     {
-        return Engine.SelectedObjects
+        return Engine.SelectedObjectsOwned
             .Where(item => item.Kind == OcctObjectKind.Shape)
             .Select(item => Engine.GetShape(item.Id))
             .DistinctBy(item => item.Id)
