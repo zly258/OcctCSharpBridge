@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.ComponentModel;
+using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
@@ -91,4 +92,15 @@ public sealed partial class OcctModelingSession
             in location,
             copyShape ? 1 : 0));
     }
+
+    /// <summary>
+    /// Bridge 2.5 source-compatibility entry point. New code should use
+    /// <see cref="SetShapeLocation(OcctModelShape, OcctModelLocation, bool)"/>.
+    /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public OcctModelShape SetLocation(
+        OcctModelShape shape,
+        OcctModelLocation location,
+        bool copyShape = true) =>
+        SetShapeLocation(shape, location, copyShape);
 }
