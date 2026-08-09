@@ -93,7 +93,7 @@ internal sealed class ParameterDialog : Window
         root.Children.Add(new ScrollViewer
         {
             Content = grid,
-            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto
+            VerticalScrollBarVisibility = global::Avalonia.Controls.Primitives.ScrollBarVisibility.Auto
         });
         Content = root;
     }
