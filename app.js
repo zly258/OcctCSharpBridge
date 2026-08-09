@@ -1,4 +1,4 @@
-(() => {
+﻿(() => {
   const translations = {
     en: {
       navFeatures: 'Capabilities',
@@ -111,7 +111,7 @@
       p4Text: 'Fit、场景包围盒和定位逻辑基于显示变换后的几何，对象移动后镜头状态仍保持正确。',
       demoEyebrow: 'DESKTOP HOSTS',
       demoTitle: '同一桥接层，多种桌面宿主',
-      demoLead: 'demo 分支验证 WinForms、WPF、Avalonia 与 Avalonia 的 CAD 交互、本地化和构建发布；main 继续保持纯净可复用。',
+      demoLead: 'demo 分支验证 WinForms、WPF 与 Avalonia 的 CAD 交互、本地化和构建发布；main 继续保持纯净可复用。',
       winformsCaption: '经典 CAD 桌面布局与原生 HWND 视口',
       wpfCaption: '基于 OcctWpfViewport 的 WPF 应用',
       avaloniaCaption: '使用 Avalonia 原生 HWND 宿主的完整 CAD Demo',
@@ -119,7 +119,7 @@
       branchesTitle: '不同分支保持清晰职责',
       branchesLead: '将可复用桥接核心、桌面 Demo 与项目网站分别维护，保持分支边界清晰。',
       branchMain: '可复用 OCCT C++ / C# 桥接核心',
-      branchDemo: 'WinForms、WPF、Avalonia 与 Avalonia 示例',
+      branchDemo: 'WinForms、WPF 与 Avalonia 示例',
       branchWebsite: '静态项目网站与 GitHub Pages 源码',
       startEyebrow: 'GET STARTED',
       startTitle: '从克隆开始：构建、运行与发布',
