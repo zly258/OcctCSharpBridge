@@ -1,0 +1,1 @@
+# BOOTSTRAP: replace with generated public API snapshot after CI validation
