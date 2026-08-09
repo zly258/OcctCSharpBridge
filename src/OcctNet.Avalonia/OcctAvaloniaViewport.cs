@@ -153,9 +153,9 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
         if (_engine?.IsInitialized != true)
             return;
 
-        var selected = _engine.FirstSelectedObject;
+        var selected = _engine.FirstSelectedObjectOwned;
         SelectionChanged?.Invoke(this, _engine.FirstSelected);
-        ObjectSelectionChanged?.Invoke(this, new OcctAvaloniaSelectionEventArgs(selected, _engine.SelectedObjects));
+        ObjectSelectionChanged?.Invoke(this, new OcctAvaloniaSelectionEventArgs(selected, _engine.SelectedObjectsOwned));
     }
 
     public void RefreshNativeView()
@@ -198,17 +198,14 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
         try
         {
             InstallInputWindowProcedure(handle);
-
             _engine = new OcctEngine();
             _engine.Initialize(handle);
             SynchronizeDpi();
             _engine.Resize();
             _engine.Redraw();
-
             _lastHoverTimestamp = 0;
             _lastWorldPointTimestamp = 0;
             EngineInitialized?.Invoke(this, EventArgs.Empty);
-
             Dispatcher.UIThread.Post(RefreshNativeView, DispatcherPriority.Background);
             return new PlatformHandle(handle, "HWND");
         }
@@ -236,7 +233,6 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
         Marshal.SetLastPInvokeError(0);
         var previous = SetWindowLongPtrW(handle, GwlpWndProc, procedurePointer);
         var error = Marshal.GetLastPInvokeError();
-
         if (previous == IntPtr.Zero && error != 0)
             throw new InvalidOperationException($"Unable to subclass the Avalonia OCCT child HWND. Win32 error: {error}.");
 
@@ -245,10 +241,8 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
 
     private void OnHostSizeChanged(object? sender, SizeChangedEventArgs e)
     {
-        if (_engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero)
-            return;
-
-        ScheduleNativeViewRefresh();
+        if (_engine?.IsInitialized == true && _nativeHandle != IntPtr.Zero)
+            ScheduleNativeViewRefresh();
     }
 
     private void ScheduleNativeViewRefresh()
@@ -275,9 +269,6 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
 
                 case WmSize:
                 case WmWindowPosChanged:
-                    ScheduleNativeViewRefresh();
-                    break;
-
                 case WmDpiChanged:
                     ScheduleNativeViewRefresh();
                     break;
@@ -371,17 +362,22 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
         if (!EnableDefaultInteraction || !_leftSelectionGesture)
             return;
 
-        var (endX, endY) = GetPoint(lParam);
-        var eventDistance = Math.Max(Math.Abs(endX - _selectionStartX), Math.Abs(endY - _selectionStartY));
-        var trackedDistance = Math.Max(Math.Abs(_selectionCurrentX - _selectionStartX), Math.Abs(_selectionCurrentY - _selectionStartY));
-        if (_rectangleDragStarted && trackedDistance > eventDistance)
-        {
-            endX = _selectionCurrentX;
-            endY = _selectionCurrentY;
-        }
-
+        var (eventX, eventY) = GetPoint(lParam);
+        var eventDistance = Math.Max(
+            Math.Abs(eventX - _selectionStartX),
+            Math.Abs(eventY - _selectionStartY));
+        var trackedDistance = Math.Max(
+            Math.Abs(_selectionCurrentX - _selectionStartX),
+            Math.Abs(_selectionCurrentY - _selectionStartY));
+        var endX = _rectangleDragStarted && trackedDistance > eventDistance
+            ? _selectionCurrentX
+            : eventX;
+        var endY = _rectangleDragStarted && trackedDistance > eventDistance
+            ? _selectionCurrentY
+            : eventY;
         var dragDistance = Math.Abs(endX - _selectionStartX) + Math.Abs(endY - _selectionStartY);
-        var useRectangle = EnableRectangleSelection && (_rectangleDragStarted || dragDistance > Math.Max(1, RectangleSelectionThreshold));
+        var useRectangle = EnableRectangleSelection
+                           && (_rectangleDragStarted || dragDistance > RectangleSelectionThreshold);
         var append = IsKeyDown(VkControl);
         var allowOverlap = RectangleSelectionBehavior switch
         {
@@ -405,7 +401,6 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
                 _engine.SelectRectangle(_selectionStartX, _selectionStartY, endX, endY, append, allowOverlap);
             else
                 _engine.Select(endX, endY, append);
-
             RaiseSelectionChanged();
         });
     }
@@ -417,12 +412,10 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
             return;
 
         CancelRectangleSelection();
-        var (x, y) = GetPoint(lParam);
-        _lastMouseX = x;
-        _lastMouseY = y;
+        (_lastMouseX, _lastMouseY) = GetPoint(lParam);
         _rotating = true;
         SetCapture(hwnd);
-        TryInvoke(() => _engine.StartRotation(x, y));
+        TryInvoke(() => _engine.StartRotation(_lastMouseX, _lastMouseY));
     }
 
     private void HandleMiddleButtonDown(IntPtr hwnd, IntPtr lParam)
@@ -471,10 +464,13 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
                 TryInvoke(() => _engine.MoveTo(x, y));
             }
 
-            if (WorldPointChanged is not null && HasElapsed(_lastWorldPointTimestamp, now, WorldPointIntervalTicks))
+            if (WorldPointChanged is not null
+                && HasElapsed(_lastWorldPointTimestamp, now, WorldPointIntervalTicks))
             {
                 _lastWorldPointTimestamp = now;
-                TryInvoke(() => WorldPointChanged.Invoke(this, new OcctAvaloniaWorldPointEventArgs(x, y, _engine.ScreenToWorld(x, y))));
+                TryInvoke(() => WorldPointChanged.Invoke(
+                    this,
+                    new OcctAvaloniaWorldPointEventArgs(x, y, _engine.ScreenToWorld(x, y))));
             }
         }
 
@@ -491,7 +487,9 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
         if (delta == 0)
             return;
 
-        var point = new NativePoint(GetLowWordSigned(lParam), GetHighWordSigned(lParam));
+        var screenX = GetLowWordSigned(lParam);
+        var screenY = GetHighWordSigned(lParam);
+        var point = new NativePoint(screenX, screenY);
         if (_nativeHandle != IntPtr.Zero && ScreenToClient(_nativeHandle, ref point))
             TryInvoke(() => _engine.ZoomAtPoint(point.X, point.Y, delta));
         else
@@ -507,8 +505,7 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
         _selectionCurrentY = currentY;
         var dx = Math.Abs(currentX - _selectionStartX);
         var dy = Math.Abs(currentY - _selectionStartY);
-        var threshold = Math.Max(1, RectangleSelectionThreshold);
-        if (dx < threshold && dy < threshold)
+        if (dx < RectangleSelectionThreshold && dy < RectangleSelectionThreshold)
         {
             HideSelectionFrame();
             return;
@@ -534,7 +531,6 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
             double.IsFinite(RectangleSelectionLineWidth) && RectangleSelectionLineWidth > 0.0
                 ? RectangleSelectionLineWidth
                 : 1.0));
-
         _selectionFrame = frame;
     }
 
@@ -545,7 +541,6 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
 
         if (_engine?.IsInitialized == true)
             TryInvoke(_engine.HideSelectionRectangle);
-
         _selectionFrame = null;
     }
 
@@ -644,7 +639,10 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
         previous == 0 || current - previous >= interval;
 
     private static bool IsKeyDown(int virtualKey) => (GetKeyState(virtualKey) & 0x8000) != 0;
-    private static (int X, int Y) GetPoint(IntPtr lParam) => (GetLowWordSigned(lParam), GetHighWordSigned(lParam));
+
+    private static (int X, int Y) GetPoint(IntPtr lParam) =>
+        (GetLowWordSigned(lParam), GetHighWordSigned(lParam));
+
     private static int GetLowWordSigned(IntPtr value) => unchecked((short)(value.ToInt64() & 0xFFFF));
     private static int GetHighWordSigned(IntPtr value) => unchecked((short)((value.ToInt64() >> 16) & 0xFFFF));
     private static DrawingColor ToDrawingColor(Color value) => DrawingColor.FromArgb(value.A, value.R, value.G, value.B);
