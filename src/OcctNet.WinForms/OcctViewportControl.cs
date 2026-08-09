@@ -440,9 +440,9 @@ public sealed class OcctViewportControl : Control
     public void RaiseSelectionChanged()
     {
         if (_engine?.IsInitialized != true) return;
-        var selected = _engine.FirstSelectedObject;
+        var selected = _engine.FirstSelectedObjectOwned;
         SelectionChanged?.Invoke(this, _engine.FirstSelected);
-        ObjectSelectionChanged?.Invoke(this, new OcctViewportSelectionEventArgs(selected, _engine.SelectedObjects));
+        ObjectSelectionChanged?.Invoke(this, new OcctViewportSelectionEventArgs(selected, _engine.SelectedObjectsOwned));
     }
 
     private static bool HasElapsed(long previous, long current, long interval) =>
