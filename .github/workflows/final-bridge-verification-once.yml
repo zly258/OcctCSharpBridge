@@ -36,16 +36,6 @@ jobs:
           path: website
           fetch-depth: 1
 
-      - name: Validate main managed SDK
-        shell: pwsh
-        working-directory: main
-        run: .\build.ps1 ci Release
-
-      - name: Validate demo managed applications
-        shell: pwsh
-        working-directory: demo
-        run: .\build.ps1 ci Release
-
       - name: Compare reusable main/demo bridge source
         shell: pwsh
         run: |
@@ -90,6 +80,16 @@ jobs:
               if ($LASTEXITCODE -ne 0) { throw "Shared C# source differs: $directory/$file" }
             }
           }
+
+      - name: Validate main managed SDK
+        shell: pwsh
+        working-directory: main
+        run: .\build.ps1 ci Release
+
+      - name: Validate demo managed applications
+        shell: pwsh
+        working-directory: demo
+        run: .\build.ps1 ci Release
 
       - name: Validate website visible contract
         shell: pwsh
