@@ -15,7 +15,8 @@
   "api": {
     "nativeExports": 348,
     "managedPInvokes": 348,
-    "publicNetTypes": 95,
+    "publicNetTypes": 99,
+    "compatibilityPublicNetTypes": 1,
     "viewer": 214,
     "modeling": 134
   }
