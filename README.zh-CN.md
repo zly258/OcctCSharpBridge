@@ -1,4 +1,4 @@
-﻿# OcctCSharpBridge Website
+# OcctCSharpBridge Website
 
 [English](README.md)
 
@@ -106,7 +106,7 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 # 真实 Native Smoke Test
 .\build.ps1 smoke Release
 
-# 发布 WinForms/WPF 包
+# 发布 WinForms/WPF/Avalonia 包
 .\publish.ps1 all Release -Zip
 ```
 
