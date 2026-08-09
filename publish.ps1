@@ -65,19 +65,19 @@ $TemporaryRoot = Join-Path $OutputDirectory ".publish-temp-$Target"
 $Projects = [ordered]@{
     winform = @{
         Name = "WinForms"
-        Project = "src\CadWinForms\CadWinForms.csproj"
+        Project = "src\OcctDemo.WinForms\OcctDemo.WinForms.csproj"
         Folder = "winform"
         Executable = "CAD-Winform.exe"
     }
     wpf = @{
         Name = "WPF"
-        Project = "src\CadWpf\CadWpf.csproj"
+        Project = "src\OcctDemo.Wpf\OcctDemo.Wpf.csproj"
         Folder = "wpf"
         Executable = "CAD-WPF.exe"
     }
     avalonia = @{
         Name = "Avalonia"
-        Project = "src\CadAvalonia\CadAvalonia.csproj"
+        Project = "src\OcctDemo.Avalonia\OcctDemo.Avalonia.csproj"
         Folder = "avalonia"
         Executable = "CAD-Avalonia.exe"
     }

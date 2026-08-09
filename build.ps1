@@ -66,8 +66,8 @@ $Projects = [ordered]@{
         Executable = $null
     }
     DemoCommon = @{
-        DisplayName = "CadCommon"
-        Project = "src\CadCommon\CadCommon.csproj"
+        DisplayName = "OcctDemo.Common"
+        Project = "src\OcctDemo.Common\OcctDemo.Common.csproj"
         Executable = $null
     }
     ManagedTests = @{
@@ -77,17 +77,17 @@ $Projects = [ordered]@{
     }
     WinFormsDemo = @{
         DisplayName = "CAD-Winform"
-        Project = "src\CadWinForms\CadWinForms.csproj"
+        Project = "src\OcctDemo.WinForms\OcctDemo.WinForms.csproj"
         Executable = "CAD-Winform.exe"
     }
     WpfDemo = @{
         DisplayName = "CAD-WPF"
-        Project = "src\CadWpf\CadWpf.csproj"
+        Project = "src\OcctDemo.Wpf\OcctDemo.Wpf.csproj"
         Executable = "CAD-WPF.exe"
     }
     AvaloniaDemo = @{
         DisplayName = "CAD-Avalonia"
-        Project = "src\CadAvalonia\CadAvalonia.csproj"
+        Project = "src\OcctDemo.Avalonia\OcctDemo.Avalonia.csproj"
         Executable = "CAD-Avalonia.exe"
     }
     Smoke = @{
