@@ -104,6 +104,73 @@ foreach ($forbiddenSymbol in @(
     }
 }
 
+$modelingInternalHeaders = @(
+    @{ File = "OcctModelingSessionInternal.hxx"; Symbols = @("struct ModelSession", "modelOf", "executeShape", "requireOperation") },
+    @{ File = "OcctModelingShapeInternal.hxx"; Symbols = @("toDirection", "toShapeEnum", "indexedEdge", "maximumTolerance", "shapeList") },
+    @{ File = "OcctModelingAlgorithmInternal.hxx"; Symbols = @("failedAlgorithmResult", "applyBooleanOptions", "finishBuilderAlgorithm", "historyShapeAt") },
+    @{ File = "OcctModelingMeshInternal.hxx"; Symbols = @("faceTriangulation") },
+    @{ File = "OcctModelingExchangeInternal.hxx"; Symbols = @("modelInputStream", "readModelStep", "readModelIges", "writeModelStep") }
+)
+
+foreach ($header in $modelingInternalHeaders) {
+    if ($header.File -notin $sourceTokens) {
+        throw "Split modeling internal header is not listed in add_library: $($header.File)"
+    }
+    $headerText = [System.IO.File]::ReadAllText((Join-Path $nativeRoot $header.File))
+    if ($headerText.Contains('#include "OcctModelingInternal.hxx"')) {
+        throw "Split modeling internal header depends on the broad compatibility umbrella: $($header.File)"
+    }
+    foreach ($symbol in $header.Symbols) {
+        if (-not $headerText.Contains($symbol)) {
+            throw "Split modeling internal header $($header.File) is missing expected responsibility token: $symbol"
+        }
+    }
+}
+
+$sessionInternalText = [System.IO.File]::ReadAllText((Join-Path $nativeRoot "OcctModelingSessionInternal.hxx"))
+if ($sessionInternalText.Contains('#include "OcctInternal.hxx"')) {
+    throw "OcctModelingSessionInternal.hxx must remain headless and must not depend on viewer Engine internals."
+}
+
+$modelingUmbrellaPath = Join-Path $nativeRoot "OcctModelingInternal.hxx"
+if ("OcctModelingInternal.hxx" -notin $sourceTokens) {
+    throw "The compatibility modeling internal umbrella is not listed in add_library."
+}
+$modelingUmbrellaText = [System.IO.File]::ReadAllText($modelingUmbrellaPath)
+if ((Get-Item $modelingUmbrellaPath).Length -gt 7000) {
+    throw "OcctModelingInternal.hxx has regrown beyond a compatibility umbrella."
+}
+foreach ($requiredHeader in $modelingInternalHeaders.File) {
+    if (-not $modelingUmbrellaText.Contains($requiredHeader)) {
+        throw "OcctModelingInternal.hxx does not aggregate split internal header: $requiredHeader"
+    }
+}
+foreach ($forbiddenToken in @(
+    "struct ModelSession",
+    "finishBuilderAlgorithm",
+    "faceTriangulation(",
+    "readModelStep("
+)) {
+    if ($modelingUmbrellaText.Contains($forbiddenToken)) {
+        throw "OcctModelingInternal.hxx contains implementation that belongs in a responsibility-specific internal header: $forbiddenToken"
+    }
+}
+
+$narrowModelingModules = @(
+    "OcctModelingCore.cpp",
+    "OcctModelingShapeQueries.cpp",
+    "OcctModelingGeometryQueries.cpp",
+    "OcctModelingTopology.cpp",
+    "OcctModelingInterop.cpp",
+    "OcctModelingAlgorithms.cpp"
+)
+foreach ($fileName in $narrowModelingModules) {
+    $moduleText = [System.IO.File]::ReadAllText((Join-Path $nativeRoot $fileName))
+    if ($moduleText.Contains('#include "OcctModelingInternal.hxx"')) {
+        throw "$fileName still depends on the broad OcctModelingInternal.hxx compatibility umbrella."
+    }
+}
+
 $modules = @(
     @{
         Name = "Extensions"
@@ -165,4 +232,4 @@ if ($unlistedCpp.Count -gt 0) {
     throw "Native C++ files are not listed in add_library: $($unlistedCpp -join ', ')"
 }
 
-Write-Host "[native-build] $($sourceTokens.Count) source entries, $($engineModules.Count) split engine modules, $($modelingCoreModules.Count) split modeling core modules, and $($modules.Count) dedicated modeling modules validated; no OCAF/XDE inputs remain." -ForegroundColor Green
+Write-Host "[native-build] $($sourceTokens.Count) source entries, $($engineModules.Count) split engine modules, $($modelingCoreModules.Count) split modeling core modules, $($modelingInternalHeaders.Count) modeling internal layers, and $($modules.Count) dedicated modeling modules validated; no OCAF/XDE inputs remain." -ForegroundColor Green
