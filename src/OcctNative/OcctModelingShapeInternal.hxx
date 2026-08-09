@@ -6,6 +6,7 @@
 #include <BRep_Tool.hxx>
 #include <GProp_GProps.hxx>
 #include <Precision.hxx>
+#include <TopAbs_ShapeEnum.hxx>
 #include <TopAbs_State.hxx>
 #include <TopExp.hxx>
 #include <TopExp_Explorer.hxx>
