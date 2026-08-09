@@ -170,7 +170,7 @@ foreach ($path in $machineSpecificFiles) {
     $matches = [regex]::Matches($content, '(?i)[A-Z]:[\\/]tools[\\/]occt[^"''\r\n ]*')
     foreach ($match in $matches) {
         if ($match.Value -notmatch $allowedDefaultOcctPathPattern) {
-            throw "An unsupported machine-specific OCCT path remains in $path: $($match.Value)"
+            throw "An unsupported machine-specific OCCT path remains in ${path}: $($match.Value)"
         }
         if (-not $path.EndsWith('build.ps1', [System.StringComparison]::OrdinalIgnoreCase)) {
             throw "The conventional OCCT default path may only appear in build.ps1; found in $path."
