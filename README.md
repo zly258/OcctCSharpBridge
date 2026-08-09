@@ -19,7 +19,7 @@ OCAF/XDE is intentionally not used as the application document layer. Documents,
 - Avalonia `12.1.0`
 - Bridge version `2.6.0`, native ABI `3`
 
-`bridge-contract.json` is shared with `main` and is authoritative for Bridge/ABI/OCCT/.NET/API metadata. `global.json` is intentionally branch-specific: `main` uses .NET SDK 8.0.423, while `demo` uses 10.0.302 for Avalonia 12 analyzers. Both still target .NET 8 and C# 12.
+`bridge-contract.json` is shared with `main` and is authoritative for Bridge/ABI/OCCT/.NET/API metadata. `global.json` uses .NET SDK **10.0.302** on both `main` and `demo`; the published target remains **`net8.0-windows` / C# 12**. The newer build SDK is tooling only and does not raise the consumer target framework.
 
 NuGet SDK packaging is intentionally **main-only**. The reusable projects on `demo` are explicitly non-packable; this branch packages runnable applications and their app-local Native dependency closure instead.
 
@@ -29,10 +29,10 @@ NuGet SDK packaging is intentionally **main-only**. The reusable projects on `de
 - `OcctNet.WinForms`: reusable native-HWND `OcctViewportControl`.
 - `OcctNet.Wpf`: reusable `OcctWpfViewport`.
 - `OcctNet.Avalonia`: Windows x64 Avalonia `NativeControlHost` with its own child HWND.
-- `OcctDemo.Common`: shared application/session/command/document layer.
+- `OcctDemo.Common`: demo-only orchestration shared by the three sample applications: command metadata, parameter parsing, localization, replay history, analysis helpers, and the small `DemoSession` facade. It is not a reusable CAD framework.
 - `OcctDemo.WinForms`, `OcctDemo.Wpf`, `OcctDemo.Avalonia`: runnable reference applications.
 
-Interactive objects use one typed abstraction: `IOcctObject` exposes `Id`, `Kind`, and `IsValid`, while actual instances are `OcctShape`, `OcctText`, or `OcctDimension`. There is no generic `OcctObject` wrapper and no public raw-ID constructor. OcctDemo.Common persists IDs but always resolves them through the owning `OcctEngine` before use.
+Interactive objects use one typed abstraction: `IOcctObject` exposes `Id`, `Kind`, and `IsValid`, while actual instances are `OcctShape`, `OcctText`, or `OcctDimension`. Primary demo code uses the owner-aware `IOcctObject` surface. The Bridge 2.5 `OcctObject` type remains only as a compatibility surface; the demos do not build new logic on it. Demo history may store IDs, but resolves them through the owning `OcctEngine` before use.
 
 Avalonia remains a native Windows HWND host; the project does not claim Linux/macOS OCCT Viewer support.
 
@@ -69,7 +69,7 @@ Avalonia
 
 The workspace is consistent across all three demos: **model explorer on the left, viewport in the center, properties on the right, and a full-width command log at the bottom**. The command log uses a light background with dark text; it is not a black console-style panel. `tests/check-demo-ui-structure.ps1` prevents the main window files from growing back into monoliths and protects this layout contract.
 
-The refactor moved existing method bodies by responsibility; command IDs, selection behavior, document/session logic, modeling operations, shortcuts, file exchange, undo/redo, and viewer behavior were not removed.
+The refactor moved existing method bodies by responsibility; command IDs, selection behavior, session/history logic, modeling operations, shortcuts, file exchange, undo/redo, and viewer behavior were not removed.
 
 ## Preview
 

@@ -19,9 +19,9 @@
 - Avalonia `12.1.0`
 - Bridge `2.6.0`，Native ABI `3`
 
-`bridge-contract.json` 与 `main` 共享，是版本、ABI、OCCT、.NET 和 API 数量的唯一契约来源。`global.json` 按分支设置：`main` 使用 8.0.423，`demo` 使用 10.0.302 以满足 Avalonia 12 Analyzer；两边仍统一目标为 .NET 8 / C# 12。
+`bridge-contract.json` 与 `main` 共享，是版本、ABI、OCCT、.NET 和 API 数量的唯一契约来源。`global.json` 在 `main` 与 `demo` 均统一使用 .NET SDK **10.0.302**；对外目标仍为 **`net8.0-windows` / C# 12**。较新的 SDK 只用于构建工具链，不提高使用方的目标框架要求。
 
-**NuGet SDK 打包只属于 `main` 分支。** `demo` 中三个可复用项目明确设置 `IsPackable=false`；本分支负责的是可运行桌面应用以及 app-local Native 依赖闭包发布，不承担 NuGet SDK 发布。
+**NuGet SDK 打包只属于 `main` 分支。** `demo` 中四个共享 Bridge/Host 项目以及四个 `OcctDemo.*` 项目均不承担 NuGet SDK 发布；本分支只负责可运行桌面示例及 app-local Native 依赖闭包发布。
 
 ## 分层
 
@@ -29,7 +29,7 @@
 - `OcctNet.WinForms`：可复用 `OcctViewportControl`。
 - `OcctNet.Wpf`：可复用 `OcctWpfViewport`。
 - `OcctNet.Avalonia`：Windows x64 `NativeControlHost` + 子 HWND。
-- `OcctDemo.Common`：三个 Demo 共用的 Document/Session/Command 应用层。
+- `OcctDemo.Common`：三个示例共用的 demo-only 编排层，包含命令元数据、参数解析、本地化、回放式历史、分析辅助和轻量 `DemoSession` 门面；它不是可复用 CAD 框架。
 - `OcctDemo.WinForms`、`OcctDemo.Wpf`、`OcctDemo.Avalonia`：可直接运行的参考应用。
 
 当前 Avalonia Viewer 仍基于 Windows HWND，不声明 Linux/macOS OCCT Viewer 支持。
@@ -67,7 +67,7 @@ Avalonia
 
 三套 Demo 的工作区现在统一为：**左侧模型树 + 中间视口 + 右侧属性 + 底部横跨全宽的命令日志**。日志统一使用白色/浅色背景和深色文字，不再采用黑色 Console 风格背景。
 
-这次调整以“方法体按职责移动”为主，没有删除 Command ID、选择行为、Document/Session 逻辑、建模能力、快捷键、文件交换、Undo/Redo 或 Viewer 功能。`tests/check-demo-ui-structure.ps1` 会限制主窗口重新膨胀，并持续校验底部浅色日志布局。
+这次调整以“方法体按职责移动”为主，没有删除 Command ID、选择行为、Session/History 逻辑、建模能力、快捷键、文件交换、Undo/Redo 或 Viewer 功能。`tests/check-demo-ui-structure.ps1` 会限制主窗口重新膨胀，并持续校验底部浅色日志布局。
 
 ## 界面预览
 
