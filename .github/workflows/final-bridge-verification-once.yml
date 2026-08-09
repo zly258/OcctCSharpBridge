@@ -127,6 +127,19 @@ jobs:
             throw 'Website still contains retired script branch references.'
           }
 
+      - name: Delete absorbed concurrent branches
+        shell: pwsh
+        working-directory: main
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($branch in @('chore/demo-layout-contract','refactor/demo-naming-cleanup')) {
+            git ls-remote --exit-code --heads origin "refs/heads/$branch" *> $null
+            if ($LASTEXITCODE -eq 0) {
+              git push origin --delete $branch
+              if ($LASTEXITCODE -ne 0) { throw "Failed to delete absorbed branch: $branch" }
+            }
+          }
+
       - name: Validate final repository hygiene
         shell: pwsh
         working-directory: main
