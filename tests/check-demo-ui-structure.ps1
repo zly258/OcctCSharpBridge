@@ -6,20 +6,20 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $requiredPartialFiles = @(
-    "src/CadWinForms/MainForm.Layout.cs",
-    "src/CadWinForms/MainForm.Menus.cs",
-    "src/CadWinForms/MainForm.Commands.cs",
-    "src/CadWinForms/MainForm.Objects.cs",
-    "src/CadWinForms/MainForm.Localization.cs",
-    "src/CadWpf/MainWindow.xaml.Menus.cs",
-    "src/CadWpf/MainWindow.xaml.Commands.cs",
-    "src/CadWpf/MainWindow.xaml.Objects.cs",
-    "src/CadWpf/MainWindow.xaml.Localization.cs",
-    "src/CadAvalonia/MainWindow.Layout.cs",
-    "src/CadAvalonia/MainWindow.Menus.cs",
-    "src/CadAvalonia/MainWindow.Commands.cs",
-    "src/CadAvalonia/MainWindow.Objects.cs",
-    "src/CadAvalonia/MainWindow.Localization.cs"
+    "src/OcctDemo.WinForms/MainForm.Layout.cs",
+    "src/OcctDemo.WinForms/MainForm.Menus.cs",
+    "src/OcctDemo.WinForms/MainForm.Commands.cs",
+    "src/OcctDemo.WinForms/MainForm.Objects.cs",
+    "src/OcctDemo.WinForms/MainForm.Localization.cs",
+    "src/OcctDemo.Wpf/MainWindow.xaml.Menus.cs",
+    "src/OcctDemo.Wpf/MainWindow.xaml.Commands.cs",
+    "src/OcctDemo.Wpf/MainWindow.xaml.Objects.cs",
+    "src/OcctDemo.Wpf/MainWindow.xaml.Localization.cs",
+    "src/OcctDemo.Avalonia/MainWindow.Layout.cs",
+    "src/OcctDemo.Avalonia/MainWindow.Menus.cs",
+    "src/OcctDemo.Avalonia/MainWindow.Commands.cs",
+    "src/OcctDemo.Avalonia/MainWindow.Objects.cs",
+    "src/OcctDemo.Avalonia/MainWindow.Localization.cs"
 )
 foreach ($relativePath in $requiredPartialFiles) {
     if (-not (Test-Path (Join-Path $RepositoryRoot $relativePath) -PathType Leaf)) {
@@ -29,9 +29,9 @@ foreach ($relativePath in $requiredPartialFiles) {
 
 # Keep the window roots focused on state, construction, event wiring and safe execution.
 $rootLimits = [ordered]@{
-    "src/CadWinForms/MainForm.cs" = 16000
-    "src/CadWpf/MainWindow.xaml.cs" = 16000
-    "src/CadAvalonia/MainWindow.cs" = 16000
+    "src/OcctDemo.WinForms/MainForm.cs" = 16000
+    "src/OcctDemo.Wpf/MainWindow.xaml.cs" = 16000
+    "src/OcctDemo.Avalonia/MainWindow.cs" = 16000
 }
 foreach ($entry in $rootLimits.GetEnumerator()) {
     $file = Get-Item (Join-Path $RepositoryRoot $entry.Key)
@@ -41,7 +41,7 @@ foreach ($entry in $rootLimits.GetEnumerator()) {
 }
 
 # No responsibility partial should return to the former 50-60 KB monolith size.
-foreach ($directory in @("src/CadWinForms", "src/CadWpf", "src/CadAvalonia")) {
+foreach ($directory in @("src/OcctDemo.WinForms", "src/OcctDemo.Wpf", "src/OcctDemo.Avalonia")) {
     Get-ChildItem (Join-Path $RepositoryRoot $directory) -Filter "Main*.cs" -File | ForEach-Object {
         if ($_.Length -gt 24000) {
             throw "Demo responsibility file is too large ($($_.Length) bytes): $($_.FullName)"
@@ -49,7 +49,7 @@ foreach ($directory in @("src/CadWinForms", "src/CadWpf", "src/CadAvalonia")) {
     }
 }
 
-$winForms = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/CadWinForms/MainForm.Designer.cs"))
+$winForms = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctDemo.WinForms/MainForm.Designer.cs"))
 foreach ($token in @(
     "_rootLayout.Controls.Add(_logGroup, 0, 3)",
     "_rootLayout.Controls.Add(_statusBar, 0, 4)",
@@ -67,7 +67,7 @@ foreach ($token in @("_rightSplitContainer", "Color.FromArgb(16, 24, 32)")) {
     }
 }
 
-$wpf = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/CadWpf/MainWindow.xaml"))
+$wpf = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctDemo.Wpf/MainWindow.xaml"))
 foreach ($token in @(
     '<GroupBox x:Name="CommandLineGroup" Header="Command Line" Grid.Row="2">',
     'Background="White"',
@@ -83,8 +83,8 @@ foreach ($token in @('#101820', '#D8E2EA', '#48525B')) {
     }
 }
 
-$avaloniaLayout = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/CadAvalonia/MainWindow.Layout.cs"))
-$avaloniaRoot = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/CadAvalonia/MainWindow.cs"))
+$avaloniaLayout = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctDemo.Avalonia/MainWindow.Layout.cs"))
+$avaloniaRoot = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src/OcctDemo.Avalonia/MainWindow.cs"))
 foreach ($token in @(
     'RowDefinitions = new RowDefinitions("Auto,Auto,*,5,160,Auto")',
     'Grid.SetRow(_commandLineGroup, 4)',

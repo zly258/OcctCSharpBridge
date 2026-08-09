@@ -28,11 +28,11 @@ function Read-PartialSet {
     return ($files | ForEach-Object { [System.IO.File]::ReadAllText($_.FullName) }) -join "`n"
 }
 
-$preconditions = Read-RequiredText "src\CadCommon\CadSession.Preconditions.cs"
-$session = Read-RequiredText "src\CadCommon\CadSession.cs"
-$commands = Read-RequiredText "src\CadCommon\CadSession.Commands.cs"
-$winForms = Read-PartialSet "src\CadWinForms" "MainForm*.cs"
-$wpf = Read-PartialSet "src\CadWpf" "MainWindow*.cs"
+$preconditions = Read-RequiredText "src\OcctDemo.Common\DemoSession.Preconditions.cs"
+$session = Read-RequiredText "src\OcctDemo.Common\DemoSession.cs"
+$commands = Read-RequiredText "src\OcctDemo.Common\DemoSession.Commands.cs"
+$winForms = Read-PartialSet "src\OcctDemo.WinForms" "MainForm*.cs"
+$wpf = Read-PartialSet "src\OcctDemo.Wpf" "MainWindow*.cs"
 
 foreach ($command in @(
     "Extrude", "Revolve", "Sweep", "Loft",
@@ -42,7 +42,7 @@ foreach ($command in @(
     "LengthDimension", "AngleDimension", "RadiusDimension", "DiameterDimension",
     "AnalyzeBounds", "AnalyzeMass", "AnalyzeTopology", "AnalyzeDistance", "ValidateShape"
 )) {
-    if (-not $preconditions.Contains("CadCommandId.$command")) {
+    if (-not $preconditions.Contains("DemoCommandId.$command")) {
         throw "Selection-dependent command has no precondition rule: $command"
     }
 }
@@ -54,7 +54,7 @@ foreach ($token in @(
     "RequireSubshapeHits",
     "Engine.GetSelectedHits()",
     "hit.IsSubshape && hit.SubshapeType == requiredType",
-    "var required = commandId == CadCommandId.AngleDimension ? 2 : 1;",
+    "var required = commandId == DemoCommandId.AngleDimension ? 2 : 1;",
     "RequireSubshapeHits(commandId, selectedHits, required, OcctShapeType.Edge)",
     "IsProfileType",
     "exactly: true",
@@ -69,20 +69,20 @@ if ($preconditions.Contains("RequireSubshapeCount")) {
     throw "Subshape command validation must use structured selection hits rather than owner-object counts."
 }
 
-if (-not $preconditions.Contains("commandId is CadCommandId.LengthDimension") -or
-    -not $preconditions.Contains("or CadCommandId.AngleDimension") -or
-    -not $preconditions.Contains("or CadCommandId.RadiusDimension") -or
-    -not $preconditions.Contains("or CadCommandId.DiameterDimension")) {
+if (-not $preconditions.Contains("commandId is DemoCommandId.LengthDimension") -or
+    -not $preconditions.Contains("or DemoCommandId.AngleDimension") -or
+    -not $preconditions.Contains("or DemoCommandId.RadiusDimension") -or
+    -not $preconditions.Contains("or DemoCommandId.DiameterDimension")) {
     throw "All dimension commands must share the structured edge-hit precondition path."
 }
 
-if (-not $session.Contains("public sealed partial class CadSession") -or
-    -not $commands.Contains("public sealed partial class CadSession")) {
-    throw "CadSession core and command responsibilities must remain partials of the same session type."
+if (-not $session.Contains("public sealed partial class DemoSession") -or
+    -not $commands.Contains("public sealed partial class DemoSession")) {
+    throw "DemoSession core and command responsibilities must remain partials of the same session type."
 }
-if (-not $commands.Contains("public CadCommandResult Execute(") -or
+if (-not $commands.Contains("public DemoCommandResult Execute(") -or
     -not $commands.Contains("EnsureCommandAvailable(commandId);")) {
-    throw "CadSession.Commands.Execute must enforce preconditions for non-UI callers."
+    throw "DemoSession.Commands.Execute must enforce preconditions for non-UI callers."
 }
 if ($commands.Contains("if (selectedObjectIds.Count == 0 && ActiveObject")) {
     throw "Command history must not silently substitute ActiveObject for an explicit selection."
