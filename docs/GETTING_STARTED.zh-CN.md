@@ -1,6 +1,6 @@
 ﻿# 快速开始
 
-OcctCSharpBridge 2.6 面向 **Windows x64**、**.NET 8** 和 **Open CASCADE Technology 7.9.0**。核心 Managed API 有两个入口：
+OcctCSharpBridge 2.6 面向 **Windows x64**、**.NET 10（`net10.0-windows`）** 和 **Open CASCADE Technology 7.9.0**。仓库使用 .NET SDK **10.0.302** 与 C# **14.0** 构建。核心 Managed API 有两个入口：
 
 - `OcctModelingSession`：Headless 建模、拓扑、分析、网格、修复和文件交换；
 - `OcctEngine`：AIS/Viewer、相机、选择、显示、注释和交互式 OCCT 对象。
@@ -22,7 +22,7 @@ OcctNet.Wpf
 OcctNet.Avalonia
 ```
 
-Avalonia Host 当前仍是 Windows HWND Adapter。
+Avalonia Host 当前仍是 Windows HWND Adapter。Framework-dependent 桌面程序需要 .NET Desktop Runtime 10.x；运行时遵循正常补丁版本前滚规则，不固定到某个具体 `10.0.x` 补丁。
 
 ## 2. OCCT SDK 与 Runtime
 
@@ -122,7 +122,7 @@ var displayed = engine.Display(model, shape, fit: true);
 .\build.ps1 ci Release
 ```
 
-它覆盖静态契约、四个 Managed SDK、Managed 回归、公共 API 签名快照、Smoke 编译和 NuGet 包校验。
+它覆盖静态契约、四个 Managed SDK、Managed 回归、公共 API 签名快照、Smoke 编译和 NuGet 包校验。ManagedTests 与 Smoke 均必须和 `bridge-contract.json` 声明的目标框架保持一致。
 
 真实 Native 发布门禁：
 
