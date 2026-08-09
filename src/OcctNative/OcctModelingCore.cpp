@@ -1,4 +1,8 @@
-﻿#include "OcctModelingInternal.hxx"
+﻿#include "OcctModelingSessionInternal.hxx"
+
+#include <BRepBuilderAPI_Copy.hxx>
+
+#include <iterator>
 
 using namespace OcctModelingInternal;
 

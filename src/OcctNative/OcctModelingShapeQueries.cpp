@@ -1,4 +1,15 @@
-﻿#include "OcctModelingInternal.hxx"
+﻿#include "OcctModelingShapeInternal.hxx"
+
+#include <BRepBndLib.hxx>
+#include <BRepCheck_Analyzer.hxx>
+#include <BRepExtrema_DistShapeShape.hxx>
+#include <BRepGProp.hxx>
+#include <Bnd_Box.hxx>
+#include <TopLoc_Location.hxx>
+#include <TopTools_ShapeMapHasher.hxx>
+#include <gp_Trsf.hxx>
+
+#include <sstream>
 
 using namespace OcctModelingInternal;
 

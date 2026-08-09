@@ -95,6 +95,11 @@ add_library(OcctNative SHARED
     OcctModelingTopologyAnalysis.cpp
     OcctModelingFaceAnalysis.cpp
     OcctInternal.hxx
+    OcctModelingSessionInternal.hxx
+    OcctModelingShapeInternal.hxx
+    OcctModelingAlgorithmInternal.hxx
+    OcctModelingMeshInternal.hxx
+    OcctModelingExchangeInternal.hxx
     OcctModelingInternal.hxx
     OcctNative.h
     OcctSelectionOverlay.h
