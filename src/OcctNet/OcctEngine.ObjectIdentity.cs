@@ -2,6 +2,18 @@
 
 public sealed partial class OcctEngine
 {
+    public string GetName(IOcctObject value)
+    {
+        EnsureObject(value);
+        return Marshal.PtrToStringUTF8(NativeMethods.occt_get_object_name(_handle, value.Id)) ?? string.Empty;
+    }
+
+    public void SetName(IOcctObject value, string name)
+    {
+        EnsureObject(value);
+        CheckInitialized(() => NativeMethods.occt_set_object_name(_handle, value.Id, name ?? string.Empty));
+    }
+
     public void SetApplicationTag(IOcctObject value, string applicationTag)
     {
         EnsureObject(value);
