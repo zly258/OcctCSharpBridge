@@ -16,6 +16,16 @@ internal static class PublicApiSnapshot
         }.Distinct().OrderBy(assembly => assembly.GetName().Name, StringComparer.Ordinal).ToArray();
 
         var actual = Generate(assemblies).Replace("\r\n", "\n").TrimEnd() + "\n";
+        var updatePath = Environment.GetEnvironmentVariable("OCCT_UPDATE_PUBLIC_API_SNAPSHOT");
+        if (!string.IsNullOrWhiteSpace(updatePath))
+        {
+            var fullUpdatePath = Path.GetFullPath(updatePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(fullUpdatePath)!);
+            File.WriteAllText(fullUpdatePath, actual, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+            Console.WriteLine($"Public API snapshot baseline updated: {fullUpdatePath}");
+            return;
+        }
+
         var baselinePath = Path.Combine(AppContext.BaseDirectory, "PublicApi.approved.txt");
         if (!File.Exists(baselinePath))
             throw new InvalidOperationException($"Public API snapshot baseline is missing: {baselinePath}");
