@@ -95,15 +95,36 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+
+          $contract = Get-Content 'main/bridge-contract.json' -Raw -Encoding UTF8 | ConvertFrom-Json
+          $index = [System.IO.File]::ReadAllText((Resolve-Path 'website/index.html'))
+          $app = [System.IO.File]::ReadAllText((Resolve-Path 'website/app.js'))
           $files = @(Get-ChildItem website -Recurse -File | Where-Object { $_.Extension -in @('.html','.htm','.md','.js','.json','.txt') })
           $all = ($files | ForEach-Object { [System.IO.File]::ReadAllText($_.FullName) }) -join "`n"
-          if ($all -match '(?is)Public\s*\.NET\s*types.{0,80}\b95\b' -or
-              $all -match '(?is)公开\s*\.NET\s*类型.{0,80}\b95\b' -or
-              $all -match '(?is)publicNetTypes.{0,40}\b95\b') {
-            throw 'Website still contains the obsolete 95 public managed type metric.'
+
+          $expectedStats = @{
+            statNative = [string]$contract.api.nativeExports
+            statPInvoke = [string]$contract.api.managedPInvokes
+            statTypes = [string]$contract.api.publicNetTypes
+            statVersion = [string]$contract.bridgeVersion
+          }
+          foreach ($entry in $expectedStats.GetEnumerator()) {
+            $pattern = '<article><strong>' + [regex]::Escape($entry.Value) + '</strong><span data-i18n="' + [regex]::Escape($entry.Key) + '">'
+            if ($index -notmatch $pattern) { throw "Website statistic $($entry.Key) is stale; expected $($entry.Value)." }
+          }
+
+          if ($index -notmatch [regex]::Escape([string]$contract.occtVersion)) {
+            throw "Website OCCT version is stale; expected $($contract.occtVersion)."
+          }
+          if ($app.Contains('Avalonia 与 Avalonia')) {
+            throw 'Website contains duplicate Avalonia host wording.'
           }
           if ($all -match '\b8\.0\.423\b') {
             throw 'Website still contains the obsolete repository build SDK 8.0.423.'
+          }
+          if ($all.Contains('tree/script') -or $all.Contains('git switch script') -or $all.Contains('OcctScript')) {
+            throw 'Website still contains retired script branch references.'
           }
 
       - name: Validate final repository hygiene
