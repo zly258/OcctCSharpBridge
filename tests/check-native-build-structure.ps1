@@ -67,6 +67,43 @@ if ((Get-Item $engineCorePath).Length -gt 26000) {
     throw "OcctEngine.cpp has grown beyond the lifecycle/shared-helper boundary; keep view, selection, object, and shape responsibilities split."
 }
 
+$modelingCoreModules = @(
+    @{ File = "OcctModelingCore.cpp"; Symbols = @("occt_model_create", "occt_model_shape_count", "occt_model_operation_report", "occt_model_copy_shape") },
+    @{ File = "OcctModelingShapeQueries.cpp"; Symbols = @("occt_model_shape_hash", "occt_model_shape_bounds", "occt_model_shape_distance", "occt_model_check_report") },
+    @{ File = "OcctModelingGeometryQueries.cpp"; Symbols = @("occt_model_vertex_point", "occt_model_edge_point_at", "occt_model_face_point_normal") },
+    @{ File = "OcctModelingTopology.cpp"; Symbols = @("occt_model_topology_count", "occt_model_outer_wire", "occt_model_ancestor_at", "occt_model_sew") },
+    @{ File = "OcctModelingInterop.cpp"; Symbols = @("occt_model_display_in_engine") }
+)
+
+foreach ($module in $modelingCoreModules) {
+    if ($module.File -notin $sourceTokens) {
+        throw "Split native modeling core module is not listed in add_library: $($module.File)"
+    }
+    $moduleText = [System.IO.File]::ReadAllText((Join-Path $nativeRoot $module.File))
+    foreach ($symbol in $module.Symbols) {
+        if (-not $moduleText.Contains($symbol)) {
+            throw "Split native modeling core module $($module.File) is missing expected responsibility symbol: $symbol"
+        }
+    }
+}
+
+$modelingCorePath = Join-Path $nativeRoot "OcctModelingCore.cpp"
+if ((Get-Item $modelingCorePath).Length -gt 9000) {
+    throw "OcctModelingCore.cpp has grown beyond the session/registry boundary; keep shape queries, topology, geometry evaluation, and viewer interop split."
+}
+$modelingCoreText = [System.IO.File]::ReadAllText($modelingCorePath)
+foreach ($forbiddenSymbol in @(
+    "occt_model_shape_hash",
+    "occt_model_shape_bounds",
+    "occt_model_topology_count",
+    "occt_model_vertex_point",
+    "occt_model_display_in_engine"
+)) {
+    if ($modelingCoreText.Contains($forbiddenSymbol)) {
+        throw "OcctModelingCore.cpp contains responsibility that belongs in a split module: $forbiddenSymbol"
+    }
+}
+
 $modules = @(
     @{
         Name = "Extensions"
@@ -128,4 +165,4 @@ if ($unlistedCpp.Count -gt 0) {
     throw "Native C++ files are not listed in add_library: $($unlistedCpp -join ', ')"
 }
 
-Write-Host "[native-build] $($sourceTokens.Count) source entries, $($engineModules.Count) split engine modules, and $($modules.Count) dedicated modeling modules validated; no OCAF/XDE inputs remain." -ForegroundColor Green
+Write-Host "[native-build] $($sourceTokens.Count) source entries, $($engineModules.Count) split engine modules, $($modelingCoreModules.Count) split modeling core modules, and $($modules.Count) dedicated modeling modules validated; no OCAF/XDE inputs remain." -ForegroundColor Green
