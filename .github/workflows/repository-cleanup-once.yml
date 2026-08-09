@@ -1,0 +1,108 @@
+﻿name: Repository Cleanup Once
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/repository-cleanup-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Remove one-time workflows and temporary branches
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin '+refs/heads/*:refs/remotes/origin/*' --prune
+
+          function Clean-RemoteBranch([string]$branch, [string[]]$paths) {
+            $remoteRef = "refs/remotes/origin/$branch"
+            if (-not (git show-ref --verify --quiet $remoteRef; $LASTEXITCODE -eq 0)) {
+              return
+            }
+
+            $safe = $branch.Replace('/', '-')
+            $worktree = Join-Path $env:RUNNER_TEMP "cleanup-$safe"
+            Remove-Item $worktree -Recurse -Force -ErrorAction SilentlyContinue
+            git worktree add --detach $worktree "origin/$branch" | Out-Null
+            Push-Location $worktree
+            try {
+              $changed = $false
+              foreach ($path in $paths) {
+                if (Test-Path $path) {
+                  Remove-Item $path -Force
+                  $changed = $true
+                }
+              }
+              if ($changed) {
+                git add -A
+                git commit -m "Remove one-time repository workflows"
+                git push origin "HEAD:$branch"
+              }
+            }
+            finally {
+              Pop-Location
+              git worktree remove $worktree --force | Out-Null
+            }
+          }
+
+          Clean-RemoteBranch 'demo' @(
+            '.github/workflows/demo-session-split-once.yml',
+            '.github/workflows/demo-wrapper-sync-once.yml',
+            '.github/workflows/demo-sdk-contract-once.yml'
+          )
+          Clean-RemoteBranch 'website' @(
+            '.github/workflows/website-contract-sync-once.yml'
+          )
+
+          foreach ($path in @(
+            '.github/workflows/public-api-baseline-once.yml',
+            '.github/workflows/branch-cleanup-once.yml',
+            '.github/workflows/repository-cleanup-once.yml'
+          )) {
+            if (Test-Path $path) { Remove-Item $path -Force }
+          }
+
+          git add -A
+          if (-not (git diff --cached --quiet; $LASTEXITCODE -eq 0)) {
+            git commit -m 'Remove final one-time repository cleanup workflow'
+            git push origin HEAD:main
+          }
+
+          foreach ($branch in @(
+            'refactor/bridge-architecture-cleanup',
+            'refactor/demo-cad-session-cleanup',
+            'sync/demo-bridge-architecture-cleanup',
+            'sync/website-bridge-architecture',
+            'fix/demo-unified-sdk-contract'
+          )) {
+            git ls-remote --exit-code --heads origin "refs/heads/$branch" *> $null
+            if ($LASTEXITCODE -eq 0) {
+              git push origin --delete $branch
+            }
+          }
+
+          $remaining = @(git ls-remote --heads origin | ForEach-Object {
+            if ($_ -match 'refs/heads/(.+)$') { $Matches[1] }
+          } | Sort-Object)
+          Write-Host "Remaining branches: $($remaining -join ', ')"
+          $unexpected = @($remaining | Where-Object { $_ -notin @('main','demo','website') })
+          if ($unexpected.Count -gt 0) {
+            throw "Unexpected branches remain after cleanup: $($unexpected -join ', ')"
+          }
