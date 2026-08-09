@@ -13,13 +13,13 @@ OCAF/XDE is intentionally not used as the application document layer. Documents,
 - Windows x64
 - Open CASCADE Technology **7.9.0**, VC14 x64 layout
 - .NET SDK **10.0.302** for this branch, pinned by `global.json`
-- Target framework **`net8.0-windows`**
-- C# 12.0
+- Target framework **`net10.0-windows`**
+- C# 14.0
 - CMake 3.21+
 - Avalonia `12.1.0`
 - Bridge version `2.6.0`, native ABI `3`
 
-`bridge-contract.json` is shared with `main` and is authoritative for Bridge/ABI/OCCT/.NET/API metadata. `global.json` uses .NET SDK **10.0.302** on both `main` and `demo`; the published target remains **`net8.0-windows` / C# 12**. The newer build SDK is tooling only and does not raise the consumer target framework.
+`bridge-contract.json` is shared with `main` and is authoritative for Bridge/ABI/OCCT/.NET/API metadata. Both branches use .NET SDK **10.0.302**, target **`net10.0-windows`**, and compile with **C# 14.0**. Framework-dependent desktop applications require .NET Desktop Runtime **10.x**; normal .NET patch roll-forward applies, so consumers are not pinned to one exact `10.0.x` patch.
 
 NuGet SDK packaging is intentionally **main-only**. The reusable projects on `demo` are explicitly non-packable; this branch packages runnable applications and their app-local Native dependency closure instead.
 
@@ -151,7 +151,7 @@ For dependency troubleshooting, republish once with diagnostics enabled:
 
 The publisher resolves the PE dependency closure of `OcctNative.dll`, OCCT modules, third-party DLLs, and Visual C++ runtime components. Native DLLs are copied beside every executable rather than relying only on a sibling runtime directory. A static `dumpbin` closure check and fresh-process restricted `LoadLibraryExW` probe reject packages that would fail with clean-machine Win32 126.
 
-Published packages include required OCCT resources, `package-contract.json`, `native-dependencies.txt`, and available license notices. Use `-FrameworkDependent` only when the target machine already has the .NET 8 Desktop Runtime.
+Published packages include required OCCT resources, `package-contract.json`, `native-dependencies.txt`, and available license notices. Use `-FrameworkDependent` only when the target machine already has the .NET Desktop Runtime 10.x. The repository pins SDK 10.0.302 for reproducible builds, not one exact runtime patch.
 
 ## Tests
 
@@ -184,7 +184,7 @@ Recommended cadence:
   - `OcctNative.dll [found]` but `TKernel.dll [missing]`: the OCCT Native dependency closure is incomplete; republish the package.
   - both are `[found]` but Win32 126 remains: a deeper OCCT, third-party, or Visual C++ runtime dependency is missing or mismatched. Check `native-dependencies.txt`; if the cause is still unclear, republish with `-Diagnostics` and inspect `native-resolution.txt`, `runtime-manifest.txt`, and the crash log under `%LOCALAPPDATA%\OcctCSharpBridge\Logs`.
 - Avalonia analyzer/compiler mismatch: use the branch-pinned SDK from `global.json`.
-- Avalonia startup issue: inspect `src\OcctDemo.Avalonia\bin\x64\<Configuration>\net8.0-windows\CAD-Avalonia.log` plus the shared crash log above.
+- Avalonia startup issue: inspect `src\OcctDemo.Avalonia\bin\x64\<Configuration>\net10.0-windows\CAD-Avalonia.log` plus the shared crash log above.
 
 ## License
 

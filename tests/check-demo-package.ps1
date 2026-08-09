@@ -5,6 +5,25 @@
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
+$contractPath = Join-Path $RepositoryRoot "bridge-contract.json"
+if (-not (Test-Path $contractPath -PathType Leaf)) { throw "bridge-contract.json was not found." }
+$contract = Get-Content $contractPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$targetFramework = [string]$contract.dotnet.targetFramework
+if ([string]::IsNullOrWhiteSpace($targetFramework)) { throw "Bridge contract target framework is missing." }
+
+$runPath = Join-Path $RepositoryRoot "run.ps1"
+if (-not (Test-Path $runPath -PathType Leaf)) { throw "run.ps1 was not found." }
+$runText = [System.IO.File]::ReadAllText($runPath)
+foreach ($token in @(
+    '$Contract = Get-Content $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json',
+    '$TargetFramework = [string]$Contract.dotnet.targetFramework',
+    'src\OcctDemo.WinForms\bin\x64\$Configuration\$TargetFramework\CAD-Winform.exe',
+    'src\OcctDemo.Wpf\bin\x64\$Configuration\$TargetFramework\CAD-WPF.exe',
+    'src\OcctDemo.Avalonia\bin\x64\$Configuration\$TargetFramework\CAD-Avalonia.exe'
+)) {
+    if (-not $runText.Contains($token)) { throw "Demo run target-framework contract is missing: $token" }
+}
+if ($runText.Contains('net8.0-windows')) { throw "Legacy net8.0-windows output path remains in run.ps1." }
 $publishPath = Join-Path $RepositoryRoot "publish.ps1"
 if (-not (Test-Path $publishPath -PathType Leaf)) { throw "publish.ps1 was not found." }
 $text = [System.IO.File]::ReadAllText($publishPath)
@@ -62,11 +81,21 @@ if ($runtimeIndex -lt 0 -or $appLocalIndex -lt 0 -or $probeIndex -lt 0 -or $prob
 foreach ($relativePath in @(
     "src\OcctNet\OcctNet.csproj",
     "src\OcctNet.WinForms\OcctNet.WinForms.csproj",
-    "src\OcctNet.Wpf\OcctNet.Wpf.csproj"
+    "src\OcctNet.Wpf\OcctNet.Wpf.csproj",
+    "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj",
+    "src\OcctDemo.Common\OcctDemo.Common.csproj",
+    "src\OcctDemo.WinForms\OcctDemo.WinForms.csproj",
+    "src\OcctDemo.Wpf\OcctDemo.Wpf.csproj",
+    "src\OcctDemo.Avalonia\OcctDemo.Avalonia.csproj"
 )) {
-    $projectText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot $relativePath))
+    $projectPath = Join-Path $RepositoryRoot $relativePath
+    if (-not (Test-Path $projectPath -PathType Leaf)) { throw "Demo managed project was not found: $relativePath" }
+    $projectText = [System.IO.File]::ReadAllText($projectPath)
+    if (-not $projectText.Contains("<TargetFramework>$targetFramework</TargetFramework>")) {
+        throw "Demo managed project target framework does not match bridge-contract.json: $relativePath"
+    }
     if (-not $projectText.Contains('<IsPackable>false</IsPackable>')) {
-        throw "Demo reusable project must remain non-packable; NuGet packaging is main-only: $relativePath"
+        throw "Demo managed project must remain non-packable; NuGet packaging is main-only: $relativePath"
     }
     foreach ($forbidden in @('<PackageReadmeFile>', '<PackageLicenseFile>', '<RepositoryUrl>')) {
         if ($projectText.Contains($forbidden)) {
@@ -225,4 +254,4 @@ foreach ($hostContract in $hostDiagnostics.GetEnumerator()) {
     }
 }
 
-Write-Host "[package] Demo publishing, app-local native closure, VC runtime resolution, restricted LoadLibrary probe, shared Win32 126 diagnostics, protected troubleshooting docs, main-only NuGet boundary, and README preview paths validated." -ForegroundColor Green
+Write-Host "[package] Demo publishing, contract-driven TFM/run paths, eight non-packable managed projects, app-local native closure, VC runtime resolution, restricted LoadLibrary probe, shared Win32 126 diagnostics, protected troubleshooting docs, and README preview paths validated." -ForegroundColor Green
