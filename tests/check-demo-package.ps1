@@ -11,7 +11,7 @@ $text = [System.IO.File]::ReadAllText($publishPath)
 
 $requiredTokens = @(
     '[ValidateSet("all", "winform", "wpf", "avalonia")]',
-    'Project = "src\CadAvalonia\CadAvalonia.csproj"',
+    'Project = "src\OcctDemo.Avalonia\OcctDemo.Avalonia.csproj"',
     'Executable = "CAD-Avalonia.exe"',
     '$UseSelfContained = -not $FrameworkDependent.IsPresent',
     '--self-contained", $UseSelfContained.ToString().ToLowerInvariant()',
@@ -174,7 +174,7 @@ foreach ($readmeContract in $troubleshootingContracts.GetEnumerator()) {
 
 # All three demo hosts must surface actionable app-local native diagnostics instead of
 # showing only the raw DllNotFoundException/Win32 126 message.
-$crashReporterPath = Join-Path $RepositoryRoot "src\CadCommon\CrashReporter.cs"
+$crashReporterPath = Join-Path $RepositoryRoot "src\OcctDemo.Common\CrashReporter.cs"
 if (-not (Test-Path $crashReporterPath -PathType Leaf)) {
     throw "Shared CrashReporter was not found."
 }
@@ -197,15 +197,15 @@ foreach ($token in @(
 }
 
 $hostDiagnostics = [ordered]@{
-    "src\CadWinForms\Program.cs" = @(
+    "src\OcctDemo.WinForms\Program.cs" = @(
         'CrashReporter.Write(ApplicationName, exception, source)',
         'CrashReporter.BuildUserMessage(exception, logPath)'
     )
-    "src\CadWpf\App.xaml.cs" = @(
+    "src\OcctDemo.Wpf\App.xaml.cs" = @(
         'CrashReporter.Write(ApplicationName, e.Exception, "DispatcherUnhandledException")',
         'CrashReporter.BuildUserMessage(e.Exception, logPath)'
     )
-    "src\CadAvalonia\Program.cs" = @(
+    "src\OcctDemo.Avalonia\Program.cs" = @(
         'CrashReporter.Write(ApplicationName, exception, message)',
         'CrashReporter.BuildUserMessage(exception, logPath)',
         'args.SetObserved();'

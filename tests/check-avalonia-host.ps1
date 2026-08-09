@@ -7,13 +7,13 @@ Set-StrictMode -Version Latest
 
 $hostProject = Join-Path $RepositoryRoot "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj"
 $hostControl = Join-Path $RepositoryRoot "src\OcctNet.Avalonia\OcctAvaloniaViewport.cs"
-$demoProject = Join-Path $RepositoryRoot "src\CadAvalonia\CadAvalonia.csproj"
-$demoManifest = Join-Path $RepositoryRoot "src\CadAvalonia\app.manifest"
-$demoRoot = Join-Path $RepositoryRoot "src\CadAvalonia"
+$demoProject = Join-Path $RepositoryRoot "src\OcctDemo.Avalonia\OcctDemo.Avalonia.csproj"
+$demoManifest = Join-Path $RepositoryRoot "src\OcctDemo.Avalonia\app.manifest"
+$demoRoot = Join-Path $RepositoryRoot "src\OcctDemo.Avalonia"
 $demoWindow = Join-Path $demoRoot "MainWindow.cs"
 $demoParameters = Join-Path $demoRoot "ParameterDialog.cs"
 $demoProgram = Join-Path $demoRoot "Program.cs"
-$wpfRoot = Join-Path $RepositoryRoot "src\CadWpf"
+$wpfRoot = Join-Path $RepositoryRoot "src\OcctDemo.Wpf"
 $buildScript = Join-Path $RepositoryRoot "build.ps1"
 
 foreach ($path in @($hostProject, $hostControl, $demoProject, $demoManifest, $demoWindow, $demoParameters, $demoProgram, $wpfRoot, $buildScript)) {
@@ -66,7 +66,7 @@ foreach ($token in @(
     'Avalonia.Fonts.Inter',
     '<ApplicationManifest>app.manifest</ApplicationManifest>',
     '<UseWindowsForms>true</UseWindowsForms>',
-    '..\CadCommon\CadCommon.csproj'
+    '..\OcctDemo.Common\OcctDemo.Common.csproj'
 )) {
     if (-not $demoProjectText.Contains($token)) {
         throw "Avalonia demo project contract is missing: $token"
@@ -107,8 +107,8 @@ $demoText = ($demoWindowFiles | ForEach-Object { [System.IO.File]::ReadAllText($
 
 foreach ($token in @(
     'OcctAvaloniaViewport',
-    'new CadSession(_viewport.Engine)',
-    'CadCommandCatalog.Get',
+    'new DemoSession(_viewport.Engine)',
+    'DemoCommandCatalog.Get',
     'RunCommandAsync',
     'Session.Undo()',
     'Session.Redo()',
@@ -136,7 +136,7 @@ foreach ($token in @(
 # WPF is split the same way; compare the complete partial class command surface.
 $wpfWindowFiles = @(Get-ChildItem $wpfRoot -Filter "MainWindow*.cs" -File | Sort-Object Name)
 $wpfText = ($wpfWindowFiles | ForEach-Object { [System.IO.File]::ReadAllText($_.FullName) }) -join "`n"
-$commandPattern = 'CadCommandId\.([A-Za-z0-9_]+)'
+$commandPattern = 'DemoCommandId\.([A-Za-z0-9_]+)'
 $wpfCommands = @([regex]::Matches($wpfText, $commandPattern) | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
 $avaloniaCommands = @([regex]::Matches($demoText, $commandPattern) | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
 $missingCommands = @($wpfCommands | Where-Object { $_ -notin $avaloniaCommands })
@@ -146,7 +146,7 @@ if ($missingCommands.Count -gt 0) {
 Write-Host "[avalonia-host] WPF command parity: $($wpfCommands.Count) command IDs covered." -ForegroundColor Green
 
 $parameterText = [System.IO.File]::ReadAllText($demoParameters)
-foreach ($token in @('CadParameterDefinition', 'GetValuesAsync', 'CadParameterKind.Boolean', 'CadParameterKind.Choice')) {
+foreach ($token in @('DemoParameterDefinition', 'GetValuesAsync', 'DemoParameterKind.Boolean', 'DemoParameterKind.Choice')) {
     if (-not $parameterText.Contains($token)) {
         throw "Avalonia parameter dialog contract is missing: $token"
     }
