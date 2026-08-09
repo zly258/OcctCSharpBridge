@@ -49,8 +49,8 @@ public sealed partial class MainWindow
             BorderThickness = new Thickness(0, 0, 0, 1),
             Child = new ScrollViewer
             {
-                HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
-                VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+                HorizontalScrollBarVisibility = global::Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+                VerticalScrollBarVisibility = global::Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
                 Content = _toolbar
             }
         };
@@ -106,7 +106,7 @@ public sealed partial class MainWindow
         _propertiesGroup.Content = new ScrollViewer
         {
             Content = _propertyPanel,
-            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto
+            VerticalScrollBarVisibility = global::Avalonia.Controls.Primitives.ScrollBarVisibility.Auto
         };
         Grid.SetColumn(_propertiesGroup, 4);
         workspace.Children.Add(_propertiesGroup);
