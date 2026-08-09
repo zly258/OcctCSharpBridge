@@ -1,0 +1,65 @@
+name: Version default OCCT patch once
+
+on:
+  push:
+    branches:
+      - refactor/split-native-modeling-geometry
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/split-native-modeling-geometry
+          fetch-depth: 0
+
+      - name: Patch version contract path policy
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('tests/check-version-contract.ps1')
+          text = path.read_text(encoding='utf-8-sig')
+          old = '''foreach ($path in $machineSpecificFiles) {
+    $content = [System.IO.File]::ReadAllText($path)
+    if ($content -match '(?i)[A-Z]:[\\\\/]tools[\\\\/]occt') {
+        throw "A machine-specific OCCT path remains in $path."
+    }
+}
+'''
+          new = '''$allowedDefaultOcctPathPattern = '(?i)D:[\\\\/]tools[\\\\/]occt-vc144-64'
+foreach ($path in $machineSpecificFiles) {
+    $content = [System.IO.File]::ReadAllText($path)
+    $matches = [regex]::Matches($content, '(?i)[A-Z]:[\\\\/]tools[\\\\/]occt[^"''\\r\\n ]*')
+    foreach ($match in $matches) {
+        if ($match.Value -notmatch "^$allowedDefaultOcctPathPattern$") {
+            throw "An unsupported machine-specific OCCT path remains in $path: $($match.Value)"
+        }
+        if (-not $path.EndsWith('build.ps1', [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "The conventional OCCT default path may only appear in build.ps1; found in $path."
+        }
+    }
+}
+'''
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one machine-specific path policy block, found {text.count(old)}')
+          path.write_text('\ufeff' + text.replace(old, new, 1), encoding='utf-8')
+          PY
+
+      - name: Commit and remove workflow
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git rm .github/workflows/patch-version-default-occt-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/check-version-contract.ps1
+          git commit -m "Allow conventional OCCT default path contract"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push origin HEAD:refactor/split-native-modeling-geometry
