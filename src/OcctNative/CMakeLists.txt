@@ -81,6 +81,10 @@ add_library(OcctNative SHARED
     OcctVectorAnnotations.cpp
     OcctIO.cpp
     OcctModelingCore.cpp
+    OcctModelingShapeQueries.cpp
+    OcctModelingGeometryQueries.cpp
+    OcctModelingTopology.cpp
+    OcctModelingInterop.cpp
     OcctModelingGeometry.cpp
     OcctModelingAlgorithms.cpp
     OcctModelingAnalysis.cpp
