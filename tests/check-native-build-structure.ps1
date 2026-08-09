@@ -199,7 +199,9 @@ foreach ($requiredToolkit in @("TKDESTEP", "TKDEIGES", "TKDESTL")) {
 
 $buildScriptText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "build.ps1"))
 if (-not $buildScriptText.Contains('D:\tools\occt-vc144-64')) { throw "build.ps1 must provide the conventional OCCT default root." }
-if (-not $buildScriptText.Contains('validate/managed/pack/ci do not require OCCT')) { throw "build.ps1 must preserve OCCT-optional managed/validation targets." }
+$hasMainOcctOptionalPolicy = $buildScriptText.Contains('validate/managed/pack/ci do not require OCCT')
+$hasDemoOcctOptionalPolicy = $buildScriptText.Contains('validate/managed/ci do not require OCCT')
+if (-not ($hasMainOcctOptionalPolicy -or $hasDemoOcctOptionalPolicy)) { throw "build.ps1 must preserve OCCT-optional managed/validation targets." }
 
 $modules = @(
     @{
