@@ -1,4 +1,9 @@
-﻿#include "OcctModelingInternal.hxx"
+﻿#include "OcctModelingShapeInternal.hxx"
+
+#include <BRepAdaptor_Curve.hxx>
+#include <BRepAdaptor_Surface.hxx>
+#include <BRepTools.hxx>
+#include <TopAbs_Orientation.hxx>
 
 using namespace OcctModelingInternal;
 
