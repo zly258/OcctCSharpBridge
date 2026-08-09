@@ -108,6 +108,15 @@ Assert(orientedBounds.SizeX == 2 && orientedBounds.SizeY == 4 && orientedBounds.
 Assert(orientedBounds.Volume == 48, "Oriented bounds volume regression.");
 Assert(Enum.IsDefined(OcctJoinType.Intersection), "Join-type enum regression.");
 
+var resolvedSelectionEnd = OcctViewportInteractionPolicy.ResolveSelectionEnd(0, 0, 5, 5, 20, 10, rectangleDragStarted: true);
+Assert(resolvedSelectionEnd == (20, 10), "Viewport rectangle end recovery regression.");
+Assert(OcctViewportInteractionPolicy.ShouldUseRectangle(true, false, 3, 0, 0, 4, 0), "Viewport rectangle threshold regression.");
+Assert(!OcctViewportInteractionPolicy.ShouldUseRectangle(true, false, 3, 0, 0, 1, 1), "Viewport click threshold regression.");
+Assert(OcctViewportInteractionPolicy.AllowsOverlap(OcctRectangleSelectionBehavior.Directional, 20, 5), "Directional overlap regression.");
+Assert(!OcctViewportInteractionPolicy.AllowsOverlap(OcctRectangleSelectionBehavior.Directional, 5, 20), "Directional inclusive regression.");
+Assert(Math.Abs(OcctViewportInteractionPolicy.ZoomFactor(120) - 1.15) < 1e-12, "Viewport zoom-in policy regression.");
+Assert(Math.Abs(OcctViewportInteractionPolicy.ZoomFactor(-120) - 0.87) < 1e-12, "Viewport zoom-out policy regression.");
+
 Expect<ArgumentOutOfRangeException>(() => OcctGuard.Positive(0, "value"), "Positive guard accepted zero.");
 Expect<ArgumentOutOfRangeException>(() => OcctGuard.UnitInterval(1.1, "value"), "Unit interval guard accepted value above one.");
 Expect<ArgumentException>(() => OcctGuard.NonZero(OcctVector3d.Zero, "vector"), "Non-zero vector guard accepted zero vector.");

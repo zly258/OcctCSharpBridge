@@ -1,16 +1,14 @@
 ﻿# Packaging and Runtime Deployment
 
-OcctCSharpBridge intentionally separates **managed SDK packages** from the **native OCCT runtime**. This prevents a local development package from pretending to be a fully self-contained OCCT distribution.
+OcctCSharpBridge intentionally separates the **managed SDK** from the **native OCCT runtime**. `main` packages only reusable bridge/host assemblies; complete CAD application publishing belongs to `demo`.
 
 ## Managed packages
-
-Create the managed packages with:
 
 ```powershell
 .\build.ps1 pack Release
 ```
 
-Output:
+Four SDK packages are produced:
 
 ```text
 artifacts/packages/
@@ -19,35 +17,49 @@ artifacts/packages/
 ├─ OcctNet.WinForms.<version>.nupkg
 ├─ OcctNet.WinForms.<version>.snupkg
 ├─ OcctNet.Wpf.<version>.nupkg
-└─ OcctNet.Wpf.<version>.snupkg
+├─ OcctNet.Wpf.<version>.snupkg
+├─ OcctNet.Avalonia.<version>.nupkg
+└─ OcctNet.Avalonia.<version>.snupkg
 ```
 
-The version is always injected from `bridge-contract.json`.
+The version comes from `bridge-contract.json`.
 
-## What the managed packages contain
+## Package responsibilities
 
-The packages contain:
+- `OcctNet`: core bridge API with no WinForms/WPF/Avalonia dependency.
+- `OcctNet.WinForms`: WinForms HWND host.
+- `OcctNet.Wpf`: WPF host.
+- `OcctNet.Avalonia`: Avalonia + Windows HWND host.
+
+The Avalonia package is currently Windows-only and does not imply a cross-platform native viewer.
+
+## Managed package contents
+
+Included:
 
 - managed assemblies;
-- XML documentation for IntelliSense;
-- package dependency relationships;
-- README and license metadata;
+- XML IntelliSense documentation;
+- NuGet dependency relationships;
+- README and LICENSE;
 - portable PDB/symbol packages.
 
-They do **not** contain:
+Explicitly excluded:
 
 - `OcctNative.dll`;
-- OCCT `TK*.dll` runtime libraries;
+- OCCT `TK*.dll` libraries;
 - third-party OCCT runtime DLLs;
-- OCCT resource directories.
+- OCCT resource directories;
+- CadCommon or complete CAD application code.
 
-## Why native binaries are separate
+`tests/check-sdk-package.ps1` and `build.ps1 pack` enforce these boundaries.
 
-OCCT runtime deployment depends on the exact OCCT build, compiler runtime, optional third-party dependencies, and license obligations. The Bridge therefore treats native deployment as an explicit application responsibility rather than hiding it inside a managed NuGet package.
+## Why native runtime deployment stays separate
 
-## Runtime resolution order
+The OCCT runtime depends on the exact OCCT build, MSVC runtime, third-party dependency closure, and license obligations. Managed NuGet packages therefore do not pretend to be self-contained OCCT redistributions. Applications deploy the `OcctNative.dll` and OCCT runtime matching Bridge 2.6 / ABI 3 explicitly.
 
-Published applications should prefer app-local deployment. `OcctRuntime` probes the application directory before development/repository locations. Explicit configuration is available when the runtime lives elsewhere:
+## Runtime resolution and diagnostics
+
+Published applications should prefer app-local runtime deployment. Explicit configuration remains available:
 
 ```csharp
 OcctRuntime.Configure(
@@ -55,30 +67,37 @@ OcctRuntime.Configure(
     nativeBridgeDirectory: @"D:\runtime\bridge");
 ```
 
-For diagnostics:
+Diagnostics:
 
 ```csharp
+var info = OcctRuntime.GetDiagnosticInfo();
 var report = OcctRuntime.GetDiagnosticReport();
 ```
 
 ## Application publishing
 
-The `demo` branch owns the complete desktop publishing workflow because it knows the concrete application executables and can build an app-local native dependency closure.
+Complete desktop publishing belongs to `demo`, because only the application layer knows the actual executables, CadCommon, resources, and app-local native dependency closure.
 
-For release testing on a machine with OCCT 7.9.0:
-
-```powershell
-.\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-For the three demo hosts:
+On a Windows machine with OCCT 7.9.0, run the native release gate first:
 
 ```powershell
-.\publish.ps1 all Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
+.\build.ps1 smoke Release
 ```
 
-## Local NuGet feed example
+If OCCT is outside the conventional `D:\tools\occt-vc144-64` root:
 
-After running `build.ps1 pack`, add `artifacts/packages` as a local NuGet source and reference the packages normally. The consuming application must still deploy the matching Bridge 2.6 / ABI 3 native runtime.
+```powershell
+.\build.ps1 smoke Release -OcctRoot "E:\SDK\occt-7.9.0"
+```
 
-Do not publish the packages to a public package feed until the native runtime distribution and release process are intentionally defined.
+Demo publishing:
+
+```powershell
+.\publish.ps1 all Release -Zip
+```
+
+## Local NuGet feed
+
+After `build.ps1 pack`, add `artifacts/packages` as a local NuGet source. The consuming application still deploys the matching native runtime.
+
+Do not publish to a public package feed until native-runtime distribution, license review, and the formal release process are intentionally defined.

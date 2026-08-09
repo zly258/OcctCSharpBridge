@@ -49,11 +49,12 @@ $Projects = [ordered]@{
     Core = "src\OcctNet\OcctNet.csproj"
     WinForms = "src\OcctNet.WinForms\OcctNet.WinForms.csproj"
     Wpf = "src\OcctNet.Wpf\OcctNet.Wpf.csproj"
+    Avalonia = "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj"
     ManagedTests = "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj"
     Smoke = "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
 }
 
-$PackageProjects = @("Core", "WinForms", "Wpf")
+$PackageProjects = @("Core", "WinForms", "Wpf", "Avalonia")
 
 $Checks = [ordered]@{
     Version = "tests\check-version-contract.ps1"
@@ -71,16 +72,12 @@ $Checks = [ordered]@{
 
 function Assert-Path {
     param([Parameter(Mandatory = $true)][string]$Path)
-    if (-not (Test-Path $Path)) {
-        throw "Required path was not found: $Path"
-    }
+    if (-not (Test-Path $Path)) { throw "Required path was not found: $Path" }
 }
 
 function Assert-Command {
     param([Parameter(Mandatory = $true)][string]$Name)
-    if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
-        throw "$Name was not found in PATH."
-    }
+    if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) { throw "$Name was not found in PATH." }
 }
 
 function Invoke-Checked {
@@ -90,9 +87,7 @@ function Invoke-Checked {
         [Parameter(Mandatory = $true)][string]$ErrorMessage
     )
     & $Command @Arguments
-    if ($LASTEXITCODE -ne 0) {
-        throw $ErrorMessage
-    }
+    if ($LASTEXITCODE -ne 0) { throw $ErrorMessage }
 }
 
 function Invoke-ContractChecks {
@@ -101,9 +96,7 @@ function Invoke-ContractChecks {
         Assert-Path $path
         Write-Host ("[{0}] Running {1}..." -f $check.Key.ToLowerInvariant(), $check.Value) -ForegroundColor Cyan
         & $path -RepositoryRoot $RepoRoot
-        if (-not $?) {
-            throw "$($check.Key) validation failed."
-        }
+        if (-not $?) { throw "$($check.Key) validation failed." }
     }
 }
 
@@ -123,9 +116,7 @@ function Resolve-OcctConfiguration {
         (Join-Path $script:OcctIncludeDir "Standard.hxx"),
         (Join-Path $script:OcctLibDir "TKernel.lib"),
         (Join-Path $script:OcctBinDir "TKernel.dll")
-    )) {
-        Assert-Path $path
-    }
+    )) { Assert-Path $path }
 }
 
 function Build-Native {
@@ -145,12 +136,7 @@ function Build-Native {
     ) "CMake configure failed."
 
     Write-Host "[native] Building $Configuration..." -ForegroundColor Cyan
-    Invoke-Checked "cmake" @(
-        "--build", $NativeBuild,
-        "--config", $Configuration,
-        "--parallel"
-    ) "Native build failed."
-
+    Invoke-Checked "cmake" @("--build", $NativeBuild, "--config", $Configuration, "--parallel") "Native build failed."
     Assert-Path $NativeDll
     Write-Host "Native: $NativeDll" -ForegroundColor Green
 }
@@ -160,9 +146,7 @@ function Build-Project {
 
     Assert-Command "dotnet"
     $relativePath = $Projects[$Name]
-    if ([string]::IsNullOrWhiteSpace($relativePath)) {
-        throw "Unknown project key: $Name"
-    }
+    if ([string]::IsNullOrWhiteSpace($relativePath)) { throw "Unknown project key: $Name" }
 
     $project = Join-Path $RepoRoot $relativePath
     Assert-Path $project
@@ -195,6 +179,7 @@ function Build-Managed {
     Build-Project "Core"
     Build-Project "WinForms"
     Build-Project "Wpf"
+    Build-Project "Avalonia"
 }
 
 function Test-ManagedPackage {
@@ -211,34 +196,22 @@ function Test-ManagedPackage {
             $_ -match '(^|/)TK[^/]*\.dll$' -or
             $_.StartsWith('runtimes/', [StringComparison]::OrdinalIgnoreCase)
         })
-        if ($nativeLeak.Count -gt 0) {
-            throw "Managed package contains native runtime content: $($nativeLeak -join ', ')"
-        }
+        if ($nativeLeak.Count -gt 0) { throw "Managed package contains native runtime content: $($nativeLeak -join ', ')" }
 
         $managedDll = @($entries | Where-Object { $_ -match "^lib/.+/$([regex]::Escape($AssemblyName))\.dll$" })
         $xmlDocs = @($entries | Where-Object { $_ -match "^lib/.+/$([regex]::Escape($AssemblyName))\.xml$" })
-        if ($managedDll.Count -ne 1) {
-            throw "Managed package does not contain exactly one $AssemblyName.dll under lib/."
-        }
-        if ($xmlDocs.Count -ne 1) {
-            throw "Managed package does not contain exactly one $AssemblyName.xml IntelliSense document under lib/."
-        }
-        if ('README.md' -notin $entries -or 'LICENSE' -notin $entries) {
-            throw "Managed package must include README.md and LICENSE."
-        }
+        if ($managedDll.Count -ne 1) { throw "Managed package does not contain exactly one $AssemblyName.dll under lib/." }
+        if ($xmlDocs.Count -ne 1) { throw "Managed package does not contain exactly one $AssemblyName.xml IntelliSense document under lib/." }
+        if ('README.md' -notin $entries -or 'LICENSE' -notin $entries) { throw "Managed package must include README.md and LICENSE." }
     }
-    finally {
-        $archive.Dispose()
-    }
+    finally { $archive.Dispose() }
 }
 
 function Pack-ManagedSdk {
     param([switch]$SkipBuild)
 
     Assert-Command "dotnet"
-    if (-not $SkipBuild) {
-        Build-Managed
-    }
+    if (-not $SkipBuild) { Build-Managed }
 
     Remove-Item $PackageOutput -Recurse -Force -ErrorAction SilentlyContinue
     New-Item -ItemType Directory -Path $PackageOutput -Force | Out-Null
@@ -262,6 +235,7 @@ function Pack-ManagedSdk {
         "OcctNet" = "OcctNet"
         "OcctNet.WinForms" = "OcctNet.WinForms"
         "OcctNet.Wpf" = "OcctNet.Wpf"
+        "OcctNet.Avalonia" = "OcctNet.Avalonia"
     }
     foreach ($entry in $packages.GetEnumerator()) {
         $packagePath = Join-Path $PackageOutput "$($entry.Key).$BridgeVersion.nupkg"
@@ -303,9 +277,7 @@ function Run-Smoke {
             "--no-build"
         ) "Smoke test failed."
     }
-    finally {
-        $env:OCCT_BRIDGE_NATIVE_DIR = $previousNativeDirectory
-    }
+    finally { $env:OCCT_BRIDGE_NATIVE_DIR = $previousNativeDirectory }
 }
 
 Write-Host "Target:        $Target"

@@ -1,16 +1,14 @@
 ﻿# 打包与运行时部署
 
-OcctCSharpBridge 明确区分 **Managed SDK 包** 与 **Native OCCT Runtime**。这样可以避免生成一个“能安装 NuGet，但换机器无法运行”的伪完整包。
+OcctCSharpBridge 明确区分 **Managed SDK** 与 **Native OCCT Runtime**。`main` 只打包可复用 Bridge/Host；完整 CAD 应用发布由 `demo` 负责。
 
 ## Managed 包
-
-执行：
 
 ```powershell
 .\build.ps1 pack Release
 ```
 
-输出：
+输出四套 SDK：
 
 ```text
 artifacts/packages/
@@ -19,35 +17,47 @@ artifacts/packages/
 ├─ OcctNet.WinForms.<version>.nupkg
 ├─ OcctNet.WinForms.<version>.snupkg
 ├─ OcctNet.Wpf.<version>.nupkg
-└─ OcctNet.Wpf.<version>.snupkg
+├─ OcctNet.Wpf.<version>.snupkg
+├─ OcctNet.Avalonia.<version>.nupkg
+└─ OcctNet.Avalonia.<version>.snupkg
 ```
 
-版本号统一从 `bridge-contract.json` 注入。
+版本统一来自 `bridge-contract.json`。
 
-## Managed 包包含什么
+## 包职责
 
-包含：
+- `OcctNet`：核心 Bridge API，不引用 WinForms/WPF/Avalonia；
+- `OcctNet.WinForms`：WinForms HWND Host；
+- `OcctNet.Wpf`：WPF Host；
+- `OcctNet.Avalonia`：Avalonia + Windows HWND Host。
+
+Avalonia 包当前仍是 Windows-only Host，不表示 Native Viewer 已跨平台。
+
+## Managed 包包含
 
 - Managed 程序集；
-- IntelliSense XML 文档；
-- 包依赖关系；
-- README 和许可证元数据；
+- IntelliSense XML；
+- NuGet 依赖关系；
+- README / LICENSE；
 - portable PDB / symbol package。
 
-不包含：
+明确不包含：
 
 - `OcctNative.dll`；
 - OCCT `TK*.dll`；
 - OCCT 第三方 Runtime DLL；
-- OCCT Resource 目录。
+- OCCT Resource 目录；
+- CadCommon 或任何完整 CAD 应用代码。
 
-## 为什么 Native Runtime 不直接塞进 NuGet
+`tests/check-sdk-package.ps1` 和 `build.ps1 pack` 会校验这些边界。
 
-OCCT Runtime 部署与具体 OCCT 构建、编译器运行库、第三方依赖以及许可证要求有关。Bridge 因此把 Native 部署作为应用程序的显式责任，而不是隐藏到 Managed NuGet 包中。
+## 为什么 Native Runtime 单独部署
 
-## Runtime 查找
+OCCT Runtime 与具体 OCCT Build、MSVC Runtime、第三方依赖和许可证要求有关。Managed NuGet 因此不伪装成“自带整套 OCCT 的跨机器包”。应用必须显式部署与 Bridge 2.6 / ABI 3 匹配的 `OcctNative.dll` 和 OCCT 依赖闭包。
 
-正式发布优先采用 app-local，即把完整 Native 依赖部署在应用程序附近。Runtime 也支持显式配置：
+## Runtime 查找与诊断
+
+发布时优先 app-local。也可以显式配置：
 
 ```csharp
 OcctRuntime.Configure(
@@ -55,30 +65,37 @@ OcctRuntime.Configure(
     nativeBridgeDirectory: @"D:\runtime\bridge");
 ```
 
-排查运行问题：
+排查：
 
 ```csharp
+var info = OcctRuntime.GetDiagnosticInfo();
 var report = OcctRuntime.GetDiagnosticReport();
 ```
 
 ## 应用发布
 
-完整桌面应用发布由 `demo` 分支负责，因为只有它明确知道 WinForms/WPF/Avalonia 三个 EXE 和 app-local Native 依赖闭包。
+完整桌面应用发布只属于 `demo`，因为只有应用层知道具体 EXE、CadCommon、资源和 app-local Native 依赖闭包。
 
-安装 OCCT 7.9.0 的机器上，发布前先执行：
+正式发布前在安装 OCCT 7.9.0 的 Windows 机器执行：
 
 ```powershell
-.\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
+.\build.ps1 smoke Release
 ```
 
-三套 Demo 发布：
+若 OCCT 不在默认 `D:\tools\occt-vc144-64`：
 
 ```powershell
-.\publish.ps1 all Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
+.\build.ps1 smoke Release -OcctRoot "E:\SDK\occt-7.9.0"
+```
+
+Demo 发布：
+
+```powershell
+.\publish.ps1 all Release -Zip
 ```
 
 ## 本地 NuGet 源
 
-运行 `build.ps1 pack` 后，可以把 `artifacts/packages` 添加为本地 NuGet 源，并像普通包一样引用。业务应用仍必须部署与 Bridge 2.6 / ABI 3 匹配的 Native Runtime。
+执行 `build.ps1 pack` 后，将 `artifacts/packages` 添加为本地 NuGet Source 即可。业务应用仍需部署匹配的 Native Runtime。
 
-在 Native Runtime 分发策略和正式 Release 流程明确之前，不建议把这些包直接发布到公共 NuGet Feed。
+在 Native Runtime 分发、许可证审查和正式 Release 流程明确之前，不建议直接发布到公共 NuGet Feed。

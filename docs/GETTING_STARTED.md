@@ -1,9 +1,11 @@
 ﻿# Getting Started
 
-OcctCSharpBridge 2.6 targets **Windows x64**, **.NET 8**, and **Open CASCADE Technology 7.9.0**. The managed API is split into two primary entry points:
+OcctCSharpBridge 2.6 targets **Windows x64**, **.NET 8**, and **Open CASCADE Technology 7.9.0**. The core managed API has two entry points:
 
-- `OcctModelingSession`: headless modeling, topology, geometry analysis, triangulation, healing, and file exchange.
-- `OcctEngine`: interactive AIS/viewer, camera, selection, display, annotations, and interactive CAD operations.
+- `OcctModelingSession`: headless modeling, topology, analysis, meshing, healing, and exchange.
+- `OcctEngine`: AIS/viewer, camera, selection, display, annotations, and interactive OCCT objects.
+
+WinForms, WPF, and Avalonia are optional viewport hosts. CAD application responsibilities such as Document, Command, and Tool are outside the bridge; see [Architecture Boundaries](ARCHITECTURE_BOUNDARIES.md).
 
 ## 1. Build the managed SDK
 
@@ -11,11 +13,38 @@ OcctCSharpBridge 2.6 targets **Windows x64**, **.NET 8**, and **Open CASCADE Tec
 .\build.ps1 managed Release
 ```
 
-This does not require an OCCT installation. Managed assemblies are built with the version from `bridge-contract.json`.
+No OCCT SDK is required. This builds:
 
-## 2. Configure the OCCT runtime
+```text
+OcctNet
+OcctNet.WinForms
+OcctNet.Wpf
+OcctNet.Avalonia
+```
 
-Configure the runtime before creating the first engine or modeling session when the runtime is not deployed beside the application:
+The Avalonia host is currently a Windows HWND adapter.
+
+## 2. OCCT SDK and runtime
+
+Native builds use this conventional OCCT root when no override is supplied:
+
+```text
+D:\tools\occt-vc144-64
+```
+
+If it exists, run directly:
+
+```powershell
+.\build.ps1 all Release
+```
+
+For another SDK location:
+
+```powershell
+.\build.ps1 all Release -OcctRoot "E:\SDK\occt-7.9.0"
+```
+
+At application runtime, configure explicitly before creating the first Engine/ModelingSession when the native runtime is not deployed app-local:
 
 ```csharp
 OcctRuntime.Configure(
@@ -23,9 +52,7 @@ OcctRuntime.Configure(
     nativeBridgeDirectory: @"D:\workspace\OcctCSharpBridge\build\native\bin\Release");
 ```
 
-For published applications, app-local `OcctNative.dll` is preferred. `OCCT_ROOT`, `CASROOT`, and `OCCT_BRIDGE_NATIVE_DIR` are also supported.
-
-When diagnosing deployment problems such as Win32 error 126, write the runtime report to the application log:
+`OCCT_ROOT`, `CASROOT`, and `OCCT_BRIDGE_NATIVE_DIR` remain supported. For deployment diagnostics:
 
 ```csharp
 Console.WriteLine(OcctRuntime.GetDiagnosticReport());
@@ -45,18 +72,16 @@ var hole = model.MakeCylinder(
 
 var result = model.Cut(box, hole);
 var bounds = model.GetShapeBounds(result.Shape);
-
 model.Triangulate(result.Shape);
-var mesh = model.GetShapeMesh(result.Shape);
-
+var mesh = model.GetShapeMeshData(result.Shape);
 model.ExportStep(result.Shape, @"D:\temp\part.step");
 ```
 
-Shapes returned by a modeling session are bound to that session. Persist a native ID only when necessary, and resolve it back through `GetShape` / `TryGetShape` rather than constructing a handle manually.
+`OcctModelShape` values are owned by the session that produced them; do not fabricate handles from raw IDs.
 
 ## 4. Interactive viewer
 
-`OcctEngine` requires a valid native window handle before viewer operations:
+Direct `OcctEngine` use requires a native window handle:
 
 ```csharp
 using var engine = new OcctEngine();
@@ -66,11 +91,17 @@ engine.SetProjection(OcctProjectionType.Orthographic);
 engine.FitAll();
 ```
 
-For WinForms and WPF applications, prefer the reusable viewport hosts in `OcctNet.WinForms` and `OcctNet.Wpf` instead of duplicating HWND integration.
+Applications normally use the matching reusable host:
+
+```text
+WinForms  → OcctViewportControl
+WPF       → OcctWpfViewport
+Avalonia  → OcctAvaloniaViewport   (Windows HWND)
+```
+
+Avoid reimplementing the OCCT HWND lifetime, rectangle selection, and basic viewer input adapter in each consuming application.
 
 ## 5. Modeling to viewer
-
-A headless shape can be copied into an initialized AIS engine:
 
 ```csharp
 using var model = new OcctModelingSession();
@@ -83,20 +114,22 @@ var displayed = engine.Display(model, shape, fit: true);
 
 The displayed `OcctShape` belongs to the target `OcctEngine`; the original `OcctModelShape` remains owned by its modeling session.
 
-## 6. Validation before release
+## 6. Validation
 
-Managed validation:
+Full Managed gate without an OCCT SDK:
 
 ```powershell
 .\build.ps1 ci Release
 ```
 
-Native validation on a machine with OCCT 7.9.0:
+It covers static contracts, all four managed SDK assemblies, managed regressions, the public API signature snapshot, Smoke compilation, and NuGet package checks.
+
+Real native release gate:
 
 ```powershell
 .\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-The native smoke test covers bridge/ABI compatibility, modeling operations, triangulation, topology, BREP round-trip, and STEP round-trip.
+Only the native gate proves local OCCT 7.9.0 C++ compile/link, DLL loading, and actual geometry/topology execution.
 
-See [PACKAGING.md](PACKAGING.md) for managed package and runtime deployment rules.
+See [Packaging and Runtime Deployment](PACKAGING.md) for managed package and native-runtime rules.
