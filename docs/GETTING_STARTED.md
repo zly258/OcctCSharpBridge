@@ -1,6 +1,6 @@
 ﻿# Getting Started
 
-OcctCSharpBridge 2.6 targets **Windows x64**, **.NET 8**, and **Open CASCADE Technology 7.9.0**. The core managed API has two entry points:
+OcctCSharpBridge 2.6 targets **Windows x64**, **.NET 10 (`net10.0-windows`)**, and **Open CASCADE Technology 7.9.0**. The repository builds with .NET SDK **10.0.302** and C# **14.0**. The core managed API has two entry points:
 
 - `OcctModelingSession`: headless modeling, topology, analysis, meshing, healing, and exchange.
 - `OcctEngine`: AIS/viewer, camera, selection, display, annotations, and interactive OCCT objects.
@@ -22,7 +22,7 @@ OcctNet.Wpf
 OcctNet.Avalonia
 ```
 
-The Avalonia host is currently a Windows HWND adapter.
+The Avalonia host is currently a Windows HWND adapter. Framework-dependent desktop applications require a .NET Desktop Runtime 10.x installation; normal .NET patch roll-forward applies, so one exact `10.0.x` patch is not pinned.
 
 ## 2. OCCT SDK and runtime
 
@@ -122,7 +122,7 @@ Full Managed gate without an OCCT SDK:
 .\build.ps1 ci Release
 ```
 
-It covers static contracts, all four managed SDK assemblies, managed regressions, the public API signature snapshot, Smoke compilation, and NuGet package checks.
+It covers static contracts, all four managed SDK assemblies, managed regressions, the public API signature snapshot, Smoke compilation, and NuGet package checks. Managed tests and Smoke compile against the same target framework declared by `bridge-contract.json`.
 
 Real native release gate:
 

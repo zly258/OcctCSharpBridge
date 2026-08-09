@@ -2,7 +2,7 @@
 
 [English](README.md) · [文档索引](docs/INDEX.zh-CN.md) · [架构边界](docs/ARCHITECTURE_BOUNDARIES.zh-CN.md) · [桌面 Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
-OcctCSharpBridge 是面向 Windows x64 的 **Open CASCADE Technology 7.9.0 → .NET 8** 桥接项目。`main` 只保留可复用 OCCT Native/C# 封装、WinForms/WPF/Avalonia 视口宿主、契约测试、Native Smoke 场景和 Managed SDK 打包；完整 CAD 应用与上层 CAD 框架位于 `demo`。
+OcctCSharpBridge 是面向 Windows x64 的 **Open CASCADE Technology 7.9.0 → .NET 10** 桥接项目。`main` 只保留可复用 OCCT Native/C# 封装、WinForms/WPF/Avalonia 视口宿主、契约测试、Native Smoke 场景和 Managed SDK 打包；完整 CAD 应用与上层 CAD 框架位于 `demo`。
 
 Bridge **2.6.0 / Native ABI 3** 继续坚持一个边界：**Bridge 提供 OCCT 能力和 UI Viewport Adapter，不提供应用级 CAD Framework。** OCAF/XDE、Document、Feature/Entity、Command、Tool、Undo/Redo、Snap/Grip、JSON 项目持久化和产品 UI 都不进入 `main`。
 
@@ -10,11 +10,15 @@ Bridge **2.6.0 / Native ABI 3** 继续坚持一个边界：**Bridge 提供 OCCT 
 
 - Windows x64
 - Visual Studio 2022 / MSVC v143 兼容工具链
-- .NET SDK **10.0.302**（`global.json`）；发布程序集仍目标 `net8.0-windows`
-- C# 12.0
+- .NET SDK **10.0.302**（`global.json`）
+- Framework-dependent 桌面应用需要 .NET Desktop Runtime **10.x**
+- 目标框架 **`net10.0-windows`**
+- C# **14.0**
 - CMake 3.21+
 - Open CASCADE Technology **7.9.0**，VC14 x64 目录结构
 - PowerShell 5.1+ 或 PowerShell 7+
+
+.NET 10 运行时遵循正常的补丁版本前滚规则，不要求使用方固定到某个 `10.0.x` 补丁版本；例如 `10.0.10` Runtime/Desktop Runtime 可以满足本项目运行要求。
 
 约定的默认 OCCT 根目录是：
 
@@ -42,7 +46,7 @@ docs                     API、架构、部署与诊断文档
 build.ps1                validate/build/pack/smoke 统一入口
 ```
 
-`main` 不应该出现 `CadCommon`、完整 CAD 应用、DocumentManager、CommandBus、ToolManager 等上层实现。具体原则见 [架构边界](docs/ARCHITECTURE_BOUNDARIES.zh-CN.md)。
+`main` 不应该出现 `OcctDemo.*`、完整 CAD 应用、DocumentManager、CommandBus、ToolManager 等上层实现。具体原则见 [架构边界](docs/ARCHITECTURE_BOUNDARIES.zh-CN.md)。
 
 ## Managed 入口
 
@@ -75,6 +79,9 @@ WinForms 与 Avalonia 只共享框选方向/阈值、Hover/WorldPoint 节流和�
 - Bridge：`2.6.0`
 - Native ABI：`3`
 - OCCT：严格 `7.9.0`
+- .NET SDK：`10.0.302`
+- Target Framework：`net10.0-windows`
+- C#：`14.0`
 - Native exports：`348`
 - Managed P/Invoke declarations：`348`
 - Public .NET types：`99`
@@ -185,7 +192,7 @@ git switch demo
 .\run.ps1 avalonia
 ```
 
-`demo` 可以包含 `CadCommon`、简单 Command Catalog/Dispatcher、History、交互 Tool 等上层 CAD 示例，但这些不会提升为 `OcctNet` 公共 API。
+`demo` 使用明确命名的 `OcctDemo.Common` 编排层与三个 `OcctDemo.*` 应用。这些只属于参考应用，不属于 `OcctNet` 公共 API，也不应继续扩展成第二套可复用 CAD Framework。
 
 ## Runtime 诊断
 
