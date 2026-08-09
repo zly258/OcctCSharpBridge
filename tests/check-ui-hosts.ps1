@@ -6,8 +6,21 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 Import-Module (Join-Path $PSScriptRoot "ContractTestHelpers.psm1") -Force
 
+$contractPath = Join-Path $RepositoryRoot "bridge-contract.json"
+if (-not (Test-Path $contractPath -PathType Leaf)) {
+    throw "Bridge contract file is missing: bridge-contract.json"
+}
+$contract = Get-Content $contractPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$targetFramework = [string]$contract.dotnet.targetFramework
+if ([string]::IsNullOrWhiteSpace($targetFramework)) {
+    throw "Bridge contract target framework is missing."
+}
+
 $contracts = [ordered]@{
-    "src/OcctNet.WinForms/OcctNet.WinForms.csproj" = @('..\OcctNet\OcctNet.csproj')
+    "src/OcctNet.WinForms/OcctNet.WinForms.csproj" = @(
+        "<TargetFramework>$targetFramework</TargetFramework>",
+        '..\OcctNet\OcctNet.csproj'
+    )
     "src/OcctNet.WinForms/OcctViewportControl.cs" = @(
         'public sealed class OcctViewportControl',
         'OcctViewportInteractionPolicy.',
@@ -15,6 +28,7 @@ $contracts = [ordered]@{
         'SelectedObjectsOwned'
     )
     "src/OcctNet.Wpf/OcctNet.Wpf.csproj" = @(
+        "<TargetFramework>$targetFramework</TargetFramework>",
         '<UseWPF>true</UseWPF>',
         '<UseWindowsForms>true</UseWindowsForms>',
         '..\OcctNet.WinForms\OcctNet.WinForms.csproj',
@@ -32,7 +46,7 @@ $contracts = [ordered]@{
         'ErrorOccurred'
     )
     "src/OcctNet.Avalonia/OcctNet.Avalonia.csproj" = @(
-        '<TargetFramework>net10.0-windows</TargetFramework>',
+        "<TargetFramework>$targetFramework</TargetFramework>",
         '..\OcctNet\OcctNet.csproj',
         '<PackageReference Include="Avalonia" Version="12.1.0" />',
         '<AssemblyName>OcctNet.Avalonia</AssemblyName>'
@@ -87,4 +101,4 @@ if (-not $isDemoLayout) {
 }
 
 $layoutName = if ($isDemoLayout) { "demo" } else { "bridge" }
-Write-Host "[ui-hosts] WinForms, WPF and Windows-HWND Avalonia hosts validated for $layoutName layout; OcctNet core remains UI-framework independent." -ForegroundColor Green
+Write-Host "[ui-hosts] WinForms, WPF and Windows-HWND Avalonia hosts validated for $layoutName layout / $targetFramework; OcctNet core remains UI-framework independent." -ForegroundColor Green
