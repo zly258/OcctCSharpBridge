@@ -38,7 +38,7 @@ $avaloniaProject = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src
 foreach ($token in @(
     '<TargetFramework>net8.0-windows</TargetFramework>',
     '<AssemblyName>OcctNet.Avalonia</AssemblyName>',
-    '<PackageReference Include="Avalonia" Version="12.1.0" ExcludeAssets="analyzers" />'
+    '<PackageReference Include="Avalonia" Version="12.1.0" />'
 )) {
     if (-not $avaloniaProject.Contains($token)) {
         throw "Avalonia host package contract is missing: $token"
