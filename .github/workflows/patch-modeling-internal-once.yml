@@ -1,0 +1,176 @@
+name: Patch modeling internal include boundaries once
+
+on:
+  push:
+    branches:
+      - refactor/split-modeling-internal
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: contains(github.event.head_commit.message, 'Patch modeling internal include boundaries once')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: refactor/split-modeling-internal
+          fetch-depth: 0
+
+      - name: Patch native include boundaries and contracts
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text(encoding='utf-8-sig')
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected one replacement target, found {count}: {old[:100]!r}')
+              text = text.replace(old, new, 1)
+              p.write_text('\ufeff' + text, encoding='utf-8')
+
+          replace_once(
+              'src/OcctNative/OcctModelingShapeInternal.hxx',
+              '#include <TopAbs_State.hxx>\n',
+              '#include <TopAbs_ShapeEnum.hxx>\n#include <TopAbs_State.hxx>\n')
+
+          include_replacements = {
+              'src/OcctNative/OcctModelingShapeQueries.cpp': '''#include "OcctModelingShapeInternal.hxx"
+
+#include <BRepBndLib.hxx>
+#include <BRepCheck_Analyzer.hxx>
+#include <BRepExtrema_DistShapeShape.hxx>
+#include <BRepGProp.hxx>
+#include <Bnd_Box.hxx>
+#include <TopLoc_Location.hxx>
+#include <TopTools_ShapeMapHasher.hxx>
+#include <gp_Trsf.hxx>
+
+#include <sstream>''',
+              'src/OcctNative/OcctModelingGeometryQueries.cpp': '''#include "OcctModelingShapeInternal.hxx"
+
+#include <BRepAdaptor_Curve.hxx>
+#include <BRepAdaptor_Surface.hxx>
+#include <BRepTools.hxx>
+#include <TopAbs_Orientation.hxx>''',
+              'src/OcctNative/OcctModelingTopology.cpp': '''#include "OcctModelingShapeInternal.hxx"
+
+#include <BRepBuilderAPI_Sewing.hxx>
+#include <BRepTools.hxx>
+#include <TopTools_IndexedDataMapOfShapeListOfShape.hxx>
+#include <TopTools_ListIteratorOfListOfShape.hxx>''',
+              'src/OcctNative/OcctModelingInterop.cpp': '''#include "OcctModelingSessionInternal.hxx"
+#include "OcctInternal.hxx"''',
+              'src/OcctNative/OcctModelingAlgorithms.cpp': '''#include "OcctModelingAlgorithmInternal.hxx"
+
+#include <BRepAlgoAPI_Common.hxx>
+#include <BRepAlgoAPI_Cut.hxx>
+#include <BRepAlgoAPI_Fuse.hxx>
+#include <BRepAlgoAPI_Section.hxx>
+#include <BRepAlgoAPI_Splitter.hxx>
+#include <BRepFilletAPI_MakeChamfer.hxx>
+#include <BRepFilletAPI_MakeFillet.hxx>
+#include <BRepOffsetAPI_MakeOffsetShape.hxx>
+#include <BRepOffsetAPI_MakePipe.hxx>
+#include <BRepOffsetAPI_MakeThickSolid.hxx>
+#include <BRepOffsetAPI_ThruSections.hxx>
+#include <BRepOffset_Mode.hxx>
+#include <BRepPrimAPI_MakePrism.hxx>
+#include <BRepPrimAPI_MakeRevol.hxx>
+#include <GeomAbs_JoinType.hxx>
+#include <ShapeFix_Shape.hxx>
+#include <ShapeUpgrade_UnifySameDomain.hxx>
+#include <gp_Ax1.hxx>
+
+#include <cmath>''',
+          }
+          for path, block in include_replacements.items():
+              replace_once(path, '#include "OcctModelingInternal.hxx"', block)
+
+          replace_once(
+              'src/OcctNative/CMakeLists.txt',
+              '    OcctInternal.hxx\n    OcctModelingInternal.hxx\n    OcctNative.h',
+              '    OcctInternal.hxx\n'
+              '    OcctModelingSessionInternal.hxx\n'
+              '    OcctModelingShapeInternal.hxx\n'
+              '    OcctModelingAlgorithmInternal.hxx\n'
+              '    OcctModelingMeshInternal.hxx\n'
+              '    OcctModelingExchangeInternal.hxx\n'
+              '    OcctModelingInternal.hxx\n'
+              '    OcctNative.h')
+
+          contract = '''
+$modelingInternalHeaders = @(
+    @{ File = "OcctModelingSessionInternal.hxx"; Symbols = @("struct ModelSession", "modelOf", "executeShape", "requireOperation") },
+    @{ File = "OcctModelingShapeInternal.hxx"; Symbols = @("toDirection", "toShapeEnum", "indexedEdge", "maximumTolerance", "shapeList") },
+    @{ File = "OcctModelingAlgorithmInternal.hxx"; Symbols = @("failedAlgorithmResult", "applyBooleanOptions", "finishBuilderAlgorithm", "historyShapeAt") },
+    @{ File = "OcctModelingMeshInternal.hxx"; Symbols = @("faceTriangulation") },
+    @{ File = "OcctModelingExchangeInternal.hxx"; Symbols = @("modelInputStream", "readModelStep", "readModelIges", "writeModelStep") }
+)
+
+foreach ($header in $modelingInternalHeaders) {
+    if ($header.File -notin $sourceTokens) {
+        throw "Split modeling internal header is not listed in add_library: $($header.File)"
+    }
+    $headerText = [System.IO.File]::ReadAllText((Join-Path $nativeRoot $header.File))
+    foreach ($symbol in $header.Symbols) {
+        if (-not $headerText.Contains($symbol)) {
+            throw "Split modeling internal header $($header.File) is missing expected responsibility token: $symbol"
+        }
+    }
+}
+
+$modelingUmbrellaPath = Join-Path $nativeRoot "OcctModelingInternal.hxx"
+$modelingUmbrellaText = [System.IO.File]::ReadAllText($modelingUmbrellaPath)
+if ((Get-Item $modelingUmbrellaPath).Length -gt 7000) {
+    throw "OcctModelingInternal.hxx has regrown beyond a compatibility umbrella."
+}
+foreach ($forbiddenToken in @(
+    "struct ModelSession",
+    "finishBuilderAlgorithm",
+    "faceTriangulation(",
+    "readModelStep("
+)) {
+    if ($modelingUmbrellaText.Contains($forbiddenToken)) {
+        throw "OcctModelingInternal.hxx contains implementation that belongs in a responsibility-specific internal header: $forbiddenToken"
+    }
+}
+
+$narrowModelingModules = @(
+    "OcctModelingCore.cpp",
+    "OcctModelingShapeQueries.cpp",
+    "OcctModelingGeometryQueries.cpp",
+    "OcctModelingTopology.cpp",
+    "OcctModelingInterop.cpp",
+    "OcctModelingAlgorithms.cpp"
+)
+foreach ($fileName in $narrowModelingModules) {
+    $moduleText = [System.IO.File]::ReadAllText((Join-Path $nativeRoot $fileName))
+    if ($moduleText.Contains('#include "OcctModelingInternal.hxx"')) {
+        throw "$fileName still depends on the broad OcctModelingInternal.hxx compatibility umbrella."
+    }
+}
+
+'''
+          replace_once(
+              'tests/check-native-build-structure.ps1',
+              '$modules = @(\n',
+              contract + '$modules = @(\n')
+
+      - name: Commit patch and remove workflow
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git rm .github/workflows/patch-modeling-internal-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/OcctNative tests/check-native-build-structure.ps1
+          git commit -m "Protect modeling internal responsibility boundaries"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push origin HEAD:refactor/split-modeling-internal
