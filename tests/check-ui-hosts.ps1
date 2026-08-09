@@ -7,7 +7,15 @@ Set-StrictMode -Version Latest
 Import-Module (Join-Path $PSScriptRoot "ContractTestHelpers.psm1") -Force
 
 $contracts = [ordered]@{
-    "src/OcctNet.WinForms/OcctNet.WinForms.csproj" = @()
+    "src/OcctNet.WinForms/OcctNet.WinForms.csproj" = @(
+        '..\OcctNet\OcctNet.csproj'
+    )
+    "src/OcctNet.WinForms/OcctViewportControl.cs" = @(
+        'public sealed class OcctViewportControl',
+        'OcctViewportInteractionPolicy.',
+        'FirstSelectedObjectOwned',
+        'SelectedObjectsOwned'
+    )
     "src/OcctNet.Wpf/OcctNet.Wpf.csproj" = @(
         '<UseWPF>true</UseWPF>',
         '<UseWindowsForms>true</UseWindowsForms>',
@@ -25,13 +33,50 @@ $contracts = [ordered]@{
         'WorldPointChanged',
         'ErrorOccurred'
     )
+    "src/OcctNet.Avalonia/OcctNet.Avalonia.csproj" = @(
+        '<TargetFramework>net8.0-windows</TargetFramework>',
+        '..\OcctNet\OcctNet.csproj',
+        '<PackageReference Include="Avalonia" Version="12.1.0" />',
+        '<AssemblyName>OcctNet.Avalonia</AssemblyName>'
+    )
+    "src/OcctNet.Avalonia/OcctAvaloniaViewport.cs" = @(
+        'public sealed class OcctAvaloniaViewport',
+        'NativeControlHost',
+        'OperatingSystem.IsWindows()',
+        'HandleDescriptor',
+        '"HWND"',
+        'CreateWindowExW',
+        'OcctViewportInteractionPolicy.',
+        'FirstSelectedObjectOwned',
+        'SelectedObjectsOwned',
+        'EngineInitialized',
+        'ObjectSelectionChanged',
+        'WorldPointChanged',
+        'ErrorOccurred'
+    )
 }
 
 Assert-ContractMap -RepositoryRoot $RepositoryRoot -Contracts $contracts -ContractName "UI host contract"
 
-$controlText = Get-ContractText -RepositoryRoot $RepositoryRoot -RelativePath "src/OcctNet.Wpf/OcctWpfViewport.cs"
-if ($controlText -notmatch 'OcctWpfViewport\s*:\s*(?:WpfUserControl|System\.Windows\.Controls\.UserControl)') {
+$wpfText = Get-ContractText -RepositoryRoot $RepositoryRoot -RelativePath "src/OcctNet.Wpf/OcctWpfViewport.cs"
+if ($wpfText -notmatch 'OcctWpfViewport\s*:\s*(?:WpfUserControl|System\.Windows\.Controls\.UserControl)') {
     throw "OcctWpfViewport must derive from the WPF UserControl type."
 }
 
-Write-Host "[ui-hosts] WinForms and WPF viewport host contracts validated." -ForegroundColor Green
+$coreProject = Get-ContractText -RepositoryRoot $RepositoryRoot -RelativePath "src/OcctNet/OcctNet.csproj"
+if ($coreProject -match 'Avalonia|WindowsForms|UseWPF') {
+    throw "OcctNet core must remain UI-framework independent."
+}
+
+foreach ($cadPath in @(
+    "src/CadCommon",
+    "src/CadWinForms",
+    "src/CadWpf",
+    "src/CadAvalonia"
+)) {
+    if (Test-Path (Join-Path $RepositoryRoot $cadPath)) {
+        throw "Reusable main SDK must not contain upper-layer CAD application project: $cadPath"
+    }
+}
+
+Write-Host "[ui-hosts] WinForms, WPF and Windows-HWND Avalonia hosts validated; core and CAD application boundaries remain separate." -ForegroundColor Green
