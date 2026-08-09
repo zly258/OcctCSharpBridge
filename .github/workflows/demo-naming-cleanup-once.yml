@@ -3,7 +3,7 @@
 on:
   push:
     branches:
-      - refactor/demo-naming-cleanup
+      - demo-occtdemo-naming
     paths:
       - .github/workflows/demo-naming-cleanup-once.yml
 
@@ -18,17 +18,66 @@ jobs:
       - name: Checkout branch
         uses: actions/checkout@v6
         with:
-          ref: refactor/demo-naming-cleanup
+          ref: demo-occtdemo-naming
           fetch-depth: 0
+
+      - name: Align demo-only tests and shared contract
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin demo
+          git checkout origin/demo -- tests/check-ui-hosts.ps1
+
+          $replacements = [ordered]@{
+            'CadParameterDefinition' = 'DemoParameterDefinition'
+            'CadCommandDefinition' = 'DemoCommandDefinition'
+            'CadDepthBiasPreset' = 'DemoDepthBiasPreset'
+            'CadCommandCatalog' = 'DemoCommandCatalog'
+            'CadCommandResult' = 'DemoCommandResult'
+            'CadHistoryEntry' = 'DemoHistoryEntry'
+            'CadLocalization' = 'DemoLocalization'
+            'CadParameterKind' = 'DemoParameterKind'
+            'CadCommandId' = 'DemoCommandId'
+            'CadLanguage' = 'DemoLanguage'
+            'CadValues' = 'DemoValues'
+            'CadIsoView' = 'DemoIsoView'
+            'CadSession' = 'DemoSession'
+            'CadAvalonia' = 'OcctDemo.Avalonia'
+            'CadWinForms' = 'OcctDemo.WinForms'
+            'CadCommon' = 'OcctDemo.Common'
+            'CadWpf' = 'OcctDemo.Wpf'
+          }
+          $utf8Bom = [System.Text.UTF8Encoding]::new($true)
+          foreach ($path in @(
+            'tests/check-avalonia-host.ps1',
+            'tests/check-demo-command-preconditions.ps1',
+            'tests/check-demo-package.ps1',
+            'tests/check-demo-ui-structure.ps1'
+          )) {
+            $text = [System.IO.File]::ReadAllText((Resolve-Path $path))
+            foreach ($pair in $replacements.GetEnumerator()) {
+              $text = $text.Replace([string]$pair.Key, [string]$pair.Value)
+            }
+            [System.IO.File]::WriteAllText((Resolve-Path $path), $text, $utf8Bom)
+          }
+
+          git add tests
+          if (-not (git diff --cached --quiet)) {
+            git commit -m 'Align demo tests with OcctDemo naming'
+            git push origin HEAD:demo-occtdemo-naming
+          }
 
       - name: Validate renamed demo
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
+          git pull --ff-only
           .\build.ps1 validate Release
           .\build.ps1 managed Release
 
-          $legacy = git grep -n -E '\bCad(Common|WinForms|Wpf|Avalonia|CommandId|ParameterKind|ParameterDefinition|CommandDefinition|CommandResult|CommandCatalog|HistoryEntry|Language|Localization|Values|IsoView|DepthBiasPreset|Session)\b' -- src OcctBridge.sln build.ps1 run.ps1 publish.ps1 README.md README.zh-CN.md .github/workflows/demo-build.yml 2>$null
+          $legacy = git grep -n -E '\bCad(Common|WinForms|Wpf|Avalonia|CommandId|ParameterKind|ParameterDefinition|CommandDefinition|CommandResult|CommandCatalog|HistoryEntry|Language|Localization|Values|IsoView|DepthBiasPreset|Session)\b' -- src OcctBridge.sln build.ps1 run.ps1 publish.ps1 README.md README.zh-CN.md tests/check-avalonia-host.ps1 tests/check-demo-command-preconditions.ps1 tests/check-demo-package.ps1 tests/check-demo-ui-structure.ps1 .github/workflows/demo-build.yml 2>$null
           if ($LASTEXITCODE -eq 0 -and $legacy) {
             Write-Host $legacy
             throw 'Legacy Cad-prefixed demo source naming remains.'
@@ -54,4 +103,4 @@ jobs:
           git pull --ff-only
           git rm .github/workflows/demo-naming-cleanup-once.yml
           git commit -m 'Remove one-time demo naming cleanup workflow'
-          git push origin HEAD:refactor/demo-naming-cleanup
+          git push origin HEAD:demo-occtdemo-naming
