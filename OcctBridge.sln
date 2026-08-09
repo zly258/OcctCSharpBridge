@@ -2,7 +2,7 @@
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") = "Solution Items", "Solution Items", "{CBACB41C-6B78-4FD8-9F3B-D7AF292A17D9}"
+Project("{66A26720-8FB5-11D2-AA7E-00C04F79EFBC}") = "Solution Items", "Solution Items", "{CBACB41C-6B78-4FD8-9F3B-D7AF292A17D9}"
     ProjectSection(SolutionItems) = preProject
         .gitignore = .gitignore
         build.ps1 = build.ps1
@@ -17,6 +17,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.WinForms", "src\OcctNet.WinForms\OcctNet.WinForms.csproj", "{7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.Wpf", "src\OcctNet.Wpf\OcctNet.Wpf.csproj", "{B65176A4-9A31-4C15-BE31-2F4FB10EFB56}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.Avalonia", "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj", "{3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.ManagedTests", "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj", "{D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}"
 EndProject
@@ -40,6 +42,10 @@ Global
         {B65176A4-9A31-4C15-BE31-2F4FB10EFB56}.Debug|x64.Build.0 = Debug|x64
         {B65176A4-9A31-4C15-BE31-2F4FB10EFB56}.Release|x64.ActiveCfg = Release|x64
         {B65176A4-9A31-4C15-BE31-2F4FB10EFB56}.Release|x64.Build.0 = Release|x64
+        {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}.Debug|x64.ActiveCfg = Debug|x64
+        {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}.Debug|x64.Build.0 = Debug|x64
+        {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}.Release|x64.ActiveCfg = Release|x64
+        {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}.Release|x64.Build.0 = Release|x64
         {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}.Debug|x64.ActiveCfg = Debug|x64
         {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}.Debug|x64.Build.0 = Debug|x64
         {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}.Release|x64.ActiveCfg = Release|x64
