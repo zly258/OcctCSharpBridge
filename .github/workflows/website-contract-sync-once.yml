@@ -1,0 +1,112 @@
+﻿name: Website Contract Sync Once
+
+on:
+  push:
+    branches:
+      - sync/website-bridge-architecture
+    paths:
+      - .github/workflows/website-contract-sync-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout website sync branch
+        uses: actions/checkout@v6
+        with:
+          ref: sync/website-bridge-architecture
+          fetch-depth: 0
+
+      - name: Synchronize visible bridge contract values
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+
+          $extensions = @('.html', '.htm', '.md', '.js', '.json', '.txt', '.yml', '.yaml')
+          $files = @(Get-ChildItem . -Recurse -File | Where-Object {
+            $_.FullName -notmatch '[\\/]\.git[\\/]' -and
+            $_.FullName -notmatch '[\\/]\.github[\\/]workflows[\\/]website-contract-sync-once\.yml$' -and
+            $_.Extension.ToLowerInvariant() -in $extensions
+          })
+
+          $changed = 0
+          $countUpdated = 0
+          $hostUpdated = 0
+          $sdkUpdated = 0
+
+          foreach ($file in $files) {
+            $text = [System.IO.File]::ReadAllText($file.FullName)
+            $updated = $text
+
+            # Public managed type metric: change only when 95 is near an explicit public .NET type label.
+            $patterns = @(
+              '(?is)(Public\s*\.NET\s*types\s*[:：]?\s*`?<[^>]*>\s*)95',
+              '(?is)(Public\s*\.NET\s*types\s*[:：]?\s*`?\s*)95',
+              '(?is)(公开\s*\.NET\s*类型\s*[:：]?\s*`?<[^>]*>\s*)95',
+              '(?is)(公开\s*\.NET\s*类型\s*[:：]?\s*`?\s*)95',
+              '(?is)(publicNetTypes\s*["'']?\s*[:=]\s*["'']?)95'
+            )
+            foreach ($pattern in $patterns) {
+              $before = $updated
+              $updated = [regex]::Replace($updated, $pattern, '${1}99')
+              if ($updated -ne $before) { $countUpdated++ }
+            }
+
+            # Tooling version only; target framework remains net8.0-windows.
+            if ($updated.Contains('8.0.423')) {
+              $updated = $updated.Replace('8.0.423', '10.0.302')
+              $sdkUpdated++
+            }
+
+            # Add Avalonia only to existing WinForms/WPF host lists that do not already name it.
+            foreach ($pair in @(
+              @('WinForms / WPF', 'WinForms / WPF / Avalonia'),
+              @('WinForms/WPF', 'WinForms/WPF/Avalonia'),
+              @('WinForms、WPF', 'WinForms、WPF、Avalonia')
+            )) {
+              if ($updated.Contains($pair[0]) -and -not $updated.Contains($pair[1])) {
+                $updated = $updated.Replace($pair[0], $pair[1])
+                $hostUpdated++
+              }
+            }
+
+            if ($updated -ne $text) {
+              [System.IO.File]::WriteAllText($file.FullName, $updated, [System.Text.UTF8Encoding]::new($false))
+              $changed++
+            }
+          }
+
+          Write-Host "Changed files: $changed"
+          Write-Host "Public-type replacements: $countUpdated"
+          Write-Host "Host-list replacements: $hostUpdated"
+          Write-Host "SDK replacements: $sdkUpdated"
+
+          if ($countUpdated -eq 0) {
+            Write-Host 'No labeled 95 public-type metric was found; website may already be current.' -ForegroundColor Yellow
+          }
+
+          # Reject stale contract values when they are still explicitly tied to their labels.
+          foreach ($file in $files) {
+            $text = [System.IO.File]::ReadAllText($file.FullName)
+            if ($text -match '(?is)Public\s*\.NET\s*types.{0,80}\b95\b' -or
+                $text -match '(?is)公开\s*\.NET\s*类型.{0,80}\b95\b' -or
+                $text -match '(?is)publicNetTypes.{0,40}\b95\b') {
+              throw "Stale public .NET type metric remains in $($file.FullName)."
+            }
+          }
+
+          Remove-Item '.github/workflows/website-contract-sync-once.yml' -Force
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if (git diff --cached --quiet) {
+            throw 'Website contract sync produced no committed change.'
+          }
+          git commit -m 'Sync website with Bridge 2.6 host and API contract'
+          git push origin HEAD:sync/website-bridge-architecture
