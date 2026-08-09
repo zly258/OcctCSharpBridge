@@ -32,7 +32,7 @@ jobs:
           function Replace-Required([string]$path, [string]$old, [string]$new) {
             $full = Resolve-Path $path
             $text = [System.IO.File]::ReadAllText($full)
-            if (-not $text.Contains($old)) { throw "Expected documentation text not found in $path: $old" }
+            if (-not $text.Contains($old)) { throw "Expected documentation text not found in ${path}: $old" }
             $text = $text.Replace($old, $new)
             [System.IO.File]::WriteAllText($full, $text, $utf8Bom)
           }
