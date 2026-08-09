@@ -21,9 +21,15 @@ public sealed partial class OcctEngine
         CheckInitialized(() => NativeMethods.occt_set_objects_selectable(_handle, ids, ids.Length, selectable ? 1 : 0));
     }
 
-    public void SetViewCubeLanguage(OcctViewCubeLanguage language)
+    public void Highlight(IOcctObject value)
     {
-        if (!Enum.IsDefined(language)) throw new ArgumentOutOfRangeException(nameof(language));
-        CheckInitialized(() => NativeMethods.occt_set_view_cube_language(_handle, (int)language));
+        EnsureObject(value);
+        CheckInitialized(() => NativeMethods.occt_highlight_object(_handle, value.Id));
+    }
+
+    public void Unhighlight(IOcctObject value)
+    {
+        EnsureObject(value);
+        CheckInitialized(() => NativeMethods.occt_unhighlight_object(_handle, value.Id));
     }
 }

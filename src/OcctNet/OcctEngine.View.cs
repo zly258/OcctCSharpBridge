@@ -60,6 +60,12 @@ public sealed partial class OcctEngine
     public void SetViewCubeVisible(bool visible) =>
         CheckInitialized(() => NativeMethods.occt_set_view_cube_visible(_handle, visible ? 1 : 0));
 
+    public void SetViewCubeLanguage(OcctViewCubeLanguage language)
+    {
+        if (!Enum.IsDefined(language)) throw new ArgumentOutOfRangeException(nameof(language));
+        CheckInitialized(() => NativeMethods.occt_set_view_cube_language(_handle, (int)language));
+    }
+
     public void SetComputedHlr(bool enabled) =>
         CheckInitialized(() => NativeMethods.occt_set_computed_mode(_handle, enabled ? 1 : 0));
 
