@@ -1,7 +1,10 @@
-﻿#include "OcctModelingInternal.hxx"
+﻿#include "OcctModelingShapeInternal.hxx"
 #include "OcctModelingTopologyAnalysis.h"
 
 #include <ShapeAnalysis_FreeBounds.hxx>
+#include <TopTools_IndexedDataMapOfShapeListOfShape.hxx>
+
+#include <cmath>
 
 using namespace OcctModelingInternal;
 
@@ -64,19 +67,13 @@ extern "C"
                 throw std::out_of_range("Edge adjacency output capacity is too small.");
 
             TopTools_IndexedDataMapOfShapeListOfShape edgeFaces;
-            TopExp::MapShapesAndUniqueAncestors(
-                root,
-                TopAbs_EDGE,
-                TopAbs_FACE,
-                edgeFaces,
-                Standard_False);
+            TopExp::MapShapesAndUniqueAncestors(root, TopAbs_EDGE, TopAbs_FACE, edgeFaces, Standard_False);
 
             for (int index = 1; index <= edges.Extent(); ++index)
             {
                 const TopoDS_Shape& edge = edges(index);
                 items[index - 1].edgeId = model->addShape(edge);
-                items[index - 1].adjacentFaceCount =
-                    edgeFaces.Contains(edge) ? edgeFaces.FindFromKey(edge).Size() : 0;
+                items[index - 1].adjacentFaceCount = edgeFaces.Contains(edge) ? edgeFaces.FindFromKey(edge).Size() : 0;
             }
         });
     }

@@ -29,8 +29,7 @@ $selectionState = Read-Text (Join-Path $RepositoryRoot "src\OcctNative\OcctSelec
 $selectionHeader = Read-Text (Join-Path $RepositoryRoot "src\OcctNative\OcctSelectionState.h")
 $overlay = Read-Text (Join-Path $RepositoryRoot "src\OcctNative\OcctSelectionOverlay.cpp")
 $control = Read-Text (Join-Path $RepositoryRoot "src\OcctNet.WinForms\OcctViewportControl.cs")
-$interactionPolicyPath = Join-Path $RepositoryRoot "src\OcctNet\OcctViewportInteractionPolicy.cs"
-$interactionPolicy = if (Test-Path $interactionPolicyPath -PathType Leaf) { Read-Text $interactionPolicyPath } else { $null }
+$interactionPolicy = Read-Text (Join-Path $RepositoryRoot "src\OcctNet\OcctViewportInteractionPolicy.cs")
 $managedHits = Read-Text (Join-Path $RepositoryRoot "src\OcctNet\OcctEngine.SelectionHits.cs")
 $managedOverlay = Read-Text (Join-Path $RepositoryRoot "src\OcctNet\OcctEngine.SelectionOverlay.cs")
 $managedTypes = Read-Text (Join-Path $RepositoryRoot "src\OcctNet\OcctSelectionHitTypes.cs")
@@ -104,14 +103,9 @@ foreach ($obsoletePath in @(
 
 Assert-Contains $control 'RectangleSelectionThreshold { get; set; } = 3;' 'the three-pixel reference threshold'
 Assert-Contains $control 'OcctRectangleSelectionBehavior.Inclusive' 'inclusive rectangle selection as the default'
-if ($null -ne $interactionPolicy) {
-    Assert-Contains $control 'OcctViewportInteractionPolicy.ShouldUseRectangle(' 'shared rectangle gesture classification'
-    Assert-Contains $interactionPolicy 'var dragDistance = Math.Abs(endX - startX) + Math.Abs(endY - startY);' 'Manhattan-distance gesture classification'
-    Assert-Contains $interactionPolicy 'return dragDistance > effectiveThreshold;' 'strict rectangle threshold semantics'
-}
-else {
-    Assert-Contains $control 'dragDistance > RectangleSelectionThreshold' 'legacy in-host Manhattan-distance gesture classification before wrapper sync'
-}
+Assert-Contains $control 'OcctViewportInteractionPolicy.ShouldUseRectangle(' 'shared rectangle gesture classification'
+Assert-Contains $interactionPolicy 'var dragDistance = Math.Abs(endX - startX) + Math.Abs(endY - startY);' 'Manhattan-distance gesture classification'
+Assert-Contains $interactionPolicy 'return dragDistance > effectiveThreshold;' 'strict rectangle threshold semantics'
 Assert-Contains $control '!ModifierKeys.HasFlag(Keys.Shift)' 'Shift exclusion for left-button box selection'
 Assert-Contains $control 'private bool _leftSelectionGesture;' 'an explicit left-selection gesture state'
 Assert-Contains $control 'private bool IsActiveRectangleGesture =>' 'a capture-independent active rectangle state'
@@ -130,4 +124,4 @@ if ($resizeBlock.Contains('CancelRectangleSelection();')) {
     throw 'OnResize must preserve an active rectangle gesture instead of cancelling the first drag.'
 }
 
-Write-Host '[selection] Selection hits, point/box policy, capture recovery, and pre/post wrapper-sync host layouts validated.' -ForegroundColor Green
+Write-Host '[selection] Split base selection, overlay/state native methods, structured hit invariants, shared point/box policy, batched selected/detected hits, subshape-index contract, and first-gesture capture recovery validated.' -ForegroundColor Green
