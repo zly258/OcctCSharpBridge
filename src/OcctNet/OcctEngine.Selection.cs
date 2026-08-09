@@ -40,7 +40,7 @@ public sealed partial class OcctEngine
     /// <summary>
     /// Compatibility selection handles that preserve the Bridge 2.5 object-ID
     /// workflow. New code that requires strict engine ownership should use
-    /// <see cref="SelectedOwnedObjects"/>.
+    /// <see cref="SelectedObjectsOwned"/>.
     /// </summary>
     public IReadOnlyList<OcctObject> SelectedObjects
     {
@@ -61,7 +61,7 @@ public sealed partial class OcctEngine
     /// <summary>
     /// Owner-aware selected objects for Bridge 2.6 code.
     /// </summary>
-    public IReadOnlyList<IOcctObject> SelectedOwnedObjects
+    public IReadOnlyList<IOcctObject> SelectedObjectsOwned
     {
         get
         {
@@ -91,7 +91,7 @@ public sealed partial class OcctEngine
 
     /// <summary>
     /// Compatibility first-selected handle. New owner-aware code should use
-    /// <see cref="FirstSelectedOwnedObject"/>.
+    /// <see cref="FirstSelectedObjectOwned"/>.
     /// </summary>
     public OcctObject? FirstSelectedObject
     {
@@ -105,7 +105,7 @@ public sealed partial class OcctEngine
         }
     }
 
-    public IOcctObject? FirstSelectedOwnedObject
+    public IOcctObject? FirstSelectedObjectOwned
     {
         get
         {
