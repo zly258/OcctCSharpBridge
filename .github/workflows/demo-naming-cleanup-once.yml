@@ -21,68 +21,30 @@ jobs:
           ref: demo-occtdemo-naming
           fetch-depth: 0
 
-      - name: Align demo-only tests and shared contract
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git fetch origin demo
-          git checkout origin/demo -- tests/check-ui-hosts.ps1
-
-          $replacements = [ordered]@{
-            'CadParameterDefinition' = 'DemoParameterDefinition'
-            'CadCommandDefinition' = 'DemoCommandDefinition'
-            'CadDepthBiasPreset' = 'DemoDepthBiasPreset'
-            'CadCommandCatalog' = 'DemoCommandCatalog'
-            'CadCommandResult' = 'DemoCommandResult'
-            'CadHistoryEntry' = 'DemoHistoryEntry'
-            'CadLocalization' = 'DemoLocalization'
-            'CadParameterKind' = 'DemoParameterKind'
-            'CadCommandId' = 'DemoCommandId'
-            'CadLanguage' = 'DemoLanguage'
-            'CadValues' = 'DemoValues'
-            'CadIsoView' = 'DemoIsoView'
-            'CadSession' = 'DemoSession'
-            'CadAvalonia' = 'OcctDemo.Avalonia'
-            'CadWinForms' = 'OcctDemo.WinForms'
-            'CadCommon' = 'OcctDemo.Common'
-            'CadWpf' = 'OcctDemo.Wpf'
-          }
-          $utf8Bom = [System.Text.UTF8Encoding]::new($true)
-          foreach ($path in @(
-            'tests/check-avalonia-host.ps1',
-            'tests/check-demo-command-preconditions.ps1',
-            'tests/check-demo-package.ps1',
-            'tests/check-demo-ui-structure.ps1'
-          )) {
-            $text = [System.IO.File]::ReadAllText((Resolve-Path $path))
-            foreach ($pair in $replacements.GetEnumerator()) {
-              $text = $text.Replace([string]$pair.Key, [string]$pair.Value)
-            }
-            [System.IO.File]::WriteAllText((Resolve-Path $path), $text, $utf8Bom)
-          }
-
-          git add tests
-          if (-not (git diff --cached --quiet)) {
-            git commit -m 'Align demo tests with OcctDemo naming'
-            git push origin HEAD:demo-occtdemo-naming
-          }
-
       - name: Validate renamed demo
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          git pull --ff-only
           .\build.ps1 validate Release
           .\build.ps1 managed Release
 
-          $legacy = git grep -n -E '\bCad(Common|WinForms|Wpf|Avalonia|CommandId|ParameterKind|ParameterDefinition|CommandDefinition|CommandResult|CommandCatalog|HistoryEntry|Language|Localization|Values|IsoView|DepthBiasPreset|Session)\b' -- src OcctBridge.sln build.ps1 run.ps1 publish.ps1 README.md README.zh-CN.md tests/check-avalonia-host.ps1 tests/check-demo-command-preconditions.ps1 tests/check-demo-package.ps1 tests/check-demo-ui-structure.ps1 .github/workflows/demo-build.yml 2>$null
-          if ($LASTEXITCODE -eq 0 -and $legacy) {
-            Write-Host $legacy
+          $legacyPattern = '\bCad(Common|WinForms|Wpf|Avalonia|CommandId|ParameterKind|ParameterDefinition|CommandDefinition|CommandResult|CommandCatalog|HistoryEntry|Language|Localization|Values|IsoView|DepthBiasPreset|Session)\b'
+          $scanFiles = @()
+          foreach ($root in @('src')) {
+            $scanFiles += Get-ChildItem $root -Recurse -File | Where-Object { $_.Extension -in @('.cs','.csproj','.xaml','.resx','.manifest','.md') }
+          }
+          foreach ($path in @(
+            'OcctBridge.sln','build.ps1','run.ps1','publish.ps1','README.md','README.zh-CN.md',
+            'tests/check-avalonia-host.ps1','tests/check-demo-command-preconditions.ps1',
+            'tests/check-demo-package.ps1','tests/check-demo-ui-structure.ps1','.github/workflows/demo-build.yml'
+          )) {
+            if (Test-Path $path -PathType Leaf) { $scanFiles += Get-Item $path }
+          }
+          $legacy = $scanFiles | Sort-Object FullName -Unique | Select-String -Pattern $legacyPattern
+          if ($legacy) {
+            $legacy | ForEach-Object { Write-Host "$($_.Path):$($_.LineNumber): $($_.Line.Trim())" }
             throw 'Legacy Cad-prefixed demo source naming remains.'
           }
-          if ($LASTEXITCODE -notin @(0,1)) { throw 'git grep failed.' }
 
           foreach ($project in @(
             'src/OcctDemo.Common/OcctDemo.Common.csproj',
