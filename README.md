@@ -10,7 +10,7 @@ Bridge **2.6.0 / Native ABI 3** follows one deliberate boundary: **the bridge ex
 
 - Windows x64
 - Visual Studio 2022 / MSVC v143-compatible toolchain
-- .NET SDK **8.0.423** (`main/global.json`)
+- .NET SDK **10.0.302** (`global.json`); published assemblies still target `net8.0-windows`
 - C# 12.0
 - CMake 3.21+
 - Open CASCADE Technology **7.9.0**, VC14 x64 layout
