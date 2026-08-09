@@ -10,7 +10,7 @@ Bridge **2.6.0 / Native ABI 3** 继续坚持一个边界：**Bridge 提供 OCCT 
 
 - Windows x64
 - Visual Studio 2022 / MSVC v143 兼容工具链
-- .NET SDK **8.0.423**（`main/global.json`）
+- .NET SDK **10.0.302**（`global.json`）；发布程序集仍目标 `net8.0-windows`
 - C# 12.0
 - CMake 3.21+
 - Open CASCADE Technology **7.9.0**，VC14 x64 目录结构
