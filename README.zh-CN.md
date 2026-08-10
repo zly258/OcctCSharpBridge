@@ -10,7 +10,7 @@ OcctCSharpBridge 是面向 Windows x64 的 **Open CASCADE Technology 7.9.0 → .
 
 | 项目 | 当前值 |
 | --- | --- |
-| Author | **Liaoyuan Zhang** |
+| Author | **zly258** |
 | Bridge Version | **2.6.0** |
 | Native ABI | **4** |
 | Native exports | **344** |
@@ -133,7 +133,7 @@ publish.ps1                     API 文档 + Binary SDK + main→demo 正式发�
 
 ## Author
 
-**Liaoyuan Zhang**  
+**zly258**  
 zhangly1403@gmail.com
 
 ## 许可证
