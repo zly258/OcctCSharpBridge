@@ -100,6 +100,7 @@ $Projects = [ordered]@{
 # behavior are verified by the managed build, managed tests, and native smoke target.
 $Checks = [ordered]@{
     Version = "tests\check-version-contract.ps1"
+    Architecture = "tests\check-architecture-boundaries.ps1"
     DemoStructure = "tests\check-demo-structure.ps1"
     BulkAbi = "tests\check-bulk-abi.ps1"
     NativeBuild = "tests\check-native-build-structure.ps1"
@@ -298,15 +299,18 @@ function Build-Ci {
 
 function Run-Smoke {
     Assert-Path $NativeDll
+    Resolve-OcctConfiguration
     Build-Project "Smoke"
 
     $smokeProject = Join-Path $RepoRoot $Projects.Smoke.Project
     $smokeOutput = Get-ProjectOutputDirectory "Smoke"
-    Copy-OcctRuntimeDependencies -OutputDirectory $smokeOutput
+    Copy-Item $NativeDll (Join-Path $smokeOutput "OcctNative.dll") -Force
 
     $previousNativeDirectory = $env:OCCT_BRIDGE_NATIVE_DIR
+    $previousOcctRoot = $env:OCCT_ROOT
     try {
         $env:OCCT_BRIDGE_NATIVE_DIR = $smokeOutput
+        $env:OCCT_ROOT = $script:ResolvedOcctRoot
         Write-Host "[smoke] Running native modeling scenarios..." -ForegroundColor Cyan
         Invoke-Checked "dotnet" @(
             "run",
@@ -317,7 +321,10 @@ function Run-Smoke {
             "--no-build"
         ) "Smoke test failed."
     }
-    finally { $env:OCCT_BRIDGE_NATIVE_DIR = $previousNativeDirectory }
+    finally {
+        $env:OCCT_BRIDGE_NATIVE_DIR = $previousNativeDirectory
+        $env:OCCT_ROOT = $previousOcctRoot
+    }
 }
 
 Write-Host "Target:        $Target"
@@ -369,7 +376,6 @@ switch ($Target) {
         Deploy-ApplicationRuntime "WinFormsDemo"
         Deploy-ApplicationRuntime "WpfDemo"
         Deploy-ApplicationRuntime "AvaloniaDemo"
-        Deploy-ApplicationRuntime "Smoke"
     }
 }
 
