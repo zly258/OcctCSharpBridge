@@ -8,7 +8,7 @@
 
 | Script | Responsibility |
 |---|---|
-| `check-version-contract.ps1` | `bridge-contract.json` 与 Native/Managed/.NET/CMake 的版本、平台和数量契约 |
+| `check-version-contract.ps1` | `bridge-contract.json` 与 Native/Managed/.NET/CMake 的版本、平台和数量契约，同时验证 .NET 10 MTP Runner |
 | `check-architecture-boundaries.ps1` | Core/UI 依赖方向、`main`/应用层边界、禁止兼容层和 CAD Framework 下沉 |
 | `check-bulk-abi.ps1` | 高数量 Modeling 集合与 Selection Hit 必须保持 Bulk ABI，禁止恢复 N+1 indexed ABI |
 | `check-native-build-structure.ps1` | CMake Native 源清单、OCCT 7.9 数据交换 Toolkit、禁止 OCAF/XDE |
@@ -25,7 +25,17 @@
 
 ## 2. Managed 回归
 
-`OcctNet.ManagedTests` 使用 `MSTest.Sdk` + 标准 `dotnet test`，不加载 OCCT，覆盖：
+`OcctNet.ManagedTests` 使用 `MSTest.Sdk`。由于仓库固定 .NET 10，根目录 `global.json` 明确设置：
+
+```json
+{
+  "test": {
+    "runner": "Microsoft.Testing.Platform"
+  }
+}
+```
+
+因此 `dotnet test` 走 .NET 10 的 Microsoft Testing Platform，而不是旧 VSTest Target。测试不加载 OCCT，覆盖：
 
 - Value Type 与 Guard；
 - Owner-aware Handle 语义；
@@ -59,6 +69,8 @@ dotnet test .\tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj -c Release 
 - Mesh；
 - STEP/IGES/BREP/STL；
 - Inertia、Structured Intersection、Topology Reference 等关键能力。
+
+运行前，`build.ps1` 会把 `OcctNative.dll`、OCCT `win64/vc14/bin` 中的 DLL，以及 `3rdparty-vc14-64/**/bin` 中的第三方 Runtime DLL 部署到 Smoke 输出目录，避免依赖机器 PATH 的偶然状态。
 
 执行：
 
