@@ -1,0 +1,51 @@
+name: Inertia Centered Once
+
+on:
+  push:
+    branches:
+      - feat/modeling-inertia-properties
+
+permissions:
+  contents: write
+
+jobs:
+  center:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          ref: feat/modeling-inertia-properties
+          fetch-depth: 0
+
+      - name: Use center of mass as inertia reference
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/OcctNative/OcctModelingInertia.cpp')
+          text = path.read_text(encoding='utf-8-sig')
+          old = '''        return execute(model, [&]\n        {\n            GProp_GProps properties;\n            compute(model->requireShape(shapeId), properties);\n            fillInertiaProperties(properties, result);\n        });'''
+          new = '''        return execute(model, [&]\n        {\n            const TopoDS_Shape& shape = model->requireShape(shapeId);\n\n            GProp_GProps preliminary;\n            compute(shape, preliminary);\n\n            GProp_GProps centered(preliminary.CentreOfMass());\n            compute(shape, centered);\n            fillInertiaProperties(centered, result);\n        });'''
+          if old not in text:
+              raise SystemExit('Expected inertia computation block not found.')
+          text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8-sig')
+
+          path = Path('src/OcctNet/OcctInertiaProperties.cs')
+          text = path.read_text(encoding='utf-8-sig')
+          marker = 'public readonly record struct OcctInertiaProperties('
+          if marker in text and 'center of mass as the reference point' not in text:
+              text = text.replace(marker, '/// <summary>Inertia tensor and principal properties computed about the center of mass as the reference point.</summary>\n' + marker, 1)
+          path.write_text(text, encoding='utf-8-sig')
+          PY
+
+      - name: Commit correction and remove workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/inertia-centered-once.yml
+          git add src/OcctNative/OcctModelingInertia.cpp src/OcctNet/OcctInertiaProperties.cs
+          git commit -m "Define inertia tensor about center of mass"
+          git push origin HEAD:feat/modeling-inertia-properties
