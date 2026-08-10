@@ -104,19 +104,42 @@ if ("Avalonia" -notin $avaloniaPackages) {
     throw "OcctNet.Avalonia must reference the Avalonia package."
 }
 
-foreach ($demoPath in @(
+$demoProjects = @(
     "src/OcctDemo.Common",
     "src/OcctDemo.WinForms",
     "src/OcctDemo.Wpf",
-    "src/OcctDemo.Avalonia",
+    "src/OcctDemo.Avalonia"
+)
+$trackedDemoProjects = @($demoProjects | Where-Object { Test-TrackedPath $_ })
+if ($trackedDemoProjects.Count -ne 0 -and $trackedDemoProjects.Count -ne $demoProjects.Count) {
+    throw "Demo projects must be either fully absent on main or fully present on demo."
+}
+$isDemoBranchLayout = $trackedDemoProjects.Count -eq $demoProjects.Count
+
+foreach ($legacyProject in @(
     "src/CadCommon",
     "src/CadWinForms",
     "src/CadWpf",
     "src/CadAvalonia"
 )) {
-    if (Test-TrackedPath $demoPath) {
-        throw "Reusable main SDK must not track application/demo project: $demoPath"
+    if (Test-TrackedPath $legacyProject) {
+        throw "Legacy application project must not be tracked: $legacyProject"
     }
+}
+
+if ($isDemoBranchLayout) {
+    $demoCommon = Read-Project "src/OcctDemo.Common/OcctDemo.Common.csproj"
+    $demoWinForms = Read-Project "src/OcctDemo.WinForms/OcctDemo.WinForms.csproj"
+    $demoWpf = Read-Project "src/OcctDemo.Wpf/OcctDemo.Wpf.csproj"
+    $demoAvalonia = Read-Project "src/OcctDemo.Avalonia/OcctDemo.Avalonia.csproj"
+
+    Assert-Reference @(Get-ProjectReferences $demoCommon) "..\OcctNet\OcctNet.csproj" "OcctDemo.Common"
+    Assert-Reference @(Get-ProjectReferences $demoWinForms) "..\OcctDemo.Common\OcctDemo.Common.csproj" "OcctDemo.WinForms"
+    Assert-Reference @(Get-ProjectReferences $demoWinForms) "..\OcctNet.WinForms\OcctNet.WinForms.csproj" "OcctDemo.WinForms"
+    Assert-Reference @(Get-ProjectReferences $demoWpf) "..\OcctDemo.Common\OcctDemo.Common.csproj" "OcctDemo.Wpf"
+    Assert-Reference @(Get-ProjectReferences $demoWpf) "..\OcctNet.Wpf\OcctNet.Wpf.csproj" "OcctDemo.Wpf"
+    Assert-Reference @(Get-ProjectReferences $demoAvalonia) "..\OcctDemo.Common\OcctDemo.Common.csproj" "OcctDemo.Avalonia"
+    Assert-Reference @(Get-ProjectReferences $demoAvalonia) "..\OcctNet.Avalonia\OcctNet.Avalonia.csproj" "OcctDemo.Avalonia"
 }
 
 $managedRoot = Join-Path $RepositoryRoot "src\OcctNet"
@@ -146,4 +169,5 @@ foreach ($legacyFile in @(
     }
 }
 
-Write-Host "[architecture] Core/UI dependency direction, tracked main/demo boundary, and no-compatibility application boundary validated." -ForegroundColor Green
+$layoutName = if ($isDemoBranchLayout) { "demo" } else { "main" }
+Write-Host "[architecture] Core/UI dependency direction, $layoutName branch layout, and no-compatibility boundary validated." -ForegroundColor Green
