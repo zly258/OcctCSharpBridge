@@ -142,9 +142,9 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
     public void RaiseSelectionChanged()
     {
         if (_engine?.IsInitialized != true) return;
-        var selected = _engine.FirstSelectedObjectOwned;
+        var selected = _engine.FirstSelectedObject;
         SelectionChanged?.Invoke(this, _engine.FirstSelected);
-        ObjectSelectionChanged?.Invoke(this, new OcctAvaloniaSelectionEventArgs(selected, _engine.SelectedObjectsOwned));
+        ObjectSelectionChanged?.Invoke(this, new OcctAvaloniaSelectionEventArgs(selected, _engine.SelectedObjects));
     }
 
     public void RefreshNativeView()
