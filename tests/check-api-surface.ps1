@@ -11,7 +11,6 @@ $contract = Get-Content $contractPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $expectedNativeCount = [int]$contract.api.nativeExports
 $expectedManagedCount = [int]$contract.api.managedPInvokes
 $expectedPublicTypeCount = [int]$contract.api.publicNetTypes
-$expectedCompatibilityTypeCount = [int]$contract.api.compatibilityPublicNetTypes
 $expectedViewerCount = [int]$contract.api.viewer
 $expectedModelingCount = [int]$contract.api.modeling
 
@@ -33,6 +32,9 @@ $headerFiles = @(
     Join-Path $nativeRoot "OcctModelingBSpline.h"
     Join-Path $nativeRoot "OcctModelingTopologyAnalysis.h"
     Join-Path $nativeRoot "OcctModelingFaceAnalysis.h"
+    Join-Path $nativeRoot "OcctModelingInertia.h"
+    Join-Path $nativeRoot "OcctModelingIntersection.h"
+    Join-Path $nativeRoot "OcctModelingTopologyReference.h"
 )
 $cppFiles = Get-ChildItem $nativeRoot -Filter "*.cpp" -File | Select-Object -ExpandProperty FullName
 $managedSourceFiles = @($publicManagedRoots | ForEach-Object {
@@ -112,17 +114,6 @@ $publicTypeNames = @(
     foreach ($pattern in $publicTypePatterns) { Get-RawMatches $managedText $pattern }
 ) | Sort-Object -Unique
 
-# Bridge 2.5's OcctObject stays source-compatible during 2.x, but it is not part of
-# the owner-aware Bridge 2.6 primary surface. Do not add new compatibility types.
-$compatibilityTypeNames = @("OcctObject")
-$primaryPublicTypeNames = @($publicTypeNames | Where-Object { $_ -notin $compatibilityTypeNames })
-foreach ($compatibilityType in $compatibilityTypeNames) {
-    if ($compatibilityType -notin $publicTypeNames) { throw "Required compatibility type is missing: $compatibilityType" }
-}
-if ($compatibilityTypeNames.Count -ne $expectedCompatibilityTypeCount) {
-    throw "Compatibility public type count differs from bridge-contract.json: actual=$($compatibilityTypeNames.Count), expected=$expectedCompatibilityTypeCount."
-}
-
 Assert-NoDuplicates "native declarations" $declarationRaw
 Assert-NoDuplicates "native definitions" $definitionRaw
 Assert-NoDuplicates "C# P/Invoke declarations" $pinvokeRaw
@@ -142,10 +133,9 @@ if ($declarations.Count -ne $expectedNativeCount) {
 if ($pinvokes.Count -ne $expectedManagedCount) {
     throw "Managed P/Invoke count differs from bridge-contract.json: actual=$($pinvokes.Count), expected=$expectedManagedCount."
 }
-if ($primaryPublicTypeNames.Count -ne $expectedPublicTypeCount) {
-    Write-Host ("[api] Primary public .NET types detected: {0}" -f ($primaryPublicTypeNames -join ', ')) -ForegroundColor Yellow
-    Write-Host ("[api] Compatibility .NET types excluded from metric: {0}" -f ($compatibilityTypeNames -join ', ')) -ForegroundColor Yellow
-    throw "Primary public .NET type count differs from bridge-contract.json: actual=$($primaryPublicTypeNames.Count), expected=$expectedPublicTypeCount."
+if ($publicTypeNames.Count -ne $expectedPublicTypeCount) {
+    Write-Host ("[api] Public .NET types detected: {0}" -f ($publicTypeNames -join ', ')) -ForegroundColor Yellow
+    throw "Public .NET type count differs from bridge-contract.json: actual=$($publicTypeNames.Count), expected=$expectedPublicTypeCount."
 }
 
 $documentationFiles = @(
@@ -158,14 +148,12 @@ foreach ($documentationFile in $documentationFiles) {
     $nativeCount = [regex]::Match($documentation, 'Native exports\s*[:：]\s*`?(\d+)`?').Groups[1].Value
     $managedCount = [regex]::Match($documentation, 'Managed P/Invoke declarations\s*[:：]\s*`?(\d+)`?').Groups[1].Value
     $publicTypeCount = [regex]::Match($documentation, 'Public \.NET types\s*[:：]\s*`?(\d+)`?').Groups[1].Value
-    $compatibilityCount = [regex]::Match($documentation, 'Compatibility \.NET types\s*[:：]\s*`?(\d+)`?').Groups[1].Value
-    if ([string]::IsNullOrWhiteSpace($nativeCount) -or [string]::IsNullOrWhiteSpace($managedCount) -or [string]::IsNullOrWhiteSpace($publicTypeCount) -or [string]::IsNullOrWhiteSpace($compatibilityCount)) {
+    if ([string]::IsNullOrWhiteSpace($nativeCount) -or [string]::IsNullOrWhiteSpace($managedCount) -or [string]::IsNullOrWhiteSpace($publicTypeCount)) {
         throw "API inventory counts could not be parsed: $documentationFile"
     }
     if ([int]$nativeCount -ne $expectedNativeCount -or
         [int]$managedCount -ne $expectedManagedCount -or
-        [int]$publicTypeCount -ne $expectedPublicTypeCount -or
-        [int]$compatibilityCount -ne $expectedCompatibilityTypeCount) {
+        [int]$publicTypeCount -ne $expectedPublicTypeCount) {
         throw "API inventory differs from bridge-contract.json: $documentationFile"
     }
 }
@@ -181,6 +169,5 @@ if ($groups.Viewer.Count -ne $expectedViewerCount) { throw "Viewer API count dif
 if ($groups.Modeling.Count -ne $expectedModelingCount) { throw "Modeling API count differs from bridge-contract.json: actual=$($groups.Modeling.Count), expected=$expectedModelingCount." }
 
 foreach ($group in $groups.GetEnumerator()) { Write-Host ("[api] {0}: {1}" -f $group.Key, $group.Value.Count) -ForegroundColor Cyan }
-Write-Host "[api] Primary public .NET types: $($primaryPublicTypeNames.Count)" -ForegroundColor Cyan
-Write-Host "[api] Compatibility .NET types: $($compatibilityTypeNames.Count) ($($compatibilityTypeNames -join ', '))" -ForegroundColor DarkGray
-Write-Host ("API surface validation passed ({0} native / {1} managed / {2} primary / {3} compatibility types)." -f $expectedNativeCount, $expectedManagedCount, $expectedPublicTypeCount, $expectedCompatibilityTypeCount) -ForegroundColor Green
+Write-Host "[api] Public .NET types: $($publicTypeNames.Count)" -ForegroundColor Cyan
+Write-Host ("API surface validation passed ({0} native / {1} managed / {2} public types)." -f $expectedNativeCount, $expectedManagedCount, $expectedPublicTypeCount) -ForegroundColor Green
