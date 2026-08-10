@@ -523,6 +523,34 @@ TYPE enum OcctNet.OcctGradientFillMethod [interfaces=System.IComparable,System.I
   FIELD OcctNet.OcctGradientFillMethod None = 0
   FIELD OcctNet.OcctGradientFillMethod Vertical = 2
   FIELD System.Int32 value__
+TYPE struct OcctNet.OcctInertiaProperties [interfaces=System.IEquatable<OcctNet.OcctInertiaProperties>]
+  CTOR OcctInertiaProperties(System.Double Mass, OcctNet.OcctPoint3d CenterOfMass, System.Double Ixx, System.Double Iyy, System.Double Izz, System.Double Ixy, System.Double Ixz, System.Double Iyz, System.Double PrincipalMoment1, System.Double PrincipalMoment2, System.Double PrincipalMoment3, OcctNet.OcctVector3d PrincipalAxis1, OcctNet.OcctVector3d PrincipalAxis2, OcctNet.OcctVector3d PrincipalAxis3, System.Double RadiusOfGyration1, System.Double RadiusOfGyration2, System.Double RadiusOfGyration3, System.Boolean HasSymmetryAxis, System.Boolean HasSymmetryPoint)
+  PROPERTY OcctNet.OcctPoint3d CenterOfMass {get;set}
+  PROPERTY System.Boolean HasSymmetryAxis {get;set}
+  PROPERTY System.Boolean HasSymmetryPoint {get;set}
+  PROPERTY System.Double Ixx {get;set}
+  PROPERTY System.Double Ixy {get;set}
+  PROPERTY System.Double Ixz {get;set}
+  PROPERTY System.Double Iyy {get;set}
+  PROPERTY System.Double Iyz {get;set}
+  PROPERTY System.Double Izz {get;set}
+  PROPERTY System.Double Mass {get;set}
+  PROPERTY OcctNet.OcctVector3d PrincipalAxis1 {get;set}
+  PROPERTY OcctNet.OcctVector3d PrincipalAxis2 {get;set}
+  PROPERTY OcctNet.OcctVector3d PrincipalAxis3 {get;set}
+  PROPERTY System.Double PrincipalMoment1 {get;set}
+  PROPERTY System.Double PrincipalMoment2 {get;set}
+  PROPERTY System.Double PrincipalMoment3 {get;set}
+  PROPERTY System.Double RadiusOfGyration1 {get;set}
+  PROPERTY System.Double RadiusOfGyration2 {get;set}
+  PROPERTY System.Double RadiusOfGyration3 {get;set}
+  METHOD System.Boolean Equals(OcctNet.OcctInertiaProperties other)
+  METHOD System.Boolean Equals(System.Object obj)
+  METHOD System.Int32 GetHashCode()
+  METHOD System.String ToString()
+  METHOD System.Void Deconstruct(out System.Double Mass, out OcctNet.OcctPoint3d CenterOfMass, out System.Double Ixx, out System.Double Iyy, out System.Double Izz, out System.Double Ixy, out System.Double Ixz, out System.Double Iyz, out System.Double PrincipalMoment1, out System.Double PrincipalMoment2, out System.Double PrincipalMoment3, out OcctNet.OcctVector3d PrincipalAxis1, out OcctNet.OcctVector3d PrincipalAxis2, out OcctNet.OcctVector3d PrincipalAxis3, out System.Double RadiusOfGyration1, out System.Double RadiusOfGyration2, out System.Double RadiusOfGyration3, out System.Boolean HasSymmetryAxis, out System.Boolean HasSymmetryPoint)
+  METHOD static System.Boolean op_Equality(OcctNet.OcctInertiaProperties left, OcctNet.OcctInertiaProperties right)
+  METHOD static System.Boolean op_Inequality(OcctNet.OcctInertiaProperties left, OcctNet.OcctInertiaProperties right)
 TYPE enum OcctNet.OcctJoinType [interfaces=System.IComparable,System.IConvertible,System.IFormattable,System.ISpanFormattable]
   FIELD OcctNet.OcctJoinType Arc = 0
   FIELD OcctNet.OcctJoinType Intersection = 2
@@ -811,6 +839,9 @@ TYPE class OcctNet.OcctModelingSession [interfaces=System.IDisposable]
   METHOD OcctNet.OcctFaceAnalysisResult AnalyzeFaces(OcctNet.OcctModelShape root)
   METHOD OcctNet.OcctFaceEvaluation EvaluateFace(OcctNet.OcctModelShape face, System.Double u, System.Double v)
   METHOD OcctNet.OcctFreeBoundsResult AnalyzeFreeBounds(OcctNet.OcctModelShape shape, System.Double tolerance = 1E-07, System.Boolean splitClosed = true, System.Boolean splitOpen = true)
+  METHOD OcctNet.OcctInertiaProperties GetLinearInertiaProperties(OcctNet.OcctModelShape shape)
+  METHOD OcctNet.OcctInertiaProperties GetSurfaceInertiaProperties(OcctNet.OcctModelShape shape)
+  METHOD OcctNet.OcctInertiaProperties GetVolumeInertiaProperties(OcctNet.OcctModelShape shape)
   METHOD OcctNet.OcctLineGeometry GetLineGeometry(OcctNet.OcctModelShape edge)
   METHOD OcctNet.OcctMassProperties GetShapeLinearProperties(OcctNet.OcctModelShape shape)
   METHOD OcctNet.OcctMassProperties GetShapeSurfaceProperties(OcctNet.OcctModelShape shape)
