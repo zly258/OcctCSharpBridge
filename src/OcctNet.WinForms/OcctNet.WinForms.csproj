@@ -12,7 +12,6 @@
     <NoWarn>$(NoWarn);1591</NoWarn>
     <Title>OcctNet.WinForms</Title>
     <Description>Reusable WinForms viewport host for OcctNet and Open CASCADE Technology 7.9.0.</Description>
-    <Authors>Liaoyuan Zhang</Authors>
     <PackageTags>OCCT;OpenCASCADE;CAD;WinForms;viewport;3D</PackageTags>
     <PackageProjectUrl>https://github.com/zly258/OcctCSharpBridge</PackageProjectUrl>
     <RepositoryUrl>https://github.com/zly258/OcctCSharpBridge</RepositoryUrl>
