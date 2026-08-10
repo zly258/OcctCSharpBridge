@@ -55,13 +55,6 @@ OcctNet.Wpf
 OcctNet.Avalonia
 ```
 
-例如：
-
-```powershell
-dotnet add package OcctNet --version 2.6.0 --source .\artifacts\packages
-dotnet add package OcctNet.Wpf --version 2.6.0 --source .\artifacts\packages
-```
-
 Managed 包不捆绑 `OcctNative.dll` 或 OCCT `TK*.dll`。应用发布时需要部署与 Managed Bridge 匹配的 Native Bridge 和 OCCT Runtime。
 
 ### 构建完整 Bridge
@@ -75,6 +68,31 @@ Managed 包不捆绑 `OcctNative.dll` 或 OCCT `TK*.dll`。应用发布时需要
 ```powershell
 .\build.ps1 all Release -OcctRoot "E:\SDK\occt-7.9.0"
 ```
+
+### 生成可提交 Binary SDK
+
+`dist/win-x64` 不是普通 build 输出，而是给 `demo`、OCStation 等上层项目直接消费的**已验证 Binary SDK**。它允许提交到 Git，不受全局 `*.dll` ignore 规则影响。
+
+```powershell
+.\dist.ps1 -OcctRoot "D:\tools\occt-vc144-64"
+```
+
+`dist.ps1` 会先完成 Release Build、Managed Test 和 Native Smoke；只有全部成功才刷新：
+
+```text
+dist/win-x64/
+├─ OcctNative.dll
+├─ OcctNet.dll
+├─ OcctNet.WinForms.dll
+├─ OcctNet.Wpf.dll
+├─ OcctNet.Avalonia.dll
+├─ bridge-contract.json
+└─ bridge-manifest.json
+```
+
+`bridge-manifest.json` 记录 Bridge/ABI/OCCT/.NET 契约、源 Commit 与各文件 SHA-256，避免 Managed Wrapper 和 Native DLL 混用不同版本。
+
+OCCT 自身 `TK*.dll` 与第三方 Runtime 不提交到 `dist`；消费方仍通过 `OCCT_ROOT` / `CASROOT` 定位 OCCT Runtime。
 
 ## 使用示例
 
@@ -133,6 +151,8 @@ src/OcctNet.Avalonia     Avalonia Windows HWND 视口宿主
 tests                    静态契约、Managed 回归与 Native Smoke
 docs                     main 的编号化 Bridge 技术文档
 build.ps1                本地验证、构建、测试、打包、Smoke 统一入口
+dist.ps1                 全验证后生成 Binary SDK
+dist/win-x64             可提交、可直接消费的已验证 DLL/Contract/Manifest
 ```
 
 `OcctNet.Avalonia` 当前通过 Windows 子 HWND 承载 Native Viewer，因此它是 Windows x64 Host，不代表 OCCT Viewer 已具备 Linux/macOS 跨平台后端。
@@ -161,6 +181,23 @@ build.ps1                本地验证、构建、测试、打包、Smoke 统一�
 
 仓库不使用 GitHub Actions 代替本地构建和测试。Native 使用 `/W4 /WX` 编译，并以真实 OCCT 7.9.0 Header/Library、`bridge-contract.json` 和 Native/PInvoke 对等关系为门禁。
 
+## main / demo 边界
+
+`main` 是 Bridge 的源码生产者；`demo` 是 Binary SDK 的真实消费者。`demo` 不再复制 `src/OcctNative`、`src/OcctNet*` 或 Bridge 自测。
+
+同步流程：
+
+```text
+main 修改 Bridge
+→ main 本地 build/test/smoke
+→ dist.ps1
+→ commit main/dist/win-x64
+→ demo/sync-dist.ps1
+→ demo 编译应用
+```
+
+如果 Demo 调用与当前 Bridge 不一致，修改 Demo 调用方；不恢复 Legacy Alias、旧 Wrapper 或兼容层。
+
 ## 贡献指南
 
 1. 公共 API 使用强类型和 Owner-aware Handle，不增加 Legacy Alias 或兼容包装层。
@@ -169,8 +206,9 @@ build.ps1                本地验证、构建、测试、打包、Smoke 统一�
 4. OCCT 能力封装在 Bridge 内；Document、Command、Tool 等应用行为留在应用层。
 5. 不向可复用 Bridge 引入 OCAF/XDE。
 6. 提交前至少执行 `build.ps1 validate`、`build.ps1 managed`、`build.ps1 test`；涉及 Native 时执行 `build.ps1 all` 和 `build.ps1 smoke`。
-7. `main` 的共享 Bridge 源码变更由维护者手工同步到 `demo`；不使用 GitHub Actions 自动覆盖分支。
-8. Bridge 技术文档只在 `main/docs` 维护；`demo` 不复制一套 API 文档。
+7. 只有经过 Release Build、Managed Test、Native Smoke 的版本才通过 `dist.ps1` 更新 `dist/win-x64`。
+8. `demo` 只同步 Binary SDK，不同步 Bridge 源码；不使用 GitHub Actions 自动覆盖分支。
+9. Bridge 技术文档只在 `main/docs` 维护；`demo` 不复制一套 API 文档。
 
 ## 许可证
 
