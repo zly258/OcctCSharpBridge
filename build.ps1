@@ -46,6 +46,7 @@ if (-not (Test-Path $ContractPath -PathType Leaf)) {
 }
 $Contract = Get-Content $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $BridgeVersion = [string]$Contract.bridgeVersion
+$Author = [string]$Contract.author
 $RequiredOcctVersion = [string]$Contract.occtVersion
 $TargetFramework = [string]$Contract.dotnet.targetFramework
 $SdkVersion = [string]$Contract.dotnet.sdkVersion
@@ -386,6 +387,7 @@ function Build-BinaryDistribution {
 
         $manifest = [ordered]@{
             schemaVersion = 1
+            author = $Author
             bridgeVersion = $BridgeVersion
             nativeAbiVersion = [int]$Contract.nativeAbiVersion
             occtVersion = $RequiredOcctVersion
@@ -424,6 +426,7 @@ function Build-BinaryDistribution {
 Write-Host "Target:        $Target"
 Write-Host "Configuration: $Configuration"
 Write-Host "Bridge:        $BridgeVersion"
+Write-Host "Author:        $Author"
 Write-Host "SDK:           $SdkVersion" -ForegroundColor DarkGray
 $occtRootSource = if ($env:OCCT_ROOT) { "environment" } elseif ($OcctRoot -eq $DefaultOcctRoot) { "default" } else { "argument" }
 Write-Host "OCCT root:     $OcctRoot ($occtRootSource)" -ForegroundColor DarkGray
