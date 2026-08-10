@@ -2,8 +2,6 @@
 
 #include <BRepBuilderAPI_Copy.hxx>
 
-#include <iterator>
-
 using namespace OcctModelingInternal;
 
 extern "C"
@@ -27,22 +25,33 @@ extern "C"
 
     const char* occt_model_capabilities()
     {
-        return "headless;geometry-query;analytic-geometry;differential-geometry;topology;history;healing;mesh;projection;ray-intersection;classification;advanced-boolean;splitter;sweep;loft;step;iges;brep;stl;viewer-interop";
+        return "headless;geometry-query;analytic-geometry;differential-geometry;topology;topology-reference;history;inertia;intersection;healing;mesh;projection;ray-intersection;classification;advanced-boolean;splitter;sweep;loft;step;iges;brep;stl;viewer-interop";
     }
 
-    int occt_model_shape_count(OcctModelHandle handle)
+    int occt_model_shape_ids_copy(OcctModelHandle handle, OcctObjectId* results, int capacity)
     {
         ModelSession* model = modelOf(handle);
-        return model == nullptr ? 0 : static_cast<int>(model->shapes.size());
-    }
+        if (model == nullptr) return -1;
+        int copied = 0;
+        if (execute(model, [&]
+        {
+            if (capacity < 0) throw std::invalid_argument("Shape-ID buffer capacity must not be negative.");
+            const int count = static_cast<int>(model->shapes.size());
+            if (results == nullptr)
+            {
+                if (capacity != 0) throw std::invalid_argument("Null shape-ID buffer requires zero capacity.");
+                copied = count;
+                return;
+            }
+            if (capacity < count) throw std::invalid_argument("Shape-ID buffer capacity is smaller than the result count.");
 
-    OcctObjectId occt_model_shape_id_at(OcctModelHandle handle, int index)
-    {
-        ModelSession* model = modelOf(handle);
-        if (model == nullptr || index < 0 || index >= static_cast<int>(model->shapes.size())) return 0;
-        auto iterator = model->shapes.begin();
-        std::advance(iterator, index);
-        return iterator->first;
+            int index = 0;
+            for (const auto& pair : model->shapes)
+                results[index++] = pair.first;
+            copied = count;
+        }) == 0)
+            return -1;
+        return copied;
     }
 
     int occt_model_shape_exists(OcctModelHandle handle, OcctObjectId shapeId)
