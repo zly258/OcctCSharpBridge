@@ -140,6 +140,9 @@ public sealed class OcctViewportControl : Control
     protected override void OnResize(EventArgs e)
     {
         base.OnResize(e);
+
+        // WindowsFormsHost and first-focus DPI/layout negotiation can resize the HWND while
+        // the first rectangle gesture is active. Preserve the gesture and rebuild its overlay.
         var restoreRectangle = IsActiveRectangleGesture && _rectangleDragStarted;
         if (restoreRectangle) HideSelectionFrame();
         ResizeNativeView();
@@ -283,6 +286,8 @@ public sealed class OcctViewportControl : Control
             _selectionStart.X,
             end.X);
 
+        // MouseCaptureChanged may be raised before MouseUp, especially when this WinForms
+        // control is hosted by WPF. Keep a dedicated gesture flag until selection is committed.
         _leftSelectionGesture = false;
         _selectingRectangle = false;
         _rectangleDragStarted = false;
@@ -318,9 +323,15 @@ public sealed class OcctViewportControl : Control
         if (!Capture && !_releasingMouseCapture)
         {
             if (IsActiveRectangleGesture)
+            {
+                // WPF's WindowsFormsHost and first-focus activation can transiently take
+                // capture. Recover it asynchronously instead of losing the first drag.
                 ScheduleRectangleCaptureRecovery();
+            }
             else
+            {
                 HideSelectionFrame();
+            }
         }
         base.OnMouseCaptureChanged(e);
     }
