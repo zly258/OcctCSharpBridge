@@ -1,6 +1,6 @@
 # 08 Build, Test and Publish
 
-Validation is layered: repository contracts, managed regression tests, and real native smoke tests.
+Validation is layered: repository contracts, managed regression tests, real native smoke tests, generated API Reference, and the validated Binary SDK.
 
 ## Build targets
 
@@ -17,21 +17,33 @@ Validation is layered: repository contracts, managed regression tests, and real 
 .\build.ps1 clean Release
 ```
 
-`dist` is Release-only and requires a clean worktree. It runs native build, managed build, managed tests and native smoke before replacing `dist/win-x64` through a staging/backup transaction.
+`docs` builds the managed SDK and runs `tools/OcctApiDocsGenerator`. The generator enumerates every exported managed type and its declared public constructors, properties, events, methods and fields into both language trees.
 
-## Publishing to demo
+`dist` is Release-only and requires a clean worktree. It runs native build, managed build, managed tests and native smoke before replacing `dist/win-x64` through a staging/backup transaction. The generated manifest records the exact clean source commit and SHA-256 hashes.
+
+## Publishing a release
 
 ```powershell
 .\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-The publish script runs the `dist` gate, commits the Binary SDK on `main`, pushes `main`, creates a temporary detached worktree for `origin/demo`, synchronizes only `dist/win-x64`, validates contract/hash parity, commits the demo update and pushes it. It does not switch the developer's current checkout and does not use GitHub Actions.
+The publishing workflow intentionally includes public API documentation before the binary build:
 
-Use `-NoPush` to exercise the local publishing flow without updating remotes.
+```text
+clean main worktree
+→ build.ps1 docs Release
+→ commit generated zh-CN/en-US API Reference when changed
+→ clean committed source state
+→ build.ps1 dist Release
+→ commit dist/win-x64
+→ push main
+→ temporary detached worktree for origin/demo
+→ synchronize only dist/win-x64
+→ validate contract / manifest / SHA-256
+→ commit and push demo
+```
 
-## API documentation
-
-`build.ps1 docs` builds the managed SDK and runs `tools/OcctApiDocsGenerator`. The generator enumerates every exported managed type and its declared public constructors, properties, events, methods and fields into both language trees.
+This ordering means `bridge-manifest.json.sourceCommit` identifies the same committed source and generated public API Reference that produced the DLLs. The publishing script does not switch the developer's current checkout and does not use GitHub Actions.
 
 ## Static checks
 
@@ -39,4 +51,4 @@ PowerShell contract checks remain limited to durable repository invariants such 
 
 ## Release principle
 
-Only a Binary SDK produced after successful local Windows/MSVC/OCCT validation is publishable. The real local native toolchain is the source of truth for release readiness.
+Only a Binary SDK produced after successful local Windows/MSVC/OCCT validation is publishable. The real local native toolchain is the source of truth for release readiness. Demo receives only the validated Binary SDK; Bridge source is never synchronized into the demo branch.
