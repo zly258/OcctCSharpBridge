@@ -67,12 +67,6 @@ Assert(viewerShapeA.Kind == OcctObjectKind.Shape, "Viewer shape kind regression.
 Assert(!default(OcctShape).IsValid, "Default viewer shape must be invalid.");
 Assert(new OcctText(5, 2001).Kind == OcctObjectKind.Text, "Text object kind regression.");
 Assert(new OcctDimension(6, 2001).Kind == OcctObjectKind.Dimension, "Dimension object kind regression.");
-var legacyObject = new OcctObject(9, OcctObjectKind.Shape);
-Assert(legacyObject.IsValid, "Legacy object validity regression.");
-Assert(legacyObject.Id == 9 && legacyObject.Kind == OcctObjectKind.Shape, "Legacy object identity regression.");
-Assert(!default(OcctObject).IsValid, "Default legacy object must be invalid.");
-IOcctObject legacyInterface = legacyObject;
-Assert(legacyInterface.Id == legacyObject.Id && legacyInterface.Kind == legacyObject.Kind, "Legacy object interface regression.");
 
 var transform = OcctTransform3d.Translation(1, 2, 3);
 Assert(transform.IsFinite, "Transform finite-state regression.");
@@ -92,6 +86,85 @@ var managedHit = nativeHit.ToManaged(1001);
 Assert(managedHit.Face.IsValid, "Ray-hit face validity regression.");
 Assert(managedHit.Face.OwnerId == 1001, "Ray-hit owner propagation regression.");
 Assert(managedHit.State == OcctModelState.On, "Ray-hit state mapping regression.");
+
+var nativeInertia = new NativeModelInertiaProperties
+{
+    Mass = 12.5,
+    CenterOfMass = new OcctPoint3d(1, 2, 3),
+    Ixx = 4,
+    Iyy = 5,
+    Izz = 6,
+    PrincipalMoment1 = 7,
+    PrincipalMoment2 = 8,
+    PrincipalMoment3 = 9,
+    PrincipalAxis1 = OcctVector3d.UnitX,
+    PrincipalAxis2 = OcctVector3d.UnitY,
+    PrincipalAxis3 = OcctVector3d.UnitZ,
+    HasSymmetryAxis = 1,
+    HasSymmetryPoint = 0
+};
+var inertia = nativeInertia.ToManaged();
+Assert(inertia.Mass == 12.5 && inertia.CenterOfMass == new OcctPoint3d(1, 2, 3), "Inertia mapping regression.");
+Assert(inertia.HasSymmetryAxis && !inertia.HasSymmetryPoint, "Inertia symmetry mapping regression.");
+
+var nativeIntersection = new NativeModelEdgeIntersection
+{
+    Kind = (int)OcctIntersectionKind.Overlap,
+    StartPoint = new OcctPoint3d(0, 0, 0),
+    EndPoint = new OcctPoint3d(5, 0, 0),
+    FirstParameterStart = 1,
+    FirstParameterEnd = 2,
+    SecondParameterStart = 3,
+    SecondParameterEnd = 4
+};
+var intersection = nativeIntersection.ToManaged();
+Assert(intersection.Kind == OcctIntersectionKind.Overlap, "Intersection kind mapping regression.");
+Assert(intersection.FirstParameterStart == 1 && intersection.SecondParameterEnd == 4, "Intersection parameter mapping regression.");
+
+var topologyBounds = new OcctBounds
+{
+    MinX = 0,
+    MinY = 0,
+    MinZ = 0,
+    MaxX = 10,
+    MaxY = 0,
+    MaxZ = 0
+};
+var topologyReference = new OcctTopologyReference(
+    1,
+    OcctShapeType.Edge,
+    3,
+    OcctCurveType.Line,
+    OcctSurfaceType.Other,
+    10,
+    new OcctPoint3d(5, 0, 0),
+    topologyBounds,
+    1e-7,
+    OcctModelOrientation.Forward,
+    2,
+    0,
+    1);
+var nativeReference = NativeModelTopologyReference.FromManaged(topologyReference);
+var roundTripReference = nativeReference.ToManaged();
+Assert(roundTripReference == topologyReference, "Topology-reference mapping regression.");
+
+var nativeReferenceResult = new NativeModelTopologyReferenceResult
+{
+    Status = (int)OcctTopologyReferenceStatus.Resolved,
+    ShapeId = 42,
+    Score = 0.91,
+    CandidateCount = 2,
+    UsedOperationHistory = 1,
+    RuntimeIndexMatched = 0
+};
+var referenceResult = nativeReferenceResult.ToManaged(1001);
+Assert(referenceResult.Status == OcctTopologyReferenceStatus.Resolved, "Topology-reference result status regression.");
+Assert(
+    referenceResult.Shape.HasValue &&
+    referenceResult.Shape.Value.IsValid &&
+    referenceResult.Shape.Value.OwnerId == 1001,
+    "Topology-reference result owner regression.");
+Assert(referenceResult.UsedOperationHistory && !referenceResult.RuntimeIndexMatched, "Topology-reference result flag regression.");
 
 var orientedBounds = new OcctOrientedBounds
 {
@@ -132,4 +205,4 @@ Expect<DirectoryNotFoundException>(
     () => OcctRuntime.Configure(new OcctRuntimeOptions { NativeBridgeDirectory = impossibleDirectory }),
     "Runtime configuration accepted a missing explicit native directory.");
 
-Console.WriteLine("Managed Bridge 2.6 regression tests passed.");
+Console.WriteLine("Managed bridge regression tests passed.");

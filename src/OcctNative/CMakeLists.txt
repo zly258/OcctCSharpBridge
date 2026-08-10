@@ -107,6 +107,9 @@ add_library(OcctNative SHARED
     OcctModelingBSpline.cpp
     OcctModelingTopologyAnalysis.cpp
     OcctModelingFaceAnalysis.cpp
+    OcctModelingInertia.cpp
+    OcctModelingIntersection.cpp
+    OcctModelingTopologyReference.cpp
     OcctInternal.hxx
     OcctModelingSessionInternal.hxx
     OcctModelingShapeInternal.hxx
@@ -120,7 +123,10 @@ add_library(OcctNative SHARED
     OcctModelingExtensions.h
     OcctModelingBSpline.h
     OcctModelingTopologyAnalysis.h
-    OcctModelingFaceAnalysis.h)
+    OcctModelingFaceAnalysis.h
+    OcctModelingInertia.h
+    OcctModelingIntersection.h
+    OcctModelingTopologyReference.h)
 
 target_compile_definitions(OcctNative PRIVATE NOMINMAX _CRT_SECURE_NO_WARNINGS)
 if(MSVC)

@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "OcctModeling.h"
+#include "OcctModelingIntersection.h"
 
 #include <BRepTools_History.hxx>
 #include <Standard_Failure.hxx>
@@ -29,6 +30,7 @@ namespace OcctModelingInternal
         std::unordered_map<OcctObjectId, TopoDS_Shape> shapes;
         std::unordered_map<OcctOperationId, OperationRecord> operations;
         std::vector<OcctModelRayHit> rayHits;
+        std::vector<OcctModelEdgeIntersection> edgeIntersections;
         OcctObjectId nextShapeId = 1;
         OcctOperationId nextOperationId = 1;
 

@@ -45,76 +45,101 @@ extern "C"
         return execute(model, [&] { BRepTools::Clean(model->requireShape(shapeId)); });
     }
 
-    int occt_model_face_mesh_counts(OcctModelHandle handle, OcctObjectId faceId, int* nodeCount, int* triangleCount)
+    int occt_model_face_mesh_nodes_copy(OcctModelHandle handle, OcctObjectId faceId, OcctModelMeshNode* results, int capacity)
     {
         ModelSession* model = modelOf(handle);
-        if (nodeCount == nullptr || triangleCount == nullptr) return 0;
-        return execute(model, [&]
+        if (model == nullptr) return -1;
+        int copied = 0;
+        if (execute(model, [&]
         {
+            if (capacity < 0) throw std::invalid_argument("Mesh-node buffer capacity must not be negative.");
             TopoDS_Face face;
             TopLoc_Location location;
             Handle(Poly_Triangulation) triangulation = faceTriangulation(model, faceId, face, location);
-            *nodeCount = triangulation->NbNodes();
-            *triangleCount = triangulation->NbTriangles();
-        });
-    }
+            const int count = triangulation->NbNodes();
+            if (results == nullptr)
+            {
+                if (capacity != 0) throw std::invalid_argument("Null mesh-node buffer requires zero capacity.");
+                copied = count;
+                return;
+            }
+            if (capacity < count) throw std::invalid_argument("Mesh-node buffer capacity is smaller than the result count.");
 
-    int occt_model_face_mesh_node(OcctModelHandle handle, OcctObjectId faceId, int index, OcctModelMeshNode* result)
-    {
-        ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
-        {
-            TopoDS_Face face;
-            TopLoc_Location location;
-            Handle(Poly_Triangulation) triangulation = faceTriangulation(model, faceId, face, location);
-            const int oneBased = index + 1;
-            if (index < 0 || oneBased > triangulation->NbNodes()) throw std::out_of_range("Mesh node index is out of range.");
             if (!triangulation->HasNormals()) BRepLib_ToolTriangulatedShape::ComputeNormals(face, triangulation);
-            const gp_Pnt point = triangulation->Node(oneBased).Transformed(location.Transformation());
-            result->point = {point.X(), point.Y(), point.Z()};
-            result->hasUv = triangulation->HasUVNodes() ? 1 : 0;
-            result->hasNormal = triangulation->HasNormals() ? 1 : 0;
-            if (result->hasUv != 0)
+            const bool hasUv = triangulation->HasUVNodes();
+            const bool hasNormal = triangulation->HasNormals();
+            for (int oneBased = 1; oneBased <= count; ++oneBased)
             {
-                const gp_Pnt2d uv = triangulation->UVNode(oneBased);
-                result->u = uv.X();
-                result->v = uv.Y();
+                OcctModelMeshNode& result = results[oneBased - 1];
+                const gp_Pnt point = triangulation->Node(oneBased).Transformed(location.Transformation());
+                result.point = {point.X(), point.Y(), point.Z()};
+                result.hasUv = hasUv ? 1 : 0;
+                result.hasNormal = hasNormal ? 1 : 0;
+
+                if (hasUv)
+                {
+                    const gp_Pnt2d uv = triangulation->UVNode(oneBased);
+                    result.u = uv.X();
+                    result.v = uv.Y();
+                }
+                else
+                {
+                    result.u = 0.0;
+                    result.v = 0.0;
+                }
+
+                if (hasNormal)
+                {
+                    gp_Dir normal = triangulation->Normal(oneBased);
+                    normal.Transform(location.Transformation());
+                    result.normal = {normal.X(), normal.Y(), normal.Z()};
+                }
+                else
+                {
+                    result.normal = {0.0, 0.0, 0.0};
+                }
             }
-            else
-            {
-                result->u = 0.0;
-                result->v = 0.0;
-            }
-            if (result->hasNormal != 0)
-            {
-                gp_Dir normal = triangulation->Normal(oneBased);
-                normal.Transform(location.Transformation());
-                result->normal = {normal.X(), normal.Y(), normal.Z()};
-            }
-            else result->normal = {0.0, 0.0, 0.0};
-        });
+            copied = count;
+        }) == 0)
+            return -1;
+        return copied;
     }
 
-    int occt_model_face_mesh_triangle(OcctModelHandle handle, OcctObjectId faceId, int index, OcctModelMeshTriangle* result)
+    int occt_model_face_mesh_triangles_copy(OcctModelHandle handle, OcctObjectId faceId, OcctModelMeshTriangle* results, int capacity)
     {
         ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
+        if (model == nullptr) return -1;
+        int copied = 0;
+        if (execute(model, [&]
         {
+            if (capacity < 0) throw std::invalid_argument("Mesh-triangle buffer capacity must not be negative.");
             TopoDS_Face face;
             TopLoc_Location location;
             Handle(Poly_Triangulation) triangulation = faceTriangulation(model, faceId, face, location);
-            const int oneBased = index + 1;
-            if (index < 0 || oneBased > triangulation->NbTriangles()) throw std::out_of_range("Mesh triangle index is out of range.");
-            int node1 = 0;
-            int node2 = 0;
-            int node3 = 0;
-            triangulation->Triangle(oneBased).Get(node1, node2, node3);
-            if (face.Orientation() == TopAbs_REVERSED) std::swap(node2, node3);
-            result->node1 = node1 - 1;
-            result->node2 = node2 - 1;
-            result->node3 = node3 - 1;
-        });
+            const int count = triangulation->NbTriangles();
+            if (results == nullptr)
+            {
+                if (capacity != 0) throw std::invalid_argument("Null mesh-triangle buffer requires zero capacity.");
+                copied = count;
+                return;
+            }
+            if (capacity < count) throw std::invalid_argument("Mesh-triangle buffer capacity is smaller than the result count.");
+
+            for (int oneBased = 1; oneBased <= count; ++oneBased)
+            {
+                int node1 = 0;
+                int node2 = 0;
+                int node3 = 0;
+                triangulation->Triangle(oneBased).Get(node1, node2, node3);
+                if (face.Orientation() == TopAbs_REVERSED) std::swap(node2, node3);
+                OcctModelMeshTriangle& result = results[oneBased - 1];
+                result.node1 = node1 - 1;
+                result.node2 = node2 - 1;
+                result.node3 = node3 - 1;
+            }
+            copied = count;
+        }) == 0)
+            return -1;
+        return copied;
     }
 }

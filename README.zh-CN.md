@@ -1,193 +1,141 @@
 ﻿# OcctCSharpBridge Demo
 
-[English](README.md) · [中文 API 覆盖说明](docs/API_COVERAGE.zh-CN.md) · [主 SDK 分支](https://github.com/zly258/OcctCSharpBridge/tree/main)
+[English](README.md) · [Main SDK](https://github.com/zly258/OcctCSharpBridge) · [API 覆盖](docs/API_COVERAGE.zh-CN.md)
 
-`demo` 分支在与 `main` 同步维护的 Bridge 之上提供完整 WinForms、WPF、Avalonia CAD 示例应用。Native/.NET 公共封装源码与契约持续和 `main` 比较；应用 UI、Demo 场景、运行/发布脚本和应用发布校核只保留在本分支。
+## 项目描述
 
-**Bridge 2.6.0 / ABI 3** 是破坏性 API 收口版本。Demo 已直接使用规范接口，不保留兼容 Alias。Shape/Object 必须绑定所属 `OcctEngine` / `OcctModelingSession`，公开建模参数使用 `bool`/枚举；Headless API 包含 OBB、拓扑身份、带孔平面、Edge 精确裁剪、Wire Offset 和整 Shape Mesh。
+`demo` 分支是 **OcctCSharpBridge 2.6.0**、Open CASCADE Technology **7.9.0** 与 .NET SDK **10.0.302** 的 Windows x64 参考应用，分别提供 WinForms、WPF 与 Avalonia 三套 CAD Demo。它用于展示如何把可复用 Bridge 接入完整桌面应用，而不是把应用层 CAD 架构塞入 `main`。
 
-桥接层不使用 OCAF/XDE。Document、Entity、Command、Undo/Redo、JSON 持久化和 Tool 等应用职责由上层程序实现。
+该分支包含三个桌面程序和共享 Demo 层，用于演示命令分发、历史记录、本地化、对象树、属性面板、Runtime Diagnostics、文件交换以及常用 CAD 交互。几何、拓扑、建模、选择、Viewer、Mesh、P0 惯性属性、P1 结构化求交和 P2 Topology Reference 均来自共享 Bridge。
 
-## 工具链与契约
+### 界面预览
+
+<p align="center"><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-zh.png" alt="WinForms Demo" width="88%"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-zh.png" alt="WPF Demo" width="88%"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-demo-zh.png" alt="Avalonia Demo" width="88%"></p>
+
+## 安装指南
+
+### 环境要求
 
 - Windows x64
-- Open CASCADE Technology **7.9.0**，VC14 x64 目录结构
-- 本分支 .NET SDK **10.0.302**，由 `global.json` 固定
-- 目标框架 **`net10.0-windows`**
-- C# 14.0
-- CMake 3.21+
-- Avalonia `12.1.0`
-- Bridge `2.6.0`，Native ABI `3`
+- .NET SDK `10.0.302`
+- Visual Studio 2022 / MSVC 工具链
+- CMake `3.21+`
+- OCCT `7.9.0`，VC14 x64 目录结构
 
-`bridge-contract.json` 与 `main` 共享，是版本、ABI、OCCT、.NET 和 API 数量的唯一契约来源。两个分支统一使用 .NET SDK **10.0.302**、目标 **`net10.0-windows`**、C# **14.0**。Framework-dependent 桌面程序需要 .NET Desktop Runtime **10.x**；运行时遵循正常的补丁版本前滚规则，不固定到某一个 `10.0.x` 补丁。
-
-**NuGet SDK 打包只属于 `main` 分支。** `demo` 中四个共享 Bridge/Host 项目以及四个 `OcctDemo.*` 项目均不承担 NuGet SDK 发布；本分支只负责可运行桌面示例及 app-local Native 依赖闭包发布。
-
-## 分层
-
-- `OcctNet`：交互式 `OcctEngine`、Headless `OcctModelingSession`、几何/拓扑/分析/网格/文件交换/运行时。
-- `OcctNet.WinForms`：可复用 `OcctViewportControl`。
-- `OcctNet.Wpf`：可复用 `OcctWpfViewport`。
-- `OcctNet.Avalonia`：Windows x64 `NativeControlHost` + 子 HWND。
-- `OcctDemo.Common`：三个示例共用的 demo-only 编排层，包含命令元数据、参数解析、本地化、回放式历史、分析辅助和轻量 `DemoSession` 门面；它不是可复用 CAD 框架。
-- `OcctDemo.WinForms`、`OcctDemo.Wpf`、`OcctDemo.Avalonia`：可直接运行的参考应用。
-
-当前 Avalonia Viewer 仍基于 Windows HWND，不声明 Linux/macOS OCCT Viewer 支持。
-
-## Demo 界面代码组织
-
-三个示例已经统一从原来的 50～60 KB 单窗口大文件拆分为按职责组织的 partial 文件：
+默认 OCCT 路径：
 
 ```text
-WinForms
-├─ MainForm.cs                 状态、构造、事件连接
-├─ MainForm.Designer.cs        WinForms 布局
-├─ MainForm.Layout.cs          Splitter/启动布局策略
-├─ MainForm.Menus.cs           菜单与工具栏
-├─ MainForm.Commands.cs        UI 命令动作
-├─ MainForm.Objects.cs         模型树与属性
-└─ MainForm.Localization.cs    中英文界面
-
-WPF
-├─ MainWindow.xaml             布局与样式
-├─ MainWindow.xaml.cs          状态、构造、事件连接
-├─ MainWindow.xaml.Menus.cs
-├─ MainWindow.xaml.Commands.cs
-├─ MainWindow.xaml.Objects.cs
-└─ MainWindow.xaml.Localization.cs
-
-Avalonia
-├─ MainWindow.cs               状态、构造、事件连接
-├─ MainWindow.Layout.cs        程序化布局
-├─ MainWindow.Menus.cs
-├─ MainWindow.Commands.cs
-├─ MainWindow.Objects.cs
-└─ MainWindow.Localization.cs
+D:\tools\occt-vc144-64
 ```
 
-三套 Demo 的工作区现在统一为：**左侧模型树 + 中间视口 + 右侧属性 + 底部横跨全宽的命令日志**。日志统一使用白色/浅色背景和深色文字，不再采用黑色 Console 风格背景。
+其它安装位置可使用 `-OcctRoot` 或 `OCCT_ROOT` 指定。
 
-这次调整以“方法体按职责移动”为主，没有删除 Command ID、选择行为、Session/History 逻辑、建模能力、快捷键、文件交换、Undo/Redo 或 Viewer 功能。`tests/check-demo-ui-structure.ps1` 会限制主窗口重新膨胀，并持续校验底部浅色日志布局。
-
-## 界面预览
-
-<table>
-  <tr><th>WinForms</th><th>WPF</th><th>Avalonia</th></tr>
-  <tr>
-    <td><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-zh.png" alt="OCCT CAD WinForms 中文界面" width="100%"></td>
-    <td><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-zh.png" alt="OCCT CAD WPF 中文界面" width="100%"></td>
-    <td><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-demo-zh.png" alt="OCCT CAD Avalonia 中文界面" width="100%"></td>
-  </tr>
-</table>
-
-三套预览统一引用 `assets/previews/` 下正式保留的无损 PNG，并将图片 URL 显式固定到 `demo` 分支，避免 GitHub 页面、复制后的 README 或其他分支上下文把相对路径解析到错误位置。
-
-Avalonia 与 WPF 共用 `DemoSession` 和 `DemoCommandCatalog`，覆盖模型创建、选择、模型树、属性、撤销重做、文件交换、标注、分析、视图/显示控制、示例、快捷键和中英文 UI。
-
-## 首次配置
+### 构建全部 Demo
 
 ```powershell
-git clone https://github.com/zly258/OcctCSharpBridge.git
-cd OcctCSharpBridge
-git switch demo
-$env:OCCT_ROOT = "D:\tools\occt-vc144-64"
+.\build.ps1 all Release
 ```
 
-OCCT 目录应包含 `inc`、`win64\vc14\lib`、`win64\vc14\bin`，以及可选 `3rdparty-vc14-64`。
+单独构建某个 UI：
 
-## 构建与校验
+```powershell
+.\build.ps1 winform Release
+.\build.ps1 wpf Release
+.\build.ps1 avalonia Release
+```
 
-`build.ps1` 是统一入口：
-
-| Target | 作用 | OCCT SDK |
-| --- | --- | --- |
-| `validate` | 契约、源码、UI 结构和发布规则校验 | 否 |
-| `managed` | Core + WinForms/WPF/Avalonia Host + `OcctDemo.Common` | 否 |
-| `ci` | 契约检查 + Managed Test + 三个 Demo + Smoke 编译 | 否 |
-| `native` | 构建 `OcctNative.dll` | 是 |
-| `winform` / `wpf` / `avalonia` | 构建指定 Demo | 是 |
-| `smoke` | 构建并真实执行 OCCT Native 场景 | 是 |
-| `all` | 构建 Native、三个 Demo 和 Smoke | 是 |
+不需要 OCCT SDK 的静态与 Managed 验证：
 
 ```powershell
 .\build.ps1 validate Release
-.\build.ps1 ci Release
-.\build.ps1 all Release
-.\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
+.\build.ps1 managed Release
 ```
 
-GitHub 托管环境没有项目 OCCT SDK，因此只执行完整 Managed/静态契约并编译 Smoke；真实 Native Smoke 明确作为本地发布门禁。
-
-## 运行
+使用真实 OCCT Runtime 的 Native 验证：
 
 ```powershell
-.\run.ps1 winform
-.\run.ps1 wpf
-.\run.ps1 avalonia
+.\build.ps1 smoke Release
 ```
 
-`run.ps1` 只启动已构建程序，不隐式重新编译。
+## 使用示例
 
-## 发布
-
-`publish.ps1` 正式支持 WinForms、WPF、Avalonia：
+使用分支自带 Runner 启动已构建程序：
 
 ```powershell
-.\publish.ps1 all Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
-.\publish.ps1 winform Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
-.\publish.ps1 wpf Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
-.\publish.ps1 avalonia Release -Zip -OcctRoot "D:\tools\occt-vc144-64"
+.\run.ps1 winform Release
+.\run.ps1 wpf Release
+.\run.ps1 avalonia Release
 ```
 
-排查 Native 依赖时，可额外生成一次诊断发布包：
+三套 Demo 使用同一 Bridge API 和共享 CAD 行为，只保留 UI Framework 的宿主差异。可用于验证 Primitive、Boolean/Feature、对象选择、Subshape Selection、属性、标注、STEP/IGES/BREP/STL、Topology Analysis、Mesh 与 Viewport Interaction。
 
-```powershell
-.\publish.ps1 all Release -Zip -Diagnostics -OcctRoot "D:\tools\occt-vc144-64"
+底层 `OcctModelingSession` 可直接使用 P0–P2：
+
+```csharp
+using OcctNet;
+
+using var model = new OcctModelingSession();
+
+var box = model.MakeBox(100, 80, 20);
+var inertia = model.GetVolumeInertiaProperties(box);
+
+var first = model.MakeLine(new OcctPoint3d(0, 0, 0), new OcctPoint3d(100, 0, 0));
+var second = model.MakeLine(new OcctPoint3d(50, -20, 0), new OcctPoint3d(50, 20, 0));
+var intersections = model.IntersectEdges(first, second);
+
+var faces = model.GetSubshapes(box, OcctShapeType.Face);
+var reference = model.CreateTopologyReference(box, faces[0]);
+var resolved = model.ResolveTopologyReference(box, reference);
 ```
 
-`-Diagnostics` 会额外生成 `native-resolution.txt`（记录 Native 依赖实际解析到的源路径）和 `runtime-manifest.txt`（记录发布文件大小与 SHA-256）。该开关默认关闭，因为 `native-resolution.txt` 可能包含构建机绝对路径；对外发送前应检查并按需脱敏。
+## 项目结构
 
-发布器递归解析 `OcctNative.dll`、OCCT TK、第三方库和 VC++ Runtime 的 PE 依赖闭包，并将 Native DLL 复制到每个 EXE 同目录。生成包前先执行 `dumpbin` 闭包检查，再在独立进程中用受限搜索路径实际 `LoadLibraryExW`；会产生 Win32 126 的包会在发布阶段直接失败。
+```text
+src/OcctNative           共享 Native OCCT Bridge
+src/OcctNet              共享 .NET Bridge，demo 中不可打包
+src/OcctNet.WinForms     WinForms Viewport Host
+src/OcctNet.Wpf          WPF Viewport Host
+src/OcctNet.Avalonia     Avalonia Windows HWND Viewport Host
+src/OcctDemo.Common      三套 Demo 的共享行为
+src/OcctDemo.WinForms    CAD-Winform
+src/OcctDemo.Wpf         CAD-WPF
+src/OcctDemo.Avalonia    CAD-Avalonia
+assets/previews           demo 分支专用界面预览
+tests                     Bridge 公共契约 + Demo 专用检查
+```
 
-发布包还包含 OCCT Resources、`package-contract.json`、`native-dependencies.txt` 和可获取的许可证信息。
+Demo 中的 Wrapper 和应用项目全部保持 `IsPackable=false`；NuGet SDK 打包只属于 `main`。
 
-## 测试
+## Native 启动排查
 
-PowerShell 负责 API/静态/UI 契约；`OcctNet.ManagedTests` 无需 OCCT，检查 Owner、值类型、强类型 Options、Guard 和 Runtime 配置；`OcctNet.Smoke` 负责真实 Native 集成。
+如果启动时出现 `DllNotFoundException` 或 Win32 126，先检查应用目录中的 Native Runtime。诊断信息会明确显示类似：
 
-建议：
+```text
+OcctNative.dll [缺失]
+TKernel.dll [缺失]
+```
 
-- API/源码/UI 改动后：`build.ps1 validate`
-- 提交前：`build.ps1 ci`
-- Native/建模/Runtime 改动后：`build.ps1 smoke`
-- 对外发布前：`publish.ps1 ...`
+发布包还可查看 `native-dependencies.txt`。应用启动和崩溃日志位于：
 
-## Demo 覆盖能力
+```text
+%LOCALAPPDATA%\OcctCSharpBridge\Logs
+```
 
-- 点选、框选、方向框选、多选、子形选择
-- 相机/视图、Z-up、Fit、坐标转换、ViewCube、Triedron
-- Shaded/Wireframe/Shaded with Edges、材质、光照、精度
-- ApplicationTag、变换、可见性、颜色、透明度、批量操作
-- 基础体、特征、Boolean、Sweep/Loft、拓扑/几何查询
-- 解析/微分几何、质量属性、距离/射线/投影、Mesh
-- BRep 文字与长度/角度/半径/直径标注
-- STEP、IGES、BREP、STL 交换
-- 中英文桌面 UI
+Avalonia 当前通过 Windows 子 HWND 承载 Native Viewer，因此它是 Windows x64 Host，不代表 OCCT Viewer 已具备 Linux/macOS 跨平台后端。
 
-## 常见问题
+## 贡献指南
 
-- `OCCT_ROOT is not configured`：设置 `$env:OCCT_ROOT` 或给 Native target 传 `-OcctRoot`。
-- `Unable to load OcctNative.dll ... Win32 126`：三个 Demo 现在都会在错误对话框中显示进程架构、应用目录，以及 EXE 同目录的 `OcctNative.dll` / `TKernel.dll` 是否存在，同时把完整 OCCT Runtime 诊断写入崩溃日志。
-  - `OcctNative.dll [缺失]`：发布包不完整；不要手工复制单个 DLL，使用当前 `demo/publish.ps1` 重新发布。
-  - `OcctNative.dll [存在]` 但 `TKernel.dll [缺失]`：OCCT Native 依赖闭包不完整，重新发布完整包。
-  - 两者均为 `[存在]` 但仍是 Win32 126：通常是更深层的 OCCT、第三方库或 Visual C++ Runtime 缺失/版本不匹配。先检查 `native-dependencies.txt`；如果原因仍不明确，使用 `-Diagnostics` 重新发布，并检查 `native-resolution.txt`、`runtime-manifest.txt` 以及 `%LOCALAPPDATA%\OcctCSharpBridge\Logs` 下的崩溃日志。
-- Avalonia Analyzer/编译器不匹配：使用本分支 `global.json` 固定 SDK。
-- Avalonia 启动异常：同时查看 `src\OcctDemo.Avalonia\bin\x64\<Configuration>\net10.0-windows\CAD-Avalonia.log` 和上述共享崩溃日志。
+1. 可复用 OCCT/Native/Managed 修改与 `main` 保持一致；Demo 独有 UI 与应用行为留在 `demo`。
+2. 不增加兼容别名或重复旧 API；当前库按新库维护。
+3. Demo Wrapper 与 Application Project 必须保持不可打包。
+4. 三套 UI 的共享行为优先放在 `OcctDemo.Common`，不要分别复制业务逻辑。
+5. 提交前运行 `build.ps1 validate`、`build.ps1 managed`；具备 OCCT 时再运行 `build.ps1 smoke` 和对应 Demo Build/Run。
+6. 修改界面时保留 Demo 分支专用预览图和 Native Runtime 排查说明。
 
 ## 许可证
 
-项目使用 [PolyForm Noncommercial License 1.0.0](LICENSE)。OCCT 与第三方组件遵循各自许可证。
+OcctCSharpBridge 使用 [PolyForm Noncommercial License 1.0.0](LICENSE)。
 
-## 联系方式
-
-Liaoyuan Zhang · [zhangly1403@gmail.com](mailto:zhangly1403@gmail.com)
+Open CASCADE Technology 及其它第三方依赖遵循各自许可证。

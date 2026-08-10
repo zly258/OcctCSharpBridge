@@ -1,165 +1,90 @@
-﻿# OCCT Bridge 2.6 接口覆盖说明
+﻿# OCCT Bridge API 覆盖说明
 
-OcctCSharpBridge 2.6 面向 Windows x64 与 Open CASCADE Technology 7.9.0。可复用 SDK 保持两个核心 Managed façade，并提供三个可选视口宿主：
+OcctCSharpBridge `2.6.0` 是面向 Windows x64、Open CASCADE Technology `7.9.0` 与 .NET 10 的桥接库。可复用接口明确分为 `OcctEngine` 与 `OcctModelingSession`：前者负责 AIS/Viewer 交互，后者负责 Headless 建模。
 
-- `OcctEngine`：交互式 AIS / Viewer / Object 操作；
-- `OcctModelingSession`：无界面几何、拓扑、算法、网格、分析与文件交换；
-- `OcctNet.WinForms`、`OcctNet.Wpf`、`OcctNet.Avalonia`：只负责可复用视口宿主。
+OCAF/XDE，以及应用层 Document、Command、Tool、Undo/Redo、Snap/Grip、Feature Tree 和项目持久化均不属于 `main` Bridge。
 
-Bridge 明确不使用 OCAF/XDE。Document、Feature/Entity、Command、Tool、Undo/Redo、Snap/Grip 和项目持久化属于 `demo` 或其它 CAD 应用层。详见 [架构边界：Bridge 与 CAD 应用层](ARCHITECTURE_BOUNDARIES.zh-CN.md)。
-
-- 原生桥接版本：`2.6.0`
+- Native bridge version：`2.6.0`
 - Native ABI：`3`
 - OCCT：`7.9.0`
-- Native exports：`351`
-- Managed P/Invoke declarations：`351`
-- Public .NET types：`99`
-- Compatibility .NET types：`1`
+- Native exports：`348`
+- Managed P/Invoke declarations：`348`
+- Public .NET types：`105`
 - Viewer API：`214`
-- Modeling API：`137`
+- Modeling API：`134`
 
-`Public .NET types` 表示 Bridge 2.6 的主 owner-aware 公共接口；`Compatibility .NET types` 当前只有 Bridge 2.5 的 `OcctObject` 兼容句柄。2.x 期间保留兼容入口，但不继续扩展新的 legacy API。
-
-## API 规则
-
-| 范围 | 统一规则 | 示例 |
-|---|---|---|
-| Shape 查询 | `GetShape...` / `IsShape...` / `SetShape...` | `GetShapeBounds()` |
-| Edge 查询 | `GetEdge...` / `EvaluateEdge...` | `GetEdgeCurveType()` |
-| Face 查询 | `GetFace...` / `EvaluateFace...` | `GetFaceUvBounds()` |
-| 批量分析 | `Analyze...` | `AnalyzeFaces()`、`AnalyzeEdgeAdjacency()` |
-| 结构化检查 | `Inspect...` | `InspectShape()` |
-| 索引访问 | `...At` | `GetSubshapeAt()` |
-| 构造 | `Make...` | `MakePlanarFace()` |
-| 算法 | 操作动词 | `Extrude()`、`OffsetWire()` |
-| 网格 | Triangulation 语义 | `Triangulate()`、`GetShapeMeshData()` |
-| C ABI | 唯一 `occt_...` 符号 | `occt_model_shape_face_analysis` |
-
-公开 Shape/Object 必须属于创建它的 Engine/Session。主 API 不允许业务代码通过裸 `long` 构造 `OcctShape` / `OcctModelShape`。Native 0/1 参数在 Managed 公共 API 中使用 `bool` 或枚举。
-
-## 程序集职责
+## Managed 程序集
 
 | 程序集 | 职责 |
 |---|---|
-| `OcctNet` | 基础类型、`OcctEngine`、Headless `OcctModelingSession`、Runtime/诊断以及不依赖 UI 框架的视口交互判定 |
-| `OcctNet.WinForms` | 可复用 WinForms HWND 视口宿主 |
-| `OcctNet.Wpf` | 通过 `WindowsFormsHost` 提供可复用 WPF 视口宿主 |
-| `OcctNet.Avalonia` | 通过 `NativeControlHost` + Windows 子 HWND 提供可复用 Avalonia 视口宿主 |
+| `OcctNet` | 基础类型、Runtime Loading、`OcctEngine`、`OcctModelingSession` 与无 UI 框架依赖的交互策略 |
+| `OcctNet.WinForms` | WinForms HWND 视口宿主 |
+| `OcctNet.Wpf` | 内部复用 WinForms Host 的 WPF 视口宿主 |
+| `OcctNet.Avalonia` | 基于 Windows 子 HWND 的 Avalonia `NativeControlHost` |
 
-`OcctNet.Avalonia` 当前仍是 **Windows-only** Host，不代表 Linux/macOS Viewer 已得到支持。`OcctNet` 核心本身不引用 WinForms、WPF 或 Avalonia。
+Avalonia Host 当前仍是 Windows-only，不表示已经具备 Linux/macOS OCCT Viewer Backend。
 
-完整 WinForms/WPF/Avalonia CAD 应用与 `CadCommon` 仍只位于 `demo`。
+## 交互式 Viewer API
 
-## `OcctEngine`
+`OcctEngine` 覆盖 View、Camera、Projection、Zoom/Pan/Rotation、Screen/World 转换、对象生命周期、显示与外观、Transform、Object/Subshape Selection、Rectangle Selection、Hover、结构化 Selection Hit、Annotation 与 Viewer-owned Shape 文件交换。
 
-`OcctEngine` 管理 AIS 对象和 Viewer 上下文，覆盖：
+`GetSelectedHits()` 与 `TryGetDetectedHit()` 返回 Owner-aware `OcctSelectionHit`。Selection Hit 包含所属注册对象、拓扑类型和运行时 Subshape Index。运行时 Index 不属于 Persistent Naming。
 
-- 相机、视图、投影、Screen/World 转换；
-- 已注册对象生命周期、显示、外观、材质、深度/显示状态与变换；
-- 对象/Subshape 选择、框选、Hover 与结构化 Selection Hit；
-- Viewer 场景中的几何/特征创建与标注；
-- Viewer 管理 Shape 的 STEP/IGES/BREP/STL 交换。
+## Headless Modeling API
 
-### 结构化 Selection
+### 几何与拓扑
 
-- `GetSelectedHits()` 返回 `OcctSelectionHit`；
-- `TryGetDetectedHit()` 返回当前 Detected/Hover 注册实体；
-- `OcctSelectionHit` 暴露 `Owner`、`SubshapeType` 与运行时 `SubshapeIndex`；
-- Selected Hit 使用两次调用的批量 ABI，避免 N+1 P/Invoke；
-- Runtime Subshape Index 使用与 `GetSubshapeAt()` 一致的 `TopExp_Explorer` 顺序，但**不是 Persistent Naming**。
+`OcctModelingSession` 覆盖 Primitive/Curve 构造、Wire/Face/Solid 组装、Transform、Shape Query、解析/微分几何、B-Spline 检查、Topology 遍历、Adjacency、Free Bounds、Face Analysis、Shape Inspection 和 OBB。
 
-详见 [Viewer 结构化选择命中](SELECTION_HITS.zh-CN.md)。
+高数量集合统一使用两次调用的 Bulk C ABI：第一次以 Null Buffer 查询数量，第二次一次复制完整结果。该方式用于 Session Shape 枚举、Subshape、Inner Wire、Ancestor、Ray Hit、Operation History 与 Face Mesh 数组。
 
-## `OcctModelingSession`
+### 建模算法
 
-### 构造与算法
+支持 Boolean Fuse/Cut/Common/Section、Splitter、Extrude、Revolve、Sweep、Loft、Fillet、Chamfer、Offset、Thick Solid、Same-Domain Unify 与 Healing。OCCT 提供 History 时，算法结果保留 Operation History。
 
-构造能力覆盖 Vertex、Line、Polyline、Circle/Arc、Polygon、Ellipse、Bezier、插值 B-Spline、Rectangle/Planar Face、Wire、Compound、Sewing Shell/Solid、Box/Cylinder/Cone/Sphere/Torus/Wedge，以及带孔平面 Face。
+### P0 — 惯性属性
 
-算法覆盖 Fuse/Cut/Common/Section/Splitter、Extrude/Revolve/Sweep/Loft、Fillet/Chamfer、3D Offset、平面 Wire Offset、Thick Solid、Same-Domain Unify、Healing 与 Operation History。
+提供 `GetLinearInertiaProperties()`、`GetSurfaceInertiaProperties()` 与 `GetVolumeInertiaProperties()`。
 
-射线命中结果以及 Generated/Modified 拓扑历史均通过批量复制 Native ABI 获取；旧的索引式 `...At` 导出继续保留用于 ABI 兼容，但托管集合接口不再逐项调用。
+`OcctInertiaProperties` 包含 Mass、Center of Mass、完整 Inertia Tensor、Principal Moments、Principal Axes、Radius of Gyration 与对称性标记。
 
-### 拓扑与 Shape 查询
+### P1 — 结构化 Edge/Edge 求交
 
-- Shape 类型、方向、闭合、有效性、检查报告、Hash、Tolerance；
-- AABB 与 OBB；
-- 线/面/体质量属性与 Shape Distance；
-- Location 读写；
-- 通用 Subshape 遍历和常用集合；
-- Edge/Face/Wire 的祖先、邻接；
-- 批量 `AnalyzeEdgeAdjacency()` 与严格 `AnalyzeFreeBounds()`；
-- `IsSameShape()` / `IsPartnerShape()` OCCT 拓扑身份语义。
+`IntersectEdges()` 返回 `IReadOnlyList<OcctEdgeIntersection>`，而不是简单 Boolean 命中。每个结果分为 `Point` 或 `Overlap`，并保留 Start/End Point 以及两条源 Edge 的原生曲线参数范围。结果通过 `occt_model_edge_intersections_copy` 批量传输。
 
-详见 [拓扑邻接与自由边界分析](TOPOLOGY_ANALYSIS.zh-CN.md)。
+### P2 — Topology Reference
 
-### 几何与微分几何
+`CreateTopologyReference()` 为 Root Shape 内的 Vertex、Edge 或 Face 创建版本化几何/拓扑指纹。指纹包含 Topology Type、Curve/Surface Type、Measure、Center、Bounds、Tolerance、Orientation、Vertex/Edge/Face Adjacency Count 与 Runtime Index Hint。
 
-- Vertex 与 Edge 求值；
-- Curve/Surface 类型与解析几何参数；
-- Edge 参数范围、导数、切向/法向、曲率与曲率中心；
-- Face UV 范围、周期性、偏导、法向、主曲率/平均曲率/高斯曲率；
-- 点投影到 Edge/Face、Ray Intersection、Solid 点分类和精确 `TrimEdge()`；
-- B-Spline Curve/Surface 的 Degree、Pole、Weight、Knot、Multiplicity 与控制网格。
+`ResolveTopologyReference()` 返回 `Resolved`、`Ambiguous`、`Removed`、`NotFound` 或 `InvalidReference`。Runtime Index 只作为低权重 Hint；解析以完整 Fingerprint 为主，也可以结合 OCCT Operation History。
 
-详见 [B-Spline 曲线与曲面检查](BSPLINE_CURVES.zh-CN.md)。
+### P3 — Native/Managed ABI 清理
 
-### 批量检查
+Modeling 集合 ABI 已统一为 Bulk-only。旧的 Shape、Topology、Ray Hit、History、Mesh `Count + At` 集合接口已从新库中移除，Managed Collection 不再逐项跨 Native Boundary 调用。
 
-`AnalyzeFaces()` 在 Native 中一次遍历 Face，返回 SurfaceType、Orientation、Area、Tolerance、UV、AABB 和拓扑统计。`InspectShape()` 组合有效性、闭合、容差、Check Report、Bounds、拓扑数量、Edge 邻接、Face 分析、可选 Free Bounds 与可选 Mesh Statistics，只提供客观数据，不硬编码应用层“通过/不通过”规则。
+Native 按职责拆分为 Session/Registry、Shape/Geometry Query、Topology、Boolean/Feature/Healing/History、Projection/Ray/Classification、Mesh、Exchange、Inertia、Structured Intersection 与 Topology Reference。已废弃的广义 `OcctModelingInternal.hxx` 不允许重新引入。
 
-详见 [批量 Face 分析与 Shape 检查](SHAPE_INSPECTION.zh-CN.md)。
+## 数据交换与 Mesh
 
-### 三角网格与来源追溯
-
-`Triangulate()`、`GetFaceMesh()`、`GetShapeMesh()`、`GetShapeMeshData()`、`ClearTriangulation()` 覆盖网格能力。`OcctShapeMeshData` 保存每个源 Face 的 Node/Triangle 连续区间，因此可以把合并 Mesh 索引映射回 CAD 拓扑，无需为每个 Triangle 单独保存 FaceId。
-
-详见 [Shape Mesh Face 来源追溯](MESH_PROVENANCE.zh-CN.md)。
-
-### 文件交换
-
-直接提供 STEP、IGES、BREP、STL 导入导出和通用文件导入；STL 导出支持显式离散参数。
-
-## Native 内部组织
-
-内部源码组织不属于 ABI：
-
-- Session/Registry、Shape Queries、Topology、Geometry Queries、Viewer Interop 独立分责；
-- Geometry 构造拆分为 Curves、Planar、Primitives、Assembly、Transform；
-- Boolean、Feature、Healing、Operation History、Projection/Ray/Classification、Mesh、Exchange 已独立分责；
-- 广义 `OcctModelingInternal.hxx` 已退出，模块只包含最窄内部 Header 与自己直接使用的 OCCT Header。
-
-这些整理保持 ABI 3 已有签名不变，同时以加法方式扩展到 351 个 C Export。
-
-## UI Host 交互边界
-
-WinForms 与 Avalonia 只共享与 UI 框架无关的判定逻辑：Hover/WorldPoint 节流、框选阈值与方向、拖拽终点恢复、默认缩放倍率。窗口创建、DPI、Mouse Capture、WPF Hosting、Win32 子类化继续由各 Host 独立处理，不建立脆弱的“万能 UI 基类”。
+支持 STEP、IGES、BREP、STL 导入导出以及通用文件导入。Triangulation 支持显式网格参数，并通过 Source Face Range 保留合并 Mesh 的 Face Provenance。
 
 ## Runtime 与所有权
 
-- `OcctEngine` / `OcctModelingSession` 内部使用 `SafeHandle`；
-- Managed Object/Shape 带 Owner Token，跨 Engine/Session 使用在进入 Native 前拒绝；
-- `OcctRuntime.GetDiagnosticInfo()` / `GetDiagnosticReport()` 为无副作用诊断入口；
-- Native 失败统一转换为带 Operation/NativeMessage 的 `OcctException`。
+`OcctEngine` 和 `OcctModelingSession` 使用 Owner-aware Handle。跨 Engine/Session 的 Handle 会在进入 Native 前被拒绝。Runtime Diagnostics 用于检查 Bridge/OCCT 加载状态，不依赖应用层 CAD Document。
 
-详见 [结构化 Runtime 诊断](RUNTIME_DIAGNOSTICS.zh-CN.md)。
+## 本地验证
 
-## 校验边界
-
-GitHub 云端没有本项目真实 OCCT SDK，因此不会声称执行了 Native 几何。CI 负责：
-
-- Native 声明、定义、P/Invoke 名称一一对应，并校验 Cdecl + ExactSpelling；
-- API 数量来自 `bridge-contract.json`，主公共类型与兼容公共类型分开统计；
-- 对 Core、WinForms、WPF、Avalonia 做公共 Managed API 签名快照校验；
-- Managed 构建和不加载 OCCT 的回归测试；
-- UI Host、Selection、Topology、Runtime、Package、源码组织与分支边界契约；
-- Smoke 项目源码编译；
-- `main` / `demo` 可复用源码直接同步比较。
-
-正式发布前仍必须在安装 OCCT 7.9.0 的 Windows 机器执行真实 Native 门禁：
+静态与 Managed 验证：
 
 ```powershell
-.\build.ps1 smoke Release -OcctRoot "<OCCT 7.9.0 根目录>"
+.\build.ps1 validate Release
+.\build.ps1 managed Release
 ```
 
-真正的 C++ 编译/链接、DLL 加载和几何/拓扑运行结果以本地 Native Smoke 为准。
+使用真实 OCCT SDK 的 Native 编译、链接、加载和几何验证：
+
+```powershell
+.\build.ps1 smoke Release
+```
+
+本地检查覆盖 Native Declaration/Definition/PInvoke 一致性、API 数量、Bulk ABI、源码职责、UI Host 边界、包内容以及 No-OCAF/XDE 边界。

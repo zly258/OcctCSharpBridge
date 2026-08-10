@@ -49,7 +49,7 @@ public sealed partial class OcctModelingSession : IDisposable
         get
         {
             EnsureNotDisposed();
-            return ModelNativeMethods.occt_model_shape_count(_handle);
+            return ModelNativeMethods.occt_model_shape_ids_copy(_handle, null, 0);
         }
     }
 
@@ -58,11 +58,19 @@ public sealed partial class OcctModelingSession : IDisposable
         get
         {
             EnsureNotDisposed();
-            return Enumerable.Range(0, ShapeCount)
-                .Select(index => ModelNativeMethods.occt_model_shape_id_at(_handle, index))
-                .Where(id => id > 0)
-                .Select(id => new OcctModelShape(id, _ownerId))
-                .ToArray();
+            var count = ModelNativeMethods.occt_model_shape_ids_copy(_handle, null, 0);
+            if (count < 0) throw CreateException();
+            if (count == 0) return Array.Empty<OcctModelShape>();
+
+            var ids = new long[count];
+            var copied = ModelNativeMethods.occt_model_shape_ids_copy(_handle, ids, ids.Length);
+            if (copied < 0) throw CreateException();
+            if (copied != count) throw new InvalidOperationException("Native shape count changed during bulk copy.");
+
+            var result = new OcctModelShape[count];
+            for (var index = 0; index < count; index++)
+                result[index] = new OcctModelShape(ids[index], _ownerId);
+            return result;
         }
     }
 
@@ -76,7 +84,6 @@ public sealed partial class OcctModelingSession : IDisposable
 
     public bool Owns(OcctModelShape shape) => shape.IsValid && shape.OwnerId == _ownerId;
 
-    /// <summary>Resolves a persisted native shape ID into a session-owned managed handle.</summary>
     public OcctModelShape GetShape(long id)
     {
         EnsureNotDisposed();
