@@ -142,6 +142,7 @@ foreach ($key in Get-SelectedKeys) {
         "-c", $Configuration,
         "-r", "win-x64",
         "-p:Platform=x64",
+        "-p:Version=$($contract.bridgeVersion)",
         "--self-contained", $UseSelfContained.ToString().ToLowerInvariant(),
         "--nologo",
         "-o", $destination
