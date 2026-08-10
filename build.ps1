@@ -34,6 +34,7 @@ $script:TargetFramework = "net10.0-windows"
 [xml]$props = Get-Content -LiteralPath $PropsPath -Raw
 $propertyGroup = $props.Project.PropertyGroup
 $globalJson = Get-Content -LiteralPath $GlobalJsonPath -Raw | ConvertFrom-Json
+$ExpectedAuthor = [string]$propertyGroup.Authors
 $ExpectedBridgeVersion = [string]$propertyGroup.Version
 $ExpectedNativeAbi = [int]$propertyGroup.OcctBridgeNativeAbiVersion
 $ExpectedOcctVersion = [string]$propertyGroup.OcctBridgeOcctVersion
@@ -102,6 +103,12 @@ function Get-OutputDirectory {
 }
 
 function Test-BinarySdk {
+    if (-not (Test-Path -LiteralPath $DistRoot -PathType Container) -or
+        -not (Test-Path -LiteralPath $ContractPath -PathType Leaf) -or
+        -not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
+        throw "Bridge Binary SDK has not been published to demo/dist/win-x64. From the main branch run: .\publish.ps1 -OcctRoot <OCCT_ROOT>"
+    }
+
     $required = @(
         "OcctNative.dll",
         "OcctNet.dll",
@@ -118,6 +125,9 @@ function Test-BinarySdk {
     $contract = Get-Content -LiteralPath $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
     $manifest = Get-Content -LiteralPath $ManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 
+    if ([string]$contract.author -ne $ExpectedAuthor) {
+        throw "Unsupported Bridge author metadata: $($contract.author). Demo expects $ExpectedAuthor."
+    }
     if ([string]$contract.bridgeVersion -ne $ExpectedBridgeVersion) {
         throw "Unsupported Bridge version: $($contract.bridgeVersion). Demo expects $ExpectedBridgeVersion."
     }
@@ -150,8 +160,12 @@ function Test-BinarySdk {
         [string]$manifest.platform -ne [string]$contract.platform -or
         [string]$manifest.targetFramework -ne [string]$contract.dotnet.targetFramework -or
         [string]$manifest.sdkVersion -ne [string]$contract.dotnet.sdkVersion -or
-        [string]$manifest.languageVersion -ne [string]$contract.dotnet.languageVersion) {
-        throw "Bridge binary manifest does not match bridge-contract.json."
+        [string]$manifest.languageVersion -ne [string]$contract.dotnet.languageVersion -or
+        [string]$manifest.configuration -ne "Release") {
+        throw "Bridge binary manifest does not match bridge-contract.json or is not a Release SDK."
+    }
+    if ([string]::IsNullOrWhiteSpace([string]$manifest.sourceCommit)) {
+        throw "Bridge binary manifest sourceCommit is missing."
     }
 
     $expectedHashedFiles = @(
@@ -162,14 +176,21 @@ function Test-BinarySdk {
         "OcctNet.Avalonia.dll",
         "bridge-contract.json"
     )
-    $manifestNames = @($manifest.files | ForEach-Object { [string]$_.name })
+    $entries = @($manifest.files)
+    $manifestNames = @($entries | ForEach-Object { [string]$_.name })
+    if ($manifestNames.Count -ne $expectedHashedFiles.Count) {
+        throw "Bridge binary manifest contains an unexpected number of hashed files."
+    }
     foreach ($name in $expectedHashedFiles) {
         if ($name -notin $manifestNames) {
             throw "Bridge binary manifest does not hash required file: $name"
         }
     }
+    if (@($manifestNames | Group-Object | Where-Object Count -ne 1).Count -gt 0) {
+        throw "Bridge binary manifest contains duplicate file entries."
+    }
 
-    foreach ($entry in @($manifest.files)) {
+    foreach ($entry in $entries) {
         $name = [string]$entry.name
         if ([string]::IsNullOrWhiteSpace($name) -or $name.Contains('/') -or $name.Contains('\')) {
             throw "Invalid Bridge manifest file name: $name"
@@ -182,8 +203,9 @@ function Test-BinarySdk {
         }
     }
 
-    Write-Host ("Bridge Binary SDK: {0}, ABI {1}, OCCT {2}, .NET SDK {3}, C# {4}" -f
+    Write-Host ("Bridge Binary SDK: {0}, author {1}, ABI {2}, OCCT {3}, .NET SDK {4}, C# {5}" -f
         $contract.bridgeVersion,
+        $contract.author,
         $contract.nativeAbiVersion,
         $contract.occtVersion,
         $contract.dotnet.sdkVersion,
