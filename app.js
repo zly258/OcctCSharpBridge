@@ -6,7 +6,7 @@
       navDemo: 'Demo',
       navStart: 'Get Started',
       heroTitle: 'A lightweight OCCT bridge for .NET',
-      heroLead: 'Connect Open CASCADE Technology 7.9.0 to .NET 8 through a stable C ABI. The bridge covers 3D Viewer, AIS interaction, headless modeling, topology analysis, meshing and engineering file exchange while keeping application documents separate from the geometry kernel.',
+      heroLead: 'Connect Open CASCADE Technology 7.9.0 to .NET 10 through a stable C ABI. The bridge covers 3D Viewer, AIS interaction, headless modeling, topology analysis, meshing and engineering file exchange while keeping application documents separate from the geometry kernel.',
       viewRepository: 'View Repository',
       viewDemo: 'View Demo',
       stackApp: 'Your CAD / BIM Application',
@@ -65,7 +65,7 @@
       aboutText: 'A reusable C# bridge for Open CASCADE Technology, focused on a stable and explicit boundary between .NET applications and OCCT.',
       author: 'Author',
       license: 'License',
-      footerText: 'Built for OCCT 7.9.0 · .NET 8 · Windows x64'
+      footerText: 'Built for OCCT 7.9.0 · .NET 10 · Windows x64'
     },
     zh: {
       navFeatures: '能力',
@@ -73,7 +73,7 @@
       navDemo: '演示',
       navStart: '开始使用',
       heroTitle: '面向 .NET 的轻量级 OCCT 桥接层',
-      heroLead: '通过稳定 C ABI 将 Open CASCADE Technology 7.9.0 接入 .NET 8，覆盖三维 Viewer、AIS 交互、无窗口建模、拓扑分析、网格与工程文件交换，同时保持应用文档机制与几何内核解耦。',
+      heroLead: '通过稳定 C ABI 将 Open CASCADE Technology 7.9.0 接入 .NET 10，覆盖三维 Viewer、AIS 交互、无窗口建模、拓扑分析、网格与工程文件交换，同时保持应用文档机制与几何内核解耦。',
       viewRepository: '查看仓库',
       viewDemo: '查看 Demo',
       stackApp: '你的 CAD / BIM 应用',
@@ -132,7 +132,7 @@
       aboutText: '面向 Open CASCADE Technology 的可复用 C# 桥接层，强调 .NET 应用与 OCCT 之间稳定、明确的集成边界。',
       author: 'Author',
       license: '许可证',
-      footerText: 'Built for OCCT 7.9.0 · .NET 8 · Windows x64'
+      footerText: 'Built for OCCT 7.9.0 · .NET 10 · Windows x64'
     }
   };
   const languageToggle = document.getElementById('languageToggle');
