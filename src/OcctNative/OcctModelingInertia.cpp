@@ -60,9 +60,14 @@ namespace
         if (result == nullptr) return 0;
         return execute(model, [&]
         {
-            GProp_GProps properties;
-            compute(model->requireShape(shapeId), properties);
-            fillInertiaProperties(properties, result);
+            const TopoDS_Shape& shape = model->requireShape(shapeId);
+
+            GProp_GProps preliminary;
+            compute(shape, preliminary);
+
+            GProp_GProps centered(preliminary.CentreOfMass());
+            compute(shape, centered);
+            fillInertiaProperties(centered, result);
         });
     }
 

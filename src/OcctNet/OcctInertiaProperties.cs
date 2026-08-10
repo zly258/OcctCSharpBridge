@@ -2,6 +2,7 @@
 
 namespace OcctNet;
 
+/// <summary>Inertia tensor and principal properties computed about the center of mass as the reference point.</summary>
 public readonly record struct OcctInertiaProperties(
     double Mass,
     OcctPoint3d CenterOfMass,
