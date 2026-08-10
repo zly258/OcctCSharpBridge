@@ -26,19 +26,15 @@ $publicManagedRoots = @(
     (Join-Path $RepositoryRoot "src\OcctNet.Avalonia")
 )
 
-$headerFiles = @(
-    Join-Path $nativeRoot "OcctNative.h"
-    Join-Path $nativeRoot "OcctSelectionOverlay.h"
-    Join-Path $nativeRoot "OcctSelectionState.h"
-    Join-Path $nativeRoot "OcctModeling.h"
-    Join-Path $nativeRoot "OcctModelingExtensions.h"
-    Join-Path $nativeRoot "OcctModelingBSpline.h"
-    Join-Path $nativeRoot "OcctModelingTopologyAnalysis.h"
-    Join-Path $nativeRoot "OcctModelingFaceAnalysis.h"
-    Join-Path $nativeRoot "OcctModelingInertia.h"
-    Join-Path $nativeRoot "OcctModelingIntersection.h"
-    Join-Path $nativeRoot "OcctModelingTopologyReference.h"
-)
+$nativeHeaderNames = @($contract.api.nativeHeaders | ForEach-Object { [string]$_ })
+if ($nativeHeaderNames.Count -eq 0) {
+    throw "bridge-contract.json does not declare api.nativeHeaders."
+}
+$duplicateHeaderNames = @($nativeHeaderNames | Group-Object | Where-Object Count -gt 1)
+if ($duplicateHeaderNames.Count -gt 0) {
+    throw "bridge-contract.json contains duplicate api.nativeHeaders entries."
+}
+$headerFiles = @($nativeHeaderNames | ForEach-Object { Join-Path $nativeRoot $_ })
 
 $cppFiles = Get-ChildItem $nativeRoot -Filter "*.cpp" -File | Select-Object -ExpandProperty FullName
 $managedSourceFiles = @($publicManagedRoots | ForEach-Object {
