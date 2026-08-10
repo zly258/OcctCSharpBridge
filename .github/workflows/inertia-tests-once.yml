@@ -1,0 +1,63 @@
+name: Inertia Tests Once
+
+on:
+  push:
+    branches:
+      - feat/modeling-inertia-properties
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          ref: feat/modeling-inertia-properties
+          fetch-depth: 0
+
+      - name: Wire inertia contracts
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('build.ps1')
+          text = path.read_text(encoding='utf-8-sig')
+          needle = '    ModelingBulkAbi = "tests\\check-modeling-bulk-abi.ps1"\n'
+          addition = needle + '    Inertia = "tests\\check-inertia-api.ps1"\n'
+          if 'check-inertia-api.ps1' not in text:
+              if needle not in text: raise SystemExit('build.ps1 bulk-check anchor missing')
+              text = text.replace(needle, addition, 1)
+          path.write_text(text, encoding='utf-8-sig')
+
+          path = Path('.github/workflows/wrapper-sync.yml')
+          text = path.read_text(encoding='utf-8-sig')
+          needle = '            "tests/check-modeling-bulk-abi.ps1",\n'
+          addition = needle + '            "tests/check-inertia-api.ps1",\n'
+          if 'tests/check-inertia-api.ps1' not in text:
+              if needle not in text: raise SystemExit('wrapper-sync bulk-check anchor missing')
+              text = text.replace(needle, addition, 1)
+          path.write_text(text, encoding='utf-8-sig')
+
+          path = Path('tests/check-native-build-structure.ps1')
+          text = path.read_text(encoding='utf-8-sig')
+          needle = '    @{ File = "OcctModelingAnalysis.cpp"; Symbols = @("occt_model_project_point_on_edge", "occt_model_ray_intersections", "occt_model_ray_hits_copy", "occt_model_classify_point") },\n'
+          addition = needle + '    @{ File = "OcctModelingInertia.cpp"; Symbols = @("occt_model_shape_linear_inertia", "occt_model_shape_surface_inertia", "occt_model_shape_volume_inertia", "PrincipalProperties") },\n'
+          if 'OcctModelingInertia.cpp' not in text:
+              if needle not in text: raise SystemExit('native structure analysis anchor missing')
+              text = text.replace(needle, addition, 1)
+          path.write_text(text, encoding='utf-8-sig')
+          PY
+
+      - name: Commit wiring and remove workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/inertia-tests-once.yml
+          git add build.ps1 .github/workflows/wrapper-sync.yml tests/check-native-build-structure.ps1
+          git commit -m "Wire inertia API contracts"
+          git push origin HEAD:feat/modeling-inertia-properties
