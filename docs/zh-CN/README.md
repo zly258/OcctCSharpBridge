@@ -6,7 +6,7 @@
 
 | 项目 | 当前值 |
 | --- | --- |
-| Author | **Liaoyuan Zhang** |
+| Author | **zly258** |
 | Bridge Version | **2.6.0** |
 | Native ABI | **4** |
 | Native exports / P/Invoke | **344 / 344** |
@@ -20,7 +20,7 @@
 | Avalonia | **12.1.0** |
 | Platform | **Windows x64** |
 
-版本、平台和 API 数量的机器可读事实源是仓库根目录 `bridge-contract.json`。Author 在中英文文档和应用界面中统一写作 **Liaoyuan Zhang**，不使用中文姓名。
+版本、平台和 API 数量的机器可读事实源是仓库根目录 `bridge-contract.json`。Author 在中英文文档和应用界面中统一写作 **zly258**。
 
 ## 2. 建议阅读顺序
 
@@ -102,6 +102,6 @@ Binary SDK：
 3. **API Reference 自动生成。** 精确成员签名和 Native ABI 不依赖手工抄写。
 4. **只记录已实现能力。**
 5. **公共 API 使用真实类型和方法名。**
-6. **Author 始终使用英文 `Liaoyuan Zhang`。**
+6. **Author 始终使用 `zly258`。**
 7. **不恢复旧兼容层。**
 8. **不使用 GitHub Actions 替代真实 Windows/MSVC/OCCT 本地验证。**
