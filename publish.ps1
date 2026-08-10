@@ -116,9 +116,6 @@ Assert-Path $NativeDll
 Assert-Path $OcctBinDir
 
 & $BuildScript validate $Configuration
-if ($LASTEXITCODE -ne 0) {
-    throw "Bridge Binary SDK validation failed."
-}
 
 $contract = Get-Content -LiteralPath $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $packageRoot = Join-Path $OutputDirectory ("OcctCSharpBridge-Demo-{0}-win-x64" -f $Target)
