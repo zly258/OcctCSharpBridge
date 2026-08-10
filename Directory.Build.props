@@ -11,6 +11,8 @@
     <Company>Liaoyuan Zhang</Company>
     <Product>OcctCSharpBridge Demo</Product>
     <Description>Binary SDK consumer demos for OcctCSharpBridge 2.6.0 on .NET 10 and Windows x64.</Description>
+    <OcctBridgeNativeAbiVersion>4</OcctBridgeNativeAbiVersion>
+    <OcctBridgeOcctVersion>7.9.0</OcctBridgeOcctVersion>
     <OcctBridgeDistRoot>$(MSBuildThisFileDirectory)dist\win-x64</OcctBridgeDistRoot>
   </PropertyGroup>
 </Project>
