@@ -103,7 +103,7 @@ public sealed partial class DemoSession
 
     public int ApplyDepthBiasToSelection(DemoDepthBiasPreset preset)
     {
-        var targets = Engine.SelectedObjectsOwned
+        var targets = Engine.SelectedObjects
             .Where(value => value.Kind == OcctObjectKind.Shape)
             .DistinctBy(value => value.Id)
             .ToList();
@@ -329,7 +329,7 @@ public sealed partial class DemoSession
 
     private List<OcctShape> SelectedShapes()
     {
-        return Engine.SelectedObjectsOwned
+        return Engine.SelectedObjects
             .Where(item => item.Kind == OcctObjectKind.Shape)
             .Select(item => Engine.GetShape(item.Id))
             .DistinctBy(item => item.Id)
