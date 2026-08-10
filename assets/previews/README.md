@@ -1,6 +1,19 @@
-﻿# Demo Preview Images
+# Demo Preview Images
 
-This directory contains the canonical full-resolution PNG screenshots used by the `demo` branch READMEs.
+This directory contains the canonical full-resolution PNG screenshots used by the `demo` branch documentation and the `website` branch.
+
+Current project metadata shown by the demos and website:
+
+```text
+Author: Liaoyuan Zhang
+Bridge: 2.6.0
+Native ABI: 4
+OCCT: 7.9.0
+.NET SDK: 10.0.302
+C#: 14.0
+Avalonia: 12.1.0
+Platform: Windows x64
+```
 
 Canonical file names:
 
@@ -19,8 +32,8 @@ Rules:
 - Commit the original lossless PNG screenshots directly; do not convert them to WebP/JPEG and do not downsample them.
 - Keep English and Simplified Chinese screenshots at the same resolution when possible.
 - Capture the full application window with a representative OCCT model visible.
-- Root `README.md` must reference the three `-en.png` files; `README.zh-CN.md` must reference the three `-zh.png` files.
-- Root README image URLs are pinned to the `demo` branch so rendering does not depend on the viewer's current branch or copied Markdown context.
-- `tests/check-demo-package.ps1` validates the six canonical assets, language mapping, PNG format, and README URL contract.
+- The website must reference these six canonical `demo` branch URLs directly.
+- If About information is visible in a screenshot, the author must be `Liaoyuan Zhang` in both language modes and the displayed Bridge/ABI/technology baseline must match `DemoProductInfo`.
+- Demo build validation is performed by `build.ps1 validate`; there is no `tests/check-demo-package.ps1` in the Binary SDK consumer branch.
 
 Do not add legacy preview aliases. If a screenshot is refreshed, replace the canonical PNG in place so documentation and website references remain stable.
