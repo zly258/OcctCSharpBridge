@@ -60,7 +60,7 @@ public partial class MainWindow
 
     private void ShowAbout()
     {
-        System.Windows.MessageBox.Show(this, DemoLocalization.Text("Dialog.AboutText"),
+        System.Windows.MessageBox.Show(this, DemoProductInfo.AboutText(DemoLocalization.CurrentLanguage),
             DemoLocalization.Text("Menu.About"),
             System.Windows.MessageBoxButton.OK,
             System.Windows.MessageBoxImage.Information);
