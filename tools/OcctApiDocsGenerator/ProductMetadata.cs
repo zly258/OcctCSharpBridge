@@ -1,3 +1,5 @@
+using System.IO;
+
 internal static partial class Program
 {
     private sealed record ProductContract(
