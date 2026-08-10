@@ -59,15 +59,28 @@ dist/win-x64/
 
 `bridge-manifest.json` records the Bridge/ABI/OCCT/.NET contract, source commit and SHA-256 hashes. OCCT `TK*.dll` and third-party runtime DLLs remain external and are resolved through `OCCT_ROOT`, `CASROOT`, or explicit runtime configuration.
 
-## Publish Binary SDK to demo
+## Publish a release to main and demo
 
 ```powershell
 .\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-`publish.ps1` runs the `dist` gate, commits/pushes `main/dist/win-x64`, creates a temporary detached worktree for `demo`, synchronizes only the Binary SDK, validates its manifest/hashes, commits the demo update, and pushes it. It does not switch the developer's current checkout and does not use GitHub Actions.
+The publishing workflow is intentionally complete and one-directional:
 
-Use `-NoPush` to exercise the local flow without updating remotes.
+```text
+clean main worktree
+→ generate bilingual complete API Reference
+→ commit generated API Reference when changed
+→ build/test/smoke the Release Binary SDK
+→ commit dist/win-x64
+→ push main
+→ create a temporary detached demo worktree
+→ synchronize only dist/win-x64
+→ validate contract/manifest/SHA-256
+→ commit and push demo
+```
+
+This guarantees that the Binary SDK `sourceCommit` identifies the same committed source and public API documentation that produced it. The script never switches the developer's current checkout and does not use GitHub Actions.
 
 ## Usage
 
@@ -98,7 +111,7 @@ docs/zh-CN                      Chinese conceptual docs + API reference
 docs/en-US                      English conceptual docs + API reference
 dist/win-x64                    Tracked validated Binary SDK
 build.ps1                       Validation/build/test/pack/docs/dist entry point
-publish.ps1                     Publish Binary SDK from main to demo
+publish.ps1                     Release/API-doc/main→demo publishing entry point
 ```
 
 ## Branch boundary
