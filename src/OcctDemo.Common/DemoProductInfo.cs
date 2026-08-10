@@ -3,7 +3,7 @@ namespace OcctDemo.Common;
 public static class DemoProductInfo
 {
     public const string ProductName = "OcctCSharpBridge Demo";
-    public const string Author = "Liaoyuan Zhang";
+    public const string Author = "zly258";
     public const string Email = "zhangly1403@gmail.com";
     public const string BridgeVersion = "2.6.0";
     public const int NativeAbiVersion = 4;
