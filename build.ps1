@@ -100,6 +100,7 @@ $Projects = [ordered]@{
 $Checks = [ordered]@{
     Version = "tests\check-version-contract.ps1"
     Organization = "tests\check-api-organization.ps1"
+    ModelingBulkAbi = "tests\check-modeling-bulk-abi.ps1"
     Geometry = "tests\check-geometry-api.ps1"
     TopologyAnalysis = "tests\check-topology-analysis.ps1"
     RuntimeDiagnostics = "tests\check-runtime-diagnostics.ps1"

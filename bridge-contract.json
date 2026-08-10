@@ -12,11 +12,11 @@
     "languageVersion": "14.0"
   },
   "api": {
-    "nativeExports": 348,
-    "managedPInvokes": 348,
+    "nativeExports": 351,
+    "managedPInvokes": 351,
     "publicNetTypes": 99,
     "compatibilityPublicNetTypes": 1,
     "viewer": 214,
-    "modeling": 134
+    "modeling": 137
   }
 }
