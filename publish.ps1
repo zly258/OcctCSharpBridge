@@ -40,10 +40,11 @@ function Invoke-Build {
     if ($WithOcctRoot -and -not [string]::IsNullOrWhiteSpace($OcctRoot)) {
         $arguments += @("-OcctRoot", $OcctRoot)
     }
+
+    # build.ps1 is another PowerShell script. Its terminating errors propagate
+    # directly; $LASTEXITCODE is reserved for native processes and may contain
+    # a stale git/dotnet result here.
     & $BuildScript @arguments
-    if ($LASTEXITCODE -ne 0) {
-        throw "$Target failed. Publishing stopped."
-    }
 }
 
 function Commit-IfChanged {
@@ -63,35 +64,79 @@ function Commit-IfChanged {
 }
 
 function Test-BinarySdk {
-    param([Parameter(Mandatory = $true)][string]$Path)
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [string]$ExpectedSourceCommit = ""
+    )
 
-    $contractPath = Join-Path $Path "bridge-contract.json"
-    $manifestPath = Join-Path $Path "bridge-manifest.json"
-    foreach ($required in @(
-        "OcctNative.dll", "OcctNet.dll", "OcctNet.WinForms.dll", "OcctNet.Wpf.dll", "OcctNet.Avalonia.dll",
-        "bridge-contract.json", "bridge-manifest.json")) {
+    $requiredFiles = @(
+        "OcctNative.dll",
+        "OcctNet.dll",
+        "OcctNet.WinForms.dll",
+        "OcctNet.Wpf.dll",
+        "OcctNet.Avalonia.dll",
+        "bridge-contract.json",
+        "bridge-manifest.json"
+    )
+    foreach ($required in $requiredFiles) {
         if (-not (Test-Path (Join-Path $Path $required) -PathType Leaf)) {
             throw "Binary SDK file is missing: $required"
         }
     }
 
+    $contractPath = Join-Path $Path "bridge-contract.json"
+    $manifestPath = Join-Path $Path "bridge-manifest.json"
     $contract = Get-Content $contractPath -Raw -Encoding UTF8 | ConvertFrom-Json
     $manifest = Get-Content $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+
     if ([int]$manifest.schemaVersion -ne 1 -or
         [string]$manifest.bridgeVersion -ne [string]$contract.bridgeVersion -or
         [int]$manifest.nativeAbiVersion -ne [int]$contract.nativeAbiVersion -or
         [string]$manifest.occtVersion -ne [string]$contract.occtVersion -or
         [string]$manifest.platform -ne [string]$contract.platform -or
-        [string]$manifest.targetFramework -ne [string]$contract.dotnet.targetFramework) {
+        [string]$manifest.targetFramework -ne [string]$contract.dotnet.targetFramework -or
+        [string]$manifest.sdkVersion -ne [string]$contract.dotnet.sdkVersion -or
+        [string]$manifest.languageVersion -ne [string]$contract.dotnet.languageVersion) {
         throw "Binary SDK manifest does not match bridge-contract.json."
     }
 
-    foreach ($entry in @($manifest.files)) {
-        $file = Join-Path $Path ([string]$entry.name)
-        if (-not (Test-Path $file -PathType Leaf)) { throw "Manifest file is missing: $($entry.name)" }
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedSourceCommit) -and
+        [string]$manifest.sourceCommit -ne $ExpectedSourceCommit) {
+        throw "Binary SDK sourceCommit does not match the source commit used for publishing."
+    }
+
+    $expectedHashedFiles = @(
+        "OcctNative.dll",
+        "OcctNet.dll",
+        "OcctNet.WinForms.dll",
+        "OcctNet.Wpf.dll",
+        "OcctNet.Avalonia.dll",
+        "bridge-contract.json"
+    )
+    $entries = @($manifest.files)
+    $manifestNames = @($entries | ForEach-Object { [string]$_.name })
+    if ($manifestNames.Count -ne $expectedHashedFiles.Count) {
+        throw "Binary SDK manifest contains an unexpected number of hashed files."
+    }
+    foreach ($name in $expectedHashedFiles) {
+        if ($name -notin $manifestNames) {
+            throw "Binary SDK manifest does not hash required file: $name"
+        }
+    }
+    if (@($manifestNames | Group-Object | Where-Object Count -ne 1).Count -gt 0) {
+        throw "Binary SDK manifest contains duplicate file entries."
+    }
+
+    foreach ($entry in $entries) {
+        $name = [string]$entry.name
+        if ([string]::IsNullOrWhiteSpace($name) -or $name.Contains('/') -or $name.Contains('\')) {
+            throw "Invalid Binary SDK manifest file name: $name"
+        }
+        $file = Join-Path $Path $name
+        if (-not (Test-Path $file -PathType Leaf)) { throw "Manifest file is missing: $name" }
         $hash = (Get-FileHash $file -Algorithm SHA256).Hash.ToLowerInvariant()
         if ($hash -ne ([string]$entry.sha256).ToLowerInvariant()) {
-            throw "Binary SDK hash mismatch: $($entry.name)"
+            throw "Binary SDK hash mismatch: $name"
         }
     }
 }
@@ -121,9 +166,14 @@ if ($LASTEXITCODE -ne 0 -or $afterDocs.Count -gt 0) {
     throw "The worktree is not clean after API documentation generation. Review unexpected generated files before publishing."
 }
 
+$sourceCommit = (& git -C $RepoRoot rev-parse HEAD).Trim()
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($sourceCommit)) {
+    throw "Failed to resolve the source commit used for Binary SDK publishing."
+}
+
 Write-Host "[publish] Building and validating the Release Binary SDK..." -ForegroundColor Cyan
 Invoke-Build "dist" -WithOcctRoot
-Test-BinarySdk -Path $DistRoot
+Test-BinarySdk -Path $DistRoot -ExpectedSourceCommit $sourceCommit
 [void](Commit-IfChanged -Paths @("dist/win-x64") -Message "Publish Bridge Binary SDK")
 
 Invoke-Git $RepoRoot @("push", $Remote, "main")
@@ -137,7 +187,7 @@ try {
     Remove-Item $demoDist -Recurse -Force -ErrorAction SilentlyContinue
     New-Item -ItemType Directory -Path $demoDist -Force | Out-Null
     Copy-Item (Join-Path $DistRoot "*") $demoDist -Recurse -Force
-    Test-BinarySdk -Path $demoDist
+    Test-BinarySdk -Path $demoDist -ExpectedSourceCommit $sourceCommit
 
     Invoke-Git $DemoWorktree @("add", "--", "dist/win-x64")
     $demoChanges = @(& git -C $DemoWorktree diff --cached --name-only -- "dist/win-x64")
