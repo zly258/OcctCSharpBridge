@@ -1,6 +1,8 @@
-﻿#include "OcctInternal.hxx"
+#include "OcctInternal.hxx"
 
 #include <Graphic3d_MaterialAspect.hxx>
+
+#include <unordered_set>
 
 using namespace OcctBridge;
 
@@ -169,13 +171,14 @@ extern "C"
             if (count > 0 && ids == nullptr) throw std::invalid_argument("Object ID array is null.");
 
             std::vector<OcctObjectId> uniqueIds;
+            std::unordered_set<OcctObjectId> seenIds;
             uniqueIds.reserve(static_cast<std::size_t>(count));
+            seenIds.reserve(static_cast<std::size_t>(count));
             for (int index = 0; index < count; ++index)
             {
                 const OcctObjectId id = ids[index];
                 if (e->findObject(id) == nullptr) throw std::invalid_argument("Object ID does not exist.");
-                if (std::find(uniqueIds.begin(), uniqueIds.end(), id) == uniqueIds.end())
-                    uniqueIds.push_back(id);
+                if (seenIds.insert(id).second) uniqueIds.push_back(id);
             }
 
             for (const OcctObjectId id : uniqueIds) e->erase(id);
