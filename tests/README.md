@@ -1,65 +1,65 @@
-﻿# Tests and Contract Checks
+﻿# Demo Tests and Local Gates
 
-The `tests` directory contains managed regression tests, native smoke scenarios, and static repository contracts. Validation is designed to be run locally; the authoritative native gate always uses a real Windows x64 OCCT 7.9.0 SDK.
+The `demo` branch keeps only tests and static checks that express durable repository contracts. UI implementation details, command wording, README headings, and source-level coding patterns are not treated as build contracts.
 
-## Managed regression tests
+## Real tests
 
-`OcctNet.ManagedTests` does not load OCCT. It validates:
+### `OcctNet.ManagedTests`
 
-- managed value semantics and owner-aware handles;
-- guard behavior and pure managed helpers;
-- runtime diagnostics that do not force native loading;
-- viewport interaction policy;
-- P0 inertia DTO mapping;
-- P1 structured Edge/Edge intersection DTO mapping;
-- P2 topology-reference DTO/result mapping.
+Managed regression tests do not load OCCT. The project uses `MSTest.Sdk` and .NET 10 Microsoft Testing Platform. `global.json` selects `Microsoft.Testing.Platform` as the `dotnet test` runner.
 
-The project does not keep a frozen legacy API snapshot. The library is treated as a clean new API; current public type counts and Native/PInvoke parity are enforced by repository contracts instead.
+Run:
 
-## Native smoke tests
+```powershell
+.\build.ps1 test Release
+```
 
-`OcctNet.Smoke` covers real bridge loading and OCCT operations. Run it on Windows with the contracted SDK:
+### `OcctNet.Smoke`
+
+Smoke tests load the real `OcctNative.dll` and OCCT runtime. The build script deploys `OcctNative.dll`, OCCT DLLs, and third-party runtime DLLs beside the smoke executable before running it.
+
+Run:
 
 ```powershell
 .\build.ps1 smoke Release
 ```
 
-For a non-default OCCT installation:
+## Static checks
 
-```powershell
-.\build.ps1 smoke Release -OcctRoot "E:\SDK\occt-7.9.0"
-```
-
-## Static contract scripts
+Only five PowerShell checks remain:
 
 | Script | Responsibility |
 |---|---|
-| `check-api-surface.ps1` | Native declaration/definition/PInvoke parity and current public API counts |
-| `check-api-organization.ps1` | Clean owner-aware organization, P0–P3 files and no compatibility layer |
-| `check-modeling-bulk-abi.ps1` | Bulk-only modeling collection ABI |
-| `check-geometry-api.ps1` | Geometry, B-Spline, mesh provenance, Face analysis and inspection contracts |
-| `check-topology-analysis.ps1` | Edge adjacency and free-boundary contracts |
-| `check-native-build-structure.ps1` | Native module/CMake layout, P0–P3 modules, OCCT toolkit policy and no-OCAF/XDE boundary |
-| `check-runtime-diagnostics.ps1` | Structured runtime diagnostics |
-| `check-version-contract.ps1` | Bridge/ABI/OCCT/.NET/CMake/API metadata |
-| `check-selection-contract.ps1` | Viewer selection and structured hit semantics |
-| `check-viewport-api.ps1` | Reusable viewer/viewport API contract |
-| `check-ui-hosts.ps1` | WinForms/WPF/Avalonia host boundaries |
-| `check-sdk-package.ps1` | Managed package metadata and content policy |
+| `check-version-contract.ps1` | Bridge/ABI/OCCT/.NET/CMake version contract |
+| `check-demo-structure.ps1` | Demo project/reference boundaries, non-packable policy, local tooling, no compatibility layer |
+| `check-bulk-abi.ps1` | High-cardinality modeling and selection collections remain bulk-based |
+| `check-native-build-structure.ps1` | CMake source inventory, OCCT 7.9 exchange toolkits, no OCAF/XDE |
+| `check-api-surface.ps1` | Native declarations/definitions/PInvoke parity and API counts |
 
-## Recommended local validation
+These scripts validate repository facts that compilation alone does not reliably express. Behavior belongs in managed tests or native smoke tests.
 
-Without an OCCT SDK:
+## Recommended local workflow
+
+Managed-only verification:
 
 ```powershell
 .\build.ps1 validate Release
 .\build.ps1 managed Release
+.\build.ps1 test Release
 ```
 
-With OCCT 7.9.0:
+Full Windows + OCCT verification:
 
 ```powershell
+.\build.ps1 all Release
 .\build.ps1 smoke Release
 ```
 
-A check should only be removed when its distinct contract is either no longer part of the new library or is covered by a simpler maintained check.
+Use `clean` only when a stale generated output is suspected:
+
+```powershell
+.\build.ps1 clean Release
+.\build.ps1 all Release
+```
+
+The repository does not use GitHub Actions as a substitute for these local gates.
