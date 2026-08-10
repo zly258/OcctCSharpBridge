@@ -90,16 +90,21 @@ function Test-BinarySdk {
     $manifest = Get-Content $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 
     if ([int]$manifest.schemaVersion -ne 1 -or
+        [string]$manifest.author -ne [string]$contract.author -or
         [string]$manifest.bridgeVersion -ne [string]$contract.bridgeVersion -or
         [int]$manifest.nativeAbiVersion -ne [int]$contract.nativeAbiVersion -or
         [string]$manifest.occtVersion -ne [string]$contract.occtVersion -or
         [string]$manifest.platform -ne [string]$contract.platform -or
         [string]$manifest.targetFramework -ne [string]$contract.dotnet.targetFramework -or
         [string]$manifest.sdkVersion -ne [string]$contract.dotnet.sdkVersion -or
-        [string]$manifest.languageVersion -ne [string]$contract.dotnet.languageVersion) {
-        throw "Binary SDK manifest does not match bridge-contract.json."
+        [string]$manifest.languageVersion -ne [string]$contract.dotnet.languageVersion -or
+        [string]$manifest.configuration -ne "Release") {
+        throw "Binary SDK manifest does not match bridge-contract.json or is not a Release SDK."
     }
 
+    if ([string]::IsNullOrWhiteSpace([string]$manifest.sourceCommit)) {
+        throw "Binary SDK sourceCommit is missing."
+    }
     if (-not [string]::IsNullOrWhiteSpace($ExpectedSourceCommit) -and
         [string]$manifest.sourceCommit -ne $ExpectedSourceCommit) {
         throw "Binary SDK sourceCommit does not match the source commit used for publishing."
