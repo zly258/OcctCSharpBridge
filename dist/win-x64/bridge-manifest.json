@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "author": "zly258",
+  "bridgeVersion": "2.6.0",
+  "nativeAbiVersion": 4,
+  "occtVersion": "7.9.0",
+  "platform": "windows-x64",
+  "targetFramework": "net10.0-windows",
+  "sdkVersion": "10.0.302",
+  "languageVersion": "14.0",
+  "configuration": "Release",
+  "sourceCommit": "b896530cae29d25f1fb6552d6cdcc0231dee7fba",
+  "files": [
+    {
+      "name": "OcctNative.dll",
+      "sha256": "d24fe554d3cc212c91f0a0aa653d28fad46593d3ae8741c699e14c62c7d62b2f"
+    },
+    {
+      "name": "OcctNet.dll",
+      "sha256": "0d5a9a4716ec12cf7bcad09b0a437c6cde3d543ae277f24a7593fc2345200fdb"
+    },
+    {
+      "name": "OcctNet.WinForms.dll",
+      "sha256": "9bb16b34782517e9e183ab18086f00a26b1d2deddaed9573f8128924ff4c315a"
+    },
+    {
+      "name": "OcctNet.Wpf.dll",
+      "sha256": "c2e7db8a9fb3026137dd0eef805ab8393df9a8c2c0022b6e8f7139141536d606"
+    },
+    {
+      "name": "OcctNet.Avalonia.dll",
+      "sha256": "ad16d5ab6a81615d9abc1ed88949551192658c80a94552d94ba521c20dae6e4c"
+    },
+    {
+      "name": "bridge-contract.json",
+      "sha256": "51236a8d96fee73414b72e66971f504ea329981d2e8e63457c0a2733bc784a64"
+    }
+  ]
+}
