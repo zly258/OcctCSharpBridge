@@ -117,6 +117,25 @@ extern "C"
         });
     }
 
+    int occt_model_ray_hits_copy(OcctModelHandle handle, OcctModelRayHit* results, int capacity)
+    {
+        ModelSession* model = modelOf(handle);
+        if (model == nullptr) return -1;
+        int copied = 0;
+        if (execute(model, [&]
+        {
+            if (capacity < 0) throw std::invalid_argument("Ray-hit buffer capacity must not be negative.");
+            const int count = static_cast<int>(model->rayHits.size());
+            if (capacity < count) throw std::invalid_argument("Ray-hit buffer capacity is smaller than the result count.");
+            if (count > 0 && results == nullptr) throw std::invalid_argument("Ray-hit result buffer is null.");
+            for (int index = 0; index < count; ++index)
+                results[index] = model->rayHits[static_cast<std::size_t>(index)];
+            copied = count;
+        }) == 0)
+            return -1;
+        return copied;
+    }
+
     int occt_model_classify_point(OcctModelHandle handle, OcctObjectId solidId, OcctPoint3d pointValue, double tolerance)
     {
         ModelSession* model = modelOf(handle);

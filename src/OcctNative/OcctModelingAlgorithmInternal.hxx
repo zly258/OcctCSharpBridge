@@ -134,4 +134,30 @@ namespace OcctModelingInternal
             ? operation.history->Generated(source).Size()
             : operation.history->Modified(source).Size();
     }
+
+    inline int historyCopy(
+        ModelSession* model,
+        OcctOperationId operationId,
+        OcctObjectId sourceId,
+        bool generated,
+        OcctObjectId* results,
+        int capacity)
+    {
+        if (capacity < 0) throw std::invalid_argument("History buffer capacity must not be negative.");
+        const OperationRecord& operation = requireOperation(model, operationId);
+        if (operation.history.IsNull()) return 0;
+
+        const TopoDS_Shape& source = model->requireShape(sourceId);
+        const auto& list = generated
+            ? operation.history->Generated(source)
+            : operation.history->Modified(source);
+        const int count = list.Size();
+        if (capacity < count) throw std::invalid_argument("History buffer capacity is smaller than the result count.");
+        if (count > 0 && results == nullptr) throw std::invalid_argument("History result buffer is null.");
+
+        int index = 0;
+        for (TopTools_ListIteratorOfListOfShape iterator(list); iterator.More(); iterator.Next(), ++index)
+            results[index] = model->addShape(iterator.Value());
+        return count;
+    }
 }
