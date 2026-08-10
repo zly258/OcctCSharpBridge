@@ -5,7 +5,7 @@ The `demo` branch consumes the validated OcctCSharpBridge **2.6.0** Binary SDK f
 Current contract:
 
 ```text
-Author: Liaoyuan Zhang
+Author: zly258
 Bridge: 2.6.0
 Native ABI: 4
 OCCT: 7.9.0
