@@ -8,7 +8,7 @@ The `demo` branch is the reference **Binary SDK consumer** for OcctCSharpBridge.
 
 | Item | Current value |
 | --- | --- |
-| Author | **Liaoyuan Zhang** |
+| Author | **zly258** |
 | Demo / Bridge version | **2.6.0** |
 | Native ABI | **4** |
 | Open CASCADE Technology | **7.9.0** |
@@ -85,7 +85,7 @@ Individual applications:
 .\build.ps1 avalonia Release
 ```
 
-`validate` checks the Binary SDK contract, manifest and SHA-256 hashes and rejects reintroduced Bridge source.
+`validate` checks the Binary SDK contract, manifest and SHA-256 hashes.
 
 ## Run
 
@@ -145,7 +145,7 @@ The Avalonia host uses a Windows child HWND, so WinForms, WPF and Avalonia demos
 
 ## Author
 
-**Liaoyuan Zhang**  
+**zly258**  
 zhangly1403@gmail.com
 
 ## License
