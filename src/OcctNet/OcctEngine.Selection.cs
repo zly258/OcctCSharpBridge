@@ -21,8 +21,14 @@ public sealed partial class OcctEngine
         }
     }
 
-    public IOcctObject? FirstSelectedObject =>
-        SelectedObjects.Count == 0 ? null : SelectedObjects[0];
+    public IOcctObject? FirstSelectedObject
+    {
+        get
+        {
+            var selected = SelectedObjects;
+            return selected.Count == 0 ? null : selected[0];
+        }
+    }
 
     public OcctShape? FirstSelected =>
         FirstSelectedObject is OcctShape shape ? shape : null;
