@@ -6,7 +6,7 @@ The `demo` branch is a pure application-layer consumer of the OcctCSharpBridge B
 
 | Item | Current value |
 | --- | --- |
-| Author | **Liaoyuan Zhang** |
+| Author | **zly258** |
 | Bridge version | **2.6.0** |
 | Native ABI | **4** |
 | OCCT | **7.9.0** |
@@ -101,7 +101,7 @@ Demo `publish.ps1` packages applications only; it never publishes or rebuilds th
 
 ## Product metadata
 
-`Directory.Build.props` defines the common demo assembly version, product and author. `OcctDemo.Common/DemoProductInfo.cs` is the single About-dialog metadata source for WinForms, WPF and Avalonia. The author must remain written in English as **Liaoyuan Zhang** in every language mode.
+`Directory.Build.props` defines the common demo assembly version, product and author. `OcctDemo.Common/DemoProductInfo.cs` is the single About-dialog metadata source for WinForms, WPF and Avalonia. The author is **zly258** in every language mode.
 
 ## Documentation rules
 
