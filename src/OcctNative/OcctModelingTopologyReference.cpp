@@ -118,7 +118,7 @@ namespace
         if (runtimeIndex < 0)
             throw std::invalid_argument("Referenced topology is not contained in the supplied root shape.");
 
-        const int shapeType = static_cast<int>(shape.ShapeType());
+        const int shapeType = toOcctShapeType(shape.ShapeType());
         if (!isSupportedType(shapeType))
             throw std::invalid_argument("Persistent topology references support only Vertex, Edge, and Face shapes.");
 
@@ -128,7 +128,7 @@ namespace
         result.runtimeIndexHint = runtimeIndex;
         result.curveType = OcctCurve_Other;
         result.surfaceType = OcctSurface_Other;
-        result.orientation = static_cast<int>(shape.Orientation());
+        result.orientation = toModelOrientation(shape.Orientation());
         result.tolerance = maximumTolerance(shape);
 
         double measure = 0.0;
@@ -138,9 +138,9 @@ namespace
         fillBounds(shape, result.bounds);
 
         if (shape.ShapeType() == TopAbs_EDGE)
-            result.curveType = static_cast<int>(BRepAdaptor_Curve(TopoDS::Edge(shape)).GetType());
+            result.curveType = toOcctCurveType(BRepAdaptor_Curve(TopoDS::Edge(shape)).GetType());
         else if (shape.ShapeType() == TopAbs_FACE)
-            result.surfaceType = static_cast<int>(BRepAdaptor_Surface(TopoDS::Face(shape), Standard_True).GetType());
+            result.surfaceType = toOcctSurfaceType(BRepAdaptor_Surface(TopoDS::Face(shape), Standard_True).GetType());
 
         result.vertexCount = countSubshapes(shape, TopAbs_VERTEX);
         result.edgeCount = countSubshapes(shape, TopAbs_EDGE);
