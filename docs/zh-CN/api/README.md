@@ -5,7 +5,7 @@
 ## 当前契约
 
 ```text
-Author: Liaoyuan Zhang
+Author: zly258
 Bridge: 2.6.0
 Native ABI: 4
 Native exports: 344
@@ -46,4 +46,4 @@ Native Reference 从 `src/OcctNative/OcctNative.h` 生成，覆盖 ABI 类型与
 
 所有权、生命周期、线程模型、Viewer 交互、Runtime 与部署等专题语义仍以 `docs/zh-CN` 对应章节为准；本目录用于精确查询公开 Managed 签名和 Native ABI 声明。
 
-Author 在中英文 API 文档中统一写作 **Liaoyuan Zhang**。
+Author 在中英文 API 文档中统一写作 **zly258**。
