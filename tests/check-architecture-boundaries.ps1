@@ -59,6 +59,17 @@ function Assert-Reference {
     }
 }
 
+function Test-TrackedPath {
+    param([Parameter(Mandatory = $true)][string]$RelativePath)
+
+    $normalized = $RelativePath.Replace('\', '/')
+    $tracked = @(& git -C $RepositoryRoot ls-files -- $normalized "$normalized/**" 2>$null)
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to inspect tracked repository paths with git ls-files."
+    }
+    return $tracked.Count -gt 0
+}
+
 $core = Read-Project "src/OcctNet/OcctNet.csproj"
 $winForms = Read-Project "src/OcctNet.WinForms/OcctNet.WinForms.csproj"
 $wpf = Read-Project "src/OcctNet.Wpf/OcctNet.Wpf.csproj"
@@ -103,8 +114,8 @@ foreach ($demoPath in @(
     "src/CadWpf",
     "src/CadAvalonia"
 )) {
-    if (Test-Path (Join-Path $RepositoryRoot $demoPath)) {
-        throw "Reusable main SDK must not contain application/demo project: $demoPath"
+    if (Test-TrackedPath $demoPath) {
+        throw "Reusable main SDK must not track application/demo project: $demoPath"
     }
 }
 
@@ -130,9 +141,9 @@ foreach ($legacyFile in @(
     "src/OcctNet/OcctEngine.ApiAliases.cs",
     "src/OcctNet/NativeMethods.Modeling.cs"
 )) {
-    if (Test-Path (Join-Path $RepositoryRoot $legacyFile)) {
+    if (Test-TrackedPath $legacyFile) {
         throw "Legacy/compatibility source must not be reintroduced: $legacyFile"
     }
 }
 
-Write-Host "[architecture] Core/UI dependency direction, main/demo boundary, and no-compatibility application boundary validated." -ForegroundColor Green
+Write-Host "[architecture] Core/UI dependency direction, tracked main/demo boundary, and no-compatibility application boundary validated." -ForegroundColor Green
