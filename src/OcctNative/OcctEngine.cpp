@@ -1,4 +1,4 @@
-﻿#include "OcctInternal.hxx"
+#include "OcctInternal.hxx"
 
 #include <Aspect_PolygonOffsetMode.hxx>
 #include <Aspect_TypeOfTriedronPosition.hxx>
@@ -264,7 +264,21 @@ namespace OcctBridge
         }
     }
 
-    int shapeTypeValue(const TopoDS_Shape& shape) { return static_cast<int>(shape.ShapeType()); }
+    int shapeTypeValue(const TopoDS_Shape& shape)
+    {
+        switch (shape.ShapeType())
+        {
+            case TopAbs_COMPOUND: return OcctShape_Compound;
+            case TopAbs_COMPSOLID: return OcctShape_CompSolid;
+            case TopAbs_SOLID: return OcctShape_Solid;
+            case TopAbs_SHELL: return OcctShape_Shell;
+            case TopAbs_FACE: return OcctShape_Face;
+            case TopAbs_WIRE: return OcctShape_Wire;
+            case TopAbs_EDGE: return OcctShape_Edge;
+            case TopAbs_VERTEX: return OcctShape_Vertex;
+            default: return OcctShape_Shape;
+        }
+    }
 
     void requirePositive(double value, const char* name)
     {
@@ -323,13 +337,13 @@ extern "C"
     }
 
     const char* occt_version() { return OCC_VERSION_COMPLETE; }
-    int occt_bridge_abi_version() { return 3; }
+    int occt_bridge_abi_version() { return 4; }
     const char* occt_bridge_version() { return "2.6.0"; }
 
     const char* occt_bridge_build_info()
     {
         static const std::string info =
-            std::string("OcctCSharpBridge/2.6.0; ABI=3; OCCT=") + OCC_VERSION_COMPLETE +
+            std::string("OcctCSharpBridge/2.6.0; ABI=4; OCCT=") + OCC_VERSION_COMPLETE +
 #if defined(_M_X64)
             "; Arch=x64" +
 #else

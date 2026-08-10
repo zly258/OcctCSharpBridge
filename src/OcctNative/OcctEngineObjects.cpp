@@ -14,28 +14,47 @@ extern "C"
         return e == nullptr ? 0 : static_cast<int>(e->objects.size());
     }
 
-    OcctObjectId occt_object_id_at(OcctHandle h, int index)
+    int occt_object_descriptors(
+        OcctHandle h,
+        OcctObjectDescriptor* items,
+        int capacity,
+        int* objectCount,
+        int* shapeCount)
     {
         Engine* e = engineOf(h);
-        if (e == nullptr || index < 0) return 0;
-        std::vector<OcctObjectId> ids;
-        ids.reserve(e->objects.size());
-        for (const auto& pair : e->objects) ids.push_back(pair.first);
-        std::sort(ids.begin(), ids.end());
-        return index < static_cast<int>(ids.size()) ? ids[static_cast<std::size_t>(index)] : 0;
-    }
-
-    OcctObjectId occt_shape_id_at(OcctHandle h, int index)
-    {
-        Engine* e = engineOf(h);
-        if (e == nullptr || index < 0) return 0;
-        std::vector<OcctObjectId> ids;
-        for (const auto& pair : e->objects)
+        if (e == nullptr || objectCount == nullptr || shapeCount == nullptr) return 0;
+        return execute(e, [&]
         {
-            if (pair.second.kind == OcctObject_Shape) ids.push_back(pair.first);
-        }
-        std::sort(ids.begin(), ids.end());
-        return index < static_cast<int>(ids.size()) ? ids[static_cast<std::size_t>(index)] : 0;
+            if (capacity < 0)
+                throw std::invalid_argument("Object descriptor capacity must not be negative.");
+
+            *objectCount = static_cast<int>(e->objects.size());
+            *shapeCount = 0;
+            for (const auto& pair : e->objects)
+            {
+                if (pair.second.kind == OcctObject_Shape) ++(*shapeCount);
+            }
+
+            if (items == nullptr)
+            {
+                if (capacity != 0)
+                    throw std::invalid_argument("Object descriptor output is null but capacity is non-zero.");
+                return;
+            }
+            if (capacity < *objectCount)
+                throw std::out_of_range("Object descriptor output capacity is too small.");
+
+            std::vector<OcctObjectDescriptor> descriptors;
+            descriptors.reserve(e->objects.size());
+            for (const auto& pair : e->objects)
+                descriptors.push_back(OcctObjectDescriptor{pair.first, pair.second.kind});
+
+            std::sort(descriptors.begin(), descriptors.end(), [](const OcctObjectDescriptor& left, const OcctObjectDescriptor& right)
+            {
+                return left.objectId < right.objectId;
+            });
+            std::copy(descriptors.begin(), descriptors.end(), items);
+        });
     }
 
     int occt_object_exists(OcctHandle h, OcctObjectId id)

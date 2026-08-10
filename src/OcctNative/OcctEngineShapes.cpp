@@ -1,4 +1,4 @@
-﻿#include "OcctInternal.hxx"
+#include "OcctInternal.hxx"
 
 #include <BRepBndLib.hxx>
 #include <BRepBuilderAPI_Copy.hxx>
@@ -189,17 +189,5 @@ extern "C"
             if (hideInput) e->hide(id);
             return result;
         });
-    }
-
-    int occt_shape_count(OcctHandle h)
-    {
-        Engine* e = engineOf(h);
-        if (e == nullptr) return 0;
-        int count = 0;
-        for (const auto& pair : e->objects)
-        {
-            if (pair.second.kind == OcctObject_Shape) ++count;
-        }
-        return count;
     }
 }
