@@ -17,13 +17,19 @@ Set-StrictMode -Version Latest
 $RepoRoot = Split-Path -Parent $PSCommandPath
 $DistRoot = Join-Path $RepoRoot "dist\win-x64"
 $ContractPath = Join-Path $DistRoot "bridge-contract.json"
+$BuildScript = Join-Path $RepoRoot "build.ps1"
 $DefaultOcctRoot = "D:\tools\occt-vc144-64"
 
 if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
     $OcctRoot = $DefaultOcctRoot
 }
 if (-not (Test-Path -LiteralPath $ContractPath -PathType Leaf)) {
-    throw "Bridge Binary SDK contract was not found: $ContractPath. Run .\sync-dist.ps1 first."
+    throw "Bridge Binary SDK contract was not found: $ContractPath. Publish dist/win-x64 from the main branch with main/publish.ps1."
+}
+
+& $BuildScript validate $Configuration
+if ($LASTEXITCODE -ne 0) {
+    throw "Bridge Binary SDK validation failed."
 }
 
 $contract = Get-Content -LiteralPath $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
