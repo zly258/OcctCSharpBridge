@@ -25,6 +25,7 @@ $UseSelfContained = -not $FrameworkDependent.IsPresent
 if ($SelfContained.IsPresent) { $UseSelfContained = $true }
 
 $RepoRoot = Split-Path -Parent $PSCommandPath
+$BuildScript = Join-Path $RepoRoot "build.ps1"
 $DistRoot = Join-Path $RepoRoot "dist\win-x64"
 $ContractPath = Join-Path $DistRoot "bridge-contract.json"
 $ManifestPath = Join-Path $DistRoot "bridge-manifest.json"
@@ -64,6 +65,13 @@ function Assert-Path {
     if (-not (Test-Path -LiteralPath $Path)) { throw "Required path was not found: $Path" }
 }
 
+function Assert-Command {
+    param([Parameter(Mandatory = $true)][string]$Name)
+    if ($null -eq (Get-Command -Name $Name -ErrorAction SilentlyContinue)) {
+        throw "$Name was not found in PATH."
+    }
+}
+
 function Invoke-Checked {
     param(
         [Parameter(Mandatory = $true)][string]$Command,
@@ -100,10 +108,17 @@ function Copy-RuntimeDlls {
     Copy-Item -LiteralPath $ManifestPath -Destination (Join-Path $Destination "bridge-manifest.json") -Force
 }
 
+Assert-Command "dotnet"
+Assert-Path $BuildScript
 Assert-Path $ContractPath
 Assert-Path $ManifestPath
 Assert-Path $NativeDll
 Assert-Path $OcctBinDir
+
+& $BuildScript validate $Configuration
+if ($LASTEXITCODE -ne 0) {
+    throw "Bridge Binary SDK validation failed."
+}
 
 $contract = Get-Content -LiteralPath $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $packageRoot = Join-Path $OutputDirectory ("OcctCSharpBridge-Demo-{0}-win-x64" -f $Target)
