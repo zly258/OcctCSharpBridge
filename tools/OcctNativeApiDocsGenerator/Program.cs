@@ -271,9 +271,8 @@ internal static partial class Program
         var text = File.ReadAllText(indexPath);
         if (text.Contains("(native-abi.md)", StringComparison.Ordinal)) return;
 
-        var heading = language.Code == "zh-CN" ? "## Native C ABI" : "## Native C ABI";
         var label = language.Code == "zh-CN" ? "[Native C ABI 完整参考](native-abi.md)" : "[Complete Native C ABI Reference](native-abi.md)";
-        File.AppendAllText(indexPath, $"{Environment.NewLine}{heading}{Environment.NewLine}{Environment.NewLine}- {label}{Environment.NewLine}", new UTF8Encoding(false));
+        File.AppendAllText(indexPath, $"{Environment.NewLine}## Native C ABI{Environment.NewLine}{Environment.NewLine}- {label}{Environment.NewLine}", new UTF8Encoding(false));
     }
 
     [GeneratedRegex(@"\s+")]
@@ -282,6 +281,6 @@ internal static partial class Program
     [GeneratedRegex(@"^OCCTBRIDGE_API\s+(?<return>.+?)\s+(?<name>occt_[A-Za-z0-9_]+)\s*\((?<params>.*)\)\s*;$")]
     private static partial Regex FunctionRegex();
 
-    [GeneratedRegex(@"^(?<type>.+?)(?<name>[A-Za-z_][A-Za-z0-9_]*)$")]
+    [GeneratedRegex(@"^(?<type>.+?)\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)$")]
     private static partial Regex ParameterRegex();
 }
