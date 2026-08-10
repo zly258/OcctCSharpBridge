@@ -11,12 +11,12 @@ OCAF/XDE is intentionally excluded. Application Document, Feature/Entity, Comman
 - Native bridge version: `2.6.0`
 - Native ABI: `3`
 - OCCT: `7.9.0`
-- Native exports: `348`
-- Managed P/Invoke declarations: `348`
+- Native exports: `351`
+- Managed P/Invoke declarations: `351`
 - Public .NET types: `99`
 - Compatibility .NET types: `1`
 - Viewer API: `214`
-- Modeling API: `134`
+- Modeling API: `137`
 
 `Public .NET types` is the primary owner-aware 2.6 surface. `Compatibility .NET types` currently contains only the Bridge 2.5 `OcctObject` compatibility handle. Compatibility surface is tracked separately and is not expanded in 2.x.
 
@@ -78,6 +78,8 @@ Construction covers vertex, line, polyline, circle/arc, polygon, ellipse, Bezier
 
 Algorithms cover Fuse/Cut/Common/Section/Splitter, Extrude/Revolve/Sweep/Loft, Fillet/Chamfer, 3D offset, planar wire offset, thick solid, same-domain unification, healing, and operation history.
 
+Ray-hit retrieval and generated/modified topology history use bulk-copy Native ABI calls. Legacy indexed `...At` exports remain available for ABI compatibility but are not used by the managed collection APIs.
+
 ### Topology and shape queries
 
 - shape type/orientation/closure/validity/check report/hash/tolerance;
@@ -124,10 +126,10 @@ Internal source organization is not ABI:
 
 - session/registry, shape queries, topology, geometry queries, and viewer interop are separate modules;
 - geometry construction is split into Curves, Planar, Primitives, Assembly, and Transform modules;
-- projection/ray/classification, Mesh, and file Exchange are separate modules;
+- Boolean, feature, healing, operation-history, projection/ray/classification, Mesh, and file Exchange responsibilities are separate modules;
 - broad `OcctModelingInternal.hxx` has been retired; modules include the narrow internal header and direct OCCT headers they actually use.
 
-These changes preserve the 348 exported C symbols and ABI 3 signatures while reducing accidental native coupling.
+These changes preserve existing ABI 3 signatures while extending the additive C surface to 351 exported symbols.
 
 ## UI host interaction boundary
 
