@@ -94,7 +94,10 @@ add_library(OcctNative SHARED
     OcctModelingGeometry.Primitives.cpp
     OcctModelingGeometry.Assembly.cpp
     OcctModelingGeometry.Transform.cpp
-    OcctModelingAlgorithms.cpp
+    OcctModelingBoolean.cpp
+    OcctModelingFeatures.cpp
+    OcctModelingHealing.cpp
+    OcctModelingHistory.cpp
     OcctModelingAnalysis.cpp
     OcctModelingMesh.cpp
     OcctModelingExchange.cpp
