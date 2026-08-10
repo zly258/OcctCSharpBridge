@@ -8,7 +8,7 @@
 
 | 项目 | 当前值 |
 | --- | --- |
-| Author | **Liaoyuan Zhang** |
+| Author | **zly258** |
 | Demo / Bridge 版本 | **2.6.0** |
 | Native ABI | **4** |
 | Open CASCADE Technology | **7.9.0** |
@@ -85,7 +85,7 @@ main 发布流程会生成中英文完整 API Reference，执行 Release Native/
 .\build.ps1 avalonia Release
 ```
 
-`validate` 校验 Binary SDK Contract、Manifest 与 SHA-256，并禁止 Bridge 源码重新进入 demo。
+`validate` 校验 Binary SDK Contract、Manifest 与 SHA-256。
 
 ## 运行
 
@@ -145,7 +145,7 @@ Avalonia 仍通过 Windows 子 HWND 承载 Native Viewer，因此三套 Demo 都
 
 ## Author
 
-**Liaoyuan Zhang**  
+**zly258**  
 zhangly1403@gmail.com
 
 ## 许可证
