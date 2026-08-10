@@ -6,5 +6,6 @@
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningLevel>7</WarningLevel>
+    <OcctBridgeDistRoot>$(MSBuildThisFileDirectory)dist\win-x64</OcctBridgeDistRoot>
   </PropertyGroup>
 </Project>
