@@ -53,13 +53,6 @@ OcctNet.Wpf
 OcctNet.Avalonia
 ```
 
-For example:
-
-```powershell
-dotnet add package OcctNet --version 2.6.0 --source .\artifacts\packages
-dotnet add package OcctNet.Wpf --version 2.6.0 --source .\artifacts\packages
-```
-
 Managed packages intentionally do not bundle `OcctNative.dll` or OCCT `TK*.dll`. Deploy the matching native bridge and OCCT runtime with the application.
 
 ## Build the complete bridge
@@ -73,6 +66,31 @@ For another OCCT installation:
 ```powershell
 .\build.ps1 all Release -OcctRoot "E:\SDK\occt-7.9.0"
 ```
+
+## Produce the tracked Binary SDK
+
+`dist/win-x64` is not ordinary build output. It is the validated Binary SDK consumed directly by `demo`, OCStation, and other applications. The directory is intentionally tracked by Git and is exempt from the repository-wide `*.dll` ignore rule.
+
+```powershell
+.\dist.ps1 -OcctRoot "D:\tools\occt-vc144-64"
+```
+
+`dist.ps1` runs the Release build, managed tests, and native smoke validation before refreshing:
+
+```text
+dist/win-x64/
+├─ OcctNative.dll
+├─ OcctNet.dll
+├─ OcctNet.WinForms.dll
+├─ OcctNet.Wpf.dll
+├─ OcctNet.Avalonia.dll
+├─ bridge-contract.json
+└─ bridge-manifest.json
+```
+
+The manifest records the Bridge/ABI/OCCT/.NET contract, source commit, and SHA-256 hash of every distributed file so managed and native binaries cannot be mixed accidentally.
+
+OCCT `TK*.dll` and third-party runtime DLLs are intentionally not committed to `dist`; consumers resolve them through `OCCT_ROOT`, `CASROOT`, or explicit runtime configuration.
 
 ## Usage
 
@@ -131,6 +149,8 @@ src/OcctNet.Avalonia     Avalonia Windows-HWND viewport host
 tests                    Static contracts, managed regression and native smoke
 docs                     Authoritative numbered bridge documentation
 build.ps1                Local validation/build/test/pack/smoke entry point
+dist.ps1                 Full-validation Binary SDK publisher
+dist/win-x64             Tracked validated DLL/contract/manifest payload
 ```
 
 `OcctNet.Avalonia` currently hosts the native viewer through a Windows child HWND, so it is a Windows x64 adapter rather than a cross-platform OCCT viewer backend.
@@ -159,6 +179,21 @@ Run the real native gate:
 
 The repository does not use GitHub Actions as a substitute for local validation. Native validation uses `/W4 /WX`, the real OCCT 7.9.0 headers/libraries, `bridge-contract.json`, and Native/PInvoke parity checks.
 
+## main / demo boundary
+
+`main` is the Bridge source producer. `demo` is a real Binary SDK consumer and no longer mirrors `src/OcctNative`, `src/OcctNet*`, or Bridge tests.
+
+```text
+main Bridge change
+→ local build/test/smoke
+→ dist.ps1
+→ commit main/dist/win-x64
+→ demo/sync-dist.ps1
+→ build demo applications
+```
+
+If demo code no longer matches the current Bridge, update the demo caller instead of restoring legacy aliases, wrappers, or compatibility layers.
+
 ## Contributing
 
 1. Keep public APIs strongly typed and owner-aware; do not add legacy aliases or compatibility wrappers.
@@ -167,8 +202,9 @@ The repository does not use GitHub Actions as a substitute for local validation.
 4. Keep OCCT implementation inside the bridge and application-specific Document/Command/Tool behavior outside `main`.
 5. Do not introduce OCAF/XDE into the reusable bridge.
 6. Before committing, run `build.ps1 validate`, `build.ps1 managed`, and `build.ps1 test`; for native changes also run `build.ps1 all` and `build.ps1 smoke`.
-7. Reusable bridge source changes are synchronized to `demo` manually after local validation; GitHub Actions are not used to overwrite branches.
-8. Bridge technical documentation is maintained only under `main/docs`; `demo` does not duplicate the SDK documentation set.
+7. Update `dist/win-x64` only through `dist.ps1` after Release build, managed tests, and native smoke all pass.
+8. `demo` synchronizes the Binary SDK, not Bridge source; GitHub Actions are not used to overwrite branches.
+9. Bridge technical documentation is maintained only under `main/docs`; `demo` does not duplicate the SDK documentation set.
 
 ## License
 
