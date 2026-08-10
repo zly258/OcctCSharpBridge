@@ -4,6 +4,8 @@
 #include <StdSelect_BRepOwner.hxx>
 #include <TopExp_Explorer.hxx>
 
+#include <unordered_set>
+
 using namespace OcctBridge;
 
 namespace
@@ -15,18 +17,20 @@ namespace
     {
         if (count < 0) throw std::invalid_argument("Object count must not be negative.");
         if (count > 0 && objectIds == nullptr) throw std::invalid_argument("Object ID array is null.");
+
         std::vector<ObjectEntry*> result;
-        std::vector<OcctObjectId> uniqueIds;
+        std::unordered_set<OcctObjectId> uniqueIds;
+        result.reserve(static_cast<std::size_t>(count));
+        uniqueIds.reserve(static_cast<std::size_t>(count));
         for (int index = 0; index < count; ++index)
         {
             const OcctObjectId id = objectIds[index];
-            if (std::find(uniqueIds.begin(), uniqueIds.end(), id) != uniqueIds.end()) continue;
+            if (!uniqueIds.insert(id).second) continue;
             ObjectEntry* entry = engine->findObject(id);
             if (entry == nullptr || entry->presentation.IsNull())
                 throw std::invalid_argument("Object ID does not exist.");
             if (!entry->selectable)
                 throw std::invalid_argument("A non-selectable object cannot be added to the selection.");
-            uniqueIds.push_back(id);
             result.push_back(entry);
         }
         return result;
