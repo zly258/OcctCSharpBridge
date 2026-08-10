@@ -16,7 +16,7 @@ Run:
 
 ### `OcctNet.Smoke`
 
-Smoke tests load the real `OcctNative.dll` and OCCT runtime. The build script deploys `OcctNative.dll`, OCCT DLLs, and third-party runtime DLLs beside the smoke executable before running it.
+Smoke tests load the real `OcctNative.dll` and OCCT runtime. The build script places only the bridge DLL beside the smoke executable and passes the resolved `OCCT_ROOT` to the child process. `OcctRuntime` then configures the OCCT and third-party DLL search directories instead of flattening the entire native runtime into the test output directory.
 
 Run:
 
@@ -26,12 +26,13 @@ Run:
 
 ## Static checks
 
-Only five PowerShell checks remain:
+Six PowerShell checks remain in the normal build gate:
 
 | Script | Responsibility |
 |---|---|
-| `check-version-contract.ps1` | Bridge/ABI/OCCT/.NET/CMake version contract |
-| `check-demo-structure.ps1` | Demo project/reference boundaries, non-packable policy, local tooling, no compatibility layer |
+| `check-version-contract.ps1` | Bridge/ABI/OCCT/.NET/CMake version contract and .NET 10 test runner |
+| `check-architecture-boundaries.ps1` | Shared Bridge/UI dependency direction and main/demo branch-aware no-compatibility boundaries |
+| `check-demo-structure.ps1` | Demo project/reference boundaries, non-packable policy, local tooling, and demo-only structure |
 | `check-bulk-abi.ps1` | High-cardinality modeling and selection collections remain bulk-based |
 | `check-native-build-structure.ps1` | CMake source inventory, OCCT 7.9 exchange toolkits, no OCAF/XDE |
 | `check-api-surface.ps1` | Native declarations/definitions/PInvoke parity and API counts |
