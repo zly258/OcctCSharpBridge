@@ -29,7 +29,7 @@ namespace
     Handle(Geom_BSplineCurve) requireBSplineCurve(ModelSession* model, OcctObjectId edgeId)
     {
         const BRepAdaptor_Curve adaptor(requireEdge(model, edgeId));
-        if (adaptor.GetType() != GeomAbs_BSpline)
+        if (adaptor.GetType() != GeomAbs_BSplineCurve)
             throw std::invalid_argument("Edge curve is not a B-Spline.");
 
         Handle(Geom_BSplineCurve) curve = adaptor.BSpline();
