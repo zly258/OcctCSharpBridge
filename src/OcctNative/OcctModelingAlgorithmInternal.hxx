@@ -97,44 +97,6 @@ namespace OcctModelingInternal
         return {shapeId, operationId, 1, 0, 0};
     }
 
-    inline OcctObjectId historyShapeAt(
-        ModelSession* model,
-        OcctOperationId operationId,
-        OcctObjectId sourceId,
-        int index,
-        bool generated)
-    {
-        if (index < 0) throw std::out_of_range("History index must not be negative.");
-        const OperationRecord& operation = requireOperation(model, operationId);
-        if (operation.history.IsNull())
-            throw std::runtime_error("The operation has no topology history.");
-
-        const TopoDS_Shape& source = model->requireShape(sourceId);
-        const auto& list = generated
-            ? operation.history->Generated(source)
-            : operation.history->Modified(source);
-        int current = 0;
-        for (TopTools_ListIteratorOfListOfShape iterator(list); iterator.More(); iterator.Next(), ++current)
-        {
-            if (current == index) return model->addShape(iterator.Value());
-        }
-        throw std::out_of_range("History index is out of range.");
-    }
-
-    inline int historyCount(
-        ModelSession* model,
-        OcctOperationId operationId,
-        OcctObjectId sourceId,
-        bool generated)
-    {
-        const OperationRecord& operation = requireOperation(model, operationId);
-        if (operation.history.IsNull()) return 0;
-        const TopoDS_Shape& source = model->requireShape(sourceId);
-        return generated
-            ? operation.history->Generated(source).Size()
-            : operation.history->Modified(source).Size();
-    }
-
     inline int historyCopy(
         ModelSession* model,
         OcctOperationId operationId,
@@ -152,8 +114,12 @@ namespace OcctModelingInternal
             ? operation.history->Generated(source)
             : operation.history->Modified(source);
         const int count = list.Size();
+        if (results == nullptr)
+        {
+            if (capacity != 0) throw std::invalid_argument("Null history buffer requires zero capacity.");
+            return count;
+        }
         if (capacity < count) throw std::invalid_argument("History buffer capacity is smaller than the result count.");
-        if (count > 0 && results == nullptr) throw std::invalid_argument("History result buffer is null.");
 
         int index = 0;
         for (TopTools_ListIteratorOfListOfShape iterator(list); iterator.More(); iterator.Next(), ++index)
