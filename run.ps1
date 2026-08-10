@@ -36,14 +36,28 @@ function Add-PathEntry {
     param([Parameter(Mandatory = $true)][string]$Directory)
 
     if (-not (Test-Path -LiteralPath $Directory -PathType Container)) { return }
+
     $fullDirectory = [System.IO.Path]::GetFullPath($Directory).TrimEnd('\')
-    $current = $env:PATH ?? ""
-    $entries = $current.Split(';', [System.StringSplitOptions]::RemoveEmptyEntries)
-    if ($entries.Any({
-        try { [System.IO.Path]::GetFullPath($_).TrimEnd('\').Equals($fullDirectory, [System.StringComparison]::OrdinalIgnoreCase) }
-        catch { $false }
-    })) { return }
-    $env:PATH = if ([string]::IsNullOrEmpty($current)) { $fullDirectory } else { "$fullDirectory;$current" }
+    $current = [Environment]::GetEnvironmentVariable("PATH")
+    if ($null -eq $current) { $current = "" }
+
+    $alreadyPresent = $false
+    foreach ($entry in $current.Split(';', [System.StringSplitOptions]::RemoveEmptyEntries)) {
+        try {
+            $normalized = [System.IO.Path]::GetFullPath($entry).TrimEnd('\')
+            if ($normalized.Equals($fullDirectory, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $alreadyPresent = $true
+                break
+            }
+        }
+        catch {
+            # Ignore malformed PATH entries owned by other applications.
+        }
+    }
+
+    if (-not $alreadyPresent) {
+        $env:PATH = if ([string]::IsNullOrEmpty($current)) { $fullDirectory } else { "$fullDirectory;$current" }
+    }
 }
 
 if (-not (Test-Path -LiteralPath $OcctBinDir -PathType Container)) {
