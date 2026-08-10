@@ -6,8 +6,8 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $sourceRoots = @(
-    Join-Path $RepositoryRoot "src\OcctNative",
-    Join-Path $RepositoryRoot "src\OcctNet"
+    (Join-Path $RepositoryRoot "src\OcctNative")
+    (Join-Path $RepositoryRoot "src\OcctNet")
 )
 foreach ($root in $sourceRoots) {
     if (-not (Test-Path $root -PathType Container)) {
