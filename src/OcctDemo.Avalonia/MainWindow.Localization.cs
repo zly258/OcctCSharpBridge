@@ -76,10 +76,8 @@ public sealed partial class MainWindow
 
     private void ShowAbout()
     {
-        var text = Local(
-            "OCCT CAD demonstration application\nOpen CASCADE Technology 7.9.0\nWinForms / WPF / Avalonia native viewport bridge\n\nRepository: https://github.com/zly258/OcctCSharpBridge\nLicense: PolyForm Noncommercial License 1.0.0\nAuthor: Liaoyuan Zhang\nEmail: zhangly1403@gmail.com",
-            "OCCT CAD 演示应用\nOpen CASCADE Technology 7.9.0\nWinForms / WPF / Avalonia 原生视口桥接\n\n仓库：https://github.com/zly258/OcctCSharpBridge\n许可证：PolyForm Noncommercial License 1.0.0\n作者：Liaoyuan Zhang\n邮箱：zhangly1403@gmail.com");
-        Forms.MessageBox.Show(text, DemoLocalization.Text("Menu.About"), Forms.MessageBoxButtons.OK, Forms.MessageBoxIcon.Information);
+        Forms.MessageBox.Show(DemoProductInfo.AboutText(DemoLocalization.CurrentLanguage), DemoLocalization.Text("Menu.About"),
+            Forms.MessageBoxButtons.OK, Forms.MessageBoxIcon.Information);
     }
 
     private static string MaterialDisplayName(OcctMaterial material)
