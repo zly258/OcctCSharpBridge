@@ -46,7 +46,10 @@ foreach ($module in @(
     @{ File = "OcctModelingGeometryQueries.cpp"; Symbols = @("occt_model_vertex_point", "occt_model_edge_point_at", "occt_model_face_point_normal") },
     @{ File = "OcctModelingTopology.cpp"; Symbols = @("occt_model_topology_count", "occt_model_outer_wire", "occt_model_ancestor_at") },
     @{ File = "OcctModelingInterop.cpp"; Symbols = @("occt_model_display_in_engine") },
-    @{ File = "OcctModelingAlgorithms.cpp"; Symbols = @("occt_model_boolean", "occt_model_extrude", "occt_model_fix_shape") },
+    @{ File = "OcctModelingBoolean.cpp"; Symbols = @("occt_model_boolean", "occt_model_split") },
+    @{ File = "OcctModelingFeatures.cpp"; Symbols = @("occt_model_extrude", "occt_model_revolve", "occt_model_thick_solid") },
+    @{ File = "OcctModelingHealing.cpp"; Symbols = @("occt_model_unify_same_domain", "occt_model_fix_shape") },
+    @{ File = "OcctModelingHistory.cpp"; Symbols = @("occt_model_history_generated_count", "occt_model_history_modified_at", "occt_model_history_is_removed") },
     @{ File = "OcctModelingAnalysis.cpp"; Symbols = @("occt_model_project_point_on_edge", "occt_model_ray_intersections", "occt_model_classify_point") },
     @{ File = "OcctModelingMesh.cpp"; Symbols = @("occt_model_mesh", "occt_model_face_mesh_node", "occt_model_face_mesh_triangle") },
     @{ File = "OcctModelingExchange.cpp"; Symbols = @("occt_model_import_step", "occt_model_import_file", "occt_model_export_step", "occt_model_export_stl") },
@@ -60,6 +63,7 @@ foreach ($module in @(
 
 if ((Get-Item (Join-Path $nativeRoot "OcctModelingCore.cpp")).Length -gt 9000) { throw "OcctModelingCore.cpp has grown beyond the session/registry boundary." }
 if ((Get-Item (Join-Path $nativeRoot "OcctModelingAnalysis.cpp")).Length -gt 10000) { throw "OcctModelingAnalysis.cpp must remain limited to projection/intersection/classification." }
+if (Test-Path (Join-Path $nativeRoot "OcctModelingAlgorithms.cpp")) { throw "Legacy mixed-responsibility OcctModelingAlgorithms.cpp must remain removed." }
 
 $modelingInternalHeaders = @(
     @{ File = "OcctModelingSessionInternal.hxx"; Symbols = @("struct ModelSession", "modelOf", "executeShape", "requireOperation") },
