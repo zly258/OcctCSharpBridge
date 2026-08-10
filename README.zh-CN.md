@@ -59,15 +59,28 @@ dist/win-x64/
 
 `bridge-manifest.json` 记录 Bridge/ABI/OCCT/.NET 契约、源码 Commit 和各文件 SHA-256，避免 Managed Wrapper 与 Native DLL 混用不同版本。OCCT `TK*.dll` 与第三方 Runtime 不进入 `dist`，仍由 `OCCT_ROOT`、`CASROOT` 或显式运行时配置解析。
 
-## 一键发布到 demo
+## 一键正式发布
 
 ```powershell
 .\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-`publish.ps1` 会执行 `dist` 全验证门禁，提交并推送 `main/dist/win-x64`，再使用临时 detached worktree 打开 `demo`，只同步 Binary SDK、校验 Manifest/SHA-256、提交并推送 demo。整个过程不会切换当前工作目录分支，也不使用 GitHub Actions。
+正式发布流程统一为：
 
-需要只演练本地流程时使用 `-NoPush`。
+```text
+main 工作区必须干净
+→ 自动生成完整中英文 API Reference
+→ API Reference 有变化则提交
+→ 以新的干净 Commit 运行 Release Binary SDK 全门禁
+→ 生成/提交 dist/win-x64
+→ push main
+→ 临时 detached worktree 打开 demo
+→ 只同步 dist/win-x64
+→ 校验 Contract / Manifest / SHA-256
+→ commit + push demo
+```
+
+这样 `bridge-manifest.json` 中的 `sourceCommit` 与实际生成 DLL 的源码、公开 API 文档保持一致。发布过程不会切换当前开发目录分支，也不使用 GitHub Actions。
 
 ## 使用示例
 
@@ -98,7 +111,7 @@ docs/zh-CN                      中文专题文档 + API Reference
 docs/en-US                      英文专题文档 + API Reference
 dist/win-x64                    可提交的已验证 Binary SDK
 build.ps1                       validate/build/test/pack/docs/dist 统一入口
-publish.ps1                     main → demo Binary SDK 发布入口
+publish.ps1                     API 文档 + Binary SDK + main→demo 正式发布入口
 ```
 
 ## 分支边界
