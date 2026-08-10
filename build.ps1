@@ -7,7 +7,8 @@
     [ValidateSet("Debug", "Release", "RelWithDebInfo")]
     [string]$Configuration = "Release",
 
-    [string]$OcctRoot = $env:OCCT_ROOT
+    [string]$OcctRoot = $env:OCCT_ROOT,
+    [switch]$SkipSmoke
 )
 
 $ErrorActionPreference = "Stop"
@@ -352,7 +353,12 @@ function Build-BinaryDistribution {
 
     Build-Native
     Build-Managed
-    Run-Smoke
+    if ($SkipSmoke) {
+        Write-Host "[dist] Smoke tests skipped by request." -ForegroundColor Yellow
+    }
+    else {
+        Run-Smoke
+    }
 
     $files = [ordered]@{
         "OcctNative.dll" = Join-Path $RepoRoot "build\native\bin\Release\OcctNative.dll"
