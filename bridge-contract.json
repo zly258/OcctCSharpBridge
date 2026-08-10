@@ -17,6 +17,19 @@
     "managedPInvokes": 344,
     "publicNetTypes": 105,
     "viewer": 210,
-    "modeling": 134
+    "modeling": 134,
+    "nativeHeaders": [
+      "OcctNative.h",
+      "OcctSelectionOverlay.h",
+      "OcctSelectionState.h",
+      "OcctModeling.h",
+      "OcctModelingExtensions.h",
+      "OcctModelingBSpline.h",
+      "OcctModelingTopologyAnalysis.h",
+      "OcctModelingFaceAnalysis.h",
+      "OcctModelingInertia.h",
+      "OcctModelingIntersection.h",
+      "OcctModelingTopologyReference.h"
+    ]
   }
 }
