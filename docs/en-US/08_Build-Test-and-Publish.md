@@ -1,6 +1,8 @@
 # 08 Build, Test and Publish
 
-Validation is layered: repository contracts, managed regression tests, real native smoke tests, generated API Reference, and the validated Binary SDK.
+Validation is layered: repository contracts, managed regression tests, real native smoke tests, generated Managed + Native API Reference, and the validated Binary SDK.
+
+Current release metadata is summarized in the documentation index; the author is **Liaoyuan Zhang** and the current Bridge contract is 2.6.0 / ABI 4 / OCCT 7.9.0 / .NET 10 / C# 14 / C++17 / Windows x64.
 
 ## Build targets
 
@@ -17,7 +19,16 @@ Validation is layered: repository contracts, managed regression tests, real nati
 .\build.ps1 clean Release
 ```
 
-`docs` builds the managed SDK and runs `tools/OcctApiDocsGenerator`. The generator enumerates every exported managed type and its declared public constructors, properties, events, methods and fields into both language trees.
+`docs` builds the managed SDK and runs `tools/OcctApiDocsGenerator`. The generator emits both language trees and covers:
+
+```text
+docs/en-US/api/reference/**
+docs/en-US/api/native-abi.md
+docs/zh-CN/api/reference/**
+docs/zh-CN/api/native-abi.md
+```
+
+The managed reference enumerates every exported type and its public constructors, properties, events, methods and fields, using XML Documentation for summaries, parameters, returns, remarks and exceptions where available. The Native reference is generated from `src/OcctNative/OcctNative.h` and must match the contracted 344 C exports. Public .NET type count and Native export count are checked against `bridge-contract.json` during generation.
 
 `dist` is Release-only and requires a clean worktree. It runs native build, managed build, managed tests and native smoke before replacing `dist/win-x64` through a staging/backup transaction. The generated manifest records the exact clean source commit and SHA-256 hashes.
 
