@@ -130,6 +130,9 @@ catch {
 if ([string]$globalJson.sdk.version -ne $expectedSdkVersion) {
     throw "global.json SDK differs from bridge-contract.json."
 }
+if ([string]$globalJson.test.runner -ne "Microsoft.Testing.Platform") {
+    throw "global.json must select Microsoft.Testing.Platform for .NET 10 tests."
+}
 
 [xml]$directoryProps = Read-Text "Directory.Build.props"
 $languageVersion = Get-ProjectProperty $directoryProps "LangVersion"
