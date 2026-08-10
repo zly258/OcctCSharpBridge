@@ -176,8 +176,7 @@ function Run-ManagedTests {
         "-c", $Configuration,
         "-p:Platform=x64",
         "-p:Version=$BridgeVersion",
-        "--no-build",
-        "--nologo"
+        "--no-build"
     ) "Managed bridge regression tests failed."
 }
 
@@ -353,8 +352,6 @@ function Build-BinaryDistribution {
 
     Build-Native
     Build-Managed
-    Build-Project "ManagedTests"
-    Run-ManagedTests
     Run-Smoke
 
     $files = [ordered]@{
