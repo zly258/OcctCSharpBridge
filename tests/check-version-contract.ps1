@@ -21,6 +21,7 @@ $expectedVersion = [string]$contract.bridgeVersion
 $expectedAbiVersion = [int]$contract.nativeAbiVersion
 $expectedOcctVersion = [string]$contract.occtVersion
 $expectedCmakeVersion = [string]$contract.cmakeMinimumVersion
+$expectedAuthor = [string]$contract.author
 $expectedTargetFramework = [string]$contract.dotnet.targetFramework
 $expectedSdkVersion = [string]$contract.dotnet.sdkVersion
 $expectedLanguageVersion = [string]$contract.dotnet.languageVersion
@@ -34,6 +35,7 @@ foreach ($entry in ([ordered]@{
     bridgeVersion = $expectedVersion
     occtVersion = $expectedOcctVersion
     cmakeMinimumVersion = $expectedCmakeVersion
+    author = $expectedAuthor
     targetFramework = $expectedTargetFramework
     sdkVersion = $expectedSdkVersion
     languageVersion = $expectedLanguageVersion
@@ -136,8 +138,13 @@ if ([string]$globalJson.test.runner -ne "Microsoft.Testing.Platform") {
 
 [xml]$directoryProps = Read-Text "Directory.Build.props"
 $languageVersion = Get-ProjectProperty $directoryProps "LangVersion"
+$author = Get-ProjectProperty $directoryProps "Authors"
+$company = Get-ProjectProperty $directoryProps "Company"
 if ($languageVersion -ne $expectedLanguageVersion) {
     throw "Directory.Build.props LangVersion differs from bridge-contract.json."
+}
+if ($author -ne $expectedAuthor -or $company -ne $expectedAuthor) {
+    throw "Directory.Build.props Authors/Company must match bridge-contract.json author '$expectedAuthor'."
 }
 
 $nativeCmake = Read-Text "src/OcctNative/CMakeLists.txt"
@@ -159,10 +166,11 @@ if ($contractText.Contains("compatibilityPublicNetTypes")) {
     throw "Compatibility API accounting must not be reintroduced into the new library contract."
 }
 
-Write-Host ("[version] Bridge {0}, ABI {1}, OCCT {2}, SDK {3}, target {4}, C# {5}, API {6}/{7}, public types {8}, viewer/modeling {9}/{10}." -f
+Write-Host ("[version] Bridge {0}, ABI {1}, OCCT {2}, author {3}, SDK {4}, target {5}, C# {6}, API {7}/{8}, public types {9}, viewer/modeling {10}/{11}." -f
     $expectedVersion,
     $expectedAbiVersion,
     $expectedOcctVersion,
+    $expectedAuthor,
     $expectedSdkVersion,
     $expectedTargetFramework,
     $expectedLanguageVersion,
