@@ -4,6 +4,10 @@
 
 This branch contains the static GitHub Pages site for [OcctCSharpBridge](https://github.com/zly258/OcctCSharpBridge). It is intentionally independent from the C++/.NET build and has no Node.js, npm, bundler, framework, CDN, or external font dependency.
 
+## Project contract
+
+The website describes the current `main` Bridge contract: Bridge **2.6.0**, Native ABI **3**, OCCT **7.9.0**, .NET SDK **10.0.302**, target **`net10.0-windows`**, and C# **14.0**. `main/bridge-contract.json` is authoritative; when those values change, the website content and website contract checks must change in the same update.
+
 ## Files
 
 ```text
