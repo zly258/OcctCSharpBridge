@@ -1,4 +1,4 @@
-﻿param(
+param(
     [string]$RepositoryRoot = (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
 )
 
@@ -24,6 +24,7 @@ $sourceText = ($sourceRoots | ForEach-Object {
 }) -join "`n"
 
 $requiredBulkApis = @(
+    "occt_object_descriptors",
     "occt_model_shape_ids_copy",
     "occt_model_subshapes_copy",
     "occt_model_inner_wires_copy",
@@ -42,6 +43,11 @@ foreach ($api in $requiredBulkApis) {
 }
 
 $forbiddenIndexedApis = @(
+    "occt_object_id_at",
+    "occt_shape_id_at",
+    "occt_shape_count",
+    "occt_selected_count",
+    "occt_selected_at",
     "occt_model_shape_count",
     "occt_model_shape_id_at",
     "occt_model_topology_count",
@@ -68,4 +74,4 @@ foreach ($api in $forbiddenIndexedApis) {
     }
 }
 
-Write-Host "[bulk-abi] Modeling high-cardinality collections and selected hits use bulk transfer; retired indexed ABI is absent." -ForegroundColor Green
+Write-Host "[bulk-abi] Viewer/Modeling high-cardinality collections use bulk transfer; retired indexed ABI is absent." -ForegroundColor Green
