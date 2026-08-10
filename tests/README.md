@@ -36,7 +36,7 @@
 
 ## 2. Managed 回归
 
-`OcctNet.ManagedTests` 不加载 OCCT，验证：
+`OcctNet.ManagedTests` 不加载 OCCT，使用 `MSTest.Sdk` + 标准 `dotnet test`，验证：
 
 - Value Type 与 Guard；
 - Owner-aware Handle 语义；
@@ -45,7 +45,19 @@
 - Viewport Interaction Policy；
 - Inertia、Intersection、Topology Reference 等 DTO Mapping。
 
-当前项目仍使用轻量 EXE Runner，由 `build.ps1 ci` 运行。后续会迁移到标准 `dotnet test`，使 IDE/Test Explorer/CI 报告更统一。
+执行：
+
+```powershell
+.\build.ps1 test Release
+```
+
+也可以直接执行：
+
+```powershell
+dotnet test .\tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj -c Release -p:Platform=x64
+```
+
+测试现在由 Test Explorer/CLI 正常发现，每个 TestMethod 独立报告失败，不再依赖顶层 EXE Runner 或 `[ModuleInitializer]` 隐式执行。
 
 ## 3. Native Smoke
 
@@ -71,13 +83,24 @@
 .\build.ps1 smoke Release -OcctRoot "E:\SDK\occt-7.9.0"
 ```
 
-## 4. 推荐验证顺序
+## 4. 构建缓存与清理
+
+默认构建保留 `bin/obj`，交给 MSBuild/CMake 做增量判断。只有确实需要全量重建时执行：
+
+```powershell
+.\build.ps1 clean Release
+```
+
+不要在日常构建前手工删除每个项目的 `bin/obj`，否则会失去增量编译收益。
+
+## 5. 推荐验证顺序
 
 日常修改：
 
 ```powershell
 .\build.ps1 validate Release
 .\build.ps1 managed Release
+.\build.ps1 test Release
 ```
 
 准备提交：
@@ -92,7 +115,7 @@
 .\build.ps1 smoke Release
 ```
 
-## 5. 新增检查的原则
+## 6. 新增检查的原则
 
 新增 PowerShell Contract Check 前，先判断它是否满足：
 
