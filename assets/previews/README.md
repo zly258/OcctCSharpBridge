@@ -5,7 +5,7 @@ This directory contains the canonical full-resolution PNG screenshots used by th
 Current project metadata shown by the demos and website:
 
 ```text
-Author: Liaoyuan Zhang
+Author: zly258
 Bridge: 2.6.0
 Native ABI: 4
 OCCT: 7.9.0
@@ -33,7 +33,7 @@ Rules:
 - Keep English and Simplified Chinese screenshots at the same resolution when possible.
 - Capture the full application window with a representative OCCT model visible.
 - The website must reference these six canonical `demo` branch URLs directly.
-- If About information is visible in a screenshot, the author must be `Liaoyuan Zhang` in both language modes and the displayed Bridge/ABI/technology baseline must match `DemoProductInfo`.
+- If About information is visible in a screenshot, the author must be `zly258` in both language modes and the displayed Bridge/ABI/technology baseline must match `DemoProductInfo`.
 - Demo build validation is performed by `build.ps1 validate`; there is no `tests/check-demo-package.ps1` in the Binary SDK consumer branch.
 
 Do not add legacy preview aliases. If a screenshot is refreshed, replace the canonical PNG in place so documentation and website references remain stable.
