@@ -62,22 +62,31 @@ internal static partial class Program
 
         public ApiDoc Type(Type type) => Exact("T:" + XmlTypeName(type));
         public ApiDoc Field(Type type, FieldInfo field) => Exact("F:" + XmlTypeName(type) + "." + field.Name);
-        public ApiDoc Property(Type type, PropertyInfo property) => Exact("P:" + XmlTypeName(type) + "." + property.Name);
         public ApiDoc Event(Type type, EventInfo value) => Exact("E:" + XmlTypeName(type) + "." + value.Name);
+
+        public ApiDoc Property(Type type, PropertyInfo property)
+        {
+            var prefix = "P:" + XmlTypeName(type) + "." + property.Name;
+            return Prefix(prefix, property.GetIndexParameters().Length);
+        }
 
         public ApiDoc Method(Type type, MethodBase method)
         {
-            var methodName = method.IsConstructor ? "#ctor" : method.Name;
+            var methodName = method.IsConstructor
+                ? "#ctor"
+                : method.Name + (method.IsGenericMethodDefinition ? "``" + method.GetGenericArguments().Length : "");
             var prefix = "M:" + XmlTypeName(type) + "." + methodName;
+            return Prefix(prefix, method.GetParameters().Length);
+        }
+
+        private ApiDoc Prefix(string prefix, int parameterCount)
+        {
             var candidates = _members
                 .Where(pair => pair.Key == prefix || pair.Key.StartsWith(prefix + "(", StringComparison.Ordinal))
                 .SelectMany(pair => pair.Value)
                 .ToArray();
             if (candidates.Length == 0) return ApiDoc.Empty;
-
-            var parameterCount = method.GetParameters().Length;
-            return candidates.FirstOrDefault(candidate => candidate.Parameters.Count == parameterCount)
-                ?? candidates[0];
+            return candidates.FirstOrDefault(candidate => candidate.Parameters.Count == parameterCount) ?? candidates[0];
         }
 
         private ApiDoc Exact(string key) => _members.TryGetValue(key, out var values) && values.Count > 0 ? values[0] : ApiDoc.Empty;
@@ -201,7 +210,7 @@ internal static partial class Program
             var assemblyPaths = inputs
                 .SelectMany(input => Directory.Exists(input.OutputDirectory)
                     ? Directory.EnumerateFiles(input.OutputDirectory, "*.dll", SearchOption.TopDirectoryOnly)
-                    : [])
+                    : Enumerable.Empty<string>())
                 .GroupBy(path => Path.GetFileNameWithoutExtension(path), StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
 
@@ -222,9 +231,15 @@ internal static partial class Program
 
             using var contract = JsonDocument.Parse(File.ReadAllText(contractPath));
             var expectedNativeExports = contract.RootElement.GetProperty("api").GetProperty("nativeExports").GetInt32();
+            var expectedPublicTypes = contract.RootElement.GetProperty("api").GetProperty("publicNetTypes").GetInt32();
             var bridgeVersion = contract.RootElement.GetProperty("bridgeVersion").GetString() ?? string.Empty;
             var abiVersion = contract.RootElement.GetProperty("nativeAbiVersion").GetInt32();
+            var publicTypes = loaded.Sum(item => item.Assembly.GetExportedTypes().Length);
+            if (publicTypes != expectedPublicTypes)
+                throw new InvalidOperationException($"Managed API docs found {publicTypes} public types; bridge-contract.json requires {expectedPublicTypes}.");
+
             var headerPath = Path.Combine(root, "src", "OcctNative", "OcctNative.h");
+            if (!File.Exists(headerPath)) throw new FileNotFoundException("OcctNative.h was not found.", headerPath);
             var header = File.ReadAllText(headerPath);
             var nativeFunctions = ParseNativeFunctions(header);
             if (nativeFunctions.Count != expectedNativeExports)
@@ -235,7 +250,6 @@ internal static partial class Program
             WriteNativeLanguage(root, Zh, bridgeVersion, abiVersion, expectedNativeExports, header, nativeFunctions);
             WriteNativeLanguage(root, En, bridgeVersion, abiVersion, expectedNativeExports, header, nativeFunctions);
 
-            var publicTypes = loaded.Sum(item => item.Assembly.GetExportedTypes().Length);
             Console.WriteLine($"Generated bilingual API reference for {publicTypes} public .NET types and {nativeFunctions.Count} Native C exports.");
             return 0;
         }
@@ -483,7 +497,7 @@ internal static partial class Program
                 if (!string.IsNullOrWhiteSpace(text)) group = text;
                 continue;
             }
-            if (!collecting && line.Contains("OCCTBRIDGE_API", StringComparison.Ordinal))
+            if (!collecting && line.StartsWith("OCCTBRIDGE_API ", StringComparison.Ordinal))
             {
                 collecting = true;
                 declaration.Clear();
@@ -550,9 +564,11 @@ internal static partial class Program
     private static string ExtractNativeTypeBlock(string header)
     {
         var start = header.IndexOf("using OcctHandle", StringComparison.Ordinal);
-        var firstExport = header.IndexOf("OCCTBRIDGE_API", StringComparison.Ordinal);
-        if (start < 0 || firstExport <= start) return string.Empty;
-        return header[start..firstExport].Trim();
+        if (start < 0) return string.Empty;
+        var remainder = header[start..];
+        var firstExport = NativeExportLineRegex().Match(remainder);
+        if (!firstExport.Success) return string.Empty;
+        return remainder[..firstExport.Index].Trim();
     }
 
     private static List<NativeParameter> ParseNativeParameters(string value)
@@ -721,4 +737,7 @@ internal static partial class Program
 
     [GeneratedRegex(@"^(?<type>.+?)\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)$")]
     private static partial Regex NativeParameterRegex();
+
+    [GeneratedRegex(@"(?m)^\s*OCCTBRIDGE_API\s+.+\bocct_[A-Za-z0-9_]+\s*\(")]
+    private static partial Regex NativeExportLineRegex();
 }
