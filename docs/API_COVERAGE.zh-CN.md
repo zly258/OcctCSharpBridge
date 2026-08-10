@@ -11,12 +11,12 @@ Bridge 明确不使用 OCAF/XDE。Document、Feature/Entity、Command、Tool、U
 - 原生桥接版本：`2.6.0`
 - Native ABI：`3`
 - OCCT：`7.9.0`
-- Native exports：`348`
-- Managed P/Invoke declarations：`348`
+- Native exports：`351`
+- Managed P/Invoke declarations：`351`
 - Public .NET types：`99`
 - Compatibility .NET types：`1`
 - Viewer API：`214`
-- Modeling API：`134`
+- Modeling API：`137`
 
 `Public .NET types` 表示 Bridge 2.6 的主 owner-aware 公共接口；`Compatibility .NET types` 当前只有 Bridge 2.5 的 `OcctObject` 兼容句柄。2.x 期间保留兼容入口，但不继续扩展新的 legacy API。
 
@@ -78,6 +78,8 @@ Bridge 明确不使用 OCAF/XDE。Document、Feature/Entity、Command、Tool、U
 
 算法覆盖 Fuse/Cut/Common/Section/Splitter、Extrude/Revolve/Sweep/Loft、Fillet/Chamfer、3D Offset、平面 Wire Offset、Thick Solid、Same-Domain Unify、Healing 与 Operation History。
 
+射线命中结果以及 Generated/Modified 拓扑历史均通过批量复制 Native ABI 获取；旧的索引式 `...At` 导出继续保留用于 ABI 兼容，但托管集合接口不再逐项调用。
+
 ### 拓扑与 Shape 查询
 
 - Shape 类型、方向、闭合、有效性、检查报告、Hash、Tolerance；
@@ -124,10 +126,10 @@ Bridge 明确不使用 OCAF/XDE。Document、Feature/Entity、Command、Tool、U
 
 - Session/Registry、Shape Queries、Topology、Geometry Queries、Viewer Interop 独立分责；
 - Geometry 构造拆分为 Curves、Planar、Primitives、Assembly、Transform；
-- Projection/Ray/Classification、Mesh、Exchange 已独立分责；
+- Boolean、Feature、Healing、Operation History、Projection/Ray/Classification、Mesh、Exchange 已独立分责；
 - 广义 `OcctModelingInternal.hxx` 已退出，模块只包含最窄内部 Header 与自己直接使用的 OCCT Header。
 
-这些整理保持 348 个 C Export 和 ABI 3 已有签名不变，同时降低 Native 偶然耦合。
+这些整理保持 ABI 3 已有签名不变，同时以加法方式扩展到 351 个 C Export。
 
 ## UI Host 交互边界
 
