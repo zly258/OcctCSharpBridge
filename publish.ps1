@@ -30,6 +30,23 @@ function Invoke-Git {
     }
 }
 
+function Get-CurrentBranch {
+    param([Parameter(Mandatory = $true)][string]$WorkingDirectory)
+
+    # git branch --show-current was added in Git 2.22. Use rev-parse so the
+    # publish workflow remains compatible with older Git installations.
+    $output = @(& git -C $WorkingDirectory rev-parse --abbrev-ref HEAD 2>$null)
+    if ($LASTEXITCODE -ne 0 -or $output.Count -ne 1) {
+        throw "Failed to resolve the current Git branch."
+    }
+
+    $branch = [string]$output[0]
+    if ([string]::IsNullOrWhiteSpace($branch) -or $branch -eq "HEAD") {
+        throw "publish.ps1 must be run from a named branch, not detached HEAD."
+    }
+    return $branch.Trim()
+}
+
 function Invoke-Build {
     param(
         [Parameter(Mandatory = $true)][string]$Target,
@@ -149,9 +166,9 @@ function Test-BinarySdk {
 Assert-Command "git"
 if (-not (Test-Path $BuildScript -PathType Leaf)) { throw "build.ps1 was not found." }
 
-$currentBranch = (& git -C $RepoRoot branch --show-current).Trim()
-if ($LASTEXITCODE -ne 0 -or $currentBranch -ne "main") {
-    throw "publish.ps1 must be run from the main branch."
+$currentBranch = Get-CurrentBranch -WorkingDirectory $RepoRoot
+if ($currentBranch -ne "main") {
+    throw "publish.ps1 must be run from the main branch. Current branch: $currentBranch"
 }
 
 $initialChanges = @(& git -C $RepoRoot status --porcelain --untracked-files=all)
