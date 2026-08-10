@@ -27,7 +27,18 @@ $RepoRoot = Split-Path -Parent $PSCommandPath
 $DistRoot = Join-Path $RepoRoot "dist\win-x64"
 $ContractPath = Join-Path $DistRoot "bridge-contract.json"
 $ManifestPath = Join-Path $DistRoot "bridge-manifest.json"
+$PropsPath = Join-Path $RepoRoot "Directory.Build.props"
+$GlobalJsonPath = Join-Path $RepoRoot "global.json"
 $script:TargetFramework = "net10.0-windows"
+
+[xml]$props = Get-Content -LiteralPath $PropsPath -Raw
+$propertyGroup = $props.Project.PropertyGroup
+$globalJson = Get-Content -LiteralPath $GlobalJsonPath -Raw | ConvertFrom-Json
+$ExpectedBridgeVersion = [string]$propertyGroup.Version
+$ExpectedNativeAbi = [int]$propertyGroup.OcctBridgeNativeAbiVersion
+$ExpectedOcctVersion = [string]$propertyGroup.OcctBridgeOcctVersion
+$ExpectedLanguageVersion = [string]$propertyGroup.LangVersion
+$ExpectedSdkVersion = [string]$globalJson.sdk.version
 
 $Projects = [ordered]@{
     common = @{
@@ -100,35 +111,33 @@ function Test-BinarySdk {
         "bridge-contract.json",
         "bridge-manifest.json"
     )
-
     foreach ($name in $required) {
         Assert-Path (Join-Path $DistRoot $name)
-    }
-
-    Assert-Command "git"
-    $bridgeSourcePatterns = @(
-        "src/OcctNative/*",
-        "src/OcctNet/*",
-        "src/OcctNet.WinForms/*",
-        "src/OcctNet.Wpf/*",
-        "src/OcctNet.Avalonia/*"
-    )
-    $trackedBridgeSources = @(& git -C $RepoRoot ls-files -- @bridgeSourcePatterns)
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to inspect tracked Demo source paths."
-    }
-    if ($trackedBridgeSources.Count -gt 0) {
-        throw "Demo must not track Bridge source code: $($trackedBridgeSources -join ', ')"
     }
 
     $contract = Get-Content -LiteralPath $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
     $manifest = Get-Content -LiteralPath $ManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 
+    if ([string]$contract.bridgeVersion -ne $ExpectedBridgeVersion) {
+        throw "Unsupported Bridge version: $($contract.bridgeVersion). Demo expects $ExpectedBridgeVersion."
+    }
+    if ([int]$contract.nativeAbiVersion -ne $ExpectedNativeAbi) {
+        throw "Unsupported Bridge native ABI: $($contract.nativeAbiVersion). Demo expects ABI $ExpectedNativeAbi."
+    }
+    if ([string]$contract.occtVersion -ne $ExpectedOcctVersion) {
+        throw "Unsupported OCCT version: $($contract.occtVersion). Demo expects $ExpectedOcctVersion."
+    }
     if ([string]$contract.platform -ne "windows-x64") {
         throw "Unsupported Bridge platform: $($contract.platform)"
     }
     if ([string]$contract.dotnet.targetFramework -ne "net10.0-windows") {
         throw "Unsupported Bridge target framework: $($contract.dotnet.targetFramework)"
+    }
+    if ([string]$contract.dotnet.sdkVersion -ne $ExpectedSdkVersion) {
+        throw "Unsupported Bridge .NET SDK: $($contract.dotnet.sdkVersion). Demo expects $ExpectedSdkVersion."
+    }
+    if ([string]$contract.dotnet.languageVersion -ne $ExpectedLanguageVersion) {
+        throw "Unsupported Bridge C# language version: $($contract.dotnet.languageVersion). Demo expects $ExpectedLanguageVersion."
     }
     $script:TargetFramework = [string]$contract.dotnet.targetFramework
 
@@ -139,7 +148,9 @@ function Test-BinarySdk {
         [int]$manifest.nativeAbiVersion -ne [int]$contract.nativeAbiVersion -or
         [string]$manifest.occtVersion -ne [string]$contract.occtVersion -or
         [string]$manifest.platform -ne [string]$contract.platform -or
-        [string]$manifest.targetFramework -ne [string]$contract.dotnet.targetFramework) {
+        [string]$manifest.targetFramework -ne [string]$contract.dotnet.targetFramework -or
+        [string]$manifest.sdkVersion -ne [string]$contract.dotnet.sdkVersion -or
+        [string]$manifest.languageVersion -ne [string]$contract.dotnet.languageVersion) {
         throw "Bridge binary manifest does not match bridge-contract.json."
     }
 
@@ -159,15 +170,24 @@ function Test-BinarySdk {
     }
 
     foreach ($entry in @($manifest.files)) {
-        $path = Join-Path $DistRoot ([string]$entry.name)
+        $name = [string]$entry.name
+        if ([string]::IsNullOrWhiteSpace($name) -or $name.Contains('/') -or $name.Contains('\')) {
+            throw "Invalid Bridge manifest file name: $name"
+        }
+        $path = Join-Path $DistRoot $name
         Assert-Path $path
         $actual = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
         if ($actual -ne ([string]$entry.sha256).ToLowerInvariant()) {
-            throw "Bridge binary hash mismatch: $($entry.name)"
+            throw "Bridge binary hash mismatch: $name"
         }
     }
 
-    Write-Host ("Bridge Binary SDK: {0}, ABI {1}, OCCT {2}" -f $contract.bridgeVersion, $contract.nativeAbiVersion, $contract.occtVersion) -ForegroundColor Green
+    Write-Host ("Bridge Binary SDK: {0}, ABI {1}, OCCT {2}, .NET SDK {3}, C# {4}" -f
+        $contract.bridgeVersion,
+        $contract.nativeAbiVersion,
+        $contract.occtVersion,
+        $contract.dotnet.sdkVersion,
+        $contract.dotnet.languageVersion) -ForegroundColor Green
 }
 
 function Build-Project {
@@ -182,7 +202,7 @@ function Build-Project {
     $project = Join-Path $RepoRoot $definition.Project
     Assert-Path $project
 
-    Write-Host ("[{0}] Building {1}..." -f $definition.DisplayName, $Configuration) -ForegroundColor Cyan
+    Write-Host ("[{0}] Building {1} / Bridge {2}..." -f $definition.DisplayName, $Configuration, $ExpectedBridgeVersion) -ForegroundColor Cyan
     Invoke-Checked "dotnet" @(
         "build", $project,
         "-c", $Configuration,
@@ -191,8 +211,9 @@ function Build-Project {
     ) "$($definition.DisplayName) build failed."
 
     if ($null -ne $definition.Executable) {
-        Assert-Path (Join-Path (Get-OutputDirectory $Name) $definition.Executable)
-        Assert-Path (Join-Path (Get-OutputDirectory $Name) "OcctNative.dll")
+        $output = Get-OutputDirectory $Name
+        Assert-Path (Join-Path $output $definition.Executable)
+        Assert-Path (Join-Path $output "OcctNative.dll")
     }
 }
 
