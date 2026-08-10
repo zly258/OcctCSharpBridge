@@ -5,7 +5,7 @@
 ## Current baseline
 
 ```text
-Author: Liaoyuan Zhang
+Author: zly258
 Demo / Bridge: 2.6.0
 Native ABI: 4
 OCCT: 7.9.0
@@ -16,7 +16,7 @@ Avalonia: 12.1.0
 Platform: Windows x64
 ```
 
-`DemoProductInfo.cs` is the single metadata source used by all three About dialogs. The author is always displayed as **Liaoyuan Zhang**, including Chinese UI mode.
+`DemoProductInfo.cs` is the single metadata source used by all three About dialogs. The author is always displayed as **zly258**, including Chinese UI mode.
 
 The project contains only the small orchestration layer required by the demos: command metadata, parameter parsing, localization, replay-based history, analysis helpers, product metadata and the lightweight `DemoSession` facade.
 
