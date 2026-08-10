@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   finalize:
-    if: contains(github.event.head_commit.message, 'Run one-time website .NET 10 finalization')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout branch
@@ -20,8 +19,9 @@ jobs:
           fetch-depth: 0
 
       - name: Finalize website .NET 10 contract
-        shell: python
+        shell: bash
         run: |
+          python - <<'PY'
           from pathlib import Path
 
           def read(path):
@@ -44,35 +44,35 @@ jobs:
           write('app.js', app)
 
           readme = read('README.md')
-          marker = '## Files\n'
-          section = (
-              '## Project contract\n\n'
-              'The website describes the current `main` Bridge contract: Bridge **2.6.0**, Native ABI **3**, '
-              'OCCT **7.9.0**, .NET SDK **10.0.302**, target **`net10.0-windows`**, and C# **14.0**. '
-              '`main/bridge-contract.json` is authoritative; when those values change, the website content and website contract checks must change in the same update.\n\n'
-          )
           if '## Project contract' not in readme:
+              marker = '## Files\n'
+              section = (
+                  '## Project contract\n\n'
+                  'The website describes the current `main` Bridge contract: Bridge **2.6.0**, Native ABI **3**, '
+                  'OCCT **7.9.0**, .NET SDK **10.0.302**, target **`net10.0-windows`**, and C# **14.0**. '
+                  '`main/bridge-contract.json` is authoritative; when those values change, the website content and website contract checks must change in the same update.\n\n'
+              )
               if marker not in readme:
                   raise SystemExit('README.md insertion marker not found')
               readme = readme.replace(marker, section + marker, 1)
           write('README.md', readme)
 
           readme_zh = read('README.zh-CN.md')
-          marker_zh = '## 文件结构\n'
-          section_zh = (
-              '## 项目版本契约\n\n'
-              '网站描述 `main` 当前 Bridge 契约：Bridge **2.6.0**、Native ABI **3**、OCCT **7.9.0**、'
-              '.NET SDK **10.0.302**、目标框架 **`net10.0-windows`**、C# **14.0**。'
-              '`main/bridge-contract.json` 是唯一权威来源；这些值变化时，网站内容与网站契约检查必须在同一次更新中同步修改。\n\n'
-          )
           if '## 项目版本契约' not in readme_zh:
-              if marker_zh not in readme_zh:
+              marker = '## 文件结构\n'
+              section = (
+                  '## 项目版本契约\n\n'
+                  '网站描述 `main` 当前 Bridge 契约：Bridge **2.6.0**、Native ABI **3**、OCCT **7.9.0**、'
+                  '.NET SDK **10.0.302**、目标框架 **`net10.0-windows`**、C# **14.0**。'
+                  '`main/bridge-contract.json` 是唯一权威来源；这些值变化时，网站内容与网站契约检查必须在同一次更新中同步修改。\n\n'
+              )
+              if marker not in readme_zh:
                   raise SystemExit('README.zh-CN.md insertion marker not found')
-              readme_zh = readme_zh.replace(marker_zh, section_zh + marker_zh, 1)
+              readme_zh = readme_zh.replace(marker, section + marker, 1)
           write('README.zh-CN.md', readme_zh)
 
           workflow = read('.github/workflows/website-check.yml')
-          old_obsolete = '''          obsolete = [
+          old = '''          obsolete = [
               "tree/script",
               "git switch script",
               "OcctScript",
@@ -81,7 +81,7 @@ jobs:
               "ABI 2",
               "ABI=2",
           ]'''
-          new_obsolete = '''          obsolete = [
+          new = '''          obsolete = [
               "tree/script",
               "git switch script",
               "OcctScript",
@@ -93,15 +93,15 @@ jobs:
               "net8.0-windows",
               "C# 12",
           ]'''
-          if old_obsolete not in workflow:
+          if old not in workflow:
               raise SystemExit('website-check obsolete-token block not found')
-          workflow = workflow.replace(old_obsolete, new_obsolete, 1)
+          workflow = workflow.replace(old, new, 1)
 
-          old_occt = '''          occt_version = str(contract["occtVersion"])
+          old = '''          occt_version = str(contract["occtVersion"])
           if occt_version not in index:
               raise SystemExit(f"Website does not contain contracted OCCT version {occt_version}")
 '''
-          new_occt = '''          occt_version = str(contract["occtVersion"])
+          new = '''          occt_version = str(contract["occtVersion"])
           if occt_version not in index:
               raise SystemExit(f"Website does not contain contracted OCCT version {occt_version}")
 
@@ -119,13 +119,12 @@ jobs:
               if value not in readmes:
                   raise SystemExit(f"Website README {label} is stale; expected {value}")
 '''
-          if old_occt not in workflow:
+          if old not in workflow:
               raise SystemExit('website-check OCCT contract block not found')
-          workflow = workflow.replace(old_occt, new_occt, 1)
-          workflow = workflow.replace(
-              "including contact metadata.",
-              "including .NET target/SDK/language and contact metadata.")
+          workflow = workflow.replace(old, new, 1)
+          workflow = workflow.replace('including contact metadata.', 'including .NET target/SDK/language and contact metadata.')
           write('.github/workflows/website-check.yml', workflow)
+          PY
 
       - name: Commit finalized website
         shell: bash
