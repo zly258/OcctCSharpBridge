@@ -1,4 +1,4 @@
-﻿# OcctCSharpBridge
+# OcctCSharpBridge
 
 [简体中文](README.zh-CN.md) · [Documentation (中文)](docs/00_文档索引.md) · [API Coverage](docs/03_API覆盖与设计约定.md) · [Demo Branch](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
@@ -6,7 +6,7 @@
 
 OcctCSharpBridge is a Windows x64 bridge from **Open CASCADE Technology 7.9.0** to **.NET 10**. It provides a strongly typed C# API for OCCT modeling, topology, geometry analysis, meshing, data exchange, AIS/viewer interaction, and reusable WinForms/WPF/Avalonia viewport hosts.
 
-The repository deliberately stays at the OCCT bridge boundary. `main` does not implement an application Document model, feature tree, Command/Tool framework, Undo/Redo, snapping, grips, project persistence, or OCAF/XDE. Product-level CAD behavior belongs in an application layer such as the `demo` branch.
+`main` deliberately stays at the reusable bridge boundary. It does not implement an application Document model, feature tree, Command/Tool framework, Undo/Redo, snapping, grips, project persistence, or OCAF/XDE. Product-level CAD behavior belongs in an application layer such as the `demo` branch.
 
 Current contract:
 
@@ -22,13 +22,7 @@ The managed API has two primary façades:
 - `OcctEngine` — AIS/viewer, registered display objects, selection, camera, appearance, annotations, and interactive viewport operations.
 - `OcctModelingSession` — headless construction, topology, algorithms, analysis, meshing, history, and STEP/IGES/BREP/STL exchange.
 
-P0–P3 capabilities include full inertia properties, structured Edge/Edge intersection results, versioned topology references, and bulk-only collection transfer for high-cardinality modeling data.
-
-## Installation
-
-### 1. Prerequisites
-
-Install:
+## Prerequisites
 
 - Windows x64
 - .NET SDK `10.0.302`
@@ -36,27 +30,21 @@ Install:
 - CMake `3.21+`
 - Open CASCADE Technology `7.9.0`, VC14 x64 layout
 
-The default OCCT location used by the repository is:
+Default OCCT location:
 
 ```text
 D:\tools\occt-vc144-64
 ```
 
-A different location can be passed with `-OcctRoot` or through `OCCT_ROOT`.
+A different location can be passed through `-OcctRoot` or `OCCT_ROOT`.
 
-### 2. Build managed packages
+## Build managed packages
 
 ```powershell
 .\build.ps1 pack Release
 ```
 
-Packages are written to:
-
-```text
-artifacts\packages
-```
-
-The repository produces:
+Packages are written to `artifacts\packages`:
 
 ```text
 OcctNet
@@ -65,21 +53,16 @@ OcctNet.Wpf
 OcctNet.Avalonia
 ```
 
-To consume the locally built core package:
+For example:
 
 ```powershell
 dotnet add package OcctNet --version 2.6.0 --source .\artifacts\packages
-```
-
-Add only the UI host required by the application, for example:
-
-```powershell
 dotnet add package OcctNet.Wpf --version 2.6.0 --source .\artifacts\packages
 ```
 
 Managed packages intentionally do not bundle `OcctNative.dll` or OCCT `TK*.dll`. Deploy the matching native bridge and OCCT runtime with the application.
 
-### 3. Build from source with OCCT
+## Build the complete bridge
 
 ```powershell
 .\build.ps1 all Release
@@ -91,7 +74,7 @@ For another OCCT installation:
 .\build.ps1 all Release -OcctRoot "E:\SDK\occt-7.9.0"
 ```
 
-## Usage Example
+## Usage
 
 ### Headless modeling
 
@@ -110,7 +93,6 @@ var hole = model.MakeCylinder(
 var cut = model.Cut(plate, hole);
 var inertia = model.GetVolumeInertiaProperties(cut.Shape);
 var inspection = model.InspectShape(cut.Shape);
-
 model.ExportStep(cut.Shape, "plate.step");
 ```
 
@@ -120,7 +102,6 @@ model.ExportStep(cut.Shape, "plate.step");
 var first = model.MakeLine(
     new OcctPoint3d(0, 0, 0),
     new OcctPoint3d(100, 0, 0));
-
 var second = model.MakeLine(
     new OcctPoint3d(50, -20, 0),
     new OcctPoint3d(50, 20, 0));
@@ -133,13 +114,10 @@ var intersections = model.IntersectEdges(first, second);
 ```csharp
 var faces = model.GetSubshapes(cut.Shape, OcctShapeType.Face);
 var reference = model.CreateTopologyReference(cut.Shape, faces[0]);
-
-var resolved = model.ResolveTopologyReference(
-    cut.Shape,
-    reference);
+var resolved = model.ResolveTopologyReference(cut.Shape, reference);
 ```
 
-A topology reference is a geometric/topological fingerprint. Its runtime index is only a hint and is not treated as persistent identity.
+A topology reference is a geometric/topological fingerprint. Its runtime subshape index is only a hint and is not persistent identity.
 
 ## Project Structure
 
@@ -150,41 +128,47 @@ src/OcctNet              Core .NET wrapper
 src/OcctNet.WinForms     WinForms viewport host
 src/OcctNet.Wpf          WPF viewport host
 src/OcctNet.Avalonia     Avalonia Windows-HWND viewport host
-tests                    Contract, managed regression and native smoke tests
-docs                     Numbered technical documentation
-build.ps1                Local validation/build/pack/smoke entry point
+tests                    Static contracts, managed regression and native smoke
+docs                     Authoritative numbered bridge documentation
+build.ps1                Local validation/build/test/pack/smoke entry point
 ```
 
 `OcctNet.Avalonia` currently hosts the native viewer through a Windows child HWND, so it is a Windows x64 adapter rather than a cross-platform OCCT viewer backend.
 
 ## Local Validation
 
-Managed/static validation does not require an OCCT SDK:
+Without an OCCT SDK:
 
 ```powershell
 .\build.ps1 validate Release
 .\build.ps1 managed Release
+.\build.ps1 test Release
 ```
 
-The authoritative native validation uses the real local OCCT SDK:
+Build native and managed bridge code:
+
+```powershell
+.\build.ps1 all Release
+```
+
+Run the real native gate:
 
 ```powershell
 .\build.ps1 smoke Release
 ```
 
-The native build uses `/W4 /WX`, exact OCCT 7.9.0 headers/libraries, and the API contract in `bridge-contract.json`.
+The repository does not use GitHub Actions as a substitute for local validation. Native validation uses `/W4 /WX`, the real OCCT 7.9.0 headers/libraries, `bridge-contract.json`, and Native/PInvoke parity checks.
 
 ## Contributing
 
-Contributions should keep the bridge focused and non-redundant:
-
-1. Create a focused branch for one responsibility.
-2. Keep public APIs strongly typed and owner-aware; do not add legacy aliases or compatibility wrappers.
-3. Prefer bulk C ABI transfer for collections instead of repeated `Count + At` calls.
-4. Keep OCCT-specific implementation inside the bridge and application-specific Document/Command/Tool behavior outside `main`.
+1. Keep public APIs strongly typed and owner-aware; do not add legacy aliases or compatibility wrappers.
+2. Do not recreate deleted aggregate headers, wrappers, or experimental APIs as compatibility shells. Update callers to the current dependency instead.
+3. Prefer bulk C ABI transfer for collections instead of repeated `Count + At` boundary calls.
+4. Keep OCCT implementation inside the bridge and application-specific Document/Command/Tool behavior outside `main`.
 5. Do not introduce OCAF/XDE into the reusable bridge.
-6. Run `build.ps1 validate`, `build.ps1 managed`, and, when OCCT is available, `build.ps1 smoke` before submitting changes.
-7. Keep reusable source changes synchronized with the `demo` branch.
+6. Before committing, run `build.ps1 validate`, `build.ps1 managed`, and `build.ps1 test`; for native changes also run `build.ps1 all` and `build.ps1 smoke`.
+7. Reusable bridge source changes are synchronized to `demo` manually after local validation; GitHub Actions are not used to overwrite branches.
+8. Bridge technical documentation is maintained only under `main/docs`; `demo` does not duplicate the SDK documentation set.
 
 ## License
 
