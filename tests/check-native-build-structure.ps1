@@ -49,8 +49,8 @@ foreach ($module in @(
     @{ File = "OcctModelingBoolean.cpp"; Symbols = @("occt_model_boolean", "occt_model_split") },
     @{ File = "OcctModelingFeatures.cpp"; Symbols = @("occt_model_extrude", "occt_model_revolve", "occt_model_thick_solid") },
     @{ File = "OcctModelingHealing.cpp"; Symbols = @("occt_model_unify_same_domain", "occt_model_fix_shape") },
-    @{ File = "OcctModelingHistory.cpp"; Symbols = @("occt_model_history_generated_count", "occt_model_history_modified_at", "occt_model_history_is_removed") },
-    @{ File = "OcctModelingAnalysis.cpp"; Symbols = @("occt_model_project_point_on_edge", "occt_model_ray_intersections", "occt_model_classify_point") },
+    @{ File = "OcctModelingHistory.cpp"; Symbols = @("occt_model_history_generated_count", "occt_model_history_generated_copy", "occt_model_history_modified_copy", "occt_model_history_is_removed") },
+    @{ File = "OcctModelingAnalysis.cpp"; Symbols = @("occt_model_project_point_on_edge", "occt_model_ray_intersections", "occt_model_ray_hits_copy", "occt_model_classify_point") },
     @{ File = "OcctModelingMesh.cpp"; Symbols = @("occt_model_mesh", "occt_model_face_mesh_node", "occt_model_face_mesh_triangle") },
     @{ File = "OcctModelingExchange.cpp"; Symbols = @("occt_model_import_step", "occt_model_import_file", "occt_model_export_step", "occt_model_export_stl") },
     @{ File = "OcctModelingAnalyticGeometry.cpp"; Symbols = @("occt_model_edge_line_geometry", "occt_model_face_cylinder_geometry") },
@@ -62,13 +62,13 @@ foreach ($module in @(
 )) { Assert-Module -File $module.File -Symbols $module.Symbols -Narrow }
 
 if ((Get-Item (Join-Path $nativeRoot "OcctModelingCore.cpp")).Length -gt 9000) { throw "OcctModelingCore.cpp has grown beyond the session/registry boundary." }
-if ((Get-Item (Join-Path $nativeRoot "OcctModelingAnalysis.cpp")).Length -gt 10000) { throw "OcctModelingAnalysis.cpp must remain limited to projection/intersection/classification." }
+if ((Get-Item (Join-Path $nativeRoot "OcctModelingAnalysis.cpp")).Length -gt 12000) { throw "OcctModelingAnalysis.cpp must remain limited to projection/intersection/classification." }
 if (Test-Path (Join-Path $nativeRoot "OcctModelingAlgorithms.cpp")) { throw "Legacy mixed-responsibility OcctModelingAlgorithms.cpp must remain removed." }
 
 $modelingInternalHeaders = @(
     @{ File = "OcctModelingSessionInternal.hxx"; Symbols = @("struct ModelSession", "modelOf", "executeShape", "requireOperation") },
     @{ File = "OcctModelingShapeInternal.hxx"; Symbols = @("toDirection", "toShapeEnum", "indexedEdge", "maximumTolerance", "shapeList") },
-    @{ File = "OcctModelingAlgorithmInternal.hxx"; Symbols = @("failedAlgorithmResult", "applyBooleanOptions", "finishBuilderAlgorithm", "historyShapeAt") },
+    @{ File = "OcctModelingAlgorithmInternal.hxx"; Symbols = @("failedAlgorithmResult", "applyBooleanOptions", "finishBuilderAlgorithm", "historyShapeAt", "historyCopy") },
     @{ File = "OcctModelingMeshInternal.hxx"; Symbols = @("faceTriangulation") },
     @{ File = "OcctModelingExchangeInternal.hxx"; Symbols = @("modelInputStream", "readModelStep", "readModelIges", "writeModelStep") }
 )
@@ -112,4 +112,4 @@ if ($cmakeText -match 'OcctOcaf|occt_ocaf_|\b(?:TKCDF|TKLCAF|TKCAF|TKXCAF|TKBinL
 $unlistedCpp = @(Get-ChildItem $nativeRoot -Filter '*.cpp' -File | Where-Object { $_.Name -notin $sourceTokens } | Select-Object -ExpandProperty Name)
 if ($unlistedCpp.Count -gt 0) { throw "Native C++ files are not listed in add_library: $($unlistedCpp -join ', ')" }
 
-Write-Host "[native-build] Native responsibilities, narrow modeling internals, OCCT 7.9 toolkits and no-OCAF boundary validated." -ForegroundColor Green
+Write-Host "[native-build] Native responsibilities, narrow modeling internals, bulk ray/history transfer, OCCT 7.9 toolkits and no-OCAF boundary validated." -ForegroundColor Green
