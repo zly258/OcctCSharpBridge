@@ -7,8 +7,8 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningLevel>7</WarningLevel>
     <Version>2.6.0</Version>
-    <Authors>Liaoyuan Zhang</Authors>
-    <Company>Liaoyuan Zhang</Company>
+    <Authors>zly258</Authors>
+    <Company>zly258</Company>
     <Product>OcctCSharpBridge</Product>
   </PropertyGroup>
 </Project>
