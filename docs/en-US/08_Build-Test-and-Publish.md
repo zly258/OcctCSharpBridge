@@ -2,7 +2,7 @@
 
 Validation is layered: repository contracts, managed regression tests, real native smoke tests, generated Managed + Native API Reference, and the validated Binary SDK.
 
-Current release metadata is summarized in the documentation index; the author is **Liaoyuan Zhang** and the current Bridge contract is 2.6.0 / ABI 4 / OCCT 7.9.0 / .NET 10 / C# 14 / C++17 / Windows x64.
+Current release metadata is summarized in the documentation index; the author is **zly258** and the current Bridge contract is 2.6.0 / ABI 4 / OCCT 7.9.0 / .NET 10 / C# 14 / C++17 / Windows x64.
 
 ## Build targets
 
