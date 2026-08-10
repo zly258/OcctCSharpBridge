@@ -1,6 +1,6 @@
 ﻿param(
     [Parameter(Position = 0)]
-    [ValidateSet("validate", "native", "managed", "pack", "smoke", "ci", "all")]
+    [ValidateSet("validate", "native", "managed", "test", "pack", "smoke", "ci", "clean", "all")]
     [string]$Target = "all",
 
     [Parameter(Position = 1)]
@@ -100,7 +100,7 @@ function Invoke-ContractChecks {
 function Resolve-OcctConfiguration {
     $script:OcctRoot = [System.IO.Path]::GetFullPath($OcctRoot)
     if (-not (Test-Path $script:OcctRoot -PathType Container)) {
-        throw "OCCT SDK root was not found: $script:OcctRoot. Set OCCT_ROOT, pass -OcctRoot <path>, or install OCCT at $DefaultOcctRoot. validate/managed/pack/ci do not require OCCT."
+        throw "OCCT SDK root was not found: $script:OcctRoot. Set OCCT_ROOT, pass -OcctRoot <path>, or install OCCT at $DefaultOcctRoot. validate/managed/test/pack/ci do not require OCCT."
     }
     $script:OcctIncludeDir = Join-Path $script:OcctRoot "inc"
     $script:OcctLibDir = Join-Path $script:OcctRoot "win64\vc14\lib"
@@ -147,10 +147,9 @@ function Build-Project {
 
     $project = Join-Path $RepoRoot $relativePath
     Assert-Path $project
-    $projectDirectory = Split-Path -Parent $project
-    Remove-Item (Join-Path $projectDirectory "bin") -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item (Join-Path $projectDirectory "obj") -Recurse -Force -ErrorAction SilentlyContinue
 
+    # Preserve bin/obj so MSBuild can use incremental compilation. Use the
+    # explicit clean target when a full rebuild is actually required.
     Write-Host "[$($Name.ToLowerInvariant())] Building $Configuration / $BridgeVersion..." -ForegroundColor Cyan
     Invoke-Checked "dotnet" @(
         "build", $project,
@@ -165,11 +164,17 @@ function Build-Project {
 function Run-ManagedTests {
     Assert-Command "dotnet"
     $project = Join-Path $RepoRoot $Projects.ManagedTests
-    $output = Join-Path (Split-Path -Parent $project) "bin\x64\$Configuration\$TargetFramework"
-    $assembly = Join-Path $output "OcctNet.ManagedTests.dll"
-    Assert-Path $assembly
+    Assert-Path $project
+
     Write-Host "[managed-tests] Running managed-only bridge regression tests..." -ForegroundColor Cyan
-    Invoke-Checked "dotnet" @($assembly) "Managed bridge regression tests failed."
+    Invoke-Checked "dotnet" @(
+        "test", $project,
+        "-c", $Configuration,
+        "-p:Platform=x64",
+        "-p:Version=$BridgeVersion",
+        "--no-build",
+        "--nologo"
+    ) "Managed bridge regression tests failed."
 }
 
 function Build-Managed {
@@ -177,6 +182,22 @@ function Build-Managed {
     Build-Project "WinForms"
     Build-Project "Wpf"
     Build-Project "Avalonia"
+}
+
+function Clean-Outputs {
+    Write-Host "[clean] Removing generated build outputs..." -ForegroundColor Cyan
+
+    Remove-Item (Join-Path $RepoRoot "build") -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item (Join-Path $RepoRoot "artifacts") -Recurse -Force -ErrorAction SilentlyContinue
+
+    foreach ($relativePath in $Projects.Values) {
+        $project = Join-Path $RepoRoot $relativePath
+        $projectDirectory = Split-Path -Parent $project
+        Remove-Item (Join-Path $projectDirectory "bin") -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item (Join-Path $projectDirectory "obj") -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    Write-Host "Generated build outputs removed." -ForegroundColor Green
 }
 
 function Test-ManagedPackage {
@@ -284,12 +305,22 @@ Write-Host "SDK:           $SdkVersion" -ForegroundColor DarkGray
 $occtRootSource = if ($env:OCCT_ROOT) { "environment" } elseif ($OcctRoot -eq $DefaultOcctRoot) { "default" } else { "argument" }
 Write-Host "OCCT root:     $OcctRoot ($occtRootSource)" -ForegroundColor DarkGray
 
+if ($Target -eq "clean") {
+    Clean-Outputs
+    Write-Host "Build completed." -ForegroundColor Green
+    exit 0
+}
+
 Invoke-ContractChecks
 
 switch ($Target) {
     "validate" { }
     "native" { Build-Native }
     "managed" { Build-Managed }
+    "test" {
+        Build-Project "ManagedTests"
+        Run-ManagedTests
+    }
     "pack" { Pack-ManagedSdk }
     "ci" { Build-Ci }
     "smoke" {
