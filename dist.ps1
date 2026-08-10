@@ -11,6 +11,7 @@ $ContractPath = Join-Path $RepoRoot "bridge-contract.json"
 $DistParent = Join-Path $RepoRoot "dist"
 $DistRoot = Join-Path $DistParent "win-x64"
 $StagingRoot = Join-Path $DistParent ".win-x64-staging"
+$BackupRoot = Join-Path $DistParent ".win-x64-backup"
 $Configuration = "Release"
 
 function Assert-Path {
@@ -81,6 +82,7 @@ foreach ($source in $files.Values) {
 }
 
 Remove-Item -LiteralPath $StagingRoot -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $BackupRoot -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path $StagingRoot -Force | Out-Null
 
 try {
@@ -115,14 +117,31 @@ try {
     $utf8 = [System.Text.UTF8Encoding]::new($false)
     $manifestJson = $manifest | ConvertTo-Json -Depth 8
     [System.IO.File]::WriteAllText((Join-Path $StagingRoot "bridge-manifest.json"), $manifestJson + [Environment]::NewLine, $utf8)
-
     Assert-Path (Join-Path $StagingRoot "bridge-manifest.json")
 
-    Remove-Item -LiteralPath $DistRoot -Recurse -Force -ErrorAction SilentlyContinue
-    Move-Item -LiteralPath $StagingRoot -Destination $DistRoot
+    $hadPreviousDistribution = Test-Path -LiteralPath $DistRoot -PathType Container
+    if ($hadPreviousDistribution) {
+        Move-Item -LiteralPath $DistRoot -Destination $BackupRoot
+    }
+
+    try {
+        Move-Item -LiteralPath $StagingRoot -Destination $DistRoot
+    }
+    catch {
+        if ($hadPreviousDistribution -and (Test-Path -LiteralPath $BackupRoot -PathType Container)) {
+            Move-Item -LiteralPath $BackupRoot -Destination $DistRoot
+        }
+        throw
+    }
+
+    Remove-Item -LiteralPath $BackupRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
 finally {
     Remove-Item -LiteralPath $StagingRoot -Recurse -Force -ErrorAction SilentlyContinue
+    if (-not (Test-Path -LiteralPath $DistRoot -PathType Container) -and
+        (Test-Path -LiteralPath $BackupRoot -PathType Container)) {
+        Move-Item -LiteralPath $BackupRoot -Destination $DistRoot
+    }
 }
 
 Write-Host "[dist] Binary SDK updated: $DistRoot" -ForegroundColor Green
