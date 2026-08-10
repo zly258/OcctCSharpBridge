@@ -100,23 +100,6 @@ extern "C"
         return succeeded == 0 ? -1 : count;
     }
 
-    int occt_model_ray_hit_count(OcctModelHandle handle)
-    {
-        ModelSession* model = modelOf(handle);
-        return model == nullptr ? 0 : static_cast<int>(model->rayHits.size());
-    }
-
-    int occt_model_ray_hit_at(OcctModelHandle handle, int index, OcctModelRayHit* result)
-    {
-        ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
-        {
-            if (index < 0 || index >= static_cast<int>(model->rayHits.size())) throw std::out_of_range("Ray hit index is out of range.");
-            *result = model->rayHits[static_cast<std::size_t>(index)];
-        });
-    }
-
     int occt_model_ray_hits_copy(OcctModelHandle handle, OcctModelRayHit* results, int capacity)
     {
         ModelSession* model = modelOf(handle);
