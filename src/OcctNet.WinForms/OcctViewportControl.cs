@@ -456,9 +456,9 @@ public sealed class OcctViewportControl : Control
     public void RaiseSelectionChanged()
     {
         if (_engine?.IsInitialized != true) return;
-        var selected = _engine.FirstSelectedObjectOwned;
+        var selected = _engine.FirstSelectedObject;
         SelectionChanged?.Invoke(this, _engine.FirstSelected);
-        ObjectSelectionChanged?.Invoke(this, new OcctViewportSelectionEventArgs(selected, _engine.SelectedObjectsOwned));
+        ObjectSelectionChanged?.Invoke(this, new OcctViewportSelectionEventArgs(selected, _engine.SelectedObjects));
     }
 
     private void TryInvoke(Action action)
