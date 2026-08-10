@@ -40,13 +40,16 @@ public sealed partial class OcctModelingSession
             maximumParameter,
             tolerance);
         if (count < 0) throw CreateException();
+        if (count == 0) return Array.Empty<OcctModelRayHit>();
+
+        var native = new NativeModelRayHit[count];
+        var copied = ModelNativeMethods.occt_model_ray_hits_copy(_handle, native, native.Length);
+        if (copied < 0) throw CreateException();
+        if (copied != count) throw new InvalidOperationException("Native ray-hit count changed during bulk copy.");
 
         var result = new OcctModelRayHit[count];
         for (var index = 0; index < count; index++)
-        {
-            Check(ModelNativeMethods.occt_model_ray_hit_at(_handle, index, out var native));
-            result[index] = native.ToManaged(_ownerId);
-        }
+            result[index] = native[index].ToManaged(_ownerId);
         return result;
     }
 

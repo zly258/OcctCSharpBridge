@@ -75,6 +75,7 @@ jobs:
             "tests/check-api-organization.ps1",
             "tests/check-api-surface.ps1",
             "tests/check-geometry-api.ps1",
+            "tests/check-modeling-bulk-abi.ps1",
             "tests/check-topology-analysis.ps1",
             "tests/check-runtime-diagnostics.ps1",
             "tests/check-native-build-structure.ps1",
