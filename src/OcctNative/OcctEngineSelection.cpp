@@ -1,4 +1,4 @@
-﻿#include "OcctInternal.hxx"
+#include "OcctInternal.hxx"
 
 #include <AIS_SelectionScheme.hxx>
 #include <Graphic3d_Vec2.hxx>
@@ -93,27 +93,6 @@ extern "C"
             for (auto& pair : e->objects) e->applySelectionMode(pair.second.presentation);
             e->view->Redraw();
         });
-    }
-
-    int occt_selected_count(OcctHandle h)
-    {
-        Engine* e = engineOf(h);
-        if (!validateInitialized(e)) return 0;
-        int count = 0;
-        for (e->context->InitSelected(); e->context->MoreSelected(); e->context->NextSelected()) ++count;
-        return count;
-    }
-
-    OcctObjectId occt_selected_at(OcctHandle h, int index)
-    {
-        Engine* e = engineOf(h);
-        if (!validateInitialized(e) || index < 0) return 0;
-        int current = 0;
-        for (e->context->InitSelected(); e->context->MoreSelected(); e->context->NextSelected(), ++current)
-        {
-            if (current == index) return e->findPresentation(e->context->SelectedInteractive());
-        }
-        return 0;
     }
 
     int occt_clear_selection(OcctHandle h)
