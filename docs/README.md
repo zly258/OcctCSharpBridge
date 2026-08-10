@@ -32,13 +32,13 @@ demo
 .\build.ps1 test Release
 ```
 
-完整编译 Native、Bridge、三套 Demo、ManagedTests 和 Smoke：
+完整编译 Native、Bridge、三套 Demo、ManagedTests 和 Smoke 项目：
 
 ```powershell
 .\build.ps1 all Release
 ```
 
-`all` 会把 `OcctNative.dll`、OCCT DLL 和第三方 Runtime 部署到 WinForms、WPF、Avalonia 与 Smoke 输出目录，使构建产物可以直接进入运行验证。
+`all` 会把 `OcctNative.dll`、OCCT DLL 和第三方 Runtime 部署到 WinForms、WPF、Avalonia 三套 Demo 输出目录，使应用构建产物可以直接启动。Smoke 不复制整套 OCCT Runtime：运行时只把当前 `OcctNative.dll` 放到 Smoke 输出目录，并通过 `OCCT_ROOT` 让 `OcctRuntime` 配置 OCCT 与第三方 DLL 搜索路径。
 
 单独构建 Demo：
 
@@ -73,9 +73,9 @@ demo
 
 ## 3. 测试与静态检查
 
-Demo 只保留五个稳定 PowerShell 契约：版本、Demo 结构、Bulk ABI、Native CMake 结构、API Surface。README 标题、UI 代码组织、具体函数文本等不再作为契约。
+Demo 日常构建门只保留六个稳定 PowerShell 契约：版本、共享架构边界、Demo 结构、Bulk ABI、Native CMake 结构、API Surface。README 标题、UI 代码组织、具体函数文本等不再作为契约。
 
-Managed 测试使用 .NET 10 的 Microsoft Testing Platform；Runner 由根目录 `global.json` 统一指定。Smoke 使用真实 `OcctNative.dll` 和 OCCT Runtime。
+Managed 测试使用 .NET 10 的 Microsoft Testing Platform；Runner 由根目录 `global.json` 统一指定。Smoke 使用真实 `OcctNative.dll` 和 OCCT Runtime，并通过运行时目录探测加载依赖。
 
 ## 4. 与 `main` 的手工同步
 
