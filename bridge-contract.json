@@ -1,7 +1,7 @@
-﻿{
+{
   "schemaVersion": 1,
   "bridgeVersion": "2.6.0",
-  "nativeAbiVersion": 3,
+  "nativeAbiVersion": 4,
   "occtVersion": "7.9.0",
   "platform": "windows-x64",
   "cmakeMinimumVersion": "3.21",
@@ -12,10 +12,10 @@
     "languageVersion": "14.0"
   },
   "api": {
-    "nativeExports": 348,
-    "managedPInvokes": 348,
+    "nativeExports": 344,
+    "managedPInvokes": 344,
     "publicNetTypes": 105,
-    "viewer": 214,
+    "viewer": 210,
     "modeling": 134
   }
 }
