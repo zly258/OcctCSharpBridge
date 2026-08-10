@@ -1,8 +1,7 @@
 ﻿param(
     [string]$OcctRoot = $env:OCCT_ROOT,
     [string]$Remote = "origin",
-    [string]$DemoBranch = "demo",
-    [switch]$NoPush
+    [string]$DemoBranch = "demo"
 )
 
 $ErrorActionPreference = "Stop"
@@ -31,6 +30,38 @@ function Invoke-Git {
     }
 }
 
+function Invoke-Build {
+    param(
+        [Parameter(Mandatory = $true)][string]$Target,
+        [switch]$WithOcctRoot
+    )
+
+    $arguments = @($Target, "Release")
+    if ($WithOcctRoot -and -not [string]::IsNullOrWhiteSpace($OcctRoot)) {
+        $arguments += @("-OcctRoot", $OcctRoot)
+    }
+    & $BuildScript @arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Target failed. Publishing stopped."
+    }
+}
+
+function Commit-IfChanged {
+    param(
+        [Parameter(Mandatory = $true)][string[]]$Paths,
+        [Parameter(Mandatory = $true)][string]$Message
+    )
+
+    Invoke-Git $RepoRoot (@("add", "--") + $Paths)
+    $staged = @(& git -C $RepoRoot diff --cached --name-only -- $Paths)
+    if ($LASTEXITCODE -ne 0) { throw "Failed to inspect staged changes for: $($Paths -join ', ')" }
+    if ($staged.Count -gt 0) {
+        Invoke-Git $RepoRoot @("commit", "-m", $Message)
+        return $true
+    }
+    return $false
+}
+
 function Test-BinarySdk {
     param([Parameter(Mandatory = $true)][string]$Path)
 
@@ -49,6 +80,7 @@ function Test-BinarySdk {
     if ([int]$manifest.schemaVersion -ne 1 -or
         [string]$manifest.bridgeVersion -ne [string]$contract.bridgeVersion -or
         [int]$manifest.nativeAbiVersion -ne [int]$contract.nativeAbiVersion -or
+        [string]$manifest.occtVersion -ne [string]$contract.occtVersion -or
         [string]$manifest.platform -ne [string]$contract.platform -or
         [string]$manifest.targetFramework -ne [string]$contract.dotnet.targetFramework) {
         throw "Binary SDK manifest does not match bridge-contract.json."
@@ -78,26 +110,23 @@ if ($initialChanges.Count -gt 0) {
     throw "The main working tree must be clean before publishing."
 }
 
+Write-Host "[publish] Generating complete bilingual API reference..." -ForegroundColor Cyan
+Invoke-Build "docs"
+[void](Commit-IfChanged -Paths @("docs/zh-CN/api", "docs/en-US/api") -Message "Update generated API reference")
+
+# build.ps1 dist requires a clean worktree so the manifest sourceCommit exactly
+# identifies the source and generated public API documentation being published.
+$afterDocs = @(& git -C $RepoRoot status --porcelain --untracked-files=all)
+if ($LASTEXITCODE -ne 0 -or $afterDocs.Count -gt 0) {
+    throw "The worktree is not clean after API documentation generation. Review unexpected generated files before publishing."
+}
+
 Write-Host "[publish] Building and validating the Release Binary SDK..." -ForegroundColor Cyan
-$buildArguments = @("dist", "Release")
-if (-not [string]::IsNullOrWhiteSpace($OcctRoot)) { $buildArguments += @("-OcctRoot", $OcctRoot) }
-& $BuildScript @buildArguments
-if ($LASTEXITCODE -ne 0) { throw "Binary SDK build failed." }
+Invoke-Build "dist" -WithOcctRoot
 Test-BinarySdk -Path $DistRoot
+[void](Commit-IfChanged -Paths @("dist/win-x64") -Message "Publish Bridge Binary SDK")
 
-Invoke-Git $RepoRoot @("add", "--", "dist/win-x64")
-$staged = @(& git -C $RepoRoot diff --cached --name-only -- "dist/win-x64")
-if ($LASTEXITCODE -ne 0) { throw "Failed to inspect staged Binary SDK changes." }
-if ($staged.Count -gt 0) {
-    Invoke-Git $RepoRoot @("commit", "-m", "Publish Bridge Binary SDK")
-}
-else {
-    Write-Host "[publish] main/dist/win-x64 is already current." -ForegroundColor DarkGray
-}
-
-if (-not $NoPush) {
-    Invoke-Git $RepoRoot @("push", $Remote, "main")
-}
+Invoke-Git $RepoRoot @("push", $Remote, "main")
 
 Remove-Item $DemoWorktree -Recurse -Force -ErrorAction SilentlyContinue
 try {
@@ -115,9 +144,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Failed to inspect staged demo Binary SDK changes." }
     if ($demoChanges.Count -gt 0) {
         Invoke-Git $DemoWorktree @("commit", "-m", "Sync Bridge Binary SDK from main")
-        if (-not $NoPush) {
-            Invoke-Git $DemoWorktree @("push", $Remote, "HEAD:$DemoBranch")
-        }
+        Invoke-Git $DemoWorktree @("push", $Remote, "HEAD:$DemoBranch")
     }
     else {
         Write-Host "[publish] demo/dist/win-x64 is already current." -ForegroundColor DarkGray
@@ -129,9 +156,4 @@ finally {
     & git -C $RepoRoot worktree prune 2>$null
 }
 
-if ($NoPush) {
-    Write-Host "Binary SDK prepared locally. -NoPush prevented remote updates." -ForegroundColor Green
-}
-else {
-    Write-Host "Binary SDK published to main and synchronized to demo." -ForegroundColor Green
-}
+Write-Host "API reference and Binary SDK published; demo synchronized." -ForegroundColor Green
