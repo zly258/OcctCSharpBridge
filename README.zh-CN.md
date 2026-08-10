@@ -4,6 +4,10 @@
 
 本分支保存 OcctCSharpBridge 的静态 GitHub Pages 网站。网站与 C++/.NET 构建完全解耦，不依赖 Node.js、npm、打包器、前端框架、CDN 或外部字体，直接使用 HTML/CSS/JavaScript。
 
+## 项目版本契约
+
+网站描述 `main` 当前 Bridge 契约：Bridge **2.6.0**、Native ABI **3**、OCCT **7.9.0**、.NET SDK **10.0.302**、目标框架 **`net10.0-windows`**、C# **14.0**。`main/bridge-contract.json` 是唯一权威来源；这些值变化时，网站内容与网站契约检查必须在同一次更新中同步修改。
+
 ## 文件结构
 
 ```text
