@@ -16,7 +16,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <limits>
 #include <vector>
 
 using namespace OcctModelingInternal;
@@ -271,8 +270,12 @@ namespace
         bool usedHistory,
         OcctModelTopologyReferenceResult& result)
     {
-        OcctModelTopologyReference rootReference{};
-        buildReference(root, root.ShapeType() == toShapeEnum(reference.shapeType) ? root : shapes.front(), rootReference);
+        if (shapes.empty())
+        {
+            result = {OcctModelTopologyReference_NotFound, 0, 0.0, 0, usedHistory ? 1 : 0, 0};
+            return;
+        }
+
         OcctBounds rootBounds{};
         fillBounds(root, rootBounds);
         const double rootDiagonal = diagonal(rootBounds);
