@@ -11,12 +11,12 @@ OCAF/XDE is intentionally excluded. Application Document, Feature/Entity, Comman
 - Native bridge version: `2.6.0`
 - Native ABI: `3`
 - OCCT: `7.9.0`
-- Native exports: `351`
-- Managed P/Invoke declarations: `351`
-- Public .NET types: `99`
+- Native exports: `354`
+- Managed P/Invoke declarations: `354`
+- Public .NET types: `100`
 - Compatibility .NET types: `1`
 - Viewer API: `214`
-- Modeling API: `137`
+- Modeling API: `140`
 
 `Public .NET types` is the primary owner-aware 2.6 surface. `Compatibility .NET types` currently contains only the Bridge 2.5 `OcctObject` compatibility handle. Compatibility surface is tracked separately and is not expanded in 2.x.
 
@@ -84,7 +84,7 @@ Ray-hit retrieval and generated/modified topology history use bulk-copy Native A
 
 - shape type/orientation/closure/validity/check report/hash/tolerance;
 - AABB and oriented bounds;
-- linear/surface/volume mass properties and shape distance;
+- linear/surface/volume mass properties, inertia tensor/principal properties, and shape distance;
 - location read/write;
 - generic subshape traversal and common convenience collections;
 - edge/face/wire ancestry and adjacency;
@@ -129,7 +129,7 @@ Internal source organization is not ABI:
 - Boolean, feature, healing, operation-history, projection/ray/classification, Mesh, and file Exchange responsibilities are separate modules;
 - broad `OcctModelingInternal.hxx` has been retired; modules include the narrow internal header and direct OCCT headers they actually use.
 
-These changes preserve existing ABI 3 signatures while extending the additive C surface to 351 exported symbols.
+These changes preserve existing ABI 3 signatures while extending the additive C surface to 354 exported symbols.
 
 ## UI host interaction boundary
 

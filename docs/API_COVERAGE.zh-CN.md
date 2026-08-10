@@ -84,7 +84,7 @@ Bridge 明确不使用 OCAF/XDE。Document、Feature/Entity、Command、Tool、U
 
 - Shape 类型、方向、闭合、有效性、检查报告、Hash、Tolerance；
 - AABB 与 OBB；
-- 线/面/体质量属性与 Shape Distance；
+- 线/面/体质量属性、惯性张量/主惯性属性与 Shape Distance；
 - Location 读写；
 - 通用 Subshape 遍历和常用集合；
 - Edge/Face/Wire 的祖先、邻接；
@@ -129,7 +129,7 @@ Bridge 明确不使用 OCAF/XDE。Document、Feature/Entity、Command、Tool、U
 - Boolean、Feature、Healing、Operation History、Projection/Ray/Classification、Mesh、Exchange 已独立分责；
 - 广义 `OcctModelingInternal.hxx` 已退出，模块只包含最窄内部 Header 与自己直接使用的 OCCT Header。
 
-这些整理保持 ABI 3 已有签名不变，同时以加法方式扩展到 351 个 C Export。
+这些整理保持 ABI 3 已有签名不变，同时以加法方式扩展到 354 个 C Export。
 
 ## UI Host 交互边界
 
