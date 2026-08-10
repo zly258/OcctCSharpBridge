@@ -15,7 +15,6 @@
     <NoWarn>$(NoWarn);1591</NoWarn>
     <Title>OcctNet.Wpf</Title>
     <Description>Reusable WPF viewport host for OcctNet and Open CASCADE Technology 7.9.0.</Description>
-    <Authors>Liaoyuan Zhang</Authors>
     <PackageTags>OCCT;OpenCASCADE;CAD;WPF;viewport;3D</PackageTags>
     <PackageProjectUrl>https://github.com/zly258/OcctCSharpBridge</PackageProjectUrl>
     <RepositoryUrl>https://github.com/zly258/OcctCSharpBridge</RepositoryUrl>
