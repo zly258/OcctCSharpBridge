@@ -6,5 +6,9 @@
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningLevel>7</WarningLevel>
+    <Version>2.6.0</Version>
+    <Authors>Liaoyuan Zhang</Authors>
+    <Company>Liaoyuan Zhang</Company>
+    <Product>OcctCSharpBridge</Product>
   </PropertyGroup>
 </Project>
