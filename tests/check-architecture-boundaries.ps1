@@ -19,7 +19,8 @@ function Read-Project {
 function Get-ProjectReferences {
     param([Parameter(Mandatory = $true)][xml]$Project)
 
-    return @($Project.SelectNodes('/Project/ItemGroup/ProjectReference') | ForEach-Object {
+    $nodes = @($Project.SelectNodes('/Project/ItemGroup/ProjectReference'))
+    return @($nodes | ForEach-Object {
         [string]$_.GetAttribute('Include')
     } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
 }
@@ -27,7 +28,8 @@ function Get-ProjectReferences {
 function Get-PackageReferences {
     param([Parameter(Mandatory = $true)][xml]$Project)
 
-    return @($Project.SelectNodes('/Project/ItemGroup/PackageReference') | ForEach-Object {
+    $nodes = @($Project.SelectNodes('/Project/ItemGroup/PackageReference'))
+    return @($nodes | ForEach-Object {
         [string]$_.GetAttribute('Include')
     } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
 }
@@ -45,7 +47,7 @@ function Get-ProjectProperty {
 
 function Assert-Reference {
     param(
-        [Parameter(Mandatory = $true)][string[]]$References,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][string[]]$References,
         [Parameter(Mandatory = $true)][string]$Expected,
         [Parameter(Mandatory = $true)][string]$ProjectName
     )
@@ -62,8 +64,8 @@ $winForms = Read-Project "src/OcctNet.WinForms/OcctNet.WinForms.csproj"
 $wpf = Read-Project "src/OcctNet.Wpf/OcctNet.Wpf.csproj"
 $avalonia = Read-Project "src/OcctNet.Avalonia/OcctNet.Avalonia.csproj"
 
-$coreProjectReferences = Get-ProjectReferences $core
-$corePackageReferences = Get-PackageReferences $core
+$coreProjectReferences = @(Get-ProjectReferences $core)
+$corePackageReferences = @(Get-PackageReferences $core)
 if ($coreProjectReferences.Count -ne 0) {
     throw "OcctNet core must not depend on UI host projects."
 }
@@ -73,9 +75,12 @@ foreach ($uiDependency in @("Avalonia", "PresentationFramework", "System.Windows
     }
 }
 
-Assert-Reference (Get-ProjectReferences $winForms) "..\OcctNet\OcctNet.csproj" "OcctNet.WinForms"
-Assert-Reference (Get-ProjectReferences $wpf) "..\OcctNet.WinForms\OcctNet.WinForms.csproj" "OcctNet.Wpf"
-Assert-Reference (Get-ProjectReferences $avalonia) "..\OcctNet\OcctNet.csproj" "OcctNet.Avalonia"
+$winFormsReferences = @(Get-ProjectReferences $winForms)
+$wpfReferences = @(Get-ProjectReferences $wpf)
+$avaloniaReferences = @(Get-ProjectReferences $avalonia)
+Assert-Reference $winFormsReferences "..\OcctNet\OcctNet.csproj" "OcctNet.WinForms"
+Assert-Reference $wpfReferences "..\OcctNet.WinForms\OcctNet.WinForms.csproj" "OcctNet.Wpf"
+Assert-Reference $avaloniaReferences "..\OcctNet\OcctNet.csproj" "OcctNet.Avalonia"
 
 if ((Get-ProjectProperty $winForms "UseWindowsForms") -ne "true") {
     throw "OcctNet.WinForms must enable Windows Forms."
@@ -83,7 +88,8 @@ if ((Get-ProjectProperty $winForms "UseWindowsForms") -ne "true") {
 if ((Get-ProjectProperty $wpf "UseWPF") -ne "true" -or (Get-ProjectProperty $wpf "UseWindowsForms") -ne "true") {
     throw "OcctNet.Wpf must enable WPF and Windows Forms hosting."
 }
-if ("Avalonia" -notin (Get-PackageReferences $avalonia)) {
+$avaloniaPackages = @(Get-PackageReferences $avalonia)
+if ("Avalonia" -notin $avaloniaPackages) {
     throw "OcctNet.Avalonia must reference the Avalonia package."
 }
 
