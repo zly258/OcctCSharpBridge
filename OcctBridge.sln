@@ -2,7 +2,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") = "Solution Items", "Solution Items", "{CBACB41C-6B78-4FD8-9F3B-D7AF292A17D9}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{CBACB41C-6B78-4FD8-9F3B-D7AF292A17D9}"
     ProjectSection(SolutionItems) = preProject
         .editorconfig = .editorconfig
         .gitattributes = .gitattributes
@@ -16,14 +16,14 @@ Project("{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") = "Solution Items", "Solution 
         README.zh-CN.md = README.zh-CN.md
     EndProjectSection
 EndProject
-Project("{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") = "Bridge", "Bridge", "{E3C3E281-D16F-44C3-A694-EC620E3BB101}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Bridge", "Bridge", "{E3C3E281-D16F-44C3-A694-EC620E3BB101}"
     ProjectSection(SolutionItems) = preProject
         src\OcctNative\CMakeLists.txt = src\OcctNative\CMakeLists.txt
     EndProjectSection
 EndProject
-Project("{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") = "Tests", "Tests", "{E3C3E281-D16F-44C3-A694-EC620E3BB102}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{E3C3E281-D16F-44C3-A694-EC620E3BB102}"
 EndProject
-Project("{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") = "Documentation", "Documentation", "{E3C3E281-D16F-44C3-A694-EC620E3BB103}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentation", "{E3C3E281-D16F-44C3-A694-EC620E3BB103}"
     ProjectSection(SolutionItems) = preProject
         docs\00_文档索引.md = docs\00_文档索引.md
         docs\01_快速开始.md = docs\01_快速开始.md
