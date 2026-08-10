@@ -27,6 +27,7 @@ $RepoRoot = Split-Path -Parent $PSCommandPath
 $DistRoot = Join-Path $RepoRoot "dist\win-x64"
 $ContractPath = Join-Path $DistRoot "bridge-contract.json"
 $ManifestPath = Join-Path $DistRoot "bridge-manifest.json"
+$script:TargetFramework = "net10.0-windows"
 
 $Projects = [ordered]@{
     common = @{
@@ -86,7 +87,7 @@ function Get-OutputDirectory {
         throw "Unknown project key: $Name"
     }
     $project = Join-Path $RepoRoot $definition.Project
-    return Join-Path (Split-Path -Parent $project) "bin\x64\$Configuration\net10.0-windows"
+    return Join-Path (Split-Path -Parent $project) "bin\x64\$Configuration\$script:TargetFramework"
 }
 
 function Test-BinarySdk {
@@ -104,16 +105,18 @@ function Test-BinarySdk {
         Assert-Path (Join-Path $DistRoot $name)
     }
 
-    foreach ($retiredSource in @(
-        "src\OcctNative",
-        "src\OcctNet",
-        "src\OcctNet.WinForms",
-        "src\OcctNet.Wpf",
-        "src\OcctNet.Avalonia"
-    )) {
-        if (Test-Path -LiteralPath (Join-Path $RepoRoot $retiredSource)) {
-            throw "Demo must not contain Bridge source code: $retiredSource"
-        }
+    Assert-Command "git"
+    $trackedBridgeSources = @(& git -C $RepoRoot ls-files -- 
+        "src/OcctNative/*" 
+        "src/OcctNet/*" 
+        "src/OcctNet.WinForms/*" 
+        "src/OcctNet.Wpf/*" 
+        "src/OcctNet.Avalonia/*")
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to inspect tracked Demo source paths."
+    }
+    if ($trackedBridgeSources.Count -gt 0) {
+        throw "Demo must not track Bridge source code: $($trackedBridgeSources -join ', ')"
     }
 
     $contract = Get-Content -LiteralPath $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -125,9 +128,16 @@ function Test-BinarySdk {
     if ([string]$contract.dotnet.targetFramework -ne "net10.0-windows") {
         throw "Unsupported Bridge target framework: $($contract.dotnet.targetFramework)"
     }
+    $script:TargetFramework = [string]$contract.dotnet.targetFramework
+
+    if ([int]$manifest.schemaVersion -ne 1) {
+        throw "Unsupported Bridge binary manifest schema: $($manifest.schemaVersion)"
+    }
     if ([string]$manifest.bridgeVersion -ne [string]$contract.bridgeVersion -or
         [int]$manifest.nativeAbiVersion -ne [int]$contract.nativeAbiVersion -or
-        [string]$manifest.occtVersion -ne [string]$contract.occtVersion) {
+        [string]$manifest.occtVersion -ne [string]$contract.occtVersion -or
+        [string]$manifest.platform -ne [string]$contract.platform -or
+        [string]$manifest.targetFramework -ne [string]$contract.dotnet.targetFramework) {
         throw "Bridge binary manifest does not match bridge-contract.json."
     }
 
