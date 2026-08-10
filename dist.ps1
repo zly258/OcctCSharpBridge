@@ -51,12 +51,12 @@ if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($sourceCommit)) {
 }
 $sourceCommit = $sourceCommit.Trim()
 
-$trackedChanges = @(& git -C $RepoRoot status --porcelain --untracked-files=no)
+$worktreeChanges = @(& git -C $RepoRoot status --porcelain --untracked-files=all)
 if ($LASTEXITCODE -ne 0) {
     throw "Failed to inspect the Git working tree."
 }
-if ($trackedChanges.Count -gt 0) {
-    throw "Tracked source changes are present. Commit them before producing dist/win-x64 so bridge-manifest.json can identify the exact source commit."
+if ($worktreeChanges.Count -gt 0) {
+    throw "The working tree is not clean. Commit or remove source/configuration changes before producing dist/win-x64 so bridge-manifest.json identifies the exact source commit."
 }
 
 Write-Host "[dist] Source commit: $sourceCommit" -ForegroundColor DarkGray
