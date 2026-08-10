@@ -1,4 +1,5 @@
-﻿#include "OcctModelingInternal.hxx"
+﻿#include "OcctInternal.hxx"
+#include "OcctModelingSessionInternal.hxx"
 
 using namespace OcctBridge;
 using namespace OcctModelingInternal;
