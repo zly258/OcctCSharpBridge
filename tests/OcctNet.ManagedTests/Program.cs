@@ -121,6 +121,15 @@ var intersection = nativeIntersection.ToManaged();
 Assert(intersection.Kind == OcctIntersectionKind.Overlap, "Intersection kind mapping regression.");
 Assert(intersection.FirstParameterStart == 1 && intersection.SecondParameterEnd == 4, "Intersection parameter mapping regression.");
 
+var topologyBounds = new OcctBounds
+{
+    MinX = 0,
+    MinY = 0,
+    MinZ = 0,
+    MaxX = 10,
+    MaxY = 0,
+    MaxZ = 0
+};
 var topologyReference = new OcctTopologyReference(
     1,
     OcctShapeType.Edge,
@@ -129,7 +138,7 @@ var topologyReference = new OcctTopologyReference(
     OcctSurfaceType.Other,
     10,
     new OcctPoint3d(5, 0, 0),
-    new OcctBounds(0, 0, 0, 10, 0, 0),
+    topologyBounds,
     1e-7,
     OcctModelOrientation.Forward,
     2,
@@ -150,7 +159,11 @@ var nativeReferenceResult = new NativeModelTopologyReferenceResult
 };
 var referenceResult = nativeReferenceResult.ToManaged(1001);
 Assert(referenceResult.Status == OcctTopologyReferenceStatus.Resolved, "Topology-reference result status regression.");
-Assert(referenceResult.Shape is { IsValid: true } && referenceResult.Shape.Value.OwnerId == 1001, "Topology-reference result owner regression.");
+Assert(
+    referenceResult.Shape.HasValue &&
+    referenceResult.Shape.Value.IsValid &&
+    referenceResult.Shape.Value.OwnerId == 1001,
+    "Topology-reference result owner regression.");
 Assert(referenceResult.UsedOperationHistory && !referenceResult.RuntimeIndexMatched, "Topology-reference result flag regression.");
 
 var orientedBounds = new OcctOrientedBounds
