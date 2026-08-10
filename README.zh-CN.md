@@ -10,7 +10,7 @@ OcctCSharpBridge 是面向 Windows x64 的 **Open CASCADE Technology 7.9.0 → .
 
 当前基础契约：
 
-- Bridge `2.6.0`，Native ABI `3`
+- Bridge `2.6.0`，Native ABI `4`
 - OCCT `7.9.0`
 - .NET SDK `10.0.302`
 - Target Framework `net10.0-windows`
