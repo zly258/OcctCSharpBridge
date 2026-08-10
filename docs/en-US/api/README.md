@@ -5,7 +5,7 @@ This directory contains the complete English **Managed + Native** API reference 
 ## Contract
 
 ```text
-Author: Liaoyuan Zhang
+Author: zly258
 Bridge: 2.6.0
 Native ABI: 4
 Native exports: 344
