@@ -6,13 +6,26 @@ OcctCSharpBridge 是面向 Windows x64 的 **Open CASCADE Technology 7.9.0 → .
 
 `main` 只负责可复用 Bridge。Document、Feature Tree、Command/Tool、Undo/Redo、捕捉、夹点、项目持久化以及 OCAF/XDE 不进入 Bridge。
 
-当前基础契约：
+## 当前契约
 
-- Bridge `2.6.0`，Native ABI `4`
-- OCCT `7.9.0`
-- .NET SDK `10.0.302`
-- `net10.0-windows`，C# `14.0`
-- Windows x64
+| 项目 | 当前值 |
+| --- | --- |
+| Author | **Liaoyuan Zhang** |
+| Bridge Version | **2.6.0** |
+| Native ABI | **4** |
+| Native exports | **344** |
+| Managed P/Invoke | **344** |
+| Public .NET types | **105** |
+| Viewer / Modeling API | **210 / 134** |
+| Open CASCADE Technology | **7.9.0** |
+| .NET SDK | **10.0.302** |
+| Target Framework | **`net10.0-windows`** |
+| C# | **14.0** |
+| Native Bridge | **C++17** |
+| Avalonia | **12.1.0** |
+| Platform | **Windows x64** |
+
+`bridge-contract.json` 是版本、平台与 API 数量的机器可读事实源。
 
 ## 构建
 
@@ -30,7 +43,7 @@ Managed NuGet：
 .\build.ps1 pack Release
 ```
 
-完整中英文 API Reference：
+完整中英文 Managed + Native API Reference：
 
 ```powershell
 .\build.ps1 docs Release
@@ -104,9 +117,9 @@ src/OcctNative                  C++17 OCCT Bridge 与稳定 C ABI
 src/OcctNet                     核心 .NET Bridge
 src/OcctNet.WinForms            WinForms 视口宿主
 src/OcctNet.Wpf                 WPF 视口宿主
-src/OcctNet.Avalonia            Avalonia Windows HWND 视口宿主
+src/OcctNet.Avalonia            Avalonia 12.1.0 Windows HWND 视口宿主
 tests                           静态契约、Managed 回归、Native Smoke
-tools/OcctApiDocsGenerator      全量中英文 Public API 文档生成器
+tools/OcctApiDocsGenerator      全量中英文 Managed + Native API 文档生成器
 docs/zh-CN                      中文专题文档 + API Reference
 docs/en-US                      英文专题文档 + API Reference
 dist/win-x64                    可提交的已验证 Binary SDK
@@ -118,7 +131,10 @@ publish.ps1                     API 文档 + Binary SDK + main→demo 正式发�
 
 `main` 是唯一 Bridge 源码生产者；`demo` 是 Binary SDK 消费者，不再复制 `src/OcctNative`、`src/OcctNet*` 或 Bridge 测试。其它项目也应直接消费已验证 Binary SDK，而不是 clone 后重新编译整个 Bridge。
 
-仓库不使用 GitHub Actions 替代真实的 Windows/MSVC/OCCT 本地编译和 Smoke 环境。
+## Author
+
+**Liaoyuan Zhang**  
+zhangly1403@gmail.com
 
 ## 许可证
 
