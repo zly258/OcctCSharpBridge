@@ -1,7 +1,8 @@
 ﻿param(
     [string]$OcctRoot = $env:OCCT_ROOT,
     [string]$Remote = "origin",
-    [string]$DemoBranch = "demo"
+    [string]$DemoBranch = "demo",
+    [switch]$Fast
 )
 
 $ErrorActionPreference = "Stop"
@@ -56,7 +57,12 @@ function Invoke-Build {
 
     # Use named PowerShell parameters. Array splatting does not reinterpret
     # '-OcctRoot' as a named parameter when invoking another PowerShell script.
-    & $BuildScript -Target $Target -Configuration "Release" -OcctRoot $OcctRoot
+    if ($Fast -and $Target -eq "dist") {
+        & $BuildScript -Target $Target -Configuration "Release" -OcctRoot $OcctRoot -SkipSmoke
+    }
+    else {
+        & $BuildScript -Target $Target -Configuration "Release" -OcctRoot $OcctRoot
+    }
 }
 
 function Commit-IfChanged {
@@ -172,15 +178,20 @@ if ($initialChanges.Count -gt 0) {
     throw "The main working tree must be clean before publishing."
 }
 
-Write-Host "[publish] Generating complete bilingual API reference..." -ForegroundColor Cyan
-Invoke-Build "docs"
-[void](Commit-IfChanged -Paths @("docs/zh-CN/api", "docs/en-US/api") -Message "Update generated API reference")
+if ($Fast) {
+    Write-Host "[publish] Fast mode: skipping API documentation generation and runtime smoke tests." -ForegroundColor Yellow
+}
+else {
+    Write-Host "[publish] Generating complete bilingual API reference..." -ForegroundColor Cyan
+    Invoke-Build "docs"
+    [void](Commit-IfChanged -Paths @("docs/zh-CN/api", "docs/en-US/api") -Message "Update generated API reference")
 
-# build.ps1 dist requires a clean worktree so the manifest sourceCommit exactly
-# identifies the source and generated public API documentation being published.
-$afterDocs = @(& git -C $RepoRoot status --porcelain --untracked-files=all)
-if ($LASTEXITCODE -ne 0 -or $afterDocs.Count -gt 0) {
-    throw "The worktree is not clean after API documentation generation. Review unexpected generated files before publishing."
+    # build.ps1 dist requires a clean worktree so the manifest sourceCommit exactly
+    # identifies the source and generated public API documentation being published.
+    $afterDocs = @(& git -C $RepoRoot status --porcelain --untracked-files=all)
+    if ($LASTEXITCODE -ne 0 -or $afterDocs.Count -gt 0) {
+        throw "The worktree is not clean after API documentation generation. Review unexpected generated files before publishing."
+    }
 }
 
 $sourceCommit = (& git -C $RepoRoot rev-parse HEAD).Trim()
@@ -223,4 +234,9 @@ finally {
     & git -C $RepoRoot worktree prune 2>$null
 }
 
-Write-Host "API reference and Binary SDK published; demo synchronized." -ForegroundColor Green
+if ($Fast) {
+    Write-Host "Fast Binary SDK publish completed; demo synchronized." -ForegroundColor Green
+}
+else {
+    Write-Host "API reference and Binary SDK published; demo synchronized." -ForegroundColor Green
+}
