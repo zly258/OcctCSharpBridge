@@ -4,15 +4,28 @@
 
 OcctCSharpBridge is a Windows x64 bridge from **Open CASCADE Technology 7.9.0** to **.NET 10**. It provides strongly typed C# APIs for OCCT modeling, topology, geometry analysis, meshing, data exchange, AIS/viewer interaction, and reusable WinForms/WPF/Avalonia viewport hosts.
 
-`main` stays at the reusable bridge boundary. Product-level Document, Feature Tree, Command/Tool, Undo/Redo, snapping, grips, persistence and OCAF/XDE do not belong in the Bridge.
+`main` stays at the reusable Bridge boundary. Product-level Document, Feature Tree, Command/Tool, Undo/Redo, snapping, grips, persistence and OCAF/XDE do not belong in the Bridge.
 
-Current contract:
+## Current contract
 
-- Bridge `2.6.0`, Native ABI `4`
-- OCCT `7.9.0`
-- .NET SDK `10.0.302`
-- `net10.0-windows`, C# `14.0`
-- Windows x64
+| Item | Current value |
+| --- | --- |
+| Author | **Liaoyuan Zhang** |
+| Bridge version | **2.6.0** |
+| Native ABI | **4** |
+| Native exports | **344** |
+| Managed P/Invoke mappings | **344** |
+| Public .NET types | **105** |
+| Viewer / Modeling API | **210 / 134** |
+| Open CASCADE Technology | **7.9.0** |
+| .NET SDK | **10.0.302** |
+| Target Framework | **`net10.0-windows`** |
+| C# | **14.0** |
+| Native Bridge | **C++17** |
+| Avalonia | **12.1.0** |
+| Platform | **Windows x64** |
+
+`bridge-contract.json` is the machine-readable source of truth for version, platform and API counts.
 
 ## Build
 
@@ -30,7 +43,7 @@ Managed packages:
 .\build.ps1 pack Release
 ```
 
-Complete bilingual API Reference:
+Complete bilingual Managed + Native API Reference:
 
 ```powershell
 .\build.ps1 docs Release
@@ -65,7 +78,7 @@ dist/win-x64/
 .\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-The publishing workflow is intentionally complete and one-directional:
+The publishing workflow is one-directional:
 
 ```text
 clean main worktree
@@ -80,7 +93,7 @@ clean main worktree
 → commit and push demo
 ```
 
-This guarantees that the Binary SDK `sourceCommit` identifies the same committed source and public API documentation that produced it. The script never switches the developer's current checkout and does not use GitHub Actions.
+This guarantees that the Binary SDK `sourceCommit` identifies the committed source and public API documentation used to produce it. The script does not switch the developer's current checkout and does not use GitHub Actions.
 
 ## Usage
 
@@ -104,9 +117,9 @@ src/OcctNative                  C++17 OCCT bridge and stable C ABI
 src/OcctNet                     Core managed bridge
 src/OcctNet.WinForms            WinForms viewport host
 src/OcctNet.Wpf                 WPF viewport host
-src/OcctNet.Avalonia            Avalonia Windows-HWND host
+src/OcctNet.Avalonia            Avalonia 12.1.0 Windows-HWND host
 tests                           Static contracts, managed regression, native smoke
-tools/OcctApiDocsGenerator      Complete bilingual public API generator
+tools/OcctApiDocsGenerator      Complete bilingual Managed + Native API generator
 docs/zh-CN                      Chinese conceptual docs + API reference
 docs/en-US                      English conceptual docs + API reference
 dist/win-x64                    Tracked validated Binary SDK
@@ -118,7 +131,10 @@ publish.ps1                     Release/API-doc/main→demo publishing entry poi
 
 `main` is the only Bridge source producer. `demo` is a Binary SDK consumer and does not mirror `src/OcctNative`, `src/OcctNet*`, or Bridge tests. Other applications should consume the validated Binary SDK instead of cloning and rebuilding Bridge source.
 
-The repository does not use GitHub Actions as a substitute for the real local Windows/MSVC/OCCT build and smoke environment.
+## Author
+
+**Liaoyuan Zhang**  
+zhangly1403@gmail.com
 
 ## License
 
