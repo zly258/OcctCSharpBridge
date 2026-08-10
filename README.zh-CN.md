@@ -1,83 +1,50 @@
 # OcctCSharpBridge
 
-[English](README.md) · [文档索引](docs/00_文档索引.md) · [API 覆盖](docs/03_API覆盖与设计约定.md) · [Demo 分支](https://github.com/zly258/OcctCSharpBridge/tree/demo)
-
-## 项目描述
+[English](README.md) · [中文文档](docs/zh-CN/README.md) · [English Docs](docs/en-US/README.md) · [完整 API 参考](docs/zh-CN/api/README.md) · [Demo 分支](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
 OcctCSharpBridge 是面向 Windows x64 的 **Open CASCADE Technology 7.9.0 → .NET 10** 桥接库，为 C# 提供强类型的 OCCT 建模、拓扑、几何分析、网格、数据交换、AIS/Viewer 交互以及 WinForms/WPF/Avalonia 视口宿主。
 
-`main` 只负责 OCCT Bridge，不实现应用层 CAD Framework。Document、Feature Tree、Command、Tool、Undo/Redo、捕捉、夹点、项目持久化以及 OCAF/XDE 均不进入可复用 Bridge；完整 CAD 行为放在应用层，例如 `demo` 分支。
+`main` 只负责可复用 Bridge。Document、Feature Tree、Command/Tool、Undo/Redo、捕捉、夹点、项目持久化以及 OCAF/XDE 不进入 Bridge。
 
 当前基础契约：
 
 - Bridge `2.6.0`，Native ABI `4`
 - OCCT `7.9.0`
 - .NET SDK `10.0.302`
-- Target Framework `net10.0-windows`
-- C# `14.0`
+- `net10.0-windows`，C# `14.0`
 - Windows x64
 
-Managed API 有两个主要入口：
+## 构建
 
-- `OcctEngine`：AIS/Viewer、显示对象、选择、相机、外观、标注和交互式视口操作。
-- `OcctModelingSession`：无窗口建模、拓扑、算法、分析、网格、History 以及 STEP/IGES/BREP/STL 数据交换。
-
-## 安装指南
-
-### 环境要求
-
-- Windows x64
-- .NET SDK `10.0.302`
-- Visual Studio 2022 / MSVC 工具链
-- CMake `3.21+`
-- Open CASCADE Technology `7.9.0`，VC14 x64 目录结构
-
-默认 OCCT 路径：
-
-```text
-D:\tools\occt-vc144-64
+```powershell
+.\build.ps1 validate Release
+.\build.ps1 managed Release
+.\build.ps1 test Release
+.\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
+.\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-其它安装位置可使用 `-OcctRoot` 或 `OCCT_ROOT` 指定。
-
-### 构建 Managed 包
+Managed NuGet：
 
 ```powershell
 .\build.ps1 pack Release
 ```
 
-包输出到 `artifacts\packages`：
-
-```text
-OcctNet
-OcctNet.WinForms
-OcctNet.Wpf
-OcctNet.Avalonia
-```
-
-Managed 包不捆绑 `OcctNative.dll` 或 OCCT `TK*.dll`。应用发布时需要部署与 Managed Bridge 匹配的 Native Bridge 和 OCCT Runtime。
-
-### 构建完整 Bridge
+完整中英文 API Reference：
 
 ```powershell
-.\build.ps1 all Release
+.\build.ps1 docs Release
 ```
 
-其它 OCCT 路径：
+## 已验证 Binary SDK
+
+`dist/win-x64` 是可提交的正式二进制 SDK，不是普通 build 输出。只能通过 Release 门禁生成：
 
 ```powershell
-.\build.ps1 all Release -OcctRoot "E:\SDK\occt-7.9.0"
+.\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-### 生成可提交 Binary SDK
-
-`dist/win-x64` 不是普通 build 输出，而是给 `demo`、OCStation 等上层项目直接消费的**已验证 Binary SDK**。它允许提交到 Git，不受全局 `*.dll` ignore 规则影响。
-
-```powershell
-.\dist.ps1 -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-`dist.ps1` 会先完成 Release Build、Managed Test 和 Native Smoke；只有全部成功才刷新：
+生成内容：
 
 ```text
 dist/win-x64/
@@ -90,128 +57,56 @@ dist/win-x64/
 └─ bridge-manifest.json
 ```
 
-`bridge-manifest.json` 记录 Bridge/ABI/OCCT/.NET 契约、源 Commit 与各文件 SHA-256，避免 Managed Wrapper 和 Native DLL 混用不同版本。
+`bridge-manifest.json` 记录 Bridge/ABI/OCCT/.NET 契约、源码 Commit 和各文件 SHA-256，避免 Managed Wrapper 与 Native DLL 混用不同版本。OCCT `TK*.dll` 与第三方 Runtime 不进入 `dist`，仍由 `OCCT_ROOT`、`CASROOT` 或显式运行时配置解析。
 
-OCCT 自身 `TK*.dll` 与第三方 Runtime 不提交到 `dist`；消费方仍通过 `OCCT_ROOT` / `CASROOT` 定位 OCCT Runtime。
+## 一键发布到 demo
+
+```powershell
+.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
+```
+
+`publish.ps1` 会执行 `dist` 全验证门禁，提交并推送 `main/dist/win-x64`，再使用临时 detached worktree 打开 `demo`，只同步 Binary SDK、校验 Manifest/SHA-256、提交并推送 demo。整个过程不会切换当前工作目录分支，也不使用 GitHub Actions。
+
+需要只演练本地流程时使用 `-NoPush`。
 
 ## 使用示例
-
-### Headless 建模
 
 ```csharp
 using OcctNet;
 
 using var model = new OcctModelingSession();
-
 var plate = model.MakeBox(100, 80, 10);
-var hole = model.MakeCylinder(
-    new OcctPoint3d(50, 40, -5),
-    OcctVector3d.UnitZ,
-    8,
-    20);
-
+var hole = model.MakeCylinder(new OcctPoint3d(50, 40, -5), OcctVector3d.UnitZ, 8, 20);
 var cut = model.Cut(plate, hole);
-var inertia = model.GetVolumeInertiaProperties(cut.Shape);
-var inspection = model.InspectShape(cut.Shape);
 model.ExportStep(cut.Shape, "plate.step");
 ```
 
-### 结构化 Edge/Edge 求交
-
-```csharp
-var first = model.MakeLine(
-    new OcctPoint3d(0, 0, 0),
-    new OcctPoint3d(100, 0, 0));
-var second = model.MakeLine(
-    new OcctPoint3d(50, -20, 0),
-    new OcctPoint3d(50, 20, 0));
-
-var intersections = model.IntersectEdges(first, second);
-```
-
-### 拓扑引用
-
-```csharp
-var faces = model.GetSubshapes(cut.Shape, OcctShapeType.Face);
-var reference = model.CreateTopologyReference(cut.Shape, faces[0]);
-var resolved = model.ResolveTopologyReference(cut.Shape, reference);
-```
-
-Topology Reference 是几何和拓扑特征组成的版本化指纹；运行时 Subshape Index 只作为低权重提示，不作为长期拓扑身份。
+`OcctModelingSession` 面向 Headless 建模/拓扑；`OcctEngine` 面向 AIS/Viewer 与交互式视口。
 
 ## 项目结构
 
 ```text
-bridge-contract.json     版本、平台与 API 契约
-src/OcctNative           C++17 OCCT Bridge 与 C ABI
-src/OcctNet              核心 .NET 封装
-src/OcctNet.WinForms     WinForms 视口宿主
-src/OcctNet.Wpf          WPF 视口宿主
-src/OcctNet.Avalonia     Avalonia Windows HWND 视口宿主
-tests                    静态契约、Managed 回归与 Native Smoke
-docs                     main 的编号化 Bridge 技术文档
-build.ps1                本地验证、构建、测试、打包、Smoke 统一入口
-dist.ps1                 全验证后生成 Binary SDK
-dist/win-x64             可提交、可直接消费的已验证 DLL/Contract/Manifest
+bridge-contract.json            版本、平台与 API 契约
+src/OcctNative                  C++17 OCCT Bridge 与稳定 C ABI
+src/OcctNet                     核心 .NET Bridge
+src/OcctNet.WinForms            WinForms 视口宿主
+src/OcctNet.Wpf                 WPF 视口宿主
+src/OcctNet.Avalonia            Avalonia Windows HWND 视口宿主
+tests                           静态契约、Managed 回归、Native Smoke
+tools/OcctApiDocsGenerator      全量中英文 Public API 文档生成器
+docs/zh-CN                      中文专题文档 + API Reference
+docs/en-US                      英文专题文档 + API Reference
+dist/win-x64                    可提交的已验证 Binary SDK
+build.ps1                       validate/build/test/pack/docs/dist 统一入口
+publish.ps1                     main → demo Binary SDK 发布入口
 ```
 
-`OcctNet.Avalonia` 当前通过 Windows 子 HWND 承载 Native Viewer，因此它是 Windows x64 Host，不代表 OCCT Viewer 已具备 Linux/macOS 跨平台后端。
+## 分支边界
 
-## 本地验证
+`main` 是唯一 Bridge 源码生产者；`demo` 是 Binary SDK 消费者，不再复制 `src/OcctNative`、`src/OcctNet*` 或 Bridge 测试。其它项目也应直接消费已验证 Binary SDK，而不是 clone 后重新编译整个 Bridge。
 
-不需要 OCCT SDK：
-
-```powershell
-.\build.ps1 validate Release
-.\build.ps1 managed Release
-.\build.ps1 test Release
-```
-
-构建 Native + Managed：
-
-```powershell
-.\build.ps1 all Release
-```
-
-真实 Native 验证：
-
-```powershell
-.\build.ps1 smoke Release
-```
-
-仓库不使用 GitHub Actions 代替本地构建和测试。Native 使用 `/W4 /WX` 编译，并以真实 OCCT 7.9.0 Header/Library、`bridge-contract.json` 和 Native/PInvoke 对等关系为门禁。
-
-## main / demo 边界
-
-`main` 是 Bridge 的源码生产者；`demo` 是 Binary SDK 的真实消费者。`demo` 不再复制 `src/OcctNative`、`src/OcctNet*` 或 Bridge 自测。
-
-同步流程：
-
-```text
-main 修改 Bridge
-→ main 本地 build/test/smoke
-→ dist.ps1
-→ commit main/dist/win-x64
-→ demo/sync-dist.ps1
-→ demo 编译应用
-```
-
-如果 Demo 调用与当前 Bridge 不一致，修改 Demo 调用方；不恢复 Legacy Alias、旧 Wrapper 或兼容层。
-
-## 贡献指南
-
-1. 公共 API 使用强类型和 Owner-aware Handle，不增加 Legacy Alias 或兼容包装层。
-2. 删除的内部聚合头、旧 Wrapper 或实验 API 不以兼容壳重新引入；调用方改用当前真实依赖。
-3. 集合数据优先使用 Bulk C ABI，不使用重复的 `Count + At` 跨 ABI 调用。
-4. OCCT 能力封装在 Bridge 内；Document、Command、Tool 等应用行为留在应用层。
-5. 不向可复用 Bridge 引入 OCAF/XDE。
-6. 提交前至少执行 `build.ps1 validate`、`build.ps1 managed`、`build.ps1 test`；涉及 Native 时执行 `build.ps1 all` 和 `build.ps1 smoke`。
-7. 只有经过 Release Build、Managed Test、Native Smoke 的版本才通过 `dist.ps1` 更新 `dist/win-x64`。
-8. `demo` 只同步 Binary SDK，不同步 Bridge 源码；不使用 GitHub Actions 自动覆盖分支。
-9. Bridge 技术文档只在 `main/docs` 维护；`demo` 不复制一套 API 文档。
+仓库不使用 GitHub Actions 替代真实的 Windows/MSVC/OCCT 本地编译和 Smoke 环境。
 
 ## 许可证
 
-OcctCSharpBridge 使用 [PolyForm Noncommercial License 1.0.0](LICENSE)。
-
-Open CASCADE Technology 及其它第三方依赖遵循各自许可证。
+OcctCSharpBridge 使用 [PolyForm Noncommercial License 1.0.0](LICENSE)。Open CASCADE Technology 及其它第三方依赖遵循各自许可证。
