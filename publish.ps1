@@ -11,6 +11,10 @@ $RepoRoot = Split-Path -Parent $PSCommandPath
 $BuildScript = Join-Path $RepoRoot "build.ps1"
 $DistRoot = Join-Path $RepoRoot "dist\win-x64"
 $DemoWorktree = Join-Path ([System.IO.Path]::GetTempPath()) ("OcctCSharpBridge-demo-publish-" + $PID)
+$DefaultOcctRoot = "D:\tools\occt-vc144-64"
+if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
+    $OcctRoot = $DefaultOcctRoot
+}
 
 function Assert-Command {
     param([Parameter(Mandatory = $true)][string]$Name)
@@ -48,20 +52,11 @@ function Get-CurrentBranch {
 }
 
 function Invoke-Build {
-    param(
-        [Parameter(Mandatory = $true)][string]$Target,
-        [switch]$WithOcctRoot
-    )
+    param([Parameter(Mandatory = $true)][string]$Target)
 
-    $arguments = @($Target, "Release")
-    if ($WithOcctRoot -and -not [string]::IsNullOrWhiteSpace($OcctRoot)) {
-        $arguments += @("-OcctRoot", $OcctRoot)
-    }
-
-    # build.ps1 is another PowerShell script. Its terminating errors propagate
-    # directly; $LASTEXITCODE is reserved for native processes and may contain
-    # a stale git/dotnet result here.
-    & $BuildScript @arguments
+    # Use named PowerShell parameters. Array splatting does not reinterpret
+    # '-OcctRoot' as a named parameter when invoking another PowerShell script.
+    & $BuildScript -Target $Target -Configuration "Release" -OcctRoot $OcctRoot
 }
 
 function Commit-IfChanged {
@@ -194,7 +189,7 @@ if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($sourceCommit)) {
 }
 
 Write-Host "[publish] Building and validating the Release Binary SDK..." -ForegroundColor Cyan
-Invoke-Build "dist" -WithOcctRoot
+Invoke-Build "dist"
 Test-BinarySdk -Path $DistRoot -ExpectedSourceCommit $sourceCommit
 [void](Commit-IfChanged -Paths @("dist/win-x64") -Message "Publish Bridge Binary SDK")
 
