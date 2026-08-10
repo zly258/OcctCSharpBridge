@@ -10,7 +10,7 @@ OcctCSharpBridge is a Windows x64 bridge from **Open CASCADE Technology 7.9.0** 
 
 Current contract:
 
-- Bridge `2.6.0`, Native ABI `3`
+- Bridge `2.6.0`, Native ABI `4`
 - OCCT `7.9.0`
 - .NET SDK `10.0.302`
 - Target framework `net10.0-windows`
