@@ -26,9 +26,10 @@ public sealed partial class OcctModelingSession
     {
         EnsureShape(source);
         var count = generated
-            ? ModelNativeMethods.occt_model_history_generated_count(_handle, operationId, source.Id)
-            : ModelNativeMethods.occt_model_history_modified_count(_handle, operationId, source.Id);
-        if (count <= 0) return Array.Empty<OcctModelShape>();
+            ? ModelNativeMethods.occt_model_history_generated_copy(_handle, operationId, source.Id, null, 0)
+            : ModelNativeMethods.occt_model_history_modified_copy(_handle, operationId, source.Id, null, 0);
+        if (count < 0) throw CreateException();
+        if (count == 0) return Array.Empty<OcctModelShape>();
 
         var ids = new long[count];
         var copied = generated
