@@ -1,10 +1,5 @@
 ﻿#include "OcctModelingAlgorithmInternal.hxx"
 
-#include <BRepAlgoAPI_Common.hxx>
-#include <BRepAlgoAPI_Cut.hxx>
-#include <BRepAlgoAPI_Fuse.hxx>
-#include <BRepAlgoAPI_Section.hxx>
-#include <BRepAlgoAPI_Splitter.hxx>
 #include <BRepFilletAPI_MakeChamfer.hxx>
 #include <BRepFilletAPI_MakeFillet.hxx>
 #include <BRepOffsetAPI_MakeOffsetShape.hxx>
@@ -15,8 +10,6 @@
 #include <BRepPrimAPI_MakePrism.hxx>
 #include <BRepPrimAPI_MakeRevol.hxx>
 #include <GeomAbs_JoinType.hxx>
-#include <ShapeFix_Shape.hxx>
-#include <ShapeUpgrade_UnifySameDomain.hxx>
 #include <gp_Ax1.hxx>
 
 #include <cmath>
@@ -25,68 +18,6 @@ using namespace OcctModelingInternal;
 
 extern "C"
 {
-    OcctModelAlgorithmResult occt_model_boolean(OcctModelHandle handle, int operation, OcctObjectId leftId, OcctObjectId rightId, const OcctModelBooleanOptions* options)
-    {
-        ModelSession* model = modelOf(handle);
-        OcctModelAlgorithmResult result = failedAlgorithmResult();
-        execute(model, [&]
-        {
-            const TopoDS_Shape& left = model->requireShape(leftId);
-            const TopoDS_Shape& right = model->requireShape(rightId);
-            TopTools_ListOfShape arguments;
-            arguments.Append(left);
-            TopTools_ListOfShape tools;
-            tools.Append(right);
-
-            if (operation == OcctModelBoolean_Cut)
-            {
-                BRepAlgoAPI_Cut algorithm;
-                algorithm.SetArguments(arguments);
-                algorithm.SetTools(tools);
-                applyBooleanOptions(algorithm, options);
-                result = finishBuilderAlgorithm(model, algorithm, options);
-            }
-            else if (operation == OcctModelBoolean_Common)
-            {
-                BRepAlgoAPI_Common algorithm;
-                algorithm.SetArguments(arguments);
-                algorithm.SetTools(tools);
-                applyBooleanOptions(algorithm, options);
-                result = finishBuilderAlgorithm(model, algorithm, options);
-            }
-            else if (operation == OcctModelBoolean_Section)
-            {
-                BRepAlgoAPI_Section algorithm(left, right, Standard_False);
-                applyBooleanOptions(algorithm, options);
-                result = finishBuilderAlgorithm(model, algorithm, options);
-            }
-            else
-            {
-                BRepAlgoAPI_Fuse algorithm;
-                algorithm.SetArguments(arguments);
-                algorithm.SetTools(tools);
-                applyBooleanOptions(algorithm, options);
-                result = finishBuilderAlgorithm(model, algorithm, options);
-            }
-        });
-        return result;
-    }
-
-    OcctModelAlgorithmResult occt_model_split(OcctModelHandle handle, const OcctObjectId* objectIds, int objectCount, const OcctObjectId* toolIds, int toolCount, const OcctModelBooleanOptions* options)
-    {
-        ModelSession* model = modelOf(handle);
-        OcctModelAlgorithmResult result = failedAlgorithmResult();
-        execute(model, [&]
-        {
-            BRepAlgoAPI_Splitter algorithm;
-            algorithm.SetArguments(shapeList(model, objectIds, objectCount, "Splitter objects"));
-            algorithm.SetTools(shapeList(model, toolIds, toolCount, "Splitter tools"));
-            applyBooleanOptions(algorithm, options);
-            result = finishBuilderAlgorithm(model, algorithm, options);
-        });
-        return result;
-    }
-
     OcctModelAlgorithmResult occt_model_extrude(OcctModelHandle handle, OcctObjectId profileId, OcctVector3d vectorValue)
     {
         ModelSession* model = modelOf(handle);
@@ -245,92 +176,5 @@ extern "C"
             result = {outputId, operationId, 1, 0, 0};
         });
         return result;
-    }
-
-    OcctModelAlgorithmResult occt_model_unify_same_domain(OcctModelHandle handle, OcctObjectId shapeId, int unifyEdges, int unifyFaces, int concatBsplines)
-    {
-        ModelSession* model = modelOf(handle);
-        OcctModelAlgorithmResult result = failedAlgorithmResult();
-        execute(model, [&]
-        {
-            const TopoDS_Shape& source = model->requireShape(shapeId);
-            ShapeUpgrade_UnifySameDomain algorithm(source, unifyEdges != 0, unifyFaces != 0, concatBsplines != 0);
-            algorithm.Build();
-            if (algorithm.Shape().IsNull()) throw std::runtime_error("Unify same domain failed.");
-            const OcctObjectId outputId = model->addShape(algorithm.Shape());
-            const OcctOperationId operationId = model->addOperation(algorithm.History(), {}, false, false);
-            result = {outputId, operationId, 1, 0, 0};
-        });
-        return result;
-    }
-
-    OcctModelAlgorithmResult occt_model_fix_shape(OcctModelHandle handle, OcctObjectId shapeId, double precision, double minTolerance, double maxTolerance)
-    {
-        ModelSession* model = modelOf(handle);
-        OcctModelAlgorithmResult result = failedAlgorithmResult();
-        execute(model, [&]
-        {
-            requirePositive(precision, "Precision");
-            if (minTolerance < 0.0 || maxTolerance < minTolerance) throw std::invalid_argument("Tolerance range is invalid.");
-            const TopoDS_Shape& source = model->requireShape(shapeId);
-            ShapeFix_Shape algorithm(source);
-            algorithm.SetPrecision(precision);
-            algorithm.SetMinTolerance(minTolerance);
-            algorithm.SetMaxTolerance(maxTolerance);
-            algorithm.Perform();
-            const TopoDS_Shape fixed = algorithm.Shape();
-            if (fixed.IsNull()) throw std::runtime_error("Shape healing failed.");
-            Handle(BRepTools_History) history = new BRepTools_History();
-            history->AddModified(source, fixed);
-            const OcctObjectId outputId = model->addShape(fixed);
-            const OcctOperationId operationId = model->addOperation(history, {}, false, false);
-            result = {outputId, operationId, 1, 0, 0};
-        });
-        return result;
-    }
-
-    int occt_model_history_generated_count(OcctModelHandle handle, OcctOperationId operationId, OcctObjectId sourceShapeId)
-    {
-        ModelSession* model = modelOf(handle);
-        if (model == nullptr) return 0;
-        try { return historyCount(model, operationId, sourceShapeId, true); }
-        catch (...) { return 0; }
-    }
-
-    OcctObjectId occt_model_history_generated_at(OcctModelHandle handle, OcctOperationId operationId, OcctObjectId sourceShapeId, int index)
-    {
-        ModelSession* model = modelOf(handle);
-        OcctObjectId result = 0;
-        execute(model, [&] { result = historyShapeAt(model, operationId, sourceShapeId, index, true); });
-        return result;
-    }
-
-    int occt_model_history_modified_count(OcctModelHandle handle, OcctOperationId operationId, OcctObjectId sourceShapeId)
-    {
-        ModelSession* model = modelOf(handle);
-        if (model == nullptr) return 0;
-        try { return historyCount(model, operationId, sourceShapeId, false); }
-        catch (...) { return 0; }
-    }
-
-    OcctObjectId occt_model_history_modified_at(OcctModelHandle handle, OcctOperationId operationId, OcctObjectId sourceShapeId, int index)
-    {
-        ModelSession* model = modelOf(handle);
-        OcctObjectId result = 0;
-        execute(model, [&] { result = historyShapeAt(model, operationId, sourceShapeId, index, false); });
-        return result;
-    }
-
-    int occt_model_history_is_removed(OcctModelHandle handle, OcctOperationId operationId, OcctObjectId sourceShapeId)
-    {
-        ModelSession* model = modelOf(handle);
-        if (model == nullptr) return 0;
-        try
-        {
-            const OperationRecord& operation = requireOperation(model, operationId);
-            if (operation.history.IsNull()) return 0;
-            return operation.history->IsRemoved(model->requireShape(sourceShapeId)) ? 1 : 0;
-        }
-        catch (...) { return 0; }
     }
 }
