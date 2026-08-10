@@ -122,13 +122,13 @@ jobs:
           public_dotnet = f".NET {major}"
           if public_dotnet not in index or public_dotnet not in app:
               raise SystemExit(f"Website visitor-facing .NET version is stale; expected {public_dotnet}")
-          for value, label in (
-              (target_framework, "target framework"),
-              (sdk_version, "SDK"),
-              (f"C# {language_version}", "language version"),
-          ):
-              if value not in readmes:
-                  raise SystemExit(f"Website README {label} is stale; expected {value}")
+          if target_framework not in readmes:
+              raise SystemExit(f"Website README target framework is stale; expected {target_framework}")
+          if sdk_version not in readmes:
+              raise SystemExit(f"Website README SDK is stale; expected {sdk_version}")
+          language_pattern = rf'C#\s+(?:\*\*)?{re.escape(language_version)}(?:\*\*)?'
+          if not re.search(language_pattern, readmes):
+              raise SystemExit(f"Website README language version is stale; expected C# {language_version}")
 
           contact = str(contract.get("contactEmail", "")).strip()
           if not contact:
