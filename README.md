@@ -1,12 +1,10 @@
 # OcctCSharpBridge Demo
 
-[简体中文](README.zh-CN.md) · [Main SDK](https://github.com/zly258/OcctCSharpBridge) · [Demo Maintenance](docs/README.md) · [Main Technical Docs](https://github.com/zly258/OcctCSharpBridge/tree/main/docs)
+[简体中文](README.zh-CN.md) · [Main SDK](https://github.com/zly258/OcctCSharpBridge) · [Demo Maintenance](docs/README.md) · [Main English Docs](https://github.com/zly258/OcctCSharpBridge/tree/main/docs/en-US)
 
-## Purpose
+The `demo` branch is a **Binary SDK-only consumer** of OcctCSharpBridge. It contains no native/managed Bridge source and does not own ABI checks, CMake validation, managed regression, or native smoke.
 
-The `demo` branch is a **binary-only consumer** of OcctCSharpBridge. It no longer contains the native or managed Bridge source, ABI checks, managed regression tests, or native smoke tests from `main`.
-
-Only four application projects remain:
+Application projects:
 
 ```text
 src/OcctDemo.Common
@@ -15,7 +13,7 @@ src/OcctDemo.Wpf
 src/OcctDemo.Avalonia
 ```
 
-The validated Bridge Binary SDK is consumed from `dist/win-x64`:
+The Bridge is published from `main/publish.ps1` into `dist/win-x64`:
 
 ```text
 OcctNative.dll
@@ -27,54 +25,33 @@ bridge-contract.json
 bridge-manifest.json
 ```
 
-### Preview
-
-<p align="center"><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-en.png" alt="WinForms demo" width="88%"></p>
-<p align="center"><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-en.png" alt="WPF demo" width="88%"></p>
-<p align="center"><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-demo-en.png" alt="Avalonia demo" width="88%"></p>
-
 ## Requirements
 
 - Windows x64
 - .NET SDK `10.0.302`
 - OCCT `7.9.0` runtime
 
-CMake and MSVC are no longer required to build the demo branch. They are required only on `main` when producing `OcctNative.dll`.
+CMake/MSVC are not required to build demo applications; the native toolchain belongs only to the Bridge production workflow on `main`.
 
-Default OCCT root:
+## Binary SDK updates
 
-```text
-D:\tools\occt-vc144-64
-```
-
-Use `OCCT_ROOT` or `CASROOT` for another runtime location.
-
-## 1. Sync the Binary SDK
-
-On `main`, produce the validated payload:
+The demo branch no longer owns a reverse synchronization script. Publishing starts from `main`:
 
 ```powershell
-.\dist.ps1 -OcctRoot "D:\tools\occt-vc144-64"
+# main branch
+.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-`dist.ps1` runs the Release build, managed tests, and native smoke validation before refreshing `dist/win-x64`.
+Main validates Release build, managed tests, native smoke, manifest and SHA-256, then uses a temporary worktree to publish `dist/win-x64` to demo.
 
-After committing that payload on `main`, switch to `demo` and run:
-
-```powershell
-.\sync-dist.ps1
-```
-
-This restores the exact `dist/win-x64` payload from `origin/main`; no Bridge source checkout is required.
-
-## 2. Build
+## Build
 
 ```powershell
 .\build.ps1 validate Release
 .\build.ps1 all Release
 ```
 
-Build one target:
+Individual targets:
 
 ```powershell
 .\build.ps1 common Release
@@ -83,9 +60,9 @@ Build one target:
 .\build.ps1 avalonia Release
 ```
 
-Validation checks the Binary SDK contract, manifest, and SHA-256 hashes and rejects any reintroduced `src/OcctNative` or `src/OcctNet*` source directories.
+Validation checks the Binary SDK contract, manifest and hashes and rejects reintroduced Bridge source.
 
-## 3. Run
+## Run
 
 ```powershell
 .\run.ps1 winform Release
@@ -93,43 +70,41 @@ Validation checks the Binary SDK contract, manifest, and SHA-256 hashes and reje
 .\run.ps1 avalonia Release
 ```
 
-`OcctNative.dll` is copied beside each executable. `run.ps1` configures the OCCT and third-party runtime search paths.
+`OcctNative.dll` is copied beside each executable. `run.ps1` configures OCCT and third-party runtime paths.
 
-## 4. Publish
+## Publish demo applications
 
 ```powershell
 .\publish.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64" -Zip
 ```
 
-Publishing consumes the Binary SDK and does not compile Bridge source.
+The demo `publish.ps1` publishes applications only. It consumes `dist/win-x64` and never builds Bridge source.
 
-## Project Structure
+## Structure
 
 ```text
-dist/README.md              Binary SDK notes
-dist/win-x64/               Validated DLL/contract/manifest payload from main
+dist/win-x64/               Validated Binary SDK published by main
 src/OcctDemo.Common/        Shared demo behavior
 src/OcctDemo.WinForms/      WinForms demo
 src/OcctDemo.Wpf/           WPF demo
 src/OcctDemo.Avalonia/      Avalonia demo
 assets/previews/            Demo screenshots
-docs/README.md              Demo maintenance rules
+docs/README.md              Demo maintenance notes
 OcctDemo.sln                Demo-only solution
 build.ps1                   Demo build entry point
-sync-dist.ps1               Sync Binary SDK from main
 run.ps1                     Local runner
-publish.ps1                 Demo publisher
+publish.ps1                 Demo application publisher
 ```
 
-## Dependency Rules
+## Dependency rules
 
 - Demo projects reference `dist/win-x64/OcctNet*.dll`, never Bridge `.csproj` files.
-- Demo contains no `src/OcctNative`, `src/OcctNet*`, or Bridge `tests` directory.
-- If the current Bridge changes, update demo callers instead of restoring legacy aliases or compatibility wrappers.
-- Bridge API, ABI, native, runtime, modeling, and SDK documentation remain authoritative on `main` only.
-- GitHub Actions are not used for building or branch synchronization.
+- Demo contains no `src/OcctNative`, `src/OcctNet*`, or Bridge tests.
+- Update callers when the SDK changes; do not restore legacy aliases or compatibility wrappers.
+- Bridge conceptual docs and complete bilingual API Reference are maintained only under `main/docs/zh-CN` and `main/docs/en-US`.
+- GitHub Actions are not used for build or branch synchronization.
 
-## Native Runtime Troubleshooting
+## Runtime troubleshooting
 
 For `DllNotFoundException` or Win32 error 126, verify:
 
@@ -139,8 +114,8 @@ application/OcctNative.dll
 %OCCT_ROOT%/3rdparty-vc14-64/**/bin/*.dll
 ```
 
-The Avalonia host still uses a Windows child HWND and therefore remains a Windows x64 application.
+The Avalonia host still uses a Windows child HWND, so all demo applications are Windows x64.
 
 ## License
 
-OcctCSharpBridge is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE). Open CASCADE Technology and other third-party dependencies remain subject to their own licenses.
+OcctCSharpBridge is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE).
