@@ -110,13 +110,13 @@ function Copy-RuntimeDlls {
 
 Assert-Command "dotnet"
 Assert-Path $BuildScript
-Assert-Path $ContractPath
-Assert-Path $ManifestPath
-Assert-Path $NativeDll
-Assert-Path $OcctBinDir
 
+# Use the demo's single Binary SDK validator before touching package output.
+# It provides the authoritative contract/manifest/hash checks and a precise
+# first-publication diagnostic when dist/win-x64 has not been published yet.
 & $BuildScript validate $Configuration
 
+Assert-Path $OcctBinDir
 $contract = Get-Content -LiteralPath $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $packageRoot = Join-Path $OutputDirectory ("OcctCSharpBridge-Demo-{0}-win-x64" -f $Target)
 
