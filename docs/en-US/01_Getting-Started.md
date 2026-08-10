@@ -23,7 +23,7 @@ These targets do not require loading the native OCCT runtime.
 ## Native build and smoke test
 
 ```powershell
-.\build.ps1 all Release
+.\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 .\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
@@ -32,10 +32,16 @@ These targets do not require loading the native OCCT runtime.
 ## Binary SDK
 
 ```powershell
-.\build.ps1 dist Release
+.\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-The `dist` target is Release-only. It requires a clean Git worktree, executes native build, managed build, managed tests and native smoke, and then writes a versioned Binary SDK to `dist/win-x64`.
+The `dist` target is Release-only. It requires a clean Git worktree, executes native build, managed build, managed tests and native smoke, and then writes the validated Binary SDK to `dist/win-x64`.
+
+For the normal main→demo release transaction use:
+
+```powershell
+.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
+```
 
 ## Typical headless use
 
@@ -57,4 +63,13 @@ Use `OcctModelingSession` for headless geometry and topology work. Use `OcctEngi
 .\build.ps1 docs Release
 ```
 
-This generates the complete bilingual public API reference under `docs/zh-CN/api/reference` and `docs/en-US/api/reference`.
+This generates the complete bilingual Managed + Native API reference:
+
+```text
+docs/en-US/api/reference/**
+docs/en-US/api/native-abi.md
+docs/zh-CN/api/reference/**
+docs/zh-CN/api/native-abi.md
+```
+
+The project author is **zly258**. Version, ABI, OCCT, .NET and API-count facts are defined by `bridge-contract.json`.
