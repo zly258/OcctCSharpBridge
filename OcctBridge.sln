@@ -7,39 +7,18 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
         .editorconfig = .editorconfig
         .gitattributes = .gitattributes
         .gitignore = .gitignore
-        bridge-contract.json = bridge-contract.json
         build.ps1 = build.ps1
         Directory.Build.props = Directory.Build.props
         Directory.Build.targets = Directory.Build.targets
         global.json = global.json
         LICENSE = LICENSE
-        publish.ps1 = publish.ps1
         README.md = README.md
         README.zh-CN.md = README.zh-CN.md
         run.ps1 = run.ps1
-    EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Bridge", "Bridge", "{E3C3E281-D16F-44C3-A694-EC620E3BB201}"
-    ProjectSection(SolutionItems) = preProject
-        src\OcctNative\CMakeLists.txt = src\OcctNative\CMakeLists.txt
-    EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Demo Applications", "Demo Applications", "{E3C3E281-D16F-44C3-A694-EC620E3BB202}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{E3C3E281-D16F-44C3-A694-EC620E3BB203}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentation", "{E3C3E281-D16F-44C3-A694-EC620E3BB204}"
-    ProjectSection(SolutionItems) = preProject
+        sync-dist.ps1 = sync-dist.ps1
         docs\README.md = docs\README.md
+        dist\README.md = dist\README.md
     EndProjectSection
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet", "src\OcctNet\OcctNet.csproj", "{217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.WinForms", "src\OcctNet.WinForms\OcctNet.WinForms.csproj", "{7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.Wpf", "src\OcctNet.Wpf\OcctNet.Wpf.csproj", "{B65176A4-9A31-4C15-BE31-2F4FB10EFB56}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.Avalonia", "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj", "{3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctDemo.Common", "src\OcctDemo.Common\OcctDemo.Common.csproj", "{A01D0BAA-2AE2-487D-A76C-A6BD09ED92FA}"
 EndProject
@@ -49,32 +28,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctDemo.Wpf", "src\OcctDem
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctDemo.Avalonia", "src\OcctDemo.Avalonia\OcctDemo.Avalonia.csproj", "{B6496B5B-10CF-45BB-8BC9-D77BD86F2E71}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.ManagedTests", "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj", "{D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.Smoke", "tests\OcctNet.Smoke\OcctNet.Smoke.csproj", "{A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}"
-EndProject
 Global
     GlobalSection(SolutionConfigurationPlatforms) = preSolution
         Debug|x64 = Debug|x64
         Release|x64 = Release|x64
     EndGlobalSection
     GlobalSection(ProjectConfigurationPlatforms) = postSolution
-        {217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3}.Debug|x64.ActiveCfg = Debug|x64
-        {217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3}.Debug|x64.Build.0 = Debug|x64
-        {217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3}.Release|x64.ActiveCfg = Release|x64
-        {217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3}.Release|x64.Build.0 = Release|x64
-        {7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58}.Debug|x64.ActiveCfg = Debug|x64
-        {7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58}.Debug|x64.Build.0 = Debug|x64
-        {7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58}.Release|x64.ActiveCfg = Release|x64
-        {7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58}.Release|x64.Build.0 = Release|x64
-        {B65176A4-9A31-4C15-BE31-2F4FB10EFB56}.Debug|x64.ActiveCfg = Debug|x64
-        {B65176A4-9A31-4C15-BE31-2F4FB10EFB56}.Debug|x64.Build.0 = Debug|x64
-        {B65176A4-9A31-4C15-BE31-2F4FB10EFB56}.Release|x64.ActiveCfg = Release|x64
-        {B65176A4-9A31-4C15-BE31-2F4FB10EFB56}.Release|x64.Build.0 = Release|x64
-        {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}.Debug|x64.ActiveCfg = Debug|x64
-        {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}.Debug|x64.Build.0 = Debug|x64
-        {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}.Release|x64.ActiveCfg = Release|x64
-        {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}.Release|x64.Build.0 = Release|x64
         {A01D0BAA-2AE2-487D-A76C-A6BD09ED92FA}.Debug|x64.ActiveCfg = Debug|x64
         {A01D0BAA-2AE2-487D-A76C-A6BD09ED92FA}.Debug|x64.Build.0 = Debug|x64
         {A01D0BAA-2AE2-487D-A76C-A6BD09ED92FA}.Release|x64.ActiveCfg = Release|x64
@@ -91,26 +50,6 @@ Global
         {B6496B5B-10CF-45BB-8BC9-D77BD86F2E71}.Debug|x64.Build.0 = Debug|x64
         {B6496B5B-10CF-45BB-8BC9-D77BD86F2E71}.Release|x64.ActiveCfg = Release|x64
         {B6496B5B-10CF-45BB-8BC9-D77BD86F2E71}.Release|x64.Build.0 = Release|x64
-        {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}.Debug|x64.ActiveCfg = Debug|x64
-        {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}.Debug|x64.Build.0 = Debug|x64
-        {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}.Release|x64.ActiveCfg = Release|x64
-        {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}.Release|x64.Build.0 = Release|x64
-        {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}.Debug|x64.ActiveCfg = Debug|x64
-        {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}.Debug|x64.Build.0 = Debug|x64
-        {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}.Release|x64.ActiveCfg = Release|x64
-        {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}.Release|x64.Build.0 = Release|x64
-    EndGlobalSection
-    GlobalSection(NestedProjects) = preSolution
-        {217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3} = {E3C3E281-D16F-44C3-A694-EC620E3BB201}
-        {7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58} = {E3C3E281-D16F-44C3-A694-EC620E3BB201}
-        {B65176A4-9A31-4C15-BE31-2F4FB10EFB56} = {E3C3E281-D16F-44C3-A694-EC620E3BB201}
-        {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C} = {E3C3E281-D16F-44C3-A694-EC620E3BB201}
-        {A01D0BAA-2AE2-487D-A76C-A6BD09ED92FA} = {E3C3E281-D16F-44C3-A694-EC620E3BB202}
-        {9FD55C83-D84B-498A-86E9-0413E8A5AE69} = {E3C3E281-D16F-44C3-A694-EC620E3BB202}
-        {FF3305BE-D770-4E1E-A730-49F67353F64E} = {E3C3E281-D16F-44C3-A694-EC620E3BB202}
-        {B6496B5B-10CF-45BB-8BC9-D77BD86F2E71} = {E3C3E281-D16F-44C3-A694-EC620E3BB202}
-        {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095} = {E3C3E281-D16F-44C3-A694-EC620E3BB203}
-        {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E} = {E3C3E281-D16F-44C3-A694-EC620E3BB203}
     EndGlobalSection
     GlobalSection(SolutionProperties) = preSolution
         HideSolutionNode = FALSE
