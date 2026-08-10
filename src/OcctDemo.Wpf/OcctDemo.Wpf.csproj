@@ -4,6 +4,7 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <IsPackable>false</IsPackable>
     <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Platforms>x64</Platforms>
@@ -15,6 +16,10 @@
     <ProjectReference Include="..\OcctDemo.Common\OcctDemo.Common.csproj" />
     <Reference Include="OcctNet">
       <HintPath>$(OcctBridgeDistRoot)\OcctNet.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="OcctNet.WinForms">
+      <HintPath>$(OcctBridgeDistRoot)\OcctNet.WinForms.dll</HintPath>
       <Private>true</Private>
     </Reference>
     <Reference Include="OcctNet.Wpf">
