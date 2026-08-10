@@ -1,103 +1,103 @@
 ﻿# OcctCSharpBridge
 
-[简体中文](README.zh-CN.md) · [Documentation](docs/INDEX.md) · [Architecture boundaries](docs/ARCHITECTURE_BOUNDARIES.md) · [Desktop demos](https://github.com/zly258/OcctCSharpBridge/tree/demo)
+[简体中文](README.zh-CN.md) · [Documentation](docs/INDEX.md) · [API Coverage](docs/API_COVERAGE.md) · [Demo Branch](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
-OcctCSharpBridge is a Windows x64 **Open CASCADE Technology 7.9.0 → .NET 10** bridge. `main` contains only reusable OCCT native/.NET wrappers, WinForms/WPF/Avalonia viewport hosts, contract tests, Native Smoke scenarios, and managed SDK packaging. Complete CAD applications and upper-layer CAD frameworks live on `demo`.
+## Description
 
-Bridge **2.6.0 / Native ABI 3** follows one deliberate boundary: **the bridge exposes OCCT capabilities and viewport adapters, not an application CAD framework.** OCAF/XDE, Document, Feature/Entity, Command, Tool, Undo/Redo, Snap/Grip, project persistence, and product UI do not belong in `main`.
+OcctCSharpBridge is a Windows x64 bridge from **Open CASCADE Technology 7.9.0** to **.NET 10**. It provides a strongly typed C# API for OCCT modeling, topology, geometry analysis, meshing, data exchange, AIS/viewer interaction, and reusable WinForms/WPF/Avalonia viewport hosts.
 
-## Requirements
+The repository deliberately stays at the OCCT bridge boundary. `main` does not implement an application Document model, feature tree, Command/Tool framework, Undo/Redo, snapping, grips, project persistence, or OCAF/XDE. Product-level CAD behavior belongs in an application layer such as the `demo` branch.
+
+Current contract:
+
+- Bridge `2.6.0`, Native ABI `3`
+- OCCT `7.9.0`
+- .NET SDK `10.0.302`
+- Target framework `net10.0-windows`
+- C# `14.0`
+- Windows x64
+
+The managed API has two primary façades:
+
+- `OcctEngine` — AIS/viewer, registered display objects, selection, camera, appearance, annotations, and interactive viewport operations.
+- `OcctModelingSession` — headless construction, topology, algorithms, analysis, meshing, history, and STEP/IGES/BREP/STL exchange.
+
+P0–P3 capabilities include full inertia properties, structured Edge/Edge intersection results, versioned topology references, and bulk-only collection transfer for high-cardinality modeling data.
+
+## Installation
+
+### 1. Prerequisites
+
+Install:
 
 - Windows x64
-- Visual Studio 2022 / MSVC v143-compatible toolchain
-- .NET SDK **10.0.302** (`global.json`)
-- .NET Desktop Runtime **10.x** for framework-dependent desktop applications
-- Target framework **`net10.0-windows`**
-- C# **14.0**
-- CMake 3.21+
-- Open CASCADE Technology **7.9.0**, VC14 x64 layout
-- PowerShell 5.1+ or PowerShell 7+
+- .NET SDK `10.0.302`
+- Visual Studio 2022 / MSVC toolchain
+- CMake `3.21+`
+- Open CASCADE Technology `7.9.0`, VC14 x64 layout
 
-A newer .NET 10 patch runtime is valid through normal framework patch roll-forward; the repository does not pin consuming applications to one exact `10.0.x` runtime patch.
-
-The conventional OCCT root is:
+The default OCCT location used by the repository is:
 
 ```text
-D:\tools\occt-vc144-64\
-├─ inc\
-├─ win64\vc14\bin\
-├─ win64\vc14\lib\
-└─ 3rdparty-vc14-64\
+D:\tools\occt-vc144-64
 ```
 
-If OCCT is installed there, `native`, `smoke`, and `all` do not require `OCCT_ROOT`. Other locations can be supplied through `$env:OCCT_ROOT` or `-OcctRoot`. `validate`, `managed`, `pack`, and `ci` do not require an OCCT SDK.
+A different location can be passed with `-OcctRoot` or through `OCCT_ROOT`.
 
-## `main` repository structure
+### 2. Build managed packages
+
+```powershell
+.\build.ps1 pack Release
+```
+
+Packages are written to:
 
 ```text
-bridge-contract.json     Bridge / ABI / OCCT / .NET / API contract
-src/OcctNative           C++17 OCCT bridge and stable C ABI
-src/OcctNet              Core managed wrapper
-src/OcctNet.WinForms     WinForms HWND viewport host
-src/OcctNet.Wpf          WPF viewport host
-src/OcctNet.Avalonia     Avalonia + Windows HWND viewport host
-tests                    Contract checks, Managed regression, Native Smoke
-docs                     API, architecture, deployment, diagnostics
-build.ps1                validate/build/pack/smoke entry point
+artifacts\packages
 ```
 
-`main` must not contain `OcctDemo.*`, complete CAD applications, DocumentManager, CommandBus, ToolManager, or similar product-layer implementations. See [Architecture Boundaries](docs/ARCHITECTURE_BOUNDARIES.md).
+The repository produces:
 
-## Managed façades
+```text
+OcctNet
+OcctNet.WinForms
+OcctNet.Wpf
+OcctNet.Avalonia
+```
 
-### `OcctEngine`
+To consume the locally built core package:
 
-Interactive AIS/Viewer/Object façade for views, cameras, selection, displayed objects, appearance, transforms, annotations, and geometry used in the viewer lifecycle.
+```powershell
+dotnet add package OcctNet --version 2.6.0 --source .\artifacts\packages
+```
 
-### `OcctModelingSession`
+Add only the UI host required by the application, for example:
 
-Headless modeling façade for construction, topology, Boolean/feature algorithms, analysis, meshing, healing, operation history, and STEP/IGES/BREP/STL exchange.
+```powershell
+dotnet add package OcctNet.Wpf --version 2.6.0 --source .\artifacts\packages
+```
 
-Some construction operations intentionally exist on both façades because their ownership/lifetime models differ. They are not merged merely to remove superficial API duplication.
+Managed packages intentionally do not bundle `OcctNative.dll` or OCCT `TK*.dll`. Deploy the matching native bridge and OCCT runtime with the application.
 
-## UI hosts
+### 3. Build from source with OCCT
 
-`main` formally provides three reusable adapters:
+```powershell
+.\build.ps1 all Release
+```
 
-- `OcctNet.WinForms`
-- `OcctNet.Wpf`
-- `OcctNet.Avalonia`
+For another OCCT installation:
 
-The Avalonia adapter creates a Windows child HWND through `NativeControlHost`; it is therefore still a **Windows x64 host** and does not imply Linux/macOS native-viewer support.
+```powershell
+.\build.ps1 all Release -OcctRoot "E:\SDK\occt-7.9.0"
+```
 
-WinForms and Avalonia share only host-neutral selection/threshold/throttling/default-zoom decisions. Window lifecycle, DPI, mouse capture, WPF hosting, and Win32 subclassing remain framework-specific.
+## Usage Example
 
-## API and compatibility contract
-
-Authoritative values come from `bridge-contract.json`:
-
-- Bridge: `2.6.0`
-- Native ABI: `3`
-- OCCT: exactly `7.9.0`
-- .NET SDK: `10.0.302`
-- Target framework: `net10.0-windows`
-- C#: `14.0`
-- Native exports: `348`
-- Managed P/Invoke declarations: `348`
-- Public .NET types: `99`
-- Compatibility .NET types: `1`
-- Viewer API: `214`
-- Modeling API: `134`
-
-`OcctObject` is the only separately tracked Bridge 2.5 compatibility public type. It remains during 2.x for source compatibility but receives no new legacy API; new code should use owner-aware `OcctShape`, `OcctText`, `OcctDimension`, and `IOcctObject` paths.
-
-Structured viewer subshape indices are runtime topology indices, not persistent naming.
-
-See [API Coverage](docs/API_COVERAGE.md) for the complete categorized surface.
-
-## Headless example
+### Headless modeling
 
 ```csharp
+using OcctNet;
+
 using var model = new OcctModelingSession();
 
 var plate = model.MakeBox(100, 80, 10);
@@ -108,100 +108,86 @@ var hole = model.MakeCylinder(
     20);
 
 var cut = model.Cut(plate, hole);
+var inertia = model.GetVolumeInertiaProperties(cut.Shape);
 var inspection = model.InspectShape(cut.Shape);
-var mesh = model.GetShapeMeshData(cut.Shape);
+
 model.ExportStep(cut.Shape, "plate.step");
 ```
 
-The bridge also covers B-Spline data, analytic/differential geometry, projection/ray/classification, batched Edge/Face analysis, free bounds, OBB, trim/offset, healing, triangulation, and mesh Face provenance.
+### Structured Edge/Edge intersection
 
-## Build
+```csharp
+var first = model.MakeLine(
+    new OcctPoint3d(0, 0, 0),
+    new OcctPoint3d(100, 0, 0));
 
-```powershell
-.\build.ps1 <target> <configuration> [-OcctRoot <path>]
+var second = model.MakeLine(
+    new OcctPoint3d(50, -20, 0),
+    new OcctPoint3d(50, 20, 0));
+
+var intersections = model.IntersectEdges(first, second);
 ```
 
-| Target | Purpose | OCCT SDK |
-|---|---|---|
-| `validate` | version/API/organization/PInvoke/UI-host/package/branch contracts | No |
-| `managed` | build Core + WinForms + WPF + Avalonia | No |
-| `pack` | build and validate managed NuGet/symbol packages | No |
-| `ci` | contracts + Managed build/tests + public API snapshot + Smoke compile + package checks | No |
-| `native` | CMake/MSVC build of `OcctNative.dll` | Yes |
-| `smoke` | build and execute real OCCT native scenarios | Yes |
-| `all` | Native + all reusable managed hosts | Yes |
+### Topology reference
 
-Without an OCCT SDK:
+```csharp
+var faces = model.GetSubshapes(cut.Shape, OcctShapeType.Face);
+var reference = model.CreateTopologyReference(cut.Shape, faces[0]);
 
-```powershell
-.\build.ps1 ci Release
+var resolved = model.ResolveTopologyReference(
+    cut.Shape,
+    reference);
 ```
 
-With the conventional OCCT directory:
+A topology reference is a geometric/topological fingerprint. Its runtime index is only a hint and is not treated as persistent identity.
 
-```powershell
-.\build.ps1 all Release
-```
-
-For another SDK location:
-
-```powershell
-.\build.ps1 smoke Release -OcctRoot "E:\SDK\occt-7.9.0"
-```
-
-GitHub-hosted CI does not contain this project's real OCCT SDK. Cloud CI therefore validates static contracts, Managed builds/tests, the public API signature snapshot, Smoke source compilation, and NuGet packages. Actual C++ compile/link, DLL loading, and geometry/topology execution remain the responsibility of local `smoke`.
-
-## NuGet
-
-`main` produces four managed SDK packages:
+## Project Structure
 
 ```text
-OcctNet
-OcctNet.WinForms
-OcctNet.Wpf
-OcctNet.Avalonia
+bridge-contract.json     Version, platform and API contract
+src/OcctNative           C++17 OCCT bridge and C ABI
+src/OcctNet              Core .NET wrapper
+src/OcctNet.WinForms     WinForms viewport host
+src/OcctNet.Wpf          WPF viewport host
+src/OcctNet.Avalonia     Avalonia Windows-HWND viewport host
+tests                    Contract, managed regression and native smoke tests
+docs                     API and architecture documentation
+build.ps1                Local validation/build/pack/smoke entry point
 ```
+
+`OcctNet.Avalonia` currently hosts the native viewer through a Windows child HWND, so it is a Windows x64 adapter rather than a cross-platform OCCT viewer backend.
+
+## Local Validation
+
+Managed/static validation does not require an OCCT SDK:
 
 ```powershell
-.\build.ps1 pack Release
+.\build.ps1 validate Release
+.\build.ps1 managed Release
 ```
 
-Packages are written to `artifacts/packages`. Managed packages intentionally do not bundle `OcctNative.dll`, OCCT `TK*.dll`, or a `runtimes/` native payload. Applications deploy a matching Native Bridge/OCCT runtime separately. See [Packaging](docs/PACKAGING.md).
-
-## Referencing projects directly
-
-```xml
-<ItemGroup>
-  <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet\OcctNet.csproj" />
-  <!-- Pick the host(s) you actually use -->
-  <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet.WinForms\OcctNet.WinForms.csproj" />
-  <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet.Wpf\OcctNet.Wpf.csproj" />
-  <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet.Avalonia\OcctNet.Avalonia.csproj" />
-</ItemGroup>
-```
-
-## `demo`
-
-Complete WinForms/WPF/Avalonia CAD examples live on `demo`:
+The authoritative native validation uses the real local OCCT SDK:
 
 ```powershell
-git switch demo
-.\build.ps1 all Release
-.\run.ps1 winform
-.\run.ps1 wpf
-.\run.ps1 avalonia
+.\build.ps1 smoke Release
 ```
 
-`demo` contains the explicitly named `OcctDemo.Common` orchestration layer and three `OcctDemo.*` applications. Those are reference-application code, not `OcctNet` public API and not a reusable CAD framework.
+The native build uses `/W4 /WX`, exact OCCT 7.9.0 headers/libraries, and the API contract in `bridge-contract.json`.
 
-## Runtime diagnostics
+## Contributing
 
-`OcctRuntime.GetDiagnosticInfo()` and `GetDiagnosticReport()` inspect application-local/configured/loaded `OcctNative.dll` and `TKernel.dll` paths, architecture, and dependency state without forcing native loading. See [Structured Runtime Diagnostics](docs/RUNTIME_DIAGNOSTICS.md).
+Contributions should keep the bridge focused and non-redundant:
+
+1. Create a focused branch for one responsibility.
+2. Keep public APIs strongly typed and owner-aware; do not add legacy aliases or compatibility wrappers.
+3. Prefer bulk C ABI transfer for collections instead of repeated `Count + At` calls.
+4. Keep OCCT-specific implementation inside the bridge and application-specific Document/Command/Tool behavior outside `main`.
+5. Do not introduce OCAF/XDE into the reusable bridge.
+6. Run `build.ps1 validate`, `build.ps1 managed`, and, when OCCT is available, `build.ps1 smoke` before submitting changes.
+7. Keep reusable source changes synchronized with the `demo` branch.
 
 ## License
 
-The project is provided under the [PolyForm Noncommercial License 1.0.0](LICENSE). Open CASCADE Technology and third-party components remain subject to their own licenses.
+OcctCSharpBridge is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE).
 
-## Contact
-
-Liaoyuan Zhang · [zhangly1403@gmail.com](mailto:zhangly1403@gmail.com)
+Open CASCADE Technology and other third-party dependencies remain subject to their own licenses.
