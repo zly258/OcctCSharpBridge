@@ -49,10 +49,18 @@ jobs:
           )
 
           all_text = index + "\n" + app + "\n" + readmes
-          obsolete = ["tree/script", "git switch script", "OcctScript", "branchScript"]
+          obsolete = [
+              "tree/script",
+              "git switch script",
+              "OcctScript",
+              "branchScript",
+              ".NET 8",
+              "net8.0-windows",
+              "C# 12",
+          ]
           found = [token for token in obsolete if token in all_text]
           if found:
-              raise SystemExit(f"Obsolete script branch references found: {', '.join(found)}")
+              raise SystemExit(f"Obsolete website references found: {', '.join(found)}")
           if "Avalonia 与 Avalonia" in app:
               raise SystemExit("Duplicate Avalonia host wording found in Chinese translations.")
 
@@ -67,8 +75,27 @@ jobs:
               if not re.search(pattern, index):
                   raise SystemExit(f"Website statistic {key} is stale; expected {value}")
 
-          if str(contract["occtVersion"]) not in index:
+          occt_version = str(contract["occtVersion"])
+          if occt_version not in index:
               raise SystemExit("Website OCCT version is stale.")
+
+          dotnet = contract.get("dotnet", {})
+          target_framework = str(dotnet.get("targetFramework", "")).strip()
+          sdk_version = str(dotnet.get("sdkVersion", "")).strip()
+          language_version = str(dotnet.get("languageVersion", "")).strip()
+          if not target_framework or not sdk_version or not language_version:
+              raise SystemExit("Main bridge contract has incomplete .NET metadata.")
+          major = target_framework.removeprefix("net").split(".", 1)[0]
+          public_dotnet = f".NET {major}"
+          if public_dotnet not in index or public_dotnet not in app:
+              raise SystemExit(f"Website .NET version is stale; expected {public_dotnet}.")
+          if target_framework not in readmes:
+              raise SystemExit(f"Website target framework is stale; expected {target_framework}.")
+          if sdk_version not in readmes:
+              raise SystemExit(f"Website SDK version is stale; expected {sdk_version}.")
+          language_pattern = rf'C#\s+(?:\*\*)?{re.escape(language_version)}(?:\*\*)?'
+          if not re.search(language_pattern, readmes):
+              raise SystemExit(f"Website language version is stale; expected C# {language_version}.")
 
           contact = str(contract.get("contactEmail", "")).strip()
           if not contact:
@@ -96,4 +123,8 @@ jobs:
           if "data-fallback" in index or "dataset.fallback" in app:
               raise SystemExit("Retired preview fallback wiring remains on the website.")
 
-          print("Website branch matches main bridge contract, contact metadata, and canonical PNG preview policy.")
+          print(
+              f"Website branch matches Bridge {contract['bridgeVersion']} / ABI {contract['nativeAbiVersion']} / "
+              f"OCCT {occt_version} / {target_framework} / SDK {sdk_version} / C# {language_version}, "
+              "contact metadata, and canonical PNG preview policy."
+          )
