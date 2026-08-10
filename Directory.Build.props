@@ -6,13 +6,10 @@
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningLevel>7</WarningLevel>
-    <Version>2.6.0</Version>
     <Authors>zly258</Authors>
     <Company>zly258</Company>
     <Product>OcctCSharpBridge Demo</Product>
-    <Description>Binary SDK consumer demos for OcctCSharpBridge 2.6.0 on .NET 10 and Windows x64.</Description>
-    <OcctBridgeNativeAbiVersion>4</OcctBridgeNativeAbiVersion>
-    <OcctBridgeOcctVersion>7.9.0</OcctBridgeOcctVersion>
+    <Description>Binary SDK consumer demos for OcctCSharpBridge on .NET 10 and Windows x64.</Description>
     <OcctBridgeDistRoot>$(MSBuildThisFileDirectory)dist\win-x64</OcctBridgeDistRoot>
   </PropertyGroup>
 </Project>
