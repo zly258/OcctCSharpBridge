@@ -7,33 +7,54 @@
 
 using namespace OcctModelingInternal;
 
-extern "C"
+namespace
 {
-    int occt_model_topology_count(OcctModelHandle handle, OcctObjectId shapeId, int shapeType)
+    int copyMappedShapes(ModelSession* model, const TopTools_IndexedMapOfShape& map, OcctObjectId* results, int capacity)
     {
-        ModelSession* model = modelOf(handle);
-        if (model == nullptr) return 0;
-        try
+        const int count = map.Extent();
+        if (results == nullptr)
         {
-            TopTools_IndexedMapOfShape map;
-            TopExp::MapShapes(model->requireShape(shapeId), toShapeEnum(shapeType), map);
-            return map.Extent();
+            if (capacity != 0) throw std::invalid_argument("Null topology buffer requires zero capacity.");
+            return count;
         }
-        catch (...) { return 0; }
+        if (capacity < count) throw std::invalid_argument("Topology buffer capacity is smaller than the result count.");
+        for (int index = 1; index <= count; ++index)
+            results[index - 1] = model->addShape(map(index));
+        return count;
     }
 
-    OcctObjectId occt_model_get_subshape(OcctModelHandle handle, OcctObjectId shapeId, int shapeType, int index)
+    int copyShapeList(ModelSession* model, const TopTools_ListOfShape& list, OcctObjectId* results, int capacity)
+    {
+        const int count = list.Size();
+        if (results == nullptr)
+        {
+            if (capacity != 0) throw std::invalid_argument("Null topology buffer requires zero capacity.");
+            return count;
+        }
+        if (capacity < count) throw std::invalid_argument("Topology buffer capacity is smaller than the result count.");
+        int index = 0;
+        for (TopTools_ListIteratorOfListOfShape iterator(list); iterator.More(); iterator.Next(), ++index)
+            results[index] = model->addShape(iterator.Value());
+        return count;
+    }
+}
+
+extern "C"
+{
+    int occt_model_subshapes_copy(OcctModelHandle handle, OcctObjectId shapeId, int shapeType, OcctObjectId* results, int capacity)
     {
         ModelSession* model = modelOf(handle);
-        return executeShape(model, [&]
+        if (model == nullptr) return -1;
+        int copied = 0;
+        if (execute(model, [&]
         {
-            if (index < 0) throw std::out_of_range("Subshape index must not be negative.");
+            if (capacity < 0) throw std::invalid_argument("Subshape buffer capacity must not be negative.");
             TopTools_IndexedMapOfShape map;
             TopExp::MapShapes(model->requireShape(shapeId), toShapeEnum(shapeType), map);
-            const int oneBased = index + 1;
-            if (oneBased > map.Extent()) throw std::out_of_range("Subshape index is out of range.");
-            return map(oneBased);
-        });
+            copied = copyMappedShapes(model, map, results, capacity);
+        }) == 0)
+            return -1;
+        return copied;
     }
 
     OcctObjectId occt_model_outer_wire(OcctModelHandle handle, OcctObjectId faceId)
@@ -49,71 +70,55 @@ extern "C"
         });
     }
 
-    int occt_model_inner_wire_count(OcctModelHandle handle, OcctObjectId faceId)
+    int occt_model_inner_wires_copy(OcctModelHandle handle, OcctObjectId faceId, OcctObjectId* results, int capacity)
     {
         ModelSession* model = modelOf(handle);
-        if (model == nullptr) return 0;
-        try
+        if (model == nullptr) return -1;
+        int copied = 0;
+        if (execute(model, [&]
         {
-            const TopoDS_Face face = TopoDS::Face(model->requireShape(faceId));
+            if (capacity < 0) throw std::invalid_argument("Inner-wire buffer capacity must not be negative.");
+            const TopoDS_Shape& shape = model->requireShape(faceId);
+            if (shape.ShapeType() != TopAbs_FACE) throw std::invalid_argument("Input must be a face.");
+            const TopoDS_Face face = TopoDS::Face(shape);
             const TopoDS_Wire outer = BRepTools::OuterWire(face);
-            int count = 0;
+            TopTools_ListOfShape inner;
             for (TopExp_Explorer explorer(face, TopAbs_WIRE); explorer.More(); explorer.Next())
-                if (!explorer.Current().IsSame(outer)) ++count;
-            return count;
-        }
-        catch (...) { return 0; }
+                if (!explorer.Current().IsSame(outer)) inner.Append(explorer.Current());
+            copied = copyShapeList(model, inner, results, capacity);
+        }) == 0)
+            return -1;
+        return copied;
     }
 
-    OcctObjectId occt_model_inner_wire_at(OcctModelHandle handle, OcctObjectId faceId, int index)
+    int occt_model_ancestors_copy(
+        OcctModelHandle handle,
+        OcctObjectId rootId,
+        OcctObjectId childId,
+        int ancestorType,
+        OcctObjectId* results,
+        int capacity)
     {
         ModelSession* model = modelOf(handle);
-        return executeShape(model, [&]
+        if (model == nullptr) return -1;
+        int copied = 0;
+        if (execute(model, [&]
         {
-            if (index < 0) throw std::out_of_range("Inner wire index must not be negative.");
-            const TopoDS_Face face = TopoDS::Face(model->requireShape(faceId));
-            const TopoDS_Wire outer = BRepTools::OuterWire(face);
-            int current = 0;
-            for (TopExp_Explorer explorer(face, TopAbs_WIRE); explorer.More(); explorer.Next())
+            if (capacity < 0) throw std::invalid_argument("Ancestor buffer capacity must not be negative.");
+            const TopoDS_Shape& root = model->requireShape(rootId);
+            const TopoDS_Shape& child = model->requireShape(childId);
+            TopTools_IndexedDataMapOfShapeListOfShape map;
+            TopExp::MapShapesAndAncestors(root, child.ShapeType(), toShapeEnum(ancestorType), map);
+            if (!map.Contains(child))
             {
-                if (explorer.Current().IsSame(outer)) continue;
-                if (current++ == index) return explorer.Current();
+                if (results != nullptr && capacity < 0) throw std::invalid_argument("Ancestor buffer capacity is invalid.");
+                copied = 0;
+                return;
             }
-            throw std::out_of_range("Inner wire index is out of range.");
-        });
-    }
-
-    int occt_model_ancestor_count(OcctModelHandle handle, OcctObjectId rootId, OcctObjectId childId, int ancestorType)
-    {
-        ModelSession* model = modelOf(handle);
-        if (model == nullptr) return 0;
-        try
-        {
-            const TopoDS_Shape& root = model->requireShape(rootId);
-            const TopoDS_Shape& child = model->requireShape(childId);
-            TopTools_IndexedDataMapOfShapeListOfShape map;
-            TopExp::MapShapesAndAncestors(root, child.ShapeType(), toShapeEnum(ancestorType), map);
-            return map.Contains(child) ? map.FindFromKey(child).Size() : 0;
-        }
-        catch (...) { return 0; }
-    }
-
-    OcctObjectId occt_model_ancestor_at(OcctModelHandle handle, OcctObjectId rootId, OcctObjectId childId, int ancestorType, int index)
-    {
-        ModelSession* model = modelOf(handle);
-        return executeShape(model, [&]
-        {
-            if (index < 0) throw std::out_of_range("Ancestor index must not be negative.");
-            const TopoDS_Shape& root = model->requireShape(rootId);
-            const TopoDS_Shape& child = model->requireShape(childId);
-            TopTools_IndexedDataMapOfShapeListOfShape map;
-            TopExp::MapShapesAndAncestors(root, child.ShapeType(), toShapeEnum(ancestorType), map);
-            if (!map.Contains(child)) throw std::out_of_range("The child has no requested ancestors.");
-            int current = 0;
-            for (TopTools_ListIteratorOfListOfShape iterator(map.FindFromKey(child)); iterator.More(); iterator.Next(), ++current)
-                if (current == index) return iterator.Value();
-            throw std::out_of_range("Ancestor index is out of range.");
-        });
+            copied = copyShapeList(model, map.FindFromKey(child), results, capacity);
+        }) == 0)
+            return -1;
+        return copied;
     }
 
     OcctObjectId occt_model_sew(OcctModelHandle handle, const OcctObjectId* shapeIds, int count, double tolerance)
