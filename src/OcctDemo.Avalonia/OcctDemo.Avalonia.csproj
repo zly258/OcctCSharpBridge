@@ -14,8 +14,14 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\OcctDemo.Common\OcctDemo.Common.csproj" />
-    <ProjectReference Include="..\OcctNet\OcctNet.csproj" />
-    <ProjectReference Include="..\OcctNet.Avalonia\OcctNet.Avalonia.csproj" />
+    <Reference Include="OcctNet">
+      <HintPath>$(OcctBridgeDistRoot)\OcctNet.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="OcctNet.Avalonia">
+      <HintPath>$(OcctBridgeDistRoot)\OcctNet.Avalonia.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
     <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.0" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.0" />
