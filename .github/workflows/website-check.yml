@@ -71,6 +71,9 @@ jobs:
               "2.5.0",
               "ABI 2",
               "ABI=2",
+              ".NET 8",
+              "net8.0-windows",
+              "C# 12",
           ]
           found = [token for token in obsolete if token in content]
           if found:
@@ -78,6 +81,10 @@ jobs:
 
           index = Path("index.html").read_text(encoding="utf-8-sig")
           app = Path("app.js").read_text(encoding="utf-8-sig")
+          readmes = (
+              Path("README.md").read_text(encoding="utf-8-sig") + "\n" +
+              Path("README.zh-CN.md").read_text(encoding="utf-8-sig")
+          )
           if "Avalonia 与 Avalonia" in app:
               raise SystemExit("Duplicate Avalonia host wording found in Chinese translations")
 
@@ -105,6 +112,24 @@ jobs:
           if occt_version not in index:
               raise SystemExit(f"Website does not contain contracted OCCT version {occt_version}")
 
+          dotnet = contract.get("dotnet", {})
+          target_framework = str(dotnet.get("targetFramework", "")).strip()
+          sdk_version = str(dotnet.get("sdkVersion", "")).strip()
+          language_version = str(dotnet.get("languageVersion", "")).strip()
+          if not target_framework or not sdk_version or not language_version:
+              raise SystemExit("main bridge-contract.json has incomplete .NET metadata")
+          major = target_framework.removeprefix("net").split(".", 1)[0]
+          public_dotnet = f".NET {major}"
+          if public_dotnet not in index or public_dotnet not in app:
+              raise SystemExit(f"Website visitor-facing .NET version is stale; expected {public_dotnet}")
+          for value, label in (
+              (target_framework, "target framework"),
+              (sdk_version, "SDK"),
+              (f"C# {language_version}", "language version"),
+          ):
+              if value not in readmes:
+                  raise SystemExit(f"Website README {label} is stale; expected {value}")
+
           contact = str(contract.get("contactEmail", "")).strip()
           if not contact:
               raise SystemExit("main bridge-contract.json has no contactEmail")
@@ -115,5 +140,6 @@ jobs:
 
           print(
               f"Validated {len(keys)} bilingual keys against Bridge {contract['bridgeVersion']} / "
-              f"ABI {abi_version} / OCCT {occt_version}, including contact metadata."
+              f"ABI {abi_version} / OCCT {occt_version} / {target_framework} / SDK {sdk_version} / "
+              f"C# {language_version}, including contact metadata."
           )
