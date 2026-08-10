@@ -8,38 +8,26 @@
     [string]$Configuration = "Release",
 
     [string]$OcctRoot = $env:OCCT_ROOT,
-
     [int]$StartupTimeoutSeconds = 5
 )
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$utf8 = [System.Text.UTF8Encoding]::new($false)
-[Console]::InputEncoding = $utf8
-[Console]::OutputEncoding = $utf8
-$OutputEncoding = $utf8
-if (Test-Path "$env:SystemRoot\System32\chcp.com") {
-    & "$env:SystemRoot\System32\chcp.com" 65001 | Out-Null
-}
-
-$Target = $Target.ToLowerInvariant()
-$RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$RepoRoot = Split-Path -Parent $PSCommandPath
+$DistRoot = Join-Path $RepoRoot "dist\win-x64"
+$ContractPath = Join-Path $DistRoot "bridge-contract.json"
 $DefaultOcctRoot = "D:\tools\occt-vc144-64"
+
 if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
     $OcctRoot = $DefaultOcctRoot
 }
-
-$ContractPath = Join-Path $RepoRoot "bridge-contract.json"
-if (-not (Test-Path $ContractPath -PathType Leaf)) {
-    throw "Bridge contract file was not found: $ContractPath"
-}
-$Contract = Get-Content $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
-$TargetFramework = [string]$Contract.dotnet.targetFramework
-if ([string]::IsNullOrWhiteSpace($TargetFramework)) {
-    throw "Bridge contract target framework is missing."
+if (-not (Test-Path -LiteralPath $ContractPath -PathType Leaf)) {
+    throw "Bridge Binary SDK contract was not found: $ContractPath. Run .\sync-dist.ps1 first."
 }
 
+$contract = Get-Content -LiteralPath $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$targetFramework = [string]$contract.dotnet.targetFramework
 $OcctRoot = [System.IO.Path]::GetFullPath($OcctRoot)
 $OcctBinDir = Join-Path $OcctRoot "win64\vc14\bin"
 $OcctThirdPartyDir = Join-Path $OcctRoot "3rdparty-vc14-64"
@@ -47,68 +35,36 @@ $OcctThirdPartyDir = Join-Path $OcctRoot "3rdparty-vc14-64"
 function Add-PathEntry {
     param([Parameter(Mandatory = $true)][string]$Directory)
 
-    if (-not (Test-Path $Directory -PathType Container)) {
-        return
-    }
-
+    if (-not (Test-Path -LiteralPath $Directory -PathType Container)) { return }
     $fullDirectory = [System.IO.Path]::GetFullPath($Directory).TrimEnd('\')
-    $currentPath = [Environment]::GetEnvironmentVariable("PATH")
-    if ($null -eq $currentPath) {
-        $currentPath = ""
-    }
-
-    $alreadyPresent = $false
-    foreach ($entry in $currentPath.Split(';', [System.StringSplitOptions]::RemoveEmptyEntries)) {
-        try {
-            $normalizedEntry = [System.IO.Path]::GetFullPath($entry).TrimEnd('\')
-            if ($normalizedEntry.Equals($fullDirectory, [System.StringComparison]::OrdinalIgnoreCase)) {
-                $alreadyPresent = $true
-                break
-            }
-        }
-        catch {
-            # Ignore malformed PATH entries owned by other applications.
-        }
-    }
-
-    if (-not $alreadyPresent) {
-        $env:PATH = if ([string]::IsNullOrEmpty($currentPath)) { $fullDirectory } else { "$fullDirectory;$currentPath" }
-    }
+    $current = $env:PATH ?? ""
+    $entries = $current.Split(';', [System.StringSplitOptions]::RemoveEmptyEntries)
+    if ($entries.Any({
+        try { [System.IO.Path]::GetFullPath($_).TrimEnd('\').Equals($fullDirectory, [System.StringComparison]::OrdinalIgnoreCase) }
+        catch { $false }
+    })) { return }
+    $env:PATH = if ([string]::IsNullOrEmpty($current)) { $fullDirectory } else { "$fullDirectory;$current" }
 }
 
-function Show-AvaloniaLog {
-    param([Parameter(Mandatory = $true)][string]$LogPath)
-
-    if (Test-Path $LogPath -PathType Leaf) {
-        Write-Host ""
-        Write-Host "----- CAD-Avalonia.log -----" -ForegroundColor Yellow
-        Get-Content $LogPath -Encoding UTF8
-        Write-Host "----- end log -----" -ForegroundColor Yellow
-    }
-    else {
-        Write-Warning "CAD-Avalonia.log was not created: $LogPath"
-    }
-}
-
-if (-not (Test-Path $OcctBinDir -PathType Container)) {
+if (-not (Test-Path -LiteralPath $OcctBinDir -PathType Container)) {
     throw "OCCT runtime directory was not found: $OcctBinDir"
 }
 
 $apps = @{
-    winform = "src\OcctDemo.WinForms\bin\x64\$Configuration\$TargetFramework\CAD-Winform.exe"
-    wpf = "src\OcctDemo.Wpf\bin\x64\$Configuration\$TargetFramework\CAD-WPF.exe"
-    avalonia = "src\OcctDemo.Avalonia\bin\x64\$Configuration\$TargetFramework\CAD-Avalonia.exe"
+    winform = "src\OcctDemo.WinForms\bin\x64\$Configuration\$targetFramework\CAD-Winform.exe"
+    wpf = "src\OcctDemo.Wpf\bin\x64\$Configuration\$targetFramework\CAD-WPF.exe"
+    avalonia = "src\OcctDemo.Avalonia\bin\x64\$Configuration\$targetFramework\CAD-Avalonia.exe"
 }
 
-$executable = Join-Path $RepoRoot $apps[$Target]
-if (-not (Test-Path $executable -PathType Leaf)) {
-    throw "Executable was not found: $executable`nRun: .\build.ps1 $Target $Configuration -OcctRoot `"$OcctRoot`""
+$executable = Join-Path $RepoRoot $apps[$Target.ToLowerInvariant()]
+if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
+    throw "Executable was not found: $executable`nRun .\build.ps1 $Target $Configuration first."
 }
 
 $applicationDirectory = Split-Path -Parent $executable
 $nativeBridge = Join-Path $applicationDirectory "OcctNative.dll"
-if (-not (Test-Path $nativeBridge -PathType Leaf)) {
-    throw "OcctNative.dll was not found beside the application: $nativeBridge"
+if (-not (Test-Path -LiteralPath $nativeBridge -PathType Leaf)) {
+    throw "OcctNative.dll was not copied beside the application: $nativeBridge"
 }
 
 $env:OCCT_ROOT = $OcctRoot
@@ -117,8 +73,8 @@ $env:OCCT_BRIDGE_NATIVE_DIR = $applicationDirectory
 Add-PathEntry $applicationDirectory
 Add-PathEntry $OcctBinDir
 
-if (Test-Path $OcctThirdPartyDir -PathType Container) {
-    Get-ChildItem $OcctThirdPartyDir -Directory | Sort-Object Name | ForEach-Object {
+if (Test-Path -LiteralPath $OcctThirdPartyDir -PathType Container) {
+    Get-ChildItem -LiteralPath $OcctThirdPartyDir -Directory | Sort-Object Name | ForEach-Object {
         Add-PathEntry (Join-Path $_.FullName "bin")
         Add-PathEntry (Join-Path $_.FullName "bin\win64")
         Add-PathEntry (Join-Path $_.FullName "bin\x64")
@@ -126,56 +82,30 @@ if (Test-Path $OcctThirdPartyDir -PathType Container) {
 }
 
 Write-Host "Application: $executable"
-Write-Host "Target:      $TargetFramework" -ForegroundColor DarkGray
+Write-Host "Bridge:      $($contract.bridgeVersion), ABI $($contract.nativeAbiVersion)" -ForegroundColor DarkGray
 Write-Host "OCCT root:   $OcctRoot" -ForegroundColor DarkGray
 
-$logPath = Join-Path $applicationDirectory "CAD-Avalonia.log"
-if ($Target -eq "avalonia" -and (Test-Path $logPath -PathType Leaf)) {
-    Remove-Item $logPath -Force -ErrorAction SilentlyContinue
-}
-
 $process = Start-Process -FilePath $executable -WorkingDirectory $applicationDirectory -PassThru
-Write-Host "Process ID: $($process.Id)"
+Write-Host "Process ID:  $($process.Id)"
 
 if ($Target -eq "avalonia") {
     $deadline = [DateTime]::UtcNow.AddSeconds([Math]::Max(1, $StartupTimeoutSeconds))
-    $mainWindowHandle = [IntPtr]::Zero
-
     while ([DateTime]::UtcNow -lt $deadline) {
         Start-Sleep -Milliseconds 200
         $process.Refresh()
-
         if ($process.HasExited) {
-            $exitCode = $process.ExitCode
-            Write-Host "Process exited during startup. Exit code: $exitCode" -ForegroundColor Red
-            Show-AvaloniaLog -LogPath $logPath
-            throw "avalonia exited before creating a main window. Exit code: $exitCode"
+            throw "avalonia exited during startup with code $($process.ExitCode)."
         }
-
-        $mainWindowHandle = $process.MainWindowHandle
-        if ($mainWindowHandle -ne [IntPtr]::Zero) {
-            break
-        }
+        if ($process.MainWindowHandle -ne [IntPtr]::Zero) { break }
     }
-
-    if ($mainWindowHandle -eq [IntPtr]::Zero) {
-        Write-Host "Process is alive, but no top-level window was created within $StartupTimeoutSeconds second(s)." -ForegroundColor Red
-        Show-AvaloniaLog -LogPath $logPath
+    if ($process.MainWindowHandle -eq [IntPtr]::Zero) {
         try { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue } catch { }
-        throw "avalonia process is running without a visible main window."
+        throw "avalonia process did not create a visible main window within $StartupTimeoutSeconds second(s)."
     }
-
-    Write-Host ("Main window: 0x{0:X}" -f $mainWindowHandle.ToInt64()) -ForegroundColor Green
 }
 
 $process.WaitForExit()
 $process.Refresh()
-$exitCode = $process.ExitCode
-Write-Host "Exit code: $exitCode"
-
-if ($exitCode -ne 0) {
-    if ($Target -eq "avalonia") {
-        Show-AvaloniaLog -LogPath $logPath
-    }
-    throw "$Target exited with code $exitCode."
+if ($process.ExitCode -ne 0) {
+    throw "$Target exited with code $($process.ExitCode)."
 }
