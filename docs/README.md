@@ -1,60 +1,103 @@
 # Demo 分支维护说明
 
-`demo` 分支只维护 **OcctCSharpBridge 的应用层示例、运行/发布脚本、界面预览和 Demo 专属约定**。Bridge 本身的架构、API Coverage、B-Spline、Topology、Mesh、Runtime 等技术文档统一以 [`main/docs`](https://github.com/zly258/OcctCSharpBridge/tree/main/docs) 为准，不在本分支复制第二套正文。
+`demo` 分支是 **OcctCSharpBridge Binary SDK 的纯应用层消费者**。Bridge 的 Native/Managed 源码、ABI 检查、Managed Regression、Native Smoke、SDK 文档和二进制生产流程全部只在 `main` 维护。
 
 ## 1. 分支职责
 
 ```text
 main
-└─ reusable Bridge / UI Hosts / tests / SDK docs / packages
+├─ src/OcctNative
+├─ src/OcctNet*
+├─ tests
+├─ docs
+├─ dist.ps1
+└─ dist/win-x64        已验证 Binary SDK
 
 demo
-├─ shared Bridge source mirror
-├─ OcctDemo.Common
-├─ OcctDemo.WinForms
-├─ OcctDemo.Wpf
-├─ OcctDemo.Avalonia
-├─ run.ps1 / publish.ps1
-└─ assets/previews
+├─ dist/win-x64        从 main 同步的 Binary SDK
+├─ src/OcctDemo.Common
+├─ src/OcctDemo.WinForms
+├─ src/OcctDemo.Wpf
+├─ src/OcctDemo.Avalonia
+├─ build.ps1
+├─ run.ps1
+├─ publish.ps1
+└─ sync-dist.ps1
 ```
 
-应用层可以实现 Document、Command、Tool、History、对象树、属性面板和业务交互，但这些能力不反向下沉到 `main` Bridge。
+Demo 不包含：
 
-## 2. 本地构建
+- `src/OcctNative`；
+- `src/OcctNet`；
+- `src/OcctNet.WinForms/Wpf/Avalonia`；
+- Bridge ManagedTests / Smoke；
+- API/ABI/CMake PowerShell 契约脚本。
 
-`build.ps1` 使用增量构建；正常开发不要主动删除 `bin/obj`。只有怀疑生成缓存污染时才使用 `clean`。
+如果 Demo 调用与当前 Binary SDK 不一致，修改 Demo 调用方，不恢复 Legacy Alias、旧 Wrapper 或兼容层。
 
-基础检查和全部 Managed 项目编译：
+## 2. Binary SDK 同步
+
+先在 `main` 的 Windows + MSVC + OCCT 7.9.0 环境执行：
+
+```powershell
+.\dist.ps1 -OcctRoot "D:\tools\occt-vc144-64"
+```
+
+只有 `all`、Managed Test 和 Native Smoke 全部成功，`dist.ps1` 才会刷新 `dist/win-x64`。
+
+提交 main 的 `dist/win-x64` 后切换到 demo：
+
+```powershell
+.\sync-dist.ps1
+```
+
+脚本从 `origin/main` 恢复同一路径，避免复制整个 Bridge 仓库。
+
+## 3. Binary SDK 内容
+
+`dist/win-x64` 必须包含：
+
+```text
+OcctNative.dll
+OcctNet.dll
+OcctNet.WinForms.dll
+OcctNet.Wpf.dll
+OcctNet.Avalonia.dll
+bridge-contract.json
+bridge-manifest.json
+```
+
+`bridge-manifest.json` 记录版本、Native ABI、OCCT、.NET、源提交和每个分发文件的 SHA-256。`build.ps1 validate` 会验证 Contract、Manifest 和哈希。
+
+OCCT 自身 `TK*.dll` 和第三方 Runtime 不提交到 `dist`。运行 Demo 时通过 `OCCT_ROOT` / `CASROOT` 定位 OCCT 7.9.0 Runtime。
+
+## 4. 构建
 
 ```powershell
 .\build.ps1 validate Release
-.\build.ps1 managed Release
-.\build.ps1 test Release
-```
-
-完整编译 Native、Bridge、三套 Demo、ManagedTests 和 Smoke 项目：
-
-```powershell
 .\build.ps1 all Release
 ```
 
-`all` 会把 `OcctNative.dll`、OCCT DLL 和第三方 Runtime 部署到 WinForms、WPF、Avalonia 三套 Demo 输出目录，使应用构建产物可以直接启动。Smoke 不复制整套 OCCT Runtime：运行时只把当前 `OcctNative.dll` 放到 Smoke 输出目录，并通过 `OCCT_ROOT` 让 `OcctRuntime` 配置 OCCT 与第三方 DLL 搜索路径。
-
-单独构建 Demo：
+单独构建：
 
 ```powershell
+.\build.ps1 common Release
 .\build.ps1 winform Release
 .\build.ps1 wpf Release
 .\build.ps1 avalonia Release
 ```
 
-真实 OCCT Runtime 门禁：
+`Directory.Build.targets` 会在 MSBuild 解析引用前检查 Binary SDK，并在桌面应用构建后把 `OcctNative.dll` 放到应用输出目录。Managed `OcctNet*.dll` 由正常程序集引用自动复制。
+
+需要清理：
 
 ```powershell
-.\build.ps1 smoke Release
+.\build.ps1 clean Release
 ```
 
-启动：
+`clean` 只删除 Demo 自己的 `bin/obj/artifacts`，不会删除已提交的 `dist`。
+
+## 5. 运行
 
 ```powershell
 .\run.ps1 winform Release
@@ -62,69 +105,25 @@ demo
 .\run.ps1 avalonia Release
 ```
 
-需要清理时：
+`run.ps1` 从 `dist/win-x64/bridge-contract.json` 获取目标框架，并配置：
+
+- `OCCT_ROOT`；
+- `CASROOT`；
+- `OCCT_BRIDGE_NATIVE_DIR`；
+- OCCT `win64/vc14/bin`；
+- `3rdparty-vc14-64/**/bin`。
+
+## 6. 发布
 
 ```powershell
-.\build.ps1 clean Release
-.\build.ps1 all Release
+.\publish.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64" -Zip
 ```
 
-仓库不使用 GitHub Actions 代替这些本地构建、测试和运行验证。
+发布脚本直接消费 Binary SDK，不再构建 Bridge。发布目录会包含 `OcctNative.dll`、Contract/Manifest 以及实际 OCCT/第三方 Runtime。
 
-## 3. 测试与静态检查
+## 7. 文档规则
 
-Demo 日常构建门只保留六个稳定 PowerShell 契约：版本、共享架构边界、Demo 结构、Bulk ABI、Native CMake 结构、API Surface。README 标题、UI 代码组织、具体函数文本等不再作为契约。
-
-Managed 测试使用 .NET 10 的 Microsoft Testing Platform；Runner 由根目录 `global.json` 统一指定。Smoke 使用真实 `OcctNative.dll` 和 OCCT Runtime，并通过运行时目录探测加载依赖。
-
-## 4. 与 `main` 的手工同步
-
-以下共享内容在 `main` 完成本地验证后手工同步到 `demo`：
-
-```text
-.editorconfig
-.gitattributes
-global.json
-bridge-contract.json
-Directory.Build.props
-src/OcctNative/**
-src/OcctNet/**/*.cs
-src/OcctNet.WinForms/**/*.cs
-src/OcctNet.Wpf/**/*.cs
-src/OcctNet.Avalonia/**/*.cs
-```
-
-以下内容保持分支专属，不做整个目录覆盖：
-
-```text
-README*
-docs/**
-tests/**
-build.ps1
-*.csproj / package policy
-src/OcctDemo.*/**
-run.ps1
-publish.ps1
-assets/**
-```
-
-共享源码发生冲突时，以 `main` 的 Bridge 设计为准，修改 Demo 调用方；不要为了兼容 Demo 的旧调用重新增加 Legacy Alias、旧 Wrapper 或已删除的内部聚合头。
-
-## 5. 文档规则
-
-- Bridge 技术事实：只更新 `main/docs`。
-- Demo 构建、启动、发布和应用层结构：更新本文件或根 README。
-- 不再维护 `.md` + `.zh-CN.md` 成对的重复 SDK 文档。
-- 不在 Demo 文档中复制固定 API 数量；版本和数量以 `bridge-contract.json` 与 `main` 为准。
-
-## 6. 发布与排查
-
-发布逻辑由 `publish.ps1` 管理。Native 启动问题优先检查：
-
-- `OcctNative.dll`；
-- OCCT `TK*.dll`；
-- 第三方 Runtime DLL；
-- `native-dependencies.txt`；
-- `%LOCALAPPDATA%\OcctCSharpBridge\Logs`。
-
-Avalonia 仍通过 Windows 子 HWND 承载 Native Viewer，因此三套 Demo 都是 Windows x64 应用。
+- Bridge API、ABI、Native、Runtime、建模与 SDK 文档：只维护 `main/docs`。
+- Demo UI、构建、运行、发布：维护本文件和 demo 根 README。
+- 不在 demo 重新复制一套 Bridge 技术文档。
+- 不使用 GitHub Actions；Binary SDK 由维护者在真实 Windows + OCCT 环境显式验证和同步。
