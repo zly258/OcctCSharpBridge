@@ -1,6 +1,6 @@
 ﻿# OcctCSharpBridge
 
-[English](README.md) · [文档索引](docs/INDEX.zh-CN.md) · [API 覆盖](docs/API_COVERAGE.zh-CN.md) · [Demo 分支](https://github.com/zly258/OcctCSharpBridge/tree/demo)
+[English](README.md) · [文档索引](docs/00_文档索引.md) · [API 覆盖](docs/03_API覆盖与设计约定.md) · [Demo 分支](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
 ## 项目描述
 
@@ -155,7 +155,7 @@ src/OcctNet.WinForms     WinForms 视口宿主
 src/OcctNet.Wpf          WPF 视口宿主
 src/OcctNet.Avalonia     Avalonia Windows HWND 视口宿主
 tests                    契约、Managed 回归与 Native Smoke
-docs                     API 与架构文档
+docs                     编号化技术文档
 build.ps1                本地验证、构建、打包、Smoke 统一入口
 ```
 

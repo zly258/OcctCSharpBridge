@@ -1,6 +1,6 @@
 ﻿# OcctCSharpBridge
 
-[简体中文](README.zh-CN.md) · [Documentation](docs/INDEX.md) · [API Coverage](docs/API_COVERAGE.md) · [Demo Branch](https://github.com/zly258/OcctCSharpBridge/tree/demo)
+[简体中文](README.zh-CN.md) · [Documentation (中文)](docs/00_文档索引.md) · [API Coverage](docs/03_API覆盖与设计约定.md) · [Demo Branch](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
 ## Description
 
@@ -151,7 +151,7 @@ src/OcctNet.WinForms     WinForms viewport host
 src/OcctNet.Wpf          WPF viewport host
 src/OcctNet.Avalonia     Avalonia Windows-HWND viewport host
 tests                    Contract, managed regression and native smoke tests
-docs                     API and architecture documentation
+docs                     Numbered technical documentation
 build.ps1                Local validation/build/pack/smoke entry point
 ```
 
