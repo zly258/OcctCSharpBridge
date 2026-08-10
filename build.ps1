@@ -106,12 +106,14 @@ function Test-BinarySdk {
     }
 
     Assert-Command "git"
-    $trackedBridgeSources = @(& git -C $RepoRoot ls-files -- 
-        "src/OcctNative/*" 
-        "src/OcctNet/*" 
-        "src/OcctNet.WinForms/*" 
-        "src/OcctNet.Wpf/*" 
-        "src/OcctNet.Avalonia/*")
+    $bridgeSourcePatterns = @(
+        "src/OcctNative/*",
+        "src/OcctNet/*",
+        "src/OcctNet.WinForms/*",
+        "src/OcctNet.Wpf/*",
+        "src/OcctNet.Avalonia/*"
+    )
+    $trackedBridgeSources = @(& git -C $RepoRoot ls-files -- @bridgeSourcePatterns)
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to inspect tracked Demo source paths."
     }
@@ -139,6 +141,21 @@ function Test-BinarySdk {
         [string]$manifest.platform -ne [string]$contract.platform -or
         [string]$manifest.targetFramework -ne [string]$contract.dotnet.targetFramework) {
         throw "Bridge binary manifest does not match bridge-contract.json."
+    }
+
+    $expectedHashedFiles = @(
+        "OcctNative.dll",
+        "OcctNet.dll",
+        "OcctNet.WinForms.dll",
+        "OcctNet.Wpf.dll",
+        "OcctNet.Avalonia.dll",
+        "bridge-contract.json"
+    )
+    $manifestNames = @($manifest.files | ForEach-Object { [string]$_.name })
+    foreach ($name in $expectedHashedFiles) {
+        if ($name -notin $manifestNames) {
+            throw "Bridge binary manifest does not hash required file: $name"
+        }
     }
 
     foreach ($entry in @($manifest.files)) {
