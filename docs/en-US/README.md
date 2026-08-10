@@ -6,7 +6,7 @@ This directory is the English documentation set for `OcctCSharpBridge/main`.
 
 | Item | Current value |
 | --- | --- |
-| Author | **Liaoyuan Zhang** |
+| Author | **zly258** |
 | Bridge version | **2.6.0** |
 | Native ABI | **4** |
 | Native exports / P/Invoke | **344 / 344** |
@@ -36,4 +36,4 @@ The machine-readable source of truth for version, platform and API counts is `br
 
 `main` is a reusable OCCT bridge and Binary SDK producer, not a complete CAD product framework. Document models, feature trees, commands, tools, undo/redo, snapping, grips and product-specific rules belong above the Bridge.
 
-Conceptual documentation explains behavior and contracts; the generated API Reference enumerates the exact managed public surface and Native C ABI. The author name is always written as **Liaoyuan Zhang** in both language trees.
+Conceptual documentation explains behavior and contracts; the generated API Reference enumerates the exact managed public surface and Native C ABI. The project author is **zly258** in all documentation and generated metadata.
