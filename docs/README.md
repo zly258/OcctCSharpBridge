@@ -2,7 +2,7 @@
 
 The `demo` branch is a pure application-layer consumer of the OcctCSharpBridge Binary SDK. Bridge Native/Managed source, ABI checks, managed regression tests, native smoke tests, bilingual SDK documentation, and Binary SDK production remain on `main`.
 
-## Current contract
+## Current published baseline
 
 | Item | Current value |
 | --- | --- |
@@ -18,7 +18,7 @@ The `demo` branch is a pure application-layer consumer of the OcctCSharpBridge B
 | Platform | **Windows x64** |
 | Public SDK surface | **344 Native / 344 P/Invoke / 105 public .NET types** |
 
-The copied `dist/win-x64/bridge-contract.json` and `bridge-manifest.json` are authoritative for the exact SDK payload consumed by the branch.
+The copied `dist/win-x64/bridge-contract.json` and `bridge-manifest.json` are authoritative for the exact SDK payload consumed by the branch. The values above describe the current main contract, but the demo source no longer hardcodes a Bridge version, ABI version, or OCCT version.
 
 ## Branch responsibilities
 
@@ -88,7 +88,9 @@ Individual targets:
 .\build.ps1 avalonia Release
 ```
 
-`Directory.Build.targets` validates the Binary SDK before compilation and copies `OcctNative.dll` beside each executable. Managed `OcctNet*.dll` files are copied through ordinary private assembly references.
+`build.ps1` reads the Binary SDK Contract, validates Author/platform/.NET/C#/Manifest/SHA-256, then propagates the consumed `bridgeVersion` into Demo assembly builds. It does not pin a Bridge version in `Directory.Build.props`.
+
+`Directory.Build.targets` validates the required Binary SDK files before reference resolution and copies `OcctNative.dll` beside each executable. Managed `OcctNet*.dll` files are copied through ordinary private assembly references.
 
 ## Run and package
 
@@ -97,11 +99,11 @@ Individual targets:
 .\publish.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64" -Zip
 ```
 
-Demo `publish.ps1` packages applications only; it never publishes or rebuilds the Bridge SDK.
+Demo `publish.ps1` packages applications only; it never publishes or rebuilds the Bridge SDK. The consumed Contract version is passed to `dotnet publish`, so build and publish assembly metadata stay aligned.
 
 ## Product metadata
 
-`Directory.Build.props` defines the common demo assembly version, product and author. `OcctDemo.Common/DemoProductInfo.cs` is the single About-dialog metadata source for WinForms, WPF and Avalonia. The author is **zly258** in every language mode.
+`Directory.Build.props` defines demo-wide build policy, product name and Author **zly258**, but does not duplicate the Bridge version/ABI/OCCT contract. `OcctDemo.Common/DemoProductInfo.cs` reads Bridge version and expected ABI from `OcctNet` and obtains the loaded OCCT version from the Bridge at runtime for all three About dialogs.
 
 ## Documentation rules
 
