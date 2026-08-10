@@ -14,90 +14,95 @@ function Read-RepositoryText {
     return [System.IO.File]::ReadAllText($path)
 }
 
+function Assert-Contains {
+    param([string]$Text, [string[]]$Tokens, [string]$Area)
+    foreach ($token in $Tokens) {
+        if (-not $Text.Contains($token)) { throw "$Area contract is missing: $token" }
+    }
+}
+
+function Assert-DoesNotContain {
+    param([string]$Text, [string[]]$Tokens, [string]$Area)
+    foreach ($token in $Tokens) {
+        if ($Text.Contains($token)) { throw "$Area still contains obsolete indexed ABI: $token" }
+    }
+}
+
 $analysisSession = Read-RepositoryText "src\OcctNet\OcctModelingSession.Analysis.cs"
-foreach ($token in @(
+Assert-Contains $analysisSession @(
     "occt_model_ray_hits_copy",
     "new NativeModelRayHit[count]",
     "Native ray-hit count changed during bulk copy"
-)) {
-    if (-not $analysisSession.Contains($token)) {
-        throw "Managed ray-hit bulk transfer contract is missing: $token"
-    }
-}
-if ($analysisSession.Contains("occt_model_ray_hit_at(_handle")) {
-    throw "IntersectRay must not regress to N+1 indexed ray-hit P/Invoke calls."
-}
+) "Managed ray-hit bulk transfer"
+Assert-DoesNotContain $analysisSession @("occt_model_ray_hit_at(_handle", "occt_model_ray_hit_count(_handle") "Managed ray-hit collection"
 
 $analysisNativeMethods = Read-RepositoryText "src\OcctNet\ModelNativeMethods.Analysis.cs"
-foreach ($token in @("occt_model_ray_hit_at", "occt_model_ray_hits_copy", "[Out] NativeModelRayHit[]")) {
-    if (-not $analysisNativeMethods.Contains($token)) {
-        throw "Ray-hit Native ABI compatibility/bulk declaration is missing: $token"
-    }
-}
+Assert-Contains $analysisNativeMethods @("occt_model_ray_hits_copy", "[Out] NativeModelRayHit[]") "Ray-hit P/Invoke"
+Assert-DoesNotContain $analysisNativeMethods @("occt_model_ray_hit_at", "occt_model_ray_hit_count") "Ray-hit P/Invoke"
 
 $analysisNative = Read-RepositoryText "src\OcctNative\OcctModelingAnalysis.cpp"
-foreach ($token in @("occt_model_ray_hit_at", "occt_model_ray_hits_copy", "model->rayHits")) {
-    if (-not $analysisNative.Contains($token)) {
-        throw "Ray-hit Native compatibility/bulk implementation is missing: $token"
-    }
-}
+Assert-Contains $analysisNative @("occt_model_ray_hits_copy", "model->rayHits") "Ray-hit native"
+Assert-DoesNotContain $analysisNative @("occt_model_ray_hit_at", "occt_model_ray_hit_count") "Ray-hit native"
 
 $historySession = Read-RepositoryText "src\OcctNet\OcctModelingSession.History.cs"
-foreach ($token in @(
+Assert-Contains $historySession @(
     "GetHistoryShapes",
     "occt_model_history_generated_copy",
     "occt_model_history_modified_copy",
     "Native topology-history count changed during bulk copy"
-)) {
-    if (-not $historySession.Contains($token)) {
-        throw "Managed topology-history bulk transfer contract is missing: $token"
-    }
-}
-if ($historySession.Contains("occt_model_history_generated_at(_handle") -or
-    $historySession.Contains("occt_model_history_modified_at(_handle")) {
-    throw "Generated/Modified topology-history collection APIs must not regress to N+1 indexed P/Invoke calls."
-}
+) "Managed topology-history bulk transfer"
+Assert-DoesNotContain $historySession @("occt_model_history_generated_at", "occt_model_history_modified_at", "occt_model_history_generated_count", "occt_model_history_modified_count") "Managed topology-history collection"
 
 $historyNativeMethods = Read-RepositoryText "src\OcctNet\ModelNativeMethods.History.cs"
-foreach ($token in @(
-    "occt_model_history_generated_at",
-    "occt_model_history_generated_copy",
-    "occt_model_history_modified_at",
-    "occt_model_history_modified_copy",
-    "[Out] long[]"
-)) {
-    if (-not $historyNativeMethods.Contains($token)) {
-        throw "Topology-history Native ABI compatibility/bulk declaration is missing: $token"
-    }
-}
+Assert-Contains $historyNativeMethods @("occt_model_history_generated_copy", "occt_model_history_modified_copy", "[Out] long[]") "Topology-history P/Invoke"
+Assert-DoesNotContain $historyNativeMethods @("occt_model_history_generated_at", "occt_model_history_modified_at", "occt_model_history_generated_count", "occt_model_history_modified_count") "Topology-history P/Invoke"
 
 $historyNative = Read-RepositoryText "src\OcctNative\OcctModelingHistory.cpp"
-foreach ($token in @(
-    "occt_model_history_generated_at",
-    "occt_model_history_generated_copy",
-    "occt_model_history_modified_at",
-    "occt_model_history_modified_copy",
-    "historyCopy"
-)) {
-    if (-not $historyNative.Contains($token)) {
-        throw "Topology-history Native compatibility/bulk implementation is missing: $token"
-    }
-}
+Assert-Contains $historyNative @("occt_model_history_generated_copy", "occt_model_history_modified_copy", "historyCopy") "Topology-history native"
+Assert-DoesNotContain $historyNative @("occt_model_history_generated_at", "occt_model_history_modified_at", "occt_model_history_generated_count", "occt_model_history_modified_count") "Topology-history native"
 
-$historyInternal = Read-RepositoryText "src\OcctNative\OcctModelingAlgorithmInternal.hxx"
-if (-not $historyInternal.Contains("inline int historyCopy(")) {
-    throw "Linear topology-history bulk-copy helper is missing."
-}
+$shapeSession = Read-RepositoryText "src\OcctNet\OcctModelingSession.cs"
+Assert-Contains $shapeSession @("occt_model_shape_ids_copy", "Native shape count changed during bulk copy") "Managed shape enumeration"
+Assert-DoesNotContain $shapeSession @("occt_model_shape_id_at", "occt_model_shape_count") "Managed shape enumeration"
+
+$topologySession = Read-RepositoryText "src\OcctNet\OcctModelingSession.Topology.cs"
+Assert-Contains $topologySession @("occt_model_subshapes_copy", "occt_model_inner_wires_copy", "occt_model_ancestors_copy", "ReadShapeCollection") "Managed topology collection"
+Assert-DoesNotContain $topologySession @("occt_model_get_subshape", "occt_model_inner_wire_at", "occt_model_ancestor_at") "Managed topology collection"
+
+$meshSession = Read-RepositoryText "src\OcctNet\OcctModelingSession.Mesh.cs"
+Assert-Contains $meshSession @("occt_model_face_mesh_nodes_copy", "occt_model_face_mesh_triangles_copy") "Managed mesh collection"
+Assert-DoesNotContain $meshSession @("occt_model_face_mesh_node(", "occt_model_face_mesh_triangle(", "occt_model_face_mesh_counts(") "Managed mesh collection"
 
 $nativeHeader = Read-RepositoryText "src\OcctNative\OcctModeling.h"
-foreach ($token in @(
+Assert-Contains $nativeHeader @(
+    "occt_model_shape_ids_copy",
+    "occt_model_subshapes_copy",
+    "occt_model_inner_wires_copy",
+    "occt_model_ancestors_copy",
     "occt_model_ray_hits_copy",
+    "occt_model_face_mesh_nodes_copy",
+    "occt_model_face_mesh_triangles_copy",
     "occt_model_history_generated_copy",
     "occt_model_history_modified_copy"
-)) {
-    if (-not $nativeHeader.Contains($token)) {
-        throw "Bulk Native ABI export declaration is missing: $token"
-    }
-}
+) "Modeling bulk ABI"
+Assert-DoesNotContain $nativeHeader @(
+    "occt_model_shape_count",
+    "occt_model_shape_id_at",
+    "occt_model_topology_count",
+    "occt_model_get_subshape",
+    "occt_model_inner_wire_count",
+    "occt_model_inner_wire_at",
+    "occt_model_ancestor_count",
+    "occt_model_ancestor_at",
+    "occt_model_ray_hit_count",
+    "occt_model_ray_hit_at",
+    "occt_model_face_mesh_counts",
+    "occt_model_face_mesh_node(",
+    "occt_model_face_mesh_triangle(",
+    "occt_model_history_generated_count",
+    "occt_model_history_generated_at",
+    "occt_model_history_modified_count",
+    "occt_model_history_modified_at"
+) "Modeling bulk ABI"
 
-Write-Host "[modeling-bulk-abi] Ray hits and topology history use bulk transfer while indexed ABI compatibility exports remain available." -ForegroundColor Green
+Write-Host "[modeling-bulk-abi] Shape, topology, ray-hit, mesh, and history collections are bulk-only." -ForegroundColor Green
