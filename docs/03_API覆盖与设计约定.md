@@ -1,4 +1,4 @@
-﻿# 03 API 覆盖与设计约定
+# 03 API 覆盖与设计约定
 
 本文说明 `OcctCSharpBridge 2.6.0` 当前 `main` 的 API 范围和公共设计约定。机器可读版本、平台和 API 数量以仓库根目录 `bridge-contract.json` 为准。
 
@@ -6,12 +6,12 @@
 
 | 项目 | 数量/版本 |
 |---|---:|
-| Native exports | `348` |
-| Managed P/Invoke declarations | `348` |
+| Native exports | `344` |
+| Managed P/Invoke declarations | `344` |
 | Public .NET types | `105` |
-| Viewer API | `214` |
+| Viewer API | `210` |
 | Modeling API | `134` |
-| Native ABI | `3` |
+| Native ABI | `4` |
 | Bridge | `2.6.0` |
 | OCCT | `7.9.0` |
 
@@ -72,15 +72,24 @@ Native API 使用稳定 C ABI，而不是直接 P/Invoke C++ 类。
 
 ## 4. Bulk Collection
 
-高数量集合优先使用两次调用模式：
+高数量集合统一优先使用两次调用模式：
 
 ```text
-call(handle, null, 0) -> count
+call(handle, null, 0, out count, ...) -> success
 allocate managed buffer
-call(handle, buffer, capacity) -> copied count
+call(handle, buffer, capacity, out count, ...) -> success
 ```
 
-Modeling 的 Shape、Subshape、Ancestor、Ray Hit、History、Mesh 等集合已按 Bulk-only 方式设计。这样可以避免：
+Modeling 的 Shape、Subshape、Ancestor、Ray Hit、History、Mesh 等集合使用 Bulk-only 传输。
+
+Viewer 同样遵守这一规则：
+
+- `Objects` / `Shapes` 由 `occt_object_descriptors` 一次传输 `ObjectId + Kind` 快照；
+- `SelectedObjects` / Subshape Hit 使用 `occt_selected_hits`；
+- 已删除 `occt_object_id_at`、`occt_shape_id_at`、`occt_selected_count`、`occt_selected_at`；
+- 已删除历史 `occt_shape_count` compatibility alias。
+
+因此集合路径不再保留以下 N+1 形式：
 
 ```text
 Count
@@ -90,9 +99,7 @@ At(2)
 ...
 ```
 
-在大模型上产生大量 Native/Managed Boundary Crossing。
-
-Viewer 中新增集合 API 时也应优先沿用 Bulk 思路。
+`tests/check-bulk-abi.ps1` 会阻止这些已退休接口重新进入 Bridge。
 
 ## 5. Owner-aware Handle
 
