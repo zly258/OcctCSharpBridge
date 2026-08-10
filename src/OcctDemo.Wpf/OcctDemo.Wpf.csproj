@@ -13,7 +13,13 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\OcctDemo.Common\OcctDemo.Common.csproj" />
-    <ProjectReference Include="..\OcctNet\OcctNet.csproj" />
-    <ProjectReference Include="..\OcctNet.Wpf\OcctNet.Wpf.csproj" />
+    <Reference Include="OcctNet">
+      <HintPath>$(OcctBridgeDistRoot)\OcctNet.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="OcctNet.Wpf">
+      <HintPath>$(OcctBridgeDistRoot)\OcctNet.Wpf.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
   </ItemGroup>
 </Project>
