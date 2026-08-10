@@ -4,8 +4,11 @@
 
 #include <BRepBuilderAPI_MakePolygon.hxx>
 #include <BRep_Tool.hxx>
+#include <GeomAbs_CurveType.hxx>
+#include <GeomAbs_SurfaceType.hxx>
 #include <GProp_GProps.hxx>
 #include <Precision.hxx>
+#include <TopAbs_Orientation.hxx>
 #include <TopAbs_ShapeEnum.hxx>
 #include <TopAbs_State.hxx>
 #include <TopExp.hxx>
@@ -74,6 +77,68 @@ namespace OcctModelingInternal
             case OcctShape_Edge: return TopAbs_EDGE;
             case OcctShape_Vertex: return TopAbs_VERTEX;
             default: return TopAbs_SHAPE;
+        }
+    }
+
+    inline int toOcctShapeType(TopAbs_ShapeEnum value)
+    {
+        switch (value)
+        {
+            case TopAbs_COMPOUND: return OcctShape_Compound;
+            case TopAbs_COMPSOLID: return OcctShape_CompSolid;
+            case TopAbs_SOLID: return OcctShape_Solid;
+            case TopAbs_SHELL: return OcctShape_Shell;
+            case TopAbs_FACE: return OcctShape_Face;
+            case TopAbs_WIRE: return OcctShape_Wire;
+            case TopAbs_EDGE: return OcctShape_Edge;
+            case TopAbs_VERTEX: return OcctShape_Vertex;
+            default: return OcctShape_Shape;
+        }
+    }
+
+    inline int toModelOrientation(TopAbs_Orientation value)
+    {
+        switch (value)
+        {
+            case TopAbs_FORWARD: return OcctModelOrientation_Forward;
+            case TopAbs_REVERSED: return OcctModelOrientation_Reversed;
+            case TopAbs_INTERNAL: return OcctModelOrientation_Internal;
+            case TopAbs_EXTERNAL: return OcctModelOrientation_External;
+            default: return OcctModelOrientation_Forward;
+        }
+    }
+
+    inline int toOcctCurveType(GeomAbs_CurveType value)
+    {
+        switch (value)
+        {
+            case GeomAbs_Line: return OcctCurve_Line;
+            case GeomAbs_Circle: return OcctCurve_Circle;
+            case GeomAbs_Ellipse: return OcctCurve_Ellipse;
+            case GeomAbs_Hyperbola: return OcctCurve_Hyperbola;
+            case GeomAbs_Parabola: return OcctCurve_Parabola;
+            case GeomAbs_BezierCurve: return OcctCurve_Bezier;
+            case GeomAbs_BSplineCurve: return OcctCurve_BSpline;
+            case GeomAbs_OffsetCurve: return OcctCurve_Offset;
+            default: return OcctCurve_Other;
+        }
+    }
+
+    inline int toOcctSurfaceType(GeomAbs_SurfaceType value)
+    {
+        switch (value)
+        {
+            case GeomAbs_Plane: return OcctSurface_Plane;
+            case GeomAbs_Cylinder: return OcctSurface_Cylinder;
+            case GeomAbs_Cone: return OcctSurface_Cone;
+            case GeomAbs_Sphere: return OcctSurface_Sphere;
+            case GeomAbs_Torus: return OcctSurface_Torus;
+            case GeomAbs_BezierSurface: return OcctSurface_Bezier;
+            case GeomAbs_BSplineSurface: return OcctSurface_BSpline;
+            case GeomAbs_SurfaceOfRevolution: return OcctSurface_Revolution;
+            case GeomAbs_SurfaceOfExtrusion: return OcctSurface_Extrusion;
+            case GeomAbs_OffsetSurface: return OcctSurface_Offset;
+            default: return OcctSurface_Other;
         }
     }
 

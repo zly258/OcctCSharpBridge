@@ -11,39 +11,6 @@
 
 using namespace OcctModelingInternal;
 
-namespace
-{
-    int toSurfaceType(GeomAbs_SurfaceType type)
-    {
-        switch (type)
-        {
-            case GeomAbs_Plane: return OcctSurface_Plane;
-            case GeomAbs_Cylinder: return OcctSurface_Cylinder;
-            case GeomAbs_Cone: return OcctSurface_Cone;
-            case GeomAbs_Sphere: return OcctSurface_Sphere;
-            case GeomAbs_Torus: return OcctSurface_Torus;
-            case GeomAbs_BezierSurface: return OcctSurface_Bezier;
-            case GeomAbs_BSplineSurface: return OcctSurface_BSpline;
-            case GeomAbs_SurfaceOfRevolution: return OcctSurface_Revolution;
-            case GeomAbs_SurfaceOfExtrusion: return OcctSurface_Extrusion;
-            case GeomAbs_OffsetSurface: return OcctSurface_Offset;
-            default: return OcctSurface_Other;
-        }
-    }
-
-    int toOrientation(TopAbs_Orientation orientation)
-    {
-        switch (orientation)
-        {
-            case TopAbs_FORWARD: return OcctModelOrientation_Forward;
-            case TopAbs_REVERSED: return OcctModelOrientation_Reversed;
-            case TopAbs_INTERNAL: return OcctModelOrientation_Internal;
-            case TopAbs_EXTERNAL: return OcctModelOrientation_External;
-            default: return OcctModelOrientation_Forward;
-        }
-    }
-}
-
 extern "C"
 {
     int occt_model_shape_face_analysis(
@@ -80,8 +47,8 @@ extern "C"
                 const TopoDS_Face face = TopoDS::Face(faces(index));
                 OcctModelFaceAnalysis& item = items[index - 1];
                 item.faceId = model->addShape(face);
-                item.surfaceType = toSurfaceType(BRepAdaptor_Surface(face, Standard_False).GetType());
-                item.orientation = toOrientation(face.Orientation());
+                item.surfaceType = toOcctSurfaceType(BRepAdaptor_Surface(face, Standard_False).GetType());
+                item.orientation = toModelOrientation(face.Orientation());
 
                 TopTools_IndexedMapOfShape edges;
                 TopTools_IndexedMapOfShape wires;

@@ -34,7 +34,7 @@ extern "C"
     {
         ModelSession* model = modelOf(handle);
         if (model == nullptr) return OcctShape_Shape;
-        try { return static_cast<int>(model->requireShape(shapeId).ShapeType()); }
+        try { return toOcctShapeType(model->requireShape(shapeId).ShapeType()); }
         catch (...) { return OcctShape_Shape; }
     }
 
@@ -42,7 +42,7 @@ extern "C"
     {
         ModelSession* model = modelOf(handle);
         if (model == nullptr) return OcctModelOrientation_Forward;
-        try { return static_cast<int>(model->requireShape(shapeId).Orientation()); }
+        try { return toModelOrientation(model->requireShape(shapeId).Orientation()); }
         catch (...) { return OcctModelOrientation_Forward; }
     }
 
@@ -144,7 +144,7 @@ extern "C"
             BRepCheck_Analyzer analyzer(shape, Standard_True);
             std::ostringstream stream;
             stream << "{\"valid\":" << (analyzer.IsValid() ? "true" : "false")
-                   << ",\"shapeType\":" << static_cast<int>(shape.ShapeType())
+                   << ",\"shapeType\":" << toOcctShapeType(shape.ShapeType())
                    << ",\"maxTolerance\":" << maximumTolerance(shape)
                    << ",\"invalid\":[";
             bool firstItem = true;
@@ -156,7 +156,7 @@ extern "C"
                     if (BRepCheck_Analyzer(explorer.Current(), Standard_True).IsValid()) continue;
                     if (!firstItem) stream << ',';
                     firstItem = false;
-                    stream << "{\"type\":" << type << ",\"index\":" << index << '}';
+                    stream << "{\"type\":" << toOcctShapeType(static_cast<TopAbs_ShapeEnum>(type)) << ",\"index\":" << index << '}';
                 }
             }
             stream << "]}";

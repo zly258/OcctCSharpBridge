@@ -10,6 +10,7 @@
 #include <TopoDS_Edge.hxx>
 
 #include <algorithm>
+#include <cmath>
 
 using namespace OcctModelingInternal;
 
@@ -79,8 +80,8 @@ extern "C"
         int count = 0;
         if (execute(model, [&]
         {
-            if (tolerance < 0.0)
-                throw std::invalid_argument("Intersection tolerance must not be negative.");
+            if (!std::isfinite(tolerance) || tolerance < 0.0)
+                throw std::invalid_argument("Intersection tolerance must be finite and non-negative.");
 
             const TopoDS_Edge firstEdge = requireEdge(model, firstEdgeId);
             const TopoDS_Edge secondEdge = requireEdge(model, secondEdgeId);
