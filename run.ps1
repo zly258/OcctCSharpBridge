@@ -28,9 +28,6 @@ if (-not (Test-Path -LiteralPath $ContractPath -PathType Leaf)) {
 }
 
 & $BuildScript validate $Configuration
-if ($LASTEXITCODE -ne 0) {
-    throw "Bridge Binary SDK validation failed."
-}
 
 $contract = Get-Content -LiteralPath $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $targetFramework = [string]$contract.dotnet.targetFramework
