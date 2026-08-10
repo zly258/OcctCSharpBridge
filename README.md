@@ -1,12 +1,14 @@
-﻿# OcctCSharpBridge Demo
+# OcctCSharpBridge Demo
 
-[简体中文](README.zh-CN.md) · [Main SDK](https://github.com/zly258/OcctCSharpBridge) · [API Coverage](docs/API_COVERAGE.md)
+[简体中文](README.zh-CN.md) · [Main SDK](https://github.com/zly258/OcctCSharpBridge) · [Demo Maintenance](docs/README.md) · [Main Technical Docs](https://github.com/zly258/OcctCSharpBridge/tree/main/docs)
 
 ## Description
 
-The `demo` branch contains reference CAD applications for **OcctCSharpBridge 2.6.0**, Open CASCADE Technology **7.9.0**, and .NET SDK **10.0.302** on Windows x64. It demonstrates how the reusable bridge can be integrated into WinForms, WPF, and Avalonia applications without moving product-level CAD architecture into `main`.
+The `demo` branch contains Windows x64 reference applications for **OcctCSharpBridge 2.6.0**, Open CASCADE Technology **7.9.0**, and .NET SDK **10.0.302**. It demonstrates how the reusable bridge can be integrated into WinForms, WPF, and Avalonia applications without moving product-level CAD architecture into `main`.
 
-The branch includes three desktop applications plus shared demo code for command dispatch, history, localization, object/property panels, runtime diagnostics, file exchange, and common CAD interaction examples. The reusable bridge remains the source of geometry, topology, modeling, selection, viewer, mesh, P0 inertia, P1 structured intersection, and P2 topology-reference capabilities.
+The branch contains three desktop applications plus shared demo code for command dispatch, history, localization, object/property panels, runtime diagnostics, file exchange, and common CAD interaction. Geometry, topology, modeling, selection, viewer, mesh, inertia, structured intersection, and topology-reference capabilities come from the shared bridge.
+
+Bridge technical documentation is maintained only under `main/docs`. The demo branch no longer duplicates API Coverage, B-Spline, Topology, Runtime, or other SDK documentation in parallel English/Chinese files.
 
 ### Preview
 
@@ -14,9 +16,7 @@ The branch includes three desktop applications plus shared demo code for command
 <p align="center"><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-en.png" alt="WPF demo" width="88%"></p>
 <p align="center"><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-demo-en.png" alt="Avalonia demo" width="88%"></p>
 
-## Installation
-
-### Requirements
+## Requirements
 
 - Windows x64
 - .NET SDK `10.0.302`
@@ -24,21 +24,30 @@ The branch includes three desktop applications plus shared demo code for command
 - CMake `3.21+`
 - OCCT `7.9.0`, VC14 x64 layout
 
-The default OCCT root is:
+Default OCCT root:
 
 ```text
 D:\tools\occt-vc144-64
 ```
 
-Use another installation with `-OcctRoot` or the `OCCT_ROOT` environment variable.
+Use another installation with `-OcctRoot` or `OCCT_ROOT`.
 
-### Build all demos
+## Build and Run
+
+Basic local validation:
+
+```powershell
+.\build.ps1 validate Release
+.\build.ps1 managed Release
+```
+
+Build all demos:
 
 ```powershell
 .\build.ps1 all Release
 ```
 
-Build one UI host/application:
+Build one application:
 
 ```powershell
 .\build.ps1 winform Release
@@ -46,22 +55,13 @@ Build one UI host/application:
 .\build.ps1 avalonia Release
 ```
 
-Static and managed validation can run without the OCCT SDK:
-
-```powershell
-.\build.ps1 validate Release
-.\build.ps1 managed Release
-```
-
-The authoritative native validation uses the real OCCT runtime:
+Run the real native gate:
 
 ```powershell
 .\build.ps1 smoke Release
 ```
 
-## Usage Example
-
-Run a built application with the branch runner:
+Run a built application:
 
 ```powershell
 .\run.ps1 winform Release
@@ -69,9 +69,11 @@ Run a built application with the branch runner:
 .\run.ps1 avalonia Release
 ```
 
-The three demos share the same bridge API and CAD demo behavior while using framework-specific hosts. Typical operations include primitive creation, Boolean/feature modeling, selection and subshape selection, object properties, annotations, STEP/IGES/BREP/STL exchange, topology analysis, meshing, and viewport interaction.
+The repository does not use GitHub Actions as a substitute for local compilation, runtime validation, or branch synchronization.
 
-The underlying `OcctModelingSession` also exposes the P0–P2 APIs directly:
+## Usage Example
+
+The shared `OcctModelingSession` API is available directly:
 
 ```csharp
 using OcctNet;
@@ -98,41 +100,51 @@ src/OcctNet              Shared .NET bridge, non-packable on demo
 src/OcctNet.WinForms     WinForms viewport host
 src/OcctNet.Wpf          WPF viewport host
 src/OcctNet.Avalonia     Avalonia Windows-HWND viewport host
-src/OcctDemo.Common      Shared demo behavior
-src/OcctDemo.WinForms    CAD-Winform
-src/OcctDemo.Wpf         CAD-WPF
-src/OcctDemo.Avalonia    CAD-Avalonia
+src/OcctDemo.Common      Shared demo application behavior
+src/OcctDemo.WinForms    WinForms demo
+src/OcctDemo.Wpf         WPF demo
+src/OcctDemo.Avalonia    Avalonia demo
 assets/previews           Branch-specific UI previews
-tests                     Shared bridge contracts plus demo-specific checks
+docs/README.md            Demo-specific maintenance notes
+tests                     Shared bridge contracts plus demo checks
+run.ps1                   Local application runner
+publish.ps1               Publish entry point
 ```
 
-The demo wrapper projects are intentionally non-packable. NuGet SDK packaging belongs to `main`.
+Demo wrapper and application projects remain non-packable. NuGet SDK packaging belongs to `main`.
+
+## Synchronization with main
+
+Reusable bridge source is synchronized manually from `main` after local validation. Shared source is synchronized selectively; demo-specific `build.ps1`, project files, application source, README/docs, run/publish scripts, and preview assets are not overwritten wholesale. See [Demo Maintenance](docs/README.md) for the exact scope.
+
+If demo code no longer matches the current bridge, update the demo caller. Do not reintroduce legacy aliases, compatibility wrappers, or deleted aggregate internal headers.
 
 ## Native Startup Troubleshooting
 
-If a demo fails with `DllNotFoundException` or Win32 error 126, check the application-local runtime first. The diagnostic report explicitly shows entries such as:
+For `DllNotFoundException` or Win32 error 126, check the application-local runtime first:
 
 ```text
-OcctNative.dll [missing]
-TKernel.dll [missing]
+OcctNative.dll
+TKernel.dll
+other OCCT TK*.dll
 ```
 
-For published packages, also inspect `native-dependencies.txt`. Application crash/startup logs are written under:
+Published packages also contain `native-dependencies.txt`. Startup/crash logs are written under:
 
 ```text
 %LOCALAPPDATA%\OcctCSharpBridge\Logs
 ```
 
-The Avalonia host uses a Windows child HWND and is therefore a Windows x64 host, not a cross-platform OCCT viewer backend.
+The Avalonia host uses a Windows child HWND and is therefore still a Windows x64 host.
 
 ## Contributing
 
-1. Keep reusable OCCT/native/managed changes aligned with `main`; keep demo-only UI/application behavior on `demo`.
-2. Do not add compatibility aliases or duplicate old APIs; this repository is maintained as a clean new bridge.
+1. Keep reusable OCCT/native/managed source aligned with `main`; keep demo-only application behavior on `demo`.
+2. Do not add compatibility aliases, duplicate old APIs, or compatibility aggregate headers.
 3. Keep demo wrapper and application projects non-packable.
-4. Prefer shared `OcctDemo.Common` behavior over copying business logic across WinForms, WPF, and Avalonia.
-5. Run `build.ps1 validate` and `build.ps1 managed`; with OCCT installed, also run `build.ps1 smoke` and the relevant demo build/run target.
-6. Preserve the branch-specific preview images and runtime-diagnostic guidance when changing the desktop UI.
+4. Prefer `OcctDemo.Common` for shared demo behavior instead of copying business logic across UI frameworks.
+5. Before committing, run local `build.ps1 validate` and `build.ps1 managed`; with OCCT installed also run `build.ps1 all`, `build.ps1 smoke`, and the relevant demo build/run target.
+6. Maintain bridge technical documentation only under `main/docs`; keep demo docs application-specific.
 
 ## License
 

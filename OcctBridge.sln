@@ -1,15 +1,36 @@
-﻿Microsoft Visual Studio Solution File, Format Version 12.00
+Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") = "Solution Items", "Solution Items", "{CBACB41C-6B78-4FD8-9F3B-D7AF292A17D9}"
     ProjectSection(SolutionItems) = preProject
+        .editorconfig = .editorconfig
+        .gitattributes = .gitattributes
         .gitignore = .gitignore
+        bridge-contract.json = bridge-contract.json
         build.ps1 = build.ps1
+        Directory.Build.props = Directory.Build.props
+        Directory.Build.targets = Directory.Build.targets
+        global.json = global.json
         LICENSE = LICENSE
-        README.zh-CN.md = README.zh-CN.md
+        publish.ps1 = publish.ps1
         README.md = README.md
+        README.zh-CN.md = README.zh-CN.md
         run.ps1 = run.ps1
+    EndProjectSection
+EndProject
+Project("{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") = "Bridge", "Bridge", "{E3C3E281-D16F-44C3-A694-EC620E3BB201}"
+    ProjectSection(SolutionItems) = preProject
+        src\OcctNative\CMakeLists.txt = src\OcctNative\CMakeLists.txt
+    EndProjectSection
+EndProject
+Project("{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") = "Demo Applications", "Demo Applications", "{E3C3E281-D16F-44C3-A694-EC620E3BB202}"
+EndProject
+Project("{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") = "Tests", "Tests", "{E3C3E281-D16F-44C3-A694-EC620E3BB203}"
+EndProject
+Project("{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") = "Documentation", "Documentation", "{E3C3E281-D16F-44C3-A694-EC620E3BB204}"
+    ProjectSection(SolutionItems) = preProject
+        docs\README.md = docs\README.md
     EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet", "src\OcctNet\OcctNet.csproj", "{217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3}"
@@ -22,11 +43,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.Avalonia", "src\Occ
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctDemo.Common", "src\OcctDemo.Common\OcctDemo.Common.csproj", "{A01D0BAA-2AE2-487D-A76C-A6BD09ED92FA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CAD-Winform", "src\OcctDemo.WinForms\OcctDemo.WinForms.csproj", "{9FD55C83-D84B-498A-86E9-0413E8A5AE69}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctDemo.WinForms", "src\OcctDemo.WinForms\OcctDemo.WinForms.csproj", "{9FD55C83-D84B-498A-86E9-0413E8A5AE69}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CAD-WPF", "src\OcctDemo.Wpf\OcctDemo.Wpf.csproj", "{FF3305BE-D770-4E1E-A730-49F67353F64E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctDemo.Wpf", "src\OcctDemo.Wpf\OcctDemo.Wpf.csproj", "{FF3305BE-D770-4E1E-A730-49F67353F64E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CAD-Avalonia", "src\OcctDemo.Avalonia\OcctDemo.Avalonia.csproj", "{B6496B5B-10CF-45BB-8BC9-D77BD86F2E71}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctDemo.Avalonia", "src\OcctDemo.Avalonia\OcctDemo.Avalonia.csproj", "{B6496B5B-10CF-45BB-8BC9-D77BD86F2E71}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.ManagedTests", "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj", "{D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}"
 EndProject
@@ -78,6 +99,18 @@ Global
         {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}.Debug|x64.Build.0 = Debug|x64
         {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}.Release|x64.ActiveCfg = Release|x64
         {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}.Release|x64.Build.0 = Release|x64
+    EndGlobalSection
+    GlobalSection(NestedProjects) = preSolution
+        {217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3} = {E3C3E281-D16F-44C3-A694-EC620E3BB201}
+        {7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58} = {E3C3E281-D16F-44C3-A694-EC620E3BB201}
+        {B65176A4-9A31-4C15-BE31-2F4FB10EFB56} = {E3C3E281-D16F-44C3-A694-EC620E3BB201}
+        {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C} = {E3C3E281-D16F-44C3-A694-EC620E3BB201}
+        {A01D0BAA-2AE2-487D-A76C-A6BD09ED92FA} = {E3C3E281-D16F-44C3-A694-EC620E3BB202}
+        {9FD55C83-D84B-498A-86E9-0413E8A5AE69} = {E3C3E281-D16F-44C3-A694-EC620E3BB202}
+        {FF3305BE-D770-4E1E-A730-49F67353F64E} = {E3C3E281-D16F-44C3-A694-EC620E3BB202}
+        {B6496B5B-10CF-45BB-8BC9-D77BD86F2E71} = {E3C3E281-D16F-44C3-A694-EC620E3BB202}
+        {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095} = {E3C3E281-D16F-44C3-A694-EC620E3BB203}
+        {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E} = {E3C3E281-D16F-44C3-A694-EC620E3BB203}
     EndGlobalSection
     GlobalSection(SolutionProperties) = preSolution
         HideSolutionNode = FALSE
