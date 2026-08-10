@@ -1,19 +1,30 @@
 ﻿using System.Reflection;
 using System.Runtime.Loader;
 using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
-internal static class Program
+internal static partial class Program
 {
-    private sealed record AssemblyInput(string Name, string DllPath, string XmlPath);
+    private sealed record AssemblyInput(string Name, string DllPath, string XmlPath, string OutputDirectory);
+    private sealed record ExceptionDoc(string Cref, string Text);
+    private sealed record ApiDoc(
+        string Summary,
+        string Remarks,
+        IReadOnlyDictionary<string, string> Parameters,
+        string Returns,
+        IReadOnlyList<ExceptionDoc> Exceptions)
+    {
+        public static readonly ApiDoc Empty = new("", "", new Dictionary<string, string>(), "", []);
+    }
 
     private sealed class XmlDocs
     {
-        private readonly Dictionary<string, string> _members;
+        private readonly Dictionary<string, List<ApiDoc>> _members = new(StringComparer.Ordinal);
 
         public XmlDocs(string path)
         {
-            _members = new(StringComparer.Ordinal);
             if (!File.Exists(path)) return;
 
             var document = XDocument.Load(path);
@@ -21,38 +32,69 @@ internal static class Program
             {
                 var name = (string?)member.Attribute("name");
                 if (string.IsNullOrWhiteSpace(name)) continue;
-                var summary = Normalize(member.Element("summary")?.Value);
-                if (!string.IsNullOrWhiteSpace(summary)) _members[name] = summary;
+
+                var parameters = member.Elements("param")
+                    .Where(element => element.Attribute("name") is not null)
+                    .ToDictionary(
+                        element => (string)element.Attribute("name")!,
+                        RenderXml,
+                        StringComparer.Ordinal);
+                var exceptions = member.Elements("exception")
+                    .Select(element => new ExceptionDoc(
+                        CleanCref((string?)element.Attribute("cref") ?? "Exception"),
+                        RenderXml(element)))
+                    .ToArray();
+                var value = new ApiDoc(
+                    RenderXml(member.Element("summary")),
+                    RenderXml(member.Element("remarks")),
+                    parameters,
+                    RenderXml(member.Element("returns")),
+                    exceptions);
+
+                if (!_members.TryGetValue(name, out var values))
+                {
+                    values = [];
+                    _members.Add(name, values);
+                }
+                values.Add(value);
             }
         }
 
-        public string Type(Type type) => Get("T:" + XmlTypeName(type));
-        public string Field(Type type, FieldInfo field) => Get("F:" + XmlTypeName(type) + "." + field.Name);
-        public string Property(Type type, PropertyInfo property) => Get("P:" + XmlTypeName(type) + "." + property.Name);
-        public string Event(Type type, EventInfo value) => Get("E:" + XmlTypeName(type) + "." + value.Name);
-        public string Method(Type type, MethodBase method)
+        public ApiDoc Type(Type type) => Exact("T:" + XmlTypeName(type));
+        public ApiDoc Field(Type type, FieldInfo field) => Exact("F:" + XmlTypeName(type) + "." + field.Name);
+        public ApiDoc Property(Type type, PropertyInfo property) => Exact("P:" + XmlTypeName(type) + "." + property.Name);
+        public ApiDoc Event(Type type, EventInfo value) => Exact("E:" + XmlTypeName(type) + "." + value.Name);
+
+        public ApiDoc Method(Type type, MethodBase method)
         {
-            var name = method.IsConstructor ? "#ctor" : method.Name;
-            var prefix = "M:" + XmlTypeName(type) + "." + name;
-            var exact = _members.FirstOrDefault(pair => pair.Key == prefix || pair.Key.StartsWith(prefix + "(", StringComparison.Ordinal));
-            return exact.Value ?? string.Empty;
+            var methodName = method.IsConstructor ? "#ctor" : method.Name;
+            var prefix = "M:" + XmlTypeName(type) + "." + methodName;
+            var candidates = _members
+                .Where(pair => pair.Key == prefix || pair.Key.StartsWith(prefix + "(", StringComparison.Ordinal))
+                .SelectMany(pair => pair.Value)
+                .ToArray();
+            if (candidates.Length == 0) return ApiDoc.Empty;
+
+            var parameterCount = method.GetParameters().Length;
+            return candidates.FirstOrDefault(candidate => candidate.Parameters.Count == parameterCount)
+                ?? candidates[0];
         }
 
-        private string Get(string key) => _members.TryGetValue(key, out var value) ? value : string.Empty;
+        private ApiDoc Exact(string key) => _members.TryGetValue(key, out var values) && values.Count > 0 ? values[0] : ApiDoc.Empty;
         private static string XmlTypeName(Type type) => (type.FullName ?? type.Name).Replace('+', '.');
-        private static string Normalize(string? value) => string.IsNullOrWhiteSpace(value)
-            ? string.Empty
-            : string.Join(" ", value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     }
 
     private sealed record Language(
         string Code,
         string ApiTitle,
         string GeneratedNotice,
+        string ManagedIntro,
+        string NativeLink,
         string AssemblyLabel,
         string NamespaceLabel,
         string DeclarationLabel,
         string DescriptionLabel,
+        string RemarksLabel,
         string ConstructorsLabel,
         string PropertiesLabel,
         string EventsLabel,
@@ -60,27 +102,77 @@ internal static class Program
         string FieldsLabel,
         string ParametersLabel,
         string ReturnsLabel,
+        string ExceptionsLabel,
         string InheritedLabel,
         string NoneText,
-        string IndexIntro,
         string TypeCountLabel,
         string MemberCountLabel,
         string FallbackTypeDescription,
-        string FallbackMemberDescription);
+        string FallbackMemberDescription,
+        string NativeTitle,
+        string NativeIntro,
+        string NativeTypeSection,
+        string NativeFunctionSection,
+        string CategoryLabel,
+        string ParameterNameLabel,
+        string ParameterTypeLabel,
+        string DirectionLabel,
+        string MeaningLabel,
+        string Input,
+        string Output,
+        string InOut,
+        string Value,
+        string HandleMeaning,
+        string ObjectIdMeaning,
+        string Utf8Meaning,
+        string BufferMeaning,
+        string CountMeaning,
+        string GenericMeaning);
 
     private static readonly Language Zh = new(
-        "zh-CN", "OcctCSharpBridge 完整 API 参考", "此目录由 `tools/OcctApiDocsGenerator` 从公开程序集与 XML Documentation 自动生成，请勿手工维护 `reference` 下的文件。",
-        "程序集", "命名空间", "声明", "说明", "构造函数", "属性", "事件", "方法", "字段 / 枚举值", "参数", "返回值", "继承", "无",
-        "本索引覆盖 Binary SDK 的全部公开 .NET 类型。每个类型页面列出声明、构造函数、属性、事件、方法、参数与返回类型。", "公开类型数", "公开成员数",
-        "公开 API 类型。具体语义、所有权和生命周期约束以类型声明、成员签名及对应专题文档为准。", "公开 API 成员。参数与返回类型见下方签名。"
+        "zh-CN",
+        "OcctCSharpBridge 完整 API 参考",
+        "此目录由 `tools/OcctApiDocsGenerator` 自动生成。`reference/` 与 `native-abi.md` 不手工维护。",
+        "本索引覆盖 Binary SDK 四个公开 .NET 程序集的全部公开类型和成员，并同时提供 Native C ABI 完整参考。",
+        "[Native C ABI 完整参考](native-abi.md)",
+        "程序集", "命名空间", "声明", "说明", "备注", "构造函数", "属性", "事件", "方法", "字段 / 枚举值", "参数", "返回值", "异常", "继承", "无",
+        "公开类型数", "公开成员数",
+        "公开 API 类型。具体语义、所有权和生命周期约束以类型声明、成员签名及对应专题文档为准。",
+        "公开 API 成员。精确参数、返回类型和可用 XML Documentation 见本节。",
+        "OcctNative C ABI 完整参考",
+        "本页从 `src/OcctNative/OcctNative.h` 生成，覆盖公开 ABI 类型和全部 `OCCTBRIDGE_API occt_*` 导出，用于 P/Invoke 对等核查、底层集成和 ABI 诊断。",
+        "ABI 类型", "导出函数", "分类", "名称", "C 类型", "方向", "含义", "输入", "输出", "输入/输出", "值",
+        "Native Engine/Modeling Session 句柄；只在创建它的 Native Owner 生命周期内有效。",
+        "Bridge 对象 ID；只在所属 Native Handle 的对象注册表中有意义。",
+        "UTF-8 字符串指针。`const char*` 通常为输入字符串。",
+        "连续缓冲区指针。`const` 指针通常为输入数组，非 const 指针通常为输出或输入/输出。",
+        "数量、容量、索引、枚举、标志或状态整数；精确语义结合参数名和函数用途确定。",
+        "按声明传递的 C ABI 参数。"
     );
 
     private static readonly Language En = new(
-        "en-US", "OcctCSharpBridge Complete API Reference", "This directory is generated by `tools/OcctApiDocsGenerator` from the public assemblies and XML documentation. Do not hand-edit files under `reference`.",
-        "Assembly", "Namespace", "Declaration", "Description", "Constructors", "Properties", "Events", "Methods", "Fields / Enum Values", "Parameters", "Returns", "Inheritance", "None",
-        "This index covers every public .NET type in the Binary SDK. Each type page lists its declaration, constructors, properties, events, methods, parameters, and return types.", "Public types", "Public members",
-        "Public API type. See the declaration, member signatures, and related conceptual documentation for semantics, ownership, and lifetime constraints.", "Public API member. See the signature below for parameters and return type."
+        "en-US",
+        "OcctCSharpBridge Complete API Reference",
+        "This directory is generated by `tools/OcctApiDocsGenerator`. Do not hand-edit `reference/` or `native-abi.md`.",
+        "This index covers every public type and member in the four Binary SDK .NET assemblies and also provides the complete Native C ABI reference.",
+        "[Complete Native C ABI Reference](native-abi.md)",
+        "Assembly", "Namespace", "Declaration", "Description", "Remarks", "Constructors", "Properties", "Events", "Methods", "Fields / Enum Values", "Parameters", "Returns", "Exceptions", "Inheritance", "None",
+        "Public types", "Public members",
+        "Public API type. See its declaration, member signatures, and conceptual documentation for ownership, lifetime, and behavioral constraints.",
+        "Public API member. Exact parameters, return type, and available XML documentation are listed below.",
+        "OcctNative Complete C ABI Reference",
+        "This page is generated from `src/OcctNative/OcctNative.h` and covers the public ABI types and every `OCCTBRIDGE_API occt_*` export for P/Invoke parity, low-level integration, and ABI diagnostics.",
+        "ABI Types", "Exported Functions", "Category", "Name", "C type", "Direction", "Meaning", "Input", "Output", "Input/Output", "Value",
+        "Native Engine/Modeling Session handle valid only for the lifetime of the native owner that created it.",
+        "Bridge object ID scoped to the object registry owned by the associated native handle.",
+        "UTF-8 string pointer. `const char*` is normally an input string.",
+        "Contiguous buffer pointer. A `const` pointer is normally input; a non-const pointer is normally output or input/output.",
+        "Count, capacity, index, enum, flag, or status integer; exact semantics follow the parameter name and function purpose.",
+        "C ABI parameter passed according to the declaration."
     );
+
+    private sealed record NativeFunction(string Group, string ReturnType, string Name, string Parameters, string Declaration);
+    private sealed record NativeParameter(string Type, string Name);
 
     public static int Main(string[] args)
     {
@@ -106,19 +198,45 @@ internal static class Program
                 if (!File.Exists(input.DllPath)) throw new FileNotFoundException($"Managed assembly was not found: {input.DllPath}");
             }
 
-            var assemblyPaths = inputs.ToDictionary(input => input.Name, input => input.DllPath, StringComparer.OrdinalIgnoreCase);
+            var assemblyPaths = inputs
+                .SelectMany(input => Directory.Exists(input.OutputDirectory)
+                    ? Directory.EnumerateFiles(input.OutputDirectory, "*.dll", SearchOption.TopDirectoryOnly)
+                    : [])
+                .GroupBy(path => Path.GetFileNameWithoutExtension(path), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+
             AssemblyLoadContext.Default.Resolving += (_, assemblyName) =>
             {
                 if (assemblyName.Name is not null && assemblyPaths.TryGetValue(assemblyName.Name, out var dependency))
-                    return AssemblyLoadContext.Default.LoadFromAssemblyPath(dependency);
+                {
+                    try { return AssemblyLoadContext.Default.LoadFromAssemblyPath(dependency); }
+                    catch (BadImageFormatException) { return null; }
+                }
                 return null;
             };
 
-            var loaded = inputs.Select(input => (Input: input, Assembly: AssemblyLoadContext.Default.LoadFromAssemblyPath(input.DllPath), Docs: new XmlDocs(input.XmlPath))).ToArray();
-            WriteLanguage(root, loaded, Zh);
-            WriteLanguage(root, loaded, En);
+            var loaded = inputs.Select(input => (
+                Input: input,
+                Assembly: AssemblyLoadContext.Default.LoadFromAssemblyPath(input.DllPath),
+                Docs: new XmlDocs(input.XmlPath))).ToArray();
 
-            Console.WriteLine($"Generated bilingual API reference for {loaded.Sum(item => item.Assembly.GetExportedTypes().Length)} public types.");
+            using var contract = JsonDocument.Parse(File.ReadAllText(contractPath));
+            var expectedNativeExports = contract.RootElement.GetProperty("api").GetProperty("nativeExports").GetInt32();
+            var bridgeVersion = contract.RootElement.GetProperty("bridgeVersion").GetString() ?? string.Empty;
+            var abiVersion = contract.RootElement.GetProperty("nativeAbiVersion").GetInt32();
+            var headerPath = Path.Combine(root, "src", "OcctNative", "OcctNative.h");
+            var header = File.ReadAllText(headerPath);
+            var nativeFunctions = ParseNativeFunctions(header);
+            if (nativeFunctions.Count != expectedNativeExports)
+                throw new InvalidOperationException($"Native API docs found {nativeFunctions.Count} exports; bridge-contract.json requires {expectedNativeExports}.");
+
+            WriteManagedLanguage(root, loaded, Zh);
+            WriteManagedLanguage(root, loaded, En);
+            WriteNativeLanguage(root, Zh, bridgeVersion, abiVersion, expectedNativeExports, header, nativeFunctions);
+            WriteNativeLanguage(root, En, bridgeVersion, abiVersion, expectedNativeExports, header, nativeFunctions);
+
+            var publicTypes = loaded.Sum(item => item.Assembly.GetExportedTypes().Length);
+            Console.WriteLine($"Generated bilingual API reference for {publicTypes} public .NET types and {nativeFunctions.Count} Native C exports.");
             return 0;
         }
         catch (Exception exception)
@@ -131,7 +249,7 @@ internal static class Program
     private static AssemblyInput Input(string root, string name, string relativeProjectDirectory, string configuration, string targetFramework)
     {
         var output = Path.Combine(root, relativeProjectDirectory.Replace('/', Path.DirectorySeparatorChar), "bin", "x64", configuration, targetFramework);
-        return new AssemblyInput(name, Path.Combine(output, name + ".dll"), Path.Combine(output, name + ".xml"));
+        return new AssemblyInput(name, Path.Combine(output, name + ".dll"), Path.Combine(output, name + ".xml"), output);
     }
 
     private static Dictionary<string, string> ParseArgs(string[] args)
@@ -147,7 +265,7 @@ internal static class Program
         return result;
     }
 
-    private static void WriteLanguage(string root, (AssemblyInput Input, Assembly Assembly, XmlDocs Docs)[] loaded, Language language)
+    private static void WriteManagedLanguage(string root, (AssemblyInput Input, Assembly Assembly, XmlDocs Docs)[] loaded, Language language)
     {
         var apiRoot = Path.Combine(root, "docs", language.Code, "api");
         var referenceRoot = Path.Combine(apiRoot, "reference");
@@ -157,7 +275,8 @@ internal static class Program
         var index = new StringBuilder();
         index.AppendLine("# " + language.ApiTitle).AppendLine();
         index.AppendLine(language.GeneratedNotice).AppendLine();
-        index.AppendLine(language.IndexIntro).AppendLine();
+        index.AppendLine(language.ManagedIntro).AppendLine();
+        index.AppendLine("- " + language.NativeLink).AppendLine();
 
         var totalTypes = 0;
         var totalMembers = 0;
@@ -182,8 +301,9 @@ internal static class Program
             index.AppendLine();
         }
 
-        index.Insert(index.ToString().IndexOf(language.IndexIntro, StringComparison.Ordinal) + language.IndexIntro.Length,
-            $"\n\n- **{language.TypeCountLabel}:** {totalTypes}\n- **{language.MemberCountLabel}:** {totalMembers}");
+        var summary = $"- **{language.TypeCountLabel}:** {totalTypes}{Environment.NewLine}- **{language.MemberCountLabel}:** {totalMembers}{Environment.NewLine}{Environment.NewLine}";
+        var marker = language.ManagedIntro + Environment.NewLine + Environment.NewLine;
+        index.Replace(marker, marker + summary);
         Directory.CreateDirectory(apiRoot);
         File.WriteAllText(Path.Combine(apiRoot, "README.md"), index.ToString(), new UTF8Encoding(false));
     }
@@ -199,8 +319,7 @@ internal static class Program
         builder.AppendLine();
         builder.AppendLine("## " + language.DeclarationLabel).AppendLine();
         builder.AppendLine("```csharp").AppendLine(TypeDeclaration(type)).AppendLine("```").AppendLine();
-        builder.AppendLine("## " + language.DescriptionLabel).AppendLine();
-        builder.AppendLine(DescriptionOrFallback(docs.Type(type), language.FallbackTypeDescription)).AppendLine();
+        AppendDoc(builder, docs.Type(type), language, language.FallbackTypeDescription, includeReturns: false);
 
         if (type.IsEnum)
         {
@@ -216,9 +335,26 @@ internal static class Program
         return builder.ToString();
     }
 
+    private static void AppendDoc(StringBuilder builder, ApiDoc doc, Language language, string fallback, bool includeReturns)
+    {
+        builder.AppendLine("## " + language.DescriptionLabel).AppendLine();
+        builder.AppendLine(string.IsNullOrWhiteSpace(doc.Summary) ? fallback : doc.Summary).AppendLine();
+        if (!string.IsNullOrWhiteSpace(doc.Remarks))
+            builder.AppendLine("**" + language.RemarksLabel + ":** " + doc.Remarks).AppendLine();
+        if (includeReturns && !string.IsNullOrWhiteSpace(doc.Returns))
+            builder.AppendLine("**" + language.ReturnsLabel + ":** " + doc.Returns).AppendLine();
+        if (doc.Exceptions.Count > 0)
+        {
+            builder.AppendLine("**" + language.ExceptionsLabel + "**").AppendLine();
+            foreach (var exception in doc.Exceptions)
+                builder.AppendLine($"- `{exception.Cref}` — {exception.Text}");
+            builder.AppendLine();
+        }
+    }
+
     private static void RenderConstructors(StringBuilder builder, Type type, XmlDocs docs, Language language)
     {
-        var values = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly).OrderBy(Signature).ToArray();
+        var values = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly).OrderBy(Signature).Cast<MethodBase>().ToArray();
         RenderMethodsCore(builder, type, values, docs, language, language.ConstructorsLabel);
     }
 
@@ -237,22 +373,40 @@ internal static class Program
     {
         builder.AppendLine("## " + heading).AppendLine();
         if (values.Length == 0) { builder.AppendLine(language.NoneText).AppendLine(); return; }
+
         foreach (var value in values)
         {
+            var doc = docs.Method(type, value);
             builder.AppendLine("### `" + MemberTitle(value) + "`").AppendLine();
-            builder.AppendLine(DescriptionOrFallback(docs.Method(type, value), language.FallbackMemberDescription)).AppendLine();
+            builder.AppendLine(string.IsNullOrWhiteSpace(doc.Summary) ? language.FallbackMemberDescription : doc.Summary).AppendLine();
+            if (!string.IsNullOrWhiteSpace(doc.Remarks)) builder.AppendLine("**" + language.RemarksLabel + ":** " + doc.Remarks).AppendLine();
             builder.AppendLine("```csharp").AppendLine(Signature(value)).AppendLine("```").AppendLine();
+
             var parameters = value.GetParameters();
             if (parameters.Length > 0)
             {
                 builder.AppendLine("**" + language.ParametersLabel + "**").AppendLine();
                 foreach (var parameter in parameters)
-                    builder.AppendLine($"- `{parameter.Name}` — `{DisplayType(parameter.ParameterType)}`{DefaultValue(parameter)}");
+                {
+                    doc.Parameters.TryGetValue(parameter.Name ?? "", out var description);
+                    var suffix = string.IsNullOrWhiteSpace(description) ? "" : " — " + EscapeTable(description);
+                    builder.AppendLine($"- `{parameter.Name}` — `{ParameterType(parameter)}`{DefaultValue(parameter)}{suffix}");
+                }
                 builder.AppendLine();
             }
+
             if (value is MethodInfo method)
             {
-                builder.AppendLine($"**{language.ReturnsLabel}:** `{DisplayType(method.ReturnType)}`").AppendLine();
+                var returnDescription = string.IsNullOrWhiteSpace(doc.Returns) ? "" : " — " + doc.Returns;
+                builder.AppendLine($"**{language.ReturnsLabel}:** `{DisplayType(method.ReturnType)}`{returnDescription}").AppendLine();
+            }
+
+            if (doc.Exceptions.Count > 0)
+            {
+                builder.AppendLine("**" + language.ExceptionsLabel + "**").AppendLine();
+                foreach (var exception in doc.Exceptions)
+                    builder.AppendLine($"- `{exception.Cref}` — {exception.Text}");
+                builder.AppendLine();
             }
         }
     }
@@ -263,12 +417,19 @@ internal static class Program
             .OrderBy(property => property.Name, StringComparer.Ordinal).ToArray();
         builder.AppendLine("## " + language.PropertiesLabel).AppendLine();
         if (values.Length == 0) { builder.AppendLine(language.NoneText).AppendLine(); return; }
+
         foreach (var value in values)
         {
+            var doc = docs.Property(type, value);
             var access = (value.CanRead, value.CanWrite) switch { (true, true) => "{ get; set; }", (true, false) => "{ get; }", _ => "{ set; }" };
+            var indexParameters = value.GetIndexParameters();
+            var name = indexParameters.Length == 0
+                ? value.Name
+                : "this[" + string.Join(", ", indexParameters.Select(ParameterDeclaration)) + "]";
             builder.AppendLine("### `" + value.Name + "`").AppendLine();
-            builder.AppendLine(DescriptionOrFallback(docs.Property(type, value), language.FallbackMemberDescription)).AppendLine();
-            builder.AppendLine("```csharp").AppendLine($"public {DisplayType(value.PropertyType)} {value.Name} {access}").AppendLine("```").AppendLine();
+            builder.AppendLine(string.IsNullOrWhiteSpace(doc.Summary) ? language.FallbackMemberDescription : doc.Summary).AppendLine();
+            builder.AppendLine("```csharp").AppendLine($"public {DisplayType(value.PropertyType)} {name} {access}").AppendLine("```").AppendLine();
+            if (!string.IsNullOrWhiteSpace(doc.Remarks)) builder.AppendLine("**" + language.RemarksLabel + ":** " + doc.Remarks).AppendLine();
         }
     }
 
@@ -278,10 +439,12 @@ internal static class Program
             .OrderBy(value => value.Name, StringComparer.Ordinal).ToArray();
         builder.AppendLine("## " + language.EventsLabel).AppendLine();
         if (values.Length == 0) { builder.AppendLine(language.NoneText).AppendLine(); return; }
+
         foreach (var value in values)
         {
+            var doc = docs.Event(type, value);
             builder.AppendLine("### `" + value.Name + "`").AppendLine();
-            builder.AppendLine(DescriptionOrFallback(docs.Event(type, value), language.FallbackMemberDescription)).AppendLine();
+            builder.AppendLine(string.IsNullOrWhiteSpace(doc.Summary) ? language.FallbackMemberDescription : doc.Summary).AppendLine();
             builder.AppendLine("```csharp").AppendLine($"public event {DisplayType(value.EventHandlerType ?? typeof(Delegate))} {value.Name};").AppendLine("```").AppendLine();
         }
     }
@@ -293,12 +456,136 @@ internal static class Program
             .OrderBy(field => field.Name, StringComparer.Ordinal).ToArray();
         builder.AppendLine("## " + language.FieldsLabel).AppendLine();
         if (values.Length == 0) { builder.AppendLine(language.NoneText).AppendLine(); return; }
+
         foreach (var value in values)
         {
+            var doc = docs.Field(type, value);
             var literal = value.IsLiteral ? $" = {value.GetRawConstantValue()}" : string.Empty;
-            builder.AppendLine($"- `{value.Name}` — `{DisplayType(value.FieldType)}`{literal} — {DescriptionOrFallback(docs.Field(type, value), language.FallbackMemberDescription)}");
+            var description = string.IsNullOrWhiteSpace(doc.Summary) ? language.FallbackMemberDescription : doc.Summary;
+            builder.AppendLine($"- `{value.Name}` — `{DisplayType(value.FieldType)}`{literal} — {description}");
         }
         builder.AppendLine();
+    }
+
+    private static List<NativeFunction> ParseNativeFunctions(string header)
+    {
+        var functions = new List<NativeFunction>();
+        var group = "General";
+        var declaration = new StringBuilder();
+        var collecting = false;
+
+        foreach (var rawLine in header.Replace("\r\n", "\n").Split('\n'))
+        {
+            var line = rawLine.Trim();
+            if (!collecting && line.StartsWith("//", StringComparison.Ordinal))
+            {
+                var text = line[2..].Trim().TrimEnd('.');
+                if (!string.IsNullOrWhiteSpace(text)) group = text;
+                continue;
+            }
+            if (!collecting && line.Contains("OCCTBRIDGE_API", StringComparison.Ordinal))
+            {
+                collecting = true;
+                declaration.Clear();
+            }
+            if (!collecting) continue;
+
+            if (declaration.Length > 0) declaration.Append(' ');
+            declaration.Append(line);
+            if (!line.Contains(';')) continue;
+
+            var normalized = WhitespaceRegex().Replace(declaration.ToString(), " ").Trim();
+            var match = NativeFunctionRegex().Match(normalized);
+            if (!match.Success) throw new InvalidOperationException($"Unable to parse Native ABI declaration: {normalized}");
+            functions.Add(new NativeFunction(group, match.Groups["return"].Value.Trim(), match.Groups["name"].Value, match.Groups["params"].Value.Trim(), normalized));
+            collecting = false;
+        }
+        return functions;
+    }
+
+    private static void WriteNativeLanguage(string root, Language language, string bridgeVersion, int abiVersion, int exportCount, string header, IReadOnlyList<NativeFunction> functions)
+    {
+        var apiRoot = Path.Combine(root, "docs", language.Code, "api");
+        Directory.CreateDirectory(apiRoot);
+        var builder = new StringBuilder();
+        builder.AppendLine("# " + language.NativeTitle).AppendLine();
+        builder.AppendLine(language.NativeIntro).AppendLine();
+        builder.AppendLine($"- **Bridge:** `{bridgeVersion}`");
+        builder.AppendLine($"- **Native ABI:** `{abiVersion}`");
+        builder.AppendLine($"- **Exports:** `{exportCount}`").AppendLine();
+        builder.AppendLine("## " + language.NativeTypeSection).AppendLine();
+        builder.AppendLine("```cpp").AppendLine(ExtractNativeTypeBlock(header)).AppendLine("```").AppendLine();
+        builder.AppendLine("## " + language.NativeFunctionSection).AppendLine();
+
+        string? currentGroup = null;
+        foreach (var function in functions)
+        {
+            if (!string.Equals(currentGroup, function.Group, StringComparison.Ordinal))
+            {
+                currentGroup = function.Group;
+                builder.AppendLine("### " + currentGroup).AppendLine();
+            }
+
+            builder.AppendLine("#### `" + function.Name + "`").AppendLine();
+            builder.AppendLine($"- **{language.CategoryLabel}:** {function.Group}");
+            builder.AppendLine($"- **{language.ReturnsLabel}:** `{function.ReturnType}`").AppendLine();
+            builder.AppendLine("```cpp").AppendLine(function.Declaration).AppendLine("```").AppendLine();
+            var parameters = ParseNativeParameters(function.Parameters);
+            if (parameters.Count == 0)
+            {
+                builder.AppendLine("**" + language.ParametersLabel + ":** " + language.NoneText).AppendLine();
+                continue;
+            }
+
+            builder.AppendLine($"| {language.ParameterNameLabel} | {language.ParameterTypeLabel} | {language.DirectionLabel} | {language.MeaningLabel} |");
+            builder.AppendLine("|---|---|---|---|");
+            foreach (var parameter in parameters)
+                builder.AppendLine($"| `{parameter.Name}` | `{parameter.Type}` | {NativeDirection(parameter.Type, language)} | {NativeMeaning(parameter, language)} |");
+            builder.AppendLine();
+        }
+
+        File.WriteAllText(Path.Combine(apiRoot, "native-abi.md"), builder.ToString(), new UTF8Encoding(false));
+    }
+
+    private static string ExtractNativeTypeBlock(string header)
+    {
+        var start = header.IndexOf("using OcctHandle", StringComparison.Ordinal);
+        var firstExport = header.IndexOf("OCCTBRIDGE_API", StringComparison.Ordinal);
+        if (start < 0 || firstExport <= start) return string.Empty;
+        return header[start..firstExport].Trim();
+    }
+
+    private static List<NativeParameter> ParseNativeParameters(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value == "void") return [];
+        var result = new List<NativeParameter>();
+        foreach (var raw in value.Split(','))
+        {
+            var parameter = WhitespaceRegex().Replace(raw.Trim(), " ");
+            var match = NativeParameterRegex().Match(parameter);
+            result.Add(match.Success
+                ? new NativeParameter(match.Groups["type"].Value.Trim(), match.Groups["name"].Value.Trim())
+                : new NativeParameter(parameter, "?"));
+        }
+        return result;
+    }
+
+    private static string NativeDirection(string type, Language language)
+    {
+        if (!type.Contains('*')) return language.Value;
+        if (type.Contains("const", StringComparison.Ordinal)) return language.Input;
+        if (type.Contains("char", StringComparison.Ordinal)) return language.InOut;
+        return language.Output;
+    }
+
+    private static string NativeMeaning(NativeParameter parameter, Language language)
+    {
+        if (parameter.Type.Contains("OcctHandle", StringComparison.Ordinal)) return language.HandleMeaning;
+        if (parameter.Type.Contains("OcctObjectId", StringComparison.Ordinal) || parameter.Name.EndsWith("Id", StringComparison.OrdinalIgnoreCase) || parameter.Name.EndsWith("Ids", StringComparison.OrdinalIgnoreCase)) return language.ObjectIdMeaning;
+        if (parameter.Type.Contains("char", StringComparison.Ordinal)) return language.Utf8Meaning;
+        if (parameter.Type.Contains('*')) return language.BufferMeaning;
+        if (parameter.Name.Contains("count", StringComparison.OrdinalIgnoreCase) || parameter.Name.Contains("capacity", StringComparison.OrdinalIgnoreCase) || parameter.Name.Contains("index", StringComparison.OrdinalIgnoreCase) || parameter.Type == "int") return language.CountMeaning;
+        return language.GenericMeaning;
     }
 
     private static int CountMembers(Type type) =>
@@ -319,16 +606,35 @@ internal static class Program
 
     private static string Signature(MethodBase method)
     {
-        var modifiers = method.IsStatic ? "static " : string.Empty;
-        var parameters = string.Join(", ", method.GetParameters().Select(parameter => $"{DisplayType(parameter.ParameterType)} {parameter.Name}{DefaultValue(parameter)}"));
+        var modifiers = method.IsStatic ? "static " : method.IsAbstract ? "abstract " : method.IsVirtual && !method.IsFinal ? "virtual " : string.Empty;
+        var parameters = string.Join(", ", method.GetParameters().Select(ParameterDeclaration));
         if (method.IsConstructor) return $"public {method.DeclaringType?.Name}({parameters})";
         var info = (MethodInfo)method;
         var generic = method.IsGenericMethodDefinition ? "<" + string.Join(", ", method.GetGenericArguments().Select(argument => argument.Name)) + ">" : string.Empty;
         return $"public {modifiers}{DisplayType(info.ReturnType)} {method.Name}{generic}({parameters})";
     }
 
+    private static string ParameterDeclaration(ParameterInfo parameter)
+    {
+        var type = parameter.ParameterType;
+        var prefix = parameter.GetCustomAttribute<ParamArrayAttribute>() is not null ? "params "
+            : parameter.IsOut ? "out "
+            : type.IsByRef && parameter.IsIn ? "in "
+            : type.IsByRef ? "ref "
+            : string.Empty;
+        if (type.IsByRef) type = type.GetElementType()!;
+        return $"{prefix}{DisplayType(type)} {parameter.Name}{DefaultValue(parameter)}";
+    }
+
+    private static string ParameterType(ParameterInfo parameter)
+    {
+        var type = parameter.ParameterType;
+        var prefix = parameter.IsOut ? "out " : type.IsByRef && parameter.IsIn ? "in " : type.IsByRef ? "ref " : string.Empty;
+        if (type.IsByRef) type = type.GetElementType()!;
+        return prefix + DisplayType(type);
+    }
+
     private static string MemberTitle(MethodBase method) => method.IsConstructor ? method.DeclaringType?.Name ?? "ctor" : method.Name;
-    private static string DescriptionOrFallback(string value, string fallback) => string.IsNullOrWhiteSpace(value) ? fallback : value;
 
     private static string DefaultValue(ParameterInfo parameter)
     {
@@ -336,20 +642,23 @@ internal static class Program
         if (parameter.DefaultValue is null) return " = null";
         if (parameter.DefaultValue is string text) return " = \"" + text.Replace("\"", "\\\"") + "\"";
         if (parameter.DefaultValue is bool flag) return flag ? " = true" : " = false";
+        if (parameter.DefaultValue is char character) return " = '" + character + "'";
+        if (parameter.DefaultValue is Enum enumValue) return " = " + enumValue.GetType().Name + "." + enumValue;
         return " = " + Convert.ToString(parameter.DefaultValue, System.Globalization.CultureInfo.InvariantCulture);
     }
 
     private static string DisplayType(Type type)
     {
-        if (type.IsByRef) return "ref " + DisplayType(type.GetElementType()!);
+        if (type.IsByRef) return DisplayType(type.GetElementType()!);
         if (type.IsArray) return DisplayType(type.GetElementType()!) + "[]";
         if (type.IsGenericParameter) return type.Name;
         var nullable = Nullable.GetUnderlyingType(type);
         if (nullable is not null) return DisplayType(nullable) + "?";
         var aliases = new Dictionary<Type, string>
         {
-            [typeof(void)] = "void", [typeof(bool)] = "bool", [typeof(byte)] = "byte", [typeof(short)] = "short",
-            [typeof(int)] = "int", [typeof(long)] = "long", [typeof(float)] = "float", [typeof(double)] = "double",
+            [typeof(void)] = "void", [typeof(bool)] = "bool", [typeof(byte)] = "byte", [typeof(sbyte)] = "sbyte",
+            [typeof(short)] = "short", [typeof(ushort)] = "ushort", [typeof(int)] = "int", [typeof(uint)] = "uint",
+            [typeof(long)] = "long", [typeof(ulong)] = "ulong", [typeof(float)] = "float", [typeof(double)] = "double",
             [typeof(decimal)] = "decimal", [typeof(char)] = "char", [typeof(string)] = "string", [typeof(object)] = "object"
         };
         if (aliases.TryGetValue(type, out var alias)) return alias;
@@ -364,4 +673,52 @@ internal static class Program
         foreach (var invalid in Path.GetInvalidFileNameChars()) value = value.Replace(invalid, '_');
         return value.Replace('`', '_');
     }
+
+    private static string RenderXml(XElement? element)
+    {
+        if (element is null) return string.Empty;
+        var builder = new StringBuilder();
+        foreach (var node in element.Nodes()) RenderNode(node, builder);
+        return NormalizeWhitespace(builder.ToString());
+    }
+
+    private static void RenderNode(XNode node, StringBuilder builder)
+    {
+        switch (node)
+        {
+            case XText text:
+                builder.Append(text.Value);
+                break;
+            case XElement element when element.Name.LocalName == "see":
+                builder.Append(CleanCref((string?)element.Attribute("cref") ?? (string?)element.Attribute("langword") ?? ""));
+                break;
+            case XElement element when element.Name.LocalName == "paramref":
+                builder.Append((string?)element.Attribute("name") ?? "");
+                break;
+            case XElement element when element.Name.LocalName is "c" or "code":
+                builder.Append('`').Append(NormalizeWhitespace(element.Value)).Append('`');
+                break;
+            case XElement element:
+                foreach (var child in element.Nodes()) RenderNode(child, builder);
+                break;
+        }
+    }
+
+    private static string CleanCref(string value)
+    {
+        var colon = value.IndexOf(':');
+        return colon >= 0 ? value[(colon + 1)..].Replace('{', '<').Replace('}', '>') : value;
+    }
+
+    private static string NormalizeWhitespace(string value) => WhitespaceRegex().Replace(value, " ").Trim();
+    private static string EscapeTable(string value) => value.Replace("|", "\\|", StringComparison.Ordinal);
+
+    [GeneratedRegex(@"\s+")]
+    private static partial Regex WhitespaceRegex();
+
+    [GeneratedRegex(@"^OCCTBRIDGE_API\s+(?<return>.+?)\s+(?<name>occt_[A-Za-z0-9_]+)\s*\((?<params>.*)\)\s*;$")]
+    private static partial Regex NativeFunctionRegex();
+
+    [GeneratedRegex(@"^(?<type>.+?)\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)$")]
+    private static partial Regex NativeParameterRegex();
 }
