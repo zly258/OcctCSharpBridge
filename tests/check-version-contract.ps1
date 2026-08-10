@@ -63,92 +63,99 @@ if ($expectedNativeCount -ne $expectedManagedCount) {
     throw "Native export and managed P/Invoke counts must stay equal."
 }
 
-$contracts = [ordered]@{
-    "src/OcctNative/OcctEngine.cpp" = @(
-        "occt_bridge_version()",
-        "return `"$expectedVersion`";",
-        "occt_bridge_abi_version()",
-        "return $expectedAbiVersion;"
-    )
-    "src/OcctNet/OcctBridgeInfo.cs" = @(
-        "ExpectedAbiVersion = $expectedAbiVersion",
-        "ManagedVersion = `"$expectedVersion`""
-    )
-    "src/OcctNet/OcctNet.csproj" = @(
-        "<TargetFramework>$expectedTargetFramework</TargetFramework>",
-        "<PlatformTarget>x64</PlatformTarget>"
-    )
-    "src/OcctNet.WinForms/OcctNet.WinForms.csproj" = @(
-        "<TargetFramework>$expectedTargetFramework</TargetFramework>",
-        "<PlatformTarget>x64</PlatformTarget>"
-    )
-    "src/OcctNet.Wpf/OcctNet.Wpf.csproj" = @(
-        "<TargetFramework>$expectedTargetFramework</TargetFramework>",
-        "<PlatformTarget>x64</PlatformTarget>"
-    )
-    "src/OcctNet.Avalonia/OcctNet.Avalonia.csproj" = @(
-        "<TargetFramework>$expectedTargetFramework</TargetFramework>",
-        "<PlatformTarget>x64</PlatformTarget>"
-    )
-    "tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj" = @(
-        "<TargetFramework>$expectedTargetFramework</TargetFramework>",
-        "<PlatformTarget>x64</PlatformTarget>"
-    )
-    "tests/OcctNet.Smoke/OcctNet.Smoke.csproj" = @(
-        "<TargetFramework>$expectedTargetFramework</TargetFramework>",
-        "<PlatformTarget>x64</PlatformTarget>"
-    )
-    "src/OcctNative/CMakeLists.txt" = @(
-        "cmake_minimum_required(VERSION $expectedCmakeVersion)",
-        "bridge-contract.json",
-        "string(JSON BRIDGE_VERSION",
-        "string(JSON BRIDGE_ABI_VERSION",
-        "string(JSON REQUIRED_OCCT_VERSION"
-    )
-    "global.json" = @($expectedSdkVersion)
-    "Directory.Build.props" = @("<LangVersion>$expectedLanguageVersion</LangVersion>")
+function Read-Text {
+    param([Parameter(Mandatory = $true)][string]$RelativePath)
+    $path = Join-Path $RepositoryRoot $RelativePath
+    if (-not (Test-Path $path -PathType Leaf)) {
+        throw "Version contract file was not found: $RelativePath"
+    }
+    return [System.IO.File]::ReadAllText($path)
 }
 
-foreach ($contractEntry in $contracts.GetEnumerator()) {
-    $path = Join-Path $RepositoryRoot $contractEntry.Key
-    if (-not (Test-Path $path -PathType Leaf)) {
-        throw "Version contract file was not found: $($contractEntry.Key)"
-    }
+function Get-ProjectProperty {
+    param(
+        [Parameter(Mandatory = $true)][xml]$Project,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
 
-    $content = [System.IO.File]::ReadAllText($path)
-    foreach ($token in $contractEntry.Value) {
-        if (-not $content.Contains([string]$token)) {
-            throw "Version contract is stale in $($contractEntry.Key): $token"
-        }
+    $values = @($Project.Project.PropertyGroup | ForEach-Object {
+        $node = $_.$Name
+        if ($node -ne $null) { [string]$node }
+    } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+
+    return $values | Select-Object -First 1
+}
+
+$nativeEngine = Read-Text "src/OcctNative/OcctEngine.cpp"
+if (-not $nativeEngine.Contains("return `"$expectedVersion`";")) {
+    throw "Native bridge version differs from bridge-contract.json."
+}
+if (-not $nativeEngine.Contains("return $expectedAbiVersion;")) {
+    throw "Native ABI version differs from bridge-contract.json."
+}
+
+$bridgeInfo = Read-Text "src/OcctNet/OcctBridgeInfo.cs"
+if (-not $bridgeInfo.Contains("ExpectedAbiVersion = $expectedAbiVersion")) {
+    throw "Managed ABI expectation differs from bridge-contract.json."
+}
+if (-not $bridgeInfo.Contains("ManagedVersion = `"$expectedVersion`"")) {
+    throw "Managed bridge version differs from bridge-contract.json."
+}
+
+$projectFiles = @(
+    "src/OcctNet/OcctNet.csproj",
+    "src/OcctNet.WinForms/OcctNet.WinForms.csproj",
+    "src/OcctNet.Wpf/OcctNet.Wpf.csproj",
+    "src/OcctNet.Avalonia/OcctNet.Avalonia.csproj",
+    "tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj",
+    "tests/OcctNet.Smoke/OcctNet.Smoke.csproj"
+)
+foreach ($relativePath in $projectFiles) {
+    [xml]$project = Read-Text $relativePath
+    $targetFramework = Get-ProjectProperty $project "TargetFramework"
+    $platformTarget = Get-ProjectProperty $project "PlatformTarget"
+    if ($targetFramework -ne $expectedTargetFramework) {
+        throw "$relativePath target framework is '$targetFramework'; expected '$expectedTargetFramework'."
+    }
+    if ($platformTarget -ne "x64") {
+        throw "$relativePath PlatformTarget is '$platformTarget'; expected 'x64'."
+    }
+}
+
+$globalJsonPath = Join-Path $RepositoryRoot "global.json"
+try {
+    $globalJson = Get-Content $globalJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
+}
+catch {
+    throw "global.json is not valid JSON: $($_.Exception.Message)"
+}
+if ([string]$globalJson.sdk.version -ne $expectedSdkVersion) {
+    throw "global.json SDK differs from bridge-contract.json."
+}
+
+[xml]$directoryProps = Read-Text "Directory.Build.props"
+$languageVersion = Get-ProjectProperty $directoryProps "LangVersion"
+if ($languageVersion -ne $expectedLanguageVersion) {
+    throw "Directory.Build.props LangVersion differs from bridge-contract.json."
+}
+
+$nativeCmake = Read-Text "src/OcctNative/CMakeLists.txt"
+foreach ($token in @(
+    "cmake_minimum_required(VERSION $expectedCmakeVersion)",
+    "bridge-contract.json",
+    "string(JSON BRIDGE_VERSION",
+    "string(JSON BRIDGE_ABI_VERSION",
+    "string(JSON REQUIRED_OCCT_VERSION",
+    "OcctCSharpBridge requires exactly OCCT `${REQUIRED_OCCT_VERSION}"
+)) {
+    if (-not $nativeCmake.Contains($token)) {
+        throw "Native CMake version contract is missing: $token"
     }
 }
 
 $contractText = [System.IO.File]::ReadAllText($contractPath)
 if ($contractText.Contains("compatibilityPublicNetTypes")) {
     throw "Compatibility API accounting must not be reintroduced into the new library contract."
-}
-
-$buildScriptPath = Join-Path $RepositoryRoot "build.ps1"
-if (-not (Test-Path $buildScriptPath -PathType Leaf)) {
-    throw "build.ps1 was not found."
-}
-$buildScriptText = [System.IO.File]::ReadAllText($buildScriptPath)
-
-if (-not $buildScriptText.Contains('D:\tools\occt-vc144-64')) {
-    throw "build.ps1 must preserve the conventional OCCT root."
-}
-
-if ($buildScriptText -notmatch '\$BridgeVersion\s*=\s*\[string\]\s*\$Contract\.bridgeVersion') {
-    throw "build.ps1 must read BridgeVersion from bridge-contract.json."
-}
-
-if ($buildScriptText -notmatch '-p:(?:Version|VersionPrefix|PackageVersion)=\$BridgeVersion') {
-    throw "Managed build/package commands must receive the BridgeVersion loaded from bridge-contract.json."
-}
-
-$nativeCmakeText = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot "src\OcctNative\CMakeLists.txt"))
-if ($nativeCmakeText -notmatch 'OcctCSharpBridge requires exactly OCCT \$\{REQUIRED_OCCT_VERSION\}') {
-    throw "Native CMake must enforce the exact contracted OCCT version."
 }
 
 Write-Host ("[version] Bridge {0}, ABI {1}, OCCT {2}, SDK {3}, target {4}, C# {5}, API {6}/{7}, public types {8}, viewer/modeling {9}/{10}." -f

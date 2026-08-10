@@ -56,16 +56,12 @@ $Projects = [ordered]@{
 
 $PackageProjects = @("Core", "WinForms", "Wpf", "Avalonia")
 
+# Static checks are intentionally limited to repository-level invariants that
+# cannot be expressed more reliably by compilation, managed tests, or native smoke tests.
 $Checks = [ordered]@{
     Version = "tests\check-version-contract.ps1"
-    Organization = "tests\check-api-organization.ps1"
-    ModelingBulkAbi = "tests\check-modeling-bulk-abi.ps1"
-    Geometry = "tests\check-geometry-api.ps1"
-    TopologyAnalysis = "tests\check-topology-analysis.ps1"
-    RuntimeDiagnostics = "tests\check-runtime-diagnostics.ps1"
-    UiHosts = "tests\check-ui-hosts.ps1"
-    Viewport = "tests\check-viewport-api.ps1"
-    Selection = "tests\check-selection-contract.ps1"
+    Architecture = "tests\check-architecture-boundaries.ps1"
+    BulkAbi = "tests\check-bulk-abi.ps1"
     NativeBuild = "tests\check-native-build-structure.ps1"
     ApiSurface = "tests\check-api-surface.ps1"
     SdkPackage = "tests\check-sdk-package.ps1"
