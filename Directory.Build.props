@@ -6,6 +6,11 @@
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningLevel>7</WarningLevel>
+    <Version>2.6.0</Version>
+    <Authors>Liaoyuan Zhang</Authors>
+    <Company>Liaoyuan Zhang</Company>
+    <Product>OcctCSharpBridge Demo</Product>
+    <Description>Binary SDK consumer demos for OcctCSharpBridge 2.6.0 on .NET 10 and Windows x64.</Description>
     <OcctBridgeDistRoot>$(MSBuildThisFileDirectory)dist\win-x64</OcctBridgeDistRoot>
   </PropertyGroup>
 </Project>
