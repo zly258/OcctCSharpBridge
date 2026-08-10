@@ -50,13 +50,15 @@ packages/
 *.snupkg
 project.assets.json
 
-
-
 # Runtime binaries
 *.dll
 *.exe
 *.so
 *.dylib
+
+# dist is a versioned, validated Bridge Binary SDK and is intentionally tracked.
+!dist/
+!dist/**
 
 # CAD test and generated files
 *.brep
