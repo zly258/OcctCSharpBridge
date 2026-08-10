@@ -50,20 +50,16 @@ public sealed partial class OcctEngine
     {
         ArgumentNullException.ThrowIfNull(value);
         EnsureNotDisposed();
-        return value is OcctObject legacy
-            ? MatchesLegacyObject(legacy)
-            : value.Id > 0 &&
-              GetOwnerId(value) == _ownerId &&
-              NativeMethods.occt_object_exists(_handle, value.Id) != 0;
+        return value.Id > 0 &&
+               GetOwnerId(value) == _ownerId &&
+               NativeMethods.occt_object_exists(_handle, value.Id) != 0;
     }
 
     public bool Owns(IOcctObject value)
     {
         ArgumentNullException.ThrowIfNull(value);
         EnsureNotDisposed();
-        return value is OcctObject legacy
-            ? MatchesLegacyObject(legacy)
-            : GetOwnerId(value) == _ownerId;
+        return GetOwnerId(value) == _ownerId;
     }
 
     public IOcctObject GetObject(long id)
