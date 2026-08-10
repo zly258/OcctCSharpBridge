@@ -99,6 +99,7 @@ add_library(OcctNative SHARED
     OcctModelingHealing.cpp
     OcctModelingHistory.cpp
     OcctModelingAnalysis.cpp
+    OcctModelingInertia.cpp
     OcctModelingMesh.cpp
     OcctModelingExchange.cpp
     OcctModelingAnalyticGeometry.cpp
@@ -117,6 +118,7 @@ add_library(OcctNative SHARED
     OcctSelectionOverlay.h
     OcctSelectionState.h
     OcctModeling.h
+    OcctModelingInertia.h
     OcctModelingExtensions.h
     OcctModelingBSpline.h
     OcctModelingTopologyAnalysis.h
