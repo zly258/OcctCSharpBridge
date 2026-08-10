@@ -1,6 +1,6 @@
 ﻿param(
     [Parameter(Position = 0)]
-    [ValidateSet("validate", "native", "managed", "smoke", "winform", "wpf", "avalonia", "ci", "all")]
+    [ValidateSet("validate", "native", "managed", "test", "smoke", "winform", "wpf", "avalonia", "ci", "clean", "all")]
     [string]$Target = "all",
 
     [Parameter(Position = 1)]
@@ -27,9 +27,8 @@ if (Test-Path "$env:SystemRoot\System32\chcp.com") {
 $Target = $Target.ToLowerInvariant()
 $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $DefaultOcctRoot = "D:\tools\occt-vc144-64"
-if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
-    $OcctRoot = $DefaultOcctRoot
-}
+if ([string]::IsNullOrWhiteSpace($OcctRoot)) { $OcctRoot = $DefaultOcctRoot }
+
 $NativeSource = Join-Path $RepoRoot "src\OcctNative"
 $NativeBuild = Join-Path $RepoRoot "build\native"
 $NativeDll = Join-Path $NativeBuild "bin\$Configuration\OcctNative.dll"
@@ -70,25 +69,25 @@ $Projects = [ordered]@{
         Project = "src\OcctDemo.Common\OcctDemo.Common.csproj"
         Executable = $null
     }
-    ManagedTests = @{
-        DisplayName = "OcctNet.ManagedTests"
-        Project = "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj"
-        Executable = $null
-    }
     WinFormsDemo = @{
-        DisplayName = "CAD-Winform"
+        DisplayName = "OcctDemo.WinForms"
         Project = "src\OcctDemo.WinForms\OcctDemo.WinForms.csproj"
         Executable = "CAD-Winform.exe"
     }
     WpfDemo = @{
-        DisplayName = "CAD-WPF"
+        DisplayName = "OcctDemo.Wpf"
         Project = "src\OcctDemo.Wpf\OcctDemo.Wpf.csproj"
         Executable = "CAD-WPF.exe"
     }
     AvaloniaDemo = @{
-        DisplayName = "CAD-Avalonia"
+        DisplayName = "OcctDemo.Avalonia"
         Project = "src\OcctDemo.Avalonia\OcctDemo.Avalonia.csproj"
         Executable = "CAD-Avalonia.exe"
+    }
+    ManagedTests = @{
+        DisplayName = "OcctNet.ManagedTests"
+        Project = "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj"
+        Executable = $null
     }
     Smoke = @{
         DisplayName = "OcctNet.Smoke"
@@ -97,36 +96,24 @@ $Projects = [ordered]@{
     }
 }
 
+# Static checks cover durable repository contracts only. Compilation and runtime
+# behavior are verified by the managed build, managed tests, and native smoke target.
 $Checks = [ordered]@{
     Version = "tests\check-version-contract.ps1"
-    Organization = "tests\check-api-organization.ps1"
-    ModelingBulkAbi = "tests\check-modeling-bulk-abi.ps1"
-    Geometry = "tests\check-geometry-api.ps1"
-    TopologyAnalysis = "tests\check-topology-analysis.ps1"
-    RuntimeDiagnostics = "tests\check-runtime-diagnostics.ps1"
-    UiHosts = "tests\check-ui-hosts.ps1"
-    AvaloniaHost = "tests\check-avalonia-host.ps1"
-    Viewport = "tests\check-viewport-api.ps1"
-    Selection = "tests\check-selection-contract.ps1"
+    DemoStructure = "tests\check-demo-structure.ps1"
+    BulkAbi = "tests\check-bulk-abi.ps1"
     NativeBuild = "tests\check-native-build-structure.ps1"
     ApiSurface = "tests\check-api-surface.ps1"
-    DemoUi = "tests\check-demo-ui-structure.ps1"
-    DemoPreconditions = "tests\check-demo-command-preconditions.ps1"
-    Package = "tests\check-demo-package.ps1"
 }
 
 function Assert-Path {
     param([Parameter(Mandatory = $true)][string]$Path)
-    if (-not (Test-Path $Path)) {
-        throw "Required path was not found: $Path"
-    }
+    if (-not (Test-Path $Path)) { throw "Required path was not found: $Path" }
 }
 
 function Assert-Command {
     param([Parameter(Mandatory = $true)][string]$Name)
-    if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
-        throw "$Name was not found in PATH."
-    }
+    if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) { throw "$Name was not found in PATH." }
 }
 
 function Invoke-Checked {
@@ -135,11 +122,8 @@ function Invoke-Checked {
         [Parameter(Mandatory = $true)][object[]]$Arguments,
         [Parameter(Mandatory = $true)][string]$ErrorMessage
     )
-
     & $Command @Arguments
-    if ($LASTEXITCODE -ne 0) {
-        throw $ErrorMessage
-    }
+    if ($LASTEXITCODE -ne 0) { throw $ErrorMessage }
 }
 
 function Invoke-ContractChecks {
@@ -148,17 +132,16 @@ function Invoke-ContractChecks {
         Assert-Path $path
         Write-Host ("[{0}] Running {1}..." -f $check.Key.ToLowerInvariant(), $check.Value) -ForegroundColor Cyan
         & $path -RepositoryRoot $RepoRoot
-        if (-not $?) {
-            throw "$($check.Key) validation failed."
-        }
+        if (-not $?) { throw "$($check.Key) validation failed." }
     }
 }
 
 function Resolve-OcctConfiguration {
     $script:ResolvedOcctRoot = [System.IO.Path]::GetFullPath($OcctRoot)
     if (-not (Test-Path $script:ResolvedOcctRoot -PathType Container)) {
-        throw "OCCT SDK root was not found: $script:ResolvedOcctRoot. Set OCCT_ROOT, pass -OcctRoot <path>, or install OCCT at $DefaultOcctRoot. validate/managed/ci do not require OCCT."
+        throw "OCCT SDK root was not found: $script:ResolvedOcctRoot. Set OCCT_ROOT, pass -OcctRoot <path>, or install OCCT at $DefaultOcctRoot. validate/managed/test/ci do not require OCCT."
     }
+
     $script:OcctIncludeDir = Join-Path $script:ResolvedOcctRoot "inc"
     $script:OcctLibDir = Join-Path $script:ResolvedOcctRoot "win64\vc14\lib"
     $script:OcctBinDir = Join-Path $script:ResolvedOcctRoot "win64\vc14\bin"
@@ -171,9 +154,7 @@ function Resolve-OcctConfiguration {
         (Join-Path $script:OcctIncludeDir "Standard.hxx"),
         (Join-Path $script:OcctLibDir "TKernel.lib"),
         (Join-Path $script:OcctBinDir "TKernel.dll")
-    )) {
-        Assert-Path $path
-    }
+    )) { Assert-Path $path }
 }
 
 function Build-Native {
@@ -193,12 +174,7 @@ function Build-Native {
     ) "CMake configure failed."
 
     Write-Host "[native] Building $Configuration..." -ForegroundColor Cyan
-    Invoke-Checked "cmake" @(
-        "--build", $NativeBuild,
-        "--config", $Configuration,
-        "--parallel"
-    ) "Native build failed."
-
+    Invoke-Checked "cmake" @("--build", $NativeBuild, "--config", $Configuration, "--parallel") "Native build failed."
     Assert-Path $NativeDll
     Write-Host "Native: $NativeDll" -ForegroundColor Green
 }
@@ -210,7 +186,7 @@ function Copy-OcctRuntimeDependencies {
     Assert-Path $OutputDirectory
     Assert-Path $NativeDll
 
-    Write-Host "[runtime] Deploying OCCT runtime beside the application..." -ForegroundColor Cyan
+    Write-Host "[runtime] Deploying OCCT runtime beside $OutputDirectory..." -ForegroundColor Cyan
     Copy-Item $NativeDll (Join-Path $OutputDirectory "OcctNative.dll") -Force
 
     Get-ChildItem $script:OcctBinDir -Filter "*.dll" -File | ForEach-Object {
@@ -234,58 +210,36 @@ function Build-Project {
 
     Assert-Command "dotnet"
     $definition = $Projects[$Name]
-    if ($null -eq $definition) {
-        throw "Unknown project key: $Name"
-    }
+    if ($null -eq $definition) { throw "Unknown project key: $Name" }
 
     $project = Join-Path $RepoRoot $definition.Project
     Assert-Path $project
-    $projectDirectory = Split-Path -Parent $project
-    Remove-Item (Join-Path $projectDirectory "bin") -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item (Join-Path $projectDirectory "obj") -Recurse -Force -ErrorAction SilentlyContinue
 
-    Write-Host ("[{0}] Building {1}..." -f $definition.DisplayName, $Configuration) -ForegroundColor Cyan
+    Write-Host ("[{0}] Building {1} / {2}..." -f $definition.DisplayName, $Configuration, $BridgeVersion) -ForegroundColor Cyan
     Invoke-Checked "dotnet" @(
         "build", $project,
         "-c", $Configuration,
         "-p:Platform=x64",
+        "-p:Version=$BridgeVersion",
+        "-p:PackageVersion=$BridgeVersion",
         "--nologo"
     ) "$($definition.DisplayName) build failed."
 
     if ($null -ne $definition.Executable) {
-        $output = Join-Path $projectDirectory "bin\x64\$Configuration\$TargetFramework"
-        Assert-Path (Join-Path $output $definition.Executable)
-        if (Test-Path $NativeDll) {
-            Copy-Item $NativeDll (Join-Path $output "OcctNative.dll") -Force
-            Assert-Path (Join-Path $output "OcctNative.dll")
-        }
+        Assert-Path (Join-Path (Get-ProjectOutputDirectory $Name) $definition.Executable)
     }
-}
-
-function Run-ManagedTests {
-    Assert-Command "dotnet"
-    $definition = $Projects.ManagedTests
-    $project = Join-Path $RepoRoot $definition.Project
-    $output = Join-Path (Split-Path -Parent $project) "bin\x64\$Configuration\$TargetFramework"
-    $assembly = Join-Path $output "OcctNet.ManagedTests.dll"
-    Assert-Path $assembly
-    Write-Host "[managed-tests] Running managed-only bridge regression tests..." -ForegroundColor Cyan
-    Invoke-Checked "dotnet" @($assembly) "Managed bridge regression tests failed."
 }
 
 function Get-ProjectOutputDirectory {
     param([Parameter(Mandatory = $true)][string]$Name)
 
     $definition = $Projects[$Name]
-    if ($null -eq $definition) {
-        throw "Unknown project key: $Name"
-    }
-
+    if ($null -eq $definition) { throw "Unknown project key: $Name" }
     $project = Join-Path $RepoRoot $definition.Project
     return Join-Path (Split-Path -Parent $project) "bin\x64\$Configuration\$TargetFramework"
 }
 
-function Build-Managed {
+function Build-BridgeManaged {
     Build-Project "Core"
     Build-Project "WinFormsHost"
     Build-Project "WpfHost"
@@ -293,14 +247,53 @@ function Build-Managed {
     Build-Project "DemoCommon"
 }
 
-function Build-Ci {
-    Build-Managed
-    Build-Project "ManagedTests"
-    Run-ManagedTests
+function Build-AllManaged {
+    Build-BridgeManaged
     Build-Project "WinFormsDemo"
     Build-Project "WpfDemo"
     Build-Project "AvaloniaDemo"
+    Build-Project "ManagedTests"
     Build-Project "Smoke"
+}
+
+function Run-ManagedTests {
+    Assert-Command "dotnet"
+    $project = Join-Path $RepoRoot $Projects.ManagedTests.Project
+    Assert-Path $project
+
+    Write-Host "[managed-tests] Running managed-only bridge regression tests..." -ForegroundColor Cyan
+    Invoke-Checked "dotnet" @(
+        "test", $project,
+        "-c", $Configuration,
+        "-p:Platform=x64",
+        "-p:Version=$BridgeVersion",
+        "--no-build",
+        "--nologo"
+    ) "Managed bridge regression tests failed."
+}
+
+function Deploy-ApplicationRuntime {
+    param([Parameter(Mandatory = $true)][string]$Name)
+    Copy-OcctRuntimeDependencies -OutputDirectory (Get-ProjectOutputDirectory $Name)
+}
+
+function Clean-Outputs {
+    Write-Host "[clean] Removing generated build outputs..." -ForegroundColor Cyan
+    Remove-Item (Join-Path $RepoRoot "build") -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item (Join-Path $RepoRoot "artifacts") -Recurse -Force -ErrorAction SilentlyContinue
+
+    foreach ($definition in $Projects.Values) {
+        $project = Join-Path $RepoRoot $definition.Project
+        $projectDirectory = Split-Path -Parent $project
+        Remove-Item (Join-Path $projectDirectory "bin") -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item (Join-Path $projectDirectory "obj") -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    Write-Host "Generated build outputs removed." -ForegroundColor Green
+}
+
+function Build-Ci {
+    Build-AllManaged
+    Run-ManagedTests
 }
 
 function Run-Smoke {
@@ -308,8 +301,8 @@ function Run-Smoke {
     Build-Project "Smoke"
 
     $smokeProject = Join-Path $RepoRoot $Projects.Smoke.Project
-    $smokeOutput = Join-Path (Split-Path -Parent $smokeProject) "bin\x64\$Configuration\$TargetFramework"
-    Copy-Item $NativeDll (Join-Path $smokeOutput "OcctNative.dll") -Force
+    $smokeOutput = Get-ProjectOutputDirectory "Smoke"
+    Copy-OcctRuntimeDependencies -OutputDirectory $smokeOutput
 
     $previousNativeDirectory = $env:OCCT_BRIDGE_NATIVE_DIR
     try {
@@ -320,12 +313,11 @@ function Run-Smoke {
             "--project", $smokeProject,
             "-c", $Configuration,
             "-p:Platform=x64",
+            "-p:Version=$BridgeVersion",
             "--no-build"
         ) "Smoke test failed."
     }
-    finally {
-        $env:OCCT_BRIDGE_NATIVE_DIR = $previousNativeDirectory
-    }
+    finally { $env:OCCT_BRIDGE_NATIVE_DIR = $previousNativeDirectory }
 }
 
 Write-Host "Target:        $Target"
@@ -335,25 +327,37 @@ Write-Host "SDK:           $SdkVersion" -ForegroundColor DarkGray
 $occtRootSource = if ($env:OCCT_ROOT) { "environment" } elseif ($OcctRoot -eq $DefaultOcctRoot) { "default" } else { "argument" }
 Write-Host "OCCT root:     $OcctRoot ($occtRootSource)" -ForegroundColor DarkGray
 
+if ($Target -eq "clean") {
+    Clean-Outputs
+    Write-Host "Build completed." -ForegroundColor Green
+    exit 0
+}
+
 Invoke-ContractChecks
 
 switch ($Target) {
     "validate" { }
-    "managed" { Build-Managed }
-    "ci" { Build-Ci }
     "native" { Build-Native }
+    "managed" { Build-AllManaged }
+    "test" {
+        Build-Project "ManagedTests"
+        Run-ManagedTests
+    }
+    "ci" { Build-Ci }
     "winform" {
         Build-Native
         Build-Project "WinFormsDemo"
+        Deploy-ApplicationRuntime "WinFormsDemo"
     }
     "wpf" {
         Build-Native
         Build-Project "WpfDemo"
+        Deploy-ApplicationRuntime "WpfDemo"
     }
     "avalonia" {
         Build-Native
         Build-Project "AvaloniaDemo"
-        Copy-OcctRuntimeDependencies (Get-ProjectOutputDirectory "AvaloniaDemo")
+        Deploy-ApplicationRuntime "AvaloniaDemo"
     }
     "smoke" {
         Build-Native
@@ -361,11 +365,11 @@ switch ($Target) {
     }
     "all" {
         Build-Native
-        Build-Project "WinFormsDemo"
-        Build-Project "WpfDemo"
-        Build-Project "AvaloniaDemo"
-        Copy-OcctRuntimeDependencies (Get-ProjectOutputDirectory "AvaloniaDemo")
-        Build-Project "Smoke"
+        Build-AllManaged
+        Deploy-ApplicationRuntime "WinFormsDemo"
+        Deploy-ApplicationRuntime "WpfDemo"
+        Deploy-ApplicationRuntime "AvaloniaDemo"
+        Deploy-ApplicationRuntime "Smoke"
     }
 }
 
