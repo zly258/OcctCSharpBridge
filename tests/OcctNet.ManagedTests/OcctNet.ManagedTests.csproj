@@ -13,7 +13,4 @@
     <ProjectReference Include="..\..\src\OcctNet.Wpf\OcctNet.Wpf.csproj" />
     <ProjectReference Include="..\..\src\OcctNet.Avalonia\OcctNet.Avalonia.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="PublicApi.approved.txt" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
 </Project>
