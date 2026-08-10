@@ -55,7 +55,7 @@ public sealed partial class MainForm
 
     private void ShowAbout()
     {
-        MessageBox.Show(this, DemoLocalization.Text("Dialog.AboutText"), DemoLocalization.Text("Menu.About"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+        MessageBox.Show(this, DemoProductInfo.AboutText(DemoLocalization.CurrentLanguage), DemoLocalization.Text("Menu.About"), MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
     private static string MaterialDisplayName(OcctMaterial material)
