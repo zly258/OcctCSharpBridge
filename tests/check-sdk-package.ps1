@@ -17,25 +17,23 @@ if ([string]::IsNullOrWhiteSpace($targetFramework)) {
 
 function Read-Project {
     param([Parameter(Mandatory = $true)][string]$RelativePath)
+
     $path = Join-Path $RepositoryRoot $RelativePath
     if (-not (Test-Path $path -PathType Leaf)) {
         throw "Managed package project is missing: $RelativePath"
     }
-    [xml](Get-Content $path -Raw -Encoding UTF8)
+    return [xml](Get-Content $path -Raw -Encoding UTF8)
 }
 
-function Get-PropertyValue {
+function Get-ProjectProperty {
     param(
         [Parameter(Mandatory = $true)][xml]$Project,
         [Parameter(Mandatory = $true)][string]$Name
     )
 
-    $values = @($Project.Project.PropertyGroup | ForEach-Object {
-        $node = $_.$Name
-        if ($node -ne $null) { [string]$node }
-    } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-
-    return $values | Select-Object -First 1
+    $node = $Project.SelectSingleNode("/Project/PropertyGroup/$Name[normalize-space(.) != '']")
+    if ($null -eq $node) { return $null }
+    return [string]$node.InnerText
 }
 
 $projects = [ordered]@{
@@ -48,15 +46,15 @@ $projects = [ordered]@{
 foreach ($entry in $projects.GetEnumerator()) {
     $project = Read-Project $entry.Value
 
-    $actualTargetFramework = Get-PropertyValue $project "TargetFramework"
-    $platformTarget = Get-PropertyValue $project "PlatformTarget"
-    $isPackable = Get-PropertyValue $project "IsPackable"
-    $generateDocumentation = Get-PropertyValue $project "GenerateDocumentationFile"
-    $packageReadme = Get-PropertyValue $project "PackageReadmeFile"
-    $packageLicense = Get-PropertyValue $project "PackageLicenseFile"
-    $repositoryUrl = Get-PropertyValue $project "RepositoryUrl"
-    $includeSymbols = Get-PropertyValue $project "IncludeSymbols"
-    $symbolPackageFormat = Get-PropertyValue $project "SymbolPackageFormat"
+    $actualTargetFramework = Get-ProjectProperty $project "TargetFramework"
+    $platformTarget = Get-ProjectProperty $project "PlatformTarget"
+    $isPackable = Get-ProjectProperty $project "IsPackable"
+    $generateDocumentation = Get-ProjectProperty $project "GenerateDocumentationFile"
+    $packageReadme = Get-ProjectProperty $project "PackageReadmeFile"
+    $packageLicense = Get-ProjectProperty $project "PackageLicenseFile"
+    $repositoryUrl = Get-ProjectProperty $project "RepositoryUrl"
+    $includeSymbols = Get-ProjectProperty $project "IncludeSymbols"
+    $symbolPackageFormat = Get-ProjectProperty $project "SymbolPackageFormat"
 
     if ($actualTargetFramework -ne $targetFramework) {
         throw "$($entry.Key) target framework is '$actualTargetFramework'; expected '$targetFramework'."

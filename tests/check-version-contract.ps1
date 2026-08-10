@@ -65,6 +65,7 @@ if ($expectedNativeCount -ne $expectedManagedCount) {
 
 function Read-Text {
     param([Parameter(Mandatory = $true)][string]$RelativePath)
+
     $path = Join-Path $RepositoryRoot $RelativePath
     if (-not (Test-Path $path -PathType Leaf)) {
         throw "Version contract file was not found: $RelativePath"
@@ -78,12 +79,9 @@ function Get-ProjectProperty {
         [Parameter(Mandatory = $true)][string]$Name
     )
 
-    $values = @($Project.Project.PropertyGroup | ForEach-Object {
-        $node = $_.$Name
-        if ($node -ne $null) { [string]$node }
-    } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-
-    return $values | Select-Object -First 1
+    $node = $Project.SelectSingleNode("/Project/PropertyGroup/$Name[normalize-space(.) != '']")
+    if ($null -eq $node) { return $null }
+    return [string]$node.InnerText
 }
 
 $nativeEngine = Read-Text "src/OcctNative/OcctEngine.cpp"

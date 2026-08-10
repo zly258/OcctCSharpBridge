@@ -7,33 +7,49 @@ Set-StrictMode -Version Latest
 
 function Read-Project {
     param([Parameter(Mandatory = $true)][string]$RelativePath)
+
     $path = Join-Path $RepositoryRoot $RelativePath
     if (-not (Test-Path $path -PathType Leaf)) {
         throw "Project file was not found: $RelativePath"
     }
-    [xml](Get-Content $path -Raw -Encoding UTF8)
+
+    return [xml](Get-Content $path -Raw -Encoding UTF8)
 }
 
 function Get-ProjectReferences {
     param([Parameter(Mandatory = $true)][xml]$Project)
-    return @($Project.Project.ItemGroup | ForEach-Object {
-        @($_.ProjectReference) | ForEach-Object {
-            if ($_ -and $_.Include) { [string]$_.Include }
-        }
-    })
+
+    return @($Project.SelectNodes('/Project/ItemGroup/ProjectReference') | ForEach-Object {
+        [string]$_.GetAttribute('Include')
+    } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
 }
 
 function Get-PackageReferences {
     param([Parameter(Mandatory = $true)][xml]$Project)
-    return @($Project.Project.ItemGroup | ForEach-Object {
-        @($_.PackageReference) | ForEach-Object {
-            if ($_ -and $_.Include) { [string]$_.Include }
-        }
-    })
+
+    return @($Project.SelectNodes('/Project/ItemGroup/PackageReference') | ForEach-Object {
+        [string]$_.GetAttribute('Include')
+    } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+}
+
+function Get-ProjectProperty {
+    param(
+        [Parameter(Mandatory = $true)][xml]$Project,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    $node = $Project.SelectSingleNode("/Project/PropertyGroup/$Name[normalize-space(.) != '']")
+    if ($null -eq $node) { return $null }
+    return [string]$node.InnerText
 }
 
 function Assert-Reference {
-    param([string[]]$References, [string]$Expected, [string]$ProjectName)
+    param(
+        [Parameter(Mandatory = $true)][string[]]$References,
+        [Parameter(Mandatory = $true)][string]$Expected,
+        [Parameter(Mandatory = $true)][string]$ProjectName
+    )
+
     $normalizedExpected = $Expected.Replace('/', '\')
     $matches = @($References | Where-Object { $_.Replace('/', '\') -eq $normalizedExpected })
     if ($matches.Count -ne 1) {
@@ -61,19 +77,13 @@ Assert-Reference (Get-ProjectReferences $winForms) "..\OcctNet\OcctNet.csproj" "
 Assert-Reference (Get-ProjectReferences $wpf) "..\OcctNet.WinForms\OcctNet.WinForms.csproj" "OcctNet.Wpf"
 Assert-Reference (Get-ProjectReferences $avalonia) "..\OcctNet\OcctNet.csproj" "OcctNet.Avalonia"
 
-$winFormsEnabled = @($winForms.Project.PropertyGroup | ForEach-Object { [string]$_.UseWindowsForms } | Where-Object { $_ }) | Select-Object -First 1
-if ($winFormsEnabled -ne "true") {
+if ((Get-ProjectProperty $winForms "UseWindowsForms") -ne "true") {
     throw "OcctNet.WinForms must enable Windows Forms."
 }
-
-$wpfEnabled = @($wpf.Project.PropertyGroup | ForEach-Object { [string]$_.UseWPF } | Where-Object { $_ }) | Select-Object -First 1
-$wpfWinFormsEnabled = @($wpf.Project.PropertyGroup | ForEach-Object { [string]$_.UseWindowsForms } | Where-Object { $_ }) | Select-Object -First 1
-if ($wpfEnabled -ne "true" -or $wpfWinFormsEnabled -ne "true") {
+if ((Get-ProjectProperty $wpf "UseWPF") -ne "true" -or (Get-ProjectProperty $wpf "UseWindowsForms") -ne "true") {
     throw "OcctNet.Wpf must enable WPF and Windows Forms hosting."
 }
-
-$avaloniaPackages = Get-PackageReferences $avalonia
-if ("Avalonia" -notin $avaloniaPackages) {
+if ("Avalonia" -notin (Get-PackageReferences $avalonia)) {
     throw "OcctNet.Avalonia must reference the Avalonia package."
 }
 

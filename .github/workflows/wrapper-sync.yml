@@ -36,53 +36,16 @@ jobs:
       - name: Compare reusable wrapper source
         shell: pwsh
         run: |
-          # Branch-specific application/packaging policy is intentionally excluded:
-          # - reusable *.csproj files are packable on main and non-packable on demo.
-          # - build.ps1 packages the SDK on main and builds/publishes applications on demo.
-          # - main SDK guides and demo application docs may have different execution details.
-          # The .NET build SDK itself is a shared bridge contract and must stay identical.
+          # Only reusable bridge source and machine-readable build contracts must stay synchronized.
+          # Branch-specific docs, tests, project packaging metadata, build/publish scripts, and demo
+          # application code are intentionally independent.
           $fixedPaths = @(
             ".editorconfig",
             ".gitattributes",
             "global.json",
             "bridge-contract.json",
             "Directory.Build.props",
-            "src/OcctNative",
-            "docs/INDEX.md",
-            "docs/INDEX.zh-CN.md",
-            "docs/ARCHITECTURE_BOUNDARIES.md",
-            "docs/ARCHITECTURE_BOUNDARIES.zh-CN.md",
-            "docs/API_COVERAGE.md",
-            "docs/API_COVERAGE.zh-CN.md",
-            "docs/SELECTION_HITS.md",
-            "docs/SELECTION_HITS.zh-CN.md",
-            "docs/GEOMETRY_UTILITIES.md",
-            "docs/GEOMETRY_UTILITIES.zh-CN.md",
-            "docs/BSPLINE_CURVES.md",
-            "docs/BSPLINE_CURVES.zh-CN.md",
-            "docs/TOPOLOGY_ANALYSIS.md",
-            "docs/TOPOLOGY_ANALYSIS.zh-CN.md",
-            "docs/SHAPE_INSPECTION.md",
-            "docs/SHAPE_INSPECTION.zh-CN.md",
-            "docs/MESH_PROVENANCE.md",
-            "docs/MESH_PROVENANCE.zh-CN.md",
-            "docs/RUNTIME_DIAGNOSTICS.md",
-            "docs/RUNTIME_DIAGNOSTICS.zh-CN.md",
-            "tests/README.md",
-            "tests/ContractTestHelpers.psm1",
-            "tests/OcctNet.ManagedTests",
-            "tests/OcctNet.Smoke",
-            "tests/check-api-organization.ps1",
-            "tests/check-api-surface.ps1",
-            "tests/check-geometry-api.ps1",
-            "tests/check-modeling-bulk-abi.ps1",
-            "tests/check-topology-analysis.ps1",
-            "tests/check-runtime-diagnostics.ps1",
-            "tests/check-native-build-structure.ps1",
-            "tests/check-selection-contract.ps1",
-            "tests/check-ui-hosts.ps1",
-            "tests/check-version-contract.ps1",
-            "tests/check-viewport-api.ps1"
+            "src/OcctNative"
           )
 
           $failed = $false
@@ -122,6 +85,6 @@ jobs:
           }
 
           if ($failed) {
-            throw "main and demo reusable wrapper source are not synchronized."
+            throw "main and demo reusable bridge source are not synchronized."
           }
-          Write-Host "main and demo reusable wrapper source are synchronized; branch-specific packaging/application policy remains intentionally independent." -ForegroundColor Green
+          Write-Host "main and demo reusable bridge source are synchronized; branch-specific docs, tests, packaging, and application code remain intentionally independent." -ForegroundColor Green
