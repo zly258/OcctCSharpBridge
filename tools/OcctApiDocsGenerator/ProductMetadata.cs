@@ -1,6 +1,6 @@
 internal static partial class Program
 {
-    private const string ProductAuthor = "Liaoyuan Zhang";
+    private const string ProductAuthor = "zly258";
     private const string ProductVersion = "2.6.0";
     private const string ProductStack = "OCCT 7.9.0 · .NET 10 · C# 14 · C++17 · Avalonia 12.1.0 · Windows x64";
 
