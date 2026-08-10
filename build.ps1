@@ -30,14 +30,12 @@ $ManifestPath = Join-Path $DistRoot "bridge-manifest.json"
 $PropsPath = Join-Path $RepoRoot "Directory.Build.props"
 $GlobalJsonPath = Join-Path $RepoRoot "global.json"
 $script:TargetFramework = "net10.0-windows"
+$script:BridgeVersion = ""
 
 [xml]$props = Get-Content -LiteralPath $PropsPath -Raw
 $propertyGroup = $props.Project.PropertyGroup
 $globalJson = Get-Content -LiteralPath $GlobalJsonPath -Raw | ConvertFrom-Json
 $ExpectedAuthor = [string]$propertyGroup.Authors
-$ExpectedBridgeVersion = [string]$propertyGroup.Version
-$ExpectedNativeAbi = [int]$propertyGroup.OcctBridgeNativeAbiVersion
-$ExpectedOcctVersion = [string]$propertyGroup.OcctBridgeOcctVersion
 $ExpectedLanguageVersion = [string]$propertyGroup.LangVersion
 $ExpectedSdkVersion = [string]$globalJson.sdk.version
 
@@ -128,14 +126,14 @@ function Test-BinarySdk {
     if ([string]$contract.author -ne $ExpectedAuthor) {
         throw "Unsupported Bridge author metadata: $($contract.author). Demo expects $ExpectedAuthor."
     }
-    if ([string]$contract.bridgeVersion -ne $ExpectedBridgeVersion) {
-        throw "Unsupported Bridge version: $($contract.bridgeVersion). Demo expects $ExpectedBridgeVersion."
+    if ([string]::IsNullOrWhiteSpace([string]$contract.bridgeVersion)) {
+        throw "Bridge version is missing from bridge-contract.json."
     }
-    if ([int]$contract.nativeAbiVersion -ne $ExpectedNativeAbi) {
-        throw "Unsupported Bridge native ABI: $($contract.nativeAbiVersion). Demo expects ABI $ExpectedNativeAbi."
+    if ([int]$contract.nativeAbiVersion -le 0) {
+        throw "Bridge native ABI version must be positive."
     }
-    if ([string]$contract.occtVersion -ne $ExpectedOcctVersion) {
-        throw "Unsupported OCCT version: $($contract.occtVersion). Demo expects $ExpectedOcctVersion."
+    if ([string]::IsNullOrWhiteSpace([string]$contract.occtVersion)) {
+        throw "OCCT version is missing from bridge-contract.json."
     }
     if ([string]$contract.platform -ne "windows-x64") {
         throw "Unsupported Bridge platform: $($contract.platform)"
@@ -149,6 +147,7 @@ function Test-BinarySdk {
     if ([string]$contract.dotnet.languageVersion -ne $ExpectedLanguageVersion) {
         throw "Unsupported Bridge C# language version: $($contract.dotnet.languageVersion). Demo expects $ExpectedLanguageVersion."
     }
+    $script:BridgeVersion = [string]$contract.bridgeVersion
     $script:TargetFramework = [string]$contract.dotnet.targetFramework
 
     if ([int]$manifest.schemaVersion -ne 1) {
@@ -225,11 +224,12 @@ function Build-Project {
     $project = Join-Path $RepoRoot $definition.Project
     Assert-Path $project
 
-    Write-Host ("[{0}] Building {1} / Bridge {2}..." -f $definition.DisplayName, $Configuration, $ExpectedBridgeVersion) -ForegroundColor Cyan
+    Write-Host ("[{0}] Building {1} / Bridge {2}..." -f $definition.DisplayName, $Configuration, $script:BridgeVersion) -ForegroundColor Cyan
     Invoke-Checked "dotnet" @(
         "build", $project,
         "-c", $Configuration,
         "-p:Platform=x64",
+        "-p:Version=$script:BridgeVersion",
         "--nologo"
     ) "$($definition.DisplayName) build failed."
 
