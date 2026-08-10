@@ -70,7 +70,7 @@ dotnet test .\tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj -c Release 
 - STEP/IGES/BREP/STL；
 - Inertia、Structured Intersection、Topology Reference 等关键能力。
 
-运行前，`build.ps1` 会把 `OcctNative.dll`、OCCT `win64/vc14/bin` 中的 DLL，以及 `3rdparty-vc14-64/**/bin` 中的第三方 Runtime DLL 部署到 Smoke 输出目录，避免依赖机器 PATH 的偶然状态。
+运行前，`build.ps1` 只把当前构建的 `OcctNative.dll` 放到 Smoke 输出目录，并给 Smoke 子进程显式设置解析后的 `OCCT_ROOT`。`OcctRuntime` 会在首次加载 Bridge 前把 OCCT `win64/vc14/bin` 与 `3rdparty-vc14-64` 下的运行时目录注册到 Windows DLL 搜索路径，因此测试不依赖机器 PATH 中偶然存在的 OCCT DLL，也不需要把整套 Runtime 平铺复制到测试目录。
 
 执行：
 
@@ -83,6 +83,8 @@ dotnet test .\tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj -c Release 
 ```powershell
 .\build.ps1 smoke Release -OcctRoot "E:\SDK\occt-7.9.0"
 ```
+
+如果仍出现 Win32 126，应检查 `OCCT_ROOT`、`TKernel.dll` 和第三方 Runtime 目录结构，定位实际缺失依赖。
 
 ## 4. 构建缓存与清理
 
