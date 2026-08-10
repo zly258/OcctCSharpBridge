@@ -105,7 +105,6 @@ function Resolve-OcctConfiguration {
     $script:OcctIncludeDir = Join-Path $script:OcctRoot "inc"
     $script:OcctLibDir = Join-Path $script:OcctRoot "win64\vc14\lib"
     $script:OcctBinDir = Join-Path $script:OcctRoot "win64\vc14\bin"
-    $script:OcctThirdPartyDir = Join-Path $script:OcctRoot "3rdparty-vc14-64"
 
     foreach ($path in @(
         $script:OcctIncludeDir,
@@ -137,32 +136,6 @@ function Build-Native {
     Invoke-Checked "cmake" @("--build", $NativeBuild, "--config", $Configuration, "--parallel") "Native build failed."
     Assert-Path $NativeDll
     Write-Host "Native: $NativeDll" -ForegroundColor Green
-}
-
-function Copy-OcctRuntimeDependencies {
-    param([Parameter(Mandatory = $true)][string]$OutputDirectory)
-
-    Resolve-OcctConfiguration
-    Assert-Path $OutputDirectory
-    Assert-Path $NativeDll
-
-    Write-Host "[runtime] Deploying OCCT runtime beside the test application..." -ForegroundColor Cyan
-    Copy-Item $NativeDll (Join-Path $OutputDirectory "OcctNative.dll") -Force
-
-    Get-ChildItem $script:OcctBinDir -Filter "*.dll" -File | ForEach-Object {
-        Copy-Item $_.FullName (Join-Path $OutputDirectory $_.Name) -Force
-    }
-
-    if (Test-Path $script:OcctThirdPartyDir -PathType Container) {
-        Get-ChildItem $script:OcctThirdPartyDir -Filter "*.dll" -File -Recurse | Where-Object {
-            $_.DirectoryName -match '[\\/]bin([\\/]|$)'
-        } | ForEach-Object {
-            Copy-Item $_.FullName (Join-Path $OutputDirectory $_.Name) -Force
-        }
-    }
-
-    Assert-Path (Join-Path $OutputDirectory "OcctNative.dll")
-    Assert-Path (Join-Path $OutputDirectory "TKernel.dll")
 }
 
 function Build-Project {
@@ -303,15 +276,18 @@ function Build-Ci {
 
 function Run-Smoke {
     Assert-Path $NativeDll
+    Resolve-OcctConfiguration
     Build-Project "Smoke"
 
     $smokeProject = Join-Path $RepoRoot $Projects.Smoke
     $smokeOutput = Join-Path (Split-Path -Parent $smokeProject) "bin\x64\$Configuration\$TargetFramework"
-    Copy-OcctRuntimeDependencies -OutputDirectory $smokeOutput
+    Copy-Item $NativeDll (Join-Path $smokeOutput "OcctNative.dll") -Force
 
     $previousNativeDirectory = $env:OCCT_BRIDGE_NATIVE_DIR
+    $previousOcctRoot = $env:OCCT_ROOT
     try {
         $env:OCCT_BRIDGE_NATIVE_DIR = $smokeOutput
+        $env:OCCT_ROOT = $script:OcctRoot
         Write-Host "[smoke] Running native modeling scenarios..." -ForegroundColor Cyan
         Invoke-Checked "dotnet" @(
             "run",
@@ -322,7 +298,10 @@ function Run-Smoke {
             "--no-build"
         ) "Smoke test failed."
     }
-    finally { $env:OCCT_BRIDGE_NATIVE_DIR = $previousNativeDirectory }
+    finally {
+        $env:OCCT_BRIDGE_NATIVE_DIR = $previousNativeDirectory
+        $env:OCCT_ROOT = $previousOcctRoot
+    }
 }
 
 Write-Host "Target:        $Target"
