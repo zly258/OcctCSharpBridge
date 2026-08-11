@@ -2,11 +2,11 @@
 
 #include "OcctNative.h"
 
+// Appended object-kind value. Existing OcctObjectKind numeric values remain stable.
+constexpr int OcctPointObjectKind = 4;
+
 extern "C"
 {
-    // Appended object-kind value. Existing OcctObjectKind numeric values remain stable.
-    constexpr int OcctPointObjectKind = 4;
-
     enum OcctPointMarker
     {
         OcctPointMarker_Point = 0,
