@@ -1,4 +1,4 @@
-﻿param(
+param(
     [Parameter(Position = 0)]
     [ValidateSet("validate", "native", "managed", "test", "pack", "smoke", "docs", "dist", "ci", "clean", "all")]
     [string]$Target = "all",
@@ -7,8 +7,7 @@
     [ValidateSet("Debug", "Release", "RelWithDebInfo")]
     [string]$Configuration = "Release",
 
-    [string]$OcctRoot = $env:OCCT_ROOT,
-    [switch]$SkipSmoke
+    [string]$OcctRoot = $env:OCCT_ROOT
 )
 
 $ErrorActionPreference = "Stop"
@@ -351,14 +350,10 @@ function Build-BinaryDistribution {
     $sourceCommit = Assert-CleanSourceTree
     Write-Host "[dist] Source commit: $sourceCommit" -ForegroundColor DarkGray
 
+    # Distribution is a production/build concern only. Regression tests and
+    # native smoke scenarios are explicit targets and never block packaging.
     Build-Native
     Build-Managed
-    if ($SkipSmoke) {
-        Write-Host "[dist] Smoke tests skipped by request." -ForegroundColor Yellow
-    }
-    else {
-        Run-Smoke
-    }
 
     $files = [ordered]@{
         "OcctNative.dll" = Join-Path $RepoRoot "build\native\bin\Release\OcctNative.dll"
