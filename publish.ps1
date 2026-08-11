@@ -1,4 +1,4 @@
-﻿param(
+param(
     [string]$OcctRoot = $env:OCCT_ROOT,
     [string]$Remote = "origin",
     [string]$DemoBranch = "demo",
@@ -7,14 +7,6 @@
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
-
-# Keep the explicit -Fast switch as the canonical form, but also accept the
-# convenient positional form: .\publish.ps1 Fast. Without this normalization,
-# PowerShell binds "Fast" to the first positional parameter (OcctRoot).
-if (-not $Fast -and $PSBoundParameters.ContainsKey("OcctRoot") -and $OcctRoot -ieq "Fast") {
-    $Fast = $true
-    $OcctRoot = $env:OCCT_ROOT
-}
 
 $RepoRoot = Split-Path -Parent $PSCommandPath
 $BuildScript = Join-Path $RepoRoot "build.ps1"
@@ -47,7 +39,7 @@ function Get-CurrentBranch {
     param([Parameter(Mandatory = $true)][string]$WorkingDirectory)
 
     # git branch --show-current was added in Git 2.22. Use rev-parse so the
-    # publish workflow remains compatible with older Git installations.
+    # publish workflow remains compatible with the Git version used by this repository.
     $output = @(& git -C $WorkingDirectory rev-parse --abbrev-ref HEAD 2>$null)
     if ($LASTEXITCODE -ne 0 -or $output.Count -ne 1) {
         throw "Failed to resolve the current Git branch."
@@ -63,14 +55,7 @@ function Get-CurrentBranch {
 function Invoke-Build {
     param([Parameter(Mandatory = $true)][string]$Target)
 
-    # Use named PowerShell parameters. Array splatting does not reinterpret
-    # '-OcctRoot' as a named parameter when invoking another PowerShell script.
-    if ($Fast -and $Target -eq "dist") {
-        & $BuildScript -Target $Target -Configuration "Release" -OcctRoot $OcctRoot -SkipSmoke
-    }
-    else {
-        & $BuildScript -Target $Target -Configuration "Release" -OcctRoot $OcctRoot
-    }
+    & $BuildScript -Target $Target -Configuration "Release" -OcctRoot $OcctRoot
 }
 
 function Commit-IfChanged {
@@ -187,7 +172,7 @@ if ($initialChanges.Count -gt 0) {
 }
 
 if ($Fast) {
-    Write-Host "[publish] Fast mode: skipping API documentation generation and runtime smoke tests." -ForegroundColor Yellow
+    Write-Host "[publish] Fast mode: skipping API documentation generation." -ForegroundColor Yellow
 }
 else {
     Write-Host "[publish] Generating complete bilingual API reference..." -ForegroundColor Cyan
