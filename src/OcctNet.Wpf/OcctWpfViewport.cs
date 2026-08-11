@@ -58,12 +58,12 @@ public sealed class OcctWpfViewport : HwndHost
     private const int WsVisible = 0x10000000;
     private const int WsClipSiblings = 0x04000000;
     private const int WsClipChildren = 0x02000000;
-    private const int SsNotify = 0x00000100;
     private const int HtClient = 1;
 
     private const int WmSize = 0x0005;
     private const int WmSetFocus = 0x0007;
     private const int WmKillFocus = 0x0008;
+    private const int WmPaint = 0x000F;
     private const int WmEraseBkgnd = 0x0014;
     private const int WmCancelMode = 0x001F;
     private const int WmNcHitTest = 0x0084;
@@ -266,12 +266,12 @@ public sealed class OcctWpfViewport : HwndHost
 
     /// <summary>
     /// Synchronizes the OCCT render target with the current child HWND size.
-    /// The native Resize operation already redraws the view, so no second redraw is issued here.
+    /// DPI is deliberately not changed here: SetRenderResolution redraws the view,
+    /// so doing it for every WM_SIZE would cause two redraws per resize event.
     /// </summary>
     public void RefreshNativeView()
     {
         if (_engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero) return;
-        SynchronizeDpi();
         TryInvoke(_engine.Resize);
     }
 
@@ -280,18 +280,19 @@ public sealed class OcctWpfViewport : HwndHost
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException("OcctNet.Wpf supports Windows HWND hosting only.");
 
+        OcctWpfRenderWindowClass.EnsureRegistered();
         var handle = CreateWindowExW(
             0,
-            "STATIC",
-            "OCCT_WPF_Render_Target",
-            WsChild | WsVisible | WsClipSiblings | WsClipChildren | SsNotify,
+            OcctWpfRenderWindowClass.Name,
+            string.Empty,
+            WsChild | WsVisible | WsClipSiblings | WsClipChildren,
             0,
             0,
             100,
             100,
             hwndParent.Handle,
             IntPtr.Zero,
-            IntPtr.Zero,
+            OcctWpfRenderWindowClass.ModuleHandle,
             IntPtr.Zero);
 
         if (handle == IntPtr.Zero)
@@ -335,9 +336,8 @@ public sealed class OcctWpfViewport : HwndHost
                     handled = true;
                     return new IntPtr(HtClient);
                 case WmSize:
-                    // Interactive window resizing must update OCCT synchronously.
-                    // Deferring this to Background leaves the HWND and OCCT back buffer
-                    // temporarily at different sizes and produces visible flashing.
+                    // The child HWND and OCCT back buffer stay in lock-step during
+                    // interactive resizing. No DPI redraw is performed on this path.
                     RefreshNativeView();
                     break;
                 case WmDpiChanged:
@@ -349,9 +349,14 @@ public sealed class OcctWpfViewport : HwndHost
                 case WmCancelMode:
                     CancelInteraction();
                     break;
+                case WmPaint:
+                    // Restore exposed regions from OCCT. DefWindowProc still validates
+                    // the paint region because this message is intentionally not marked handled.
+                    if (_engine?.IsInitialized == true) TryInvoke(_engine.Redraw);
+                    break;
                 case WmEraseBkgnd:
-                    // OCCT/OpenGL owns the whole child surface. Never let the stock
-                    // STATIC window erase it between native frames.
+                    // OpenGL owns the complete child surface; the dedicated window class
+                    // also has no background brush, so Windows must never erase it.
                     handled = true;
                     return new IntPtr(1);
                 case WmLButtonDown:
@@ -606,6 +611,9 @@ public sealed class OcctWpfViewport : HwndHost
         Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(() =>
         {
             _nativeRefreshScheduled = false;
+            // DPI changes are rare. Keep their redraw away from the continuous
+            // WM_SIZE path, then resize once to the final arranged client size.
+            SynchronizeDpi();
             RefreshNativeView();
         }));
     }
