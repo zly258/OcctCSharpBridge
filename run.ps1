@@ -8,7 +8,7 @@
     [string]$Configuration = "Release",
 
     [string]$OcctRoot = $env:OCCT_ROOT,
-    [int]$StartupTimeoutSeconds = 5
+    [int]$StartupTimeoutSeconds = 10
 )
 
 $ErrorActionPreference = "Stop"
@@ -106,18 +106,28 @@ $process = Start-Process -FilePath $executable -WorkingDirectory $applicationDir
 Write-Host "Process ID:  $($process.Id)"
 
 if ($Target -eq "avalonia") {
+    # Process.MainWindowHandle is only a best-effort Windows shell signal. Avalonia can
+    # legitimately publish the HWND after managed/native viewer initialization, so a
+    # missing handle must not be treated as an application crash or used to kill it.
     $deadline = [DateTime]::UtcNow.AddSeconds([Math]::Max(1, $StartupTimeoutSeconds))
+    $windowDetected = $false
     while ([DateTime]::UtcNow -lt $deadline) {
         Start-Sleep -Milliseconds 200
         $process.Refresh()
         if ($process.HasExited) {
             throw "avalonia exited during startup with code $($process.ExitCode)."
         }
-        if ($process.MainWindowHandle -ne [IntPtr]::Zero) { break }
+        if ($process.MainWindowHandle -ne [IntPtr]::Zero) {
+            $windowDetected = $true
+            break
+        }
     }
-    if ($process.MainWindowHandle -eq [IntPtr]::Zero) {
-        try { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue } catch { }
-        throw "avalonia process did not create a visible main window within $StartupTimeoutSeconds second(s)."
+
+    if ($windowDetected) {
+        Write-Host "Avalonia main window detected." -ForegroundColor DarkGray
+    }
+    else {
+        Write-Warning "Avalonia is still running after $StartupTimeoutSeconds second(s), but MainWindowHandle is not available yet. Continuing without terminating the process."
     }
 }
 
