@@ -161,7 +161,9 @@ function Copy-MergedFile {
         [Parameter(Mandatory = $true)][string]$Source,
         [Parameter(Mandatory = $true)][string]$Destination,
         [Parameter(Mandatory = $true)][bool]$IsRuntimePackFile,
-        [Parameter(Mandatory = $true)][System.Collections.Generic.HashSet[string]]$RuntimeBaseline
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [System.Collections.Generic.HashSet[string]]$RuntimeBaseline
     )
 
     $destinationDirectory = Split-Path -Parent $Destination
@@ -194,8 +196,12 @@ function Merge-PublishTree {
     param(
         [Parameter(Mandatory = $true)][string]$SourceRoot,
         [Parameter(Mandatory = $true)][string]$DestinationRoot,
-        [Parameter(Mandatory = $true)][System.Collections.Generic.HashSet[string]]$SourceRuntimePackFiles,
-        [Parameter(Mandatory = $true)][System.Collections.Generic.HashSet[string]]$RuntimeBaseline
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [System.Collections.Generic.HashSet[string]]$SourceRuntimePackFiles,
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [System.Collections.Generic.HashSet[string]]$RuntimeBaseline
     )
 
     $normalizedSourceRoot = [System.IO.Path]::GetFullPath($SourceRoot).TrimEnd('\', '/')
