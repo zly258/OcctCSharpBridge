@@ -441,13 +441,16 @@ namespace OcctBridge
 
     bool syncStepObjectVisibility(Engine* engine, ObjectEntry& entry)
     {
+        const bool requestedVisibility = entry.storedVisible;
         const TDF_Label label = findStepLabel(engine, entry);
         if (label.IsNull()) return false;
+        entry.storedVisible = requestedVisibility;
+        entry.hasStoredVisibility = true;
         const std::size_t documentIndex = static_cast<std::size_t>(entry.stepDocumentIndex);
         const Handle(TDocStd_Document)& document = engine->stepDocuments[documentIndex];
         const Handle(XCAFDoc_ColorTool) colorTool = XCAFDoc_DocumentTool::ColorTool(document->Main());
         if (colorTool.IsNull()) return false;
-        colorTool->SetVisibility(label, entry.storedVisible ? Standard_True : Standard_False);
+        colorTool->SetVisibility(label, requestedVisibility ? Standard_True : Standard_False);
         return true;
     }
 }
