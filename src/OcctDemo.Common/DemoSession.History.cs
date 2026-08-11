@@ -1,4 +1,4 @@
-﻿using OcctNet;
+using OcctNet;
 
 namespace OcctDemo.Common;
 
@@ -115,8 +115,5 @@ public sealed partial class DemoSession
 
     private static bool IsUndoableCommand(DemoCommandId commandId) => commandId is not
         (DemoCommandId.AnalyzeBounds or DemoCommandId.AnalyzeMass or DemoCommandId.AnalyzeTopology or
-         DemoCommandId.AnalyzeDistance or DemoCommandId.ValidateShape or
-         DemoCommandId.LengthDimension or DemoCommandId.AngleDimension or
-         DemoCommandId.RadiusDimension or DemoCommandId.DiameterDimension);
-
+         DemoCommandId.AnalyzeDistance or DemoCommandId.ValidateShape);
 }
