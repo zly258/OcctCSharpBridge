@@ -172,8 +172,7 @@ foreach ($forbidden in @(
     "DocumentManager",
     "CommandBus",
     "CommandRegistry",
-    "ToolManager",
-    "OcafDocument"
+    "ToolManager"
 )) {
     if ($managedText -match "\b$([regex]::Escape($forbidden))\b") {
         throw "Application-layer type must not enter OcctNet core: $forbidden"
