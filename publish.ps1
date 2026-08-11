@@ -321,6 +321,64 @@ function Get-PeImportedDllNames {
     }
 }
 
+function Test-MicrosoftDebugRuntimeName {
+    param([Parameter(Mandatory = $true)][string]$Name)
+
+    if ($Name -ieq "ucrtbased.dll") { return $true }
+    return $Name -match '(?i)^(MSVCP|VCRUNTIME|CONCRT|VCCORLIB).*D\.dll$'
+}
+
+function Set-PeImportedDllName {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$OldName,
+        [Parameter(Mandatory = $true)][string]$NewName
+    )
+
+    if ($NewName.Length -gt $OldName.Length) {
+        throw "PE import replacement cannot grow in place: $OldName -> $NewName"
+    }
+
+    $importsBefore = @(Get-PeImportedDllNames -Path $Path)
+    if ($OldName -notin $importsBefore) { return $false }
+
+    $bytes = [System.IO.File]::ReadAllBytes($Path)
+    $oldBytes = [System.Text.Encoding]::ASCII.GetBytes($OldName + [char]0)
+    $newBytes = [System.Text.Encoding]::ASCII.GetBytes($NewName + [char]0)
+    $matches = [System.Collections.Generic.List[int]]::new()
+
+    for ($offset = 0; $offset -le ($bytes.Length - $oldBytes.Length); ++$offset) {
+        $same = $true
+        for ($index = 0; $index -lt $oldBytes.Length; ++$index) {
+            if ($bytes[$offset + $index] -ne $oldBytes[$index]) {
+                $same = $false
+                break
+            }
+        }
+        if ($same) {
+            $matches.Add($offset)
+            $offset += $oldBytes.Length - 1
+        }
+    }
+
+    if ($matches.Count -eq 0) {
+        throw "PE import table reports $OldName but its null-terminated name string was not found in $Path"
+    }
+
+    foreach ($offset in $matches) {
+        [System.Array]::Clear($bytes, $offset, $oldBytes.Length)
+        [System.Array]::Copy($newBytes, 0, $bytes, $offset, $newBytes.Length)
+    }
+    [System.IO.File]::WriteAllBytes($Path, $bytes)
+
+    $importsAfter = @(Get-PeImportedDllNames -Path $Path)
+    if ($OldName -in $importsAfter -or $NewName -notin $importsAfter) {
+        throw "PE import replacement validation failed for $Path`: $OldName -> $NewName"
+    }
+
+    return $true
+}
+
 function Test-SystemRuntimeDependency {
     param([Parameter(Mandatory = $true)][string]$Name)
 
@@ -371,16 +429,47 @@ function Resolve-NativeDependencySource {
     }
 
     if (Test-Path -LiteralPath $OcctThirdPartyDir -PathType Container) {
-        # The PE import name is authoritative. Do not reject an exact imported
-        # DLL merely because its file or directory contains "debug". Some OCCT
-        # distributions intentionally link a Release toolkit to a debug-named
-        # third-party runtime (for example tbb12_debug.dll).
         $matches = @(Get-ChildItem -LiteralPath $OcctThirdPartyDir -Filter $Name -File -Recurse -ErrorAction SilentlyContinue |
             Sort-Object @{ Expression = { if ($_.FullName -match '(?i)[\\/](debug|dbg)[\\/]') { 1 } else { 0 } } }, @{ Expression = { if ($_.DirectoryName -match '(?i)[\\/]bin([\\/]|$)') { 0 } else { 1 } } }, FullName)
         if ($matches.Count -gt 0) { return $matches[0].FullName }
     }
 
     return $null
+}
+
+function Repair-Occt790ReleaseTbbImports {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    if ($Configuration -ne "Release" -or [string]$contract.occtVersion -ne "7.9.0") { return $false }
+
+    $fileName = [System.IO.Path]::GetFileName($Path)
+    if ($fileName -notmatch '(?i)^TK.*\.dll$') { return $false }
+
+    $imports = @(Get-PeImportedDllNames -Path $Path)
+    $debugTbbImports = @($imports | Where-Object { $_ -match '(?i)^tbb.*_debug\.dll$' })
+    if ($debugTbbImports.Count -eq 0) { return $false }
+
+    $repaired = $false
+    foreach ($debugName in $debugTbbImports) {
+        $releaseName = [regex]::Replace($debugName, '(?i)_debug(?=\.dll$)', '')
+        $releaseSource = Resolve-NativeDependencySource -Name $releaseName
+        if ([string]::IsNullOrWhiteSpace($releaseSource)) {
+            throw "OCCT 7.9.0 Release has the known upstream TBB configuration bug ($fileName imports $debugName), but release counterpart $releaseName was not found under the configured OCCT runtime."
+        }
+
+        $releaseImports = @(Get-PeImportedDllNames -Path $releaseSource)
+        $debugCrtImports = @($releaseImports | Where-Object { Test-MicrosoftDebugRuntimeName -Name $_ })
+        if ($debugCrtImports.Count -gt 0) {
+            throw "Release TBB candidate is not portable: $releaseName imports Microsoft debug runtime(s): $($debugCrtImports -join ', ')"
+        }
+
+        if (Set-PeImportedDllName -Path $Path -OldName $debugName -NewName $releaseName) {
+            $repaired = $true
+            Write-Host "[runtime] OCCT 7.9.0 upstream fix: $fileName -> $releaseName" -ForegroundColor Yellow
+        }
+    }
+
+    return $repaired
 }
 
 function Copy-PortableNativeRuntime {
@@ -395,6 +484,7 @@ function Copy-PortableNativeRuntime {
     $processed = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     $copied = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     $missing = [ordered]@{}
+    $occt790TbbFixApplied = $false
 
     $rootNative = Join-Path $Destination "OcctNative.dll"
     $queue.Enqueue($rootNative)
@@ -405,6 +495,10 @@ function Copy-PortableNativeRuntime {
         $currentPath = $queue.Dequeue()
         $currentName = [System.IO.Path]::GetFileName($currentPath)
         if (-not $processed.Add($currentName)) { continue }
+
+        if (Repair-Occt790ReleaseTbbImports -Path $currentPath) {
+            $occt790TbbFixApplied = $true
+        }
 
         foreach ($dependency in @(Get-PeImportedDllNames -Path $currentPath)) {
             if (Test-SystemRuntimeDependency -Name $dependency) { continue }
@@ -436,19 +530,9 @@ function Copy-PortableNativeRuntime {
         throw "Portable native runtime is incomplete. Missing imported DLLs:`n - $($details -join "`n - ")"
     }
 
-    $debugNamedThirdParty = @($copied | Where-Object { $_ -match '(?i)^tbb.*_debug\.dll$' })
-    if ($debugNamedThirdParty.Count -gt 0) {
-        Write-Warning "Current OCCT binaries explicitly import debug-named TBB runtime(s): $($debugNamedThirdParty -join ', '). Packaging the exact imported DLLs."
-    }
-
-    # Reject unrelated GUI/test dependencies and Microsoft debug CRTs. A
-    # debug-named third-party DLL is allowed only when it is an actual PE import;
-    # if it in turn needs a non-redistributable Microsoft debug CRT, this check
-    # still prevents producing a misleading portable package.
     $forbidden = @($copied | Where-Object {
         $_ -match '^(?i:Qt\d|vtk|tcl\d|tk86\.dll$)' -or
-        $_ -match '(?i)^(MSVCP|VCRUNTIME|CONCRT|VCCORLIB)\d+D.*\.dll$' -or
-        $_ -match '(?i)^ucrtbased\.dll$'
+        (Test-MicrosoftDebugRuntimeName -Name $_)
     })
     if ($forbidden.Count -gt 0) {
         throw "Unexpected GUI/test or Microsoft debug-runtime dependencies entered the portable runtime closure: $($forbidden -join ', ')"
@@ -458,7 +542,12 @@ function Copy-PortableNativeRuntime {
         "OcctCSharpBridge Demo native runtime closure",
         "Bridge: $($contract.bridgeVersion)",
         "OCCT: $($contract.occtVersion)",
-        "Architecture: win-x64",
+        "Architecture: win-x64"
+    )
+    if ($occt790TbbFixApplied) {
+        $runtimeManifest += "Compatibility: OCCT 7.9.0 Release TBB import corrected to the Release runtime (upstream fixed in OCCT 7.9.1)."
+    }
+    $runtimeManifest += @(
         "",
         "Packaged native DLLs:"
     ) + @($copied | Sort-Object | ForEach-Object { "- $_" })
