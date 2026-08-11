@@ -242,6 +242,8 @@ namespace
 
         OcctObjectId firstImportedId = 0;
         std::vector<OcctObjectId> importedIds;
+        std::vector<OcctObjectId> leafObjectIds;
+        leafObjectIds.reserve(leaves.size());
         engine->beginUpdate();
         try
         {
@@ -250,6 +252,7 @@ namespace
             for (const StepImportLeaf& leaf : leaves)
             {
                 const OcctObjectId id = addStructuredLeaf(engine, leaf);
+                leafObjectIds.push_back(id);
                 if (id == 0) continue;
                 importedIds.push_back(id);
                 if (firstImportedId == 0) firstImportedId = id;
@@ -267,7 +270,7 @@ namespace
         }
 
         engine->stepDocuments.push_back(document);
-        engine->lastStepImportObjectIds = importedIds;
+        engine->lastStepImportObjectIds = std::move(leafObjectIds);
         if (sceneWasEmpty)
         {
             engine->pristineStepDocument = document;
