@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -31,6 +31,8 @@ namespace OcctDemo.Avalonia;
 
 public sealed partial class MainWindow : Window
 {
+    private static readonly AvaloniaFontFamily UiFontFamily = new("Microsoft YaHei UI");
+
     private readonly Dictionary<long, TreeViewItem> _objectNodes = new();
     private readonly OcctAvaloniaViewport _viewport;
     private readonly Menu _mainMenu;
@@ -67,6 +69,7 @@ public sealed partial class MainWindow : Window
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         WindowState = WindowState.Maximized;
         Background = new SolidColorBrush(AvaloniaColor.Parse("#EEF1F4"));
+        FontFamily = UiFontFamily;
 
         _mainMenu = new Menu();
         _toolbar = new StackPanel
@@ -90,7 +93,7 @@ public sealed partial class MainWindow : Window
             IsReadOnly = true,
             AcceptsReturn = true,
             TextWrapping = TextWrapping.NoWrap,
-            FontFamily = new AvaloniaFontFamily("Consolas"),
+            FontFamily = UiFontFamily,
             FontSize = 12,
             Background = AvaloniaBrushes.White,
             Foreground = new SolidColorBrush(AvaloniaColor.Parse("#20262C")),
@@ -101,7 +104,7 @@ public sealed partial class MainWindow : Window
         _coordinateStatus = new TextBlock
         {
             Text = "X 0.000  Y 0.000  Z 0.000",
-            FontFamily = new AvaloniaFontFamily("Consolas"),
+            FontFamily = UiFontFamily,
             HorizontalAlignment = AvaloniaHorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center
         };
@@ -119,20 +122,19 @@ public sealed partial class MainWindow : Window
     private DemoSession Session => _session ?? throw new InvalidOperationException(
         Local("The OCCT viewport has not been initialized.", "OCCT 视口尚未初始化。"));
 
-
-
     private void WireEvents()
     {
         _viewport.EngineInitialized += (_, _) => Dispatcher.UIThread.Post(InitializeSession, DispatcherPriority.Background);
         _viewport.ObjectSelectionChanged += (_, args) => Dispatcher.UIThread.Post(() =>
         {
             if (_session is null) return;
-            _session.ActiveObject = args.SelectedObject;
+            var singleSelection = args.SelectedObjects.Count == 1 ? args.SelectedObject : null;
+            _session.ActiveObject = singleSelection;
             _selectionStatus.Text = args.SelectedObjects.Count == 0
                 ? DemoLocalization.Text("Status.NoneSelected")
                 : DemoLocalization.Text("Status.Selected", args.SelectedObjects.Count);
-            SelectTreeNode(args.SelectedObject);
-            ShowObjectProperties(args.SelectedObject);
+            SelectTreeNode(singleSelection);
+            ShowSelectionProperties(args.SelectedObjects);
         });
         _viewport.WorldPointChanged += (_, args) => Dispatcher.UIThread.Post(() =>
             _coordinateStatus.Text = $"X {args.WorldPoint.X:F3}  Y {args.WorldPoint.Y:F3}  Z {args.WorldPoint.Z:F3}");
@@ -159,7 +161,12 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        _session.ModelChanged += (_, _) => Dispatcher.UIThread.Post(RefreshObjectTree);
+        _session.ModelChanged += (_, _) => Dispatcher.UIThread.Post(() =>
+        {
+            RefreshObjectTree();
+            UpdateHistoryUi();
+            _viewport.RefreshNativeView();
+        });
         _session.HistoryChanged += (_, _) => Dispatcher.UIThread.Post(UpdateHistoryUi);
         _session.StatusChanged += (_, message) => Dispatcher.UIThread.Post(() =>
         {
@@ -189,91 +196,6 @@ public sealed partial class MainWindow : Window
         UpdateHistoryUi();
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     private void ExecuteSafe(Action action)
     {
         try
@@ -295,10 +217,6 @@ public sealed partial class MainWindow : Window
         _logBox.Text = (_logBox.Text ?? string.Empty) + $"[{DateTime.Now:HH:mm:ss}] {message}{Environment.NewLine}";
         _logBox.CaretIndex = _logBox.Text.Length;
     }
-
-
-
-
 
     private static MenuItem Menu(string header, params object[] items) => new()
     {
@@ -417,19 +335,4 @@ public sealed partial class MainWindow : Window
     private static string SaveFileFilter() => DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified
         ? "STEP 文件|*.step;*.stp|IGES 文件|*.iges;*.igs|BREP 文件|*.brep|STL 文件|*.stl"
         : "STEP Files|*.step;*.stp|IGES Files|*.iges;*.igs|BREP Files|*.brep|STL Files|*.stl";
-
-    private static string SelectionModeName(OcctSelectionMode mode) => DemoLocalization.SelectionMode(mode);
-
-    private static string LightingPresetName(OcctLightingPreset preset) => preset switch
-    {
-        OcctLightingPreset.Neutral => Local("Neutral", "中性"),
-        OcctLightingPreset.Sunlight => Local("Sunlight", "日光"),
-        OcctLightingPreset.Flat => Local("Flat", "平光"),
-        _ => Local("Studio", "摄影棚")
-    };
-
-
-
-    private static string Local(string english, string chinese) =>
-        DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified ? chinese : english;
 }
