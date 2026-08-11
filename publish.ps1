@@ -371,10 +371,15 @@ function Resolve-NativeDependencySource {
     }
 
     if (Test-Path -LiteralPath $OcctThirdPartyDir -PathType Container) {
-        $matches = @(Get-ChildItem -LiteralPath $OcctThirdPartyDir -Filter $Name -File -Recurse -ErrorAction SilentlyContinue | Where-Object {
-            $_.FullName -notmatch '(?i)[\\/](debug|dbg)[\\/]' -and
-            $_.Name -notmatch '(?i)(_debug|d)\.dll$'
-        } | Sort-Object @{ Expression = { if ($_.DirectoryName -match '(?i)[\\/]bin([\\/]|$)') { 0 } else { 1 } } }, FullName)
+        # The PE import name is authoritative. Do not reject an exact imported
+        # DLL merely because its file or directory contains "debug". Some OCCT
+        # distributions intentionally link a Release toolkit to a debug-named
+        # third-party runtime (for example tbb12_debug.dll).
+        $matches = @(Get-ChildItem -LiteralPath $OcctThirdPartyDir -Filter $Name -File -Recurse -ErrorAction SilentlyContinue |
+            Sort-Object \
+                @{ Expression = { if ($_.FullName -match '(?i)[\\/](debug|dbg)[\\/]') { 1 } else { 0 } } }, \
+                @{ Expression = { if ($_.DirectoryName -match '(?i)[\\/]bin([\\/]|$)') { 0 } else { 1 } } }, \
+                FullName)
         if ($matches.Count -gt 0) { return $matches[0].FullName }
     }
 
@@ -392,6 +397,7 @@ function Copy-PortableNativeRuntime {
     $queued = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     $processed = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     $copied = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $missing = [ordered]@{}
 
     $rootNative = Join-Path $Destination "OcctNative.dll"
     $queue.Enqueue($rootNative)
@@ -410,7 +416,10 @@ function Copy-PortableNativeRuntime {
             if (-not (Test-Path -LiteralPath $destinationPath -PathType Leaf)) {
                 $source = Resolve-NativeDependencySource -Name $dependency
                 if ([string]::IsNullOrWhiteSpace($source)) {
-                    throw "Portable native runtime is incomplete. $currentName imports $dependency, but it was not found in the OCCT runtime, OCCT third-party runtime, or Visual C++ redistributable directories."
+                    if (-not $missing.Contains($dependency)) {
+                        $missing[$dependency] = $currentName
+                    }
+                    continue
                 }
                 Copy-Item -LiteralPath $source -Destination $destinationPath -Force
                 Write-Host "[runtime] $currentName -> $dependency" -ForegroundColor DarkGray
@@ -423,12 +432,29 @@ function Copy-PortableNativeRuntime {
         }
     }
 
+    if ($missing.Count -gt 0) {
+        $details = @($missing.GetEnumerator() |
+            Sort-Object { [string]$_.Key } |
+            ForEach-Object { "$($_.Value) -> $($_.Key)" })
+        throw "Portable native runtime is incomplete. Missing imported DLLs:`n - $($details -join "`n - ")"
+    }
+
+    $debugNamedThirdParty = @($copied | Where-Object { $_ -match '(?i)^tbb.*_debug\.dll$' })
+    if ($debugNamedThirdParty.Count -gt 0) {
+        Write-Warning "Current OCCT binaries explicitly import debug-named TBB runtime(s): $($debugNamedThirdParty -join ', '). Packaging the exact imported DLLs."
+    }
+
+    # Reject unrelated GUI/test dependencies and Microsoft debug CRTs. A
+    # debug-named third-party DLL is allowed only when it is an actual PE import;
+    # if it in turn needs a non-redistributable Microsoft debug CRT, this check
+    # still prevents producing a misleading portable package.
     $forbidden = @($copied | Where-Object {
         $_ -match '^(?i:Qt\d|vtk|tcl\d|tk86\.dll$)' -or
-        $_ -match '(?i)(MSVCP\d+D|VCRUNTIME\d+D|ucrtbased|tbb.*_debug)\.dll$'
+        $_ -match '(?i)^(MSVCP|VCRUNTIME|CONCRT|VCCORLIB)\d+D.*\.dll$' -or
+        $_ -match '(?i)^ucrtbased\.dll$'
     })
     if ($forbidden.Count -gt 0) {
-        throw "Unexpected GUI/test/debug native dependencies entered the portable runtime closure: $($forbidden -join ', ')"
+        throw "Unexpected GUI/test or Microsoft debug-runtime dependencies entered the portable runtime closure: $($forbidden -join ', ')"
     }
 
     $runtimeManifest = @(
@@ -439,7 +465,7 @@ function Copy-PortableNativeRuntime {
         "",
         "Packaged native DLLs:"
     ) + @($copied | Sort-Object | ForEach-Object { "- $_" })
-    [System.IO.File]::WriteAllLines((Join-Path $Destination "native-runtime-manifest.txt"), $runtimeManifest, [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllLines((Join-Path $Destination "native-runtime-manifest.txt"), $runtimeManifest, [System.Text.UTF8Encoding]::new($true))
 }
 
 Assert-Command "dotnet"
@@ -463,6 +489,11 @@ New-Item -ItemType Directory -Path $stagingRoot -Force | Out-Null
 $runtimeBaseline = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 
 try {
+    # Resolve the native closure first. Native packaging problems should fail
+    # fast instead of recompiling all managed demo hosts before surfacing them.
+    Write-Host "[publish] Resolving portable OCCT native runtime..." -ForegroundColor Cyan
+    Copy-PortableNativeRuntime -Destination $packageRoot
+
     foreach ($key in Get-SelectedKeys) {
         $definition = $Projects[$key]
         $projectPath = Join-Path $RepoRoot $definition.Project
@@ -497,12 +528,6 @@ try {
         }
         Merge-PublishTree @mergeArguments
     }
-
-    # All three applications share one exact native dependency closure. The
-    # closure is discovered from PE import tables instead of guessed by a DLL
-    # whitelist, so another clean Windows machine does not need OCCT or the VC
-    # redistributable preinstalled.
-    Copy-PortableNativeRuntime -Destination $packageRoot
 
     foreach ($key in Get-SelectedKeys) {
         Assert-Path (Join-Path $packageRoot $Projects[$key].Executable)
