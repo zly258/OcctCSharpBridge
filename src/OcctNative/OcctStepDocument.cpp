@@ -107,6 +107,35 @@ namespace
         return result;
     }
 
+    void rememberResolvedStyle(ObjectEntry& entry, const XCAFPrs_Style& style)
+    {
+        entry.storedVisible = style.IsVisible();
+        if (style.IsSetColorSurf())
+        {
+            const Quantity_ColorRGBA& rgba = style.GetColorSurfRGBA();
+            if (!entry.hasStoredColor)
+            {
+                entry.hasStoredColor = true;
+                entry.storedColorR = rgba.GetRGB().Red();
+                entry.storedColorG = rgba.GetRGB().Green();
+                entry.storedColorB = rgba.GetRGB().Blue();
+            }
+            if (!entry.hasStoredAlpha)
+            {
+                entry.storedColorA = rgba.Alpha();
+                entry.hasStoredAlpha = true;
+            }
+        }
+        else if (style.IsSetColorCurv() && !entry.hasStoredColor)
+        {
+            const Quantity_Color& rgb = style.GetColorCurv();
+            entry.hasStoredColor = true;
+            entry.storedColorR = rgb.Red();
+            entry.storedColorG = rgb.Green();
+            entry.storedColorB = rgb.Blue();
+        }
+    }
+
     std::vector<StepSubshapeStyleSnapshot> captureSubshapeStyles(const XCAFPrs_DocumentNode& node)
     {
         const TDF_Label sourceLabel = node.RefLabel.IsNull() ? node.Label : node.RefLabel;
@@ -142,19 +171,71 @@ namespace
         return result;
     }
 
-    TDF_Label findStepLabel(Engine* engine, const ObjectEntry& entry)
+    OcctObjectId objectIdOfEntry(Engine* engine, const ObjectEntry& entry)
     {
-        if (engine == nullptr || entry.stepDocumentIndex < 0 || entry.stepNodeId.empty()) return TDF_Label();
-        const std::size_t documentIndex = static_cast<std::size_t>(entry.stepDocumentIndex);
-        if (documentIndex >= engine->stepDocuments.size()) return TDF_Label();
+        if (engine == nullptr) return 0;
+        for (const auto& pair : engine->objects)
+        {
+            if (&pair.second == &entry) return pair.first;
+        }
+        return 0;
+    }
+
+    TDF_Label findStepLabel(Engine* engine, ObjectEntry& entry)
+    {
+        if (engine == nullptr) return TDF_Label();
+
+        if (entry.stepDocumentIndex >= 0 && !entry.stepNodeId.empty())
+        {
+            const std::size_t documentIndex = static_cast<std::size_t>(entry.stepDocumentIndex);
+            if (documentIndex < engine->stepDocuments.size())
+            {
+                const Handle(TDocStd_Document)& document = engine->stepDocuments[documentIndex];
+                if (!document.IsNull())
+                {
+                    TopLoc_Location location;
+                    const TDF_Label label = XCAFPrs_DocumentExplorer::FindLabelFromPathId(
+                        document,
+                        TCollection_AsciiString(entry.stepNodeId.c_str()),
+                        location);
+                    if (!label.IsNull()) return label;
+                }
+            }
+        }
+
+        if (engine->stepDocuments.empty() || engine->lastStepImportObjectIds.empty()) return TDF_Label();
+        const OcctObjectId objectId = objectIdOfEntry(engine, entry);
+        if (objectId == 0) return TDF_Label();
+
+        std::size_t targetLeaf = engine->lastStepImportObjectIds.size();
+        for (std::size_t index = 0; index < engine->lastStepImportObjectIds.size(); ++index)
+        {
+            if (engine->lastStepImportObjectIds[index] == objectId)
+            {
+                targetLeaf = index;
+                break;
+            }
+        }
+        if (targetLeaf >= engine->lastStepImportObjectIds.size()) return TDF_Label();
+
+        const std::size_t documentIndex = engine->stepDocuments.size() - 1U;
         const Handle(TDocStd_Document)& document = engine->stepDocuments[documentIndex];
         if (document.IsNull()) return TDF_Label();
 
-        TopLoc_Location location;
-        return XCAFPrs_DocumentExplorer::FindLabelFromPathId(
-            document,
-            TCollection_AsciiString(entry.stepNodeId.c_str()),
-            location);
+        std::size_t leafIndex = 0;
+        XCAFPrs_DocumentExplorer explorer(document, XCAFPrs_DocumentExplorerFlags_None);
+        for (; explorer.More(); explorer.Next())
+        {
+            const XCAFPrs_DocumentNode& node = explorer.Current();
+            if (node.IsAssembly) continue;
+            if (leafIndex++ != targetLeaf) continue;
+
+            entry.stepDocumentIndex = static_cast<int>(documentIndex);
+            entry.stepNodeId = node.Id.ToCString();
+            rememberResolvedStyle(entry, node.Style);
+            return node.Label;
+        }
+        return TDF_Label();
     }
 
     std::string jsonEscape(const std::string& value)
@@ -324,9 +405,24 @@ namespace OcctBridge
 
     bool syncStepObjectColor(Engine* engine, ObjectEntry& entry)
     {
-        if (!entry.hasStoredColor) return false;
         const TDF_Label label = findStepLabel(engine, entry);
         if (label.IsNull()) return false;
+
+        if (!entry.hasStoredColor)
+        {
+            Quantity_Color current;
+            if (!entry.presentation.IsNull()) engine->context->Color(entry.presentation, current);
+            entry.hasStoredColor = true;
+            entry.storedColorR = current.Red();
+            entry.storedColorG = current.Green();
+            entry.storedColorB = current.Blue();
+        }
+        if (!entry.hasStoredAlpha)
+        {
+            entry.storedColorA = 1.0;
+            entry.hasStoredAlpha = true;
+        }
+
         const std::size_t documentIndex = static_cast<std::size_t>(entry.stepDocumentIndex);
         const Handle(TDocStd_Document)& document = engine->stepDocuments[documentIndex];
         const Handle(XCAFDoc_ColorTool) colorTool = XCAFDoc_DocumentTool::ColorTool(document->Main());
