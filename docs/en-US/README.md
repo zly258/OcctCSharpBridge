@@ -9,9 +9,9 @@ This directory is the English documentation set for `OcctCSharpBridge/main`.
 | Author | **zly258** |
 | Bridge version | **2.6.0** |
 | Native ABI | **4** |
-| Native exports / P/Invoke | **344 / 344** |
-| Public .NET types | **105** |
-| Viewer / Modeling API | **210 / 134** |
+| Native exports / P/Invoke | **347 / 347** |
+| Public .NET types | **110** |
+| Viewer / Modeling API | **213 / 134** |
 | OCCT | **7.9.0** |
 | .NET SDK | **10.0.302** |
 | Target Framework | **`net10.0-windows`** |
