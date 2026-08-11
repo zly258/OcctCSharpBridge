@@ -6,6 +6,8 @@ public sealed partial class DemoSession
 {
     public DemoCommandResult RunBSplineSurfaceTest()
     {
+        // Keep the viewer sample history-aware while validating the same non-ruled loft
+        // capability through the headless modeling API used by SDK consumers.
         var visibleResult = Execute(DemoCommandId.DemoLoft);
 
         using var model = new OcctModelingSession();
@@ -40,12 +42,59 @@ public sealed partial class DemoSession
                 "The B-Spline surface pole grid is inconsistent.",
                 "B 样条曲面的控制点网格数据不一致。"));
         }
+        if (data.UKnots.Count != data.UMultiplicities.Count || data.VKnots.Count != data.VMultiplicities.Count)
+        {
+            throw new InvalidOperationException(Local(
+                "The B-Spline knot and multiplicity data is inconsistent.",
+                "B 样条曲面的节点与重复度数据不一致。"));
+        }
+        if (data.Poles.Any(point => !point.IsFinite))
+        {
+            throw new InvalidOperationException(Local(
+                "The B-Spline surface contains a non-finite control point.",
+                "B 样条曲面包含非有限控制点。"));
+        }
+        if (data.Weights.Any(weight => !double.IsFinite(weight) || weight <= 0))
+        {
+            throw new InvalidOperationException(Local(
+                "The B-Spline surface contains an invalid weight.",
+                "B 样条曲面包含无效权重。"));
+        }
+        for (var index = 1; index < data.UKnots.Count; index++)
+        {
+            if (data.UKnots[index] <= data.UKnots[index - 1])
+            {
+                throw new InvalidOperationException(Local(
+                    "The B-Spline U knots are not strictly increasing.",
+                    "B 样条曲面的 U 向节点不是严格递增。"));
+            }
+        }
+        for (var index = 1; index < data.VKnots.Count; index++)
+        {
+            if (data.VKnots[index] <= data.VKnots[index - 1])
+            {
+                throw new InvalidOperationException(Local(
+                    "The B-Spline V knots are not strictly increasing.",
+                    "B 样条曲面的 V 向节点不是严格递增。"));
+            }
+        }
+
+        var firstPole = data.GetPole(0, 0);
+        var firstWeight = data.GetWeight(0, 0);
+        if (!firstPole.IsFinite || !double.IsFinite(firstWeight) || firstWeight <= 0)
+        {
+            throw new InvalidOperationException(Local(
+                "Indexed B-Spline pole access failed.",
+                "B 样条曲面控制点索引访问失败。"));
+        }
 
         var details = Local(
             $"B-Spline surface test passed: U degree {data.UDegree}, V degree {data.VDegree}, " +
-            $"poles {data.UPoleCount} x {data.VPoleCount} ({data.PoleCount}).",
+            $"poles {data.UPoleCount} x {data.VPoleCount} ({data.PoleCount}), " +
+            $"knots U/V {data.UKnotCount}/{data.VKnotCount}.",
             $"B 样条曲面测试通过：U 次数 {data.UDegree}，V 次数 {data.VDegree}，" +
-            $"控制点 {data.UPoleCount} x {data.VPoleCount}（共 {data.PoleCount} 个）。");
+            $"控制点 {data.UPoleCount} x {data.VPoleCount}（共 {data.PoleCount} 个），" +
+            $"U/V 节点数 {data.UKnotCount}/{data.VKnotCount}。" );
 
         return visibleResult with
         {
@@ -56,10 +105,12 @@ public sealed partial class DemoSession
 
     public DemoCommandResult RunMeshGenerationTest()
     {
+        // The first visible primitive is an 80 x 60 x 45 box. Validate that same
+        // representative geometry through the modeling mesh/provenance API.
         var visibleResult = Execute(DemoCommandId.DemoPrimitives);
 
         using var model = new OcctModelingSession();
-        var source = model.MakeBox(100, 80, 60);
+        var source = model.MakeBox(80, 60, 45, -220, -80, 0);
         var mesh = model.GetShapeMeshData(source, new OcctModelMeshParameters
         {
             LinearDeflection = 0.5,
@@ -76,6 +127,12 @@ public sealed partial class DemoSession
             throw new InvalidOperationException(Local(
                 "Mesh generation returned incomplete data.",
                 "网格生成返回的数据不完整。"));
+        }
+        if (mesh.Nodes.Any(node => !node.Point.IsFinite))
+        {
+            throw new InvalidOperationException(Local(
+                "Mesh generation returned a non-finite node.",
+                "网格生成返回了非有限节点。"));
         }
 
         var expectedNodeStart = 0;
@@ -106,8 +163,8 @@ public sealed partial class DemoSession
         }
 
         var details = Local(
-            $"Mesh generation test passed: faces {mesh.FaceCount}, nodes {mesh.NodeCount}, triangles {mesh.TriangleCount}.",
-            $"网格生成测试通过：面 {mesh.FaceCount}，节点 {mesh.NodeCount}，三角形 {mesh.TriangleCount}。" );
+            $"Mesh generation test passed: faces {mesh.FaceCount}, nodes {mesh.NodeCount}, triangles {mesh.TriangleCount}, provenance ranges {mesh.FaceRanges.Count}.",
+            $"网格生成测试通过：面 {mesh.FaceCount}，节点 {mesh.NodeCount}，三角形 {mesh.TriangleCount}，面来源区间 {mesh.FaceRanges.Count}。" );
 
         return visibleResult with
         {
