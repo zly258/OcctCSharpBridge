@@ -109,7 +109,11 @@ namespace
 
     void rememberResolvedStyle(ObjectEntry& entry, const XCAFPrs_Style& style)
     {
-        entry.storedVisible = style.IsVisible();
+        if (!entry.hasStoredVisibility)
+        {
+            entry.storedVisible = style.IsVisible();
+            entry.hasStoredVisibility = true;
+        }
         if (style.IsSetColorSurf())
         {
             const Quantity_ColorRGBA& rgba = style.GetColorSurfRGBA();
