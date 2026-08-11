@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using OcctDemo.Common;
 using OcctNet;
 
@@ -29,31 +29,10 @@ public sealed partial class MainForm : Form
         ApplyLanguage();
     }
 
-
-
-
-
-
-
-
-
-
-
-    private DemoSession Session => _session ?? throw new InvalidOperationException(DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified ? "OCCT 视口尚未初始化。" : "The OCCT viewport has not been initialized.");
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    private DemoSession Session => _session ?? throw new InvalidOperationException(
+        DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified
+            ? "OCCT 视口尚未初始化。"
+            : "The OCCT viewport has not been initialized.");
 
     private void WireEvents()
     {
@@ -61,17 +40,22 @@ public sealed partial class MainForm : Form
         _viewport.ObjectSelectionChanged += (_, args) =>
         {
             if (_session is null) return;
-            _session.ActiveObject = args.SelectedObject;
+            var singleSelection = args.SelectedObjects.Count == 1 ? args.SelectedObject : null;
+            _session.ActiveObject = singleSelection;
             _selectionStatus.Text = args.SelectedObjects.Count == 0
                 ? DemoLocalization.Text("Status.NoneSelected")
                 : DemoLocalization.Text("Status.Selected", args.SelectedObjects.Count);
-            SelectTreeNode(args.SelectedObject);
-            ShowObjectProperties(args.SelectedObject);
+            SelectTreeNode(singleSelection);
+            ShowSelectionProperties(args.SelectedObjects);
         };
-        _viewport.WorldPointChanged += (_, args) => _coordinateStatus.Text = $"X {args.WorldPoint.X:F3}  Y {args.WorldPoint.Y:F3}  Z {args.WorldPoint.Z:F3}";
+        _viewport.WorldPointChanged += (_, args) =>
+            _coordinateStatus.Text = $"X {args.WorldPoint.X:F3}  Y {args.WorldPoint.Y:F3}  Z {args.WorldPoint.Z:F3}";
         _objectTree.AfterSelect += ObjectTreeAfterSelect;
         _objectTree.AfterCheck += ObjectTreeAfterCheck;
-        _objectTree.NodeMouseClick += (_, args) => { if (args.Button == MouseButtons.Right) _objectTree.SelectedNode = args.Node; };
+        _objectTree.NodeMouseClick += (_, args) =>
+        {
+            if (args.Button == MouseButtons.Right) _objectTree.SelectedNode = args.Node;
+        };
         _objectTree.ContextMenuStrip = BuildTreeContextMenu();
         FormClosing += MainFormClosing;
         KeyDown += MainFormKeyDown;
@@ -82,7 +66,11 @@ public sealed partial class MainForm : Form
         _session = new DemoSession(_viewport.Engine);
         _session.ModelChanged += (_, _) => RefreshObjectTree();
         _session.HistoryChanged += (_, _) => UpdateHistoryUi();
-        _session.StatusChanged += (_, message) => { _commandStatus.Text = message; Log(message); };
+        _session.StatusChanged += (_, message) =>
+        {
+            _commandStatus.Text = message;
+            Log(message);
+        };
         _session.Engine.SetGradientBackground(Color.White, Color.FromArgb(202, 221, 238));
         _session.Engine.SetTriedronVisible(true);
         _session.Engine.SetViewCubeVisible(true);
@@ -100,94 +88,21 @@ public sealed partial class MainForm : Form
         UpdateHistoryUi();
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     private void ExecuteSafe(Action action)
     {
-        try { action(); }
+        try
+        {
+            action();
+        }
         catch (Exception exception)
         {
             var logPath = CrashReporter.Write("CAD-Winform", exception, "MainForm.ExecuteSafe");
-            var logMessage = string.IsNullOrWhiteSpace(logPath) ? string.Empty : $"{Environment.NewLine}{Environment.NewLine}Log: {logPath}";
+            var logMessage = string.IsNullOrWhiteSpace(logPath)
+                ? string.Empty
+                : $"{Environment.NewLine}{Environment.NewLine}Log: {logPath}";
             Log($"ERROR: {exception.Message}");
-            MessageBox.Show(this, exception.Message + logMessage, DemoLocalization.Text("Dialog.ErrorTitle"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, exception.Message + logMessage, DemoLocalization.Text("Dialog.ErrorTitle"),
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -195,10 +110,6 @@ public sealed partial class MainForm : Form
     {
         _logBox.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}{Environment.NewLine}");
     }
-
-
-
-
 
     private static ToolStripMenuItem MenuItem(string text, EventHandler handler, string? shortcut = null)
     {
@@ -229,10 +140,16 @@ public sealed partial class MainForm : Form
         return button;
     }
 
-    private static string CadFileFilter() => DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified ? "所有支持格式|*.step;*.stp;*.iges;*.igs;*.brep;*.rle;*.stl|STEP 文件|*.step;*.stp|IGES 文件|*.iges;*.igs|BREP 文件|*.brep;*.rle|STL 文件|*.stl|所有文件|*.*" : "All Supported Files|*.step;*.stp;*.iges;*.igs;*.brep;*.rle;*.stl|STEP Files|*.step;*.stp|IGES Files|*.iges;*.igs|BREP Files|*.brep;*.rle|STL Files|*.stl|All Files|*.*";
-    private static string SaveFileFilter() => DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified ? "STEP 文件|*.step;*.stp|IGES 文件|*.iges;*.igs|BREP 文件|*.brep|STL 文件|*.stl" : "STEP Files|*.step;*.stp|IGES Files|*.iges;*.igs|BREP Files|*.brep|STL Files|*.stl";
+    private static string CadFileFilter() => DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified
+        ? "所有支持格式|*.step;*.stp;*.iges;*.igs;*.brep;*.rle;*.stl|STEP 文件|*.step;*.stp|IGES 文件|*.iges;*.igs|BREP 文件|*.brep;*.rle|STL 文件|*.stl|所有文件|*.*"
+        : "All Supported Files|*.step;*.stp;*.iges;*.igs;*.brep;*.rle;*.stl|STEP Files|*.step;*.stp|IGES Files|*.iges;*.igs|BREP Files|*.brep;*.rle|STL Files|*.stl|All Files|*.*";
+
+    private static string SaveFileFilter() => DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified
+        ? "STEP 文件|*.step;*.stp|IGES 文件|*.iges;*.igs|BREP 文件|*.brep|STL 文件|*.stl"
+        : "STEP Files|*.step;*.stp|IGES Files|*.iges;*.igs|BREP Files|*.brep|STL Files|*.stl";
 
     private static string SelectionModeName(OcctSelectionMode mode) => DemoLocalization.SelectionMode(mode);
+
     private static string LightingPresetName(OcctLightingPreset preset) => preset switch
     {
         OcctLightingPreset.Neutral => Local("Neutral", "中性"),
@@ -240,8 +157,7 @@ public sealed partial class MainForm : Form
         OcctLightingPreset.Flat => Local("Flat", "平光"),
         _ => Local("Studio", "摄影棚")
     };
+
     private static string Local(string english, string chinese) =>
         DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified ? chinese : english;
-
-
 }
