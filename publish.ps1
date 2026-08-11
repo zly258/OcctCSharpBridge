@@ -376,10 +376,7 @@ function Resolve-NativeDependencySource {
         # distributions intentionally link a Release toolkit to a debug-named
         # third-party runtime (for example tbb12_debug.dll).
         $matches = @(Get-ChildItem -LiteralPath $OcctThirdPartyDir -Filter $Name -File -Recurse -ErrorAction SilentlyContinue |
-            Sort-Object \
-                @{ Expression = { if ($_.FullName -match '(?i)[\\/](debug|dbg)[\\/]') { 1 } else { 0 } } }, \
-                @{ Expression = { if ($_.DirectoryName -match '(?i)[\\/]bin([\\/]|$)') { 0 } else { 1 } } }, \
-                FullName)
+            Sort-Object @{ Expression = { if ($_.FullName -match '(?i)[\\/](debug|dbg)[\\/]') { 1 } else { 0 } } }, @{ Expression = { if ($_.DirectoryName -match '(?i)[\\/]bin([\\/]|$)') { 0 } else { 1 } } }, FullName)
         if ($matches.Count -gt 0) { return $matches[0].FullName }
     }
 
