@@ -69,7 +69,7 @@ The demo branch does **not** own a reverse synchronization script. SDK publicati
 .\publish.ps1
 ```
 
-The main publish flow generates the bilingual API Reference, runs the Release native/managed build and Native Smoke validation, creates the Binary SDK, then synchronizes `dist/win-x64` to `demo` through a temporary worktree. Managed regression tests remain available through the explicit test workflow and no longer block Binary SDK publication.
+The main publish flow generates the bilingual API Reference, runs the Release native/managed build, creates the Binary SDK, then synchronizes `dist/win-x64` to `demo` through a temporary worktree. Managed regression and Native Smoke remain explicit test targets and no longer block Binary SDK publication.
 
 ## Requirements
 
@@ -119,6 +119,28 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 .\publish.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64" -Zip
 ```
 
+All three demos are merged into one package directory and share one .NET, Bridge and OCCT runtime instead of creating three duplicated runtime trees:
+
+```text
+artifacts/publish/OcctCSharpBridge-Demo-all-win-x64/
+├─ CAD-Winform.exe
+├─ CAD-WPF.exe
+├─ CAD-Avalonia.exe
+├─ OcctDemo.Common.dll
+├─ OcctNet*.dll
+├─ OcctNative.dll
+├─ required OCCT 7.9 runtime modules
+└─ shared .NET/Avalonia runtime
+```
+
+The publisher copies only the OCCT toolkits used by the Bridge and their required transitive runtime dependencies. It no longer recursively copies the full OCCT/third-party SDK, so Qt, VTK, Tcl/Tk, Draw/Test and debug DLLs are excluded. A small CAF/XCAF runtime subset remains because OCCT's STEP/IGES toolkits depend on it internally; this does not mean the Demo or Bridge uses OCAF/XDE as its document architecture.
+
+Self-contained remains the default. When the target machine already has the .NET 10 Desktop Runtime, use a smaller framework-dependent package:
+
+```powershell
+.\publish.ps1 all Release -FrameworkDependent -Zip
+```
+
 The demo `publish.ps1` packages demo applications only. It consumes the Binary SDK and never builds Bridge source.
 
 ## Structure
@@ -147,13 +169,15 @@ publish.ps1                 Demo application publisher
 
 ## Runtime troubleshooting
 
-For `DllNotFoundException` or Win32 error 126, verify:
+For local `run.ps1`, if `DllNotFoundException` or Win32 error 126 occurs, verify:
 
 ```text
 application/OcctNative.dll
 %OCCT_ROOT%/win64/vc14/bin/TKernel.dll
-%OCCT_ROOT%/3rdparty-vc14-64/**/bin/*.dll
+%OCCT_ROOT%/3rdparty-vc14-64/**/bin/required runtime files
 ```
+
+The formal `publish.ps1` output places the required native runtime beside the three executables, so the target machine does not need a complete OCCT SDK installation.
 
 The Avalonia host uses a Windows child HWND, so WinForms, WPF and Avalonia demos all target Windows x64.
 
