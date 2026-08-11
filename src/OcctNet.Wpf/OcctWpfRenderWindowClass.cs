@@ -41,11 +41,15 @@ internal static class OcctWpfRenderWindowClass
                 Size = (uint)Marshal.SizeOf<WndClassEx>(),
                 Style = CsOwnDc,
                 WindowProcedure = Marshal.GetFunctionPointerForDelegate(WindowProc),
+                ClassExtraBytes = 0,
+                WindowExtraBytes = 0,
                 Instance = _moduleHandle,
+                Icon = IntPtr.Zero,
                 Cursor = LoadCursorW(IntPtr.Zero, new IntPtr(IdcArrow)),
                 BackgroundBrush = IntPtr.Zero,
                 MenuName = null,
-                ClassName = Name
+                ClassName = Name,
+                SmallIcon = IntPtr.Zero
             };
 
             if (RegisterClassExW(ref windowClass) == 0)
