@@ -96,11 +96,11 @@ internal static class WpfColorDialog
     [UnmanagedFunctionPointer(CallingConvention.Winapi)]
     private delegate IntPtr ColorHookProc(IntPtr dialogHandle, uint message, IntPtr wParam, IntPtr lParam);
 
-    [DllImport("comdlg32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [DllImport("comdlg32.dll", EntryPoint = "ChooseColorW", ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool ChooseColorW(ref ChooseColorOptions options);
 
-    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [DllImport("user32.dll", EntryPoint = "SetWindowTextW", CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetWindowTextW(IntPtr windowHandle, string text);
 }
