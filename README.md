@@ -33,6 +33,20 @@ src/OcctDemo.Avalonia
 
 All three desktop demos share the same product metadata and About information through `OcctDemo.Common/DemoProductInfo.cs`, so author, version and technology baseline cannot drift between WinForms, WPF and Avalonia.
 
+## Shared interaction and modeling coverage
+
+WinForms, WPF and Avalonia use the same demo behavior and cover the following interaction and modeling scenarios:
+
+- object, vertex, edge, wire, face, shell and solid selection filters; the WinForms toolbar selector is wired directly to the Viewer selection mode;
+- rectangle/Ctrl multi-selection shows only the selected object count instead of presenting the first object as the active property object;
+- all three Viewports consume the Binary SDK `ZoomSensitivity` API directly, defaulting to `1.0`, with mouse-wheel sensitivity configurable from the View menu;
+- Undo/Redo is driven by the shared history model; Avalonia menu and toolbar states refresh from `HistoryChanged` and `ModelChanged`;
+- the Avalonia main window, property area, log, status bar and parameter dialog use `Microsoft YaHei UI` consistently;
+- the Samples menu includes a **B-Spline Surface Test** that creates a real non-ruled loft and validates degrees, poles, weights, knots and multiplicities;
+- the Samples menu includes a **Mesh Generation Test** that calls `GetShapeMeshData` and validates face count, nodes, triangles and contiguous per-face provenance ranges.
+
+These are executable Bridge API tests rather than static screenshots; results are written to the demo command log.
+
 ## Binary SDK
 
 `main/publish.ps1` publishes the validated SDK into this branch:
@@ -48,14 +62,14 @@ dist/win-x64/
 └─ bridge-manifest.json
 ```
 
-The demo branch does **not** own a reverse synchronization script. SDK publication always starts from `main`:
+The demo branch does **not** own a reverse synchronization script. SDK publication always starts from `main`; the main script already provides the normal default OCCT root:
 
 ```powershell
 # main branch
-.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
+.\publish.ps1
 ```
 
-The main publish flow generates the bilingual API Reference, runs the Release native/managed build, managed tests and native smoke validation, creates the Binary SDK, then synchronizes `dist/win-x64` to `demo` through a temporary worktree.
+The main publish flow generates the bilingual API Reference, runs the Release native/managed build and Native Smoke validation, creates the Binary SDK, then synchronizes `dist/win-x64` to `demo` through a temporary worktree. Managed regression tests remain available through the explicit test workflow and no longer block Binary SDK publication.
 
 ## Requirements
 
