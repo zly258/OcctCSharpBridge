@@ -49,6 +49,7 @@ extern "C"
             ObjectEntry* entry = engine->findObject(objectId);
             if (entry == nullptr || entry->presentation.IsNull())
                 throw std::invalid_argument("Object ID does not exist.");
+            if (entry->kind == OcctObject_Shape) engine->invalidatePristineStepDocument();
             entry->presentation->SetLocalTransformation(transformFromMatrix(matrix3x4));
             entry->presentation->UpdateTransformation();
             engine->context->RecomputeSelectionOnly(entry->presentation);
@@ -82,6 +83,7 @@ extern "C"
             ObjectEntry* entry = engine->findObject(objectId);
             if (entry == nullptr || entry->presentation.IsNull())
                 throw std::invalid_argument("Object ID does not exist.");
+            if (entry->kind == OcctObject_Shape) engine->invalidatePristineStepDocument();
             entry->presentation->ResetTransformation();
             entry->presentation->UpdateTransformation();
             engine->context->RecomputeSelectionOnly(entry->presentation);
