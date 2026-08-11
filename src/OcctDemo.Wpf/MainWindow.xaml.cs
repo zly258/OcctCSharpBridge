@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using OcctDemo.Common;
 using OcctNet;
 using DrawingColor = System.Drawing.Color;
@@ -43,12 +43,13 @@ public partial class MainWindow : System.Windows.Window
         Viewport.ObjectSelectionChanged += (_, args) => Dispatcher.InvokeAsync(() =>
         {
             if (_session is null) return;
-            _session.ActiveObject = args.SelectedObject;
+            var singleSelection = args.SelectedObjects.Count == 1 ? args.SelectedObject : null;
+            _session.ActiveObject = singleSelection;
             SelectionStatus.Text = args.SelectedObjects.Count == 0
                 ? DemoLocalization.Text("Status.NoneSelected")
                 : DemoLocalization.Text("Status.Selected", args.SelectedObjects.Count);
-            SelectTreeNode(args.SelectedObject);
-            ShowObjectProperties(args.SelectedObject);
+            SelectTreeNode(singleSelection);
+            ShowSelectionProperties(args.SelectedObjects);
         });
         Viewport.WorldPointChanged += (_, args) => Dispatcher.InvokeAsync(() =>
             CoordinateStatus.Text = $"X {args.WorldPoint.X:F3}  Y {args.WorldPoint.Y:F3}  Z {args.WorldPoint.Z:F3}");
@@ -99,97 +100,6 @@ public partial class MainWindow : System.Windows.Window
         UpdateHistoryUi();
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     private void ExecuteSafe(Action action)
     {
         try
@@ -215,10 +125,6 @@ public partial class MainWindow : System.Windows.Window
         LogBox.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}{Environment.NewLine}");
         LogBox.ScrollToEnd();
     }
-
-
-
-
 
     private static string MenuHeader(string key) =>
         DemoLocalization.Text(key).Replace("&", "_", StringComparison.Ordinal);
@@ -264,6 +170,7 @@ public partial class MainWindow : System.Windows.Window
         : "STEP Files|*.step;*.stp|IGES Files|*.iges;*.igs|BREP Files|*.brep|STL Files|*.stl";
 
     private static string SelectionModeName(OcctSelectionMode mode) => DemoLocalization.SelectionMode(mode);
+
     private static string LightingPresetName(OcctLightingPreset preset) => preset switch
     {
         OcctLightingPreset.Neutral => Local("Neutral", "中性"),
@@ -271,8 +178,6 @@ public partial class MainWindow : System.Windows.Window
         OcctLightingPreset.Flat => Local("Flat", "平光"),
         _ => Local("Studio", "摄影棚")
     };
-
-
 
     private static string Local(string english, string chinese) =>
         DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified ? chinese : english;
