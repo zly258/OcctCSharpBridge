@@ -122,6 +122,7 @@ public sealed partial class OcctEngine : IDisposable
         OcctShape item => item.OwnerId,
         OcctText item => item.OwnerId,
         OcctDimension item => item.OwnerId,
+        OcctPoint item => item.OwnerId,
         _ => long.MinValue
     };
 

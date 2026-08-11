@@ -167,6 +167,7 @@ public sealed partial class OcctEngine
         OcctObjectKind.Shape => new OcctShape(id, _ownerId),
         OcctObjectKind.Text => new OcctText(id, _ownerId),
         OcctObjectKind.Dimension => new OcctDimension(id, _ownerId),
+        OcctObjectKind.Point => new OcctPoint(id, _ownerId),
         _ => throw new InvalidOperationException($"Unsupported OCCT object kind: {kind}.")
     };
 }
