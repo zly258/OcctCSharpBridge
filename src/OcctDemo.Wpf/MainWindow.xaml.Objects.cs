@@ -9,6 +9,7 @@ public partial class MainWindow
 {
     private const string StepPathPrefix = "step-path:";
     private const char StepPathSeparator = '\u001F';
+    private bool _syncingObjectSelection;
 
     private void RefreshObjectTree()
     {
@@ -28,12 +29,12 @@ public partial class MainWindow
 
             foreach (var value in Session.Engine.Objects)
             {
+                var hierarchy = value.Kind == OcctObjectKind.Shape ? GetStepHierarchy(value) : Array.Empty<string>();
                 Controls.TreeViewItem parent;
                 if (value.Kind == OcctObjectKind.Shape)
                 {
-                    var path = GetStepHierarchy(value);
-                    parent = path.Count > 1
-                        ? GetOrCreateAssemblyNode(shapeRoot, path.Take(path.Count - 1), assemblyNodes)
+                    parent = hierarchy.Count > 1
+                        ? GetOrCreateAssemblyNode(shapeRoot, hierarchy.Take(hierarchy.Count - 1), assemblyNodes)
                         : shapeRoot;
                 }
                 else
@@ -43,7 +44,7 @@ public partial class MainWindow
 
                 var visible = new Controls.CheckBox
                 {
-                    Content = DisplayObjectName(value),
+                    Content = hierarchy.Count > 0 ? hierarchy[^1] : Session.SafeName(value),
                     IsChecked = true,
                     Tag = value
                 };
@@ -146,7 +147,7 @@ public partial class MainWindow
 
     private void ObjectTreeSelectedItemChanged(object sender, System.Windows.RoutedPropertyChangedEventArgs<object> e)
     {
-        if (_session is null || e.NewValue is not Controls.TreeViewItem { Tag: IOcctObject value }) return;
+        if (_syncingObjectSelection || _session is null || e.NewValue is not Controls.TreeViewItem { Tag: IOcctObject value }) return;
         Session.ActiveObject = value;
         Session.Engine.SelectObject(value, false);
         Viewport.RaiseSelectionChanged();
@@ -210,9 +211,17 @@ public partial class MainWindow
     private void SelectTreeNode(IOcctObject? value)
     {
         if (value is null || !_objectNodes.TryGetValue(value.Id, out var item)) return;
-        ExpandAncestors(item);
-        item.IsSelected = true;
-        item.BringIntoView();
+        _syncingObjectSelection = true;
+        try
+        {
+            ExpandAncestors(item);
+            item.IsSelected = true;
+            item.BringIntoView();
+        }
+        finally
+        {
+            _syncingObjectSelection = false;
+        }
     }
 
     private static void ExpandAncestors(Controls.TreeViewItem item)
