@@ -60,19 +60,22 @@ $Projects = [ordered]@{
     }
 }
 
-# Keep this list aligned with src/OcctNative/CMakeLists.txt on main. These are
-# the OCCT toolkits directly linked by OcctNative; Draw/Test/Inspector/OCAF/XDE
-# toolkits are intentionally not part of the demo application package.
+# Direct OcctNative toolkits plus the OCCT 7.9 runtime closure required by
+# TKV3d and the STEP/IGES/STL exchange toolkits. CAF/XCAF modules here are
+# internal OCCT runtime dependencies of exchange support; the Bridge still does
+# not expose or use OCAF/XDE as its document architecture.
 $RequiredOcctRuntimeModules = @(
     "TKernel", "TKMath", "TKG2d", "TKG3d", "TKGeomBase", "TKBRep",
     "TKGeomAlgo", "TKTopAlgo", "TKPrim", "TKBO", "TKBool", "TKFillet",
     "TKOffset", "TKMesh", "TKShHealing", "TKService", "TKV3d", "TKOpenGl",
-    "TKXSBase", "TKDE", "TKDESTEP", "TKDEIGES", "TKDESTL"
+    "TKHLR", "TKXSBase", "TKDE", "TKDESTEP", "TKDEIGES", "TKDESTL",
+    "TKCDF", "TKLCAF", "TKCAF", "TKVCAF", "TKXCAF"
 )
 
-# Small native dependencies used by the official Windows OCCT runtime. Copy
-# only known runtime candidates when present instead of recursively copying the
-# complete third-party SDK (Qt, VTK, Tcl/Tk, FFmpeg, debug binaries, etc.).
+# Native third-party runtime candidates used by the selected OCCT toolkits.
+# Qt, VTK, Tcl/Tk, Draw/Test tooling and debug binaries are intentionally not
+# copied. FFmpeg/OpenVR are retained only when present because TKService may be
+# built with those optional features in the installed OCCT package.
 $ThirdPartyRuntimeCandidates = @(
     "tbb12.dll",
     "tbbmalloc.dll",
@@ -80,6 +83,12 @@ $ThirdPartyRuntimeCandidates = @(
     "freetype.dll",
     "FreeImage.dll",
     "FreeImagePlus.dll",
+    "avcodec-57.dll",
+    "avdevice-57.dll",
+    "avfilter-6.dll",
+    "avformat-57.dll",
+    "avutil-55.dll",
+    "swscale-4.dll",
     "zlib.dll",
     "zlib1.dll",
     "liblzma.dll",
