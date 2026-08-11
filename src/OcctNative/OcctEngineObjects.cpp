@@ -79,6 +79,7 @@ extern "C"
             ObjectEntry* entry = e->findObject(id);
             if (entry == nullptr) throw std::invalid_argument("Object ID does not exist.");
             entry->name = name == nullptr ? "" : name;
+            if (entry->kind == OcctObject_Shape) e->invalidatePristineStepDocument();
         });
     }
 
@@ -104,6 +105,7 @@ extern "C"
             entry->storedColorR = value.Red();
             entry->storedColorG = value.Green();
             entry->storedColorB = value.Blue();
+            if (entry->kind == OcctObject_Shape) e->invalidatePristineStepDocument();
             e->context->SetColor(entry->presentation, value, Standard_False);
             e->requestRedraw();
         });
@@ -117,6 +119,7 @@ extern "C"
         {
             ObjectEntry* entry = e->findObject(id);
             if (entry == nullptr) throw std::invalid_argument("Object ID does not exist.");
+            if (entry->kind == OcctObject_Shape) e->invalidatePristineStepDocument();
             e->context->SetTransparency(entry->presentation, std::clamp(value, 0.0, 1.0), Standard_False);
             e->requestRedraw();
         });
@@ -177,6 +180,7 @@ extern "C"
             ObjectEntry* entry = e->findObject(id);
             if (entry == nullptr || entry->presentation.IsNull())
                 throw std::invalid_argument("Object ID does not exist.");
+            if (entry->kind == OcctObject_Shape) e->invalidatePristineStepDocument();
             e->context->SetMaterial(
                 entry->presentation,
                 Graphic3d_MaterialAspect(materialName(material)),
@@ -223,6 +227,9 @@ extern "C"
             }
             e->objects.clear();
             e->objectIdByApplicationTag.clear();
+            e->stepDocuments.clear();
+            e->pristineStepDocument.Nullify();
+            e->pristineStepDocumentMatchesScene = false;
             e->nextId = 1;
             e->context->ClearSelected(Standard_False);
             e->requestRedraw();
