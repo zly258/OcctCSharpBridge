@@ -267,6 +267,7 @@ namespace
         }
 
         engine->stepDocuments.push_back(document);
+        engine->lastStepImportObjectIds = importedIds;
         if (sceneWasEmpty)
         {
             engine->pristineStepDocument = document;
