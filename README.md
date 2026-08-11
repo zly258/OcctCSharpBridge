@@ -13,10 +13,10 @@ OcctCSharpBridge is a Windows x64 bridge from **Open CASCADE Technology 7.9.0** 
 | Author | **zly258** |
 | Bridge version | **2.6.0** |
 | Native ABI | **4** |
-| Native exports | **344** |
-| Managed P/Invoke mappings | **344** |
-| Public .NET types | **108** |
-| Viewer / Modeling API | **210 / 134** |
+| Native exports | **347** |
+| Managed P/Invoke mappings | **347** |
+| Public .NET types | **110** |
+| Viewer / Modeling API | **213 / 134** |
 | Open CASCADE Technology | **7.9.0** |
 | .NET SDK | **10.0.302** |
 | Target Framework | **`net10.0-windows`** |
