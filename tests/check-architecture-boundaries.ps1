@@ -1,4 +1,4 @@
-﻿param(
+param(
     [string]$RepositoryRoot = (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
 )
 
@@ -59,6 +59,22 @@ function Assert-Reference {
     }
 }
 
+function Assert-NoUiSiblingReferences {
+    param(
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][string[]]$References,
+        [Parameter(Mandatory = $true)][string]$ProjectName
+    )
+
+    $siblings = @("OcctNet.WinForms", "OcctNet.Wpf", "OcctNet.Avalonia")
+    foreach ($reference in $References) {
+        foreach ($sibling in $siblings) {
+            if ($reference -match "(?i)\\$([regex]::Escape($sibling))\\") {
+                throw "$ProjectName must not depend on sibling UI host project $sibling."
+            }
+        }
+    }
+}
+
 function Test-TrackedPath {
     param([Parameter(Mandatory = $true)][string]$RelativePath)
 
@@ -90,14 +106,20 @@ $winFormsReferences = @(Get-ProjectReferences $winForms)
 $wpfReferences = @(Get-ProjectReferences $wpf)
 $avaloniaReferences = @(Get-ProjectReferences $avalonia)
 Assert-Reference $winFormsReferences "..\OcctNet\OcctNet.csproj" "OcctNet.WinForms"
-Assert-Reference $wpfReferences "..\OcctNet.WinForms\OcctNet.WinForms.csproj" "OcctNet.Wpf"
+Assert-Reference $wpfReferences "..\OcctNet\OcctNet.csproj" "OcctNet.Wpf"
 Assert-Reference $avaloniaReferences "..\OcctNet\OcctNet.csproj" "OcctNet.Avalonia"
+Assert-NoUiSiblingReferences $winFormsReferences "OcctNet.WinForms"
+Assert-NoUiSiblingReferences $wpfReferences "OcctNet.Wpf"
+Assert-NoUiSiblingReferences $avaloniaReferences "OcctNet.Avalonia"
 
 if ((Get-ProjectProperty $winForms "UseWindowsForms") -ne "true") {
     throw "OcctNet.WinForms must enable Windows Forms."
 }
-if ((Get-ProjectProperty $wpf "UseWPF") -ne "true" -or (Get-ProjectProperty $wpf "UseWindowsForms") -ne "true") {
-    throw "OcctNet.Wpf must enable WPF and Windows Forms hosting."
+if ((Get-ProjectProperty $wpf "UseWPF") -ne "true") {
+    throw "OcctNet.Wpf must enable WPF."
+}
+if (-not [string]::IsNullOrWhiteSpace((Get-ProjectProperty $wpf "UseWindowsForms"))) {
+    throw "OcctNet.Wpf must remain independent from Windows Forms."
 }
 $avaloniaPackages = @(Get-PackageReferences $avalonia)
 if ("Avalonia" -notin $avaloniaPackages) {
@@ -170,4 +192,4 @@ foreach ($legacyFile in @(
 }
 
 $layoutName = if ($isDemoBranchLayout) { "demo" } else { "main" }
-Write-Host "[architecture] Core/UI dependency direction, $layoutName branch layout, and no-compatibility boundary validated." -ForegroundColor Green
+Write-Host "[architecture] Core/UI dependency direction, independent UI hosts, $layoutName branch layout, and no-compatibility boundary validated." -ForegroundColor Green
