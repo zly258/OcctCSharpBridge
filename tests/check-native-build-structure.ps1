@@ -48,22 +48,23 @@ foreach ($legacyToolkit in @("TKSTEPBase", "TKSTEPAttr", "TKSTEP209", "TKSTEP", 
     }
 }
 
-foreach ($requiredToolkit in @("TKDESTEP", "TKDEIGES", "TKDESTL")) {
+foreach ($requiredToolkit in @("TKDESTEP", "TKDEIGES", "TKDESTL", "TKLCAF", "TKCAF", "TKXCAF")) {
     if (-not $cmakeText.Contains($requiredToolkit)) {
-        throw "Required OCCT 7.9 data-exchange toolkit is missing: $requiredToolkit"
+        throw "Required OCCT 7.9 data-exchange/XDE toolkit is missing: $requiredToolkit"
     }
-}
-
-if ($cmakeText -match 'OcctOcaf|occt_ocaf_|\b(?:TKCDF|TKLCAF|TKCAF|TKXCAF|TKBinL|TKXmlL|TKBinXCAF|TKXmlXCAF)\b') {
-    throw "OCAF/XDE input remains in the reusable native build."
 }
 
 $nativeFiles = @(Get-ChildItem $nativeRoot -File -Recurse | Where-Object {
     $_.Extension -in @('.h', '.hpp', '.hxx', '.cpp')
 })
 $nativeText = ($nativeFiles | ForEach-Object { [System.IO.File]::ReadAllText($_.FullName) }) -join "`n"
-if ($nativeText -match '\bocct_ocaf_[A-Za-z0-9_]*\b') {
-    throw "OCAF/XDE C ABI must not be present in the reusable bridge."
+
+if ($nativeText -match '\bSTEPCAFControl_(?:Reader|Writer)\b') {
+    foreach ($requiredXdeType in @("XCAFDoc_ShapeTool", "XCAFDoc_ColorTool")) {
+        if ($nativeText -notmatch "\b$requiredXdeType\b") {
+            throw "Structured STEP exchange uses STEPCAF but is missing required XDE support: $requiredXdeType"
+        }
+    }
 }
 
-Write-Host "[native-build] CMake source inventory, OCCT 7.9 exchange toolkits, and no-OCAF/XDE native boundary validated." -ForegroundColor Green
+Write-Host "[native-build] CMake source inventory and OCCT 7.9 exchange/XDE toolkits validated." -ForegroundColor Green
