@@ -83,8 +83,58 @@ function Invoke-Checked {
 }
 
 function Get-SelectedKeys {
-    if ($Target -eq "all") { return @("winform", "wpf", "avalonia") }
+    if ($Target -eq "all") {
+        # WPF enables both UseWPF and UseWindowsForms, so its WindowsDesktop
+        # self-contained runtime is the canonical superset shared by all three
+        # applications in the merged package.
+        return @("wpf", "winform", "avalonia")
+    }
     return @($Target)
+}
+
+function Get-ManagedAssemblyIdentity {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    try {
+        $assemblyName = [System.Reflection.AssemblyName]::GetAssemblyName($Path)
+        $tokenBytes = $assemblyName.GetPublicKeyToken()
+        $token = if ($null -eq $tokenBytes -or $tokenBytes.Length -eq 0) {
+            ""
+        }
+        else {
+            -join ($tokenBytes | ForEach-Object { $_.ToString("x2") })
+        }
+
+        return [pscustomobject]@{
+            Name = $assemblyName.Name
+            Version = $assemblyName.Version
+            PublicKeyToken = $token
+        }
+    }
+    catch {
+        return $null
+    }
+}
+
+function Test-SharedDesktopFrameworkAssembly {
+    param(
+        [Parameter(Mandatory = $true)][string]$Source,
+        [Parameter(Mandatory = $true)][string]$Destination
+    )
+
+    $fileName = [System.IO.Path]::GetFileName($Source)
+    if ($fileName -notmatch '^(?i)(System\.|Microsoft\.|WindowsBase(?:\.resources)?\.dll$|Presentation(?:Core|Framework|UI)(?:\.resources)?\.dll$|ReachFramework(?:\.resources)?\.dll$|UIAutomation(?:Client|ClientSideProviders|Provider|Types)(?:\.resources)?\.dll$|WindowsFormsIntegration(?:\.resources)?\.dll$)') {
+        return $false
+    }
+
+    $sourceIdentity = Get-ManagedAssemblyIdentity -Path $Source
+    $destinationIdentity = Get-ManagedAssemblyIdentity -Path $Destination
+    if ($null -eq $sourceIdentity -or $null -eq $destinationIdentity) { return $false }
+
+    return
+        $sourceIdentity.Name -eq $destinationIdentity.Name -and
+        $sourceIdentity.Version -eq $destinationIdentity.Version -and
+        $sourceIdentity.PublicKeyToken -eq $destinationIdentity.PublicKeyToken
 }
 
 function Copy-MergedFile {
@@ -102,6 +152,13 @@ function Copy-MergedFile {
         $sourceHash = (Get-FileHash -LiteralPath $Source -Algorithm SHA256).Hash
         $destinationHash = (Get-FileHash -LiteralPath $Destination -Algorithm SHA256).Hash
         if ($sourceHash -eq $destinationHash) { return }
+
+        if ($UseSelfContained -and (Test-SharedDesktopFrameworkAssembly -Source $Source -Destination $Destination)) {
+            $identity = Get-ManagedAssemblyIdentity -Path $Destination
+            Write-Host "[merge] Shared desktop runtime: $([System.IO.Path]::GetFileName($Destination)) $($identity.Version) (keeping canonical WPF copy)" -ForegroundColor DarkGray
+            return
+        }
+
         throw "Publish output collision contains different files: $Destination"
     }
 
