@@ -13,13 +13,14 @@
     "languageVersion": "14.0"
   },
   "api": {
-    "nativeExports": 344,
-    "managedPInvokes": 344,
-    "publicNetTypes": 108,
-    "viewer": 210,
+    "nativeExports": 347,
+    "managedPInvokes": 347,
+    "publicNetTypes": 110,
+    "viewer": 213,
     "modeling": 134,
     "nativeHeaders": [
       "OcctNative.h",
+      "OcctPoints.h",
       "OcctSelectionOverlay.h",
       "OcctSelectionState.h",
       "OcctModeling.h",
