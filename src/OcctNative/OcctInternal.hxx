@@ -78,6 +78,7 @@ namespace OcctBridge
         std::unordered_map<OcctObjectId, ObjectEntry> objects;
         std::unordered_map<std::string, OcctObjectId> objectIdByApplicationTag;
         std::vector<Handle(TDocStd_Document)> stepDocuments;
+        std::vector<OcctObjectId> lastStepImportObjectIds;
         Handle(TDocStd_Document) pristineStepDocument;
         bool pristineStepDocumentMatchesScene = false;
         OcctObjectId nextId = 1;
