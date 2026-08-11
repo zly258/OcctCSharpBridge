@@ -9,9 +9,9 @@
 | Author | **zly258** |
 | Bridge Version | **2.6.0** |
 | Native ABI | **4** |
-| Native exports / P/Invoke | **344 / 344** |
-| Public .NET types | **105** |
-| Viewer / Modeling API | **210 / 134** |
+| Native exports / P/Invoke | **347 / 347** |
+| Public .NET types | **110** |
+| Viewer / Modeling API | **213 / 134** |
 | Open CASCADE Technology | **7.9.0** |
 | .NET SDK | **10.0.302** |
 | Target Framework | **`net10.0-windows`** |
@@ -78,30 +78,3 @@ docs/en-US/api/native-abi.md
 ```
 
 生成过程校验当前公开 .NET 类型和 Native C ABI 导出数量，防止接口文档与 `bridge-contract.json` 漂移。
-
-## 5. Binary SDK 与 demo
-
-Binary SDK：
-
-```powershell
-.\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-正式发布：
-
-```powershell
-.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-`demo` 不保存 Bridge 源码，也不维护反向同步脚本；Binary SDK 统一由 `main/publish.ps1` 发布。
-
-## 6. 文档维护原则
-
-1. **代码和 `bridge-contract.json` 是机器可读事实源。**
-2. **中文与英文目录章节对应。** 能力变化时同步更新语义。
-3. **API Reference 自动生成。** 精确成员签名和 Native ABI 不依赖手工抄写。
-4. **只记录已实现能力。**
-5. **公共 API 使用真实类型和方法名。**
-6. **Author 始终使用 `zly258`。**
-7. **不恢复旧兼容层。**
-8. **不使用 GitHub Actions 替代真实 Windows/MSVC/OCCT 本地验证。**
