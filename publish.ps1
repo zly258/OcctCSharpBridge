@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Position = 0)]
     [ValidateSet("all", "winform", "wpf", "avalonia")]
     [string]$Target = "all",
@@ -100,7 +100,7 @@ function Get-RuntimePackAssetNames {
     )
 
     $result = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-    if (-not $UseSelfContained) { return $result }
+    if (-not $UseSelfContained) { return ,$result }
 
     $applicationName = [System.IO.Path]::GetFileNameWithoutExtension($Executable)
     $depsPath = Join-Path $SourceRoot "$applicationName.deps.json"
@@ -117,31 +117,43 @@ function Get-RuntimePackAssetNames {
         throw "Self-contained dependency manifest contains no runtime-pack libraries: $depsPath"
     }
 
-    $targetProperty = @($deps.targets.PSObject.Properties) | Select-Object -First 1
-    if ($null -eq $targetProperty) {
+    # Self-contained .deps.json files can contain more than one target graph.
+    # In .NET 10 the RID-specific runtime-pack entries are not guaranteed to be
+    # in the first graph, so inspect every graph instead of selecting the first.
+    $targetProperties = @($deps.targets.PSObject.Properties)
+    if ($targetProperties.Count -eq 0) {
         throw "Dependency manifest contains no target graph: $depsPath"
     }
-    $targetGraph = $targetProperty.Value
 
-    foreach ($libraryName in $runtimePackLibraries) {
-        $libraryProperty = $targetGraph.PSObject.Properties[$libraryName]
-        if ($null -eq $libraryProperty) { continue }
-        $library = $libraryProperty.Value
+    foreach ($targetProperty in $targetProperties) {
+        $targetGraph = $targetProperty.Value
 
-        foreach ($sectionName in @("runtime", "runtimeTargets", "native", "resources")) {
-            $sectionProperty = $library.PSObject.Properties[$sectionName]
-            if ($null -eq $sectionProperty -or $null -eq $sectionProperty.Value) { continue }
+        foreach ($libraryName in $runtimePackLibraries) {
+            $libraryProperty = $targetGraph.PSObject.Properties[$libraryName]
+            if ($null -eq $libraryProperty) { continue }
+            $library = $libraryProperty.Value
 
-            foreach ($asset in $sectionProperty.Value.PSObject.Properties) {
-                $fileName = [System.IO.Path]::GetFileName([string]$asset.Name)
-                if (-not [string]::IsNullOrWhiteSpace($fileName)) {
-                    [void]$result.Add($fileName)
+            foreach ($sectionName in @("runtime", "runtimeTargets", "native", "resources")) {
+                $sectionProperty = $library.PSObject.Properties[$sectionName]
+                if ($null -eq $sectionProperty -or $null -eq $sectionProperty.Value) { continue }
+
+                foreach ($asset in $sectionProperty.Value.PSObject.Properties) {
+                    $fileName = [System.IO.Path]::GetFileName([string]$asset.Name)
+                    if (-not [string]::IsNullOrWhiteSpace($fileName)) {
+                        [void]$result.Add($fileName)
+                    }
                 }
             }
         }
     }
 
-    return $result
+    if ($result.Count -eq 0) {
+        throw "Self-contained dependency manifest contains runtime-pack libraries but no runtime-pack assets: $depsPath"
+    }
+
+    # Prevent PowerShell from enumerating the HashSet into the output pipeline.
+    # This guarantees a stable collection object even when it is empty.
+    return ,$result
 }
 
 function Copy-MergedFile {
