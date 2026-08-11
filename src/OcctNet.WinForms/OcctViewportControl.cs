@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -58,6 +58,7 @@ public sealed class OcctViewportControl : Control
     private long _lastHoverTimestamp;
     private long _lastWorldPointTimestamp;
     private bool _enableDefaultInteraction = true;
+    private double _zoomSensitivity = 1.0;
 
     public OcctViewportControl()
     {
@@ -87,6 +88,13 @@ public sealed class OcctViewportControl : Control
                 CancelRectangleSelection();
             }
         }
+    }
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public double ZoomSensitivity
+    {
+        get => _zoomSensitivity;
+        set => _zoomSensitivity = OcctViewportInteractionPolicy.NormalizeZoomSensitivity(value);
     }
 
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -315,7 +323,7 @@ public sealed class OcctViewportControl : Control
     {
         base.OnMouseWheel(e);
         if (EnableDefaultInteraction && _engine?.IsInitialized == true)
-            TryInvoke(() => _engine.Zoom(OcctViewportInteractionPolicy.ZoomFactor(e.Delta)));
+            TryInvoke(() => _engine.Zoom(OcctViewportInteractionPolicy.ZoomFactor(e.Delta, ZoomSensitivity)));
     }
 
     protected override void OnMouseCaptureChanged(EventArgs e)
