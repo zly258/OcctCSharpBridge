@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using OcctDemo.Common;
 using OcctNet;
 using DrawingColor = System.Drawing.Color;
@@ -37,8 +37,9 @@ public partial class MainWindow
         }
         BuildMenus();
         BuildToolbar();
+        ApplyDemoEnhancements();
         RefreshObjectTree();
-        ShowObjectProperties(_session?.ActiveObject);
+        ShowSelectionProperties(_session?.Engine.SelectedObjects ?? Array.Empty<IOcctObject>());
     }
 
     private void ApplyViewCubeLanguage()
