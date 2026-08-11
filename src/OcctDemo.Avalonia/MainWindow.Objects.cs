@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -87,7 +87,7 @@ public sealed partial class MainWindow
             _refreshingTree = false;
         }
 
-        ShowObjectProperties(Session.ActiveObject);
+        ShowSelectionProperties(Session.Engine.SelectedObjects);
         _selectionStatus.Text = Local(
             $"Objects {Session.Engine.ObjectCount} / Shapes {Session.Engine.ShapeCount}",
             $"对象 {Session.Engine.ObjectCount} / 形体 {Session.Engine.ShapeCount}");
@@ -128,9 +128,40 @@ public sealed partial class MainWindow
         _selectionStatus.Text = Local($"Current: {Session.SafeName(value)}", $"当前：{Session.SafeName(value)}");
     }
 
+    private void ShowSelectionProperties(IReadOnlyList<IOcctObject> selectedObjects)
+    {
+        if (selectedObjects.Count == 0)
+        {
+            ShowObjectProperties(_session?.ActiveObject);
+            return;
+        }
+        if (selectedObjects.Count == 1)
+        {
+            ShowObjectProperties(selectedObjects[0]);
+            return;
+        }
+
+        _propertyPanel.Children.Clear();
+        AddPropertyHeader();
+        AddPropertyRow(
+            Local("Selection", "选择"),
+            Local($"{selectedObjects.Count} objects selected", $"已选择 {selectedObjects.Count} 个对象"));
+    }
+
     private void ShowObjectProperties(IOcctObject? value)
     {
         _propertyPanel.Children.Clear();
+        AddPropertyHeader();
+        if (value is null || _session is null) return;
+
+        foreach (var property in Session.DescribeObject(value))
+        {
+            AddPropertyRow(property.Key, property.Value);
+        }
+    }
+
+    private void AddPropertyHeader()
+    {
         var header = new Grid
         {
             ColumnDefinitions = new ColumnDefinitions("2*,3*"),
@@ -143,23 +174,22 @@ public sealed partial class MainWindow
         header.Children.Add(nameHeader);
         header.Children.Add(valueHeader);
         _propertyPanel.Children.Add(header);
+    }
 
-        if (value is null || _session is null) return;
-        foreach (var property in Session.DescribeObject(value))
+    private void AddPropertyRow(string nameText, string valueText)
+    {
+        var row = new Grid
         {
-            var row = new Grid
-            {
-                ColumnDefinitions = new ColumnDefinitions("2*,3*"),
-                Background = AvaloniaBrushes.White,
-                Margin = new Thickness(0, 0, 0, 1)
-            };
-            var name = new TextBlock { Text = property.Key, Margin = new Thickness(6, 4), TextWrapping = TextWrapping.Wrap };
-            var propertyValue = new TextBlock { Text = property.Value, Margin = new Thickness(6, 4), TextWrapping = TextWrapping.Wrap };
-            Grid.SetColumn(propertyValue, 1);
-            row.Children.Add(name);
-            row.Children.Add(propertyValue);
-            _propertyPanel.Children.Add(row);
-        }
+            ColumnDefinitions = new ColumnDefinitions("2*,3*"),
+            Background = AvaloniaBrushes.White,
+            Margin = new Thickness(0, 0, 0, 1)
+        };
+        var name = new TextBlock { Text = nameText, Margin = new Thickness(6, 4), TextWrapping = TextWrapping.Wrap };
+        var propertyValue = new TextBlock { Text = valueText, Margin = new Thickness(6, 4), TextWrapping = TextWrapping.Wrap };
+        Grid.SetColumn(propertyValue, 1);
+        row.Children.Add(name);
+        row.Children.Add(propertyValue);
+        _propertyPanel.Children.Add(row);
     }
 
     private void SelectTreeNode(IOcctObject? value)
