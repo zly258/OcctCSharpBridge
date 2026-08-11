@@ -30,6 +30,8 @@ namespace OcctDemo.Avalonia;
 
 public sealed partial class MainWindow
 {
+    private bool _syncingObjectSelection;
+
     private void RefreshObjectTree()
     {
         if (_session is null) return;
@@ -40,12 +42,16 @@ public sealed partial class MainWindow
             var shapeItems = new List<object>();
             var textItems = new List<object>();
             var dimensionItems = new List<object>();
+            var assemblyNodes = new Dictionary<string, (TreeViewItem Node, List<object> Children)>(StringComparer.Ordinal);
 
             foreach (var value in Session.Engine.Objects)
             {
+                var hierarchy = value.Kind == OcctObjectKind.Shape
+                    ? Session.GetHierarchyPath(value)
+                    : Array.Empty<string>();
                 var visible = new CheckBox
                 {
-                    Content = Session.SafeName(value),
+                    Content = hierarchy.Count > 0 ? hierarchy[^1] : Session.SafeName(value),
                     IsChecked = true,
                     Tag = value,
                     VerticalContentAlignment = VerticalAlignment.Center
@@ -63,6 +69,7 @@ public sealed partial class MainWindow
                     ContextMenu = BuildObjectContextMenu(value)
                 };
                 _objectNodes[value.Id] = item;
+
                 switch (value.Kind)
                 {
                     case OcctObjectKind.Text:
@@ -72,7 +79,18 @@ public sealed partial class MainWindow
                         dimensionItems.Add(item);
                         break;
                     default:
-                        shapeItems.Add(item);
+                        if (hierarchy.Count > 1)
+                        {
+                            var children = GetOrCreateAssemblyChildren(
+                                shapeItems,
+                                hierarchy.Take(hierarchy.Count - 1),
+                                assemblyNodes);
+                            children.Add(item);
+                        }
+                        else
+                        {
+                            shapeItems.Add(item);
+                        }
                         break;
                 }
             }
@@ -91,6 +109,37 @@ public sealed partial class MainWindow
         _selectionStatus.Text = Local(
             $"Objects {Session.Engine.ObjectCount} / Shapes {Session.Engine.ShapeCount}",
             $"对象 {Session.Engine.ObjectCount} / 形体 {Session.Engine.ShapeCount}");
+    }
+
+    private static List<object> GetOrCreateAssemblyChildren(
+        List<object> rootItems,
+        IEnumerable<string> segments,
+        IDictionary<string, (TreeViewItem Node, List<object> Children)> cache)
+    {
+        var parentItems = rootItems;
+        var key = string.Empty;
+        foreach (var rawSegment in segments)
+        {
+            var segment = string.IsNullOrWhiteSpace(rawSegment) ? "Assembly" : rawSegment.Trim();
+            key = key.Length == 0 ? segment : $"{key}\u001F{segment}";
+            if (cache.TryGetValue(key, out var existing))
+            {
+                parentItems = existing.Children;
+                continue;
+            }
+
+            var children = new List<object>();
+            var node = new TreeViewItem
+            {
+                Header = segment,
+                ItemsSource = children,
+                IsExpanded = false
+            };
+            parentItems.Add(node);
+            cache[key] = (node, children);
+            parentItems = children;
+        }
+        return parentItems;
     }
 
     private ContextMenu BuildObjectContextMenu(IOcctObject value)
@@ -120,7 +169,7 @@ public sealed partial class MainWindow
 
     private void ObjectTreeSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (_refreshingTree || _session is null || _objectTree.SelectedItem is not TreeViewItem { Tag: IOcctObject value }) return;
+        if (_syncingObjectSelection || _refreshingTree || _session is null || _objectTree.SelectedItem is not TreeViewItem { Tag: IOcctObject value }) return;
         Session.ActiveObject = value;
         Session.Engine.SelectObject(value, false);
         _viewport.RaiseSelectionChanged();
@@ -154,7 +203,7 @@ public sealed partial class MainWindow
         AddPropertyHeader();
         if (value is null || _session is null) return;
 
-        foreach (var property in Session.DescribeObject(value))
+        foreach (var property in Session.DescribeObjectLightweight(value))
         {
             AddPropertyRow(property.Key, property.Value);
         }
@@ -195,8 +244,16 @@ public sealed partial class MainWindow
     private void SelectTreeNode(IOcctObject? value)
     {
         if (value is null || !_objectNodes.TryGetValue(value.Id, out var item)) return;
-        item.IsSelected = true;
-        item.BringIntoView();
+        _syncingObjectSelection = true;
+        try
+        {
+            item.IsSelected = true;
+            item.BringIntoView();
+        }
+        finally
+        {
+            _syncingObjectSelection = false;
+        }
     }
 
     private OcctShape? ActiveShape()
