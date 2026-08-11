@@ -8,6 +8,14 @@
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
+# Keep the explicit -Fast switch as the canonical form, but also accept the
+# convenient positional form: .\publish.ps1 Fast. Without this normalization,
+# PowerShell binds "Fast" to the first positional parameter (OcctRoot).
+if (-not $Fast -and $PSBoundParameters.ContainsKey("OcctRoot") -and $OcctRoot -ieq "Fast") {
+    $Fast = $true
+    $OcctRoot = $env:OCCT_ROOT
+}
+
 $RepoRoot = Split-Path -Parent $PSCommandPath
 $BuildScript = Join-Path $RepoRoot "build.ps1"
 $DistRoot = Join-Path $RepoRoot "dist\win-x64"
