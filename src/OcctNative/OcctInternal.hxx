@@ -56,6 +56,10 @@ namespace OcctBridge
         double storedColorG = 0.0;
         double storedColorB = 0.0;
         bool selectable = true;
+        double storedColorA = 1.0;
+        bool storedVisible = true;
+        int stepDocumentIndex = -1;
+        std::string stepNodeId;
     };
 
     class Engine
@@ -133,6 +137,10 @@ namespace OcctBridge
     TopoDS_Shape shapeWithPresentationTransformation(const ObjectEntry& entry);
     void fillMassProperties(const GProp_GProps& properties, OcctMassProperties* result);
     Graphic3d_NameOfMaterial materialName(int value);
+
+    bool syncStepObjectName(Engine* engine, ObjectEntry& entry);
+    bool syncStepObjectColor(Engine* engine, ObjectEntry& entry);
+    bool syncStepObjectVisibility(Engine* engine, ObjectEntry& entry);
 
     template<typename Function>
     int execute(Engine* engine, Function&& function)
