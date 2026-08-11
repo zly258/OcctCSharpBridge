@@ -4,8 +4,13 @@
 #include <Quantity_ColorRGBA.hxx>
 #include <TCollection_ExtendedString.hxx>
 #include <TDataStd_Name.hxx>
+#include <TopExp.hxx>
+#include <TopLoc_Location.hxx>
+#include <TopTools_IndexedMapOfShape.hxx>
 #include <XCAFDoc_ShapeTool.hxx>
+#include <XCAFPrs.hxx>
 #include <XCAFPrs_DocumentExplorer.hxx>
+#include <XCAFPrs_IndexedDataMapOfShapeStyle.hxx>
 
 #include <iomanip>
 #include <sstream>
@@ -14,14 +19,8 @@ using namespace OcctBridge;
 
 namespace
 {
-    struct StepNodeSnapshot
+    struct StepStyleSnapshot
     {
-        std::string id;
-        int parent = -1;
-        int kind = 2;
-        std::string name;
-        std::string referenceName;
-        OcctObjectId objectId = 0;
         bool visible = true;
         bool hasSurfaceColor = false;
         double surfaceR = 0.0;
@@ -32,8 +31,27 @@ namespace
         double curveR = 0.0;
         double curveG = 0.0;
         double curveB = 0.0;
+    };
+
+    struct StepSubshapeStyleSnapshot
+    {
+        int shapeType = OcctShape_Shape;
+        int subshapeIndex = -1;
+        StepStyleSnapshot style;
+    };
+
+    struct StepNodeSnapshot
+    {
+        std::string id;
+        int parent = -1;
+        int kind = 2;
+        std::string name;
+        std::string referenceName;
+        OcctObjectId objectId = 0;
+        StepStyleSnapshot style;
         gp_Trsf localTransform;
         gp_Trsf globalTransform;
+        std::vector<StepSubshapeStyleSnapshot> subshapeStyles;
     };
 
     std::string extendedStringToUtf8(const TCollection_ExtendedString& value)
@@ -59,6 +77,65 @@ namespace
         std::string result = labelName(node.Label);
         if (result.empty()) result = labelName(node.RefLabel);
         if (result.empty()) result = node.IsAssembly ? "Assembly" : "Part";
+        return result;
+    }
+
+    StepStyleSnapshot captureStyle(const XCAFPrs_Style& style)
+    {
+        StepStyleSnapshot result;
+        result.visible = style.IsVisible();
+        if (style.IsSetColorSurf())
+        {
+            const Quantity_ColorRGBA& rgba = style.GetColorSurfRGBA();
+            result.hasSurfaceColor = true;
+            result.surfaceR = rgba.GetRGB().Red();
+            result.surfaceG = rgba.GetRGB().Green();
+            result.surfaceB = rgba.GetRGB().Blue();
+            result.surfaceA = rgba.Alpha();
+        }
+        if (style.IsSetColorCurv())
+        {
+            const Quantity_Color& rgb = style.GetColorCurv();
+            result.hasCurveColor = true;
+            result.curveR = rgb.Red();
+            result.curveG = rgb.Green();
+            result.curveB = rgb.Blue();
+        }
+        return result;
+    }
+
+    std::vector<StepSubshapeStyleSnapshot> captureSubshapeStyles(const XCAFPrs_DocumentNode& node)
+    {
+        const TDF_Label sourceLabel = node.RefLabel.IsNull() ? node.Label : node.RefLabel;
+        if (sourceLabel.IsNull()) return {};
+
+        const TopoDS_Shape rootShape = XCAFDoc_ShapeTool::GetShape(sourceLabel);
+        if (rootShape.IsNull()) return {};
+
+        XCAFPrs_IndexedDataMapOfShapeStyle settings;
+        XCAFPrs::CollectStyleSettings(sourceLabel, TopLoc_Location(), settings);
+        if (settings.IsEmpty()) return {};
+
+        TopTools_IndexedMapOfShape subShapes;
+        TopExp::MapShapes(rootShape, subShapes);
+        std::vector<StepSubshapeStyleSnapshot> result;
+        result.reserve(static_cast<std::size_t>(settings.Size()));
+
+        for (XCAFPrs_DataMapIteratorOfIndexedDataMapOfShapeStyle iterator(settings);
+             iterator.More();
+             iterator.Next())
+        {
+            const TopoDS_Shape& styledShape = iterator.Key();
+            if (styledShape.IsNull() || styledShape.IsSame(rootShape)) continue;
+            const Standard_Integer mappedIndex = subShapes.FindIndex(styledShape);
+            if (mappedIndex <= 0) continue;
+
+            StepSubshapeStyleSnapshot snapshot;
+            snapshot.shapeType = shapeTypeValue(styledShape);
+            snapshot.subshapeIndex = mappedIndex - 1;
+            snapshot.style = captureStyle(iterator.Value());
+            result.push_back(std::move(snapshot));
+        }
         return result;
     }
 
@@ -108,6 +185,30 @@ namespace
         stream << ']';
     }
 
+    void appendStyle(std::ostringstream& stream, const StepStyleSnapshot& style)
+    {
+        stream << "\"visible\":" << (style.visible ? "true" : "false") << ','
+               << "\"surfaceColor\":";
+        if (style.hasSurfaceColor)
+        {
+            stream << '[' << style.surfaceR << ',' << style.surfaceG << ','
+                   << style.surfaceB << ',' << style.surfaceA << ']';
+        }
+        else
+        {
+            stream << "null";
+        }
+        stream << ",\"curveColor\":";
+        if (style.hasCurveColor)
+        {
+            stream << '[' << style.curveR << ',' << style.curveG << ',' << style.curveB << ']';
+        }
+        else
+        {
+            stream << "null";
+        }
+    }
+
     std::string buildLastStepDocumentJson(Engine* engine)
     {
         if (engine->stepDocuments.empty() || engine->stepDocuments.back().IsNull())
@@ -135,7 +236,7 @@ namespace
                 : (XCAFDoc_ShapeTool::IsComponent(node.Label) ? 1 : 2);
             snapshot.name = nodeName(node);
             snapshot.referenceName = labelName(node.RefLabel);
-            snapshot.visible = node.Style.IsVisible();
+            snapshot.style = captureStyle(node.Style);
             snapshot.localTransform = node.LocalTrsf.Transformation();
             snapshot.globalTransform = node.Location.Transformation();
 
@@ -144,24 +245,7 @@ namespace
                 if (leafIndex >= engine->lastStepImportObjectIds.size())
                     throw std::runtime_error("STEP/XDE leaf-to-object mapping is incomplete.");
                 snapshot.objectId = engine->lastStepImportObjectIds[leafIndex++];
-            }
-
-            if (node.Style.IsSetColorSurf())
-            {
-                const Quantity_ColorRGBA& rgba = node.Style.GetColorSurfRGBA();
-                snapshot.hasSurfaceColor = true;
-                snapshot.surfaceR = rgba.GetRGB().Red();
-                snapshot.surfaceG = rgba.GetRGB().Green();
-                snapshot.surfaceB = rgba.GetRGB().Blue();
-                snapshot.surfaceA = rgba.Alpha();
-            }
-            if (node.Style.IsSetColorCurv())
-            {
-                const Quantity_Color& rgb = node.Style.GetColorCurv();
-                snapshot.hasCurveColor = true;
-                snapshot.curveR = rgb.Red();
-                snapshot.curveG = rgb.Green();
-                snapshot.curveB = rgb.Blue();
+                snapshot.subshapeStyles = captureSubshapeStyles(node);
             }
 
             const int nodeIndex = static_cast<int>(nodes.size());
@@ -186,32 +270,24 @@ namespace
                    << "\"kind\":" << node.kind << ','
                    << "\"name\":\"" << jsonEscape(node.name) << "\","
                    << "\"referenceName\":\"" << jsonEscape(node.referenceName) << "\","
-                   << "\"objectId\":" << node.objectId << ','
-                   << "\"visible\":" << (node.visible ? "true" : "false") << ','
-                   << "\"surfaceColor\":";
-            if (node.hasSurfaceColor)
-            {
-                stream << '[' << node.surfaceR << ',' << node.surfaceG << ','
-                       << node.surfaceB << ',' << node.surfaceA << ']';
-            }
-            else
-            {
-                stream << "null";
-            }
-            stream << ",\"curveColor\":";
-            if (node.hasCurveColor)
-            {
-                stream << '[' << node.curveR << ',' << node.curveG << ',' << node.curveB << ']';
-            }
-            else
-            {
-                stream << "null";
-            }
+                   << "\"objectId\":" << node.objectId << ',';
+            appendStyle(stream, node.style);
             stream << ",\"localTransform\":";
             appendTransform(stream, node.localTransform);
             stream << ",\"globalTransform\":";
             appendTransform(stream, node.globalTransform);
-            stream << '}';
+            stream << ",\"subshapeStyles\":[";
+            for (std::size_t styleIndex = 0; styleIndex < node.subshapeStyles.size(); ++styleIndex)
+            {
+                if (styleIndex != 0U) stream << ',';
+                const StepSubshapeStyleSnapshot& subshape = node.subshapeStyles[styleIndex];
+                stream << '{'
+                       << "\"shapeType\":" << subshape.shapeType << ','
+                       << "\"subshapeIndex\":" << subshape.subshapeIndex << ',';
+                appendStyle(stream, subshape.style);
+                stream << '}';
+            }
+            stream << "]}";
         }
         stream << "]}";
         return stream.str();
