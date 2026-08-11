@@ -1,8 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
-    <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Platforms>x64</Platforms>
@@ -14,7 +13,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
     <Title>OcctNet.Wpf</Title>
-    <Description>Reusable WPF viewport host for OcctNet and Open CASCADE Technology 7.9.0.</Description>
+    <Description>Reusable native WPF viewport host for OcctNet and Open CASCADE Technology 7.9.0.</Description>
     <PackageTags>OCCT;OpenCASCADE;CAD;WPF;viewport;3D</PackageTags>
     <PackageProjectUrl>https://github.com/zly258/OcctCSharpBridge</PackageProjectUrl>
     <RepositoryUrl>https://github.com/zly258/OcctCSharpBridge</RepositoryUrl>
@@ -27,7 +26,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\OcctNet.WinForms\OcctNet.WinForms.csproj" />
+    <ProjectReference Include="..\OcctNet\OcctNet.csproj" />
     <None Include="..\..\README.md" Pack="true" PackagePath="/" Link="README.md" />
     <None Include="..\..\LICENSE" Pack="true" PackagePath="/" Link="LICENSE" />
   </ItemGroup>
