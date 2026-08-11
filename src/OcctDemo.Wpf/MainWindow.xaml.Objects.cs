@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using OcctDemo.Common;
 using OcctNet;
 using DrawingColor = System.Drawing.Color;
@@ -58,7 +58,7 @@ public partial class MainWindow
             _refreshingTree = false;
         }
 
-        ShowObjectProperties(Session.ActiveObject);
+        ShowSelectionProperties(Session.Engine.SelectedObjects);
         SelectionStatus.Text = Local(
             $"Objects {Session.Engine.ObjectCount} / Shapes {Session.Engine.ShapeCount}",
             $"对象 {Session.Engine.ObjectCount} / 形体 {Session.Engine.ShapeCount}");
@@ -99,6 +99,27 @@ public partial class MainWindow
         Viewport.RaiseSelectionChanged();
         ShowObjectProperties(value);
         SelectionStatus.Text = Local($"Current: {Session.SafeName(value)}", $"当前：{Session.SafeName(value)}");
+    }
+
+    private void ShowSelectionProperties(IReadOnlyList<IOcctObject> selectedObjects)
+    {
+        if (selectedObjects.Count == 0)
+        {
+            ShowObjectProperties(_session?.ActiveObject);
+            return;
+        }
+        if (selectedObjects.Count == 1)
+        {
+            ShowObjectProperties(selectedObjects[0]);
+            return;
+        }
+
+        PropertyGrid.ItemsSource = new[]
+        {
+            new KeyValuePair<string, string>(
+                Local("Selection", "选择"),
+                Local($"{selectedObjects.Count} objects selected", $"已选择 {selectedObjects.Count} 个对象"))
+        };
     }
 
     private void ShowObjectProperties(IOcctObject? value)
