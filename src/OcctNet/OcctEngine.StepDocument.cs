@@ -42,8 +42,6 @@ public sealed partial class OcctEngine
         for (var index = 0; index < document.Nodes.Count; index++)
         {
             var value = document.Nodes[index];
-            var surfaceColor = ToColor(value.SurfaceColor);
-            var curveColor = ToColor(value.CurveColor);
             OcctShape? shape = value.ObjectId > 0 ? new OcctShape(value.ObjectId, _ownerId) : null;
             nodes.Add(new OcctAssemblyNode(
                 value.Id ?? string.Empty,
@@ -55,9 +53,10 @@ public sealed partial class OcctEngine
                 value.Name ?? string.Empty,
                 value.ReferenceName ?? string.Empty,
                 shape,
-                new OcctAssemblyStyle(value.Visible, surfaceColor, curveColor),
+                ToStyle(value.Visible, value.SurfaceColor, value.CurveColor),
                 OcctAssemblyTransform3d.FromArray(value.LocalTransform),
-                OcctAssemblyTransform3d.FromArray(value.GlobalTransform)));
+                OcctAssemblyTransform3d.FromArray(value.GlobalTransform),
+                ToSubshapeStyles(value.SubshapeStyles)));
         }
 
         var roots = new List<OcctAssemblyNode>();
@@ -70,6 +69,27 @@ public sealed partial class OcctEngine
         }
 
         return new OcctAssemblyDocument(fullPath, primaryShape, nodes, roots);
+    }
+
+    private static OcctAssemblyStyle ToStyle(bool visible, double[]? surfaceColor, double[]? curveColor) =>
+        new(visible, ToColor(surfaceColor), ToColor(curveColor));
+
+    private static IReadOnlyList<OcctAssemblySubshapeStyle> ToSubshapeStyles(List<StepSubshapeStyleDto>? values)
+    {
+        if (values is null || values.Count == 0) return Array.Empty<OcctAssemblySubshapeStyle>();
+
+        var result = new List<OcctAssemblySubshapeStyle>(values.Count);
+        foreach (var value in values)
+        {
+            var shapeType = Enum.IsDefined(typeof(OcctShapeType), value.ShapeType)
+                ? (OcctShapeType)value.ShapeType
+                : OcctShapeType.Shape;
+            result.Add(new OcctAssemblySubshapeStyle(
+                shapeType,
+                value.SubshapeIndex,
+                ToStyle(value.Visible, value.SurfaceColor, value.CurveColor)));
+        }
+        return result;
     }
 
     private static OcctAssemblyColor? ToColor(double[]? values)
@@ -122,5 +142,26 @@ public sealed partial class OcctEngine
 
         [JsonPropertyName("globalTransform")]
         public double[]? GlobalTransform { get; set; }
+
+        [JsonPropertyName("subshapeStyles")]
+        public List<StepSubshapeStyleDto>? SubshapeStyles { get; set; }
+    }
+
+    private sealed class StepSubshapeStyleDto
+    {
+        [JsonPropertyName("shapeType")]
+        public int ShapeType { get; set; }
+
+        [JsonPropertyName("subshapeIndex")]
+        public int SubshapeIndex { get; set; }
+
+        [JsonPropertyName("visible")]
+        public bool Visible { get; set; } = true;
+
+        [JsonPropertyName("surfaceColor")]
+        public double[]? SurfaceColor { get; set; }
+
+        [JsonPropertyName("curveColor")]
+        public double[]? CurveColor { get; set; }
     }
 }
