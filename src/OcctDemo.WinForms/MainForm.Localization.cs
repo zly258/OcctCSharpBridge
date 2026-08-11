@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using OcctDemo.Common;
 using OcctNet;
 
@@ -33,10 +33,11 @@ public sealed partial class MainForm
         }
         BuildMenus();
         BuildToolBar();
+        ApplyDemoEnhancements();
         _objectTree.ContextMenuStrip?.Dispose();
         _objectTree.ContextMenuStrip = BuildTreeContextMenu();
         RefreshObjectTree();
-        ShowObjectProperties(_session?.ActiveObject);
+        ShowSelectionProperties(_session?.Engine.SelectedObjects ?? Array.Empty<IOcctObject>());
     }
 
     private void ApplyViewCubeLanguage()
