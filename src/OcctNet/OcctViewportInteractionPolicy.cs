@@ -71,8 +71,9 @@ internal static class OcctViewportInteractionPolicy
     {
         if (delta == 0) return 1.0;
         var normalizedSensitivity = NormalizeZoomSensitivity(sensitivity);
-        var wheelSteps = delta / 120.0;
-        return Math.Pow(1.15, wheelSteps * normalizedSensitivity);
+        var wheelSteps = Math.Abs(delta / 120.0) * normalizedSensitivity;
+        var baseFactor = delta > 0 ? 1.15 : 0.87;
+        return Math.Pow(baseFactor, wheelSteps);
     }
 
     internal static int ScaleWheelDelta(int delta, double sensitivity)
