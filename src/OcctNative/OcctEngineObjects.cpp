@@ -123,6 +123,7 @@ extern "C"
             if (entry == nullptr) throw std::invalid_argument("Object ID does not exist.");
             const double transparency = std::clamp(value, 0.0, 1.0);
             entry->storedColorA = 1.0 - transparency;
+            entry->hasStoredAlpha = true;
             if (entry->kind == OcctObject_Shape && !syncStepObjectColor(e, *entry))
                 e->invalidatePristineStepDocument();
             e->context->SetTransparency(entry->presentation, transparency, Standard_False);
