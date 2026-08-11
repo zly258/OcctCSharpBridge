@@ -56,7 +56,7 @@ Synchronization is one-way and starts from `main`. The normal publish path uses 
 .\publish.ps1
 ```
 
-The main publish flow generates bilingual API documentation, runs the Release Native/Managed build and Native Smoke validation, creates `dist/win-x64`, validates Contract/Manifest/SHA-256, then updates the demo branch through a temporary detached worktree. Managed regression tests remain an explicit test/CI target and are intentionally not repeated by Binary SDK publication.
+The main publish flow generates bilingual API documentation, runs the Release Native/Managed build, creates `dist/win-x64`, validates Contract/Manifest/SHA-256, then updates the demo branch through a temporary detached worktree. Managed regression tests and Native Smoke remain explicit test targets and are intentionally not repeated by Binary SDK publication.
 
 ## Binary SDK contents
 
@@ -70,7 +70,7 @@ bridge-contract.json
 bridge-manifest.json
 ```
 
-OCCT `TK*.dll` and third-party runtime DLLs are not stored in `dist`. Runtime resolution uses `OCCT_ROOT`, `CASROOT`, or explicit `OcctRuntime` configuration.
+OCCT `TK*.dll` and third-party runtime DLLs are not stored in `dist`. Runtime resolution uses `OCCT_ROOT`, `CASROOT`, or explicit `OcctRuntime` configuration for local execution. Demo application packaging copies the required runtime subset into the final application package.
 
 ## Demo behavior contract
 
@@ -109,6 +109,10 @@ Individual targets:
 ```
 
 Demo `publish.ps1` packages applications only; it never publishes or rebuilds the Bridge SDK. The consumed Contract version is passed to `dotnet publish`, so build and publish assembly metadata stay aligned.
+
+For `all`, WinForms, WPF and Avalonia are published through temporary staging directories and merged into one final `OcctCSharpBridge-Demo-all-win-x64` directory. Shared .NET/Bridge/OCCT files are stored once; different files with the same relative path are treated as a packaging error rather than silently overwriting one another.
+
+Native packaging uses an explicit OCCT runtime closure instead of recursively copying the complete OCCT installation. Qt, VTK, Tcl/Tk, Draw/Test and debug runtimes are excluded. The small CAF/XCAF subset required transitively by OCCT STEP/IGES support is retained as an OCCT runtime implementation dependency; it is not a Demo document-model dependency.
 
 ## Product metadata
 
