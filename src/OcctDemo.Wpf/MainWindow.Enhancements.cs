@@ -7,21 +7,8 @@ namespace OcctDemo.Wpf;
 
 public partial class MainWindow
 {
-    private bool _enhancementsWired;
-
     private void ApplyDemoEnhancements()
     {
-        if (!_enhancementsWired)
-        {
-            _enhancementsWired = true;
-            Viewport.ObjectSelectionChanged += (_, args) => Dispatcher.InvokeAsync(() =>
-            {
-                if (_session is null) return;
-                if (args.SelectedObjects.Count > 1) _session.ActiveObject = null;
-                ShowSelectionProperties(args.SelectedObjects);
-            });
-        }
-
         var samples = MainMenu.Items
             .OfType<Controls.MenuItem>()
             .FirstOrDefault(item => Equals(item.Header, MenuHeader("Menu.Samples")));
