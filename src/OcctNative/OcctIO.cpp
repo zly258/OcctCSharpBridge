@@ -1,6 +1,5 @@
 ﻿#include "OcctInternal.hxx"
 
-#include <AIS_ColoredShape.hxx>
 #include <BRep_Builder.hxx>
 #include <BRepMesh_IncrementalMesh.hxx>
 #include <BRepTools.hxx>
@@ -14,24 +13,17 @@
 #include <TCollection_ExtendedString.hxx>
 #include <TDataStd_Name.hxx>
 #include <TDocStd_Document.hxx>
-#include <TopExp.hxx>
-#include <TopExp_Explorer.hxx>
 #include <TopLoc_Location.hxx>
-#include <TopTools_IndexedMapOfShape.hxx>
 #include <TopoDS_Compound.hxx>
 #include <XCAFApp_Application.hxx>
 #include <XCAFDoc_ColorTool.hxx>
 #include <XCAFDoc_DocumentTool.hxx>
 #include <XCAFDoc_ShapeTool.hxx>
-#include <XCAFPrs.hxx>
 #include <XCAFPrs_AISObject.hxx>
 #include <XCAFPrs_DocumentExplorer.hxx>
-#include <XCAFPrs_IndexedDataMapOfShapeStyle.hxx>
 
 #include <fstream>
-#include <iomanip>
 #include <map>
-#include <sstream>
 
 using namespace OcctBridge;
 
@@ -133,13 +125,6 @@ namespace
         return result;
     }
 
-    std::string indexedPartName(std::size_t index)
-    {
-        std::ostringstream stream;
-        stream << "Part_" << std::setw(3) << std::setfill('0') << index;
-        return stream.str();
-    }
-
     bool tryStyleColor(const XCAFPrs_Style& style, Quantity_Color& result)
     {
         if (style.IsSetColorSurf())
@@ -172,17 +157,6 @@ namespace
         if (tryStyleColor(style, value)) presentation->SetColor(value);
     }
 
-    void applyCustomStyle(
-        const Handle(AIS_ColoredShape)& presentation,
-        const TopoDS_Shape& subShape,
-        const XCAFPrs_Style& style)
-    {
-        if (presentation.IsNull() || subShape.IsNull()) return;
-        Quantity_Color value;
-        if (tryStyleColor(style, value)) presentation->SetCustomColor(subShape, value);
-        if (!style.IsVisible()) presentation->CustomAspects(subShape)->SetHidden(Standard_True);
-    }
-
     std::vector<std::string> currentHierarchy(const XCAFPrs_DocumentExplorer& explorer)
     {
         const Standard_Integer depth = explorer.CurrentDepth();
@@ -201,22 +175,22 @@ namespace
     {
         ObjectEntry* entry = engine->findShape(id);
         if (entry == nullptr) throw std::runtime_error("Imported STEP shape could not be registered.");
+
+        // Compatibility projection for older consumers. The first-class assembly API
+        // reads XDE node IDs directly and does not reconstruct structure from this tag.
         entry->stepHierarchyPath = path;
         entry->applicationTag = hierarchyTag(path);
         rememberStyleColor(*entry, style);
 
-        // XCAFPrs_AISObject synchronizes definition/sub-shape styles during its
-        // first Display/Compute. Apply the merged assembly/instance base color
-        // afterwards so inherited colors are not overwritten by its default style.
+        // XCAFPrs_AISObject resolves definition/sub-shape styles during Display/Compute.
+        // Re-apply the merged occurrence color afterwards so instance inheritance wins.
         Quantity_Color mergedColor;
         if (tryStyleColor(style, mergedColor))
             engine->context->SetColor(entry->presentation, mergedColor, Standard_False);
         if (!style.IsVisible()) engine->context->Erase(entry->presentation, Standard_False);
     }
 
-    OcctObjectId addStructuredLeaf(
-        Engine* engine,
-        const StepImportLeaf& leaf)
+    OcctObjectId addStructuredLeaf(Engine* engine, const StepImportLeaf& leaf)
     {
         TopoDS_Shape localShape = XCAFDoc_ShapeTool::GetShape(leaf.refLabel);
         if (localShape.IsNull()) localShape = XCAFDoc_ShapeTool::GetShape(leaf.label);
@@ -232,66 +206,6 @@ namespace
         const OcctObjectId id = engine->addShapePresentation(localShape, presentation, false, name);
         finishImportedEntry(engine, id, leaf.path, leaf.style);
         return id;
-    }
-
-    std::vector<TopoDS_Shape> collectSolids(const TopoDS_Shape& shape)
-    {
-        std::vector<TopoDS_Shape> result;
-        for (TopExp_Explorer explorer(shape, TopAbs_SOLID); explorer.More(); explorer.Next())
-            result.push_back(explorer.Current());
-        return result;
-    }
-
-    OcctObjectId addFlatCompoundLeaves(
-        Engine* engine,
-        const StepImportLeaf& leaf,
-        const std::vector<TopoDS_Shape>& solids)
-    {
-        if (solids.empty()) return 0;
-
-        XCAFPrs_IndexedDataMapOfShapeStyle settings;
-        XCAFPrs::CollectStyleSettings(leaf.refLabel.IsNull() ? leaf.label : leaf.refLabel,
-                                      TopLoc_Location(),
-                                      settings);
-
-        OcctObjectId firstId = 0;
-        for (std::size_t index = 0; index < solids.size(); ++index)
-        {
-            const TopoDS_Shape& solid = solids[index];
-            Handle(AIS_ColoredShape) presentation = new AIS_ColoredShape(solid);
-            applyBaseStyle(presentation, leaf.style);
-
-            TopTools_IndexedMapOfShape solidSubShapes;
-            TopExp::MapShapes(solid, solidSubShapes);
-            for (XCAFPrs_DataMapIteratorOfIndexedDataMapOfShapeStyle iterator(settings);
-                 iterator.More();
-                 iterator.Next())
-            {
-                const TopoDS_Shape& styledShape = iterator.Key();
-                if (styledShape.IsNull()) continue;
-                if (styledShape.IsSame(solid))
-                {
-                    applyBaseStyle(presentation, iterator.Value());
-                }
-                else if (solidSubShapes.Contains(styledShape))
-                {
-                    applyCustomStyle(presentation, styledShape, iterator.Value());
-                }
-            }
-
-            if (!leaf.location.IsIdentity())
-                presentation->SetLocalTransformation(leaf.location.Transformation());
-
-            std::vector<std::string> path = leaf.path;
-            if (path.empty()) path.push_back("Assembly");
-            const std::string partName = indexedPartName(index + 1U);
-            path.push_back(partName);
-
-            const OcctObjectId id = engine->addShapePresentation(solid, presentation, false, partName);
-            finishImportedEntry(engine, id, path, leaf.style);
-            if (firstId == 0) firstId = id;
-        }
-        return firstId;
     }
 
     OcctObjectId readStepXde(Engine* engine, const std::filesystem::path& path)
@@ -315,6 +229,7 @@ namespace
         {
             const XCAFPrs_DocumentNode& node = explorer.Current();
             if (node.IsAssembly) continue;
+
             StepImportLeaf leaf;
             leaf.label = node.Label;
             leaf.refLabel = node.RefLabel;
@@ -330,29 +245,14 @@ namespace
         engine->beginUpdate();
         try
         {
-            if (leaves.size() == 1U)
+            // XDE defines product/assembly semantics. Never infer Parts from the number
+            // of contained SOLIDs: one legitimate Part may own many solids.
+            for (const StepImportLeaf& leaf : leaves)
             {
-                TopoDS_Shape onlyShape = XCAFDoc_ShapeTool::GetShape(leaves.front().refLabel);
-                if (onlyShape.IsNull()) onlyShape = XCAFDoc_ShapeTool::GetShape(leaves.front().label);
-                const std::vector<TopoDS_Shape> solids = collectSolids(onlyShape);
-                if (solids.size() > 1U)
-                {
-                    firstImportedId = addFlatCompoundLeaves(engine, leaves.front(), solids);
-                    const OcctObjectId lastId = engine->nextId;
-                    for (OcctObjectId id = firstImportedId; id < lastId; ++id)
-                        if (engine->findShape(id) != nullptr) importedIds.push_back(id);
-                }
-            }
-
-            if (firstImportedId == 0)
-            {
-                for (const StepImportLeaf& leaf : leaves)
-                {
-                    const OcctObjectId id = addStructuredLeaf(engine, leaf);
-                    if (id == 0) continue;
-                    importedIds.push_back(id);
-                    if (firstImportedId == 0) firstImportedId = id;
-                }
+                const OcctObjectId id = addStructuredLeaf(engine, leaf);
+                if (id == 0) continue;
+                importedIds.push_back(id);
+                if (firstImportedId == 0) firstImportedId = id;
             }
 
             if (firstImportedId == 0)
