@@ -1,5 +1,6 @@
 ﻿#include "OcctInternal.hxx"
 
+#include <AIS_ColoredShape.hxx>
 #include <BRep_Builder.hxx>
 #include <BRepMesh_IncrementalMesh.hxx>
 #include <BRepTools.hxx>
@@ -12,16 +13,24 @@
 #include <StlAPI_Writer.hxx>
 #include <TCollection_ExtendedString.hxx>
 #include <TDataStd_Name.hxx>
-#include <TDF_LabelSequence.hxx>
 #include <TDocStd_Document.hxx>
+#include <TopExp.hxx>
+#include <TopExp_Explorer.hxx>
 #include <TopLoc_Location.hxx>
+#include <TopTools_IndexedMapOfShape.hxx>
 #include <TopoDS_Compound.hxx>
 #include <XCAFDoc_ColorTool.hxx>
 #include <XCAFDoc_DocumentTool.hxx>
 #include <XCAFDoc_ShapeTool.hxx>
+#include <XCAFPrs.hxx>
+#include <XCAFPrs_AISObject.hxx>
+#include <XCAFPrs_DocumentExplorer.hxx>
+#include <XCAFPrs_IndexedDataMapOfShapeStyle.hxx>
 
 #include <fstream>
+#include <iomanip>
 #include <map>
+#include <sstream>
 
 using namespace OcctBridge;
 
@@ -37,6 +46,15 @@ namespace
         std::string name;
         std::map<std::string, std::unique_ptr<StepAssemblyNode>> children;
         std::vector<const ObjectEntry*> leaves;
+    };
+
+    struct StepImportLeaf
+    {
+        TDF_Label label;
+        TDF_Label refLabel;
+        XCAFPrs_Style style;
+        TopLoc_Location location;
+        std::vector<std::string> path;
     };
 
     ObjectEntry& requiredShape(Engine* engine, OcctObjectId id)
@@ -86,6 +104,14 @@ namespace
         return extendedStringToUtf8(attribute->Get());
     }
 
+    std::string nodeName(const XCAFPrs_DocumentNode& node)
+    {
+        std::string result = labelName(node.Label);
+        if (result.empty()) result = labelName(node.RefLabel);
+        if (result.empty()) result = node.IsAssembly ? "Assembly" : "Part";
+        return result;
+    }
+
     void setLabelName(const TDF_Label& label, const std::string& name)
     {
         if (label.IsNull() || name.empty()) return;
@@ -103,127 +129,242 @@ namespace
         return result;
     }
 
-    bool tryGetLabelColor(
-        const Handle(XCAFDoc_ColorTool)& colorTool,
-        const TDF_Label& occurrence,
-        const TDF_Label& definition,
-        const TopoDS_Shape& occurrenceShape,
-        Quantity_Color& result)
+    std::string indexedPartName(std::size_t index)
     {
-        const XCAFDoc_ColorType colorTypes[] = { XCAFDoc_ColorSurf, XCAFDoc_ColorGen, XCAFDoc_ColorCurv };
-        if (!occurrenceShape.IsNull())
-        {
-            for (const XCAFDoc_ColorType type : colorTypes)
-            {
-                if (colorTool->GetInstanceColor(occurrenceShape, type, result)) return true;
-            }
-        }
+        std::ostringstream stream;
+        stream << "Part_" << std::setw(3) << std::setfill('0') << index;
+        return stream.str();
+    }
 
-        for (const XCAFDoc_ColorType type : colorTypes)
+    bool tryStyleColor(const XCAFPrs_Style& style, Quantity_Color& result)
+    {
+        if (style.IsSetColorSurf())
         {
-            if (!occurrence.IsNull() && XCAFDoc_ColorTool::GetColor(occurrence, type, result)) return true;
-            if (!definition.IsNull() && definition != occurrence && XCAFDoc_ColorTool::GetColor(definition, type, result)) return true;
+            result = style.GetColorSurf();
+            return true;
+        }
+        if (style.IsSetColorCurv())
+        {
+            result = style.GetColorCurv();
+            return true;
         }
         return false;
     }
 
-    void rememberAndApplyColor(Engine* engine, ObjectEntry& entry, const Quantity_Color& value)
+    void rememberStyleColor(ObjectEntry& entry, const XCAFPrs_Style& style)
     {
+        Quantity_Color value;
+        if (!tryStyleColor(style, value)) return;
         entry.hasStoredColor = true;
         entry.storedColorR = value.Red();
         entry.storedColorG = value.Green();
         entry.storedColorB = value.Blue();
-        engine->context->SetColor(entry.presentation, value, Standard_False);
     }
 
-    void importXdeLabel(
-        Engine* engine,
-        const Handle(XCAFDoc_ShapeTool)& shapeTool,
-        const Handle(XCAFDoc_ColorTool)& colorTool,
-        const TDF_Label& occurrence,
-        const TopLoc_Location& ancestorLocation,
-        std::vector<std::string> path,
-        OcctObjectId& firstImportedId)
+    void applyBaseStyle(const Handle(AIS_Shape)& presentation, const XCAFPrs_Style& style)
     {
-        TDF_Label definition = occurrence;
-        const bool isReference = shapeTool->IsReference(occurrence);
-        if (isReference && !shapeTool->GetReferredShape(occurrence, definition))
-            throw std::runtime_error("STEP assembly contains an unresolved component reference.");
+        if (presentation.IsNull()) return;
+        Quantity_Color value;
+        if (tryStyleColor(style, value)) presentation->SetColor(value);
+    }
 
-        std::string currentName = labelName(occurrence);
-        if (currentName.empty()) currentName = labelName(definition);
-        const bool isAssembly = shapeTool->IsAssembly(definition);
-        if (currentName.empty()) currentName = isAssembly ? "Assembly" : "Part";
-        path.push_back(currentName);
+    void applyCustomStyle(
+        const Handle(AIS_ColoredShape)& presentation,
+        const TopoDS_Shape& subShape,
+        const XCAFPrs_Style& style)
+    {
+        if (presentation.IsNull() || subShape.IsNull()) return;
+        Quantity_Color value;
+        if (tryStyleColor(style, value)) presentation->SetCustomColor(subShape, value);
+        if (!style.IsVisible()) presentation->CustomAspects(subShape)->SetHidden(Standard_True);
+    }
 
-        if (isAssembly)
-        {
-            TopLoc_Location nextAncestor = ancestorLocation;
-            if (isReference)
-                nextAncestor = ancestorLocation.Multiplied(shapeTool->GetLocation(occurrence));
+    std::vector<std::string> currentHierarchy(const XCAFPrs_DocumentExplorer& explorer)
+    {
+        const Standard_Integer depth = explorer.CurrentDepth();
+        std::vector<std::string> path;
+        path.reserve(static_cast<std::size_t>(depth + 1));
+        for (Standard_Integer index = 0; index <= depth; ++index)
+            path.push_back(nodeName(explorer.Current(index)));
+        return path;
+    }
 
-            TDF_LabelSequence components;
-            shapeTool->GetComponents(definition, components, false);
-            for (Standard_Integer index = 1; index <= components.Length(); ++index)
-                importXdeLabel(engine, shapeTool, colorTool, components.Value(index), nextAncestor, path, firstImportedId);
-            return;
-        }
-
-        TopoDS_Shape occurrenceShape = shapeTool->GetShape(occurrence);
-        if (occurrenceShape.IsNull() && definition != occurrence)
-            occurrenceShape = shapeTool->GetShape(definition);
-        if (occurrenceShape.IsNull()) return;
-
-        Quantity_Color importedColor;
-        const bool hasColor = tryGetLabelColor(colorTool, occurrence, definition, occurrenceShape, importedColor);
-
-        TopoDS_Shape displayShape = occurrenceShape;
-        if (!ancestorLocation.IsIdentity())
-            displayShape.Location(ancestorLocation.Multiplied(displayShape.Location()));
-
-        const OcctObjectId objectId = engine->addShape(displayShape, false, currentName);
-        ObjectEntry* entry = engine->findShape(objectId);
+    void finishImportedEntry(
+        Engine* engine,
+        OcctObjectId id,
+        const std::vector<std::string>& path,
+        const XCAFPrs_Style& style)
+    {
+        ObjectEntry* entry = engine->findShape(id);
         if (entry == nullptr) throw std::runtime_error("Imported STEP shape could not be registered.");
         entry->stepHierarchyPath = path;
         entry->applicationTag = hierarchyTag(path);
-        if (hasColor) rememberAndApplyColor(engine, *entry, importedColor);
-        if (firstImportedId == 0) firstImportedId = objectId;
+        rememberStyleColor(*entry, style);
+        if (!style.IsVisible()) engine->context->Erase(entry->presentation, Standard_False);
+    }
+
+    OcctObjectId addStructuredLeaf(
+        Engine* engine,
+        const StepImportLeaf& leaf)
+    {
+        TopoDS_Shape localShape = XCAFDoc_ShapeTool::GetShape(leaf.refLabel);
+        if (localShape.IsNull()) localShape = XCAFDoc_ShapeTool::GetShape(leaf.label);
+        if (localShape.IsNull()) return 0;
+
+        const TDF_Label presentationLabel = leaf.refLabel.IsNull() ? leaf.label : leaf.refLabel;
+        Handle(XCAFPrs_AISObject) presentation = new XCAFPrs_AISObject(presentationLabel);
+        applyBaseStyle(presentation, leaf.style);
+        if (!leaf.location.IsIdentity())
+            presentation->SetLocalTransformation(leaf.location.Transformation());
+
+        const std::string name = leaf.path.empty() ? std::string("Part") : leaf.path.back();
+        const OcctObjectId id = engine->addShapePresentation(localShape, presentation, false, name);
+        finishImportedEntry(engine, id, leaf.path, leaf.style);
+        return id;
+    }
+
+    std::vector<TopoDS_Shape> collectSolids(const TopoDS_Shape& shape)
+    {
+        std::vector<TopoDS_Shape> result;
+        for (TopExp_Explorer explorer(shape, TopAbs_SOLID); explorer.More(); explorer.Next())
+            result.push_back(explorer.Current());
+        return result;
+    }
+
+    OcctObjectId addFlatCompoundLeaves(
+        Engine* engine,
+        const StepImportLeaf& leaf,
+        const std::vector<TopoDS_Shape>& solids)
+    {
+        if (solids.empty()) return 0;
+
+        XCAFPrs_IndexedDataMapOfShapeStyle settings;
+        XCAFPrs::CollectStyleSettings(leaf.refLabel.IsNull() ? leaf.label : leaf.refLabel,
+                                      TopLoc_Location(),
+                                      settings);
+
+        OcctObjectId firstId = 0;
+        for (std::size_t index = 0; index < solids.size(); ++index)
+        {
+            const TopoDS_Shape& solid = solids[index];
+            Handle(AIS_ColoredShape) presentation = new AIS_ColoredShape(solid);
+            applyBaseStyle(presentation, leaf.style);
+
+            TopTools_IndexedMapOfShape solidSubShapes;
+            TopExp::MapShapes(solid, solidSubShapes);
+            for (XCAFPrs_DataMapIteratorOfIndexedDataMapOfShapeStyle iterator(settings);
+                 iterator.More();
+                 iterator.Next())
+            {
+                const TopoDS_Shape& styledShape = iterator.Key();
+                if (styledShape.IsNull()) continue;
+                if (styledShape.IsSame(solid))
+                {
+                    applyBaseStyle(presentation, iterator.Value());
+                }
+                else if (solidSubShapes.Contains(styledShape))
+                {
+                    applyCustomStyle(presentation, styledShape, iterator.Value());
+                }
+            }
+
+            if (!leaf.location.IsIdentity())
+                presentation->SetLocalTransformation(leaf.location.Transformation());
+
+            std::vector<std::string> path = leaf.path;
+            if (path.empty()) path.push_back("Assembly");
+            const std::string partName = indexedPartName(index + 1U);
+            path.push_back(partName);
+
+            const OcctObjectId id = engine->addShapePresentation(solid, presentation, false, partName);
+            finishImportedEntry(engine, id, path, leaf.style);
+            if (firstId == 0) firstId = id;
+        }
+        return firstId;
     }
 
     OcctObjectId readStepXde(Engine* engine, const std::filesystem::path& path)
     {
+        const bool sceneWasEmpty = engine->objects.empty();
         auto stream = inputStream(path);
         const Handle(TDocStd_Document) document = newXdeDocument();
         STEPCAFControl_Reader reader;
         reader.SetColorMode(true);
         reader.SetNameMode(true);
         reader.SetLayerMode(true);
+        reader.SetPropsMode(true);
         if (reader.ReadStream(path.filename().string().c_str(), stream) != IFSelect_RetDone)
             throw std::runtime_error("STEP file could not be read.");
         if (!reader.Transfer(document))
             throw std::runtime_error("STEP document could not be transferred to XDE.");
 
-        const Handle(XCAFDoc_ShapeTool) shapeTool = XCAFDoc_DocumentTool::ShapeTool(document->Main());
-        const Handle(XCAFDoc_ColorTool) colorTool = XCAFDoc_DocumentTool::ColorTool(document->Main());
-        TDF_LabelSequence roots;
-        shapeTool->GetFreeShapes(roots);
-        if (roots.IsEmpty()) throw std::runtime_error("STEP file contains no transferable shapes.");
+        std::vector<StepImportLeaf> leaves;
+        XCAFPrs_DocumentExplorer explorer(document, XCAFPrs_DocumentExplorerFlags_None);
+        for (; explorer.More(); explorer.Next())
+        {
+            const XCAFPrs_DocumentNode& node = explorer.Current();
+            if (node.IsAssembly) continue;
+            StepImportLeaf leaf;
+            leaf.label = node.Label;
+            leaf.refLabel = node.RefLabel;
+            leaf.style = node.Style;
+            leaf.location = node.Location;
+            leaf.path = currentHierarchy(explorer);
+            leaves.push_back(std::move(leaf));
+        }
+        if (leaves.empty()) throw std::runtime_error("STEP file contains no displayable shape nodes.");
 
         OcctObjectId firstImportedId = 0;
+        std::vector<OcctObjectId> importedIds;
         engine->beginUpdate();
         try
         {
-            for (Standard_Integer index = 1; index <= roots.Length(); ++index)
-                importXdeLabel(engine, shapeTool, colorTool, roots.Value(index), TopLoc_Location(), {}, firstImportedId);
+            if (leaves.size() == 1U)
+            {
+                TopoDS_Shape onlyShape = XCAFDoc_ShapeTool::GetShape(leaves.front().refLabel);
+                if (onlyShape.IsNull()) onlyShape = XCAFDoc_ShapeTool::GetShape(leaves.front().label);
+                const std::vector<TopoDS_Shape> solids = collectSolids(onlyShape);
+                if (solids.size() > 1U)
+                {
+                    firstImportedId = addFlatCompoundLeaves(engine, leaves.front(), solids);
+                    const OcctObjectId lastId = engine->nextId;
+                    for (OcctObjectId id = firstImportedId; id < lastId; ++id)
+                        if (engine->findShape(id) != nullptr) importedIds.push_back(id);
+                }
+            }
+
+            if (firstImportedId == 0)
+            {
+                for (const StepImportLeaf& leaf : leaves)
+                {
+                    const OcctObjectId id = addStructuredLeaf(engine, leaf);
+                    if (id == 0) continue;
+                    importedIds.push_back(id);
+                    if (firstImportedId == 0) firstImportedId = id;
+                }
+            }
+
+            if (firstImportedId == 0)
+                throw std::runtime_error("STEP file contains no displayable leaf shapes.");
             engine->endUpdate(false);
         }
         catch (...)
         {
+            for (const OcctObjectId id : importedIds) engine->erase(id);
             engine->endUpdate(false);
             throw;
         }
 
-        if (firstImportedId == 0) throw std::runtime_error("STEP file contains no displayable leaf shapes.");
+        engine->stepDocuments.push_back(document);
+        if (sceneWasEmpty)
+        {
+            engine->pristineStepDocument = document;
+            engine->pristineStepDocumentMatchesScene = true;
+        }
+        else
+        {
+            engine->pristineStepDocumentMatchesScene = false;
+        }
         engine->requestRedraw();
         return firstImportedId;
     }
@@ -238,7 +379,7 @@ namespace
         {
             if (pair.second.kind == OcctObject_Shape && !pair.second.shape.IsNull())
             {
-                builder.Add(compound, pair.second.shape);
+                builder.Add(compound, shapeWithPresentationTransformation(pair.second));
                 ++count;
             }
         }
@@ -391,6 +532,7 @@ namespace
 
     void writeStepDocument(const Handle(TDocStd_Document)& document, const std::filesystem::path& path)
     {
+        if (document.IsNull()) throw std::runtime_error("XDE document is null.");
         STEPCAFControl_Writer writer;
         writer.SetColorMode(true);
         writer.SetNameMode(true);
@@ -413,6 +555,12 @@ namespace
 
     void writeStepAll(Engine* engine, const std::filesystem::path& path)
     {
+        if (engine->pristineStepDocumentMatchesScene && !engine->pristineStepDocument.IsNull())
+        {
+            writeStepDocument(engine->pristineStepDocument, path);
+            return;
+        }
+
         const Handle(TDocStd_Document) document = newXdeDocument();
         populateStepDocument(engine, document);
         writeStepDocument(document, path);
@@ -509,7 +657,7 @@ extern "C"
     {
         Engine* e = engineOf(h);
         if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { writeIges(requiredShape(e, id).shape, pathFromUtf8(utf8Path)); });
+        return execute(e, [&] { writeIges(shapeWithPresentationTransformation(requiredShape(e, id)), pathFromUtf8(utf8Path)); });
     }
 
     int occt_export_all_iges(OcctHandle h, const char* utf8Path)
@@ -526,7 +674,7 @@ extern "C"
         return execute(e, [&]
         {
             auto stream = outputStream(pathFromUtf8(utf8Path));
-            BRepTools::Write(requiredShape(e, id).shape, stream);
+            BRepTools::Write(shapeWithPresentationTransformation(requiredShape(e, id)), stream);
             if (!stream) throw std::runtime_error("BREP file could not be written.");
         });
     }
@@ -539,15 +687,15 @@ extern "C"
         {
             requirePositive(linearDeflection, "Linear deflection");
             requirePositive(angularDeflection, "Angular deflection");
-            ObjectEntry& shape = requiredShape(e, id);
-            BRepMesh_IncrementalMesh mesh(shape.shape, linearDeflection, Standard_False, angularDeflection, Standard_True);
+            const TopoDS_Shape shape = shapeWithPresentationTransformation(requiredShape(e, id));
+            BRepMesh_IncrementalMesh mesh(shape, linearDeflection, Standard_False, angularDeflection, Standard_True);
             mesh.Perform();
             if (!mesh.IsDone()) throw std::runtime_error("STL meshing failed.");
             const auto path = pathFromUtf8(utf8Path);
             if (path.has_parent_path()) std::filesystem::create_directories(path.parent_path());
             StlAPI_Writer writer;
             writer.ASCIIMode() = asciiMode != 0;
-            if (!writer.Write(shape.shape, path.string().c_str()))
+            if (!writer.Write(shape, path.string().c_str()))
                 throw std::runtime_error("STL file could not be written. Use an ASCII-only file path if the OCCT package lacks wide-path support.");
         });
     }
