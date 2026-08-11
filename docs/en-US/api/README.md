@@ -6,8 +6,8 @@ Bridge **2.6.0** · Native ABI **4** · OCCT **7.9.0** · .NET SDK **10.0.302** 
 
 This index covers every public type and member in the four Binary SDK .NET assemblies and also provides the complete Native C ABI reference.
 
-- **Public types:** 105
-- **Public members:** 1307
+- **Public types:** 108
+- **Public members:** 1318
 
 - [Complete Native C ABI Reference](native-abi.md)
 
@@ -119,7 +119,10 @@ This index covers every public type and member in the four Binary SDK .NET assem
 
 ## OcctNet.Wpf
 
-- [`OcctWpfViewport`](reference/OcctNet.OcctWpfViewport.md) — 30
+- [`OcctWpfErrorEventArgs`](reference/OcctNet.OcctWpfErrorEventArgs.md) — 2
+- [`OcctWpfSelectionEventArgs`](reference/OcctNet.OcctWpfSelectionEventArgs.md) — 3
+- [`OcctWpfViewport`](reference/OcctNet.OcctWpfViewport.md) — 32
+- [`OcctWpfWorldPointEventArgs`](reference/OcctNet.OcctWpfWorldPointEventArgs.md) — 4
 
 ## OcctNet.Avalonia
 

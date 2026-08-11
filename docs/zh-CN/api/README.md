@@ -6,8 +6,8 @@ Bridge **2.6.0** · Native ABI **4** · OCCT **7.9.0** · .NET SDK **10.0.302** 
 
 本索引覆盖 Binary SDK 四个公开 .NET 程序集的全部公开类型和成员，并同时提供 Native C ABI 完整参考。
 
-- **公开类型数:** 105
-- **公开成员数:** 1307
+- **公开类型数:** 108
+- **公开成员数:** 1318
 
 - [Native C ABI 完整参考](native-abi.md)
 
@@ -119,7 +119,10 @@ Bridge **2.6.0** · Native ABI **4** · OCCT **7.9.0** · .NET SDK **10.0.302** 
 
 ## OcctNet.Wpf
 
-- [`OcctWpfViewport`](reference/OcctNet.OcctWpfViewport.md) — 30
+- [`OcctWpfErrorEventArgs`](reference/OcctNet.OcctWpfErrorEventArgs.md) — 2
+- [`OcctWpfSelectionEventArgs`](reference/OcctNet.OcctWpfSelectionEventArgs.md) — 3
+- [`OcctWpfViewport`](reference/OcctNet.OcctWpfViewport.md) — 32
+- [`OcctWpfWorldPointEventArgs`](reference/OcctNet.OcctWpfWorldPointEventArgs.md) — 4
 
 ## OcctNet.Avalonia
 

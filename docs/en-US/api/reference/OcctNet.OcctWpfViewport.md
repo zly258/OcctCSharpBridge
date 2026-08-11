@@ -2,7 +2,7 @@
 
 - **Assembly:** `OcctNet.Wpf.dll`
 - **Namespace:** `OcctNet`
-- **Inheritance:** `UserControl`
+- **Inheritance:** `HwndHost`
 
 ## Declaration
 
@@ -12,7 +12,7 @@ public sealed class OcctWpfViewport
 
 ## Description
 
-Reusable WPF host for the OCCT HWND viewport. The native viewer remains isolated in OcctNet.OcctViewportControl, while WPF applications receive dependency properties, DPI synchronization, resize coordination, and WPF-native event routing.
+Native WPF host for the OCCT HWND viewport. The WPF adapter owns its child HWND directly through System.Windows.Interop.HwndHost and has no dependency on Windows Forms.
 
 ## Constructors
 
@@ -48,6 +48,22 @@ Public API member. Exact parameters, return type, and available XML documentatio
 
 ```csharp
 public OcctEngine Engine { get; }
+```
+
+### `IsEngineInitialized`
+
+Public API member. Exact parameters, return type, and available XML documentation are listed below.
+
+```csharp
+public bool IsEngineInitialized { get; }
+```
+
+### `NativeHandle`
+
+Public API member. Exact parameters, return type, and available XML documentation are listed below.
+
+```csharp
+public IntPtr NativeHandle { get; }
 ```
 
 ### `RectangleSelectionBehavior`
@@ -106,14 +122,6 @@ Public API member. Exact parameters, return type, and available XML documentatio
 public bool SynchronizeRenderDpi { get; set; }
 ```
 
-### `WinFormsViewport`
-
-Access to the low-level WinForms HWND host for advanced interoperability.
-
-```csharp
-public OcctViewportControl WinFormsViewport { get; }
-```
-
 ### `ZoomSensitivity`
 
 Public API member. Exact parameters, return type, and available XML documentation are listed below.
@@ -137,7 +145,7 @@ public event EventHandler EngineInitialized;
 Public API member. Exact parameters, return type, and available XML documentation are listed below.
 
 ```csharp
-public event EventHandler<OcctViewportErrorEventArgs> ErrorOccurred;
+public event EventHandler<OcctWpfErrorEventArgs> ErrorOccurred;
 ```
 
 ### `ObjectSelectionChanged`
@@ -145,7 +153,7 @@ public event EventHandler<OcctViewportErrorEventArgs> ErrorOccurred;
 Public API member. Exact parameters, return type, and available XML documentation are listed below.
 
 ```csharp
-public event EventHandler<OcctViewportSelectionEventArgs> ObjectSelectionChanged;
+public event EventHandler<OcctWpfSelectionEventArgs> ObjectSelectionChanged;
 ```
 
 ### `SelectionChanged`
@@ -161,7 +169,7 @@ public event EventHandler<OcctShape?> SelectionChanged;
 Public API member. Exact parameters, return type, and available XML documentation are listed below.
 
 ```csharp
-public event EventHandler<OcctViewportWorldPointEventArgs> WorldPointChanged;
+public event EventHandler<OcctWpfWorldPointEventArgs> WorldPointChanged;
 ```
 
 ## Methods
@@ -182,6 +190,16 @@ Public API member. Exact parameters, return type, and available XML documentatio
 
 ```csharp
 public void RaiseSelectionChanged()
+```
+
+**Returns:** `void`
+
+### `RefreshNativeView`
+
+Public API member. Exact parameters, return type, and available XML documentation are listed below.
+
+```csharp
+public void RefreshNativeView()
 ```
 
 **Returns:** `void`

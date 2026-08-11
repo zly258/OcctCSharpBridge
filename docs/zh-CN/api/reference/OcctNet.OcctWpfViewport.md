@@ -2,7 +2,7 @@
 
 - **程序集:** `OcctNet.Wpf.dll`
 - **命名空间:** `OcctNet`
-- **继承:** `UserControl`
+- **继承:** `HwndHost`
 
 ## 声明
 
@@ -12,7 +12,7 @@ public sealed class OcctWpfViewport
 
 ## 说明
 
-Reusable WPF host for the OCCT HWND viewport. The native viewer remains isolated in OcctNet.OcctViewportControl, while WPF applications receive dependency properties, DPI synchronization, resize coordination, and WPF-native event routing.
+Native WPF host for the OCCT HWND viewport. The WPF adapter owns its child HWND directly through System.Windows.Interop.HwndHost and has no dependency on Windows Forms.
 
 ## 构造函数
 
@@ -48,6 +48,22 @@ public bool EnableRectangleSelection { get; set; }
 
 ```csharp
 public OcctEngine Engine { get; }
+```
+
+### `IsEngineInitialized`
+
+公开 API 成员。精确参数、返回类型和可用 XML Documentation 见本节。
+
+```csharp
+public bool IsEngineInitialized { get; }
+```
+
+### `NativeHandle`
+
+公开 API 成员。精确参数、返回类型和可用 XML Documentation 见本节。
+
+```csharp
+public IntPtr NativeHandle { get; }
 ```
 
 ### `RectangleSelectionBehavior`
@@ -106,14 +122,6 @@ public int RectangleSelectionThreshold { get; set; }
 public bool SynchronizeRenderDpi { get; set; }
 ```
 
-### `WinFormsViewport`
-
-Access to the low-level WinForms HWND host for advanced interoperability.
-
-```csharp
-public OcctViewportControl WinFormsViewport { get; }
-```
-
 ### `ZoomSensitivity`
 
 公开 API 成员。精确参数、返回类型和可用 XML Documentation 见本节。
@@ -137,7 +145,7 @@ public event EventHandler EngineInitialized;
 公开 API 成员。精确参数、返回类型和可用 XML Documentation 见本节。
 
 ```csharp
-public event EventHandler<OcctViewportErrorEventArgs> ErrorOccurred;
+public event EventHandler<OcctWpfErrorEventArgs> ErrorOccurred;
 ```
 
 ### `ObjectSelectionChanged`
@@ -145,7 +153,7 @@ public event EventHandler<OcctViewportErrorEventArgs> ErrorOccurred;
 公开 API 成员。精确参数、返回类型和可用 XML Documentation 见本节。
 
 ```csharp
-public event EventHandler<OcctViewportSelectionEventArgs> ObjectSelectionChanged;
+public event EventHandler<OcctWpfSelectionEventArgs> ObjectSelectionChanged;
 ```
 
 ### `SelectionChanged`
@@ -161,7 +169,7 @@ public event EventHandler<OcctShape?> SelectionChanged;
 公开 API 成员。精确参数、返回类型和可用 XML Documentation 见本节。
 
 ```csharp
-public event EventHandler<OcctViewportWorldPointEventArgs> WorldPointChanged;
+public event EventHandler<OcctWpfWorldPointEventArgs> WorldPointChanged;
 ```
 
 ## 方法
@@ -182,6 +190,16 @@ public void FocusViewport()
 
 ```csharp
 public void RaiseSelectionChanged()
+```
+
+**返回值:** `void`
+
+### `RefreshNativeView`
+
+公开 API 成员。精确参数、返回类型和可用 XML Documentation 见本节。
+
+```csharp
+public void RefreshNativeView()
 ```
 
 **返回值:** `void`
