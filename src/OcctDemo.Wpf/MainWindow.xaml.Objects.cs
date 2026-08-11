@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using OcctDemo.Common;
+﻿using OcctDemo.Common;
 using OcctNet;
 using Controls = System.Windows.Controls;
 
@@ -7,8 +6,6 @@ namespace OcctDemo.Wpf;
 
 public partial class MainWindow
 {
-    private const string StepPathPrefix = "step-path:";
-    private const char StepPathSeparator = '\u001F';
     private bool _syncingObjectSelection;
 
     private void RefreshObjectTree()
@@ -29,7 +26,9 @@ public partial class MainWindow
 
             foreach (var value in Session.Engine.Objects)
             {
-                var hierarchy = value.Kind == OcctObjectKind.Shape ? GetStepHierarchy(value) : Array.Empty<string>();
+                var hierarchy = value.Kind == OcctObjectKind.Shape
+                    ? Session.GetHierarchyPath(value)
+                    : Array.Empty<string>();
                 Controls.TreeViewItem parent;
                 if (value.Kind == OcctObjectKind.Shape)
                 {
@@ -84,7 +83,7 @@ public partial class MainWindow
         foreach (var rawSegment in segments)
         {
             var segment = string.IsNullOrWhiteSpace(rawSegment) ? Local("Assembly", "装配") : rawSegment.Trim();
-            key = key.Length == 0 ? segment : $"{key}{StepPathSeparator}{segment}";
+            key = key.Length == 0 ? segment : $"{key}\u001F{segment}";
             if (cache.TryGetValue(key, out var existing))
             {
                 parent = existing;
@@ -101,21 +100,6 @@ public partial class MainWindow
             parent = node;
         }
         return parent;
-    }
-
-    private IReadOnlyList<string> GetStepHierarchy(IOcctObject value)
-    {
-        if (_session is null || value.Kind != OcctObjectKind.Shape) return Array.Empty<string>();
-        var tag = Session.Engine.GetApplicationTag(value);
-        if (!tag.StartsWith(StepPathPrefix, StringComparison.Ordinal)) return Array.Empty<string>();
-        return tag[StepPathPrefix.Length..]
-            .Split(StepPathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-    }
-
-    private string DisplayObjectName(IOcctObject value)
-    {
-        var hierarchy = GetStepHierarchy(value);
-        return hierarchy.Count > 0 ? hierarchy[^1] : Session.SafeName(value);
     }
 
     private Controls.ContextMenu BuildObjectContextMenu(IOcctObject value)
@@ -151,7 +135,7 @@ public partial class MainWindow
         Session.ActiveObject = value;
         Session.Engine.SelectObject(value, false);
         Viewport.RaiseSelectionChanged();
-        SelectionStatus.Text = Local($"Current: {DisplayObjectName(value)}", $"当前：{DisplayObjectName(value)}");
+        SelectionStatus.Text = Local($"Current: {Session.SafeName(value)}", $"当前：{Session.SafeName(value)}");
     }
 
     private void ShowSelectionProperties(IReadOnlyList<IOcctObject> selectedObjects)
@@ -177,35 +161,9 @@ public partial class MainWindow
 
     private void ShowObjectProperties(IOcctObject? value)
     {
-        if (value is null || _session is null)
-        {
-            PropertyGrid.ItemsSource = null;
-            return;
-        }
-
-        // Selection changes must stay O(1). Expensive B-Rep validation, bounds and
-        // topology traversal belong to the explicit Analysis commands, not this UI path.
-        var rows = new List<KeyValuePair<string, string>>
-        {
-            new(DemoLocalization.Text("Object.Id"), value.Id.ToString(CultureInfo.InvariantCulture)),
-            new(DemoLocalization.Text("Object.Name"), DisplayObjectName(value)),
-            new(DemoLocalization.Text("Object.Kind"), DemoLocalization.ObjectKind(value.Kind))
-        };
-
-        var hierarchy = GetStepHierarchy(value);
-        if (hierarchy.Count > 1)
-        {
-            rows.Add(new KeyValuePair<string, string>(
-                Local("Assembly Path", "装配路径"),
-                string.Join(" / ", hierarchy.Take(hierarchy.Count - 1))));
-        }
-        if (value.Kind == OcctObjectKind.Shape)
-        {
-            rows.Add(new KeyValuePair<string, string>(
-                Local("Geometry Details", "几何详情"),
-                Local("Use Analysis commands on demand", "请按需使用“分析”命令")));
-        }
-        PropertyGrid.ItemsSource = rows;
+        PropertyGrid.ItemsSource = value is null || _session is null
+            ? null
+            : Session.DescribeObjectLightweight(value);
     }
 
     private void SelectTreeNode(IOcctObject? value)
