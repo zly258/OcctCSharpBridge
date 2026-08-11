@@ -1,4 +1,4 @@
-﻿param(
+param(
     [Parameter(Position = 0)]
     [ValidateSet("all", "winform", "wpf", "avalonia")]
     [string]$Target = "all",
@@ -60,6 +60,32 @@ $Projects = [ordered]@{
     }
 }
 
+# Keep this list aligned with src/OcctNative/CMakeLists.txt on main. These are
+# the OCCT toolkits directly linked by OcctNative; Draw/Test/Inspector/OCAF/XDE
+# toolkits are intentionally not part of the demo application package.
+$RequiredOcctRuntimeModules = @(
+    "TKernel", "TKMath", "TKG2d", "TKG3d", "TKGeomBase", "TKBRep",
+    "TKGeomAlgo", "TKTopAlgo", "TKPrim", "TKBO", "TKBool", "TKFillet",
+    "TKOffset", "TKMesh", "TKShHealing", "TKService", "TKV3d", "TKOpenGl",
+    "TKXSBase", "TKDE", "TKDESTEP", "TKDEIGES", "TKDESTL"
+)
+
+# Small native dependencies used by the official Windows OCCT runtime. Copy
+# only known runtime candidates when present instead of recursively copying the
+# complete third-party SDK (Qt, VTK, Tcl/Tk, FFmpeg, debug binaries, etc.).
+$ThirdPartyRuntimeCandidates = @(
+    "tbb12.dll",
+    "tbbmalloc.dll",
+    "tbbmalloc_proxy.dll",
+    "freetype.dll",
+    "FreeImage.dll",
+    "FreeImagePlus.dll",
+    "zlib.dll",
+    "zlib1.dll",
+    "liblzma.dll",
+    "openvr_api.dll"
+)
+
 function Assert-Path {
     param([Parameter(Mandatory = $true)][string]$Path)
     if (-not (Test-Path -LiteralPath $Path)) { throw "Required path was not found: $Path" }
@@ -87,20 +113,57 @@ function Get-SelectedKeys {
     return @($Target)
 }
 
-function Copy-RuntimeDlls {
+function Copy-MergedFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$Source,
+        [Parameter(Mandatory = $true)][string]$Destination
+    )
+
+    $destinationDirectory = Split-Path -Parent $Destination
+    if (-not (Test-Path -LiteralPath $destinationDirectory -PathType Container)) {
+        New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
+    }
+
+    if (Test-Path -LiteralPath $Destination -PathType Leaf) {
+        $sourceHash = (Get-FileHash -LiteralPath $Source -Algorithm SHA256).Hash
+        $destinationHash = (Get-FileHash -LiteralPath $Destination -Algorithm SHA256).Hash
+        if ($sourceHash -eq $destinationHash) { return }
+        throw "Publish output collision contains different files: $Destination"
+    }
+
+    Copy-Item -LiteralPath $Source -Destination $Destination -Force
+}
+
+function Merge-PublishTree {
+    param(
+        [Parameter(Mandatory = $true)][string]$SourceRoot,
+        [Parameter(Mandatory = $true)][string]$DestinationRoot
+    )
+
+    $normalizedSourceRoot = [System.IO.Path]::GetFullPath($SourceRoot).TrimEnd('\', '/')
+    Get-ChildItem -LiteralPath $normalizedSourceRoot -File -Recurse | ForEach-Object {
+        $relativePath = $_.FullName.Substring($normalizedSourceRoot.Length).TrimStart('\', '/')
+        Copy-MergedFile -Source $_.FullName -Destination (Join-Path $DestinationRoot $relativePath)
+    }
+}
+
+function Copy-OcctRuntime {
     param([Parameter(Mandatory = $true)][string]$Destination)
 
     Copy-Item -LiteralPath $NativeDll -Destination (Join-Path $Destination "OcctNative.dll") -Force
 
-    Get-ChildItem -LiteralPath $OcctBinDir -Filter "*.dll" -File | ForEach-Object {
-        Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $Destination $_.Name) -Force
+    foreach ($module in $RequiredOcctRuntimeModules) {
+        $source = Join-Path $OcctBinDir "$module.dll"
+        Assert-Path $source
+        Copy-Item -LiteralPath $source -Destination (Join-Path $Destination "$module.dll") -Force
     }
 
     if (Test-Path -LiteralPath $OcctThirdPartyDir -PathType Container) {
-        Get-ChildItem -LiteralPath $OcctThirdPartyDir -Filter "*.dll" -File -Recurse | Where-Object {
-            $_.DirectoryName -match '[\\/]bin([\\/]|$)'
-        } | ForEach-Object {
-            Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $Destination $_.Name) -Force
+        foreach ($fileName in $ThirdPartyRuntimeCandidates) {
+            $matches = @(Get-ChildItem -LiteralPath $OcctThirdPartyDir -Filter $fileName -File -Recurse -ErrorAction SilentlyContinue)
+            if ($matches.Count -gt 0) {
+                Copy-Item -LiteralPath $matches[0].FullName -Destination (Join-Path $Destination $fileName) -Force
+            }
         }
     }
 
@@ -111,45 +174,56 @@ function Copy-RuntimeDlls {
 Assert-Command "dotnet"
 Assert-Path $BuildScript
 
-# Use the demo's single Binary SDK validator before touching package output.
-# It provides the authoritative contract/manifest/hash checks and a precise
-# first-publication diagnostic when dist/win-x64 has not been published yet.
+# Validate the Binary SDK once before touching publish output.
 & $BuildScript validate $Configuration
 
 Assert-Path $OcctBinDir
 $contract = Get-Content -LiteralPath $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $packageRoot = Join-Path $OutputDirectory ("OcctCSharpBridge-Demo-{0}-win-x64" -f $Target)
+$stagingRoot = Join-Path $OutputDirectory (".OcctCSharpBridge-Demo-{0}-staging-{1}" -f $Target, $PID)
 
 if ((Test-Path -LiteralPath $packageRoot) -and -not $KeepExisting.IsPresent) {
     Remove-Item -LiteralPath $packageRoot -Recurse -Force
 }
+Remove-Item -LiteralPath $stagingRoot -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path $packageRoot -Force | Out-Null
+New-Item -ItemType Directory -Path $stagingRoot -Force | Out-Null
 
-foreach ($key in Get-SelectedKeys) {
-    $definition = $Projects[$key]
-    $projectPath = Join-Path $RepoRoot $definition.Project
-    $destination = Join-Path $packageRoot $key
-    Assert-Path $projectPath
+try {
+    foreach ($key in Get-SelectedKeys) {
+        $definition = $Projects[$key]
+        $projectPath = Join-Path $RepoRoot $definition.Project
+        $stagingDestination = Join-Path $stagingRoot $key
+        Assert-Path $projectPath
+        New-Item -ItemType Directory -Path $stagingDestination -Force | Out-Null
 
-    if ((Test-Path -LiteralPath $destination) -and -not $KeepExisting.IsPresent) {
-        Remove-Item -LiteralPath $destination -Recurse -Force
+        Write-Host "[publish] $($definition.Name) from Bridge $($contract.bridgeVersion), ABI $($contract.nativeAbiVersion)..." -ForegroundColor Cyan
+        Invoke-Checked "dotnet" @(
+            "publish", $projectPath,
+            "-c", $Configuration,
+            "-r", "win-x64",
+            "-p:Platform=x64",
+            "-p:Version=$($contract.bridgeVersion)",
+            "-p:DebugType=None",
+            "-p:DebugSymbols=false",
+            "--self-contained", $UseSelfContained.ToString().ToLowerInvariant(),
+            "--nologo",
+            "-o", $stagingDestination
+        ) "$($definition.Name) publish failed."
+
+        Assert-Path (Join-Path $stagingDestination $definition.Executable)
+        Merge-PublishTree -SourceRoot $stagingDestination -DestinationRoot $packageRoot
     }
-    New-Item -ItemType Directory -Path $destination -Force | Out-Null
 
-    Write-Host "[publish] $($definition.Name) from Bridge $($contract.bridgeVersion), ABI $($contract.nativeAbiVersion)..." -ForegroundColor Cyan
-    Invoke-Checked "dotnet" @(
-        "publish", $projectPath,
-        "-c", $Configuration,
-        "-r", "win-x64",
-        "-p:Platform=x64",
-        "-p:Version=$($contract.bridgeVersion)",
-        "--self-contained", $UseSelfContained.ToString().ToLowerInvariant(),
-        "--nologo",
-        "-o", $destination
-    ) "$($definition.Name) publish failed."
+    # Native runtime is shared by all three applications and copied only once.
+    Copy-OcctRuntime -Destination $packageRoot
 
-    Assert-Path (Join-Path $destination $definition.Executable)
-    Copy-RuntimeDlls -Destination $destination
+    foreach ($key in Get-SelectedKeys) {
+        Assert-Path (Join-Path $packageRoot $Projects[$key].Executable)
+    }
+}
+finally {
+    Remove-Item -LiteralPath $stagingRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 if ($Zip.IsPresent) {
