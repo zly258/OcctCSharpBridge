@@ -55,6 +55,7 @@ public sealed partial class MainWindow
         }
         BuildMenus();
         BuildToolbar();
+        ApplyDemoEnhancements();
         RefreshObjectTree();
         ShowSelectionProperties(_session?.Engine.SelectedObjects ?? Array.Empty<IOcctObject>());
     }
