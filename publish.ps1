@@ -84,64 +84,72 @@ function Invoke-Checked {
 
 function Get-SelectedKeys {
     if ($Target -eq "all") {
-        # WPF enables both UseWPF and UseWindowsForms, so its WindowsDesktop
-        # self-contained runtime is the canonical superset shared by all three
-        # applications in the merged package.
+        # Establish one canonical self-contained runtime first. Later hosts add
+        # only runtime-pack files that are not already present. This keeps one
+        # portable directory without assuming that any UI framework depends on
+        # another UI framework.
         return @("wpf", "winform", "avalonia")
     }
     return @($Target)
 }
 
-function Get-ManagedAssemblyIdentity {
-    param([Parameter(Mandatory = $true)][string]$Path)
-
-    try {
-        $assemblyName = [System.Reflection.AssemblyName]::GetAssemblyName($Path)
-        $tokenBytes = $assemblyName.GetPublicKeyToken()
-        $token = if ($null -eq $tokenBytes -or $tokenBytes.Length -eq 0) {
-            ""
-        }
-        else {
-            -join ($tokenBytes | ForEach-Object { $_.ToString("x2") })
-        }
-
-        return [pscustomobject]@{
-            Name = $assemblyName.Name
-            Version = $assemblyName.Version
-            PublicKeyToken = $token
-        }
-    }
-    catch {
-        return $null
-    }
-}
-
-function Test-SharedDesktopFrameworkAssembly {
+function Get-RuntimePackAssetNames {
     param(
-        [Parameter(Mandatory = $true)][string]$Source,
-        [Parameter(Mandatory = $true)][string]$Destination
+        [Parameter(Mandatory = $true)][string]$SourceRoot,
+        [Parameter(Mandatory = $true)][string]$Executable
     )
 
-    $fileName = [System.IO.Path]::GetFileName($Source)
-    if ($fileName -notmatch '(?i)^(System\.|Microsoft\.|WindowsBase(?:\.resources)?\.dll$|Presentation(?:Core|Framework|UI)(?:\.resources)?\.dll$|ReachFramework(?:\.resources)?\.dll$|UIAutomation(?:Client|ClientSideProviders|Provider|Types)(?:\.resources)?\.dll$|WindowsFormsIntegration(?:\.resources)?\.dll$)') {
-        return $false
+    $result = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    if (-not $UseSelfContained) { return $result }
+
+    $applicationName = [System.IO.Path]::GetFileNameWithoutExtension($Executable)
+    $depsPath = Join-Path $SourceRoot "$applicationName.deps.json"
+    if (-not (Test-Path -LiteralPath $depsPath -PathType Leaf)) {
+        throw "Self-contained publish did not produce the expected dependency manifest: $depsPath"
     }
 
-    $sourceIdentity = Get-ManagedAssemblyIdentity -Path $Source
-    $destinationIdentity = Get-ManagedAssemblyIdentity -Path $Destination
-    if ($null -eq $sourceIdentity -or $null -eq $destinationIdentity) { return $false }
+    $deps = Get-Content -LiteralPath $depsPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $runtimePackLibraries = @($deps.libraries.PSObject.Properties |
+        Where-Object { [string]$_.Value.type -eq "runtimepack" } |
+        ForEach-Object { $_.Name })
 
-    $sameIdentity =
-        $sourceIdentity.Name -eq $destinationIdentity.Name -and
-        $sourceIdentity.Version -eq $destinationIdentity.Version -and
-        $sourceIdentity.PublicKeyToken -eq $destinationIdentity.PublicKeyToken
-    return $sameIdentity
+    if ($runtimePackLibraries.Count -eq 0) {
+        throw "Self-contained dependency manifest contains no runtime-pack libraries: $depsPath"
+    }
+
+    $targetProperty = @($deps.targets.PSObject.Properties) | Select-Object -First 1
+    if ($null -eq $targetProperty) {
+        throw "Dependency manifest contains no target graph: $depsPath"
+    }
+    $targetGraph = $targetProperty.Value
+
+    foreach ($libraryName in $runtimePackLibraries) {
+        $libraryProperty = $targetGraph.PSObject.Properties[$libraryName]
+        if ($null -eq $libraryProperty) { continue }
+        $library = $libraryProperty.Value
+
+        foreach ($sectionName in @("runtime", "runtimeTargets", "native", "resources")) {
+            $sectionProperty = $library.PSObject.Properties[$sectionName]
+            if ($null -eq $sectionProperty -or $null -eq $sectionProperty.Value) { continue }
+
+            foreach ($asset in $sectionProperty.Value.PSObject.Properties) {
+                $fileName = [System.IO.Path]::GetFileName([string]$asset.Name)
+                if (-not [string]::IsNullOrWhiteSpace($fileName)) {
+                    [void]$result.Add($fileName)
+                }
+            }
+        }
+    }
+
+    return $result
 }
 
 function Copy-MergedFile {
     param(
         [Parameter(Mandatory = $true)][string]$Source,
-        [Parameter(Mandatory = $true)][string]$Destination
+        [Parameter(Mandatory = $true)][string]$Destination,
+        [Parameter(Mandatory = $true)][bool]$IsRuntimePackFile,
+        [Parameter(Mandatory = $true)][System.Collections.Generic.HashSet[string]]$RuntimeBaseline
     )
 
     $destinationDirectory = Split-Path -Parent $Destination
@@ -149,33 +157,46 @@ function Copy-MergedFile {
         New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
     }
 
+    $fileName = [System.IO.Path]::GetFileName($Source)
     if (Test-Path -LiteralPath $Destination -PathType Leaf) {
         $sourceHash = (Get-FileHash -LiteralPath $Source -Algorithm SHA256).Hash
         $destinationHash = (Get-FileHash -LiteralPath $Destination -Algorithm SHA256).Hash
-        if ($sourceHash -eq $destinationHash) { return }
-
-        if ($UseSelfContained -and (Test-SharedDesktopFrameworkAssembly -Source $Source -Destination $Destination)) {
-            $identity = Get-ManagedAssemblyIdentity -Path $Destination
-            Write-Host "[merge] Shared desktop runtime: $([System.IO.Path]::GetFileName($Destination)) $($identity.Version) (keeping canonical WPF copy)" -ForegroundColor DarkGray
+        if ($sourceHash -eq $destinationHash) {
+            if ($IsRuntimePackFile) { [void]$RuntimeBaseline.Add($fileName) }
             return
         }
 
-        throw "Publish output collision contains different files: $Destination"
+        if ($UseSelfContained -and $IsRuntimePackFile -and $RuntimeBaseline.Contains($fileName)) {
+            Write-Host "[merge] Runtime pack: $fileName (reusing canonical copy)" -ForegroundColor DarkGray
+            return
+        }
+
+        throw "Publish output collision contains different application/package files: $Destination"
     }
 
     Copy-Item -LiteralPath $Source -Destination $Destination -Force
+    if ($IsRuntimePackFile) { [void]$RuntimeBaseline.Add($fileName) }
 }
 
 function Merge-PublishTree {
     param(
         [Parameter(Mandatory = $true)][string]$SourceRoot,
-        [Parameter(Mandatory = $true)][string]$DestinationRoot
+        [Parameter(Mandatory = $true)][string]$DestinationRoot,
+        [Parameter(Mandatory = $true)][System.Collections.Generic.HashSet[string]]$SourceRuntimePackFiles,
+        [Parameter(Mandatory = $true)][System.Collections.Generic.HashSet[string]]$RuntimeBaseline
     )
 
     $normalizedSourceRoot = [System.IO.Path]::GetFullPath($SourceRoot).TrimEnd('\', '/')
     Get-ChildItem -LiteralPath $normalizedSourceRoot -File -Recurse | ForEach-Object {
         $relativePath = $_.FullName.Substring($normalizedSourceRoot.Length).TrimStart('\', '/')
-        Copy-MergedFile -Source $_.FullName -Destination (Join-Path $DestinationRoot $relativePath)
+        $isRuntimePackFile = $SourceRuntimePackFiles.Contains($_.Name)
+        $copyArguments = @{
+            Source = $_.FullName
+            Destination = Join-Path $DestinationRoot $relativePath
+            IsRuntimePackFile = $isRuntimePackFile
+            RuntimeBaseline = $RuntimeBaseline
+        }
+        Copy-MergedFile @copyArguments
     }
 }
 
@@ -421,6 +442,8 @@ Remove-Item -LiteralPath $stagingRoot -Recurse -Force -ErrorAction SilentlyConti
 New-Item -ItemType Directory -Path $packageRoot -Force | Out-Null
 New-Item -ItemType Directory -Path $stagingRoot -Force | Out-Null
 
+$runtimeBaseline = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+
 try {
     foreach ($key in Get-SelectedKeys) {
         $definition = $Projects[$key]
@@ -444,7 +467,17 @@ try {
         ) "$($definition.Name) publish failed."
 
         Assert-Path (Join-Path $stagingDestination $definition.Executable)
-        Merge-PublishTree -SourceRoot $stagingDestination -DestinationRoot $packageRoot
+        $runtimePackFiles = Get-RuntimePackAssetNames -SourceRoot $stagingDestination -Executable $definition.Executable
+        if ($UseSelfContained) {
+            Write-Host "[merge] $($definition.Name) runtime-pack assets: $($runtimePackFiles.Count)" -ForegroundColor DarkGray
+        }
+        $mergeArguments = @{
+            SourceRoot = $stagingDestination
+            DestinationRoot = $packageRoot
+            SourceRuntimePackFiles = $runtimePackFiles
+            RuntimeBaseline = $runtimeBaseline
+        }
+        Merge-PublishTree @mergeArguments
     }
 
     # All three applications share one exact native dependency closure. The
