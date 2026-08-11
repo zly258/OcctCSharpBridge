@@ -1,9 +1,7 @@
 ﻿using System.Globalization;
 using OcctDemo.Common;
 using OcctNet;
-using DrawingColor = System.Drawing.Color;
 using Controls = System.Windows.Controls;
-using Input = System.Windows.Input;
 
 namespace OcctDemo.Wpf;
 
@@ -45,7 +43,7 @@ public partial class MainWindow
 
                 var visible = new Controls.CheckBox
                 {
-                    Content = Session.SafeName(value),
+                    Content = DisplayObjectName(value),
                     IsChecked = true,
                     Tag = value
                 };
@@ -113,6 +111,12 @@ public partial class MainWindow
             .Split(StepPathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 
+    private string DisplayObjectName(IOcctObject value)
+    {
+        var hierarchy = GetStepHierarchy(value);
+        return hierarchy.Count > 0 ? hierarchy[^1] : Session.SafeName(value);
+    }
+
     private Controls.ContextMenu BuildObjectContextMenu(IOcctObject value)
     {
         var menu = new Controls.ContextMenu();
@@ -146,7 +150,7 @@ public partial class MainWindow
         Session.ActiveObject = value;
         Session.Engine.SelectObject(value, false);
         Viewport.RaiseSelectionChanged();
-        SelectionStatus.Text = Local($"Current: {Session.SafeName(value)}", $"当前：{Session.SafeName(value)}");
+        SelectionStatus.Text = Local($"Current: {DisplayObjectName(value)}", $"当前：{DisplayObjectName(value)}");
     }
 
     private void ShowSelectionProperties(IReadOnlyList<IOcctObject> selectedObjects)
@@ -183,7 +187,7 @@ public partial class MainWindow
         var rows = new List<KeyValuePair<string, string>>
         {
             new(DemoLocalization.Text("Object.Id"), value.Id.ToString(CultureInfo.InvariantCulture)),
-            new(DemoLocalization.Text("Object.Name"), Session.SafeName(value)),
+            new(DemoLocalization.Text("Object.Name"), DisplayObjectName(value)),
             new(DemoLocalization.Text("Object.Kind"), DemoLocalization.ObjectKind(value.Kind))
         };
 
@@ -213,11 +217,11 @@ public partial class MainWindow
 
     private static void ExpandAncestors(Controls.TreeViewItem item)
     {
-        var parent = ItemsControl.ItemsControlFromItemContainer(item) as Controls.TreeViewItem;
+        var parent = Controls.ItemsControl.ItemsControlFromItemContainer(item) as Controls.TreeViewItem;
         while (parent is not null)
         {
             parent.IsExpanded = true;
-            parent = ItemsControl.ItemsControlFromItemContainer(parent) as Controls.TreeViewItem;
+            parent = Controls.ItemsControl.ItemsControlFromItemContainer(parent) as Controls.TreeViewItem;
         }
     }
 
