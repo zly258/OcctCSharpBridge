@@ -277,8 +277,11 @@ public sealed class OcctWpfViewport : WpfUserControl
         return double.IsFinite(number) && number > 0.0 ? number : 1.0;
     }
 
-    private static object CoerceZoomSensitivity(DependencyObject _, object value) =>
-        OcctViewportInteractionPolicy.NormalizeZoomSensitivity((double)value);
+    private static object CoerceZoomSensitivity(DependencyObject _, object value)
+    {
+        var number = (double)value;
+        return double.IsFinite(number) ? Math.Clamp(number, 0.1, 5.0) : 1.0;
+    }
 
     private static object CoerceUnitInterval(DependencyObject _, object value)
     {
