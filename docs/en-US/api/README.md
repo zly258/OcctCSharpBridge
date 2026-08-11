@@ -7,7 +7,7 @@ Bridge **2.6.0** · Native ABI **4** · OCCT **7.9.0** · .NET SDK **10.0.302** 
 This index covers every public type and member in the four Binary SDK .NET assemblies and also provides the complete Native C ABI reference.
 
 - **Public types:** 105
-- **Public members:** 1303
+- **Public members:** 1307
 
 - [Complete Native C ABI Reference](native-abi.md)
 
@@ -112,19 +112,19 @@ This index covers every public type and member in the four Binary SDK .NET assem
 
 ## OcctNet.WinForms
 
-- [`OcctViewportControl`](reference/OcctNet.OcctViewportControl.md) — 16
+- [`OcctViewportControl`](reference/OcctNet.OcctViewportControl.md) — 17
 - [`OcctViewportErrorEventArgs`](reference/OcctNet.OcctViewportErrorEventArgs.md) — 2
 - [`OcctViewportSelectionEventArgs`](reference/OcctNet.OcctViewportSelectionEventArgs.md) — 3
 - [`OcctViewportWorldPointEventArgs`](reference/OcctNet.OcctViewportWorldPointEventArgs.md) — 4
 
 ## OcctNet.Wpf
 
-- [`OcctWpfViewport`](reference/OcctNet.OcctWpfViewport.md) — 28
+- [`OcctWpfViewport`](reference/OcctNet.OcctWpfViewport.md) — 30
 
 ## OcctNet.Avalonia
 
 - [`OcctAvaloniaErrorEventArgs`](reference/OcctNet.OcctAvaloniaErrorEventArgs.md) — 2
 - [`OcctAvaloniaSelectionEventArgs`](reference/OcctNet.OcctAvaloniaSelectionEventArgs.md) — 3
-- [`OcctAvaloniaViewport`](reference/OcctNet.OcctAvaloniaViewport.md) — 20
+- [`OcctAvaloniaViewport`](reference/OcctNet.OcctAvaloniaViewport.md) — 21
 - [`OcctAvaloniaWorldPointEventArgs`](reference/OcctNet.OcctAvaloniaWorldPointEventArgs.md) — 4
 

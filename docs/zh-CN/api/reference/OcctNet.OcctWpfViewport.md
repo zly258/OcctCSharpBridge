@@ -114,6 +114,14 @@ Access to the low-level WinForms HWND host for advanced interoperability.
 public OcctViewportControl WinFormsViewport { get; }
 ```
 
+### `ZoomSensitivity`
+
+公开 API 成员。精确参数、返回类型和可用 XML Documentation 见本节。
+
+```csharp
+public double ZoomSensitivity { get; set; }
+```
+
 ## 事件
 
 ### `EngineInitialized`
@@ -189,4 +197,5 @@ public void RaiseSelectionChanged()
 - `RectangleSelectionLineWidthProperty` — `DependencyProperty` — 公开 API 成员。精确参数、返回类型和可用 XML Documentation 见本节。
 - `RectangleSelectionThresholdProperty` — `DependencyProperty` — 公开 API 成员。精确参数、返回类型和可用 XML Documentation 见本节。
 - `SynchronizeRenderDpiProperty` — `DependencyProperty` — 公开 API 成员。精确参数、返回类型和可用 XML Documentation 见本节。
+- `ZoomSensitivityProperty` — `DependencyProperty` — 公开 API 成员。精确参数、返回类型和可用 XML Documentation 见本节。
 

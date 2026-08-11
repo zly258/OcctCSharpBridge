@@ -7,7 +7,7 @@ Bridge **2.6.0** · Native ABI **4** · OCCT **7.9.0** · .NET SDK **10.0.302** 
 本索引覆盖 Binary SDK 四个公开 .NET 程序集的全部公开类型和成员，并同时提供 Native C ABI 完整参考。
 
 - **公开类型数:** 105
-- **公开成员数:** 1303
+- **公开成员数:** 1307
 
 - [Native C ABI 完整参考](native-abi.md)
 
@@ -112,19 +112,19 @@ Bridge **2.6.0** · Native ABI **4** · OCCT **7.9.0** · .NET SDK **10.0.302** 
 
 ## OcctNet.WinForms
 
-- [`OcctViewportControl`](reference/OcctNet.OcctViewportControl.md) — 16
+- [`OcctViewportControl`](reference/OcctNet.OcctViewportControl.md) — 17
 - [`OcctViewportErrorEventArgs`](reference/OcctNet.OcctViewportErrorEventArgs.md) — 2
 - [`OcctViewportSelectionEventArgs`](reference/OcctNet.OcctViewportSelectionEventArgs.md) — 3
 - [`OcctViewportWorldPointEventArgs`](reference/OcctNet.OcctViewportWorldPointEventArgs.md) — 4
 
 ## OcctNet.Wpf
 
-- [`OcctWpfViewport`](reference/OcctNet.OcctWpfViewport.md) — 28
+- [`OcctWpfViewport`](reference/OcctNet.OcctWpfViewport.md) — 30
 
 ## OcctNet.Avalonia
 
 - [`OcctAvaloniaErrorEventArgs`](reference/OcctNet.OcctAvaloniaErrorEventArgs.md) — 2
 - [`OcctAvaloniaSelectionEventArgs`](reference/OcctNet.OcctAvaloniaSelectionEventArgs.md) — 3
-- [`OcctAvaloniaViewport`](reference/OcctNet.OcctAvaloniaViewport.md) — 20
+- [`OcctAvaloniaViewport`](reference/OcctNet.OcctAvaloniaViewport.md) — 21
 - [`OcctAvaloniaWorldPointEventArgs`](reference/OcctNet.OcctAvaloniaWorldPointEventArgs.md) — 4
 

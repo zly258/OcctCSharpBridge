@@ -122,6 +122,14 @@ Public API member. Exact parameters, return type, and available XML documentatio
 public bool SynchronizeRenderDpi { get; set; }
 ```
 
+### `ZoomSensitivity`
+
+Public API member. Exact parameters, return type, and available XML documentation are listed below.
+
+```csharp
+public double ZoomSensitivity { get; set; }
+```
+
 ## Events
 
 ### `EngineInitialized`

@@ -98,6 +98,14 @@ Public API member. Exact parameters, return type, and available XML documentatio
 public int RectangleSelectionThreshold { get; set; }
 ```
 
+### `ZoomSensitivity`
+
+Public API member. Exact parameters, return type, and available XML documentation are listed below.
+
+```csharp
+public double ZoomSensitivity { get; set; }
+```
+
 ## Events
 
 ### `EngineInitialized`

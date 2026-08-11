@@ -114,6 +114,14 @@ Access to the low-level WinForms HWND host for advanced interoperability.
 public OcctViewportControl WinFormsViewport { get; }
 ```
 
+### `ZoomSensitivity`
+
+Public API member. Exact parameters, return type, and available XML documentation are listed below.
+
+```csharp
+public double ZoomSensitivity { get; set; }
+```
+
 ## Events
 
 ### `EngineInitialized`
@@ -189,4 +197,5 @@ public void RaiseSelectionChanged()
 - `RectangleSelectionLineWidthProperty` — `DependencyProperty` — Public API member. Exact parameters, return type, and available XML documentation are listed below.
 - `RectangleSelectionThresholdProperty` — `DependencyProperty` — Public API member. Exact parameters, return type, and available XML documentation are listed below.
 - `SynchronizeRenderDpiProperty` — `DependencyProperty` — Public API member. Exact parameters, return type, and available XML documentation are listed below.
+- `ZoomSensitivityProperty` — `DependencyProperty` — Public API member. Exact parameters, return type, and available XML documentation are listed below.
 

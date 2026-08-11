@@ -98,6 +98,14 @@ public double RectangleSelectionLineWidth { get; set; }
 public int RectangleSelectionThreshold { get; set; }
 ```
 
+### `ZoomSensitivity`
+
+公开 API 成员。精确参数、返回类型和可用 XML Documentation 见本节。
+
+```csharp
+public double ZoomSensitivity { get; set; }
+```
+
 ## 事件
 
 ### `EngineInitialized`
