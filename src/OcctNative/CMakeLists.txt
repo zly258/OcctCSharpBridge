@@ -61,6 +61,7 @@ endif()
 add_library(OcctNative SHARED
     OcctEngine.cpp
     OcctEngineView.cpp
+    OcctRenderSurface.cpp
     OcctEngineSelection.cpp
     OcctEngineObjects.cpp
     OcctEngineShapes.cpp
