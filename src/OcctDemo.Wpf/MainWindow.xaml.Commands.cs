@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using OcctDemo.Common;
 using OcctNet;
 using DrawingColor = System.Drawing.Color;
@@ -236,23 +236,21 @@ public partial class MainWindow
 
     private void SetSelectionHighlightColor()
     {
-        using var dialog = new System.Windows.Forms.ColorDialog { Color = _selectionHighlightColor, FullOpen = true };
-        if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+        if (!WpfColorDialog.TryPick(this, Local("Selection Highlight Color", "选择高亮颜色"), _selectionHighlightColor, out var color)) return;
         ExecuteSafe(() =>
         {
-            _selectionHighlightColor = dialog.Color;
-            Session.Engine.SetSelectionHighlightColor(dialog.Color);
+            _selectionHighlightColor = color;
+            Session.Engine.SetSelectionHighlightColor(color);
         });
     }
 
     private void SetHoverHighlightColor()
     {
-        using var dialog = new System.Windows.Forms.ColorDialog { Color = _hoverHighlightColor, FullOpen = true };
-        if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+        if (!WpfColorDialog.TryPick(this, Local("Hover Highlight Color", "悬停高亮颜色"), _hoverHighlightColor, out var color)) return;
         ExecuteSafe(() =>
         {
-            _hoverHighlightColor = dialog.Color;
-            Session.Engine.SetHoverHighlightColor(dialog.Color);
+            _hoverHighlightColor = color;
+            Session.Engine.SetHoverHighlightColor(color);
         });
     }
 
@@ -268,11 +266,8 @@ public partial class MainWindow
 
     private void SetBackgroundColor()
     {
-        using var dialog = new System.Windows.Forms.ColorDialog { Color = DrawingColor.White, FullOpen = true };
-        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-        {
-            ExecuteSafe(() => Session.Engine.SetBackground(dialog.Color));
-        }
+        if (!WpfColorDialog.TryPick(this, Local("Background Color", "背景颜色"), DrawingColor.White, out var color)) return;
+        ExecuteSafe(() => Session.Engine.SetBackground(color));
     }
 
     private void SetSelectionMode(OcctSelectionMode mode)
@@ -291,11 +286,8 @@ public partial class MainWindow
 
     private void SetObjectColor(IOcctObject value)
     {
-        using var dialog = new System.Windows.Forms.ColorDialog { Color = DrawingColor.SteelBlue, FullOpen = true };
-        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-        {
-            ExecuteSafe(() => Session.Engine.SetColor(value, dialog.Color));
-        }
+        if (!WpfColorDialog.TryPick(this, Local("Object Color", "对象颜色"), DrawingColor.SteelBlue, out var color)) return;
+        ExecuteSafe(() => Session.Engine.SetColor(value, color));
     }
 
     private void SetObjectMaterial(IOcctObject value)
