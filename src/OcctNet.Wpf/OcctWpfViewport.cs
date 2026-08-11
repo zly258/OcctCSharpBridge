@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Forms.Integration;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -25,6 +25,13 @@ public sealed class OcctWpfViewport : WpfUserControl
             typeof(bool),
             typeof(OcctWpfViewport),
             new FrameworkPropertyMetadata(true, OnInteractionPropertyChanged));
+
+    public static readonly DependencyProperty ZoomSensitivityProperty =
+        DependencyProperty.Register(
+            nameof(ZoomSensitivity),
+            typeof(double),
+            typeof(OcctWpfViewport),
+            new FrameworkPropertyMetadata(1.0, OnInteractionPropertyChanged, CoerceZoomSensitivity));
 
     public static readonly DependencyProperty EnableRectangleSelectionProperty =
         DependencyProperty.Register(
@@ -113,6 +120,12 @@ public sealed class OcctWpfViewport : WpfUserControl
     {
         get => (bool)GetValue(EnableDefaultInteractionProperty);
         set => SetValue(EnableDefaultInteractionProperty, value);
+    }
+
+    public double ZoomSensitivity
+    {
+        get => (double)GetValue(ZoomSensitivityProperty);
+        set => SetValue(ZoomSensitivityProperty, value);
     }
 
     public bool EnableRectangleSelection
@@ -221,6 +234,7 @@ public sealed class OcctWpfViewport : WpfUserControl
     private void ApplyInteractionProperties()
     {
         _viewport.EnableDefaultInteraction = EnableDefaultInteraction;
+        _viewport.ZoomSensitivity = ZoomSensitivity;
     }
 
     private void ApplySelectionProperties()
@@ -262,6 +276,9 @@ public sealed class OcctWpfViewport : WpfUserControl
         var number = (double)value;
         return double.IsFinite(number) && number > 0.0 ? number : 1.0;
     }
+
+    private static object CoerceZoomSensitivity(DependencyObject _, object value) =>
+        OcctViewportInteractionPolicy.NormalizeZoomSensitivity((double)value);
 
     private static object CoerceUnitInterval(DependencyObject _, object value)
     {
