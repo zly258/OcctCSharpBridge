@@ -138,6 +138,7 @@ target_link_directories(OcctNative PRIVATE "${OCCT_LIB_DIR}")
 
 set(occt_required_libraries
     TKernel TKMath TKG2d TKG3d TKGeomBase TKBRep TKGeomAlgo TKTopAlgo
+    TKLCAF TKCAF TKXCAF
     TKPrim TKBO TKBool TKFillet TKOffset TKMesh TKShHealing
     TKService TKV3d TKOpenGl TKXSBase TKDE TKDESTEP TKDEIGES TKDESTL)
 
