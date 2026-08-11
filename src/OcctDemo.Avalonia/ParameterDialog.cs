@@ -1,8 +1,9 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using OcctDemo.Common;
+using AvaloniaFontFamily = Avalonia.Media.FontFamily;
 using AvaloniaHorizontalAlignment = Avalonia.Layout.HorizontalAlignment;
 using AvaloniaOrientation = Avalonia.Layout.Orientation;
 using Button = Avalonia.Controls.Button;
@@ -26,7 +27,7 @@ internal sealed class ParameterDialog : Window
         CanResize = false;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         ShowInTaskbar = false;
-        FontFamily = new FontFamily("Microsoft YaHei UI");
+        FontFamily = new AvaloniaFontFamily("Microsoft YaHei UI");
 
         var root = new DockPanel { Margin = new Thickness(16) };
         var buttons = new StackPanel
