@@ -1,6 +1,7 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Avalonia.Controls;
 using OcctDemo.Common;
+using MenuItem = Avalonia.Controls.MenuItem;
 
 namespace OcctDemo.Avalonia;
 
