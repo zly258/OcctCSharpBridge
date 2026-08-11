@@ -128,7 +128,7 @@ public sealed partial class DemoSession
                 "Mesh generation returned incomplete data.",
                 "网格生成返回的数据不完整。"));
         }
-        if (mesh.Nodes.Any(node => !node.Point.IsFinite))
+        if (mesh.Mesh.Nodes.Any(node => !node.Point.IsFinite))
         {
             throw new InvalidOperationException(Local(
                 "Mesh generation returned a non-finite node.",
