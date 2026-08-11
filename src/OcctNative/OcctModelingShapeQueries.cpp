@@ -2,16 +2,51 @@
 
 #include <BRepBndLib.hxx>
 #include <BRepCheck_Analyzer.hxx>
+#include <BRepCheck_Shell.hxx>
+#include <BRepCheck_Status.hxx>
+#include <BRepCheck_Wire.hxx>
 #include <BRepExtrema_DistShapeShape.hxx>
 #include <BRepGProp.hxx>
 #include <Bnd_Box.hxx>
 #include <TopLoc_Location.hxx>
 #include <TopTools_ShapeMapHasher.hxx>
+#include <TopoDS_Shell.hxx>
 #include <gp_Trsf.hxx>
 
 #include <sstream>
 
 using namespace OcctModelingInternal;
+
+namespace
+{
+    bool isTopologicallyClosed(const TopoDS_Shape& shape)
+    {
+        switch (shape.ShapeType())
+        {
+            case TopAbs_WIRE:
+                return BRepCheck_Wire(TopoDS::Wire(shape)).Closed() == BRepCheck_NoError;
+
+            case TopAbs_SHELL:
+                return BRepCheck_Shell(TopoDS::Shell(shape)).Closed() == BRepCheck_NoError;
+
+            case TopAbs_SOLID:
+            case TopAbs_COMPSOLID:
+            {
+                bool hasShell = false;
+                for (TopExp_Explorer explorer(shape, TopAbs_SHELL); explorer.More(); explorer.Next())
+                {
+                    hasShell = true;
+                    if (BRepCheck_Shell(TopoDS::Shell(explorer.Current())).Closed() != BRepCheck_NoError)
+                        return false;
+                }
+                return hasShell;
+            }
+
+            default:
+                return false;
+        }
+    }
+}
 
 extern "C"
 {
@@ -50,7 +85,7 @@ extern "C"
     {
         ModelSession* model = modelOf(handle);
         if (model == nullptr) return 0;
-        try { return model->requireShape(shapeId).Closed() ? 1 : 0; }
+        try { return isTopologicallyClosed(model->requireShape(shapeId)) ? 1 : 0; }
         catch (...) { return 0; }
     }
 
