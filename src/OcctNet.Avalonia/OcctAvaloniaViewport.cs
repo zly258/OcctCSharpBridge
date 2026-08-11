@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Platform;
@@ -86,6 +86,7 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
     private IntPtr _nativeHandle;
     private IntPtr _previousWindowProcedure;
     private bool _enableDefaultInteraction = true;
+    private double _zoomSensitivity = 1.0;
     private bool _rotating;
     private bool _panning;
     private bool _leftSelectionGesture;
@@ -122,6 +123,12 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
             _enableDefaultInteraction = value;
             if (!value) CancelInteraction();
         }
+    }
+
+    public double ZoomSensitivity
+    {
+        get => _zoomSensitivity;
+        set => _zoomSensitivity = OcctViewportInteractionPolicy.NormalizeZoomSensitivity(value);
     }
 
     public bool EnableRectangleSelection { get; set; } = true;
@@ -432,12 +439,13 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
         if (_engine?.IsInitialized != true || !EnableDefaultInteraction) return;
         var delta = GetHighWordSigned(wParam);
         if (delta == 0) return;
+        var scaledDelta = OcctViewportInteractionPolicy.ScaleWheelDelta(delta, ZoomSensitivity);
 
         var point = new NativePoint(GetLowWordSigned(lParam), GetHighWordSigned(lParam));
         if (_nativeHandle != IntPtr.Zero && ScreenToClient(_nativeHandle, ref point))
-            TryInvoke(() => _engine.ZoomAtPoint(point.X, point.Y, delta));
+            TryInvoke(() => _engine.ZoomAtPoint(point.X, point.Y, scaledDelta));
         else
-            TryInvoke(() => _engine.Zoom(OcctViewportInteractionPolicy.ZoomFactor(delta)));
+            TryInvoke(() => _engine.Zoom(OcctViewportInteractionPolicy.ZoomFactor(delta, ZoomSensitivity)));
     }
 
     private void UpdateSelectionFrame(int currentX, int currentY)
