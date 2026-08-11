@@ -14,6 +14,13 @@ public sealed partial class OcctEngine
     }
 
     public void Resize() => CheckInitialized(() => NativeMethods.occt_resize(_handle));
+
+    /// <summary>
+    /// Synchronizes the OCCT render surface with the native window size without drawing a frame.
+    /// UI adapters can coalesce repeated resize notifications and call <see cref="Redraw"/> once.
+    /// </summary>
+    public void ResizeSurface() => CheckInitialized(() => NativeMethods.occt_resize_surface(_handle));
+
     public void Redraw() => CheckInitialized(() => NativeMethods.occt_redraw(_handle));
     public void FitAll() => CheckInitialized(() => NativeMethods.occt_fit_all(_handle));
 
