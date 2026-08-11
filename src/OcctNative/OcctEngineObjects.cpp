@@ -228,6 +228,7 @@ extern "C"
             e->objects.clear();
             e->objectIdByApplicationTag.clear();
             e->stepDocuments.clear();
+            e->lastStepImportObjectIds.clear();
             e->pristineStepDocument.Nullify();
             e->pristineStepDocumentMatchesScene = false;
             e->nextId = 1;
