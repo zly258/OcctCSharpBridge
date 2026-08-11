@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -38,7 +38,7 @@ public sealed partial class MainWindow
 
     private void ApplyLanguage()
     {
-        FontFamily = new AvaloniaFontFamily(DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified ? "Microsoft YaHei UI" : "Segoe UI");
+        FontFamily = UiFontFamily;
         Title = "OCCT CAD - Avalonia";
         _modelExplorerGroup.Header = DemoLocalization.Text("Panel.ModelExplorer");
         _propertiesGroup.Header = DemoLocalization.Text("Panel.Properties");
@@ -56,7 +56,7 @@ public sealed partial class MainWindow
         BuildMenus();
         BuildToolbar();
         RefreshObjectTree();
-        ShowObjectProperties(_session?.ActiveObject);
+        ShowSelectionProperties(_session?.Engine.SelectedObjects ?? Array.Empty<IOcctObject>());
     }
 
     private void ApplyViewCubeLanguage()
