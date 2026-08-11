@@ -60,41 +60,6 @@ $Projects = [ordered]@{
     }
 }
 
-# Direct OcctNative toolkits plus the OCCT 7.9 runtime closure required by
-# TKV3d and the STEP/IGES/STL exchange toolkits. CAF/XCAF modules here are
-# internal OCCT runtime dependencies of exchange support; the Bridge still does
-# not expose or use OCAF/XDE as its document architecture.
-$RequiredOcctRuntimeModules = @(
-    "TKernel", "TKMath", "TKG2d", "TKG3d", "TKGeomBase", "TKBRep",
-    "TKGeomAlgo", "TKTopAlgo", "TKPrim", "TKBO", "TKBool", "TKFillet",
-    "TKOffset", "TKMesh", "TKShHealing", "TKService", "TKV3d", "TKOpenGl",
-    "TKHLR", "TKXSBase", "TKDE", "TKDESTEP", "TKDEIGES", "TKDESTL",
-    "TKCDF", "TKLCAF", "TKCAF", "TKVCAF", "TKXCAF"
-)
-
-# Native third-party runtime candidates used by the selected OCCT toolkits.
-# Qt, VTK, Tcl/Tk, Draw/Test tooling and debug binaries are intentionally not
-# copied. FFmpeg/OpenVR are retained only when present because TKService may be
-# built with those optional features in the installed OCCT package.
-$ThirdPartyRuntimeCandidates = @(
-    "tbb12.dll",
-    "tbbmalloc.dll",
-    "tbbmalloc_proxy.dll",
-    "freetype.dll",
-    "FreeImage.dll",
-    "FreeImagePlus.dll",
-    "avcodec-57.dll",
-    "avdevice-57.dll",
-    "avfilter-6.dll",
-    "avformat-57.dll",
-    "avutil-55.dll",
-    "swscale-4.dll",
-    "zlib.dll",
-    "zlib1.dll",
-    "liblzma.dll",
-    "openvr_api.dll"
-)
-
 function Assert-Path {
     param([Parameter(Mandatory = $true)][string]$Path)
     if (-not (Test-Path -LiteralPath $Path)) { throw "Required path was not found: $Path" }
@@ -156,28 +121,221 @@ function Merge-PublishTree {
     }
 }
 
-function Copy-OcctRuntime {
-    param([Parameter(Mandatory = $true)][string]$Destination)
+function Get-PeImportedDllNames {
+    param([Parameter(Mandatory = $true)][string]$Path)
 
-    Copy-Item -LiteralPath $NativeDll -Destination (Join-Path $Destination "OcctNative.dll") -Force
+    $stream = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+    $reader = [System.IO.BinaryReader]::new($stream)
+    try {
+        $readUInt16At = {
+            param([long]$Offset)
+            $stream.Position = $Offset
+            return $reader.ReadUInt16()
+        }
+        $readUInt32At = {
+            param([long]$Offset)
+            $stream.Position = $Offset
+            return $reader.ReadUInt32()
+        }
+        $readAsciiZAt = {
+            param([long]$Offset)
+            $stream.Position = $Offset
+            $bytes = [System.Collections.Generic.List[byte]]::new()
+            while ($stream.Position -lt $stream.Length) {
+                $value = $reader.ReadByte()
+                if ($value -eq 0) { break }
+                $bytes.Add($value)
+            }
+            return [System.Text.Encoding]::ASCII.GetString($bytes.ToArray())
+        }
 
-    foreach ($module in $RequiredOcctRuntimeModules) {
-        $source = Join-Path $OcctBinDir "$module.dll"
-        Assert-Path $source
-        Copy-Item -LiteralPath $source -Destination (Join-Path $Destination "$module.dll") -Force
+        if ((& $readUInt16At 0) -ne 0x5A4D) { return @() }
+        $peOffset = [long](& $readUInt32At 0x3C)
+        if ((& $readUInt32At $peOffset) -ne 0x00004550) { return @() }
+
+        $coffOffset = $peOffset + 4
+        $numberOfSections = [int](& $readUInt16At ($coffOffset + 2))
+        $sizeOfOptionalHeader = [int](& $readUInt16At ($coffOffset + 16))
+        $optionalOffset = $coffOffset + 20
+        $magic = & $readUInt16At $optionalOffset
+        if ($magic -eq 0x20B) {
+            $dataDirectoryOffset = $optionalOffset + 112
+        }
+        elseif ($magic -eq 0x10B) {
+            $dataDirectoryOffset = $optionalOffset + 96
+        }
+        else {
+            return @()
+        }
+
+        $sections = @()
+        $sectionOffset = $optionalOffset + $sizeOfOptionalHeader
+        for ($index = 0; $index -lt $numberOfSections; ++$index) {
+            $offset = $sectionOffset + ($index * 40)
+            $sections += [pscustomobject]@{
+                VirtualSize = [uint32](& $readUInt32At ($offset + 8))
+                VirtualAddress = [uint32](& $readUInt32At ($offset + 12))
+                RawSize = [uint32](& $readUInt32At ($offset + 16))
+                RawPointer = [uint32](& $readUInt32At ($offset + 20))
+            }
+        }
+
+        $rvaToOffset = {
+            param([uint32]$Rva)
+            foreach ($section in $sections) {
+                $span = [Math]::Max([uint64]$section.VirtualSize, [uint64]$section.RawSize)
+                $start = [uint64]$section.VirtualAddress
+                $end = $start + $span
+                if ([uint64]$Rva -ge $start -and [uint64]$Rva -lt $end) {
+                    return [long]([uint64]$section.RawPointer + ([uint64]$Rva - $start))
+                }
+            }
+            return [long]-1
+        }
+
+        $names = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+        $importRva = [uint32](& $readUInt32At ($dataDirectoryOffset + 8))
+        if ($importRva -ne 0) {
+            $descriptorOffset = & $rvaToOffset $importRva
+            if ($descriptorOffset -ge 0) {
+                for ($index = 0; $index -lt 4096; ++$index) {
+                    $entryOffset = $descriptorOffset + ($index * 20)
+                    if ($entryOffset + 20 -gt $stream.Length) { break }
+                    $originalFirstThunk = [uint32](& $readUInt32At $entryOffset)
+                    $timeDateStamp = [uint32](& $readUInt32At ($entryOffset + 4))
+                    $forwarderChain = [uint32](& $readUInt32At ($entryOffset + 8))
+                    $nameRva = [uint32](& $readUInt32At ($entryOffset + 12))
+                    $firstThunk = [uint32](& $readUInt32At ($entryOffset + 16))
+                    if (($originalFirstThunk -bor $timeDateStamp -bor $forwarderChain -bor $nameRva -bor $firstThunk) -eq 0) { break }
+                    if ($nameRva -eq 0) { continue }
+                    $nameOffset = & $rvaToOffset $nameRva
+                    if ($nameOffset -lt 0) { continue }
+                    $name = & $readAsciiZAt $nameOffset
+                    if (-not [string]::IsNullOrWhiteSpace($name)) { [void]$names.Add($name) }
+                }
+            }
+        }
+
+        return @($names | Sort-Object)
+    }
+    finally {
+        $reader.Dispose()
+        $stream.Dispose()
+    }
+}
+
+function Test-SystemRuntimeDependency {
+    param([Parameter(Mandatory = $true)][string]$Name)
+
+    if ($Name -match '^(api-ms-win-|ext-ms-win-)') { return $true }
+    $system32 = Join-Path $env:SystemRoot "System32\$Name"
+    if (Test-Path -LiteralPath $system32 -PathType Leaf) { return $true }
+    return $false
+}
+
+function Get-VcRuntimeDirectories {
+    $result = [System.Collections.Generic.List[string]]::new()
+
+    if (-not [string]::IsNullOrWhiteSpace($env:VCToolsRedistDir)) {
+        foreach ($directory in @(Get-Item -Path (Join-Path $env:VCToolsRedistDir "x64\Microsoft.VC14*.CRT") -ErrorAction SilentlyContinue)) {
+            if ($directory.PSIsContainer) { $result.Add($directory.FullName) }
+        }
+    }
+
+    $roots = @($env:ProgramFiles, ${env:ProgramFiles(x86)}) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    foreach ($root in $roots) {
+        $pattern = Join-Path $root "Microsoft Visual Studio\2022\*\VC\Redist\MSVC\*\x64\Microsoft.VC14*.CRT"
+        foreach ($directory in @(Get-Item -Path $pattern -ErrorAction SilentlyContinue | Sort-Object FullName -Descending)) {
+            if ($directory.PSIsContainer -and -not $result.Contains($directory.FullName)) { $result.Add($directory.FullName) }
+        }
+    }
+
+    return @($result)
+}
+
+$VcRuntimeDirectories = @(Get-VcRuntimeDirectories)
+
+function Resolve-NativeDependencySource {
+    param([Parameter(Mandatory = $true)][string]$Name)
+
+    $occtCandidate = Join-Path $OcctBinDir $Name
+    if (Test-Path -LiteralPath $occtCandidate -PathType Leaf) { return $occtCandidate }
+
+    foreach ($directory in $VcRuntimeDirectories) {
+        $candidate = Join-Path $directory $Name
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
     }
 
     if (Test-Path -LiteralPath $OcctThirdPartyDir -PathType Container) {
-        foreach ($fileName in $ThirdPartyRuntimeCandidates) {
-            $matches = @(Get-ChildItem -LiteralPath $OcctThirdPartyDir -Filter $fileName -File -Recurse -ErrorAction SilentlyContinue)
-            if ($matches.Count -gt 0) {
-                Copy-Item -LiteralPath $matches[0].FullName -Destination (Join-Path $Destination $fileName) -Force
+        $matches = @(Get-ChildItem -LiteralPath $OcctThirdPartyDir -Filter $Name -File -Recurse -ErrorAction SilentlyContinue | Where-Object {
+            $_.FullName -notmatch '(?i)[\\/](debug|dbg)[\\/]' -and
+            $_.Name -notmatch '(?i)(_debug|d)\.dll$'
+        } | Sort-Object @{ Expression = { if ($_.DirectoryName -match '(?i)[\\/]bin([\\/]|$)') { 0 } else { 1 } } }, FullName)
+        if ($matches.Count -gt 0) { return $matches[0].FullName }
+    }
+
+    return $null
+}
+
+function Copy-PortableNativeRuntime {
+    param([Parameter(Mandatory = $true)][string]$Destination)
+
+    Copy-Item -LiteralPath $NativeDll -Destination (Join-Path $Destination "OcctNative.dll") -Force
+    Copy-Item -LiteralPath $ContractPath -Destination (Join-Path $Destination "bridge-contract.json") -Force
+    Copy-Item -LiteralPath $ManifestPath -Destination (Join-Path $Destination "bridge-manifest.json") -Force
+
+    $queue = [System.Collections.Generic.Queue[string]]::new()
+    $queued = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $processed = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $copied = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+
+    $rootNative = Join-Path $Destination "OcctNative.dll"
+    $queue.Enqueue($rootNative)
+    [void]$queued.Add("OcctNative.dll")
+    [void]$copied.Add("OcctNative.dll")
+
+    while ($queue.Count -gt 0) {
+        $currentPath = $queue.Dequeue()
+        $currentName = [System.IO.Path]::GetFileName($currentPath)
+        if (-not $processed.Add($currentName)) { continue }
+
+        foreach ($dependency in @(Get-PeImportedDllNames -Path $currentPath)) {
+            if (Test-SystemRuntimeDependency -Name $dependency) { continue }
+
+            $destinationPath = Join-Path $Destination $dependency
+            if (-not (Test-Path -LiteralPath $destinationPath -PathType Leaf)) {
+                $source = Resolve-NativeDependencySource -Name $dependency
+                if ([string]::IsNullOrWhiteSpace($source)) {
+                    throw "Portable native runtime is incomplete. $currentName imports $dependency, but it was not found in the OCCT runtime, OCCT third-party runtime, or Visual C++ redistributable directories."
+                }
+                Copy-Item -LiteralPath $source -Destination $destinationPath -Force
+                Write-Host "[runtime] $currentName -> $dependency" -ForegroundColor DarkGray
+            }
+
+            [void]$copied.Add($dependency)
+            if (-not $processed.Contains($dependency) -and $queued.Add($dependency)) {
+                $queue.Enqueue($destinationPath)
             }
         }
     }
 
-    Copy-Item -LiteralPath $ContractPath -Destination (Join-Path $Destination "bridge-contract.json") -Force
-    Copy-Item -LiteralPath $ManifestPath -Destination (Join-Path $Destination "bridge-manifest.json") -Force
+    $forbidden = @($copied | Where-Object {
+        $_ -match '^(?i:Qt\d|vtk|tcl\d|tk86\.dll$)' -or
+        $_ -match '(?i)(MSVCP\d+D|VCRUNTIME\d+D|ucrtbased|tbb.*_debug)\.dll$'
+    })
+    if ($forbidden.Count -gt 0) {
+        throw "Unexpected GUI/test/debug native dependencies entered the portable runtime closure: $($forbidden -join ', ')"
+    }
+
+    $runtimeManifest = @(
+        "OcctCSharpBridge Demo native runtime closure",
+        "Bridge: $($contract.bridgeVersion)",
+        "OCCT: $($contract.occtVersion)",
+        "Architecture: win-x64",
+        "",
+        "Packaged native DLLs:"
+    ) + @($copied | Sort-Object | ForEach-Object { "- $_" })
+    [System.IO.File]::WriteAllLines((Join-Path $Destination "native-runtime-manifest.txt"), $runtimeManifest, [System.Text.UTF8Encoding]::new($false))
 }
 
 Assert-Command "dotnet"
@@ -224,8 +382,11 @@ try {
         Merge-PublishTree -SourceRoot $stagingDestination -DestinationRoot $packageRoot
     }
 
-    # Native runtime is shared by all three applications and copied only once.
-    Copy-OcctRuntime -Destination $packageRoot
+    # All three applications share one exact native dependency closure. The
+    # closure is discovered from PE import tables instead of guessed by a DLL
+    # whitelist, so another clean Windows machine does not need OCCT or the VC
+    # redistributable preinstalled.
+    Copy-PortableNativeRuntime -Destination $packageRoot
 
     foreach ($key in Get-SelectedKeys) {
         Assert-Path (Join-Path $packageRoot $Projects[$key].Executable)
