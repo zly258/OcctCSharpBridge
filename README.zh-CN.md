@@ -2,7 +2,7 @@
 
 [English](README.md) · [中文文档](docs/zh-CN/README.md) · [English Docs](docs/en-US/README.md) · [完整 API 参考](docs/zh-CN/api/README.md) · [Demo 分支](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
-OcctCSharpBridge 是面向 Windows x64 的 **Open CASCADE Technology 7.9.0 → .NET 10** 桥接库，为 C# 提供强类型的 OCCT 建模、拓扑、几何分析、网格、数据交换、AIS/Viewer 交互以及 WinForms/WPF/Avalonia 视口宿主。
+OcctCSharpBridge 是面向 Windows x64 的 **Open CASCADE Technology 7.9.0 → .NET 10** 桥接库，为 C# 提供强类型的 OCCT 建模、拓扑、几何分析、网格、数据交换、AIS/Viewer 交互，以及三个彼此独立的 WinForms/WPF/Avalonia 视口宿主。
 
 `main` 只负责可复用 Bridge。Document、Feature Tree、Command/Tool、Undo/Redo、捕捉、夹点、项目持久化以及 OCAF/XDE 不进入 Bridge。
 
@@ -15,7 +15,7 @@ OcctCSharpBridge 是面向 Windows x64 的 **Open CASCADE Technology 7.9.0 → .
 | Native ABI | **4** |
 | Native exports | **344** |
 | Managed P/Invoke | **344** |
-| Public .NET types | **105** |
+| Public .NET types | **108** |
 | Viewer / Modeling API | **210 / 134** |
 | Open CASCADE Technology | **7.9.0** |
 | .NET SDK | **10.0.302** |
@@ -26,6 +26,16 @@ OcctCSharpBridge 是面向 Windows x64 的 **Open CASCADE Technology 7.9.0 → .
 | Platform | **Windows x64** |
 
 `bridge-contract.json` 是版本、平台与 API 数量的机器可读事实源。
+
+## UI 宿主架构
+
+```text
+OcctNet.WinForms ─┐
+OcctNet.Wpf      ─┼─> OcctNet -> OcctNative.dll -> OCCT
+OcctNet.Avalonia ─┘
+```
+
+三个 UI Adapter 都只直接依赖 `OcctNet`，互相之间不允许项目引用。`OcctNet.Wpf` 使用 WPF 原生 `HwndHost` 直接承载 OCCT 渲染 HWND，不再启用或引用 Windows Forms。
 
 ## 构建
 
@@ -51,7 +61,7 @@ Managed NuGet：
 
 ## 已验证 Binary SDK
 
-`dist/win-x64` 是可提交的正式二进制 SDK，不是普通 build 输出。只能通过 Release 门禁生成：
+`dist/win-x64` 是可提交的正式二进制 SDK，不是普通 build 输出：
 
 ```powershell
 .\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
@@ -70,7 +80,7 @@ dist/win-x64/
 └─ bridge-manifest.json
 ```
 
-`bridge-manifest.json` 记录 Bridge/ABI/OCCT/.NET 契约、源码 Commit 和各文件 SHA-256，避免 Managed Wrapper 与 Native DLL 混用不同版本。OCCT `TK*.dll` 与第三方 Runtime 不进入 `dist`，仍由 `OCCT_ROOT`、`CASROOT` 或显式运行时配置解析。
+`bridge-manifest.json` 记录 Bridge/ABI/OCCT/.NET 契约、源码 Commit 和各文件 SHA-256。OCCT `TK*.dll` 与第三方 Runtime 不进入 Binary SDK 本体。
 
 ## 一键正式发布
 
@@ -83,17 +93,16 @@ dist/win-x64/
 ```text
 main 工作区必须干净
 → 自动生成完整中英文 API Reference
-→ API Reference 有变化则提交
-→ 以新的干净 Commit 运行 Release Binary SDK 全门禁
-→ 生成/提交 dist/win-x64
-→ push main
+→ 构建 Release Native + Managed SDK
+→ 生成并校验 dist/win-x64
+→ commit + push main
 → 临时 detached worktree 打开 demo
 → 只同步 dist/win-x64
 → 校验 Contract / Manifest / SHA-256
 → commit + push demo
 ```
 
-这样 `bridge-manifest.json` 中的 `sourceCommit` 与实际生成 DLL 的源码、公开 API 文档保持一致。发布过程不会切换当前开发目录分支，也不使用 GitHub Actions。
+Managed 回归测试和 Native Smoke 保留为显式 `build.ps1 test` / `build.ps1 smoke` 目标，不再阻塞 Binary SDK 发布。
 
 ## 使用示例
 
@@ -115,9 +124,9 @@ model.ExportStep(cut.Shape, "plate.step");
 bridge-contract.json            版本、平台与 API 契约
 src/OcctNative                  C++17 OCCT Bridge 与稳定 C ABI
 src/OcctNet                     核心 .NET Bridge
-src/OcctNet.WinForms            WinForms 视口宿主
-src/OcctNet.Wpf                 WPF 视口宿主
-src/OcctNet.Avalonia            Avalonia 12.1.0 Windows HWND 视口宿主
+src/OcctNet.WinForms            独立 WinForms 视口宿主
+src/OcctNet.Wpf                 独立 WPF HwndHost 视口宿主
+src/OcctNet.Avalonia            独立 Avalonia 12.1.0 Windows HWND 视口宿主
 tests                           静态契约、Managed 回归、Native Smoke
 tools/OcctApiDocsGenerator      全量中英文 Managed + Native API 文档生成器
 docs/zh-CN                      中文专题文档 + API Reference
