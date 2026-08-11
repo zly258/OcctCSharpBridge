@@ -19,6 +19,7 @@
 #include <TopLoc_Location.hxx>
 #include <TopTools_IndexedMapOfShape.hxx>
 #include <TopoDS_Compound.hxx>
+#include <XCAFApp_Application.hxx>
 #include <XCAFDoc_ColorTool.hxx>
 #include <XCAFDoc_DocumentTool.hxx>
 #include <XCAFDoc_ShapeTool.hxx>
@@ -81,8 +82,11 @@ namespace
 
     Handle(TDocStd_Document) newXdeDocument()
     {
-        Handle(TDocStd_Document) document = new TDocStd_Document(TCollection_ExtendedString("BinXCAF"));
-        XCAFDoc_DocumentTool::Set(document->Main());
+        const Handle(XCAFApp_Application) application = XCAFApp_Application::GetApplication();
+        if (application.IsNull()) throw std::runtime_error("XCAF application could not be initialized.");
+        Handle(TDocStd_Document) document;
+        application->NewDocument("BinXCAF", document);
+        if (document.IsNull()) throw std::runtime_error("XCAF document could not be created.");
         return document;
     }
 
@@ -200,6 +204,13 @@ namespace
         entry->stepHierarchyPath = path;
         entry->applicationTag = hierarchyTag(path);
         rememberStyleColor(*entry, style);
+
+        // XCAFPrs_AISObject synchronizes definition/sub-shape styles during its
+        // first Display/Compute. Apply the merged assembly/instance base color
+        // afterwards so inherited colors are not overwritten by its default style.
+        Quantity_Color mergedColor;
+        if (tryStyleColor(style, mergedColor))
+            engine->context->SetColor(entry->presentation, mergedColor, Standard_False);
         if (!style.IsVisible()) engine->context->Erase(entry->presentation, Standard_False);
     }
 
