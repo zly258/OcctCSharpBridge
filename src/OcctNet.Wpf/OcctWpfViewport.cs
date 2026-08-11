@@ -66,7 +66,6 @@ public sealed class OcctWpfViewport : HwndHost
     private const int WmKillFocus = 0x0008;
     private const int WmEraseBkgnd = 0x0014;
     private const int WmCancelMode = 0x001F;
-    private const int WmWindowPosChanged = 0x0047;
     private const int WmNcHitTest = 0x0084;
     private const int WmMouseMove = 0x0200;
     private const int WmLButtonDown = 0x0201;
@@ -265,12 +264,15 @@ public sealed class OcctWpfViewport : HwndHost
         ObjectSelectionChanged?.Invoke(this, new OcctWpfSelectionEventArgs(selected, _engine.SelectedObjects));
     }
 
+    /// <summary>
+    /// Synchronizes the OCCT render target with the current child HWND size.
+    /// The native Resize operation already redraws the view, so no second redraw is issued here.
+    /// </summary>
     public void RefreshNativeView()
     {
         if (_engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero) return;
         SynchronizeDpi();
         TryInvoke(_engine.Resize);
-        TryInvoke(_engine.Redraw);
     }
 
     protected override HandleRef BuildWindowCore(HandleRef hwndParent)
@@ -302,11 +304,13 @@ public sealed class OcctWpfViewport : HwndHost
             _engine.Initialize(handle);
             SynchronizeDpi();
             _engine.Resize();
-            _engine.Redraw();
             _lastHoverTimestamp = 0;
             _lastWorldPointTimestamp = 0;
             EngineInitialized?.Invoke(this, EventArgs.Empty);
-            Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(RefreshNativeView));
+
+            // HwndHost receives its final arranged size after BuildWindowCore.
+            // Keep one render-priority refresh to cover that first layout pass.
+            Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(RefreshNativeView));
             return new HandleRef(this, handle);
         }
         catch
@@ -331,7 +335,11 @@ public sealed class OcctWpfViewport : HwndHost
                     handled = true;
                     return new IntPtr(HtClient);
                 case WmSize:
-                case WmWindowPosChanged:
+                    // Interactive window resizing must update OCCT synchronously.
+                    // Deferring this to Background leaves the HWND and OCCT back buffer
+                    // temporarily at different sizes and produces visible flashing.
+                    RefreshNativeView();
+                    break;
                 case WmDpiChanged:
                     ScheduleNativeViewRefresh();
                     break;
@@ -342,12 +350,10 @@ public sealed class OcctWpfViewport : HwndHost
                     CancelInteraction();
                     break;
                 case WmEraseBkgnd:
-                    if (_engine?.IsInitialized == true)
-                    {
-                        handled = true;
-                        return new IntPtr(1);
-                    }
-                    break;
+                    // OCCT/OpenGL owns the whole child surface. Never let the stock
+                    // STATIC window erase it between native frames.
+                    handled = true;
+                    return new IntPtr(1);
                 case WmLButtonDown:
                     HandleLeftButtonDown(hwnd, lParam);
                     break;
@@ -597,7 +603,7 @@ public sealed class OcctWpfViewport : HwndHost
     {
         if (_nativeRefreshScheduled || _engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero || !IsVisible) return;
         _nativeRefreshScheduled = true;
-        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+        Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(() =>
         {
             _nativeRefreshScheduled = false;
             RefreshNativeView();
