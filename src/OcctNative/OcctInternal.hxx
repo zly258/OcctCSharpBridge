@@ -59,6 +59,7 @@ namespace OcctBridge
         double storedColorA = 1.0;
         bool hasStoredAlpha = false;
         bool storedVisible = true;
+        bool hasStoredVisibility = false;
         int stepDocumentIndex = -1;
         std::string stepNodeId;
     };
