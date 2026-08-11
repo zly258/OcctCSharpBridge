@@ -10,6 +10,7 @@ public sealed partial class MainForm
 
     private void ApplyDemoEnhancements()
     {
+        _selectionCombo.SelectedIndexChanged -= SelectionComboSelectedIndexChanged;
         _selectionCombo.SelectedIndexChanged += SelectionComboSelectedIndexChanged;
 
         if (!_enhancementsWired)
