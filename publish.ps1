@@ -1,7 +1,6 @@
-param(
+﻿param(
     [string]$OcctRoot = $env:OCCT_ROOT,
     [string]$Remote = "origin",
-    [string]$DemoBranch = "demo",
     [switch]$Fast
 )
 
@@ -11,7 +10,6 @@ Set-StrictMode -Version Latest
 $RepoRoot = Split-Path -Parent $PSCommandPath
 $BuildScript = Join-Path $RepoRoot "build.ps1"
 $DistRoot = Join-Path $RepoRoot "dist\win-x64"
-$DemoWorktree = Join-Path ([System.IO.Path]::GetTempPath()) ("OcctCSharpBridge-demo-publish-" + $PID)
 $DefaultOcctRoot = "D:\tools\occt-vc144-64"
 if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
     $OcctRoot = $DefaultOcctRoot
@@ -38,8 +36,6 @@ function Invoke-Git {
 function Get-CurrentBranch {
     param([Parameter(Mandatory = $true)][string]$WorkingDirectory)
 
-    # git branch --show-current was added in Git 2.22. Use rev-parse so the
-    # publish workflow remains compatible with the Git version used by this repository.
     $output = @(& git -C $WorkingDirectory rev-parse --abbrev-ref HEAD 2>$null)
     if ($LASTEXITCODE -ne 0 -or $output.Count -ne 1) {
         throw "Failed to resolve the current Git branch."
@@ -56,6 +52,9 @@ function Invoke-Build {
     param([Parameter(Mandatory = $true)][string]$Target)
 
     & $BuildScript -Target $Target -Configuration "Release" -OcctRoot $OcctRoot
+    if ($LASTEXITCODE -ne 0) {
+        throw "build.ps1 $Target failed with exit code $LASTEXITCODE."
+    }
 }
 
 function Commit-IfChanged {
@@ -179,8 +178,6 @@ else {
     Invoke-Build "docs"
     [void](Commit-IfChanged -Paths @("docs/zh-CN/api", "docs/en-US/api") -Message "Update generated API reference")
 
-    # build.ps1 dist requires a clean worktree so the manifest sourceCommit exactly
-    # identifies the source and generated public API documentation being published.
     $afterDocs = @(& git -C $RepoRoot status --porcelain --untracked-files=all)
     if ($LASTEXITCODE -ne 0 -or $afterDocs.Count -gt 0) {
         throw "The worktree is not clean after API documentation generation. Review unexpected generated files before publishing."
@@ -199,37 +196,8 @@ Test-BinarySdk -Path $DistRoot -ExpectedSourceCommit $sourceCommit
 
 Invoke-Git $RepoRoot @("push", $Remote, "main")
 
-Remove-Item $DemoWorktree -Recurse -Force -ErrorAction SilentlyContinue
-try {
-    Invoke-Git $RepoRoot @("fetch", $Remote, $DemoBranch)
-    Invoke-Git $RepoRoot @("worktree", "add", "--detach", $DemoWorktree, "$Remote/$DemoBranch")
-
-    $demoDist = Join-Path $DemoWorktree "dist\win-x64"
-    Remove-Item $demoDist -Recurse -Force -ErrorAction SilentlyContinue
-    New-Item -ItemType Directory -Path $demoDist -Force | Out-Null
-    Copy-Item (Join-Path $DistRoot "*") $demoDist -Recurse -Force
-    Test-BinarySdk -Path $demoDist -ExpectedSourceCommit $sourceCommit
-
-    Invoke-Git $DemoWorktree @("add", "--", "dist/win-x64")
-    $demoChanges = @(& git -C $DemoWorktree diff --cached --name-only -- "dist/win-x64")
-    if ($LASTEXITCODE -ne 0) { throw "Failed to inspect staged demo Binary SDK changes." }
-    if ($demoChanges.Count -gt 0) {
-        Invoke-Git $DemoWorktree @("commit", "-m", "Sync Bridge Binary SDK from main")
-        Invoke-Git $DemoWorktree @("push", $Remote, "HEAD:$DemoBranch")
-    }
-    else {
-        Write-Host "[publish] demo/dist/win-x64 is already current." -ForegroundColor DarkGray
-    }
-}
-finally {
-    & git -C $RepoRoot worktree remove --force $DemoWorktree 2>$null
-    Remove-Item $DemoWorktree -Recurse -Force -ErrorAction SilentlyContinue
-    & git -C $RepoRoot worktree prune 2>$null
-}
-
-if ($Fast) {
-    Write-Host "Fast Binary SDK publish completed; demo synchronized." -ForegroundColor Green
-}
-else {
-    Write-Host "API reference and Binary SDK published; demo synchronized." -ForegroundColor Green
-}
+$publishedCommit = (& git -C $RepoRoot rev-parse HEAD).Trim()
+Write-Host "Bridge Binary SDK published to main." -ForegroundColor Green
+Write-Host "Source:    $sourceCommit" -ForegroundColor DarkGray
+Write-Host "Published: $publishedCommit" -ForegroundColor DarkGray
+Write-Host "Demo consumers can now run .\sync.ps1 on the demo branch." -ForegroundColor Cyan
