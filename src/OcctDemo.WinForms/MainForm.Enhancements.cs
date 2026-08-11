@@ -6,23 +6,10 @@ namespace OcctDemo.WinForms;
 
 public sealed partial class MainForm
 {
-    private bool _enhancementsWired;
-
     private void ApplyDemoEnhancements()
     {
         _selectionCombo.SelectedIndexChanged -= SelectionComboSelectedIndexChanged;
         _selectionCombo.SelectedIndexChanged += SelectionComboSelectedIndexChanged;
-
-        if (!_enhancementsWired)
-        {
-            _enhancementsWired = true;
-            _viewport.ObjectSelectionChanged += (_, args) =>
-            {
-                if (_session is null) return;
-                if (args.SelectedObjects.Count > 1) _session.ActiveObject = null;
-                ShowSelectionProperties(args.SelectedObjects);
-            };
-        }
 
         var samples = _menu.Items
             .OfType<ToolStripMenuItem>()
