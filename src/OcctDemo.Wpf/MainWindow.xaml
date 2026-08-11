@@ -41,6 +41,9 @@
             <Setter Property="Background" Value="White"/>
             <Setter Property="BorderBrush" Value="#CBD1D6"/>
             <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
+            <Setter Property="VirtualizingStackPanel.IsVirtualizing" Value="True"/>
+            <Setter Property="VirtualizingStackPanel.VirtualizationMode" Value="Recycling"/>
         </Style>
         <Style TargetType="StatusBar">
             <Setter Property="Background" Value="#2F3B46"/>
@@ -112,7 +115,11 @@
                               BorderBrush="#CBD1D6"
                               RowHeaderWidth="0"
                               SelectionMode="Single"
-                              SelectionUnit="FullRow">
+                              SelectionUnit="FullRow"
+                              EnableRowVirtualization="True"
+                              EnableColumnVirtualization="True"
+                              VirtualizingPanel.IsVirtualizing="True"
+                              VirtualizingPanel.VirtualizationMode="Recycling">
                         <DataGrid.Columns>
                             <DataGridTextColumn x:Name="PropertyNameColumn" Header="Property" Binding="{Binding Key}" Width="2*" MinWidth="95"/>
                             <DataGridTextColumn x:Name="PropertyValueColumn" Header="Value" Binding="{Binding Value}" Width="3*" MinWidth="130"/>
