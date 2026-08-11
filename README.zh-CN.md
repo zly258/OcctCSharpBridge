@@ -33,6 +33,20 @@ src/OcctDemo.Avalonia
 
 WinForms、WPF、Avalonia 三套 Demo 的 About 信息统一读取 `OcctDemo.Common/DemoProductInfo.cs`，作者、版本和技术栈不再各自硬编码。
 
+## 三端统一交互与测试覆盖
+
+WinForms、WPF、Avalonia 使用同一套 Demo 业务行为，并覆盖以下交互与建模验证：
+
+- 对象、顶点、边、线框、面、壳、实体选择过滤；WinForms 工具栏选择下拉框与 Viewer 选择模式直接同步；
+- 框选或 Ctrl 多选多个对象时，属性面板不再显示第一个对象的属性，只显示“已选择 N 个对象”；
+- 三套 Viewport 均直接使用 Binary SDK 的 `ZoomSensitivity`，默认 `1.0`，可在“视图”菜单调整鼠标滚轮缩放灵敏度；
+- Undo/Redo 由共享历史模型驱动，Avalonia 菜单和工具栏状态随 `HistoryChanged` / `ModelChanged` 同步刷新；
+- Avalonia 主窗口、属性区、日志、状态栏和参数对话框统一使用 `Microsoft YaHei UI`；
+- “示例”菜单提供 **B 样条曲面测试**：真实创建非直纹放样曲面，并校验次数、控制点、权重、节点和重复度；
+- “示例”菜单提供 **网格生成测试**：真实调用 `GetShapeMeshData`，校验面数、节点、三角形以及逐面 provenance 连续区间。
+
+这些测试不是静态展示图，而是直接执行 Bridge 建模/分析 API；测试结果会写入 Demo 命令日志。
+
 ## Binary SDK
 
 `main/publish.ps1` 负责把已验证 SDK 发布到本分支：
@@ -48,14 +62,14 @@ dist/win-x64/
 └─ bridge-manifest.json
 ```
 
-Demo 不再维护反向同步脚本。SDK 发布统一从 `main` 发起：
+Demo 不再维护反向同步脚本。SDK 发布统一从 `main` 发起，默认 OCCT 路径已由主分支脚本处理：
 
 ```powershell
 # main branch
-.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
+.\publish.ps1
 ```
 
-main 发布流程会生成中英文完整 API Reference，执行 Release Native/Managed Build、Managed Test、Native Smoke，生成 Binary SDK，再通过临时 worktree 同步 `dist/win-x64` 到 demo。
+main 发布流程会生成中英文完整 API Reference，执行 Release Native/Managed Build 与 Native Smoke，生成 Binary SDK，再通过临时 worktree 同步 `dist/win-x64` 到 demo。Managed regression tests 保留在显式测试流程中，不重复阻塞 Binary SDK 发布。
 
 ## 环境要求
 
