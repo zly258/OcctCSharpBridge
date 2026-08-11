@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace OcctNet;
@@ -9,7 +9,7 @@ namespace OcctNet;
 public static class OcctBridgeInfo
 {
     public const int ExpectedAbiVersion = 4;
-    public const string ManagedVersion = "2.6.0";
+    public const string ManagedVersion = "2.7.0";
 
     private static int _validated;
 
