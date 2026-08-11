@@ -48,6 +48,39 @@ function Get-CurrentBranch {
     return $branch.Trim()
 }
 
+function Assert-RemoteMainAncestor {
+    Invoke-Git $RepoRoot @("fetch", "--quiet", $Remote, "main")
+
+    $remoteRef = "$Remote/main"
+    & git -C $RepoRoot rev-parse --verify $remoteRef *> $null
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to resolve $remoteRef after fetching it."
+    }
+
+    & git -C $RepoRoot merge-base --is-ancestor $remoteRef HEAD
+    $ancestorExitCode = $LASTEXITCODE
+    if ($ancestorExitCode -eq 0) {
+        return
+    }
+    if ($ancestorExitCode -ne 1) {
+        throw "Failed to compare local main with $remoteRef."
+    }
+
+    $counts = @(& git -C $RepoRoot rev-list --left-right --count "$remoteRef...HEAD")
+    if ($LASTEXITCODE -ne 0 -or $counts.Count -ne 1) {
+        throw "Local main is not based on the latest $remoteRef. Fetch and synchronize before publishing."
+    }
+
+    $parts = @(([string]$counts[0]) -split '\s+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if ($parts.Count -ne 2) {
+        throw "Local main is not based on the latest $remoteRef. Fetch and synchronize before publishing."
+    }
+
+    $remoteOnly = [int]$parts[0]
+    $localOnly = [int]$parts[1]
+    throw "Local main is stale or diverged from $remoteRef (remote-only commits: $remoteOnly, local-only commits: $localOnly). Synchronize main before publishing; do not force-push generated SDK commits."
+}
+
 function Invoke-Build {
     param([Parameter(Mandatory = $true)][string]$Target)
 
@@ -169,6 +202,9 @@ if ($LASTEXITCODE -ne 0) { throw "Failed to inspect the main working tree." }
 if ($initialChanges.Count -gt 0) {
     throw "The main working tree must be clean before publishing."
 }
+
+Assert-RemoteMainAncestor
+Write-Host "[publish] Remote main ancestry validated." -ForegroundColor DarkGray
 
 if ($Fast) {
     Write-Host "[publish] Fast mode: skipping API documentation generation." -ForegroundColor Yellow
