@@ -1,4 +1,4 @@
-#include "OcctInternal.hxx"
+﻿#include "OcctInternal.hxx"
 
 #include <Aspect_PolygonOffsetMode.hxx>
 #include <Aspect_TypeOfTriedronPosition.hxx>
@@ -356,12 +356,12 @@ extern "C"
 
     const char* occt_version() { return OCC_VERSION_COMPLETE; }
     int occt_bridge_abi_version() { return 4; }
-    const char* occt_bridge_version() { return "2.6.0"; }
+    const char* occt_bridge_version() { return "2.7.0"; }
 
     const char* occt_bridge_build_info()
     {
         static const std::string info =
-            std::string("OcctCSharpBridge/2.6.0; ABI=4; OCCT=") + OCC_VERSION_COMPLETE +
+            std::string("OcctCSharpBridge/2.7.0; ABI=4; OCCT=") + OCC_VERSION_COMPLETE +
 #if defined(_M_X64)
             "; Arch=x64" +
 #else
