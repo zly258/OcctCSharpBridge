@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 
 namespace OcctNet;
 
@@ -8,6 +8,8 @@ namespace OcctNet;
 /// </summary>
 internal static class OcctViewportInteractionPolicy
 {
+    internal const double MinimumZoomSensitivity = 0.1;
+    internal const double MaximumZoomSensitivity = 5.0;
     internal static readonly long HoverIntervalTicks = Math.Max(1, Stopwatch.Frequency / 60);
     internal static readonly long WorldPointIntervalTicks = Math.Max(1, Stopwatch.Frequency / 30);
 
@@ -58,5 +60,26 @@ internal static class OcctViewportInteractionPolicy
             _ => false
         };
 
-    internal static double ZoomFactor(int delta) => delta > 0 ? 1.15 : 0.87;
+    internal static double NormalizeZoomSensitivity(double value)
+    {
+        if (!double.IsFinite(value))
+            throw new ArgumentOutOfRangeException(nameof(value), "Zoom sensitivity must be a finite number.");
+        return Math.Clamp(value, MinimumZoomSensitivity, MaximumZoomSensitivity);
+    }
+
+    internal static double ZoomFactor(int delta, double sensitivity = 1.0)
+    {
+        if (delta == 0) return 1.0;
+        var normalizedSensitivity = NormalizeZoomSensitivity(sensitivity);
+        var wheelSteps = delta / 120.0;
+        return Math.Pow(1.15, wheelSteps * normalizedSensitivity);
+    }
+
+    internal static int ScaleWheelDelta(int delta, double sensitivity)
+    {
+        if (delta == 0) return 0;
+        var normalizedSensitivity = NormalizeZoomSensitivity(sensitivity);
+        var scaled = (int)Math.Round(delta * normalizedSensitivity, MidpointRounding.AwayFromZero);
+        return scaled == 0 ? Math.Sign(delta) : scaled;
+    }
 }
