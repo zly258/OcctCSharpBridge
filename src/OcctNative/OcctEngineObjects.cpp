@@ -1,4 +1,4 @@
-#include "OcctInternal.hxx"
+﻿#include "OcctInternal.hxx"
 
 #include <Graphic3d_MaterialAspect.hxx>
 
@@ -99,7 +99,12 @@ extern "C"
         {
             ObjectEntry* entry = e->findObject(id);
             if (entry == nullptr) throw std::invalid_argument("Object ID does not exist.");
-            e->context->SetColor(entry->presentation, color(r, g, b), Standard_False);
+            const Quantity_Color value = color(r, g, b);
+            entry->hasStoredColor = true;
+            entry->storedColorR = value.Red();
+            entry->storedColorG = value.Green();
+            entry->storedColorB = value.Blue();
+            e->context->SetColor(entry->presentation, value, Standard_False);
             e->requestRedraw();
         });
     }
