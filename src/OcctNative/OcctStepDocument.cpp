@@ -142,7 +142,9 @@ namespace
 
     std::vector<StepSubshapeStyleSnapshot> captureSubshapeStyles(const XCAFPrs_DocumentNode& node)
     {
-        const TDF_Label sourceLabel = node.RefLabel.IsNull() ? node.Label : node.RefLabel;
+        // Prefer the occurrence/component label so instance-specific styles are
+        // represented. Direct Part nodes naturally fall back to their own label.
+        const TDF_Label sourceLabel = node.Label.IsNull() ? node.RefLabel : node.Label;
         if (sourceLabel.IsNull()) return {};
 
         const TopoDS_Shape rootShape = XCAFDoc_ShapeTool::GetShape(sourceLabel);
