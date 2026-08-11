@@ -14,6 +14,7 @@
 #include <OpenGl_GraphicDriver.hxx>
 #include <Quantity_Color.hxx>
 #include <Standard_Failure.hxx>
+#include <TDocStd_Document.hxx>
 #include <TopAbs_ShapeEnum.hxx>
 #include <TopoDS_Shape.hxx>
 #include <V3d_AmbientLight.hxx>
@@ -76,6 +77,9 @@ namespace OcctBridge
         Handle(V3d_DirectionalLight) customFillLight;
         std::unordered_map<OcctObjectId, ObjectEntry> objects;
         std::unordered_map<std::string, OcctObjectId> objectIdByApplicationTag;
+        std::vector<Handle(TDocStd_Document)> stepDocuments;
+        Handle(TDocStd_Document) pristineStepDocument;
+        bool pristineStepDocumentMatchesScene = false;
         OcctObjectId nextId = 1;
         int displayMode = AIS_Shaded;
         int selectionMode = OcctSelection_Object;
@@ -92,6 +96,11 @@ namespace OcctBridge
         const ObjectEntry* findShape(OcctObjectId id) const;
         OcctObjectId findPresentation(const Handle(AIS_InteractiveObject)& presentation) const;
         OcctObjectId addShape(const TopoDS_Shape& shape, bool fit = false, const std::string& name = {});
+        OcctObjectId addShapePresentation(
+            const TopoDS_Shape& shape,
+            const Handle(AIS_InteractiveObject)& presentation,
+            bool fit = false,
+            const std::string& name = {});
         OcctObjectId addPresentation(const Handle(AIS_InteractiveObject)& presentation, int kind, const std::string& name = {});
         void hide(OcctObjectId id);
         void erase(OcctObjectId id);
@@ -101,6 +110,7 @@ namespace OcctBridge
         void requestRedraw();
         void requestFitAll();
         bool isUpdating() const;
+        void invalidatePristineStepDocument();
     };
 
     Engine* engineOf(OcctHandle handle);
