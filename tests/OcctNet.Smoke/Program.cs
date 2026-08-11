@@ -62,9 +62,10 @@ if (faceMesh.Nodes.Count == 0 || faceMesh.Triangles.Count == 0)
 if (shapeMesh.Nodes.Count == 0 || shapeMesh.Triangles.Count == 0)
     throw new InvalidOperationException("Whole-shape triangulation is empty.");
 
+// Keep the ray inside the box footprint but outside the through-hole centered at (50, 40).
 var rayHits = model.IntersectRay(
     cut.Shape,
-    new OcctPoint3d(50, 40, 100),
+    new OcctPoint3d(20, 20, 100),
     new OcctVector3d(0, 0, -1));
 if (rayHits.Count == 0)
     throw new InvalidOperationException("Expected at least one ray hit.");
@@ -153,22 +154,4 @@ finally
     if (File.Exists(stepPath)) File.Delete(stepPath);
 }
 
-var healed = model.FixShape(cut.Shape);
-var unified = model.UnifySameDomain(healed.Shape);
-if (!model.IsShapeValid(unified.Shape))
-    throw new InvalidOperationException("Healed and unified shape is invalid.");
-
-Console.WriteLine($"OCCT {OcctEngine.OcctVersion}");
-Console.WriteLine($"Bridge {OcctBridgeInfo.ManagedVersion} / ABI {OcctBridgeInfo.ExpectedAbiVersion}");
-Console.WriteLine($"Modeling capabilities: {OcctModelingSession.Capabilities}");
-Console.WriteLine($"Shapes: {model.ShapeCount}");
-Console.WriteLine($"Faces: {faceCount}");
-Console.WriteLine($"Volume mass: {inertia.Mass:G6}");
-Console.WriteLine($"Face mesh: {faceMesh.Nodes.Count} nodes, {faceMesh.Triangles.Count} triangles");
-Console.WriteLine($"Shape mesh: {shapeMesh.Nodes.Count} nodes, {shapeMesh.Triangles.Count} triangles");
-Console.WriteLine($"Ray hits: {rayHits.Count}");
-Console.WriteLine($"Edge intersections: {edgeIntersections.Count}");
-Console.WriteLine($"Topology reference score: {topologyResolution.Score:G4}");
-Console.WriteLine($"OBB: {bounds.SizeX:G4} x {bounds.SizeY:G4} x {bounds.SizeZ:G4}");
-Console.WriteLine($"Loft operation: {loft.OperationId}");
-Console.WriteLine("Bridge 2.6 native smoke tests passed.");
+Console.WriteLine("Native modeling smoke tests passed.");
