@@ -1,4 +1,5 @@
-﻿#include "OcctInternal.hxx"
+﻿#include "OcctStepDocument.h"
+#include "OcctInternal.hxx"
 
 #include <Quantity_ColorRGBA.hxx>
 #include <TCollection_ExtendedString.hxx>
@@ -6,7 +7,6 @@
 #include <XCAFDoc_ShapeTool.hxx>
 #include <XCAFPrs_DocumentExplorer.hxx>
 
-#include <algorithm>
 #include <iomanip>
 #include <sstream>
 
@@ -108,21 +108,6 @@ namespace
         stream << ']';
     }
 
-    std::vector<OcctObjectId> latestImportedStepObjectIds(const Engine* engine, std::size_t leafCount)
-    {
-        std::vector<OcctObjectId> candidates;
-        candidates.reserve(engine->objects.size());
-        for (const auto& pair : engine->objects)
-        {
-            if (pair.second.kind == OcctObject_Shape && !pair.second.stepHierarchyPath.empty())
-                candidates.push_back(pair.first);
-        }
-        std::sort(candidates.begin(), candidates.end());
-        if (candidates.size() > leafCount)
-            candidates.erase(candidates.begin(), candidates.end() - static_cast<std::ptrdiff_t>(leafCount));
-        return candidates;
-    }
-
     std::string buildLastStepDocumentJson(Engine* engine)
     {
         if (engine->stepDocuments.empty() || engine->stepDocuments.back().IsNull())
@@ -131,7 +116,7 @@ namespace
         const Handle(TDocStd_Document)& document = engine->stepDocuments.back();
         std::vector<StepNodeSnapshot> nodes;
         std::vector<int> nodeAtDepth;
-        std::size_t leafCount = 0;
+        std::size_t leafIndex = 0;
 
         XCAFPrs_DocumentExplorer explorer(document, XCAFPrs_DocumentExplorerFlags_None);
         for (; explorer.More(); explorer.Next())
@@ -154,6 +139,13 @@ namespace
             snapshot.localTransform = node.LocalTrsf.Transformation();
             snapshot.globalTransform = node.Location.Transformation();
 
+            if (!node.IsAssembly)
+            {
+                if (leafIndex >= engine->lastStepImportObjectIds.size())
+                    throw std::runtime_error("STEP/XDE leaf-to-object mapping is incomplete.");
+                snapshot.objectId = engine->lastStepImportObjectIds[leafIndex++];
+            }
+
             if (node.Style.IsSetColorSurf())
             {
                 const Quantity_ColorRGBA& rgba = node.Style.GetColorSurfRGBA();
@@ -171,7 +163,6 @@ namespace
                 snapshot.curveG = rgb.Green();
                 snapshot.curveB = rgb.Blue();
             }
-            if (!node.IsAssembly) ++leafCount;
 
             const int nodeIndex = static_cast<int>(nodes.size());
             nodes.push_back(std::move(snapshot));
@@ -179,14 +170,8 @@ namespace
             nodeAtDepth.resize(static_cast<std::size_t>(depth) + 1U);
         }
 
-        const std::vector<OcctObjectId> leafObjectIds = latestImportedStepObjectIds(engine, leafCount);
-        std::size_t leafIndex = 0;
-        for (StepNodeSnapshot& node : nodes)
-        {
-            if (node.kind == 0) continue;
-            if (leafIndex < leafObjectIds.size()) node.objectId = leafObjectIds[leafIndex];
-            ++leafIndex;
-        }
+        if (leafIndex != engine->lastStepImportObjectIds.size())
+            throw std::runtime_error("STEP/XDE leaf-to-object mapping does not match the imported document.");
 
         std::ostringstream stream;
         stream << std::setprecision(17);
