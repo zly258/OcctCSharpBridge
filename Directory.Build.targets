@@ -1,10 +1,10 @@
-﻿<Project>
+<Project>
   <Target Name="ValidateOcctBridgeBinarySdk" BeforeTargets="ResolveReferences">
     <Error Condition="!Exists('$(OcctBridgeDistRoot)\OcctNative.dll')" Text="OcctNative.dll is missing from dist/win-x64. Publish the validated Binary SDK from main with publish.ps1." />
     <Error Condition="!Exists('$(OcctBridgeDistRoot)\OcctNet.dll')" Text="OcctNet.dll is missing from dist/win-x64. Publish the validated Binary SDK from main with publish.ps1." />
-    <Error Condition="!Exists('$(OcctBridgeDistRoot)\OcctNet.WinForms.dll')" Text="OcctNet.WinForms.dll is missing from dist/win-x64." />
-    <Error Condition="!Exists('$(OcctBridgeDistRoot)\OcctNet.Wpf.dll')" Text="OcctNet.Wpf.dll is missing from dist/win-x64." />
-    <Error Condition="!Exists('$(OcctBridgeDistRoot)\OcctNet.Avalonia.dll')" Text="OcctNet.Avalonia.dll is missing from dist/win-x64." />
+    <Error Condition="'$(MSBuildProjectName)' == 'OcctDemo.WinForms' and !Exists('$(OcctBridgeDistRoot)\OcctNet.WinForms.dll')" Text="OcctNet.WinForms.dll is missing from dist/win-x64." />
+    <Error Condition="'$(MSBuildProjectName)' == 'OcctDemo.Wpf' and !Exists('$(OcctBridgeDistRoot)\OcctNet.Wpf.dll')" Text="OcctNet.Wpf.dll is missing from dist/win-x64." />
+    <Error Condition="'$(MSBuildProjectName)' == 'OcctDemo.Avalonia' and !Exists('$(OcctBridgeDistRoot)\OcctNet.Avalonia.dll')" Text="OcctNet.Avalonia.dll is missing from dist/win-x64." />
     <Error Condition="!Exists('$(OcctBridgeDistRoot)\bridge-contract.json')" Text="bridge-contract.json is missing from dist/win-x64." />
     <Error Condition="!Exists('$(OcctBridgeDistRoot)\bridge-manifest.json')" Text="bridge-manifest.json is missing from dist/win-x64." />
   </Target>
