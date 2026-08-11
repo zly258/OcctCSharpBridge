@@ -78,14 +78,13 @@ public sealed partial class MainForm
 
     private void SetZoomSensitivity()
     {
-        var current = DemoViewportSettings.GetZoomSensitivity(_viewport);
         var parameters = new[]
         {
             new DemoParameterDefinition(
                 "value",
                 Local("Zoom Sensitivity", "缩放灵敏度"),
                 DemoParameterKind.Number,
-                current.ToString("0.##", CultureInfo.InvariantCulture),
+                _viewport.ZoomSensitivity.ToString("0.##", CultureInfo.InvariantCulture),
                 "×")
         };
         if (!ParameterDialog.TryGetValues(this, Local("Zoom Sensitivity", "缩放灵敏度"), parameters, out var raw)) return;
@@ -93,14 +92,10 @@ public sealed partial class MainForm
         var value = new DemoValues(raw).Number("value", 1.0);
         ExecuteSafe(() =>
         {
-            if (!DemoViewportSettings.TrySetZoomSensitivity(_viewport, value))
-            {
-                throw new InvalidOperationException(Local(
-                    "The Binary SDK does not expose ZoomSensitivity yet. Publish main and sync the demo distribution first.",
-                    "当前 Binary SDK 尚未提供 ZoomSensitivity。请先发布 main 并同步 demo 的二进制分发。"));
-            }
-            var applied = DemoViewportSettings.GetZoomSensitivity(_viewport);
-            var message = Local($"Zoom sensitivity: {applied:0.##}×", $"缩放灵敏度：{applied:0.##}×");
+            _viewport.ZoomSensitivity = value;
+            var message = Local(
+                $"Zoom sensitivity: {_viewport.ZoomSensitivity:0.##}×",
+                $"缩放灵敏度：{_viewport.ZoomSensitivity:0.##}×");
             _commandStatus.Text = message;
             Log(message);
         });
