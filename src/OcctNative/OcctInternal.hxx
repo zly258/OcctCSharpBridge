@@ -49,6 +49,11 @@ namespace OcctBridge
         Handle(AIS_InteractiveObject) presentation;
         std::string name;
         std::string applicationTag;
+        std::vector<std::string> stepHierarchyPath;
+        bool hasStoredColor = false;
+        double storedColorR = 0.0;
+        double storedColorG = 0.0;
+        double storedColorB = 0.0;
         bool selectable = true;
     };
 
