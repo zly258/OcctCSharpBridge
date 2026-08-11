@@ -1,4 +1,4 @@
-﻿#include "OcctModelingShapeInternal.hxx"
+#include "OcctModelingShapeInternal.hxx"
 #include "OcctModelingExtensions.h"
 
 #include <BRepBndLib.hxx>
@@ -90,9 +90,19 @@ extern "C"
         {
             if (innerWireCount < 0) throw std::invalid_argument("Inner wire count must not be negative.");
             if (innerWireCount > 0 && innerWireIds == nullptr) throw std::invalid_argument("Inner wire ID array is null.");
+
             BRepBuilderAPI_MakeFace maker(requireWire(model, outerWireId, "Outer wire"), Standard_True);
             if (!maker.IsDone()) throw std::runtime_error("Outer planar face creation failed.");
-            for (int index = 0; index < innerWireCount; ++index) maker.Add(requireWire(model, innerWireIds[index], "Inner wire"));
+
+            // Inner wires are semantic holes. Wires created with the same plane basis as
+            // the outer boundary carry the same orientation, so reverse each hole before
+            // adding it to the face to produce the required opposite boundary orientation.
+            for (int index = 0; index < innerWireCount; ++index)
+            {
+                const TopoDS_Wire inner = requireWire(model, innerWireIds[index], "Inner wire");
+                maker.Add(TopoDS::Wire(inner.Reversed()));
+            }
+
             maker.Build();
             if (!maker.IsDone() || maker.Face().IsNull()) throw std::runtime_error("Planar face with holes creation failed.");
             return TopoDS_Shape(maker.Face());
