@@ -227,7 +227,14 @@ function Get-PeImportedDllNames {
 function Test-SystemRuntimeDependency {
     param([Parameter(Mandatory = $true)][string]$Name)
 
-    if ($Name -match '^(api-ms-win-|ext-ms-win-)') { return $true }
+    if ($Name -match '^(?i)(api-ms-win-|ext-ms-win-)') { return $true }
+
+    # The VC++ runtime is redistributable, not an operating-system contract.
+    # It is commonly installed into System32 on a developer machine; treating
+    # it as a Windows DLL would produce packages that fail with Win32 126 on a
+    # clean target computer.
+    if ($Name -match '^(?i)(msvcp|vcruntime|concrt|vccorlib)\d+.*\.dll$') { return $false }
+
     $system32 = Join-Path $env:SystemRoot "System32\$Name"
     if (Test-Path -LiteralPath $system32 -PathType Leaf) { return $true }
     return $false
