@@ -2,7 +2,7 @@
 
 namespace OcctNet;
 
-public enum OcctObjectKind { Unknown = 0, Shape = 1, Text = 2, Dimension = 3, Point = 4 }
+public enum OcctObjectKind { Unknown = 0, Shape = 1, Text = 2, Dimension = 3 }
 public enum OcctShapeType { Compound = 0, CompSolid = 1, Solid = 2, Shell = 3, Face = 4, Wire = 5, Edge = 6, Vertex = 7, Shape = 8 }
 public enum OcctViewOrientation { Isometric = 0, Front = 1, Back = 2, Left = 3, Right = 4, Top = 5, Bottom = 6 }
 public enum OcctProjectionType { Orthographic = 0, Perspective = 1 }
@@ -13,22 +13,6 @@ public enum OcctRectangleSelectionBehavior { Inclusive = 0, Overlap = 1, Directi
 public enum OcctBooleanOperation { Fuse = 0, Cut = 1, Common = 2, Section = 3 }
 public enum OcctCurveType { Line = 0, Circle = 1, Ellipse = 2, Hyperbola = 3, Parabola = 4, Bezier = 5, BSpline = 6, Offset = 7, Other = 8 }
 public enum OcctSurfaceType { Plane = 0, Cylinder = 1, Cone = 2, Sphere = 3, Torus = 4, Bezier = 5, BSpline = 6, Revolution = 7, Extrusion = 8, Offset = 9, Other = 10 }
-public enum OcctPointMarker
-{
-    Point = 0,
-    Plus = 1,
-    Star = 2,
-    X = 3,
-    Circle = 4,
-    CirclePoint = 5,
-    CirclePlus = 6,
-    CircleStar = 7,
-    CircleX = 8,
-    Ring1 = 9,
-    Ring2 = 10,
-    Ring3 = 11,
-    Ball = 12
-}
 public enum OcctMaterial
 {
     Brass = 0, Bronze = 1, Copper = 2, Gold = 3, Pewter = 4, Plastered = 5, Plastified = 6,
@@ -222,19 +206,4 @@ public readonly record struct OcctDimension : IOcctObject
     public OcctObjectKind Kind => OcctObjectKind.Dimension;
     public bool IsValid => Id > 0;
     internal long OwnerId { get; }
-}
-
-public readonly record struct OcctPoint : IOcctObject
-{
-    internal OcctPoint(long id, long ownerId)
-    {
-        Id = id;
-        OwnerId = ownerId;
-    }
-
-    public long Id { get; }
-    public OcctObjectKind Kind => OcctObjectKind.Point;
-    public bool IsValid => Id > 0;
-    internal long OwnerId { get; }
-    public override string ToString() => $"Point {Id}";
 }
