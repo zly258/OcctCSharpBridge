@@ -1,6 +1,7 @@
-﻿#include "OcctInternal.hxx"
+#include "OcctInternal.hxx"
 
 #include <AIS_SelectionScheme.hxx>
+#include <Aspect_PolygonOffsetMode.hxx>
 #include <Aspect_TypeOfTriedronPosition.hxx>
 #include <BRepBndLib.hxx>
 #include <BRepBuilderAPI_Copy.hxx>
@@ -11,6 +12,7 @@
 #include <Bnd_Box.hxx>
 #include <GProp_GProps.hxx>
 #include <Graphic3d_Camera.hxx>
+#include <Graphic3d_AspectFillArea3d.hxx>
 #include <Graphic3d_MaterialAspect.hxx>
 #include <Graphic3d_TransformPers.hxx>
 #include <Graphic3d_TransModeFlags.hxx>
@@ -33,6 +35,57 @@ namespace OcctBridge
     bool Engine::isInitialized() const { return !view.IsNull() && !context.IsNull(); }
     void Engine::clearError() { lastError.clear(); }
     void Engine::setError(const std::string& message) { lastError = message; }
+
+    bool Engine::isUpdating() const { return updateDepth > 0; }
+
+    void Engine::beginUpdate()
+    {
+        ++updateDepth;
+    }
+
+    void Engine::requestRedraw()
+    {
+        if (isUpdating())
+        {
+            redrawPending = true;
+            return;
+        }
+        view->Redraw();
+    }
+
+    void Engine::requestFitAll()
+    {
+        if (isUpdating())
+        {
+            fitAllPending = true;
+            redrawPending = true;
+            return;
+        }
+        view->FitAll(0.01, Standard_False);
+        view->ZFitAll();
+        view->Redraw();
+    }
+
+    void Engine::endUpdate(bool fitAll)
+    {
+        if (updateDepth <= 0) throw std::logic_error("No OCCT display batch is active.");
+        if (fitAll)
+        {
+            fitAllPending = true;
+            redrawPending = true;
+        }
+        --updateDepth;
+        if (updateDepth > 0) return;
+
+        if (fitAllPending)
+        {
+            view->FitAll(0.01, Standard_False);
+            view->ZFitAll();
+        }
+        if (fitAllPending || redrawPending) view->Redraw();
+        fitAllPending = false;
+        redrawPending = false;
+    }
 
     ObjectEntry* Engine::findObject(OcctObjectId id)
     {
@@ -89,10 +142,10 @@ namespace OcctBridge
             }
             mode = AIS_Shape::SelectionMode(type);
         }
-        context->Activate(presentation, mode, Standard_True);
+        context->Activate(presentation, mode, Standard_False);
     }
 
-    OcctObjectId Engine::addShape(const TopoDS_Shape& shape, bool fit, const std::string& name)
+    OcctObjectId Engine::addShape(const TopoDS_Shape& shape, bool /*fit*/, const std::string& name)
     {
         if (shape.IsNull()) throw std::runtime_error("OCCT returned a null shape.");
         if (!isInitialized()) throw std::runtime_error("The OCCT viewer has not been initialized.");
@@ -102,15 +155,9 @@ namespace OcctBridge
         context->Display(ais, Standard_False);
         applySelectionMode(ais);
         objects.emplace(id, ObjectEntry{OcctObject_Shape, shape, ais, name});
-        if (fit)
-        {
-            view->FitAll(0.01, Standard_True);
-            view->ZFitAll();
-        }
-        else
-        {
-            view->Redraw();
-        }
+        // Shape creation changes the scene but must not change the user's camera.
+        // Fit/FitAll remain explicit public view operations.
+        requestRedraw();
         return id;
     }
 
@@ -121,7 +168,7 @@ namespace OcctBridge
         context->Display(presentation, Standard_False);
         applySelectionMode(presentation);
         objects.emplace(id, ObjectEntry{kind, TopoDS_Shape(), presentation, name});
-        view->Redraw();
+        requestRedraw();
         return id;
     }
 
@@ -273,6 +320,11 @@ extern "C"
             engine->viewer->SetDefaultTypeOfView(V3d_ORTHOGRAPHIC);
             engine->context = new AIS_InteractiveContext(engine->viewer);
             engine->view = engine->viewer->CreateView();
+            engine->view->SetAutoZFitMode(Standard_True, 1.0);
+            const Handle(Prs3d_Drawer)& defaultDrawer = engine->context->DefaultDrawer();
+            defaultDrawer->SetupOwnShadingAspect();
+            defaultDrawer->ShadingAspect()->Aspect()->SetPolygonOffsets(
+                Aspect_POM_Fill, 1.0f, 1.0f);
             engine->window = new WNT_Window(reinterpret_cast<Aspect_Handle>(windowHandle));
             engine->view->SetWindow(engine->window);
             if (!engine->window->IsMapped()) engine->window->Map();
@@ -300,8 +352,11 @@ extern "C"
     }
 
     int occt_resize(OcctHandle h) { Engine* e = engineOf(h); if (!validateInitialized(e)) return 0; return execute(e, [&] { e->view->MustBeResized(); e->view->Redraw(); }); }
-    int occt_redraw(OcctHandle h) { Engine* e = engineOf(h); if (!validateInitialized(e)) return 0; return execute(e, [&] { e->view->Redraw(); }); }
-    int occt_fit_all(OcctHandle h) { Engine* e = engineOf(h); if (!validateInitialized(e)) return 0; return execute(e, [&] { e->view->FitAll(0.01, Standard_True); e->view->ZFitAll(); }); }
+    int occt_redraw(OcctHandle h) { Engine* e = engineOf(h); if (!validateInitialized(e)) return 0; return execute(e, [&] { e->requestRedraw(); }); }
+    int occt_begin_update(OcctHandle h) { Engine* e = engineOf(h); if (!validateInitialized(e)) return 0; return execute(e, [&] { e->beginUpdate(); }); }
+    int occt_end_update(OcctHandle h, int fitAll) { Engine* e = engineOf(h); if (!validateInitialized(e)) return 0; return execute(e, [&] { e->endUpdate(fitAll != 0); }); }
+    int occt_is_updating(OcctHandle h) { Engine* e = engineOf(h); return e != nullptr && e->isUpdating() ? 1 : 0; }
+    int occt_fit_all(OcctHandle h) { Engine* e = engineOf(h); if (!validateInitialized(e)) return 0; return execute(e, [&] { e->requestFitAll(); }); }
 
     int occt_fit_object(OcctHandle h, OcctObjectId id)
     {
@@ -587,11 +642,11 @@ extern "C"
         Engine* e = engineOf(h); if (e == nullptr) return ""; const ObjectEntry* entry=e->findObject(id); e->scratchString=entry?entry->name:""; return e->scratchString.c_str();
     }
 
-    int occt_set_object_color(OcctHandle h, OcctObjectId id, double r, double g, double b) { Engine* e=engineOf(h); if(!validateInitialized(e))return 0; return execute(e,[&]{ObjectEntry* o=e->findObject(id);if(!o)throw std::invalid_argument("Object ID does not exist.");e->context->SetColor(o->presentation,color(r,g,b),Standard_True);}); }
-    int occt_set_object_transparency(OcctHandle h, OcctObjectId id, double value) { Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return execute(e,[&]{ObjectEntry* o=e->findObject(id);if(!o)throw std::invalid_argument("Object ID does not exist.");e->context->SetTransparency(o->presentation,std::clamp(value,0.0,1.0),Standard_True);}); }
-    int occt_set_object_visible(OcctHandle h, OcctObjectId id, int visible) { Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return execute(e,[&]{ObjectEntry* o=e->findObject(id);if(!o)throw std::invalid_argument("Object ID does not exist.");if(visible)e->context->Display(o->presentation,Standard_True);else e->context->Erase(o->presentation,Standard_True);}); }
-    int occt_set_object_display_mode(OcctHandle h, OcctObjectId id, int mode) { Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return execute(e,[&]{ObjectEntry* o=e->findObject(id);if(!o)throw std::invalid_argument("Object ID does not exist.");e->context->SetDisplayMode(o->presentation,mode==OcctDisplay_Wireframe?AIS_WireFrame:AIS_Shaded,Standard_True);}); }
-    int occt_set_object_line_width(OcctHandle h, OcctObjectId id, double width) { Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return execute(e,[&]{requirePositive(width,"Line width");ObjectEntry* o=e->findObject(id);if(!o)throw std::invalid_argument("Object ID does not exist.");e->context->SetWidth(o->presentation,width,Standard_True);}); }
+    int occt_set_object_color(OcctHandle h, OcctObjectId id, double r, double g, double b) { Engine* e=engineOf(h); if(!validateInitialized(e))return 0; return execute(e,[&]{ObjectEntry* o=e->findObject(id);if(!o)throw std::invalid_argument("Object ID does not exist.");e->context->SetColor(o->presentation,color(r,g,b),Standard_False);e->requestRedraw();}); }
+    int occt_set_object_transparency(OcctHandle h, OcctObjectId id, double value) { Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return execute(e,[&]{ObjectEntry* o=e->findObject(id);if(!o)throw std::invalid_argument("Object ID does not exist.");e->context->SetTransparency(o->presentation,std::clamp(value,0.0,1.0),Standard_False);e->requestRedraw();}); }
+    int occt_set_object_visible(OcctHandle h, OcctObjectId id, int visible) { Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return execute(e,[&]{ObjectEntry* o=e->findObject(id);if(!o)throw std::invalid_argument("Object ID does not exist.");if(visible)e->context->Display(o->presentation,Standard_False);else e->context->Erase(o->presentation,Standard_False);e->requestRedraw();}); }
+    int occt_set_object_display_mode(OcctHandle h, OcctObjectId id, int mode) { Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return execute(e,[&]{ObjectEntry* o=e->findObject(id);if(!o)throw std::invalid_argument("Object ID does not exist.");e->context->SetDisplayMode(o->presentation,mode==OcctDisplay_Wireframe?AIS_WireFrame:AIS_Shaded,Standard_False);e->requestRedraw();}); }
+    int occt_set_object_line_width(OcctHandle h, OcctObjectId id, double width) { Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return execute(e,[&]{requirePositive(width,"Line width");ObjectEntry* o=e->findObject(id);if(!o)throw std::invalid_argument("Object ID does not exist.");e->context->SetWidth(o->presentation,width,Standard_False);e->requestRedraw();}); }
     int occt_set_object_material(OcctHandle h, OcctObjectId id, int material)
     {
         Engine* e=engineOf(h);if(!validateInitialized(e))return 0;
@@ -599,10 +654,11 @@ extern "C"
         {
             ObjectEntry* entry=e->findObject(id);
             if(!entry || entry->presentation.IsNull()) throw std::invalid_argument("Object ID does not exist.");
-            e->context->SetMaterial(entry->presentation, Graphic3d_MaterialAspect(materialName(material)), Standard_True);
+            e->context->SetMaterial(entry->presentation, Graphic3d_MaterialAspect(materialName(material)), Standard_False);
+            e->requestRedraw();
         });
     }
-    int occt_delete_object(OcctHandle h, OcctObjectId id) { Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return execute(e,[&]{e->erase(id);e->view->Redraw();}); }
+    int occt_delete_object(OcctHandle h, OcctObjectId id) { Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return execute(e,[&]{e->erase(id);e->requestRedraw();}); }
     int occt_clear(OcctHandle h)
     {
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
@@ -618,7 +674,7 @@ extern "C"
             e->objects.clear();
             e->nextId = 1;
             e->context->ClearSelected(Standard_False);
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 

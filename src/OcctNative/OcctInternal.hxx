@@ -1,9 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #include "OcctNative.h"
 
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_InteractiveObject.hxx>
+#include <AIS_RubberBand.hxx>
 #include <AIS_Shape.hxx>
 #include <AIS_ViewCube.hxx>
 #include <Aspect_DisplayConnection.hxx>
@@ -58,6 +59,7 @@ namespace OcctBridge
         Handle(V3d_View) view;
         Handle(AIS_InteractiveContext) context;
         Handle(AIS_ViewCube) viewCube;
+        Handle(AIS_RubberBand) selectionRubberBand;
         Handle(WNT_Window) window;
         Handle(V3d_AmbientLight) customAmbientLight;
         Handle(V3d_DirectionalLight) customDirectionalLight;
@@ -65,6 +67,9 @@ namespace OcctBridge
         OcctObjectId nextId = 1;
         int displayMode = AIS_Shaded;
         int selectionMode = OcctSelection_Object;
+        int updateDepth = 0;
+        bool redrawPending = false;
+        bool fitAllPending = false;
 
         bool isInitialized() const;
         void clearError();
@@ -79,6 +84,11 @@ namespace OcctBridge
         void hide(OcctObjectId id);
         void erase(OcctObjectId id);
         void applySelectionMode(const Handle(AIS_InteractiveObject)& presentation);
+        void beginUpdate();
+        void endUpdate(bool fitAll);
+        void requestRedraw();
+        void requestFitAll();
+        bool isUpdating() const;
     };
 
     Engine* engineOf(OcctHandle handle);
