@@ -1,128 +1,26 @@
-# Demo Branch Maintenance
+# Demo Branch Notes
 
-The `demo` branch is a pure application-layer consumer of the OcctCSharpBridge Binary SDK. Bridge Native/Managed source, ABI checks, managed regression tests, native smoke tests, bilingual SDK documentation, and Binary SDK production remain on `main`.
+The `demo` branch is a Windows Binary SDK consumer. It does not contain Bridge source and does not own Avalonia.
 
-## Current published baseline
-
-| Item | Current value |
-| --- | --- |
-| Author | **zly258** |
-| Bridge version | **2.6.0** |
-| Native ABI | **4** |
-| OCCT | **7.9.0** |
-| .NET SDK | **10.0.302** |
-| Target Framework | **`net10.0-windows`** |
-| C# | **14.0** |
-| Native Bridge | **C++17** |
-| Avalonia | **12.1.0** |
-| Platform | **Windows x64** |
-| Public SDK surface | **344 Native / 344 P/Invoke / 105 public .NET types** |
-
-The copied `dist/win-x64/bridge-contract.json` and `bridge-manifest.json` are authoritative for the exact SDK payload consumed by the branch. The values above describe the current main contract, but the demo source no longer hardcodes a Bridge version, ABI version, or OCCT version.
-
-## Branch responsibilities
+## Projects
 
 ```text
-main
-├─ src/OcctNative
-├─ src/OcctNet*
-├─ tests
-├─ tools/OcctApiDocsGenerator
-├─ docs/zh-CN
-├─ docs/en-US
-├─ build.ps1
-├─ publish.ps1
-└─ dist/win-x64        validated Binary SDK
-
-demo
-├─ dist/win-x64        Binary SDK published from main
-├─ src/OcctDemo.Common
-├─ src/OcctDemo.WinForms
-├─ src/OcctDemo.Wpf
-├─ src/OcctDemo.Avalonia
-├─ build.ps1
-├─ run.ps1
-└─ publish.ps1         demo application packaging only
+OcctDemo.Common
+├─ OcctDemo.WinForms → OcctNet.WinForms
+└─ OcctDemo.Wpf      → OcctNet.Wpf
 ```
 
-Demo does not contain Bridge producer source, Bridge tests, CMake validation, Native Smoke, or reverse SDK synchronization scripts.
+Both UI applications share modeling/session logic from `OcctDemo.Common` while using independent UI hosts.
 
-## Binary SDK publication
+## SDK workflow
 
-Synchronization is one-way and starts from `main`. The normal publish path uses the main script defaults:
+1. Publish a validated Windows SDK on `main`.
+2. Switch to `demo`.
+3. Run `./sync.ps1` locally.
+4. Build or run WinForms/WPF demos.
 
-```powershell
-# main branch
-.\publish.ps1
-```
+`dist/win-x64` is intentionally ignored on `demo`; the synchronized files are not a second source of truth.
 
-The main publish flow generates bilingual API documentation, runs the Release Native/Managed build, creates `dist/win-x64`, validates Contract/Manifest/SHA-256, then updates the demo branch through a temporary detached worktree. Managed regression tests and Native Smoke remain explicit test targets and are intentionally not repeated by Binary SDK publication.
+Avalonia development, Windows/Linux scripts and the cross-platform `OcctAvaloniaViewport` belong to the `avalonia` branch and are intentionally absent here.
 
-## Binary SDK contents
-
-```text
-OcctNative.dll
-OcctNet.dll
-OcctNet.WinForms.dll
-OcctNet.Wpf.dll
-OcctNet.Avalonia.dll
-bridge-contract.json
-bridge-manifest.json
-```
-
-OCCT `TK*.dll` and third-party runtime DLLs are not stored in `dist`. Runtime resolution uses `OCCT_ROOT`, `CASROOT`, or explicit `OcctRuntime` configuration for local execution. Demo application packaging copies the required runtime subset into the final application package.
-
-## Demo behavior contract
-
-The three UI hosts share the same command/model layer. Host-specific code should only adapt UI events and controls to the shared behavior.
-
-- Multi-selection must not expose the first object as the active property object; the property panel shows only the selection count for more than one selected object.
-- Viewport wheel sensitivity uses the current SDK `ZoomSensitivity` API directly. Do not add reflection or old-Binary-SDK fallbacks.
-- Surface and mesh sample tests execute real `OcctModelingSession` APIs and validate returned topology/mesh metadata rather than simulating results in the UI.
-- Avalonia Undo/Redo state must be refreshed from shared history events and model changes, and its UI typography uses `Microsoft YaHei UI` consistently.
-
-## Build
-
-```powershell
-.\build.ps1 validate Release
-.\build.ps1 all Release
-```
-
-Individual targets:
-
-```powershell
-.\build.ps1 common Release
-.\build.ps1 winform Release
-.\build.ps1 wpf Release
-.\build.ps1 avalonia Release
-```
-
-`build.ps1` reads the Binary SDK Contract, validates Author/platform/.NET/C#/Manifest/SHA-256, then propagates the consumed `bridgeVersion` into Demo assembly builds. It does not pin a Bridge version in `Directory.Build.props`.
-
-`Directory.Build.targets` validates the required Binary SDK files before reference resolution and copies `OcctNative.dll` beside each executable. Managed `OcctNet*.dll` files are copied through ordinary private assembly references.
-
-## Run and package
-
-```powershell
-.\run.ps1 wpf Release
-.\publish.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64" -Zip
-```
-
-Demo `publish.ps1` packages applications only; it never publishes or rebuilds the Bridge SDK. The consumed Contract version is passed to `dotnet publish`, so build and publish assembly metadata stay aligned.
-
-For `all`, WinForms, WPF and Avalonia are published through temporary staging directories and merged into one final `OcctCSharpBridge-Demo-all-win-x64` directory. Shared .NET/Bridge/OCCT files are stored once; different files with the same relative path are treated as a packaging error rather than silently overwriting one another.
-
-Native packaging uses an explicit OCCT runtime closure instead of recursively copying the complete OCCT installation. Qt, VTK, Tcl/Tk, Draw/Test and debug runtimes are excluded. The small CAF/XCAF subset required transitively by OCCT STEP/IGES support is retained as an OCCT runtime implementation dependency; it is not a Demo document-model dependency.
-
-## Product metadata
-
-`Directory.Build.props` defines demo-wide build policy, product name and Author **zly258**, but does not duplicate the Bridge version/ABI/OCCT contract. `OcctDemo.Common/DemoProductInfo.cs` reads Bridge version and expected ABI from `OcctNet` and obtains the loaded OCCT version from the Bridge at runtime for all three About dialogs.
-
-## Documentation rules
-
-- Chinese Bridge documentation: `main/docs/zh-CN`.
-- English Bridge documentation: `main/docs/en-US`.
-- Complete Managed + Native API Reference: `api/` below both language roots.
-- Demo maintains only application, UI, build, run, packaging and screenshot documentation.
-- Do not restore deleted `dist.ps1`, `sync-dist.ps1`, Bridge source mirrors, reflection-based compatibility helpers, or legacy compatibility wrappers.
-- GitHub Actions are not used for build, validation, publication, or branch synchronization.
+No GitHub Actions or NuGet publication flow is used by this demo branch.

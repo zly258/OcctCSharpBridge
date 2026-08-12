@@ -1,4 +1,4 @@
-﻿# Build output
+# Build output
 build/
 artifacts/
 publish/
@@ -44,21 +44,14 @@ Makefile
 *.idb
 *.tlog
 
-# .NET / NuGet
-packages/
-*.nupkg
-*.snupkg
-project.assets.json
-
 # Runtime binaries
 *.dll
 *.exe
 *.so
 *.dylib
 
-# dist is the tracked Bridge Binary SDK consumed by this branch.
-!dist/
-!dist/**
+# Local Bridge Binary SDK / generated distribution
+/dist/
 
 # CAD test and generated files
 *.brep

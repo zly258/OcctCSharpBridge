@@ -1,6 +1,6 @@
 ﻿param(
     [Parameter(Position = 0)]
-    [ValidateSet("all", "winform", "wpf", "avalonia")]
+    [ValidateSet("all", "winform", "wpf")]
     [string]$Target = "all",
 
     [Parameter(Position = 1)]
@@ -53,11 +53,6 @@ $Projects = [ordered]@{
         Project = "src\OcctDemo.Wpf\OcctDemo.Wpf.csproj"
         Executable = "CAD-WPF.exe"
     }
-    avalonia = @{
-        Name = "Avalonia"
-        Project = "src\OcctDemo.Avalonia\OcctDemo.Avalonia.csproj"
-        Executable = "CAD-Avalonia.exe"
-    }
 }
 
 function Assert-Path {
@@ -84,11 +79,9 @@ function Invoke-Checked {
 
 function Get-SelectedKeys {
     if ($Target -eq "all") {
-        # Establish one canonical self-contained runtime first. Later hosts add
-        # only runtime-pack files that are not already present. This keeps one
-        # portable directory without assuming that any UI framework depends on
-        # another UI framework.
-        return @("wpf", "winform", "avalonia")
+        # Establish one canonical self-contained runtime first. The second host
+        # adds only runtime-pack files that are not already present.
+        return @("wpf", "winform")
     }
     return @($Target)
 }
@@ -117,9 +110,6 @@ function Get-RuntimePackAssetNames {
         throw "Self-contained dependency manifest contains no runtime-pack libraries: $depsPath"
     }
 
-    # Self-contained .deps.json files can contain more than one target graph.
-    # In .NET 10 the RID-specific runtime-pack entries are not guaranteed to be
-    # in the first graph, so inspect every graph instead of selecting the first.
     $targetProperties = @($deps.targets.PSObject.Properties)
     if ($targetProperties.Count -eq 0) {
         throw "Dependency manifest contains no target graph: $depsPath"
@@ -151,8 +141,6 @@ function Get-RuntimePackAssetNames {
         throw "Self-contained dependency manifest contains runtime-pack libraries but no runtime-pack assets: $depsPath"
     }
 
-    # Prevent PowerShell from enumerating the HashSet into the output pipeline.
-    # This guarantees a stable collection object even when it is empty.
     return ,$result
 }
 
@@ -383,11 +371,6 @@ function Test-SystemRuntimeDependency {
     param([Parameter(Mandatory = $true)][string]$Name)
 
     if ($Name -match '(?i)^(api-ms-win-|ext-ms-win-)') { return $true }
-
-    # The VC++ runtime is redistributable, not an operating-system contract.
-    # It is commonly installed into System32 on a developer machine; treating
-    # it as a Windows DLL would produce packages that fail with Win32 126 on a
-    # clean target computer.
     if ($Name -match '(?i)^(msvcp|vcruntime|concrt|vccorlib)\d+.*\.dll$') { return $false }
 
     $system32 = Join-Path $env:SystemRoot "System32\$Name"
@@ -557,7 +540,6 @@ function Copy-PortableNativeRuntime {
 Assert-Command "dotnet"
 Assert-Path $BuildScript
 
-# Validate the Binary SDK once before touching publish output.
 & $BuildScript validate $Configuration
 
 Assert-Path $OcctBinDir
@@ -575,8 +557,6 @@ New-Item -ItemType Directory -Path $stagingRoot -Force | Out-Null
 $runtimeBaseline = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 
 try {
-    # Resolve the native closure first. Native packaging problems should fail
-    # fast instead of recompiling all managed demo hosts before surfacing them.
     Write-Host "[publish] Resolving portable OCCT native runtime..." -ForegroundColor Cyan
     Copy-PortableNativeRuntime -Destination $packageRoot
 

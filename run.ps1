@@ -1,14 +1,13 @@
 ﻿param(
     [Parameter(Position = 0, Mandatory = $true)]
-    [ValidateSet("winform", "wpf", "avalonia")]
+    [ValidateSet("winform", "wpf")]
     [string]$Target,
 
     [Parameter(Position = 1)]
     [ValidateSet("Debug", "Release", "RelWithDebInfo")]
     [string]$Configuration = "Release",
 
-    [string]$OcctRoot = $env:OCCT_ROOT,
-    [int]$StartupTimeoutSeconds = 10
+    [string]$OcctRoot = $env:OCCT_ROOT
 )
 
 $ErrorActionPreference = "Stop"
@@ -70,7 +69,6 @@ if (-not (Test-Path -LiteralPath $OcctBinDir -PathType Container)) {
 $apps = @{
     winform = "src\OcctDemo.WinForms\bin\x64\$Configuration\$targetFramework\CAD-Winform.exe"
     wpf = "src\OcctDemo.Wpf\bin\x64\$Configuration\$targetFramework\CAD-WPF.exe"
-    avalonia = "src\OcctDemo.Avalonia\bin\x64\$Configuration\$targetFramework\CAD-Avalonia.exe"
 }
 
 $executable = Join-Path $RepoRoot $apps[$Target.ToLowerInvariant()]
@@ -104,33 +102,6 @@ Write-Host "OCCT root:   $OcctRoot" -ForegroundColor DarkGray
 
 $process = Start-Process -FilePath $executable -WorkingDirectory $applicationDirectory -PassThru
 Write-Host "Process ID:  $($process.Id)"
-
-if ($Target -eq "avalonia") {
-    # Process.MainWindowHandle is only a best-effort Windows shell signal. Avalonia can
-    # legitimately publish the HWND after managed/native viewer initialization, so a
-    # missing handle must not be treated as an application crash or used to kill it.
-    $deadline = [DateTime]::UtcNow.AddSeconds([Math]::Max(1, $StartupTimeoutSeconds))
-    $windowDetected = $false
-    while ([DateTime]::UtcNow -lt $deadline) {
-        Start-Sleep -Milliseconds 200
-        $process.Refresh()
-        if ($process.HasExited) {
-            throw "avalonia exited during startup with code $($process.ExitCode)."
-        }
-        if ($process.MainWindowHandle -ne [IntPtr]::Zero) {
-            $windowDetected = $true
-            break
-        }
-    }
-
-    if ($windowDetected) {
-        Write-Host "Avalonia main window detected." -ForegroundColor DarkGray
-    }
-    else {
-        Write-Warning "Avalonia is still running after $StartupTimeoutSeconds second(s), but MainWindowHandle is not available yet. Continuing without terminating the process."
-    }
-}
-
 $process.WaitForExit()
 $process.Refresh()
 if ($process.ExitCode -ne 0) {

@@ -1,6 +1,6 @@
 ﻿param(
     [Parameter(Position = 0)]
-    [ValidateSet("validate", "common", "winform", "wpf", "avalonia", "clean", "all")]
+    [ValidateSet("validate", "common", "winform", "wpf", "clean", "all")]
     [string]$Target = "all",
 
     [Parameter(Position = 1)]
@@ -55,11 +55,6 @@ $Projects = [ordered]@{
         Project = "src\OcctDemo.Wpf\OcctDemo.Wpf.csproj"
         Executable = "CAD-WPF.exe"
     }
-    avalonia = @{
-        DisplayName = "OcctDemo.Avalonia"
-        Project = "src\OcctDemo.Avalonia\OcctDemo.Avalonia.csproj"
-        Executable = "CAD-Avalonia.exe"
-    }
 }
 
 function Assert-Path {
@@ -112,7 +107,6 @@ function Test-BinarySdk {
         "OcctNet.dll",
         "OcctNet.WinForms.dll",
         "OcctNet.Wpf.dll",
-        "OcctNet.Avalonia.dll",
         "bridge-contract.json",
         "bridge-manifest.json"
     )
@@ -173,7 +167,6 @@ function Test-BinarySdk {
         "OcctNet.dll",
         "OcctNet.WinForms.dll",
         "OcctNet.Wpf.dll",
-        "OcctNet.Avalonia.dll",
         "bridge-contract.json"
     )
     $entries = @($manifest.files)
@@ -270,12 +263,10 @@ switch ($Target) {
     "common" { Build-Project "common" }
     "winform" { Build-Project "winform" }
     "wpf" { Build-Project "wpf" }
-    "avalonia" { Build-Project "avalonia" }
     "all" {
         Build-Project "common"
         Build-Project "winform"
         Build-Project "wpf"
-        Build-Project "avalonia"
     }
 }
 
