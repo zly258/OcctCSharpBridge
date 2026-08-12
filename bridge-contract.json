@@ -1,9 +1,13 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "bridgeVersion": "2.7.0",
   "nativeAbiVersion": 4,
   "occtVersion": "7.9.0",
-  "platform": "linux-x64",
+  "platform": "cross-platform-x64",
+  "platforms": [
+    "windows-x64",
+    "linux-x64"
+  ],
   "cmakeMinimumVersion": "3.21",
   "author": "zly258",
   "contactEmail": "zhangly1403@gmail.com",
@@ -13,13 +17,14 @@
     "languageVersion": "14.0"
   },
   "api": {
-    "nativeExports": 349,
-    "managedPInvokes": 349,
-    "publicNetTypes": 117,
-    "viewer": 215,
+    "nativeExports": 350,
+    "managedPInvokes": 350,
+    "publicNetTypes": 114,
+    "viewer": 216,
     "modeling": 134,
     "nativeHeaders": [
       "OcctNative.h",
+      "OcctNativeSurface.h",
       "OcctRenderSurface.h",
       "OcctStepDocument.h",
       "OcctPoints.h",

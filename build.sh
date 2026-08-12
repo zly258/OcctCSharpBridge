@@ -12,47 +12,28 @@ BUILD_DIR="${ROOT_DIR}/build/native"
 NATIVE_BIN_DIR="${BUILD_DIR}/bin"
 DOTNET_SDK_VERSION="10.0.302"
 
-log() {
-    printf '[linux] %s\n' "$*"
-}
-
-fail() {
-    printf '[linux] ERROR: %s\n' "$*" >&2
-    exit 1
-}
-
-require_command() {
-    command -v "$1" >/dev/null 2>&1 || fail "Required command was not found: $1"
-}
-
-find_occt_library() {
-    local name="$1"
-    compgen -G "${OCCT_LIB_DIR}/lib${name}.so*" | head -n 1 || true
-}
+log() { printf '[avalonia-linux] %s\n' "$*"; }
+fail() { printf '[avalonia-linux] ERROR: %s\n' "$*" >&2; exit 1; }
+require_command() { command -v "$1" >/dev/null 2>&1 || fail "Required command was not found: $1"; }
+find_occt_library() { local name="$1"; compgen -G "${OCCT_LIB_DIR}/lib${name}.so*" | head -n 1 || true; }
 
 validate() {
-    [[ "$(uname -s)" == "Linux" ]] || fail "build.sh supports Linux only."
-
-    case "$(uname -m)" in
-        x86_64|amd64) ;;
-        *) fail "The linux branch currently supports Linux x64 only; detected $(uname -m)." ;;
-    esac
-
+    [[ "$(uname -s)" == "Linux" ]] || fail "build.sh supports Linux only; use build.ps1 on Windows."
+    case "$(uname -m)" in x86_64|amd64) ;; *) fail "The Avalonia branch currently supports Linux x64 only; detected $(uname -m)." ;; esac
     require_command cmake
     require_command dotnet
     require_command c++
 
     local sdk_version
     sdk_version="$(dotnet --version)"
-    [[ "${sdk_version}" == "${DOTNET_SDK_VERSION}" ]] || \
-        fail "OcctCSharpBridge requires .NET SDK ${DOTNET_SDK_VERSION}; detected ${sdk_version}."
+    [[ "${sdk_version}" == "${DOTNET_SDK_VERSION}" ]] || fail "OcctCSharpBridge requires .NET SDK ${DOTNET_SDK_VERSION}; detected ${sdk_version}."
+    [[ -f "${OCCT_INCLUDE_DIR}/Standard.hxx" ]] || fail "OCCT include directory is invalid: ${OCCT_INCLUDE_DIR}"
+    [[ -f "${OCCT_INCLUDE_DIR}/Standard_Version.hxx" ]] || fail "OCCT version header is missing: ${OCCT_INCLUDE_DIR}/Standard_Version.hxx"
+    [[ -n "$(find_occt_library TKernel)" ]] || fail "OCCT TKernel library was not found under ${OCCT_LIB_DIR}."
 
-    [[ -f "${OCCT_INCLUDE_DIR}/Standard.hxx" ]] || \
-        fail "OCCT include directory is invalid: ${OCCT_INCLUDE_DIR}"
-    [[ -f "${OCCT_INCLUDE_DIR}/Standard_Version.hxx" ]] || \
-        fail "OCCT version header is missing: ${OCCT_INCLUDE_DIR}/Standard_Version.hxx"
-    [[ -n "$(find_occt_library TKernel)" ]] || \
-        fail "OCCT TKernel library was not found under ${OCCT_LIB_DIR}."
+    grep -q '"platform": "cross-platform-x64"' "${ROOT_DIR}/bridge-contract.json" || fail "bridge-contract.json is not the Avalonia cross-platform contract."
+    grep -q '"windows-x64"' "${ROOT_DIR}/bridge-contract.json" || fail "Windows x64 is missing from the Avalonia platform contract."
+    grep -q '"linux-x64"' "${ROOT_DIR}/bridge-contract.json" || fail "Linux x64 is missing from the Avalonia platform contract."
 
     log "Target:        ${TARGET}"
     log "Configuration: ${CONFIGURATION}"
@@ -64,45 +45,39 @@ validate() {
 
 native() {
     validate
-    log "Configuring native Linux bridge..."
-    cmake \
-        -S "${ROOT_DIR}/src/OcctNative" \
-        -B "${BUILD_DIR}" \
+    log "Configuring native Linux x64 bridge..."
+    cmake -S "${ROOT_DIR}/src/OcctNative" -B "${BUILD_DIR}" \
         -DCMAKE_BUILD_TYPE="${CONFIGURATION}" \
         -DOCCT_ROOT="${OCCT_ROOT}" \
         -DOCCT_INCLUDE_DIR="${OCCT_INCLUDE_DIR}" \
         -DOCCT_LIB_DIR="${OCCT_LIB_DIR}"
-
     log "Building libOcctNative.so..."
     cmake --build "${BUILD_DIR}" --config "${CONFIGURATION}" --parallel
-
-    [[ -f "${NATIVE_BIN_DIR}/libOcctNative.so" ]] || \
-        fail "Native bridge was not produced at ${NATIVE_BIN_DIR}/libOcctNative.so"
+    [[ -f "${NATIVE_BIN_DIR}/libOcctNative.so" ]] || fail "Native bridge was not produced at ${NATIVE_BIN_DIR}/libOcctNative.so"
 }
 
 managed() {
     validate
-    log "Building OcctNet core..."
-    dotnet build "${ROOT_DIR}/src/OcctNet/OcctNet.csproj" \
-        -c "${CONFIGURATION}" -p:Platform=x64 --nologo
-
-    log "Building Avalonia adapter..."
-    dotnet build "${ROOT_DIR}/src/OcctNet.Avalonia/OcctNet.Avalonia.csproj" \
-        -c "${CONFIGURATION}" -p:Platform=x64 --nologo
+    log "Building OcctNet..."
+    dotnet build "${ROOT_DIR}/src/OcctNet/OcctNet.csproj" -c "${CONFIGURATION}" -p:Platform=x64 --nologo
+    log "Building OcctNet.Avalonia..."
+    dotnet build "${ROOT_DIR}/src/OcctNet.Avalonia/OcctNet.Avalonia.csproj" -c "${CONFIGURATION}" -p:Platform=x64 --nologo
 }
 
-test_managed() {
+managed_tests() {
     validate
-    log "Compiling Linux headless smoke consumer..."
-    dotnet build "${ROOT_DIR}/tests/OcctNet.Smoke/OcctNet.Smoke.csproj" \
-        -c "${CONFIGURATION}" -p:Platform=x64 --nologo
+    log "Running managed Core regression tests..."
+    dotnet test "${ROOT_DIR}/tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj" -c "${CONFIGURATION}" -p:Platform=x64 --nologo
+}
+
+build_headless_smoke() {
+    validate
+    dotnet build "${ROOT_DIR}/tests/OcctNet.Smoke/OcctNet.Smoke.csproj" -c "${CONFIGURATION}" -p:Platform=x64 --nologo
 }
 
 build_x11_smoke() {
     validate
-    log "Compiling Linux X11 viewer smoke consumer..."
-    dotnet build "${ROOT_DIR}/tests/OcctNet.X11Smoke/OcctNet.X11Smoke.csproj" \
-        -c "${CONFIGURATION}" -p:Platform=x64 --nologo
+    dotnet build "${ROOT_DIR}/tests/OcctNet.X11Smoke/OcctNet.X11Smoke.csproj" -c "${CONFIGURATION}" -p:Platform=x64 --nologo
 }
 
 configure_runtime_environment() {
@@ -114,60 +89,47 @@ configure_runtime_environment() {
 
 smoke() {
     native
-    test_managed
+    build_headless_smoke
     configure_runtime_environment
-
     log "Running headless native smoke tests..."
-    dotnet run \
-        --project "${ROOT_DIR}/tests/OcctNet.Smoke/OcctNet.Smoke.csproj" \
-        -c "${CONFIGURATION}" \
-        -p:Platform=x64 \
-        --no-build
+    dotnet run --project "${ROOT_DIR}/tests/OcctNet.Smoke/OcctNet.Smoke.csproj" -c "${CONFIGURATION}" -p:Platform=x64 --no-build
 }
 
 x11_smoke() {
     native
     build_x11_smoke
     configure_runtime_environment
-    [[ -n "${DISPLAY:-}" ]] || fail "DISPLAY is not set. X11 viewer smoke requires an X11/XWayland desktop session."
-
-    log "Running X11 viewer smoke tests on DISPLAY=${DISPLAY}..."
-    dotnet run \
-        --project "${ROOT_DIR}/tests/OcctNet.X11Smoke/OcctNet.X11Smoke.csproj" \
-        -c "${CONFIGURATION}" \
-        -p:Platform=x64 \
-        --no-build
+    [[ -n "${DISPLAY:-}" ]] || fail "DISPLAY is not set. Viewer smoke currently requires an X11/XWayland desktop session."
+    log "Running X11/XWayland viewer smoke on DISPLAY=${DISPLAY}..."
+    dotnet run --project "${ROOT_DIR}/tests/OcctNet.X11Smoke/OcctNet.X11Smoke.csproj" -c "${CONFIGURATION}" -p:Platform=x64 --no-build
 }
 
 clean() {
-    log "Cleaning Linux build outputs..."
-    rm -rf "${ROOT_DIR}/build/native"
-    rm -rf "${ROOT_DIR}/src/OcctNet/bin" "${ROOT_DIR}/src/OcctNet/obj"
-    rm -rf "${ROOT_DIR}/src/OcctNet.Avalonia/bin" "${ROOT_DIR}/src/OcctNet.Avalonia/obj"
-    rm -rf "${ROOT_DIR}/tests/OcctNet.Smoke/bin" "${ROOT_DIR}/tests/OcctNet.Smoke/obj"
-    rm -rf "${ROOT_DIR}/tests/OcctNet.X11Smoke/bin" "${ROOT_DIR}/tests/OcctNet.X11Smoke/obj"
+    log "Cleaning Avalonia branch outputs..."
+    rm -rf "${ROOT_DIR}/build/native" "${ROOT_DIR}/artifacts"
+    for path in \
+        "src/OcctNet" "src/OcctNet.Avalonia" \
+        "tests/OcctNet.ManagedTests" "tests/OcctNet.Smoke" "tests/OcctNet.X11Smoke"; do
+        rm -rf "${ROOT_DIR}/${path}/bin" "${ROOT_DIR}/${path}/obj"
+    done
 }
 
 all() {
     native
     managed
-    test_managed
-    build_x11_smoke
+    managed_tests
+    build_headless_smoke
     configure_runtime_environment
     log "Running headless native smoke tests..."
-    dotnet run \
-        --project "${ROOT_DIR}/tests/OcctNet.Smoke/OcctNet.Smoke.csproj" \
-        -c "${CONFIGURATION}" \
-        -p:Platform=x64 \
-        --no-build
-    log "Linux build completed. X11 viewer smoke is separate: ./build.sh x11-smoke ${CONFIGURATION}"
+    dotnet run --project "${ROOT_DIR}/tests/OcctNet.Smoke/OcctNet.Smoke.csproj" -c "${CONFIGURATION}" -p:Platform=x64 --no-build
+    log "Linux build completed. Run './build.sh x11-smoke ${CONFIGURATION}' in X11/XWayland to validate the Viewer backend."
 }
 
 case "${TARGET}" in
     validate) validate ;;
     native) native ;;
     managed) managed ;;
-    test) test_managed ;;
+    test) managed_tests ;;
     smoke) smoke ;;
     x11-smoke) x11_smoke ;;
     clean) clean ;;

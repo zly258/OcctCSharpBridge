@@ -9,35 +9,15 @@ for argument in "$@"; do
     case "${argument}" in
         --skip-x11) SKIP_X11=1 ;;
         Debug|Release|RelWithDebInfo|MinSizeRel) CONFIGURATION="${argument}" ;;
-        *)
-            printf '[publish-linux] ERROR: Unknown argument: %s\n' "${argument}" >&2
-            exit 1
-            ;;
+        *) printf '[publish-avalonia-linux] ERROR: Unknown argument: %s\n' "${argument}" >&2; exit 1 ;;
     esac
 done
 
-fail() {
-    printf '[publish-linux] ERROR: %s\n' "$*" >&2
-    exit 1
-}
-
-log() {
-    printf '[publish-linux] %s\n' "$*"
-}
-
-require_command() {
-    command -v "$1" >/dev/null 2>&1 || fail "Required command was not found: $1"
-}
-
-json_value() {
-    local key="$1"
-    sed -nE "s/^[[:space:]]*\"${key}\"[[:space:]]*:[[:space:]]*\"([^\"]+)\".*/\\1/p" "${ROOT_DIR}/bridge-contract.json" | head -n 1
-}
-
-json_number() {
-    local key="$1"
-    sed -nE "s/^[[:space:]]*\"${key}\"[[:space:]]*:[[:space:]]*([0-9]+).*/\\1/p" "${ROOT_DIR}/bridge-contract.json" | head -n 1
-}
+fail() { printf '[publish-avalonia-linux] ERROR: %s\n' "$*" >&2; exit 1; }
+log() { printf '[publish-avalonia-linux] %s\n' "$*"; }
+require_command() { command -v "$1" >/dev/null 2>&1 || fail "Required command was not found: $1"; }
+json_value() { local key="$1"; sed -nE "s/^[[:space:]]*\"${key}\"[[:space:]]*:[[:space:]]*\"([^\"]+)\".*/\\1/p" "${ROOT_DIR}/bridge-contract.json" | head -n 1; }
+json_number() { local key="$1"; sed -nE "s/^[[:space:]]*\"${key}\"[[:space:]]*:[[:space:]]*([0-9]+).*/\\1/p" "${ROOT_DIR}/bridge-contract.json" | head -n 1; }
 
 [[ "$(uname -s)" == "Linux" ]] || fail "publish.sh supports Linux only."
 require_command git
@@ -46,7 +26,7 @@ require_command sed
 
 cd "${ROOT_DIR}"
 CURRENT_BRANCH="$(git branch --show-current)"
-[[ "${CURRENT_BRANCH}" == "linux" ]] || fail "Linux Binary SDK publishing must run from the linux branch; current branch: ${CURRENT_BRANCH:-<detached>}"
+[[ "${CURRENT_BRANCH}" == "avalonia" ]] || fail "Linux Avalonia SDK publishing must run from the avalonia branch; current branch: ${CURRENT_BRANCH:-<detached>}"
 [[ -z "$(git status --porcelain)" ]] || fail "Working tree must be clean before publishing."
 
 BRIDGE_VERSION="$(json_value bridgeVersion)"
@@ -57,7 +37,8 @@ TARGET_FRAMEWORK="$(json_value targetFramework)"
 SDK_VERSION="$(json_value sdkVersion)"
 LANGUAGE_VERSION="$(json_value languageVersion)"
 
-[[ "${PLATFORM}" == "linux-x64" ]] || fail "bridge-contract.json platform must be linux-x64; actual: ${PLATFORM}"
+[[ "${PLATFORM}" == "cross-platform-x64" ]] || fail "bridge-contract.json platform must be cross-platform-x64; actual: ${PLATFORM}"
+grep -q '"linux-x64"' "${ROOT_DIR}/bridge-contract.json" || fail "bridge-contract.json does not declare linux-x64."
 [[ -n "${BRIDGE_VERSION}" && -n "${ABI_VERSION}" && -n "${OCCT_VERSION}" ]] || fail "Unable to read Bridge contract metadata."
 
 log "Building Bridge ${BRIDGE_VERSION}, ABI ${ABI_VERSION}, OCCT ${OCCT_VERSION}..."
@@ -67,13 +48,12 @@ if [[ "${SKIP_X11}" -eq 0 ]]; then
     [[ -n "${DISPLAY:-}" ]] || fail "DISPLAY is not set. Run in X11/XWayland or pass --skip-x11 explicitly."
     "${ROOT_DIR}/build.sh" x11-smoke "${CONFIGURATION}"
 else
-    log "X11 viewer smoke explicitly skipped."
+    log "X11/XWayland viewer smoke explicitly skipped."
 fi
 
 NATIVE_SOURCE="${ROOT_DIR}/build/native/bin/libOcctNative.so"
 CORE_OUTPUT="${ROOT_DIR}/src/OcctNet/bin/x64/${CONFIGURATION}/net10.0"
 AVALONIA_OUTPUT="${ROOT_DIR}/src/OcctNet.Avalonia/bin/x64/${CONFIGURATION}/net10.0"
-
 [[ -f "${NATIVE_SOURCE}" ]] || fail "Native bridge output is missing: ${NATIVE_SOURCE}"
 [[ -f "${CORE_OUTPUT}/OcctNet.dll" ]] || fail "Managed core output is missing: ${CORE_OUTPUT}/OcctNet.dll"
 [[ -f "${AVALONIA_OUTPUT}/OcctNet.Avalonia.dll" ]] || fail "Avalonia output is missing: ${AVALONIA_OUTPUT}/OcctNet.Avalonia.dll"
@@ -96,26 +76,26 @@ cp "${ROOT_DIR}/OcctCSharpBridge_LGPL_EXCEPTION.txt" "${STAGING}/OcctCSharpBridg
 cp "${ROOT_DIR}/COMMERCIAL.md" "${STAGING}/COMMERCIAL.md"
 
 cat > "${STAGING}/README-LINUX.txt" <<EOF
-OcctCSharpBridge ${BRIDGE_VERSION} Linux x64 Binary SDK
+OcctCSharpBridge ${BRIDGE_VERSION} Avalonia Linux x64 Binary SDK
 
 Runtime requirements:
 - Linux x64
 - .NET ${TARGET_FRAMEWORK} / SDK contract ${SDK_VERSION}
 - Open CASCADE Technology ${OCCT_VERSION}
-- X11/XWayland for OcctNet.Avalonia viewer hosting
+- X11 or XWayland for the first Viewer backend
 
-Default OCCT development layout used by this branch:
+Default OCCT development layout:
   include: /usr/local/include/opencascade
   library: /usr/local/lib
 
-This Binary SDK contains OcctCSharpBridge binaries only. It does not redistribute OCCT or its third-party shared libraries.
-Set OCCT_ROOT/CASROOT and ensure the OCCT shared libraries are available to the dynamic loader when using a non-default installation.
+This SDK contains OcctCSharpBridge binaries only. OCCT and its third-party shared libraries are not redistributed.
+Native Wayland Viewer hosting is not claimed by this release; the public Avalonia API remains platform-neutral so a Wayland backend can be added without changing consuming application code.
 EOF
 
 SOURCE_COMMIT="$(git rev-parse HEAD)"
 FILES=(libOcctNative.so OcctNet.dll OcctNet.Avalonia.dll bridge-contract.json)
-if [[ -f "${STAGING}/OcctNet.xml" ]]; then FILES+=(OcctNet.xml); fi
-if [[ -f "${STAGING}/OcctNet.Avalonia.xml" ]]; then FILES+=(OcctNet.Avalonia.xml); fi
+[[ -f "${STAGING}/OcctNet.xml" ]] && FILES+=(OcctNet.xml)
+[[ -f "${STAGING}/OcctNet.Avalonia.xml" ]] && FILES+=(OcctNet.Avalonia.xml)
 
 {
     printf '{\n'
@@ -124,7 +104,7 @@ if [[ -f "${STAGING}/OcctNet.Avalonia.xml" ]]; then FILES+=(OcctNet.Avalonia.xml
     printf '  "bridgeVersion": "%s",\n' "${BRIDGE_VERSION}"
     printf '  "nativeAbiVersion": %s,\n' "${ABI_VERSION}"
     printf '  "occtVersion": "%s",\n' "${OCCT_VERSION}"
-    printf '  "platform": "%s",\n' "${PLATFORM}"
+    printf '  "platform": "linux-x64",\n'
     printf '  "targetFramework": "%s",\n' "${TARGET_FRAMEWORK}"
     printf '  "sdkVersion": "%s",\n' "${SDK_VERSION}"
     printf '  "languageVersion": "%s",\n' "${LANGUAGE_VERSION}"
@@ -135,8 +115,7 @@ if [[ -f "${STAGING}/OcctNet.Avalonia.xml" ]]; then FILES+=(OcctNet.Avalonia.xml
     for ((index=0; index<${#FILES[@]}; index++)); do
         name="${FILES[$index]}"
         hash="$(sha256sum "${STAGING}/${name}" | awk '{print $1}')"
-        comma=','
-        if (( index == ${#FILES[@]} - 1 )); then comma=''; fi
+        comma=','; (( index == ${#FILES[@]} - 1 )) && comma=''
         printf '    { "name": "%s", "sha256": "%s" }%s\n' "${name}" "${hash}" "${comma}"
     done
     printf '  ]\n'
@@ -147,6 +126,5 @@ rm -rf "${DIST_ROOT}"
 mv "${STAGING}" "${DIST_ROOT}"
 trap - EXIT
 
-log "Linux Binary SDK staged at ${DIST_ROOT}"
+log "Avalonia Linux Binary SDK staged at ${DIST_ROOT}"
 log "Source commit: ${SOURCE_COMMIT}"
-log "OCCT runtime is intentionally not bundled."

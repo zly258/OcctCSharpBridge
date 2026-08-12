@@ -77,6 +77,7 @@ endif()
 
 add_library(OcctNative SHARED
     OcctEngine.cpp
+    OcctNativeSurface.cpp
     OcctEngineView.cpp
     OcctRenderSurface.cpp
     OcctEngineSelection.cpp
@@ -136,6 +137,7 @@ add_library(OcctNative SHARED
     OcctModelingMeshInternal.hxx
     OcctModelingExchangeInternal.hxx
     OcctNative.h
+    OcctNativeSurface.h
     OcctPoints.h
     OcctSelectionOverlay.h
     OcctSelectionState.h

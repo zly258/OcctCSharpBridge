@@ -1,4 +1,4 @@
-﻿param(
+param(
     [string]$RepositoryRoot = (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
 )
 
@@ -21,8 +21,6 @@ $nativeRoot = Join-Path $RepositoryRoot "src\OcctNative"
 $managedRoot = Join-Path $RepositoryRoot "src\OcctNet"
 $publicManagedRoots = @(
     $managedRoot,
-    (Join-Path $RepositoryRoot "src\OcctNet.WinForms"),
-    (Join-Path $RepositoryRoot "src\OcctNet.Wpf"),
     (Join-Path $RepositoryRoot "src\OcctNet.Avalonia")
 )
 
