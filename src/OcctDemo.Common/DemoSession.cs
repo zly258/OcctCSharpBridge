@@ -205,7 +205,11 @@ public sealed partial class DemoSession
     private OcctShape ImportCore(string filePath)
     {
         var shape = Engine.Import(filePath);
-        SetGeneratedName(shape, Path.GetFileNameWithoutExtension(filePath));
+        var applicationTag = Engine.GetApplicationTag(shape);
+        if (!applicationTag.StartsWith("step-path:", StringComparison.Ordinal))
+        {
+            SetGeneratedName(shape, Path.GetFileNameWithoutExtension(filePath));
+        }
         ActiveObject = shape;
         return shape;
     }

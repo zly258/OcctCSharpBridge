@@ -1,14 +1,16 @@
-using System.Globalization;
+﻿using System.Globalization;
 using OcctDemo.Common;
 using OcctNet;
-using DrawingColor = System.Drawing.Color;
 using Controls = System.Windows.Controls;
-using Input = System.Windows.Input;
 
 namespace OcctDemo.Wpf;
 
 public partial class MainWindow
 {
+    private const string StepPathPrefix = "step-path:";
+    private const char StepPathSeparator = '\u001F';
+    private bool _syncingObjectSelection;
+
     private void RefreshObjectTree()
     {
         if (_session is null) return;
@@ -23,18 +25,26 @@ public partial class MainWindow
             ObjectTree.Items.Add(shapeRoot);
             ObjectTree.Items.Add(textRoot);
             ObjectTree.Items.Add(dimensionRoot);
+            var assemblyNodes = new Dictionary<string, Controls.TreeViewItem>(StringComparer.Ordinal);
 
             foreach (var value in Session.Engine.Objects)
             {
-                var parent = value.Kind switch
+                var hierarchy = value.Kind == OcctObjectKind.Shape ? GetStepHierarchy(value) : Array.Empty<string>();
+                Controls.TreeViewItem parent;
+                if (value.Kind == OcctObjectKind.Shape)
                 {
-                    OcctObjectKind.Text => textRoot,
-                    OcctObjectKind.Dimension => dimensionRoot,
-                    _ => shapeRoot
-                };
+                    parent = hierarchy.Count > 1
+                        ? GetOrCreateAssemblyNode(shapeRoot, hierarchy.Take(hierarchy.Count - 1), assemblyNodes)
+                        : shapeRoot;
+                }
+                else
+                {
+                    parent = value.Kind == OcctObjectKind.Text ? textRoot : dimensionRoot;
+                }
+
                 var visible = new Controls.CheckBox
                 {
-                    Content = Session.SafeName(value),
+                    Content = hierarchy.Count > 0 ? hierarchy[^1] : Session.SafeName(value),
                     IsChecked = true,
                     Tag = value
                 };
@@ -62,6 +72,50 @@ public partial class MainWindow
         SelectionStatus.Text = Local(
             $"Objects {Session.Engine.ObjectCount} / Shapes {Session.Engine.ShapeCount}",
             $"对象 {Session.Engine.ObjectCount} / 形体 {Session.Engine.ShapeCount}");
+    }
+
+    private Controls.TreeViewItem GetOrCreateAssemblyNode(
+        Controls.TreeViewItem root,
+        IEnumerable<string> segments,
+        IDictionary<string, Controls.TreeViewItem> cache)
+    {
+        var parent = root;
+        var key = string.Empty;
+        foreach (var rawSegment in segments)
+        {
+            var segment = string.IsNullOrWhiteSpace(rawSegment) ? Local("Assembly", "装配") : rawSegment.Trim();
+            key = key.Length == 0 ? segment : $"{key}{StepPathSeparator}{segment}";
+            if (cache.TryGetValue(key, out var existing))
+            {
+                parent = existing;
+                continue;
+            }
+
+            var node = new Controls.TreeViewItem
+            {
+                Header = segment,
+                IsExpanded = false
+            };
+            parent.Items.Add(node);
+            cache[key] = node;
+            parent = node;
+        }
+        return parent;
+    }
+
+    private IReadOnlyList<string> GetStepHierarchy(IOcctObject value)
+    {
+        if (_session is null || value.Kind != OcctObjectKind.Shape) return Array.Empty<string>();
+        var tag = Session.Engine.GetApplicationTag(value);
+        if (!tag.StartsWith(StepPathPrefix, StringComparison.Ordinal)) return Array.Empty<string>();
+        return tag[StepPathPrefix.Length..]
+            .Split(StepPathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    private string DisplayObjectName(IOcctObject value)
+    {
+        var hierarchy = GetStepHierarchy(value);
+        return hierarchy.Count > 0 ? hierarchy[^1] : Session.SafeName(value);
     }
 
     private Controls.ContextMenu BuildObjectContextMenu(IOcctObject value)
@@ -93,12 +147,11 @@ public partial class MainWindow
 
     private void ObjectTreeSelectedItemChanged(object sender, System.Windows.RoutedPropertyChangedEventArgs<object> e)
     {
-        if (_session is null || e.NewValue is not Controls.TreeViewItem { Tag: IOcctObject value }) return;
+        if (_syncingObjectSelection || _session is null || e.NewValue is not Controls.TreeViewItem { Tag: IOcctObject value }) return;
         Session.ActiveObject = value;
         Session.Engine.SelectObject(value, false);
         Viewport.RaiseSelectionChanged();
-        ShowObjectProperties(value);
-        SelectionStatus.Text = Local($"Current: {Session.SafeName(value)}", $"当前：{Session.SafeName(value)}");
+        SelectionStatus.Text = Local($"Current: {DisplayObjectName(value)}", $"当前：{DisplayObjectName(value)}");
     }
 
     private void ShowSelectionProperties(IReadOnlyList<IOcctObject> selectedObjects)
@@ -124,14 +177,61 @@ public partial class MainWindow
 
     private void ShowObjectProperties(IOcctObject? value)
     {
-        PropertyGrid.ItemsSource = value is null || _session is null ? null : Session.DescribeObject(value);
+        if (value is null || _session is null)
+        {
+            PropertyGrid.ItemsSource = null;
+            return;
+        }
+
+        // Selection changes must stay O(1). Expensive B-Rep validation, bounds and
+        // topology traversal belong to the explicit Analysis commands, not this UI path.
+        var rows = new List<KeyValuePair<string, string>>
+        {
+            new(DemoLocalization.Text("Object.Id"), value.Id.ToString(CultureInfo.InvariantCulture)),
+            new(DemoLocalization.Text("Object.Name"), DisplayObjectName(value)),
+            new(DemoLocalization.Text("Object.Kind"), DemoLocalization.ObjectKind(value.Kind))
+        };
+
+        var hierarchy = GetStepHierarchy(value);
+        if (hierarchy.Count > 1)
+        {
+            rows.Add(new KeyValuePair<string, string>(
+                Local("Assembly Path", "装配路径"),
+                string.Join(" / ", hierarchy.Take(hierarchy.Count - 1))));
+        }
+        if (value.Kind == OcctObjectKind.Shape)
+        {
+            rows.Add(new KeyValuePair<string, string>(
+                Local("Geometry Details", "几何详情"),
+                Local("Use Analysis commands on demand", "请按需使用“分析”命令")));
+        }
+        PropertyGrid.ItemsSource = rows;
     }
 
     private void SelectTreeNode(IOcctObject? value)
     {
         if (value is null || !_objectNodes.TryGetValue(value.Id, out var item)) return;
-        item.IsSelected = true;
-        item.BringIntoView();
+        _syncingObjectSelection = true;
+        try
+        {
+            ExpandAncestors(item);
+            item.IsSelected = true;
+            item.BringIntoView();
+        }
+        finally
+        {
+            _syncingObjectSelection = false;
+        }
+    }
+
+    private static void ExpandAncestors(Controls.TreeViewItem item)
+    {
+        var parent = Controls.ItemsControl.ItemsControlFromItemContainer(item) as Controls.TreeViewItem;
+        while (parent is not null)
+        {
+            parent.IsExpanded = true;
+            parent = Controls.ItemsControl.ItemsControlFromItemContainer(parent) as Controls.TreeViewItem;
+        }
     }
 
     private OcctShape? ActiveShape()

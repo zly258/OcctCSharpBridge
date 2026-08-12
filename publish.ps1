@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Position = 0)]
     [ValidateSet("all", "winform", "wpf", "avalonia")]
     [string]$Target = "all",
@@ -84,64 +84,86 @@ function Invoke-Checked {
 
 function Get-SelectedKeys {
     if ($Target -eq "all") {
-        # WPF enables both UseWPF and UseWindowsForms, so its WindowsDesktop
-        # self-contained runtime is the canonical superset shared by all three
-        # applications in the merged package.
+        # Establish one canonical self-contained runtime first. Later hosts add
+        # only runtime-pack files that are not already present. This keeps one
+        # portable directory without assuming that any UI framework depends on
+        # another UI framework.
         return @("wpf", "winform", "avalonia")
     }
     return @($Target)
 }
 
-function Get-ManagedAssemblyIdentity {
-    param([Parameter(Mandatory = $true)][string]$Path)
-
-    try {
-        $assemblyName = [System.Reflection.AssemblyName]::GetAssemblyName($Path)
-        $tokenBytes = $assemblyName.GetPublicKeyToken()
-        $token = if ($null -eq $tokenBytes -or $tokenBytes.Length -eq 0) {
-            ""
-        }
-        else {
-            -join ($tokenBytes | ForEach-Object { $_.ToString("x2") })
-        }
-
-        return [pscustomobject]@{
-            Name = $assemblyName.Name
-            Version = $assemblyName.Version
-            PublicKeyToken = $token
-        }
-    }
-    catch {
-        return $null
-    }
-}
-
-function Test-SharedDesktopFrameworkAssembly {
+function Get-RuntimePackAssetNames {
     param(
-        [Parameter(Mandatory = $true)][string]$Source,
-        [Parameter(Mandatory = $true)][string]$Destination
+        [Parameter(Mandatory = $true)][string]$SourceRoot,
+        [Parameter(Mandatory = $true)][string]$Executable
     )
 
-    $fileName = [System.IO.Path]::GetFileName($Source)
-    if ($fileName -notmatch '(?i)^(System\.|Microsoft\.|WindowsBase(?:\.resources)?\.dll$|Presentation(?:Core|Framework|UI)(?:\.resources)?\.dll$|ReachFramework(?:\.resources)?\.dll$|UIAutomation(?:Client|ClientSideProviders|Provider|Types)(?:\.resources)?\.dll$|WindowsFormsIntegration(?:\.resources)?\.dll$)') {
-        return $false
+    $result = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    if (-not $UseSelfContained) { return ,$result }
+
+    $applicationName = [System.IO.Path]::GetFileNameWithoutExtension($Executable)
+    $depsPath = Join-Path $SourceRoot "$applicationName.deps.json"
+    if (-not (Test-Path -LiteralPath $depsPath -PathType Leaf)) {
+        throw "Self-contained publish did not produce the expected dependency manifest: $depsPath"
     }
 
-    $sourceIdentity = Get-ManagedAssemblyIdentity -Path $Source
-    $destinationIdentity = Get-ManagedAssemblyIdentity -Path $Destination
-    if ($null -eq $sourceIdentity -or $null -eq $destinationIdentity) { return $false }
+    $deps = Get-Content -LiteralPath $depsPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $runtimePackLibraries = @($deps.libraries.PSObject.Properties |
+        Where-Object { [string]$_.Value.type -eq "runtimepack" } |
+        ForEach-Object { $_.Name })
 
-    $sameIdentity =
-        $sourceIdentity.Name -eq $destinationIdentity.Name -and
-        $sourceIdentity.Version -eq $destinationIdentity.Version -and
-        $sourceIdentity.PublicKeyToken -eq $destinationIdentity.PublicKeyToken
-    return $sameIdentity
+    if ($runtimePackLibraries.Count -eq 0) {
+        throw "Self-contained dependency manifest contains no runtime-pack libraries: $depsPath"
+    }
+
+    # Self-contained .deps.json files can contain more than one target graph.
+    # In .NET 10 the RID-specific runtime-pack entries are not guaranteed to be
+    # in the first graph, so inspect every graph instead of selecting the first.
+    $targetProperties = @($deps.targets.PSObject.Properties)
+    if ($targetProperties.Count -eq 0) {
+        throw "Dependency manifest contains no target graph: $depsPath"
+    }
+
+    foreach ($targetProperty in $targetProperties) {
+        $targetGraph = $targetProperty.Value
+
+        foreach ($libraryName in $runtimePackLibraries) {
+            $libraryProperty = $targetGraph.PSObject.Properties[$libraryName]
+            if ($null -eq $libraryProperty) { continue }
+            $library = $libraryProperty.Value
+
+            foreach ($sectionName in @("runtime", "runtimeTargets", "native", "resources")) {
+                $sectionProperty = $library.PSObject.Properties[$sectionName]
+                if ($null -eq $sectionProperty -or $null -eq $sectionProperty.Value) { continue }
+
+                foreach ($asset in $sectionProperty.Value.PSObject.Properties) {
+                    $fileName = [System.IO.Path]::GetFileName([string]$asset.Name)
+                    if (-not [string]::IsNullOrWhiteSpace($fileName)) {
+                        [void]$result.Add($fileName)
+                    }
+                }
+            }
+        }
+    }
+
+    if ($result.Count -eq 0) {
+        throw "Self-contained dependency manifest contains runtime-pack libraries but no runtime-pack assets: $depsPath"
+    }
+
+    # Prevent PowerShell from enumerating the HashSet into the output pipeline.
+    # This guarantees a stable collection object even when it is empty.
+    return ,$result
 }
 
 function Copy-MergedFile {
     param(
         [Parameter(Mandatory = $true)][string]$Source,
-        [Parameter(Mandatory = $true)][string]$Destination
+        [Parameter(Mandatory = $true)][string]$Destination,
+        [Parameter(Mandatory = $true)][bool]$IsRuntimePackFile,
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [System.Collections.Generic.HashSet[string]]$RuntimeBaseline
     )
 
     $destinationDirectory = Split-Path -Parent $Destination
@@ -149,33 +171,50 @@ function Copy-MergedFile {
         New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
     }
 
+    $fileName = [System.IO.Path]::GetFileName($Source)
     if (Test-Path -LiteralPath $Destination -PathType Leaf) {
         $sourceHash = (Get-FileHash -LiteralPath $Source -Algorithm SHA256).Hash
         $destinationHash = (Get-FileHash -LiteralPath $Destination -Algorithm SHA256).Hash
-        if ($sourceHash -eq $destinationHash) { return }
-
-        if ($UseSelfContained -and (Test-SharedDesktopFrameworkAssembly -Source $Source -Destination $Destination)) {
-            $identity = Get-ManagedAssemblyIdentity -Path $Destination
-            Write-Host "[merge] Shared desktop runtime: $([System.IO.Path]::GetFileName($Destination)) $($identity.Version) (keeping canonical WPF copy)" -ForegroundColor DarkGray
+        if ($sourceHash -eq $destinationHash) {
+            if ($IsRuntimePackFile) { [void]$RuntimeBaseline.Add($fileName) }
             return
         }
 
-        throw "Publish output collision contains different files: $Destination"
+        if ($UseSelfContained -and $IsRuntimePackFile -and $RuntimeBaseline.Contains($fileName)) {
+            Write-Host "[merge] Runtime pack: $fileName (reusing canonical copy)" -ForegroundColor DarkGray
+            return
+        }
+
+        throw "Publish output collision contains different application/package files: $Destination"
     }
 
     Copy-Item -LiteralPath $Source -Destination $Destination -Force
+    if ($IsRuntimePackFile) { [void]$RuntimeBaseline.Add($fileName) }
 }
 
 function Merge-PublishTree {
     param(
         [Parameter(Mandatory = $true)][string]$SourceRoot,
-        [Parameter(Mandatory = $true)][string]$DestinationRoot
+        [Parameter(Mandatory = $true)][string]$DestinationRoot,
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [System.Collections.Generic.HashSet[string]]$SourceRuntimePackFiles,
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [System.Collections.Generic.HashSet[string]]$RuntimeBaseline
     )
 
     $normalizedSourceRoot = [System.IO.Path]::GetFullPath($SourceRoot).TrimEnd('\', '/')
     Get-ChildItem -LiteralPath $normalizedSourceRoot -File -Recurse | ForEach-Object {
         $relativePath = $_.FullName.Substring($normalizedSourceRoot.Length).TrimStart('\', '/')
-        Copy-MergedFile -Source $_.FullName -Destination (Join-Path $DestinationRoot $relativePath)
+        $isRuntimePackFile = $SourceRuntimePackFiles.Contains($_.Name)
+        $copyArguments = @{
+            Source = $_.FullName
+            Destination = Join-Path $DestinationRoot $relativePath
+            IsRuntimePackFile = $isRuntimePackFile
+            RuntimeBaseline = $RuntimeBaseline
+        }
+        Copy-MergedFile @copyArguments
     }
 }
 
@@ -282,6 +321,64 @@ function Get-PeImportedDllNames {
     }
 }
 
+function Test-MicrosoftDebugRuntimeName {
+    param([Parameter(Mandatory = $true)][string]$Name)
+
+    if ($Name -ieq "ucrtbased.dll") { return $true }
+    return $Name -match '(?i)^(MSVCP|VCRUNTIME|CONCRT|VCCORLIB).*D\.dll$'
+}
+
+function Set-PeImportedDllName {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$OldName,
+        [Parameter(Mandatory = $true)][string]$NewName
+    )
+
+    if ($NewName.Length -gt $OldName.Length) {
+        throw "PE import replacement cannot grow in place: $OldName -> $NewName"
+    }
+
+    $importsBefore = @(Get-PeImportedDllNames -Path $Path)
+    if ($OldName -notin $importsBefore) { return $false }
+
+    $bytes = [System.IO.File]::ReadAllBytes($Path)
+    $oldBytes = [System.Text.Encoding]::ASCII.GetBytes($OldName + [char]0)
+    $newBytes = [System.Text.Encoding]::ASCII.GetBytes($NewName + [char]0)
+    $matches = [System.Collections.Generic.List[int]]::new()
+
+    for ($offset = 0; $offset -le ($bytes.Length - $oldBytes.Length); ++$offset) {
+        $same = $true
+        for ($index = 0; $index -lt $oldBytes.Length; ++$index) {
+            if ($bytes[$offset + $index] -ne $oldBytes[$index]) {
+                $same = $false
+                break
+            }
+        }
+        if ($same) {
+            $matches.Add($offset)
+            $offset += $oldBytes.Length - 1
+        }
+    }
+
+    if ($matches.Count -eq 0) {
+        throw "PE import table reports $OldName but its null-terminated name string was not found in $Path"
+    }
+
+    foreach ($offset in $matches) {
+        [System.Array]::Clear($bytes, $offset, $oldBytes.Length)
+        [System.Array]::Copy($newBytes, 0, $bytes, $offset, $newBytes.Length)
+    }
+    [System.IO.File]::WriteAllBytes($Path, $bytes)
+
+    $importsAfter = @(Get-PeImportedDllNames -Path $Path)
+    if ($OldName -in $importsAfter -or $NewName -notin $importsAfter) {
+        throw "PE import replacement validation failed for $Path`: $OldName -> $NewName"
+    }
+
+    return $true
+}
+
 function Test-SystemRuntimeDependency {
     param([Parameter(Mandatory = $true)][string]$Name)
 
@@ -332,14 +429,47 @@ function Resolve-NativeDependencySource {
     }
 
     if (Test-Path -LiteralPath $OcctThirdPartyDir -PathType Container) {
-        $matches = @(Get-ChildItem -LiteralPath $OcctThirdPartyDir -Filter $Name -File -Recurse -ErrorAction SilentlyContinue | Where-Object {
-            $_.FullName -notmatch '(?i)[\\/](debug|dbg)[\\/]' -and
-            $_.Name -notmatch '(?i)(_debug|d)\.dll$'
-        } | Sort-Object @{ Expression = { if ($_.DirectoryName -match '(?i)[\\/]bin([\\/]|$)') { 0 } else { 1 } } }, FullName)
+        $matches = @(Get-ChildItem -LiteralPath $OcctThirdPartyDir -Filter $Name -File -Recurse -ErrorAction SilentlyContinue |
+            Sort-Object @{ Expression = { if ($_.FullName -match '(?i)[\\/](debug|dbg)[\\/]') { 1 } else { 0 } } }, @{ Expression = { if ($_.DirectoryName -match '(?i)[\\/]bin([\\/]|$)') { 0 } else { 1 } } }, FullName)
         if ($matches.Count -gt 0) { return $matches[0].FullName }
     }
 
     return $null
+}
+
+function Repair-Occt790ReleaseTbbImports {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    if ($Configuration -ne "Release" -or [string]$contract.occtVersion -ne "7.9.0") { return $false }
+
+    $fileName = [System.IO.Path]::GetFileName($Path)
+    if ($fileName -notmatch '(?i)^TK.*\.dll$') { return $false }
+
+    $imports = @(Get-PeImportedDllNames -Path $Path)
+    $debugTbbImports = @($imports | Where-Object { $_ -match '(?i)^tbb.*_debug\.dll$' })
+    if ($debugTbbImports.Count -eq 0) { return $false }
+
+    $repaired = $false
+    foreach ($debugName in $debugTbbImports) {
+        $releaseName = [regex]::Replace($debugName, '(?i)_debug(?=\.dll$)', '')
+        $releaseSource = Resolve-NativeDependencySource -Name $releaseName
+        if ([string]::IsNullOrWhiteSpace($releaseSource)) {
+            throw "OCCT 7.9.0 Release has the known upstream TBB configuration bug ($fileName imports $debugName), but release counterpart $releaseName was not found under the configured OCCT runtime."
+        }
+
+        $releaseImports = @(Get-PeImportedDllNames -Path $releaseSource)
+        $debugCrtImports = @($releaseImports | Where-Object { Test-MicrosoftDebugRuntimeName -Name $_ })
+        if ($debugCrtImports.Count -gt 0) {
+            throw "Release TBB candidate is not portable: $releaseName imports Microsoft debug runtime(s): $($debugCrtImports -join ', ')"
+        }
+
+        if (Set-PeImportedDllName -Path $Path -OldName $debugName -NewName $releaseName) {
+            $repaired = $true
+            Write-Host "[runtime] OCCT 7.9.0 upstream fix: $fileName -> $releaseName" -ForegroundColor Yellow
+        }
+    }
+
+    return $repaired
 }
 
 function Copy-PortableNativeRuntime {
@@ -353,6 +483,8 @@ function Copy-PortableNativeRuntime {
     $queued = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     $processed = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     $copied = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $missing = [ordered]@{}
+    $occt790TbbFixApplied = $false
 
     $rootNative = Join-Path $Destination "OcctNative.dll"
     $queue.Enqueue($rootNative)
@@ -364,6 +496,10 @@ function Copy-PortableNativeRuntime {
         $currentName = [System.IO.Path]::GetFileName($currentPath)
         if (-not $processed.Add($currentName)) { continue }
 
+        if (Repair-Occt790ReleaseTbbImports -Path $currentPath) {
+            $occt790TbbFixApplied = $true
+        }
+
         foreach ($dependency in @(Get-PeImportedDllNames -Path $currentPath)) {
             if (Test-SystemRuntimeDependency -Name $dependency) { continue }
 
@@ -371,7 +507,10 @@ function Copy-PortableNativeRuntime {
             if (-not (Test-Path -LiteralPath $destinationPath -PathType Leaf)) {
                 $source = Resolve-NativeDependencySource -Name $dependency
                 if ([string]::IsNullOrWhiteSpace($source)) {
-                    throw "Portable native runtime is incomplete. $currentName imports $dependency, but it was not found in the OCCT runtime, OCCT third-party runtime, or Visual C++ redistributable directories."
+                    if (-not $missing.Contains($dependency)) {
+                        $missing[$dependency] = $currentName
+                    }
+                    continue
                 }
                 Copy-Item -LiteralPath $source -Destination $destinationPath -Force
                 Write-Host "[runtime] $currentName -> $dependency" -ForegroundColor DarkGray
@@ -384,23 +523,35 @@ function Copy-PortableNativeRuntime {
         }
     }
 
+    if ($missing.Count -gt 0) {
+        $details = @($missing.GetEnumerator() |
+            Sort-Object { [string]$_.Key } |
+            ForEach-Object { "$($_.Value) -> $($_.Key)" })
+        throw "Portable native runtime is incomplete. Missing imported DLLs:`n - $($details -join "`n - ")"
+    }
+
     $forbidden = @($copied | Where-Object {
         $_ -match '^(?i:Qt\d|vtk|tcl\d|tk86\.dll$)' -or
-        $_ -match '(?i)(MSVCP\d+D|VCRUNTIME\d+D|ucrtbased|tbb.*_debug)\.dll$'
+        (Test-MicrosoftDebugRuntimeName -Name $_)
     })
     if ($forbidden.Count -gt 0) {
-        throw "Unexpected GUI/test/debug native dependencies entered the portable runtime closure: $($forbidden -join ', ')"
+        throw "Unexpected GUI/test or Microsoft debug-runtime dependencies entered the portable runtime closure: $($forbidden -join ', ')"
     }
 
     $runtimeManifest = @(
         "OcctCSharpBridge Demo native runtime closure",
         "Bridge: $($contract.bridgeVersion)",
         "OCCT: $($contract.occtVersion)",
-        "Architecture: win-x64",
+        "Architecture: win-x64"
+    )
+    if ($occt790TbbFixApplied) {
+        $runtimeManifest += "Compatibility: OCCT 7.9.0 Release TBB import corrected to the Release runtime (upstream fixed in OCCT 7.9.1)."
+    }
+    $runtimeManifest += @(
         "",
         "Packaged native DLLs:"
     ) + @($copied | Sort-Object | ForEach-Object { "- $_" })
-    [System.IO.File]::WriteAllLines((Join-Path $Destination "native-runtime-manifest.txt"), $runtimeManifest, [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllLines((Join-Path $Destination "native-runtime-manifest.txt"), $runtimeManifest, [System.Text.UTF8Encoding]::new($true))
 }
 
 Assert-Command "dotnet"
@@ -421,7 +572,14 @@ Remove-Item -LiteralPath $stagingRoot -Recurse -Force -ErrorAction SilentlyConti
 New-Item -ItemType Directory -Path $packageRoot -Force | Out-Null
 New-Item -ItemType Directory -Path $stagingRoot -Force | Out-Null
 
+$runtimeBaseline = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+
 try {
+    # Resolve the native closure first. Native packaging problems should fail
+    # fast instead of recompiling all managed demo hosts before surfacing them.
+    Write-Host "[publish] Resolving portable OCCT native runtime..." -ForegroundColor Cyan
+    Copy-PortableNativeRuntime -Destination $packageRoot
+
     foreach ($key in Get-SelectedKeys) {
         $definition = $Projects[$key]
         $projectPath = Join-Path $RepoRoot $definition.Project
@@ -444,14 +602,18 @@ try {
         ) "$($definition.Name) publish failed."
 
         Assert-Path (Join-Path $stagingDestination $definition.Executable)
-        Merge-PublishTree -SourceRoot $stagingDestination -DestinationRoot $packageRoot
+        $runtimePackFiles = Get-RuntimePackAssetNames -SourceRoot $stagingDestination -Executable $definition.Executable
+        if ($UseSelfContained) {
+            Write-Host "[merge] $($definition.Name) runtime-pack assets: $($runtimePackFiles.Count)" -ForegroundColor DarkGray
+        }
+        $mergeArguments = @{
+            SourceRoot = $stagingDestination
+            DestinationRoot = $packageRoot
+            SourceRuntimePackFiles = $runtimePackFiles
+            RuntimeBaseline = $runtimeBaseline
+        }
+        Merge-PublishTree @mergeArguments
     }
-
-    # All three applications share one exact native dependency closure. The
-    # closure is discovered from PE import tables instead of guessed by a DLL
-    # whitelist, so another clean Windows machine does not need OCCT or the VC
-    # redistributable preinstalled.
-    Copy-PortableNativeRuntime -Destination $packageRoot
 
     foreach ($key in Get-SelectedKeys) {
         Assert-Path (Join-Path $packageRoot $Projects[$key].Executable)
