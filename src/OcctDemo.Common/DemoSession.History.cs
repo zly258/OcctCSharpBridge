@@ -1,4 +1,4 @@
-using OcctNet;
+﻿using OcctNet;
 
 namespace OcctDemo.Common;
 
@@ -53,6 +53,12 @@ public sealed partial class DemoSession
                 if (entry.IsImport)
                 {
                     ImportCore(entry.ImportFilePath!);
+                    continue;
+                }
+
+                if (entry.IsModelingTest)
+                {
+                    ExecuteModelingTest(entry.ModelingTestId!);
                     continue;
                 }
 

@@ -122,7 +122,7 @@ try {
 
     Remove-Item -LiteralPath $DistRoot -Recurse -Force -ErrorAction SilentlyContinue
     New-Item -ItemType Directory -Path $DistRoot -Force | Out-Null
-    Copy-Item -LiteralPath (Join-Path $sourceDist "*") -Destination $DistRoot -Recurse -Force
+    Copy-Item -Path (Join-Path $sourceDist "*") -Destination $DistRoot -Recurse -Force
 
     $syncedManifest = Test-BinarySdk -Path $DistRoot
     if ([string]$syncedManifest.sourceCommit -ne [string]$manifest.sourceCommit) {

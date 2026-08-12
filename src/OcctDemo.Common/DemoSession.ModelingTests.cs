@@ -1,15 +1,62 @@
+﻿using System.Drawing;
 using OcctNet;
 
 namespace OcctDemo.Common;
 
 public sealed partial class DemoSession
 {
-    public DemoCommandResult RunBSplineSurfaceTest()
-    {
-        // Keep the viewer sample history-aware while validating the same non-ruled loft
-        // capability through the headless modeling API used by SDK consumers.
-        var visibleResult = Execute(DemoCommandId.DemoLoft);
+    private const string BSplineSurfaceTestId = "bspline-surface";
+    private const string MeshGenerationTestId = "mesh-generation";
 
+    public DemoCommandResult RunBSplineSurfaceTest() => ExecuteModelingTest(BSplineSurfaceTestId);
+
+    public DemoCommandResult RunMeshGenerationTest() => ExecuteModelingTest(MeshGenerationTestId);
+
+    private DemoCommandResult ExecuteModelingTest(string testId)
+    {
+        var initialObjectIds = Engine.Objects.Select(item => item.Id).ToHashSet();
+        DemoCommandResult result;
+
+        using (Engine.BeginDisplayBatch(fitAllOnDispose: true))
+        {
+            try
+            {
+                result = testId switch
+                {
+                    BSplineSurfaceTestId => CreateBSplineSurfaceTest(),
+                    MeshGenerationTestId => CreateMeshGenerationTest(),
+                    _ => throw new ArgumentOutOfRangeException(nameof(testId), testId, "Unknown modeling test.")
+                };
+
+                RemoveDemoProcessObjects(initialObjectIds, result.CreatedObjects);
+            }
+            catch
+            {
+                RemoveDemoProcessObjects(initialObjectIds, Array.Empty<IOcctObject>());
+                throw;
+            }
+        }
+
+        IsModified = true;
+        if (!_restoringHistory && _historyAvailable)
+        {
+            TruncateRedoHistory();
+            _history.Add(DemoHistoryEntry.ModelingTest(testId, GetModelingTestDescription(testId)));
+            _historyPosition = _history.Count;
+            HistoryChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        if (!_suppressNotifications)
+        {
+            ModelChanged?.Invoke(this, EventArgs.Empty);
+            StatusChanged?.Invoke(this, result.Message);
+        }
+
+        return result;
+    }
+
+    private DemoCommandResult CreateBSplineSurfaceTest()
+    {
         using var model = new OcctModelingSession();
         var sections = new[]
         {
@@ -30,6 +77,97 @@ public sealed partial class DemoSession
         }
 
         var data = model.GetBSplineSurfaceData(bsplineFace);
+        ValidateBSplineSurfaceData(data);
+
+        var surface = Engine.Display(model, bsplineFace);
+        SetGeneratedName(surface, Local("B-Spline Surface", "B 样条曲面"));
+        Engine.SetColor(surface, Color.SteelBlue);
+        Engine.SetTransparency(surface, 0.28);
+
+        var controlCurves = new List<OcctShape>(data.UPoleCount + data.VPoleCount);
+        for (var uIndex = 0; uIndex < data.UPoleCount; uIndex++)
+        {
+            var points = Enumerable.Range(0, data.VPoleCount)
+                .Select(vIndex => data.GetPole(uIndex, vIndex))
+                .ToArray();
+            controlCurves.Add(Engine.MakePolyline(points));
+        }
+        for (var vIndex = 0; vIndex < data.VPoleCount; vIndex++)
+        {
+            var points = Enumerable.Range(0, data.UPoleCount)
+                .Select(uIndex => data.GetPole(uIndex, vIndex))
+                .ToArray();
+            controlCurves.Add(Engine.MakePolyline(points));
+        }
+
+        var controlNet = Engine.MakeCompound(controlCurves, hideInputs: true);
+        SetGeneratedName(controlNet, Local("B-Spline Control Net", "B 样条控制网"));
+        Engine.SetColor(controlNet, Color.DarkOrange);
+        Engine.SetLineWidth(controlNet, 1.8);
+
+        ActiveObject = surface;
+
+        var details = Local(
+            $"B-Spline surface test passed: U degree {data.UDegree}, V degree {data.VDegree}, " +
+            $"poles {data.UPoleCount} x {data.VPoleCount} ({data.PoleCount}), " +
+            $"knots U/V {data.UKnotCount}/{data.VKnotCount}. The tested B-Spline face and its U/V control net are displayed.",
+            $"B 样条曲面测试通过：U 次数 {data.UDegree}，V 次数 {data.VDegree}，" +
+            $"控制点 {data.UPoleCount} x {data.VPoleCount}（共 {data.PoleCount} 个），" +
+            $"U/V 节点数 {data.UKnotCount}/{data.VKnotCount}。视口显示的是实际被测试的 B 样条面及其 U/V 控制网。" );
+
+        return new DemoCommandResult(
+            Local("B-Spline surface test completed.", "B 样条曲面测试完成。"),
+            new IOcctObject[] { surface, controlNet },
+            details);
+    }
+
+    private DemoCommandResult CreateMeshGenerationTest()
+    {
+        using var model = new OcctModelingSession();
+        var source = model.MakeBox(80, 60, 45, -40, -30, 0);
+        var mesh = model.GetShapeMeshData(source, new OcctModelMeshParameters
+        {
+            LinearDeflection = 0.5,
+            AngularDeflection = 0.5,
+            MinimumSize = 0.01,
+            Relative = false,
+            Parallel = false,
+            InternalVertices = true,
+            ControlSurfaceDeflection = true
+        });
+
+        ValidateMeshData(mesh);
+
+        var triangleEdges = new List<OcctShape>(mesh.TriangleCount);
+        foreach (var triangle in mesh.Mesh.Triangles)
+        {
+            var points = new[]
+            {
+                mesh.Mesh.Nodes[triangle.Node1].Point,
+                mesh.Mesh.Nodes[triangle.Node2].Point,
+                mesh.Mesh.Nodes[triangle.Node3].Point
+            };
+            triangleEdges.Add(Engine.MakePolyline(points, closed: true));
+        }
+
+        var meshWireframe = Engine.MakeCompound(triangleEdges, hideInputs: true);
+        SetGeneratedName(meshWireframe, Local("Triangulated Box Mesh", "盒体三角网格"));
+        Engine.SetColor(meshWireframe, Color.DarkSlateGray);
+        Engine.SetLineWidth(meshWireframe, 1.4);
+        ActiveObject = meshWireframe;
+
+        var details = Local(
+            $"Mesh generation test passed: faces {mesh.FaceCount}, nodes {mesh.NodeCount}, triangles {mesh.TriangleCount}, provenance ranges {mesh.FaceRanges.Count}. The viewport displays the actual triangle connectivity returned by GetShapeMeshData.",
+            $"网格生成测试通过：面 {mesh.FaceCount}，节点 {mesh.NodeCount}，三角形 {mesh.TriangleCount}，面来源区间 {mesh.FaceRanges.Count}。视口显示的是 GetShapeMeshData 实际返回的三角形连接关系。" );
+
+        return new DemoCommandResult(
+            Local("Mesh generation test completed.", "网格生成测试完成。"),
+            new IOcctObject[] { meshWireframe },
+            details);
+    }
+
+    private static void ValidateBSplineSurfaceData(OcctBSplineSurfaceData data)
+    {
         if (data.UDegree < 1 || data.VDegree < 1 || data.UPoleCount < 2 || data.VPoleCount < 2)
         {
             throw new InvalidOperationException(Local(
@@ -87,41 +225,10 @@ public sealed partial class DemoSession
                 "Indexed B-Spline pole access failed.",
                 "B 样条曲面控制点索引访问失败。"));
         }
-
-        var details = Local(
-            $"B-Spline surface test passed: U degree {data.UDegree}, V degree {data.VDegree}, " +
-            $"poles {data.UPoleCount} x {data.VPoleCount} ({data.PoleCount}), " +
-            $"knots U/V {data.UKnotCount}/{data.VKnotCount}.",
-            $"B 样条曲面测试通过：U 次数 {data.UDegree}，V 次数 {data.VDegree}，" +
-            $"控制点 {data.UPoleCount} x {data.VPoleCount}（共 {data.PoleCount} 个），" +
-            $"U/V 节点数 {data.UKnotCount}/{data.VKnotCount}。" );
-
-        return visibleResult with
-        {
-            Message = Local("B-Spline surface test completed.", "B 样条曲面测试完成。"),
-            AnalysisText = details
-        };
     }
 
-    public DemoCommandResult RunMeshGenerationTest()
+    private static void ValidateMeshData(OcctShapeMeshData mesh)
     {
-        // The first visible primitive is an 80 x 60 x 45 box. Validate that same
-        // representative geometry through the modeling mesh/provenance API.
-        var visibleResult = Execute(DemoCommandId.DemoPrimitives);
-
-        using var model = new OcctModelingSession();
-        var source = model.MakeBox(80, 60, 45, -220, -80, 0);
-        var mesh = model.GetShapeMeshData(source, new OcctModelMeshParameters
-        {
-            LinearDeflection = 0.5,
-            AngularDeflection = 0.5,
-            MinimumSize = 0.01,
-            Relative = false,
-            Parallel = false,
-            InternalVertices = true,
-            ControlSurfaceDeflection = true
-        });
-
         if (mesh.FaceCount != 6 || mesh.NodeCount <= 0 || mesh.TriangleCount <= 0)
         {
             throw new InvalidOperationException(Local(
@@ -133,6 +240,17 @@ public sealed partial class DemoSession
             throw new InvalidOperationException(Local(
                 "Mesh generation returned a non-finite node.",
                 "网格生成返回了非有限节点。"));
+        }
+        foreach (var triangle in mesh.Mesh.Triangles)
+        {
+            if ((uint)triangle.Node1 >= (uint)mesh.NodeCount ||
+                (uint)triangle.Node2 >= (uint)mesh.NodeCount ||
+                (uint)triangle.Node3 >= (uint)mesh.NodeCount)
+            {
+                throw new InvalidOperationException(Local(
+                    "Mesh generation returned an invalid triangle index.",
+                    "网格生成返回了无效的三角形节点索引。"));
+            }
         }
 
         var expectedNodeStart = 0;
@@ -161,15 +279,12 @@ public sealed partial class DemoSession
                 "Mesh provenance does not cover the complete mesh.",
                 "网格面来源没有覆盖完整网格。"));
         }
-
-        var details = Local(
-            $"Mesh generation test passed: faces {mesh.FaceCount}, nodes {mesh.NodeCount}, triangles {mesh.TriangleCount}, provenance ranges {mesh.FaceRanges.Count}.",
-            $"网格生成测试通过：面 {mesh.FaceCount}，节点 {mesh.NodeCount}，三角形 {mesh.TriangleCount}，面来源区间 {mesh.FaceRanges.Count}。" );
-
-        return visibleResult with
-        {
-            Message = Local("Mesh generation test completed.", "网格生成测试完成。"),
-            AnalysisText = details
-        };
     }
+
+    private static string GetModelingTestDescription(string testId) => testId switch
+    {
+        BSplineSurfaceTestId => Local("B-Spline Surface Test", "B 样条曲面测试"),
+        MeshGenerationTestId => Local("Mesh Generation Test", "网格生成测试"),
+        _ => testId
+    };
 }

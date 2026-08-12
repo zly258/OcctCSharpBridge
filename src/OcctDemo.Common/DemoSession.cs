@@ -266,28 +266,12 @@ public sealed partial class DemoSession
         Engine.FitAll();
     }
 
-    public IReadOnlyList<KeyValuePair<string, string>> DescribeObject(IOcctObject value)
-    {
-        var rows = new List<KeyValuePair<string, string>>
-        {
-            new(DemoLocalization.Text("Object.Id"), value.Id.ToString(CultureInfo.InvariantCulture)),
-            new(DemoLocalization.Text("Object.Name"), SafeName(value)),
-            new(DemoLocalization.Text("Object.Kind"), DemoLocalization.ObjectKind(value.Kind))
-        };
-        if (value.Kind != OcctObjectKind.Shape) return rows;
-        var shape = Engine.GetShape(value.Id);
-        rows.Add(new(DemoLocalization.Text("Object.Topology"), DemoLocalization.ShapeType(Engine.GetShapeType(shape))));
-        rows.Add(new(DemoLocalization.Text("Object.Validity"), Engine.IsShapeValid(shape) ? DemoLocalization.Text("Object.Valid") : DemoLocalization.Text("Object.Invalid")));
-        var bounds = Engine.GetShapeBounds(shape);
-        rows.Add(new(DemoLocalization.Text("Object.SizeX"), bounds.SizeX.ToString("G8")));
-        rows.Add(new(DemoLocalization.Text("Object.SizeY"), bounds.SizeY.ToString("G8")));
-        rows.Add(new(DemoLocalization.Text("Object.SizeZ"), bounds.SizeZ.ToString("G8")));
-        rows.Add(new(DemoLocalization.Text("Object.Center"), bounds.Center.ToString()));
-        rows.Add(new(DemoLocalization.Text("Object.Vertices"), Engine.GetTopologyCount(shape, OcctShapeType.Vertex).ToString()));
-        rows.Add(new(DemoLocalization.Text("Object.Edges"), Engine.GetTopologyCount(shape, OcctShapeType.Edge).ToString()));
-        rows.Add(new(DemoLocalization.Text("Object.Faces"), Engine.GetTopologyCount(shape, OcctShapeType.Face).ToString()));
-        return rows;
-    }
+    /// <summary>
+    /// Compatibility alias for the lightweight selection-property path. Expensive BRep
+    /// validation, bounds and topology enumeration are available only through Analysis commands.
+    /// </summary>
+    public IReadOnlyList<KeyValuePair<string, string>> DescribeObject(IOcctObject value) =>
+        DescribeObjectLightweight(value);
 
     public string SafeName(IOcctObject value)
     {
