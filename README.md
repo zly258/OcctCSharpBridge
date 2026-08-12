@@ -1,76 +1,41 @@
-﻿# OcctCSharpBridge
+# OcctCSharpBridge Website
 
-[简体中文](README.zh-CN.md) · [WinForms/WPF demo](https://github.com/zly258/OcctCSharpBridge/tree/demo)
+Static website / GitHub Pages source for OcctCSharpBridge.
 
-A Windows x64 bridge from Open CASCADE Technology 7.9.0 to .NET 8. The reusable `main` branch contains only the native C ABI, managed wrapper, API checks, and interface inventory. WinForms and WPF applications are maintained on the `demo` branch.
+## Current project status
 
-## Structure
+The website distinguishes the current source from the currently published Binary SDK:
 
-```text
-src/OcctNative         C++17 native bridge and stable C ABI
-src/OcctNet            UI-independent, type-safe .NET wrapper
-src/OcctNet.WinForms   Optional WinForms OCCT viewport control
-src/OcctNet.Wpf        Optional WPF OCCT viewport control
-tests            API consistency and native smoke scenarios
-docs             English and Chinese API inventories
-```
+- Source: Bridge **2.7.0**, ABI **4**, **349/349** Native/PInvoke, **117** public .NET types, Viewer **215**, Modeling **134**.
+- Published `main/dist/win-x64`: Bridge **2.6.0**, ABI **4**, **347/347**, **110** public types, Viewer **213**, Modeling **134**.
+- OCCT **7.9.0**, .NET SDK **10.0.302**, C# **14**, Windows x64.
 
-The wrapper provides two native session types:
+The public page shows a `Published SDK 2.6.0` status badge so source progress cannot be mistaken for a binary release. After the validated Windows 2.7 publish, update the website status together with the release.
 
-- `OcctEngine`: HWND viewer, AIS objects, selection, camera, display attributes, text, and dimensions.
-- `OcctViewportControl` is provided by `OcctNet.WinForms`; `OcctWpfViewport` is provided by `OcctNet.Wpf`.
-- `OcctModelingSession`: headless geometry, topology, algorithms, mesh, analysis, healing, and exchange.
+## Website behavior
 
-Batch color, transparency, visibility, display-mode, line-width, material, redisplay, and selection operations reduce repeated P/Invoke calls for large scenes. Viewport-state snapshots, selected-object fitting, reset operations, scene gravity points, and screen-to-plane projection support reusable CAD interaction tools. Exact analytic parameters plus curve/surface derivatives, periodicity and curvature support feature recognition, engineering rules and parametric reconstruction.
+- bilingual English / Simplified Chinese switch with local persistence;
+- light / dark theme switch with local persistence and system-theme fallback;
+- no graphical logo in the upper-left corner — only the project name;
+- live demo previews sourced from versioned `demo/assets/previews` screenshots and switched with language;
+- project architecture aligned with the Bridge 2.7 STEP/XDE assembly model;
+- licensing section clearly states: **non-commercial use is free; commercial use requires separate authorization**;
+- no framework or build step: plain `index.html`, `styles.css`, `app.js` and `.nojekyll`.
 
-The bridge intentionally excludes OCAF/XDE. Application documents, undo/redo, and JSON persistence belong to the consuming application rather than the geometry bridge.
+## Branch model
 
-## Compatibility contract
+- `main`: Bridge source, documentation and tracked Binary SDK.
+- `demo`: WinForms/WPF/Avalonia consumers; local `dist/` is ignored.
+- `website`: this static site.
 
-- Required OCCT version: exactly `7.9.0`.
-- Managed target: `.NET 8`, Windows x64.
-- Bridge version: `2.5.0`; ABI: `2`.
-- Native bridge ABI: validated at runtime through `OcctBridgeInfo`.
-- Deploy `OcctNet.dll` and `OcctNative.dll` from the same build.
-- Native OCCT and third-party DLLs must be discoverable through the application directory or configured runtime paths.
-
-## Build
+## Local preview
 
 ```powershell
-# Validate declarations, definitions, P/Invoke calling conventions, and API inventories.
-.\build.ps1 validate Release
-
-# Build the reusable managed wrapper.
-.\build.ps1 managed Release
-
-# Build native and managed components.
-.\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
-
-# Build and run native modeling smoke scenarios.
-.\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
+python -m http.server 8080
 ```
 
-## Reference
+Then open `http://localhost:8080`.
 
-```xml
-<ItemGroup>
-  <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet\OcctNet.csproj" />
-  <!-- WinForms host. -->
-  <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet.WinForms\OcctNet.WinForms.csproj" />
-  <!-- WPF host; references the WinForms HWND host internally. -->
-  <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet.Wpf\OcctNet.Wpf.csproj" />
-</ItemGroup>
-```
+## Licensing text
 
-## API inventory
-
-- [English interface inventory](docs/API_COVERAGE.md)
-- [中文接口清单](docs/API_COVERAGE.zh-CN.md)
-
-Session disposal is idempotent and finalizer-safe. Instances still represent native mutable state and should not be used concurrently from multiple threads.
-
-`build.ps1 validate` fails when declarations, P/Invoke mappings, calling conventions, or inventory counts are stale. A scheduled workflow also verifies that reusable wrapper files remain identical between `main` and `demo`.
-
-## License
-
-The project is provided under the [PolyForm Noncommercial License 1.0.0](LICENSE). OCCT and third-party components remain subject to their own licenses.
+The site summarizes the repository policy but does not replace the license text. The authoritative software license remains `main/LICENSE`; commercial authorization details are in `main/COMMERCIAL.md`.

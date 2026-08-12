@@ -1,73 +1,41 @@
-﻿# OcctCSharpBridge
+# OcctCSharpBridge Website
 
-[English](README.md) · [WinForms/WPF 演示分支](https://github.com/zly258/OcctCSharpBridge/tree/demo)
+OcctCSharpBridge 静态官网 / GitHub Pages 源码分支。
 
-面向 Windows x64 的 Open CASCADE Technology 7.9.0 与 .NET 8 桥接项目。可复用的 `main` 分支只保留原生 C ABI、托管封装、接口检查和接口清单；WinForms、WPF 完整示例位于 `demo` 分支。
+## 当前项目状态
 
-## 目录结构
+Website 明确区分当前源码与当前已发布 Binary SDK：
 
-```text
-src/OcctNative         C++17 原生桥接与稳定 C ABI
-src/OcctNet            不依赖 UI 的类型安全 .NET 封装
-src/OcctNet.WinForms   可选的 WinForms OCCT 视口控件
-src/OcctNet.Wpf        可选的 WPF OCCT 视口控件
-tests            接口一致性检查与原生 Smoke Test
-docs             中英文接口清单
-```
+- 源码：Bridge **2.7.0**、ABI **4**、Native/PInvoke **349/349**、Public .NET types **117**、Viewer **215**、Modeling **134**；
+- 已发布 `main/dist/win-x64`：Bridge **2.6.0**、ABI **4**、**347/347**、Public types **110**、Viewer **213**、Modeling **134**；
+- OCCT **7.9.0**、.NET SDK **10.0.302**、C# **14**、Windows x64。
 
-封装提供两类原生会话：
+页面会显示 `已发布 SDK 2.6.0` 状态徽标，避免把源码进度误认为已经发布的 Binary SDK。等 2.7 在 Windows 完成真实构建验证和发布后，再随正式版本一起更新 Website 状态。
 
-- `OcctEngine`：HWND Viewer、AIS 对象、选择、相机、显示属性、文字和尺寸。
-- `OcctModelingSession`：无窗口几何、拓扑、算法、网格、分析、修复和文件交换。
+## 网站能力
 
-新增批量颜色、透明度、可见性、显示模式、线宽、材质、重显示和选择接口，减少大型场景中的重复 P/Invoke 调用。视口状态快照、适配选择集、视图重置、场景重心和屏幕投影到平面接口可直接支撑 CAD 交互工具。解析几何参数以及曲线、曲面的导数、周期性和曲率可用于特征识别、工程规则判断与参数化重建。
+- English / 简体中文语言切换并本地记忆；
+- 浅色 / 深色主题切换并本地记忆，首次进入默认跟随系统主题；
+- 左上角不使用图形 Logo，只显示 `OcctCSharpBridge` 项目文字；
+- Demo 预览图直接读取 `demo/assets/previews` 中被版本管理的三端截图，并随语言切换 EN/ZH 图；
+- 架构说明已更新为 Bridge 2.7 的 STEP/XDE 装配模型：XDE 只用于 STEP 交换内部，不作为应用层 Document；
+- 授权区明确说明：**非商业使用免费，商业使用需要单独授权**；
+- 不使用前端框架和构建链，只有 `index.html`、`styles.css`、`app.js` 与 `.nojekyll`。
 
-桥接层不再包含 OCAF/XDE。应用文档、撤销重做和 JSON 持久化由上层应用自行实现，避免把文档机制耦合进几何桥接。
+## 分支职责
 
-## 兼容性约束
+- `main`：Bridge 源码、文档与被跟踪的正式 Binary SDK；
+- `demo`：WinForms/WPF/Avalonia 消费示例，本地 `dist/` 被忽略；
+- `website`：当前静态官网。
 
-- OCCT 必须为 `7.9.0`。
-- 托管目标为 `.NET 8`、Windows x64。
-- Bridge 版本：`2.5.0`；ABI：`2`。
-- 使用 `OcctBridgeInfo` 在运行时校验原生桥接 ABI。
-- `OcctNet.dll` 与 `OcctNative.dll` 必须来自同一次构建。
-- OCCT 及第三方 DLL 必须位于应用目录，或通过运行库搜索路径配置。
-
-## 构建
+## 本地预览
 
 ```powershell
-# 检查声明、实现、P/Invoke 调用约定和接口清单。
-.\build.ps1 validate Release
-
-# 只构建可复用托管封装。
-.\build.ps1 managed Release
-
-# 构建原生与托管封装。
-.\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
-
-# 构建并执行原生建模测试。
-.\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
+python -m http.server 8080
 ```
 
-## 项目引用
+然后访问 `http://localhost:8080`。
 
-```xml
-<ItemGroup>
-  <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet\OcctNet.csproj" />
-  <!-- WinForms 宿主。 -->
-  <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet.WinForms\OcctNet.WinForms.csproj" />
-  <!-- WPF 宿主，内部复用 WinForms HWND 宿主。 -->
-  <ProjectReference Include="..\OcctCSharpBridge\src\OcctNet.Wpf\OcctNet.Wpf.csproj" />
-</ItemGroup>
-```
+## 许可说明
 
-## 接口清单
-
-- [中文接口清单](docs/API_COVERAGE.zh-CN.md)
-- [English interface inventory](docs/API_COVERAGE.md)
-
-`build.ps1 validate` 会检查声明、P/Invoke 映射、调用约定和清单数量；未同步时直接失败。定时工作流还会检查 `main` 与 `demo` 的可复用封装目录是否完全一致。
-
-## 许可证
-
-项目使用 [PolyForm Noncommercial License 1.0.0](LICENSE)。OCCT 及第三方组件仍遵循各自许可证。
+网站上的授权说明用于便于理解，但不替代正式许可证。软件授权以 `main/LICENSE` 为准；商业授权说明见 `main/COMMERCIAL.md`。

@@ -1,128 +1,163 @@
-﻿<!doctype html>
-<html lang="zh-CN">
+<!doctype html>
+<html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#07111f" />
-  <meta name="description" content="OcctCSharpBridge — Open CASCADE Technology 7.9.0 bridge for .NET 8, Windows x64." />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#f7f9fc" />
+  <meta name="description" content="OcctCSharpBridge 2.7.0 — Open CASCADE Technology 7.9.0 for .NET 10 / C# 14 on Windows x64." />
+  <meta property="og:title" content="OcctCSharpBridge" />
+  <meta property="og:description" content="A clean OCCT bridge for modern .NET CAD and engineering applications." />
+  <meta property="og:type" content="website" />
   <title>OcctCSharpBridge · OCCT for .NET</title>
   <link rel="stylesheet" href="styles.css" />
+  <script>
+    (() => {
+      const saved = localStorage.getItem('occt-theme');
+      const theme = saved === 'dark' || saved === 'light'
+        ? saved
+        : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.dataset.theme = theme;
+    })();
+  </script>
 </head>
 <body>
   <header class="site-header">
-    <a class="brand" href="#top" aria-label="OcctCSharpBridge home">
-      <span class="brand-mark">OC</span>
-      <span>OcctCSharpBridge</span>
-    </a>
-    <nav class="nav" aria-label="Primary navigation">
-      <a href="#features" data-i18n="navFeatures">能力</a>
-      <a href="#architecture" data-i18n="navArchitecture">架构</a>
-      <a href="#demo" data-i18n="navDemo">演示</a>
-      <a href="#start" data-i18n="navStart">开始使用</a>
-    </nav>
-    <div class="header-actions">
-      <button id="languageToggle" class="language-toggle" type="button" aria-label="Switch language">EN</button>
-      <a class="github-link" href="https://github.com/zly258/OcctCSharpBridge" target="_blank" rel="noreferrer">GitHub ↗</a>
+    <div class="header-shell shell">
+      <a class="brand-text" href="#top" aria-label="OcctCSharpBridge home">OcctCSharpBridge</a>
+
+      <nav class="nav" aria-label="Primary navigation">
+        <a href="#capabilities" data-i18n="navCapabilities">Capabilities</a>
+        <a href="#architecture" data-i18n="navArchitecture">Architecture</a>
+        <a href="#demo" data-i18n="navDemo">Demo</a>
+        <a href="#docs" data-i18n="navDocs">Docs</a>
+        <a href="#license" data-i18n="navLicense">License</a>
+      </nav>
+
+      <div class="header-actions">
+        <button id="themeToggle" class="text-button" type="button" aria-label="Toggle theme"><span id="themeLabel">Dark</span></button>
+        <button id="languageToggle" class="text-button" type="button" aria-label="Switch language">中文</button>
+        <a class="github-link" href="https://github.com/zly258/OcctCSharpBridge" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+      </div>
     </div>
   </header>
 
   <main id="top">
     <section class="hero shell">
       <div class="hero-copy">
-        <div class="eyebrow" data-i18n="heroEyebrow">OPEN CASCADE × .NET</div>
-        <h1 data-i18n="heroTitle">面向 .NET 的轻量级 OCCT 桥接层</h1>
-        <p class="hero-lead" data-i18n="heroLead">以稳定 C ABI 连接 Open CASCADE Technology 7.9.0 与 .NET 8，覆盖三维 Viewer、AIS 交互、无窗口建模、拓扑分析、网格与工程文件交换，同时保持应用文档机制与几何内核解耦。</p>
+        <div class="eyebrow">OPEN CASCADE × .NET</div>
+        <h1 data-i18n="heroTitle">OCCT for modern .NET engineering applications</h1>
+        <p class="hero-lead" data-i18n="heroLead">OcctCSharpBridge connects Open CASCADE Technology 7.9.0 to .NET 10 / C# 14 through a stable C ABI, with strongly typed modeling, topology, meshing, STEP assembly exchange, AIS interaction and reusable Windows desktop viewport hosts.</p>
+
         <div class="hero-actions">
-          <a class="button primary" href="https://github.com/zly258/OcctCSharpBridge" target="_blank" rel="noreferrer" data-i18n="viewRepository">查看仓库</a>
-          <a class="button secondary" href="https://github.com/zly258/OcctCSharpBridge/tree/demo" target="_blank" rel="noreferrer" data-i18n="viewDemo">查看 Demo</a>
+          <a class="button primary" href="https://github.com/zly258/OcctCSharpBridge" target="_blank" rel="noreferrer" data-i18n="viewSource">View source</a>
+          <a class="button secondary" href="https://github.com/zly258/OcctCSharpBridge/tree/demo" target="_blank" rel="noreferrer" data-i18n="viewDemo">View demos</a>
         </div>
-        <div class="badges" aria-label="Compatibility">
-          <span>OCCT 7.9.0</span><span>.NET 8</span><span>Windows x64</span><span>ABI 2</span>
+
+        <div class="badges" aria-label="Current contract">
+          <span>Bridge 2.7.0</span>
+          <span>ABI 4</span>
+          <span>OCCT 7.9.0</span>
+          <span>.NET 10.0.302</span>
+          <span>C# 14</span>
+          <span>Windows x64</span>
         </div>
       </div>
+
       <div class="hero-panel" aria-label="Architecture overview">
-        <div class="window-bar"><span></span><span></span><span></span><b>OcctCSharpBridge</b></div>
+        <div class="panel-title" data-i18n="architectureStack">Bridge boundary</div>
         <div class="stack-diagram">
-          <div class="stack application"><strong data-i18n="stackApp">你的 CAD / BIM 应用</strong><small data-i18n="stackAppSub">文档 · Command · Undo/Redo · JSON</small></div>
+          <div class="stack app-stack"><strong data-i18n="stackApp">Your CAD / BIM application</strong><small data-i18n="stackAppSub">Document · Feature Tree · Command/Tool · Undo/Redo · JSON</small></div>
           <div class="connector">↓</div>
-          <div class="stack managed"><strong>OcctNet</strong><small data-i18n="stackManaged">类型安全 .NET API</small></div>
-          <div class="stack hosts"><span>WinForms</span><span>WPF</span><span data-i18n="headless">无窗口建模</span></div>
-          <div class="connector">↓ P/Invoke / C ABI</div>
-          <div class="stack native"><strong>OcctNative</strong><small>C++17 · stable ABI</small></div>
+          <div class="host-row"><span>WinForms</span><span>WPF</span><span>Avalonia 12.1</span></div>
           <div class="connector">↓</div>
-          <div class="stack occt"><strong>Open CASCADE Technology 7.9.0</strong></div>
+          <div class="stack managed-stack"><strong>OcctNet</strong><small data-i18n="stackManaged">Strongly typed managed API</small></div>
+          <div class="connector">↓ P/Invoke · C ABI 4</div>
+          <div class="stack native-stack"><strong>OcctNative</strong><small>C++17</small></div>
+          <div class="connector">↓</div>
+          <div class="stack occt-stack"><strong>Open CASCADE Technology 7.9.0</strong></div>
         </div>
       </div>
     </section>
 
     <section class="stats shell" aria-label="Project statistics">
-      <article><strong>339</strong><span data-i18n="statNative">Native C ABI</span></article>
-      <article><strong>339</strong><span data-i18n="statPInvoke">P/Invoke 映射</span></article>
-      <article><strong>80</strong><span data-i18n="statTypes">公开 .NET 类型</span></article>
-      <article><strong>2.5.0</strong><span data-i18n="statVersion">Bridge 版本</span></article>
+      <article><strong>349</strong><span data-i18n="statNative">Native exports</span></article>
+      <article><strong>349</strong><span data-i18n="statPInvoke">P/Invoke mappings</span></article>
+      <article><strong>117</strong><span data-i18n="statTypes">Public .NET types</span></article>
+      <article><strong>215 / 134</strong><span data-i18n="statApi">Viewer / Modeling</span></article>
     </section>
 
-    <section id="features" class="section shell">
+    <section id="capabilities" class="section shell">
       <div class="section-heading">
-        <div class="eyebrow" data-i18n="featuresEyebrow">CAPABILITIES</div>
-        <h2 data-i18n="featuresTitle">为轻量 CAD 与工程软件准备的核心能力</h2>
-        <p data-i18n="featuresLead">桥接层只解决几何、显示与交互问题，把业务对象、文档生命周期和持久化留给上层应用。</p>
+        <div class="eyebrow" data-i18n="capEyebrow">CAPABILITIES</div>
+        <h2 data-i18n="capTitle">A focused foundation for CAD, BIM and engineering software</h2>
+        <p data-i18n="capLead">The Bridge stays close to OCCT geometry and interaction while leaving product documents and domain workflows to the consuming application.</p>
       </div>
+
       <div class="feature-grid">
-        <article class="feature-card"><div class="feature-index">01</div><h3 data-i18n="f1Title">Viewer 与 AIS</h3><p data-i18n="f1Text">相机、投影、显示模式、材质、颜色、透明度、尺寸、文字、Fit、批量更新与高亮。</p></article>
-        <article class="feature-card"><div class="feature-index">02</div><h3 data-i18n="f2Title">无窗口建模</h3><p data-i18n="f2Text">基础体、布尔、拉伸、旋转、扫掠、放样、圆角、倒角、偏移、抽壳、修复与历史关系。</p></article>
-        <article class="feature-card"><div class="feature-index">03</div><h3 data-i18n="f3Title">CAD 选择与交互</h3><p data-i18n="f3Text">点选、框选、选择集同步、可选择状态、原始输入转发，以及可关闭的默认视口交互。</p></article>
-        <article class="feature-card"><div class="feature-index">04</div><h3 data-i18n="f4Title">稳定对象关联</h3><p data-i18n="f4Text">ApplicationTag 将应用层 EntityId 与 Viewer 对象稳定关联；几何可原位更新而不破坏显示状态。</p></article>
-        <article class="feature-card"><div class="feature-index">05</div><h3 data-i18n="f5Title">几何查询与分析</h3><p data-i18n="f5Text">拓扑遍历、解析几何参数、曲线/曲面导数、曲率、质量属性、投影、射线、距离与网格。</p></article>
-        <article class="feature-card"><div class="feature-index">06</div><h3 data-i18n="f6Title">工程文件交换</h3><p data-i18n="f6Text">面向纯 Shape 的 STEP、IGES、BREP、STL 导入导出，避免把应用文档模型耦合到桥接层。</p></article>
+        <article class="feature-card"><span>01</span><h3 data-i18n="f1Title">Viewer & AIS</h3><p data-i18n="f1Text">Camera, projection, display modes, materials, color, transparency, transforms, text, dimensions, lighting and redraw batching.</p></article>
+        <article class="feature-card"><span>02</span><h3 data-i18n="f2Title">Headless modeling</h3><p data-i18n="f2Text">Primitives, Boolean operations, extrude, revolve, sweep, loft, fillet, chamfer, offset, shelling, healing and operation history.</p></article>
+        <article class="feature-card"><span>03</span><h3 data-i18n="f3Title">Selection & input</h3><p data-i18n="f3Text">Point/rectangle selection, structured selected and detected identities, selectable state and raw input forwarding for custom CAD tools.</p></article>
+        <article class="feature-card"><span>04</span><h3 data-i18n="f4Title">Geometry & topology</h3><p data-i18n="f4Text">Evaluation, curvature, projection, distance, adjacency, inertia, intersections, shape inspection and persistent topology references.</p></article>
+        <article class="feature-card"><span>05</span><h3 data-i18n="f5Title">Meshing</h3><p data-i18n="f5Text">Configurable triangulation with combined node/triangle arrays and explicit per-face provenance ranges.</p></article>
+        <article class="feature-card"><span>06</span><h3 data-i18n="f6Title">STEP assembly exchange</h3><p data-i18n="f6Text">First-class XDE-derived assembly snapshots preserve hierarchy, occurrences, transforms, visibility, colors and subshape styles.</p></article>
+        <article class="feature-card"><span>07</span><h3 data-i18n="f7Title">First-class points</h3><p data-i18n="f7Text">Real AIS_Point objects and standard OCCT point markers for CAD capture points, grips and lightweight interactive geometry.</p></article>
+        <article class="feature-card"><span>08</span><h3 data-i18n="f8Title">Desktop hosts</h3><p data-i18n="f8Text">Independent WinForms, WPF HwndHost and Avalonia Windows-HWND adapters over the same core engine.</p></article>
       </div>
     </section>
 
     <section id="architecture" class="section section-soft">
       <div class="shell split-layout">
         <div class="section-heading sticky-heading">
-          <div class="eyebrow" data-i18n="archEyebrow">DESIGN</div>
-          <h2 data-i18n="archTitle">明确的分层边界</h2>
-          <p data-i18n="archLead">不使用 OCAF/XDE 承担应用文档职责。桥接层保持通用，上层可以自由实现 AutoCAD 风格文档、撤销重做和 JSON 持久化。</p>
+          <div class="eyebrow" data-i18n="archEyebrow">ARCHITECTURE</div>
+          <h2 data-i18n="archTitle">Clear boundaries instead of a monolithic CAD framework</h2>
+          <p data-i18n="archLead">OcctCSharpBridge provides geometry, presentation and interaction primitives. Product state remains owned by your application.</p>
         </div>
+
         <div class="principles">
-          <article><span>01</span><div><h3 data-i18n="p1Title">应用对象不依赖 Viewer ID</h3><p data-i18n="p1Text">使用 ApplicationTag 建立稳定关联，Viewer 对象删除重建也不会改变业务实体身份。</p></div></article>
-          <article><span>02</span><div><h3 data-i18n="p2Title">几何更新不重建显示对象</h3><p data-i18n="p2Text">UpdateShape 原位替换 AIS_Shape，保留外观、局部变换、选择和可选择状态。</p></div></article>
-          <article><span>03</span><div><h3 data-i18n="p3Title">应用可以完全接管交互</h3><p data-i18n="p3Text">EnableDefaultInteraction=false 后，宿主只转发原始输入，适合自定义 Tool、捕捉、动态预览和工作平面。</p></div></article>
-          <article><span>04</span><div><h3 data-i18n="p4Title">转换后的空间状态保持一致</h3><p data-i18n="p4Text">Fit、场景包围盒和定位逻辑基于显示变换后的几何，避免对象移动后镜头仍回到原位置。</p></div></article>
+          <article><span>01</span><div><h3 data-i18n="p1Title">Application documents stay above the Bridge</h3><p data-i18n="p1Text">Feature trees, commands, undo/redo, snapping rules and project persistence are application responsibilities.</p></div></article>
+          <article><span>02</span><div><h3 data-i18n="p2Title">XDE is internal to STEP exchange</h3><p data-i18n="p2Text">XDE preserves real STEP product structure and styles, then projects them to OcctAssemblyDocument. It is not exposed as the application document model.</p></div></article>
+          <article><span>03</span><div><h3 data-i18n="p3Title">Stable managed semantics</h3><p data-i18n="p3Text">Strong types, explicit ownership and bulk Native calls keep the managed API predictable and avoid high-cardinality N+1 interop patterns.</p></div></article>
+          <article><span>04</span><div><h3 data-i18n="p4Title">UI hosts stay independent</h3><p data-i18n="p4Text">WinForms, WPF and Avalonia all depend on OcctNet directly. WPF uses native HwndHost rendering with coalesced resize presentation.</p></div></article>
         </div>
       </div>
     </section>
 
     <section id="demo" class="section shell">
       <div class="section-heading">
-        <div class="eyebrow" data-i18n="demoEyebrow">WINFORMS / WPF</div>
-        <h2 data-i18n="demoTitle">同一桥接层，两套桌面 Demo</h2>
-        <p data-i18n="demoLead">Demo 分支用于验证完整 CAD 交互、菜单、本地化、API Center 与发布流程；main 继续保持纯净可复用。</p>
+        <div class="eyebrow" data-i18n="demoEyebrow">DESKTOP DEMOS</div>
+        <h2 data-i18n="demoTitle">One shared demo core, three Windows desktop hosts</h2>
+        <p data-i18n="demoLead">The demo branch consumes the published Binary SDK locally. Its dist directory is ignored by Git, while screenshots and application source stay versioned.</p>
       </div>
+
       <div class="preview-grid">
         <figure class="preview-card">
-          <img id="winformsPreview" src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-zh.webp" data-src-zh="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-zh.webp" data-src-en="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-en.webp" alt="WinForms demo preview" loading="lazy" />
-          <figcaption><strong>WinForms</strong><span data-i18n="winformsCaption">经典 CAD 桌面布局与原生 HWND 视口</span></figcaption>
+          <img id="winformsPreview" src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-en.png" data-src-en="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-en.png" data-src-zh="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-zh.png" alt="WinForms demo preview" loading="lazy" />
+          <figcaption><strong>WinForms</strong><span data-i18n="winformsCaption">Classic native Windows CAD-style host</span></figcaption>
         </figure>
         <figure class="preview-card">
-          <img id="wpfPreview" src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-zh.webp" data-src-zh="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-zh.webp" data-src-en="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-en.webp" alt="WPF demo preview" loading="lazy" />
-          <figcaption><strong>WPF</strong><span data-i18n="wpfCaption">复用 OcctWpfViewport 的 WPF 应用</span></figcaption>
+          <img id="wpfPreview" src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-en.png" data-src-en="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-en.png" data-src-zh="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-zh.png" alt="WPF demo preview" loading="lazy" />
+          <figcaption><strong>WPF</strong><span data-i18n="wpfCaption">Native HwndHost viewport with coalesced resizing</span></figcaption>
+        </figure>
+        <figure class="preview-card">
+          <img id="avaloniaPreview" src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-demo-en.png" data-src-en="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-demo-en.png" data-src-zh="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-demo-zh.png" alt="Avalonia demo preview" loading="lazy" />
+          <figcaption><strong>Avalonia 12.1</strong><span data-i18n="avaloniaCaption">Windows HWND host over the same Bridge core</span></figcaption>
         </figure>
       </div>
     </section>
 
-    <section class="section section-soft">
-      <div class="shell branch-layout">
+    <section id="docs" class="section section-soft">
+      <div class="shell docs-layout">
         <div class="section-heading">
-          <div class="eyebrow" data-i18n="branchesEyebrow">BRANCHES</div>
-          <h2 data-i18n="branchesTitle">按职责拆分，而不是把所有内容堆在 main</h2>
+          <div class="eyebrow" data-i18n="docsEyebrow">DOCUMENTATION</div>
+          <h2 data-i18n="docsTitle">Source, guides and generated API reference</h2>
+          <p data-i18n="docsLead">Version and API counts come from bridge-contract.json. Detailed per-type and Native ABI pages are generated from the current build.</p>
         </div>
-        <div class="branch-list">
-          <a href="https://github.com/zly258/OcctCSharpBridge/tree/main" target="_blank" rel="noreferrer"><code>main</code><span data-i18n="branchMain">可复用 OCCT C++ / C# 桥接核心</span><b>↗</b></a>
-          <a href="https://github.com/zly258/OcctCSharpBridge/tree/demo" target="_blank" rel="noreferrer"><code>demo</code><span data-i18n="branchDemo">WinForms / WPF 完整示例与发布工具</span><b>↗</b></a>
-          <a href="https://github.com/zly258/OcctCSharpBridge/tree/script" target="_blank" rel="noreferrer"><code>script</code><span data-i18n="branchScript">参数化脚本方向的独立实验分支</span><b>↗</b></a>
-          <a href="https://github.com/zly258/OcctCSharpBridge/tree/website" target="_blank" rel="noreferrer"><code>website</code><span data-i18n="branchWebsite">本项目静态介绍站点与 GitHub Pages 源码</span><b>↗</b></a>
+        <div class="link-grid">
+          <a href="https://github.com/zly258/OcctCSharpBridge/blob/main/docs/en-US/README.md" target="_blank" rel="noreferrer"><strong data-i18n="englishDocs">English guide</strong><span data-i18n="englishDocsSub">Architecture, modeling, viewer, exchange and deployment</span></a>
+          <a href="https://github.com/zly258/OcctCSharpBridge/blob/main/docs/zh-CN/README.md" target="_blank" rel="noreferrer"><strong data-i18n="chineseDocs">中文文档</strong><span data-i18n="chineseDocsSub">架构、建模、Viewer、数据交换与部署</span></a>
+          <a href="https://github.com/zly258/OcctCSharpBridge/blob/main/docs/en-US/api/README.md" target="_blank" rel="noreferrer"><strong data-i18n="apiDocs">Generated API reference</strong><span>Managed + Native ABI</span></a>
+          <a href="https://github.com/zly258/OcctCSharpBridge/blob/main/bridge-contract.json" target="_blank" rel="noreferrer"><strong>bridge-contract.json</strong><span data-i18n="contractSub">Machine-readable source of truth</span></a>
         </div>
       </div>
     </section>
@@ -131,44 +166,45 @@
       <div class="start-grid">
         <div class="section-heading">
           <div class="eyebrow" data-i18n="startEyebrow">GET STARTED</div>
-          <h2 data-i18n="startTitle">从验证接口到构建项目</h2>
-          <p data-i18n="startLead">项目目标环境为 Windows x64、.NET 8 与精确版本 OCCT 7.9.0。</p>
-          <div class="doc-links">
-            <a href="https://github.com/zly258/OcctCSharpBridge/blob/main/docs/API_COVERAGE.zh-CN.md" target="_blank" rel="noreferrer" data-i18n="cnInventory">中文接口清单 ↗</a>
-            <a href="https://github.com/zly258/OcctCSharpBridge/blob/main/docs/API_COVERAGE.md" target="_blank" rel="noreferrer" data-i18n="enInventory">English API Inventory ↗</a>
-          </div>
+          <h2 data-i18n="startTitle">Build the Bridge or run the Binary SDK demos</h2>
+          <p data-i18n="startLead">Main produces the validated SDK. Demo keeps its local dist ignored and synchronizes the current published payload when needed.</p>
         </div>
         <div class="code-window">
-          <div class="code-tabs"><span>PowerShell</span><button id="copyCode" type="button" data-i18n="copy">复制</button></div>
-          <pre><code id="buildCode"># Validate API contracts
-.\build.ps1 validate Release
-
-# Build native + managed bridge
+          <div class="code-tabs"><span>PowerShell</span><button id="copyCode" type="button" data-i18n="copy">Copy</button></div>
+          <pre><code id="buildCode"># Build / publish Bridge from main
 .\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
+.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
 
-# Run modeling smoke scenarios
-.\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"</code></pre>
+# Consume the published SDK from demo
+git switch demo
+.\sync.ps1
+.\build.ps1 all Release
+.\run.ps1 wpf Release</code></pre>
         </div>
       </div>
     </section>
 
-    <section class="contact shell">
-      <div>
-        <div class="eyebrow" data-i18n="aboutEyebrow">PROJECT</div>
-        <h2 data-i18n="aboutTitle">OcctCSharpBridge</h2>
-        <p data-i18n="aboutText">专注于把 OCCT 几何与 Viewer 能力以稳定、清晰、可复用的方式带到 .NET。</p>
+    <section id="license" class="section license-section">
+      <div class="shell">
+        <div class="section-heading centered-heading">
+          <div class="eyebrow" data-i18n="licenseEyebrow">LICENSING</div>
+          <h2 data-i18n="licenseTitle">Free for non-commercial use; commercial use requires authorization</h2>
+          <p data-i18n="licenseLead">OcctCSharpBridge uses the PolyForm Noncommercial License 1.0.0. Third-party components such as Open CASCADE Technology keep their own licenses.</p>
+        </div>
+
+        <div class="license-grid">
+          <article class="license-card"><div class="license-kicker" data-i18n="noncommercialKicker">NON-COMMERCIAL</div><h3 data-i18n="noncommercialTitle">Free to use</h3><p data-i18n="noncommercialText">Research, study, evaluation, hobby and other permitted non-commercial uses are free, subject to the PolyForm Noncommercial License terms.</p><a href="https://github.com/zly258/OcctCSharpBridge/blob/main/LICENSE" target="_blank" rel="noreferrer" data-i18n="readLicense">Read license ↗</a></article>
+          <article class="license-card commercial-card"><div class="license-kicker" data-i18n="commercialKicker">COMMERCIAL</div><h3 data-i18n="commercialTitle">Separate authorization required</h3><p data-i18n="commercialText">Commercial use is not granted by the non-commercial license. Contact the author for a commercial license, OEM or redistribution authorization.</p><a href="mailto:zhangly1403@gmail.com">zhangly1403@gmail.com</a></article>
+        </div>
       </div>
-      <dl>
-        <div><dt data-i18n="author">作者</dt><dd>张燎原 / Zhang Liaoyuan · zhangly1403</dd></div>
-        <div><dt>Email</dt><dd><a href="mailto:zhangly1403@qq.com">zhangly1403@qq.com</a></dd></div>
-        <div><dt data-i18n="license">许可证</dt><dd><a href="https://github.com/zly258/OcctCSharpBridge/blob/main/LICENSE" target="_blank" rel="noreferrer">PolyForm Noncommercial 1.0.0 ↗</a></dd></div>
-      </dl>
     </section>
   </main>
 
-  <footer class="site-footer shell">
-    <span>© 2026 OcctCSharpBridge</span>
-    <span data-i18n="footerText">Built for OCCT 7.9.0 · .NET 8 · Windows x64</span>
+  <footer class="site-footer">
+    <div class="shell footer-shell">
+      <div><strong>OcctCSharpBridge</strong><span> · Bridge 2.7.0 · ABI 4</span></div>
+      <div><span data-i18n="footerAuthor">Author</span>: zly258 · <a href="mailto:zhangly1403@gmail.com">zhangly1403@gmail.com</a></div>
+    </div>
   </footer>
 
   <script src="app.js"></script>
