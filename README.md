@@ -1,41 +1,62 @@
 # OcctCSharpBridge
 
-[简体中文](README.zh-CN.md) · [English Docs](docs/en-US/README.md) · [中文文档](docs/zh-CN/README.md) · [API Reference](docs/en-US/api/README.md) · [Demo Branch](https://github.com/zly258/OcctCSharpBridge/tree/demo)
+[简体中文](README.zh-CN.md) · [English Docs](docs/en-US/README.md) · [中文文档](docs/zh-CN/README.md) · [API Reference](docs/en-US/api/README.md) · [Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo) · [Cross-platform Avalonia](https://github.com/zly258/OcctCSharpBridge/tree/avalonia) · [Website](https://github.com/zly258/OcctCSharpBridge/tree/website)
 
-OcctCSharpBridge is a Windows x64 bridge from **Open CASCADE Technology 7.9.0** to **.NET 10**. It provides strongly typed C# APIs for OCCT modeling, topology, geometry analysis, meshing, data exchange, AIS/viewer interaction, and three independent reusable WinForms/WPF/Avalonia viewport hosts.
+OcctCSharpBridge `main` is a Windows x64 bridge from **Open CASCADE Technology 7.9.0** to **.NET 10 / C# 14**. It exposes strongly typed C# APIs for headless modeling, topology and geometry analysis, meshing, engineering file exchange, AIS/viewer interaction, first-class point presentation, and independent WinForms/WPF viewport hosts.
 
-`main` stays at the reusable Bridge boundary. Product-level Document, Feature Tree, Command/Tool, Undo/Redo, snapping, grips, persistence and OCAF/XDE do not belong in the Bridge.
+Avalonia is intentionally not hosted on `main`. The dedicated [`avalonia`](https://github.com/zly258/OcctCSharpBridge/tree/avalonia) branch is the cross-platform variant and is designed to run the same `OcctNet.Avalonia` API on Windows and Linux through platform-specific native viewer backends hidden behind the Avalonia adapter.
 
-## Current contract
+`main` is the Windows Bridge source and Windows Binary SDK producer. Product-level document models, feature trees, commands/tools, undo/redo, snapping, grips and project persistence remain application responsibilities.
 
-| Item | Current value |
+> STEP/XDE boundary: XDE is used internally for STEP assembly/product structure, occurrence transforms and presentation metadata. OcctCSharpBridge does **not** expose OCAF/XDE as the consuming application's document/persistence architecture. Assembly-aware consumers use the managed `OcctAssemblyDocument` snapshot instead.
+
+## Current source contract
+
+| Item | Current source |
 | --- | --- |
-| Author | **zly258** |
-| Bridge version | **2.6.0** |
+| Bridge | **2.7.0** |
 | Native ABI | **4** |
-| Native exports | **344** |
-| Managed P/Invoke mappings | **344** |
-| Public .NET types | **108** |
-| Viewer / Modeling API | **210 / 134** |
-| Open CASCADE Technology | **7.9.0** |
+| Native exports / P/Invoke | **349 / 349** |
+| Public .NET types | **113** |
+| Viewer / Modeling API | **215 / 134** |
+| OCCT | **7.9.0** |
 | .NET SDK | **10.0.302** |
 | Target Framework | **`net10.0-windows`** |
-| C# | **14.0** |
-| Native Bridge | **C++17** |
-| Avalonia | **12.1.0** |
+| C# / Native | **14.0 / C++17** |
+| UI adapters | **WinForms / WPF** |
 | Platform | **Windows x64** |
 
-`bridge-contract.json` is the machine-readable source of truth for version, platform and API counts.
+`bridge-contract.json` is the machine-readable source of truth for the **main source** contract.
 
-## UI host architecture
+### Published Binary SDK status
+
+The authoritative Windows Binary SDK is the tracked `main/dist/win-x64` payload. Read [`dist/win-x64/bridge-contract.json`](dist/win-x64/bridge-contract.json) for its actual Bridge/ABI/API contract and [`dist/win-x64/bridge-manifest.json`](dist/win-x64/bridge-manifest.json) for the exact source commit and file hashes.
+
+`publish.ps1` replaces those files only after a validated Windows/MSVC + OCCT 7.9 Release build. Documentation deliberately does not hard-code a second “published version” value that can become stale immediately after a release.
+
+## Highlights in 2.7 source
+
+- first-class `OcctAssemblyDocument` / `OcctAssemblyNode` STEP-XDE occurrence model;
+- stable assembly item IDs, Assembly/Instance/Part roles, local/global transforms, visibility, surface RGBA, curve colors and subshape styles;
+- valid multi-solid STEP Parts remain one Part instead of being flattened into artificial `Part_###` objects;
+- non-geometric STEP edits can round-trip through the pristine imported XDE document while geometry is unchanged;
+- first-class `OcctPoint` / `OcctPointMarker` backed by `AIS_Point`;
+- WPF uses a no-redraw native surface resize path and coalesces presentation at render priority instead of redrawing from `WM_PAINT`.
+
+## Architecture
 
 ```text
+Your CAD / BIM application
+  Document · Feature Tree · Command/Tool · Undo/Redo · JSON
+                 │
+                 ▼
 OcctNet.WinForms ─┐
-OcctNet.Wpf      ─┼─> OcctNet -> OcctNative.dll -> OCCT
-OcctNet.Avalonia ─┘
+OcctNet.Wpf      ─┴─> OcctNet -> stable C ABI -> OcctNative -> OCCT 7.9.0
 ```
 
-Each UI adapter depends directly on `OcctNet`; no UI adapter references another UI adapter. `OcctNet.Wpf` uses WPF `HwndHost` to own the OCCT render HWND directly and does not enable or reference Windows Forms.
+`OcctModelingSession` owns headless modeling/topology. `OcctEngine` owns AIS/viewer presentation and interactive scene state. Windows UI adapters depend on `OcctNet` directly and do not reference each other.
+
+Cross-platform Avalonia is developed separately on the `avalonia` branch so the Windows-only source and release contract on `main` stay compact and deterministic.
 
 ## Build
 
@@ -45,64 +66,27 @@ Each UI adapter depends directly on `OcctNet`; no UI adapter references another 
 .\build.ps1 test Release
 .\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 .\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-Managed packages:
-
-```powershell
-.\build.ps1 pack Release
-```
-
-Complete bilingual Managed + Native API Reference:
-
-```powershell
 .\build.ps1 docs Release
-```
-
-## Validated Binary SDK
-
-`dist/win-x64` is a tracked release payload, not ordinary build output. Produce it through the Release distribution target:
-
-```powershell
 .\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-The payload contains:
-
-```text
-dist/win-x64/
-├─ OcctNative.dll
-├─ OcctNet.dll
-├─ OcctNet.WinForms.dll
-├─ OcctNet.Wpf.dll
-├─ OcctNet.Avalonia.dll
-├─ bridge-contract.json
-└─ bridge-manifest.json
-```
-
-`bridge-manifest.json` records the Bridge/ABI/OCCT/.NET contract, source commit and SHA-256 hashes. OCCT `TK*.dll` and third-party runtime DLLs remain external to the Binary SDK payload.
-
-## Publish a release to main and demo
+## Publish the tracked Windows Binary SDK
 
 ```powershell
 .\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-The publishing workflow is one-directional:
+The Windows Binary SDK release flow is one-directional:
 
 ```text
-clean main worktree
-→ generate bilingual complete API Reference
-→ build Release Native + Managed SDK
-→ create and validate dist/win-x64
-→ commit/push main
-→ create a temporary detached demo worktree
-→ synchronize only dist/win-x64
-→ validate contract/manifest/SHA-256
-→ commit/push demo
+clean, up-to-date main
+→ generate bilingual API reference
+→ build/validate Release Binary SDK
+→ commit/push main dist/win-x64
+→ demo users run demo/sync.ps1 locally
 ```
 
-Managed regression tests and Native Smoke remain explicit `build.ps1 test` / `build.ps1 smoke` targets and do not block Binary SDK publication.
+`demo/dist` is intentionally ignored by Git. The demo branch is a consumer, not a second Binary SDK repository.
 
 ## Usage
 
@@ -116,35 +100,28 @@ var cut = model.Cut(plate, hole);
 model.ExportStep(cut.Shape, "plate.step");
 ```
 
-Use `OcctModelingSession` for headless modeling/topology and `OcctEngine` for AIS/viewer interaction.
+Assembly-aware STEP import in the 2.7 source:
 
-## Repository structure
-
-```text
-bridge-contract.json            Version/platform/API contract
-src/OcctNative                  C++17 OCCT bridge and stable C ABI
-src/OcctNet                     Core managed bridge
-src/OcctNet.WinForms            Independent WinForms viewport host
-src/OcctNet.Wpf                 Independent native WPF HwndHost viewport
-src/OcctNet.Avalonia            Independent Avalonia 12.1.0 Windows-HWND host
-tests                           Static contracts, managed regression, native smoke
-tools/OcctApiDocsGenerator      Complete bilingual Managed + Native API generator
-docs/zh-CN                      Chinese conceptual docs + API reference
-docs/en-US                      English conceptual docs + API reference
-dist/win-x64                    Tracked validated Binary SDK
-build.ps1                       Validation/build/test/pack/docs/dist entry point
-publish.ps1                     Release/API-doc/main→demo publishing entry point
+```csharp
+using var engine = new OcctEngine();
+OcctAssemblyDocument assembly = engine.ImportStepDocument("assembly.step");
+foreach (OcctAssemblyNode root in assembly.Roots)
+{
+    // Traverse root.Children.
+}
 ```
 
-## Branch boundary
+## Branches
 
-`main` is the only Bridge source producer. `demo` is a Binary SDK consumer and does not mirror `src/OcctNative`, `src/OcctNet*`, or Bridge tests. Other applications should consume the validated Binary SDK instead of cloning and rebuilding Bridge source.
-
-## Author
-
-**zly258**  
-zhangly1403@gmail.com
+- `main` — Windows x64 Bridge source, WinForms/WPF adapters, tests, documentation and tracked `dist/win-x64` Binary SDK producer.
+- `demo` — Windows WinForms/WPF demo applications consuming a **local ignored** `dist/win-x64` copied from the currently published `main` SDK.
+- `avalonia` — cross-platform Avalonia Bridge variant for Windows and Linux, with platform-specific native viewer backends hidden behind one Avalonia API.
+- `website` — static project website/GitHub Pages source.
 
 ## License
 
-OcctCSharpBridge is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE). Open CASCADE Technology and other third-party dependencies remain subject to their own licenses.
+OcctCSharpBridge is licensed under **GNU LGPL version 2.1 + OcctCSharpBridge Exception 1.0**. Commercial and proprietary applications may use the Bridge through .NET assembly references, dynamic linking, P/Invoke, or equivalent runtime linking without requiring the application itself to adopt the GNU LGPL solely because of that use.
+
+The LGPL obligations continue to apply to **OcctCSharpBridge itself** and to modified/derivative versions of the Bridge that are distributed. See [LICENSE](LICENSE), [LICENSE_LGPL_21.txt](LICENSE_LGPL_21.txt), [OcctCSharpBridge_LGPL_EXCEPTION.txt](OcctCSharpBridge_LGPL_EXCEPTION.txt), [COMMERCIAL.md](COMMERCIAL.md), and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Open CASCADE Technology and other third-party dependencies remain subject to their own licenses. OCCT keeps its own GNU LGPL 2.1 + Open CASCADE Exception terms.

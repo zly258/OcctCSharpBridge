@@ -1,35 +1,23 @@
-# 07 Runtime, Deployment and Diagnostics
+# Runtime Deployment and Diagnostics
 
-The managed SDK and the native runtime are deliberately separated.
+`main` is Windows x64 only.
 
-## Binary SDK
-
-`dist/win-x64` contains the matching Bridge set:
+Runtime bridge library:
 
 ```text
 OcctNative.dll
-OcctNet.dll
-OcctNet.WinForms.dll
-OcctNet.Wpf.dll
-OcctNet.Avalonia.dll
-bridge-contract.json
-bridge-manifest.json
 ```
 
-The manifest records version, ABI, target framework, source commit and SHA-256 hashes. Consumers should validate the complete set rather than copying a single `OcctNative.dll` independently.
+Default developer OCCT layout:
 
-## OCCT runtime resolution
+```text
+D:\tools\occt-vc144-64\inc
+D:\tools\occt-vc144-64\win64\vc14\lib
+D:\tools\occt-vc144-64\win64\vc14\bin
+```
 
-`OcctRuntime` configures Windows DLL search paths before loading the native bridge. It understands the application/native directory plus OCCT locations derived from `OCCT_ROOT` and `CASROOT`, including standard OCCT and third-party bin folders.
+`OcctRuntime` resolves the configured Native bridge and OCCT runtime paths and reports diagnostics when required binaries cannot be loaded.
 
-## Win32 error 126
+The tracked `dist/win-x64` is a Bridge Binary SDK, not a complete application runtime closure. Consumers remain responsible for deploying the required OCCT/third-party runtime according to their distribution strategy and licenses.
 
-If `OcctNative.dll` exists but loading still fails, the usual cause is a missing dependent OCCT or third-party DLL. Check the resolved OCCT root, `win64/vc14/bin`, `3rdparty-vc14-64` bin directories and architecture consistency.
-
-## Deployment models
-
-A thin consumer can keep OCCT installed separately and provide `OCCT_ROOT`. A portable application publisher can copy the native dependency closure and required resources beside the application.
-
-## Diagnostics
-
-Runtime diagnostic APIs should be usable without mutating global state unexpectedly. Application-level crash/startup logs belong to the consuming application, while Bridge diagnostics report native search configuration and load failures.
+Linux runtime behavior belongs to the `avalonia` branch, where the Native bridge is `libOcctNative.so` and the default OCCT library path is `/usr/local/lib`.

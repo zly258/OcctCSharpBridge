@@ -10,6 +10,5 @@
     <ProjectReference Include="..\..\src\OcctNet\OcctNet.csproj" />
     <ProjectReference Include="..\..\src\OcctNet.WinForms\OcctNet.WinForms.csproj" />
     <ProjectReference Include="..\..\src\OcctNet.Wpf\OcctNet.Wpf.csproj" />
-    <ProjectReference Include="..\..\src\OcctNet.Avalonia\OcctNet.Avalonia.csproj" />
   </ItemGroup>
 </Project>

@@ -4,7 +4,7 @@
 
 ## 1. 静态契约
 
-当前只保留 6 个脚本：
+当前只保留 5 个脚本：
 
 | Script | Responsibility |
 |---|---|
@@ -13,7 +13,6 @@
 | `check-bulk-abi.ps1` | 高数量 Modeling 集合与 Selection Hit 必须保持 Bulk ABI，禁止恢复 N+1 indexed ABI |
 | `check-native-build-structure.ps1` | CMake Native 源清单、OCCT 7.9 数据交换 Toolkit，以及 STEPCAF/XDE 结构化 STEP 依赖完整性 |
 | `check-api-surface.ps1` | Native declaration/definition/PInvoke 对等、CallingConvention/ExactSpelling、API 数量 |
-| `check-sdk-package.ps1` | 四个 Managed SDK 项目的 NuGet 元数据与目标框架一致性 |
 
 执行：
 

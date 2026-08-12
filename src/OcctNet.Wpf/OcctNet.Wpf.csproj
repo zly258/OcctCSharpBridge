@@ -8,26 +8,11 @@
     <PlatformTarget>x64</PlatformTarget>
     <RootNamespace>OcctNet</RootNamespace>
     <AssemblyName>OcctNet.Wpf</AssemblyName>
-
-    <IsPackable>true</IsPackable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
-    <Title>OcctNet.Wpf</Title>
-    <Description>Reusable native WPF viewport host for OcctNet and Open CASCADE Technology 7.9.0.</Description>
-    <PackageTags>OCCT;OpenCASCADE;CAD;WPF;viewport;3D</PackageTags>
-    <PackageProjectUrl>https://github.com/zly258/OcctCSharpBridge</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/zly258/OcctCSharpBridge</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
-    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <IncludeSymbols>true</IncludeSymbols>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\OcctNet\OcctNet.csproj" />
-    <None Include="..\..\README.md" Pack="true" PackagePath="/" Link="README.md" />
-    <None Include="..\..\LICENSE" Pack="true" PackagePath="/" Link="LICENSE" />
   </ItemGroup>
 </Project>

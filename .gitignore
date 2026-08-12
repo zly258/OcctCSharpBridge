@@ -1,4 +1,4 @@
-﻿# Build output
+# Build output
 build/
 artifacts/
 publish/
@@ -43,12 +43,6 @@ Makefile
 *.exp
 *.idb
 *.tlog
-
-# .NET / NuGet
-packages/
-*.nupkg
-*.snupkg
-project.assets.json
 
 # Runtime binaries
 *.dll

@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("validate", "native", "managed", "test", "pack", "smoke", "docs", "dist", "ci", "clean", "all")]
+    [ValidateSet("validate", "native", "managed", "test", "smoke", "docs", "dist", "ci", "clean", "all")]
     [string]$Target = "all",
 
     [Parameter(Position = 1)]
@@ -33,7 +33,6 @@ if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
 $NativeSource = Join-Path $RepoRoot "src\OcctNative"
 $NativeBuild = Join-Path $RepoRoot "build\native"
 $NativeDll = Join-Path $NativeBuild "bin\$Configuration\OcctNative.dll"
-$PackageOutput = Join-Path $RepoRoot "artifacts\packages"
 $ContractPath = Join-Path $RepoRoot "bridge-contract.json"
 $DistParent = Join-Path $RepoRoot "dist"
 $DistRoot = Join-Path $DistParent "win-x64"
@@ -55,22 +54,16 @@ $Projects = [ordered]@{
     Core = "src\OcctNet\OcctNet.csproj"
     WinForms = "src\OcctNet.WinForms\OcctNet.WinForms.csproj"
     Wpf = "src\OcctNet.Wpf\OcctNet.Wpf.csproj"
-    Avalonia = "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj"
     ManagedTests = "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj"
     Smoke = "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
 }
 
-$PackageProjects = @("Core", "WinForms", "Wpf", "Avalonia")
-
-# Static checks are intentionally limited to repository-level invariants that
-# cannot be expressed more reliably by compilation, managed tests, or native smoke tests.
 $Checks = [ordered]@{
     Version = "tests\check-version-contract.ps1"
     Architecture = "tests\check-architecture-boundaries.ps1"
     BulkAbi = "tests\check-bulk-abi.ps1"
     NativeBuild = "tests\check-native-build-structure.ps1"
     ApiSurface = "tests\check-api-surface.ps1"
-    SdkPackage = "tests\check-sdk-package.ps1"
 }
 
 function Assert-Path {
@@ -106,7 +99,7 @@ function Invoke-ContractChecks {
 function Resolve-OcctConfiguration {
     $script:OcctRoot = [System.IO.Path]::GetFullPath($OcctRoot)
     if (-not (Test-Path $script:OcctRoot -PathType Container)) {
-        throw "OCCT SDK root was not found: $script:OcctRoot. Set OCCT_ROOT, pass -OcctRoot <path>, or install OCCT at $DefaultOcctRoot. validate/managed/test/pack/docs/ci do not require OCCT."
+        throw "OCCT SDK root was not found: $script:OcctRoot. Set OCCT_ROOT, pass -OcctRoot <path>, or install OCCT at $DefaultOcctRoot. validate/managed/test/docs/ci do not require OCCT."
     }
     $script:OcctIncludeDir = Join-Path $script:OcctRoot "inc"
     $script:OcctLibDir = Join-Path $script:OcctRoot "win64\vc14\lib"
@@ -160,7 +153,6 @@ function Build-Project {
         "-c", $Configuration,
         "-p:Platform=x64",
         "-p:Version=$BridgeVersion",
-        "-p:PackageVersion=$BridgeVersion",
         "--nologo"
     ) "$Name build failed."
 }
@@ -184,7 +176,6 @@ function Build-Managed {
     Build-Project "Core"
     Build-Project "WinForms"
     Build-Project "Wpf"
-    Build-Project "Avalonia"
 }
 
 function Clean-Outputs {
@@ -209,78 +200,11 @@ function Clean-Outputs {
     Write-Host "Generated build outputs removed." -ForegroundColor Green
 }
 
-function Test-ManagedPackage {
-    param(
-        [Parameter(Mandatory = $true)][string]$PackagePath,
-        [Parameter(Mandatory = $true)][string]$AssemblyName
-    )
-
-    $archive = [System.IO.Compression.ZipFile]::OpenRead($PackagePath)
-    try {
-        $entries = @($archive.Entries | ForEach-Object { $_.FullName.Replace('\', '/') })
-        $nativeLeak = @($entries | Where-Object {
-            $_ -match '(^|/)OcctNative\.dll$' -or
-            $_ -match '(^|/)TK[^/]*\.dll$' -or
-            $_.StartsWith('runtimes/', [StringComparison]::OrdinalIgnoreCase)
-        })
-        if ($nativeLeak.Count -gt 0) { throw "Managed package contains native runtime content: $($nativeLeak -join ', ')" }
-
-        $managedDll = @($entries | Where-Object { $_ -match "^lib/.+/$([regex]::Escape($AssemblyName))\.dll$" })
-        $xmlDocs = @($entries | Where-Object { $_ -match "^lib/.+/$([regex]::Escape($AssemblyName))\.xml$" })
-        if ($managedDll.Count -ne 1) { throw "Managed package does not contain exactly one $AssemblyName.dll under lib/." }
-        if ($xmlDocs.Count -ne 1) { throw "Managed package does not contain exactly one $AssemblyName.xml IntelliSense document under lib/." }
-        if ('README.md' -notin $entries -or 'LICENSE' -notin $entries) { throw "Managed package must include README.md and LICENSE." }
-    }
-    finally { $archive.Dispose() }
-}
-
-function Pack-ManagedSdk {
-    param([switch]$SkipBuild)
-
-    Assert-Command "dotnet"
-    if (-not $SkipBuild) { Build-Managed }
-
-    Remove-Item $PackageOutput -Recurse -Force -ErrorAction SilentlyContinue
-    New-Item -ItemType Directory -Path $PackageOutput -Force | Out-Null
-
-    foreach ($name in $PackageProjects) {
-        $project = Join-Path $RepoRoot $Projects[$name]
-        Write-Host "[pack] Packing $name $BridgeVersion..." -ForegroundColor Cyan
-        Invoke-Checked "dotnet" @(
-            "pack", $project,
-            "-c", $Configuration,
-            "-p:Platform=x64",
-            "-p:Version=$BridgeVersion",
-            "-p:PackageVersion=$BridgeVersion",
-            "--no-build",
-            "--nologo",
-            "-o", $PackageOutput
-        ) "$name package creation failed."
-    }
-
-    $packages = [ordered]@{
-        "OcctNet" = "OcctNet"
-        "OcctNet.WinForms" = "OcctNet.WinForms"
-        "OcctNet.Wpf" = "OcctNet.Wpf"
-        "OcctNet.Avalonia" = "OcctNet.Avalonia"
-    }
-    foreach ($entry in $packages.GetEnumerator()) {
-        $packagePath = Join-Path $PackageOutput "$($entry.Key).$BridgeVersion.nupkg"
-        Assert-Path $packagePath
-        Assert-Path (Join-Path $PackageOutput "$($entry.Key).$BridgeVersion.snupkg")
-        Test-ManagedPackage -PackagePath $packagePath -AssemblyName $entry.Value
-    }
-
-    Write-Host "Packages: $PackageOutput" -ForegroundColor Green
-    Write-Host "Managed packages validated: assemblies/XML docs only; no OCCT or OcctNative runtime bundled." -ForegroundColor Green
-}
-
 function Build-Ci {
     Build-Managed
     Build-Project "ManagedTests"
     Run-ManagedTests
     Build-Project "Smoke"
-    Pack-ManagedSdk -SkipBuild
 }
 
 function Run-Smoke {
@@ -350,8 +274,6 @@ function Build-BinaryDistribution {
     $sourceCommit = Assert-CleanSourceTree
     Write-Host "[dist] Source commit: $sourceCommit" -ForegroundColor DarkGray
 
-    # Distribution is a production/build concern only. Regression tests and
-    # native smoke scenarios are explicit targets and never block packaging.
     Build-Native
     Build-Managed
 
@@ -360,7 +282,6 @@ function Build-BinaryDistribution {
         "OcctNet.dll" = Join-Path $RepoRoot "src\OcctNet\bin\x64\Release\$TargetFramework\OcctNet.dll"
         "OcctNet.WinForms.dll" = Join-Path $RepoRoot "src\OcctNet.WinForms\bin\x64\Release\$TargetFramework\OcctNet.WinForms.dll"
         "OcctNet.Wpf.dll" = Join-Path $RepoRoot "src\OcctNet.Wpf\bin\x64\Release\$TargetFramework\OcctNet.Wpf.dll"
-        "OcctNet.Avalonia.dll" = Join-Path $RepoRoot "src\OcctNet.Avalonia\bin\x64\Release\$TargetFramework\OcctNet.Avalonia.dll"
     }
     foreach ($source in $files.Values) { Assert-Path $source }
 
@@ -445,7 +366,6 @@ switch ($Target) {
         Build-Project "ManagedTests"
         Run-ManagedTests
     }
-    "pack" { Pack-ManagedSdk }
     "docs" { Generate-ApiDocumentation }
     "dist" { Build-BinaryDistribution }
     "ci" { Build-Ci }

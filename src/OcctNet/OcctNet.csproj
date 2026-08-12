@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
@@ -6,25 +6,7 @@
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
-
-    <IsPackable>true</IsPackable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
-    <Title>OcctNet</Title>
-    <Description>Strongly typed .NET 10 x64 bridge for Open CASCADE Technology 7.9.0 modeling, topology, geometry analysis and runtime integration.</Description>
-    <PackageTags>OCCT;OpenCASCADE;CAD;BIM;3D;geometry;modeling</PackageTags>
-    <PackageProjectUrl>https://github.com/zly258/OcctCSharpBridge</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/zly258/OcctCSharpBridge</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
-    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <IncludeSymbols>true</IncludeSymbols>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
-
-  <ItemGroup>
-    <None Include="..\..\README.md" Pack="true" PackagePath="/" Link="README.md" />
-    <None Include="..\..\LICENSE" Pack="true" PackagePath="/" Link="LICENSE" />
-  </ItemGroup>
 </Project>

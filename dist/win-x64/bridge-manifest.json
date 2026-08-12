@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "author": "zly258",
-  "bridgeVersion": "2.6.0",
+  "bridgeVersion": "2.7.0",
   "nativeAbiVersion": 4,
   "occtVersion": "7.9.0",
   "platform": "windows-x64",
@@ -9,31 +9,31 @@
   "sdkVersion": "10.0.302",
   "languageVersion": "14.0",
   "configuration": "Release",
-  "sourceCommit": "e40db55d68313a492b1cc2677f23767003a5df4d",
+  "sourceCommit": "c7d1ad852e1f116c1248c3fe1c774aa3be5f01e7",
   "files": [
     {
       "name": "OcctNative.dll",
-      "sha256": "71a862215a962b23317c8c7cf7d58c5fd2cd3fe6d6f4d36689f1a0031479a390"
+      "sha256": "0b1b4bb0e7e519825cc4b8753980b59ffe6880dfc59f2232fe836cfad720eb9e"
     },
     {
       "name": "OcctNet.dll",
-      "sha256": "6ef8d9984a6276e74a970877d80ee847d7052acc7f79c95fdb0655e5db721706"
+      "sha256": "9461053df58073010ac1638c189c6b4da4aa8ede6e3974bd6e2e462484e2bd1f"
     },
     {
       "name": "OcctNet.WinForms.dll",
-      "sha256": "b61aec62b240dbf460e0a72ffa9d34619075f282b6ce6e3c4ba0146eb3b304de"
+      "sha256": "a1fb256dd1cf36a5cefd342bd4fd5a75c392e7b3794f25dc20ba2929f144b0f4"
     },
     {
       "name": "OcctNet.Wpf.dll",
-      "sha256": "19abe51a441ff2ea79fbb2e3296040c01808200fdcc8d65e896a2f22785481a8"
+      "sha256": "53d95c9e4767d5e881a22f38f2f7efe31c930e6aef8b4f95d6baf832d6793aa5"
     },
     {
       "name": "OcctNet.Avalonia.dll",
-      "sha256": "0dadab059b8badf2d3e3043c657d62c99da69be0484fe65e9db8d622b83e7ea3"
+      "sha256": "47e67f280cbbbb76b47ea0f382ac911ee485b517029926669469a5903e75c64c"
     },
     {
       "name": "bridge-contract.json",
-      "sha256": "9891fb2e12c396ec8c95c412cea266daa06bd09a678beb13e0887319f0f740bd"
+      "sha256": "6021fbb14cef9d188b216a3ad8f4ace8241dfba6ddbb18ef430ec8ebffcbfa02"
     }
   ]
 }

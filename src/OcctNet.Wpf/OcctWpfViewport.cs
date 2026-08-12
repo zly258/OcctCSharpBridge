@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -103,6 +103,8 @@ public sealed class OcctWpfViewport : HwndHost
     private long _lastHoverTimestamp;
     private long _lastWorldPointTimestamp;
     private bool _nativeRefreshScheduled;
+    private bool _nativeRenderScheduled;
+    private uint _lastRenderDpi;
 
     public static readonly DependencyProperty EnableDefaultInteractionProperty =
         DependencyProperty.Register(
@@ -265,14 +267,14 @@ public sealed class OcctWpfViewport : HwndHost
     }
 
     /// <summary>
-    /// Synchronizes the OCCT render target with the current child HWND size.
-    /// DPI is deliberately not changed here: SetRenderResolution redraws the view,
-    /// so doing it for every WM_SIZE would cause two redraws per resize event.
+    /// Synchronizes the OCCT render target with the current child HWND size and
+    /// coalesces presentation into one WPF render-priority callback.
     /// </summary>
     public void RefreshNativeView()
     {
         if (_engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero) return;
-        TryInvoke(_engine.Resize);
+        TryInvoke(_engine.ResizeSurface);
+        ScheduleRender();
     }
 
     protected override HandleRef BuildWindowCore(HandleRef hwndParent)
@@ -304,7 +306,8 @@ public sealed class OcctWpfViewport : HwndHost
             _engine = new OcctEngine();
             _engine.Initialize(handle);
             SynchronizeDpi();
-            _engine.Resize();
+            _engine.ResizeSurface();
+            _engine.Redraw();
             _lastHoverTimestamp = 0;
             _lastWorldPointTimestamp = 0;
             EngineInitialized?.Invoke(this, EventArgs.Empty);
@@ -336,8 +339,8 @@ public sealed class OcctWpfViewport : HwndHost
                     handled = true;
                     return new IntPtr(HtClient);
                 case WmSize:
-                    // The child HWND and OCCT back buffer stay in lock-step during
-                    // interactive resizing. No DPI redraw is performed on this path.
+                    // WM_SIZE may fire dozens of times during one interactive resize.
+                    // Resize the native surface now, but present at most once per WPF frame.
                     RefreshNativeView();
                     break;
                 case WmDpiChanged:
@@ -350,9 +353,8 @@ public sealed class OcctWpfViewport : HwndHost
                     CancelInteraction();
                     break;
                 case WmPaint:
-                    // Restore exposed regions from OCCT. DefWindowProc still validates
-                    // the paint region because this message is intentionally not marked handled.
-                    if (_engine?.IsInitialized == true) TryInvoke(_engine.Redraw);
+                    // Do not redraw OCCT from WM_PAINT. DefWindowProc remains responsible
+                    // for validating the paint region; OCCT presentation is frame-coalesced.
                     break;
                 case WmEraseBkgnd:
                     // OpenGL owns the complete child surface; the dedicated window class
@@ -604,6 +606,18 @@ public sealed class OcctWpfViewport : HwndHost
         CancelRectangleSelection();
     }
 
+    private void ScheduleRender()
+    {
+        if (_nativeRenderScheduled || _engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero || !IsVisible) return;
+        _nativeRenderScheduled = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(() =>
+        {
+            _nativeRenderScheduled = false;
+            if (_engine?.IsInitialized == true && _nativeHandle != IntPtr.Zero && IsVisible)
+                TryInvoke(_engine.Redraw);
+        }));
+    }
+
     private void ScheduleNativeViewRefresh()
     {
         if (_nativeRefreshScheduled || _engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero || !IsVisible) return;
@@ -611,10 +625,12 @@ public sealed class OcctWpfViewport : HwndHost
         Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(() =>
         {
             _nativeRefreshScheduled = false;
-            // DPI changes are rare. Keep their redraw away from the continuous
-            // WM_SIZE path, then resize once to the final arranged client size.
+            // DPI/layout refresh is rare. Resize the surface without presentation;
+            // repeated layout messages share the same coalesced render callback.
             SynchronizeDpi();
-            RefreshNativeView();
+            if (_engine?.IsInitialized == true && _nativeHandle != IntPtr.Zero)
+                TryInvoke(_engine.ResizeSurface);
+            ScheduleRender();
         }));
     }
 
@@ -622,7 +638,9 @@ public sealed class OcctWpfViewport : HwndHost
     {
         if (!SynchronizeRenderDpi || _engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero) return;
         var dpi = GetDpiForWindow(_nativeHandle);
-        if (dpi > 0) _engine.SetRenderResolution(dpi);
+        if (dpi == 0 || dpi == _lastRenderDpi) return;
+        _lastRenderDpi = dpi;
+        _engine.SetRenderResolution(dpi);
     }
 
     private void DisposeNativeHost(IntPtr handle)
@@ -632,6 +650,8 @@ public sealed class OcctWpfViewport : HwndHost
         _engine = null;
         _nativeHandle = IntPtr.Zero;
         _nativeRefreshScheduled = false;
+        _nativeRenderScheduled = false;
+        _lastRenderDpi = 0;
         if (handle != IntPtr.Zero) DestroyWindow(handle);
     }
 

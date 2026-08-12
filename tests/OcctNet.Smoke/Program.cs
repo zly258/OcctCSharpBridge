@@ -172,4 +172,4 @@ Console.WriteLine($"Edge intersections: {edgeIntersections.Count}");
 Console.WriteLine($"Topology reference score: {topologyResolution.Score:G4}");
 Console.WriteLine($"OBB: {bounds.SizeX:G4} x {bounds.SizeY:G4} x {bounds.SizeZ:G4}");
 Console.WriteLine($"Loft operation: {loft.OperationId}");
-Console.WriteLine("Bridge 2.6 native smoke tests passed.");
+Console.WriteLine($"Bridge {OcctBridgeInfo.ManagedVersion} native smoke tests passed.");

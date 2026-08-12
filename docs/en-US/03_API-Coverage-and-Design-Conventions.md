@@ -1,33 +1,26 @@
-# 03 API Coverage and Design Conventions
+# API Coverage and Design Conventions
 
-The public managed API is split between viewer-oriented and headless-modeling capabilities.
+The `main` source contract is:
 
-## Main facades
+```text
+Native exports:     349
+P/Invoke mappings:  349
+Public .NET types:  113
+Viewer API:         215
+Modeling API:       134
+```
 
-### `OcctEngine`
+The exact values are stored in `bridge-contract.json` and validated by repository checks.
 
-Covers AIS/viewer lifecycle, registered scene objects, display state, camera, selection, structured hit data, annotations, transforms, appearance and viewport interaction.
+Public managed assemblies on `main` are `OcctNet`, `OcctNet.WinForms`, and `OcctNet.Wpf`. Avalonia public types are deliberately excluded from this branch and are counted independently by the `avalonia` contract.
 
-### `OcctModelingSession`
+Design rules:
 
-Covers primitives, curves, surfaces, B-Rep topology, Boolean and feature operations, healing, inspection, inertia, history, topology references, meshing and STEP/IGES/BREP/STL exchange.
+- keep Native declarations, definitions and P/Invoke names one-to-one;
+- use Cdecl + ExactSpelling for Native exports;
+- use bulk transfer for high-cardinality collections instead of N+1 interop loops;
+- keep UI frameworks out of `OcctNet`;
+- keep ownership and object identity explicit;
+- do not reintroduce application-layer Document/Command/Tool abstractions into the Bridge.
 
-## ABI rules
-
-The native boundary uses fixed-width integers, `double`, plain structs, UTF-8 strings and explicit buffer/capacity contracts. C++ exceptions do not cross the ABI. Managed code converts native status/error information into strong .NET results or exceptions.
-
-The current contract records 344 native exports and 344 managed P/Invoke declarations. Count parity detects missing additions/removals, but signature-level validation remains the stronger long-term goal: return types, parameter order/types, struct size/offset and enum numeric values.
-
-## Ownership
-
-Objects are owner-aware. IDs from one `OcctEngine` or `OcctModelingSession` cannot be passed to another owner merely because their numeric values match.
-
-## Collection transfer
-
-High-volume collections use bulk C ABI calls. New public APIs should not reintroduce legacy indexed loops across the managed/native boundary unless the underlying operation is inherently scalar.
-
-## Compatibility policy
-
-The project is maintained as a current SDK, not a compatibility museum. Deleted aliases, legacy wrappers and aggregate compatibility headers are not recreated to support old demo code. Callers move to the current API.
-
-For exact public types and members, use the generated [Complete API Reference](api/README.md).
+`tools/OcctApiDocsGenerator` discovers the public assemblies that actually exist on the current branch instead of hard-coding a shared UI-host list.

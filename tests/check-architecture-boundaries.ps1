@@ -65,7 +65,7 @@ function Assert-NoUiSiblingReferences {
         [Parameter(Mandatory = $true)][string]$ProjectName
     )
 
-    $siblings = @("OcctNet.WinForms", "OcctNet.Wpf", "OcctNet.Avalonia")
+    $siblings = @("OcctNet.WinForms", "OcctNet.Wpf")
     foreach ($reference in $References) {
         foreach ($sibling in $siblings) {
             if ($reference -match "(?i)\\$([regex]::Escape($sibling))\\") {
@@ -89,12 +89,11 @@ function Test-TrackedPath {
 $core = Read-Project "src/OcctNet/OcctNet.csproj"
 $winForms = Read-Project "src/OcctNet.WinForms/OcctNet.WinForms.csproj"
 $wpf = Read-Project "src/OcctNet.Wpf/OcctNet.Wpf.csproj"
-$avalonia = Read-Project "src/OcctNet.Avalonia/OcctNet.Avalonia.csproj"
 
 $coreProjectReferences = @(Get-ProjectReferences $core)
 $corePackageReferences = @(Get-PackageReferences $core)
 if ($coreProjectReferences.Count -ne 0) {
-    throw "OcctNet core must not depend on UI host projects."
+    throw "OcctNet core must not depend on UI host or packaging projects."
 }
 foreach ($uiDependency in @("Avalonia", "PresentationFramework", "System.Windows.Forms")) {
     if ($uiDependency -in $corePackageReferences) {
@@ -104,13 +103,10 @@ foreach ($uiDependency in @("Avalonia", "PresentationFramework", "System.Windows
 
 $winFormsReferences = @(Get-ProjectReferences $winForms)
 $wpfReferences = @(Get-ProjectReferences $wpf)
-$avaloniaReferences = @(Get-ProjectReferences $avalonia)
 Assert-Reference $winFormsReferences "..\OcctNet\OcctNet.csproj" "OcctNet.WinForms"
 Assert-Reference $wpfReferences "..\OcctNet\OcctNet.csproj" "OcctNet.Wpf"
-Assert-Reference $avaloniaReferences "..\OcctNet\OcctNet.csproj" "OcctNet.Avalonia"
 Assert-NoUiSiblingReferences $winFormsReferences "OcctNet.WinForms"
 Assert-NoUiSiblingReferences $wpfReferences "OcctNet.Wpf"
-Assert-NoUiSiblingReferences $avaloniaReferences "OcctNet.Avalonia"
 
 if ((Get-ProjectProperty $winForms "UseWindowsForms") -ne "true") {
     throw "OcctNet.WinForms must enable Windows Forms."
@@ -121,22 +117,25 @@ if ((Get-ProjectProperty $wpf "UseWPF") -ne "true") {
 if (-not [string]::IsNullOrWhiteSpace((Get-ProjectProperty $wpf "UseWindowsForms"))) {
     throw "OcctNet.Wpf must remain independent from Windows Forms."
 }
-$avaloniaPackages = @(Get-PackageReferences $avalonia)
-if ("Avalonia" -notin $avaloniaPackages) {
-    throw "OcctNet.Avalonia must reference the Avalonia package."
+
+if (Test-TrackedPath "src/OcctNet.Avalonia") {
+    throw "Avalonia adapter must live on the avalonia branch, not main/demo."
 }
 
 $demoProjects = @(
     "src/OcctDemo.Common",
     "src/OcctDemo.WinForms",
-    "src/OcctDemo.Wpf",
-    "src/OcctDemo.Avalonia"
+    "src/OcctDemo.Wpf"
 )
 $trackedDemoProjects = @($demoProjects | Where-Object { Test-TrackedPath $_ })
 if ($trackedDemoProjects.Count -ne 0 -and $trackedDemoProjects.Count -ne $demoProjects.Count) {
     throw "Demo projects must be either fully absent on main or fully present on demo."
 }
 $isDemoBranchLayout = $trackedDemoProjects.Count -eq $demoProjects.Count
+
+if (Test-TrackedPath "src/OcctDemo.Avalonia") {
+    throw "Avalonia demo must live on the avalonia branch, not demo."
+}
 
 foreach ($legacyProject in @(
     "src/CadCommon",
@@ -153,15 +152,12 @@ if ($isDemoBranchLayout) {
     $demoCommon = Read-Project "src/OcctDemo.Common/OcctDemo.Common.csproj"
     $demoWinForms = Read-Project "src/OcctDemo.WinForms/OcctDemo.WinForms.csproj"
     $demoWpf = Read-Project "src/OcctDemo.Wpf/OcctDemo.Wpf.csproj"
-    $demoAvalonia = Read-Project "src/OcctDemo.Avalonia/OcctDemo.Avalonia.csproj"
 
     Assert-Reference @(Get-ProjectReferences $demoCommon) "..\OcctNet\OcctNet.csproj" "OcctDemo.Common"
     Assert-Reference @(Get-ProjectReferences $demoWinForms) "..\OcctDemo.Common\OcctDemo.Common.csproj" "OcctDemo.WinForms"
     Assert-Reference @(Get-ProjectReferences $demoWinForms) "..\OcctNet.WinForms\OcctNet.WinForms.csproj" "OcctDemo.WinForms"
     Assert-Reference @(Get-ProjectReferences $demoWpf) "..\OcctDemo.Common\OcctDemo.Common.csproj" "OcctDemo.Wpf"
     Assert-Reference @(Get-ProjectReferences $demoWpf) "..\OcctNet.Wpf\OcctNet.Wpf.csproj" "OcctDemo.Wpf"
-    Assert-Reference @(Get-ProjectReferences $demoAvalonia) "..\OcctDemo.Common\OcctDemo.Common.csproj" "OcctDemo.Avalonia"
-    Assert-Reference @(Get-ProjectReferences $demoAvalonia) "..\OcctNet.Avalonia\OcctNet.Avalonia.csproj" "OcctDemo.Avalonia"
 }
 
 $managedRoot = Join-Path $RepositoryRoot "src\OcctNet"
@@ -191,4 +187,4 @@ foreach ($legacyFile in @(
 }
 
 $layoutName = if ($isDemoBranchLayout) { "demo" } else { "main" }
-Write-Host "[architecture] Core/UI dependency direction, independent UI hosts, $layoutName branch layout, and no-compatibility boundary validated." -ForegroundColor Green
+Write-Host "[architecture] Core/UI dependency direction, WinForms/WPF hosts, $layoutName branch layout, and no-compatibility boundary validated." -ForegroundColor Green

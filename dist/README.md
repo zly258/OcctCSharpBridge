@@ -1,58 +1,43 @@
 # Bridge Binary SDK
 
-`dist/win-x64` stores the validated Windows x64 Binary SDK produced from `main`. The directory is intentionally tracked by Git and is **not** a normal build-output directory.
+`main/dist/win-x64` stores the **last validated Windows x64 Binary SDK actually published from `main`**. It is intentionally tracked and is not ordinary build output.
 
-## Current contract
+## Current published payload
 
 ```text
-Author: zly258
 Bridge: 2.6.0
 Native ABI: 4
+Native exports / PInvoke: 347 / 347
+Public .NET types: 110
+Viewer / Modeling API: 213 / 134
 OCCT: 7.9.0
 .NET SDK: 10.0.302
 Target: net10.0-windows
 C#: 14.0
-Native Bridge: C++17
-Avalonia: 12.1.0
 Platform: Windows x64
+Source commit: 960b6b0b0b4cfcbc16af4fb91bf57b8ec146446f
 ```
 
-## Create the Binary SDK locally
+The current **source** contract in `../bridge-contract.json` is already **Bridge 2.7.0 / ABI 4 / 349 / 349 / 117 / Viewer 215 / Modeling 134**. Those source changes have not yet been republished into the tracked DLL payload.
 
-Generate or refresh `dist/win-x64` only after the full Release validation gate succeeds:
-
-```powershell
-.\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-This performs the real Native/Managed Release build, managed regression tests and Native Smoke validation before replacing the tracked Binary SDK through staging/backup.
-
-## Publish main and demo
-
-For the normal release workflow use:
+Do not manually edit the Binary SDK JSON or replace individual DLLs. Publish the current source on the normal Windows/MSVC + OCCT 7.9 workstation:
 
 ```powershell
 .\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-`publish.ps1` first generates and commits the complete bilingual API Reference when needed, then builds/validates `dist/win-x64`, commits and pushes `main`, and synchronizes the exact Binary SDK payload to `demo` through a temporary worktree.
+`publish.ps1` generates the bilingual API reference, builds Release, validates contract/manifest/SHA-256, commits the new `dist/win-x64`, and pushes `main`.
 
-There is no standalone `dist.ps1` and no `demo/sync-dist.ps1`.
+## Demo consumption
 
-## Payload
+`demo/dist` is ignored. Demo users copy whichever SDK is actually published on `main`:
 
-The generated payload contains:
+```powershell
+.\sync.ps1
+```
 
-- `OcctNative.dll`
-- `OcctNet.dll`
-- `OcctNet.WinForms.dll`
-- `OcctNet.Wpf.dll`
-- `OcctNet.Avalonia.dll`
-- `bridge-contract.json`
-- `bridge-manifest.json`
+`sync.ps1` prints the synchronized contract so a version lag cannot be hidden.
 
-`bridge-manifest.json` records the Bridge/ABI/OCCT/.NET contract, source commit, Release configuration and SHA-256 hashes for the distributed files. Consumers such as the `demo` branch should reference this Binary SDK instead of compiling or copying Bridge source code.
+## License
 
-OCCT runtime DLLs are intentionally not committed here. Consumers resolve the OCCT 7.9.0 runtime through `OCCT_ROOT`, `CASROOT`, or an explicitly configured runtime location.
-
-At present the repository may contain only this README until the first successful Windows Release publication creates `dist/win-x64`.
+Non-commercial use is free under the PolyForm Noncommercial License 1.0.0, subject to its terms. Commercial use requires separate authorization from the author; see `../COMMERCIAL.md`.

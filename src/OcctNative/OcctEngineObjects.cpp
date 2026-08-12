@@ -79,7 +79,8 @@ extern "C"
             ObjectEntry* entry = e->findObject(id);
             if (entry == nullptr) throw std::invalid_argument("Object ID does not exist.");
             entry->name = name == nullptr ? "" : name;
-            if (entry->kind == OcctObject_Shape) e->invalidatePristineStepDocument();
+            if (entry->kind == OcctObject_Shape && !syncStepObjectName(e, *entry))
+                e->invalidatePristineStepDocument();
         });
     }
 
@@ -105,7 +106,8 @@ extern "C"
             entry->storedColorR = value.Red();
             entry->storedColorG = value.Green();
             entry->storedColorB = value.Blue();
-            if (entry->kind == OcctObject_Shape) e->invalidatePristineStepDocument();
+            if (entry->kind == OcctObject_Shape && !syncStepObjectColor(e, *entry))
+                e->invalidatePristineStepDocument();
             e->context->SetColor(entry->presentation, value, Standard_False);
             e->requestRedraw();
         });
@@ -119,8 +121,12 @@ extern "C"
         {
             ObjectEntry* entry = e->findObject(id);
             if (entry == nullptr) throw std::invalid_argument("Object ID does not exist.");
-            if (entry->kind == OcctObject_Shape) e->invalidatePristineStepDocument();
-            e->context->SetTransparency(entry->presentation, std::clamp(value, 0.0, 1.0), Standard_False);
+            const double transparency = std::clamp(value, 0.0, 1.0);
+            entry->storedColorA = 1.0 - transparency;
+            entry->hasStoredAlpha = true;
+            if (entry->kind == OcctObject_Shape && !syncStepObjectColor(e, *entry))
+                e->invalidatePristineStepDocument();
+            e->context->SetTransparency(entry->presentation, transparency, Standard_False);
             e->requestRedraw();
         });
     }
@@ -133,6 +139,9 @@ extern "C"
         {
             ObjectEntry* entry = e->findObject(id);
             if (entry == nullptr) throw std::invalid_argument("Object ID does not exist.");
+            entry->storedVisible = visible != 0;
+            if (entry->kind == OcctObject_Shape && !syncStepObjectVisibility(e, *entry))
+                e->invalidatePristineStepDocument();
             if (visible)
                 e->context->Display(entry->presentation, Standard_False);
             else
@@ -228,6 +237,7 @@ extern "C"
             e->objects.clear();
             e->objectIdByApplicationTag.clear();
             e->stepDocuments.clear();
+            e->lastStepImportObjectIds.clear();
             e->pristineStepDocument.Nullify();
             e->pristineStepDocumentMatchesScene = false;
             e->nextId = 1;

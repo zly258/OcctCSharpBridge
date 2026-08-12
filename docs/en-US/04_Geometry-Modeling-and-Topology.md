@@ -1,25 +1,9 @@
-# 04 Geometry, Modeling and Topology
+# Geometry, Modeling and Topology
 
-`OcctModelingSession` is the primary headless modeling entry point. The same underlying native capabilities can also be exposed through viewer-aware operations where appropriate.
+`OcctModelingSession` is the headless modeling owner on `main`. Its semantics are independent of WinForms/WPF and are intended to remain reusable by other host branches.
 
-## Geometry and primitives
+The Modeling surface includes primitives, Boolean operations, extrusion/revolution/sweep/loft, fillet/chamfer, offset/shelling, healing, mesh generation, shape validation, geometry evaluation, topology traversal, adjacency, intersections, inertia and operation history.
 
-The bridge covers common 3D primitives and curve/surface construction, including lines, circles/arcs and B-Spline/NURBS-oriented geometry. Managed value types represent points, vectors, transforms, bounds and other transfer-safe data without exposing OCCT C++ classes.
+Shape handles are scoped to the owning modeling session. Persistent application identity must be managed above the Bridge; topology-reference helpers are available to re-identify subshapes after modeling operations.
 
-## B-Rep and topology
-
-Shapes can be queried by topology type such as vertex, edge, wire, face, shell, solid and compound. Topology enumeration returns owner-aware shape handles rather than raw native pointers.
-
-## Modeling operations
-
-The modeling layer includes Boolean operations, feature construction, offsets/fillets where wrapped, healing/validation, transforms, copying/compounds and shape inspection. Results that need more than a single shape use structured managed result types.
-
-## History and topology reference
-
-Runtime subshape indices are not treated as durable identity. Topology Reference APIs use a versioned geometric/topological fingerprint with runtime indices only as hints. History APIs expose generated/modified/deleted relationships where the underlying OCCT operation supports them.
-
-## Analysis
-
-Inspection APIs cover bounds, validity, topology counts and inertia/mass-style properties. Structured intersection APIs return geometric results rather than forcing callers to infer meaning from raw point arrays.
-
-Use the generated API Reference for exact overloads and result types.
+High-cardinality queries use bulk Native APIs. Avoid per-face/per-edge P/Invoke loops in application code when a bulk result is available.

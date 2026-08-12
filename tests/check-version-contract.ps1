@@ -106,7 +106,6 @@ $projectFiles = @(
     "src/OcctNet/OcctNet.csproj",
     "src/OcctNet.WinForms/OcctNet.WinForms.csproj",
     "src/OcctNet.Wpf/OcctNet.Wpf.csproj",
-    "src/OcctNet.Avalonia/OcctNet.Avalonia.csproj",
     "tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj",
     "tests/OcctNet.Smoke/OcctNet.Smoke.csproj"
 )

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "bridgeVersion": "2.6.0",
+  "bridgeVersion": "2.7.0",
   "nativeAbiVersion": 4,
   "occtVersion": "7.9.0",
   "platform": "windows-x64",
@@ -13,13 +13,16 @@
     "languageVersion": "14.0"
   },
   "api": {
-    "nativeExports": 344,
-    "managedPInvokes": 344,
-    "publicNetTypes": 108,
-    "viewer": 210,
+    "nativeExports": 349,
+    "managedPInvokes": 349,
+    "publicNetTypes": 113,
+    "viewer": 215,
     "modeling": 134,
     "nativeHeaders": [
       "OcctNative.h",
+      "OcctRenderSurface.h",
+      "OcctStepDocument.h",
+      "OcctPoints.h",
       "OcctSelectionOverlay.h",
       "OcctSelectionState.h",
       "OcctModeling.h",

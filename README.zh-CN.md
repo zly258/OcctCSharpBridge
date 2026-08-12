@@ -1,41 +1,62 @@
 # OcctCSharpBridge
 
-[English](README.md) · [中文文档](docs/zh-CN/README.md) · [English Docs](docs/en-US/README.md) · [完整 API 参考](docs/zh-CN/api/README.md) · [Demo 分支](https://github.com/zly258/OcctCSharpBridge/tree/demo)
+[English](README.md) · [中文文档](docs/zh-CN/README.md) · [English Docs](docs/en-US/README.md) · [API 参考](docs/zh-CN/api/README.md) · [Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo) · [跨平台 Avalonia](https://github.com/zly258/OcctCSharpBridge/tree/avalonia) · [Website](https://github.com/zly258/OcctCSharpBridge/tree/website)
 
-OcctCSharpBridge 是面向 Windows x64 的 **Open CASCADE Technology 7.9.0 → .NET 10** 桥接库，为 C# 提供强类型的 OCCT 建模、拓扑、几何分析、网格、数据交换、AIS/Viewer 交互，以及三个彼此独立的 WinForms/WPF/Avalonia 视口宿主。
+OcctCSharpBridge `main` 是面向 Windows x64 的 **Open CASCADE Technology 7.9.0 → .NET 10 / C# 14** 桥接库，为 C# 提供强类型的 Headless 建模、拓扑与几何分析、网格、工程数据交换、AIS/Viewer 交互、一等点对象，以及彼此独立的 WinForms/WPF 视口宿主。
 
-`main` 只负责可复用 Bridge。Document、Feature Tree、Command/Tool、Undo/Redo、捕捉、夹点、项目持久化以及 OCAF/XDE 不进入 Bridge。
+Avalonia 不再放在 `main`。独立的 [`avalonia`](https://github.com/zly258/OcctCSharpBridge/tree/avalonia) 分支是真正的跨平台版本，目标是在 Windows 与 Linux 上使用同一套 `OcctNet.Avalonia` API，平台相关的 Native Viewer 后端由内部自动处理。
 
-## 当前契约
+`main` 是 Windows Bridge 源码与 Windows Binary SDK 生产分支。应用层的 Document、Feature Tree、Command/Tool、Undo/Redo、捕捉、夹点和项目持久化仍由上层 CAD/BIM 应用负责。
 
-| 项目 | 当前值 |
+> STEP/XDE 边界：Bridge 会在 STEP 装配交换内部使用 XDE 保存真实产品结构、Occurrence Transform 与显示样式，但**不会把 OCAF/XDE 暴露成应用层 Document/持久化架构**。上层通过托管的 `OcctAssemblyDocument` 快照读取装配语义。
+
+## 当前源码契约
+
+| 项目 | 当前源码 |
 | --- | --- |
-| Author | **zly258** |
-| Bridge Version | **2.6.0** |
+| Bridge | **2.7.0** |
 | Native ABI | **4** |
-| Native exports | **344** |
-| Managed P/Invoke | **344** |
-| Public .NET types | **108** |
-| Viewer / Modeling API | **210 / 134** |
-| Open CASCADE Technology | **7.9.0** |
+| Native exports / P/Invoke | **349 / 349** |
+| Public .NET types | **113** |
+| Viewer / Modeling API | **215 / 134** |
+| OCCT | **7.9.0** |
 | .NET SDK | **10.0.302** |
 | Target Framework | **`net10.0-windows`** |
-| C# | **14.0** |
-| Native Bridge | **C++17** |
-| Avalonia | **12.1.0** |
+| C# / Native | **14.0 / C++17** |
+| UI Adapter | **WinForms / WPF** |
 | Platform | **Windows x64** |
 
-`bridge-contract.json` 是版本、平台与 API 数量的机器可读事实源。
+`bridge-contract.json` 是 `main` **源码契约**的机器可读事实源。
 
-## UI 宿主架构
+### 当前已发布 Windows Binary SDK
+
+正式发布状态以仓库中实际跟踪的 `main/dist/win-x64` 为准。请读取 [`dist/win-x64/bridge-contract.json`](dist/win-x64/bridge-contract.json) 获取已发布 Bridge/ABI/API 契约，读取 [`dist/win-x64/bridge-manifest.json`](dist/win-x64/bridge-manifest.json) 获取对应源码 Commit 与文件哈希。
+
+`publish.ps1` 只有在 Windows/MSVC + OCCT 7.9 的 Release 构建和校验成功后才会替换这些文件。文档不再额外硬编码一份“当前已发布版本”，避免每次发布后立即产生过期信息。
+
+## 2.7 源码重点能力
+
+- 一等 `OcctAssemblyDocument` / `OcctAssemblyNode` STEP-XDE occurrence 模型；
+- 保留稳定 XDE 节点 ID、Assembly/Instance/Part 角色、Local/Global Transform、Visibility、Surface RGBA、Curve Color 和 Subshape Style；
+- 合法的多 Solid Part 仍保持为一个 Part，不再按 Solid 数量错误拆成 `Part_###`；
+- 几何未改变时，名称、颜色、透明度、显隐等非几何编辑可继续通过原始 XDE 文档 round-trip；
+- 一等 `OcctPoint` / `OcctPointMarker`，Native 使用真正的 `AIS_Point`；
+- WPF Resize 使用“不触发 redraw 的 Native surface resize + Render 优先级合并刷新”，不再从 `WM_PAINT` 强制重绘。
+
+## 架构
 
 ```text
+你的 CAD / BIM 应用
+  Document · Feature Tree · Command/Tool · Undo/Redo · JSON
+                 │
+                 ▼
 OcctNet.WinForms ─┐
-OcctNet.Wpf      ─┼─> OcctNet -> OcctNative.dll -> OCCT
-OcctNet.Avalonia ─┘
+OcctNet.Wpf      ─┴─> OcctNet -> stable C ABI -> OcctNative -> OCCT 7.9.0
 ```
 
-三个 UI Adapter 都只直接依赖 `OcctNet`，互相之间不允许项目引用。`OcctNet.Wpf` 使用 WPF 原生 `HwndHost` 直接承载 OCCT 渲染 HWND，不再启用或引用 Windows Forms。
+`OcctModelingSession` 负责 Headless 建模/拓扑；`OcctEngine` 负责 AIS/Viewer 展示与交互场景。Windows UI Adapter 都直接依赖 `OcctNet`，互不引用。
+
+跨平台 Avalonia 在 `avalonia` 分支独立开发，使 `main` 的 Windows 源码契约和发布链保持紧凑、确定。
 
 ## 构建
 
@@ -45,64 +66,27 @@ OcctNet.Avalonia ─┘
 .\build.ps1 test Release
 .\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 .\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-Managed NuGet：
-
-```powershell
-.\build.ps1 pack Release
-```
-
-完整中英文 Managed + Native API Reference：
-
-```powershell
 .\build.ps1 docs Release
-```
-
-## 已验证 Binary SDK
-
-`dist/win-x64` 是可提交的正式二进制 SDK，不是普通 build 输出：
-
-```powershell
 .\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-生成内容：
-
-```text
-dist/win-x64/
-├─ OcctNative.dll
-├─ OcctNet.dll
-├─ OcctNet.WinForms.dll
-├─ OcctNet.Wpf.dll
-├─ OcctNet.Avalonia.dll
-├─ bridge-contract.json
-└─ bridge-manifest.json
-```
-
-`bridge-manifest.json` 记录 Bridge/ABI/OCCT/.NET 契约、源码 Commit 和各文件 SHA-256。OCCT `TK*.dll` 与第三方 Runtime 不进入 Binary SDK 本体。
-
-## 一键正式发布
+## 正式发布 Windows Binary SDK
 
 ```powershell
 .\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-正式发布流程统一为：
+Windows Binary SDK 发布方向保持单向：
 
 ```text
-main 工作区必须干净
-→ 自动生成完整中英文 API Reference
-→ 构建 Release Native + Managed SDK
-→ 生成并校验 dist/win-x64
-→ commit + push main
-→ 临时 detached worktree 打开 demo
-→ 只同步 dist/win-x64
-→ 校验 Contract / Manifest / SHA-256
-→ commit + push demo
+main 必须干净且基于最新 origin/main
+→ 生成中英文 API Reference
+→ 构建并验证 Release Binary SDK
+→ commit/push main 的 dist/win-x64
+→ demo 用户在 demo 分支本地运行 sync.ps1
 ```
 
-Managed 回归测试和 Native Smoke 保留为显式 `build.ps1 test` / `build.ps1 smoke` 目标，不再阻塞 Binary SDK 发布。
+`demo/dist` 已加入 `.gitignore`，Demo 是 SDK 消费者，不再作为第二份 Binary SDK 仓库。
 
 ## 使用示例
 
@@ -116,35 +100,28 @@ var cut = model.Cut(plate, hole);
 model.ExportStep(cut.Shape, "plate.step");
 ```
 
-`OcctModelingSession` 面向 Headless 建模/拓扑；`OcctEngine` 面向 AIS/Viewer 与交互式视口。
+2.7 源码中的真实 STEP 装配读取：
 
-## 项目结构
-
-```text
-bridge-contract.json            版本、平台与 API 契约
-src/OcctNative                  C++17 OCCT Bridge 与稳定 C ABI
-src/OcctNet                     核心 .NET Bridge
-src/OcctNet.WinForms            独立 WinForms 视口宿主
-src/OcctNet.Wpf                 独立 WPF HwndHost 视口宿主
-src/OcctNet.Avalonia            独立 Avalonia 12.1.0 Windows HWND 视口宿主
-tests                           静态契约、Managed 回归、Native Smoke
-tools/OcctApiDocsGenerator      全量中英文 Managed + Native API 文档生成器
-docs/zh-CN                      中文专题文档 + API Reference
-docs/en-US                      英文专题文档 + API Reference
-dist/win-x64                    可提交的已验证 Binary SDK
-build.ps1                       validate/build/test/pack/docs/dist 统一入口
-publish.ps1                     API 文档 + Binary SDK + main→demo 正式发布入口
+```csharp
+using var engine = new OcctEngine();
+OcctAssemblyDocument assembly = engine.ImportStepDocument("assembly.step");
+foreach (OcctAssemblyNode root in assembly.Roots)
+{
+    // 递归遍历 root.Children。
+}
 ```
 
-## 分支边界
+## 分支职责
 
-`main` 是唯一 Bridge 源码生产者；`demo` 是 Binary SDK 消费者，不再复制 `src/OcctNative`、`src/OcctNet*` 或 Bridge 测试。其它项目也应直接消费已验证 Binary SDK，而不是 clone 后重新编译整个 Bridge。
-
-## Author
-
-**zly258**  
-zhangly1403@gmail.com
+- `main`：Windows x64 Bridge 源码、WinForms/WPF Adapter、测试、文档和正式 `dist/win-x64` Binary SDK 生产者。
+- `demo`：Windows WinForms/WPF Demo，消费当前已发布 SDK 的本地被忽略副本 `dist/win-x64`。
+- `avalonia`：真正跨平台的 Avalonia Bridge 版本，同时面向 Windows 与 Linux，上层使用统一 Avalonia API，平台相关 Viewer Backend 在内部处理。
+- `website`：静态官网 / GitHub Pages 源码。
 
 ## 许可证
 
-OcctCSharpBridge 使用 [PolyForm Noncommercial License 1.0.0](LICENSE)。Open CASCADE Technology 及其它第三方依赖遵循各自许可证。
+OcctCSharpBridge 采用 **GNU LGPL 2.1 + OcctCSharpBridge Exception 1.0**。商业应用和闭源应用可以通过 .NET Assembly Reference、Dynamic Linking、P/Invoke 或等效 Runtime Linking 使用 Bridge，应用不会仅因为这种使用方式而被要求采用 GNU LGPL。
+
+**OcctCSharpBridge 本身**以及对外分发的 Bridge 修改/衍生版本仍需遵守 GNU LGPL 2.1。正式条款见 [LICENSE](LICENSE)、[LICENSE_LGPL_21.txt](LICENSE_LGPL_21.txt)、[OcctCSharpBridge_LGPL_EXCEPTION.txt](OcctCSharpBridge_LGPL_EXCEPTION.txt)、[COMMERCIAL.md](COMMERCIAL.md) 与 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+Open CASCADE Technology 及其它第三方依赖继续分别遵循其自身许可证；OCCT 仍适用其自身 GNU LGPL 2.1 + Open CASCADE Exception。

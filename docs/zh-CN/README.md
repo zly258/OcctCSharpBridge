@@ -1,107 +1,28 @@
-# OcctCSharpBridge 中文文档
+# OcctCSharpBridge 文档
 
-本目录是 `OcctCSharpBridge/main` 的中文技术文档集；对应英文文档位于 [`docs/en-US`](../en-US/README.md)。两套目录采用对应章节结构，并共同提供完整 Managed + Native API Reference。
+本目录描述 **`main` 分支**：基于 OCCT 7.9.0、.NET 10、C# 14 的 Windows x64 Bridge。
 
-## 1. 当前契约
+当前源码契约：
 
-| 项目 | 当前值 |
-| --- | --- |
-| Author | **zly258** |
-| Bridge Version | **2.6.0** |
-| Native ABI | **4** |
-| Native exports / P/Invoke | **344 / 344** |
-| Public .NET types | **105** |
-| Viewer / Modeling API | **210 / 134** |
-| Open CASCADE Technology | **7.9.0** |
-| .NET SDK | **10.0.302** |
-| Target Framework | **`net10.0-windows`** |
-| C# | **14.0** |
-| Native Bridge | **C++17** |
-| Avalonia | **12.1.0** |
-| Platform | **Windows x64** |
+- Bridge 2.7.0 / Native ABI 4
+- Native exports / P/Invoke：349 / 349
+- Public .NET types：113
+- Viewer / Modeling API：215 / 134
+- Target Framework：`net10.0-windows`
+- 公开程序集：`OcctNet`、`OcctNet.WinForms`、`OcctNet.Wpf`
 
-版本、平台和 API 数量的机器可读事实源是仓库根目录 `bridge-contract.json`。Author 在中英文文档和应用界面中统一写作 **zly258**。
+Avalonia 已从 `main` 独立出去。跨平台版本位于 [`avalonia` 分支](https://github.com/zly258/OcctCSharpBridge/tree/avalonia)，只包含 `OcctNet + OcctNet.Avalonia`，Target 为 `net10.0`，面向 Windows x64 + Linux x64。
 
-## 2. 建议阅读顺序
+## 文档目录
 
-| 编号 | 文档 | 主要内容 |
-| --- | --- | --- |
-| 01 | [快速开始](01_快速开始.md) | 环境、本地验证、构建、Headless 建模、Binary SDK |
-| 02 | [架构与边界](02_架构与边界.md) | Native/C# 分层、Owner-aware、生命周期、main/demo/应用边界 |
-| 03 | [API 覆盖与设计约定](03_API覆盖与设计约定.md) | API 范围、C ABI、Bulk、错误处理、所有权约定 |
-| 04 | [几何建模与拓扑分析](04_几何建模与拓扑分析.md) | Primitive、B-Spline、Boolean、Topology、History、Topology Reference |
-| 05 | [Viewer 选择与交互](05_Viewer选择与交互.md) | AIS/Viewer、对象、相机、选择、结构化 Hit、Host 交互 |
-| 06 | [网格与数据交换](06_网格与数据交换.md) | Mesh、STEP/IGES/BREP/STL、Engine/Modeling 互操作 |
-| 07 | [运行时部署与诊断](07_运行时部署与诊断.md) | DLL 部署、路径策略、Win32 126、结构化诊断 |
-| 08 | [构建测试与发布](08_构建测试与发布.md) | build/test/smoke/docs/dist/publish 完整门禁 |
-| API | [完整 Managed + Native API Reference](api/README.md) | 四个公开 .NET 程序集与 Native C ABI |
+1. [快速开始](01_快速开始.md)
+2. [架构与边界](02_架构与边界.md)
+3. [API 覆盖与设计约定](03_API覆盖与设计约定.md)
+4. [几何建模与拓扑分析](04_几何建模与拓扑分析.md)
+5. [Viewer 选择与交互](05_Viewer选择与交互.md)
+6. [网格与数据交换](06_网格与数据交换.md)
+7. [运行时部署与诊断](07_运行时部署与诊断.md)
+8. [构建、测试与发布](08_构建测试与发布.md)
+9. [Generated API Reference](api/README.md)
 
-## 3. 文档与代码结构
-
-```text
-OcctCSharpBridge
-├─ bridge-contract.json
-├─ src/OcctNative
-├─ src/OcctNet
-├─ src/OcctNet.WinForms
-├─ src/OcctNet.Wpf
-├─ src/OcctNet.Avalonia
-├─ tests
-├─ tools/OcctApiDocsGenerator
-├─ docs/
-│  ├─ zh-CN/
-│  │  └─ api/
-│  └─ en-US/
-│     └─ api/
-├─ dist/win-x64
-├─ build.ps1
-└─ publish.ps1
-```
-
-`main` 只提供可复用 OCCT Bridge 与 Binary SDK，不实现完整 CAD 应用框架。Document、Feature Tree、Command、Tool、Undo/Redo、Snap、Grip、项目 JSON 持久化和具体业务规则属于上层应用。
-
-## 4. API Reference
-
-生成完整中英文 API Reference：
-
-```powershell
-.\build.ps1 docs Release
-```
-
-生成器读取四个 Managed 程序集及 XML Documentation，同时读取 `src/OcctNative/OcctNative.h`，生成：
-
-```text
-docs/zh-CN/api/reference/**
-docs/zh-CN/api/native-abi.md
-docs/en-US/api/reference/**
-docs/en-US/api/native-abi.md
-```
-
-生成过程校验当前公开 .NET 类型和 Native C ABI 导出数量，防止接口文档与 `bridge-contract.json` 漂移。
-
-## 5. Binary SDK 与 demo
-
-Binary SDK：
-
-```powershell
-.\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-正式发布：
-
-```powershell
-.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-`demo` 不保存 Bridge 源码，也不维护反向同步脚本；Binary SDK 统一由 `main/publish.ps1` 发布。
-
-## 6. 文档维护原则
-
-1. **代码和 `bridge-contract.json` 是机器可读事实源。**
-2. **中文与英文目录章节对应。** 能力变化时同步更新语义。
-3. **API Reference 自动生成。** 精确成员签名和 Native ABI 不依赖手工抄写。
-4. **只记录已实现能力。**
-5. **公共 API 使用真实类型和方法名。**
-6. **Author 始终使用 `zly258`。**
-7. **不恢复旧兼容层。**
-8. **不使用 GitHub Actions 替代真实 Windows/MSVC/OCCT 本地验证。**
+`bridge-contract.json` 是源码契约事实源；`dist/win-x64/bridge-manifest.json` 描述 main 实际发布的 Windows SDK。

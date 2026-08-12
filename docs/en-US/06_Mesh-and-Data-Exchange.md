@@ -1,21 +1,11 @@
-# 06 Mesh and Data Exchange
+# Mesh and Data Exchange
 
-The Bridge keeps file exchange and mesh operations behind strongly typed managed APIs while OCCT performs the native work.
+The Core provides configurable triangulation plus STEP, IGES, BREP and STL-oriented exchange capabilities supported by the contracted OCCT 7.9 toolkits.
 
-## Mesh
+STEP assembly import uses XDE internally to preserve product hierarchy, occurrences, transforms, visibility, colors and subshape styles. Managed consumers receive `OcctAssemblyDocument` / `OcctAssemblyNode` snapshots rather than an exposed OCAF document model.
 
-Meshing APIs accept explicit quality/tolerance parameters and operate on owner-aware shapes. Mesh data crossing the ABI uses structured/bulk transfer rather than exposing OCCT triangulation objects directly.
+Valid multi-solid STEP parts remain one logical Part where the source product structure says they are one Part.
 
-## STEP and IGES
+Non-geometric STEP metadata can round-trip through the retained imported XDE representation while geometry remains unchanged.
 
-STEP and IGES import/export use OCCT data-exchange toolkits through the stable native ABI. Callers receive managed shapes and normal Bridge errors instead of OCCT reader/writer objects.
-
-## BREP and STL
-
-BREP supports direct topology persistence; STL supports triangulated exchange. Applications choose the format according to whether exact topology or tessellated geometry is required.
-
-## Runtime resources
-
-Data exchange may require OCCT resource directories in addition to DLLs. `OcctRuntime` can configure standard runtime locations from `OCCT_ROOT`/`CASROOT`; portable application publishers should also include the required OCCT resource folders.
-
-See the generated API Reference for exact import/export and mesh signatures.
+These Core exchange semantics are host-independent; the `avalonia` branch reuses the same Core concepts under its separate cross-platform source contract.

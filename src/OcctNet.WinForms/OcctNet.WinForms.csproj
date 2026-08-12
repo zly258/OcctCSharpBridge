@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
@@ -6,26 +6,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
-
-    <IsPackable>true</IsPackable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
-    <Title>OcctNet.WinForms</Title>
-    <Description>Reusable WinForms viewport host for OcctNet and Open CASCADE Technology 7.9.0.</Description>
-    <PackageTags>OCCT;OpenCASCADE;CAD;WinForms;viewport;3D</PackageTags>
-    <PackageProjectUrl>https://github.com/zly258/OcctCSharpBridge</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/zly258/OcctCSharpBridge</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
-    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <IncludeSymbols>true</IncludeSymbols>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\OcctNet\OcctNet.csproj" />
-    <None Include="..\..\README.md" Pack="true" PackagePath="/" Link="README.md" />
-    <None Include="..\..\LICENSE" Pack="true" PackagePath="/" Link="LICENSE" />
   </ItemGroup>
 </Project>

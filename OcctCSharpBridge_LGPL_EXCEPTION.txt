@@ -1,0 +1,22 @@
+OcctCSharpBridge Exception 1.0 to GNU LGPL version 2.1
+
+Copyright (C) 2026 zly258
+
+As a special exception to the GNU Lesser General Public License version 2.1,
+a work that uses OcctCSharpBridge through a .NET assembly reference, dynamic
+linking, P/Invoke, or an equivalent runtime-linking mechanism does not become
+subject to the GNU LGPL solely because of that use.
+
+You may distribute such a work under terms of your choice, including
+proprietary terms, provided that you comply with the GNU LGPL version 2.1 for
+OcctCSharpBridge itself and for any modifications or derivative works of
+OcctCSharpBridge that you distribute.
+
+This exception does not grant additional rights to source code copied from
+OcctCSharpBridge into another work, and it does not change the license of any
+third-party component. In particular, Open CASCADE Technology remains subject
+to its own GNU LGPL version 2.1 and Open CASCADE exception.
+
+If you modify this exception, you may extend the modified exception only to
+your own modifications; you may not represent a modified exception as the
+OcctCSharpBridge Exception 1.0.

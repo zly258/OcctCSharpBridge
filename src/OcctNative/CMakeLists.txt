@@ -19,7 +19,6 @@ string(JSON REQUIRED_OCCT_VERSION GET "${BRIDGE_CONTRACT_JSON}" occtVersion)
 if(NOT BRIDGE_VERSION OR NOT BRIDGE_ABI_VERSION OR NOT REQUIRED_OCCT_VERSION)
     message(FATAL_ERROR "bridge-contract.json is missing native build metadata.")
 endif()
-
 string(REPLACE "." ";" REQUIRED_OCCT_VERSION_PARTS "${REQUIRED_OCCT_VERSION}")
 list(LENGTH REQUIRED_OCCT_VERSION_PARTS REQUIRED_OCCT_VERSION_PART_COUNT)
 if(NOT REQUIRED_OCCT_VERSION_PART_COUNT EQUAL 3)
@@ -62,6 +61,7 @@ endif()
 add_library(OcctNative SHARED
     OcctEngine.cpp
     OcctEngineView.cpp
+    OcctRenderSurface.cpp
     OcctEngineSelection.cpp
     OcctEngineObjects.cpp
     OcctEngineShapes.cpp
@@ -82,8 +82,10 @@ add_library(OcctNative SHARED
     OcctAdvancedGeometry.cpp
     OcctFeatures.cpp
     OcctAnnotations.cpp
+    OcctPoints.cpp
     OcctVectorAnnotations.cpp
     OcctIO.cpp
+    OcctStepDocument.cpp
     OcctModelingCore.cpp
     OcctModelingShapeQueries.cpp
     OcctModelingGeometryQueries.cpp
@@ -117,6 +119,7 @@ add_library(OcctNative SHARED
     OcctModelingMeshInternal.hxx
     OcctModelingExchangeInternal.hxx
     OcctNative.h
+    OcctPoints.h
     OcctSelectionOverlay.h
     OcctSelectionState.h
     OcctModeling.h
