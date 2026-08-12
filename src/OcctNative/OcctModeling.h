@@ -178,7 +178,6 @@ extern "C"
         double minorRadius;
     };
 
-
     struct OcctModelParameterRange
     {
         double firstParameter;
@@ -262,8 +261,7 @@ extern "C"
     OCCTBRIDGE_API void occt_model_destroy(OcctModelHandle handle);
     OCCTBRIDGE_API const char* occt_model_last_error(OcctModelHandle handle);
     OCCTBRIDGE_API const char* occt_model_capabilities();
-    OCCTBRIDGE_API int occt_model_shape_count(OcctModelHandle handle);
-    OCCTBRIDGE_API OcctObjectId occt_model_shape_id_at(OcctModelHandle handle, int index);
+    OCCTBRIDGE_API int occt_model_shape_ids_copy(OcctModelHandle handle, OcctObjectId* results, int capacity);
     OCCTBRIDGE_API int occt_model_shape_exists(OcctModelHandle handle, OcctObjectId shapeId);
     OCCTBRIDGE_API int occt_model_delete_shape(OcctModelHandle handle, OcctObjectId shapeId);
     OCCTBRIDGE_API int occt_model_clear(OcctModelHandle handle);
@@ -285,13 +283,10 @@ extern "C"
     OCCTBRIDGE_API int occt_model_get_location(OcctModelHandle handle, OcctObjectId shapeId, OcctModelLocation* result);
     OCCTBRIDGE_API OcctObjectId occt_model_set_location(OcctModelHandle handle, OcctObjectId shapeId, const OcctModelLocation* location, int copyShape);
 
-    OCCTBRIDGE_API int occt_model_topology_count(OcctModelHandle handle, OcctObjectId shapeId, int shapeType);
-    OCCTBRIDGE_API OcctObjectId occt_model_get_subshape(OcctModelHandle handle, OcctObjectId shapeId, int shapeType, int index);
+    OCCTBRIDGE_API int occt_model_subshapes_copy(OcctModelHandle handle, OcctObjectId shapeId, int shapeType, OcctObjectId* results, int capacity);
     OCCTBRIDGE_API OcctObjectId occt_model_outer_wire(OcctModelHandle handle, OcctObjectId faceId);
-    OCCTBRIDGE_API int occt_model_inner_wire_count(OcctModelHandle handle, OcctObjectId faceId);
-    OCCTBRIDGE_API OcctObjectId occt_model_inner_wire_at(OcctModelHandle handle, OcctObjectId faceId, int index);
-    OCCTBRIDGE_API int occt_model_ancestor_count(OcctModelHandle handle, OcctObjectId rootId, OcctObjectId childId, int ancestorType);
-    OCCTBRIDGE_API OcctObjectId occt_model_ancestor_at(OcctModelHandle handle, OcctObjectId rootId, OcctObjectId childId, int ancestorType, int index);
+    OCCTBRIDGE_API int occt_model_inner_wires_copy(OcctModelHandle handle, OcctObjectId faceId, OcctObjectId* results, int capacity);
+    OCCTBRIDGE_API int occt_model_ancestors_copy(OcctModelHandle handle, OcctObjectId rootId, OcctObjectId childId, int ancestorType, OcctObjectId* results, int capacity);
 
     OCCTBRIDGE_API int occt_model_vertex_point(OcctModelHandle handle, OcctObjectId vertexId, OcctPoint3d* result);
     OCCTBRIDGE_API int occt_model_edge_endpoints(OcctModelHandle handle, OcctObjectId edgeId, OcctPoint3d* start, OcctPoint3d* end);
@@ -360,15 +355,13 @@ extern "C"
     OCCTBRIDGE_API int occt_model_project_point_on_edge(OcctModelHandle handle, OcctObjectId edgeId, OcctPoint3d point, OcctModelProjectionResult* result);
     OCCTBRIDGE_API int occt_model_project_point_on_face(OcctModelHandle handle, OcctObjectId faceId, OcctPoint3d point, OcctModelProjectionResult* result);
     OCCTBRIDGE_API int occt_model_ray_intersections(OcctModelHandle handle, OcctObjectId shapeId, OcctPoint3d origin, OcctVector3d direction, double minimumParameter, double maximumParameter, double tolerance);
-    OCCTBRIDGE_API int occt_model_ray_hit_count(OcctModelHandle handle);
-    OCCTBRIDGE_API int occt_model_ray_hit_at(OcctModelHandle handle, int index, OcctModelRayHit* result);
+    OCCTBRIDGE_API int occt_model_ray_hits_copy(OcctModelHandle handle, OcctModelRayHit* results, int capacity);
     OCCTBRIDGE_API int occt_model_classify_point(OcctModelHandle handle, OcctObjectId solidId, OcctPoint3d point, double tolerance);
 
     OCCTBRIDGE_API int occt_model_mesh(OcctModelHandle handle, OcctObjectId shapeId, const OcctModelMeshParameters* parameters);
     OCCTBRIDGE_API int occt_model_clear_mesh(OcctModelHandle handle, OcctObjectId shapeId);
-    OCCTBRIDGE_API int occt_model_face_mesh_counts(OcctModelHandle handle, OcctObjectId faceId, int* nodeCount, int* triangleCount);
-    OCCTBRIDGE_API int occt_model_face_mesh_node(OcctModelHandle handle, OcctObjectId faceId, int index, OcctModelMeshNode* result);
-    OCCTBRIDGE_API int occt_model_face_mesh_triangle(OcctModelHandle handle, OcctObjectId faceId, int index, OcctModelMeshTriangle* result);
+    OCCTBRIDGE_API int occt_model_face_mesh_nodes_copy(OcctModelHandle handle, OcctObjectId faceId, OcctModelMeshNode* results, int capacity);
+    OCCTBRIDGE_API int occt_model_face_mesh_triangles_copy(OcctModelHandle handle, OcctObjectId faceId, OcctModelMeshTriangle* results, int capacity);
 
     OCCTBRIDGE_API OcctObjectId occt_model_import_file(OcctModelHandle handle, const char* utf8Path);
     OCCTBRIDGE_API OcctObjectId occt_model_import_step(OcctModelHandle handle, const char* utf8Path);
@@ -380,10 +373,8 @@ extern "C"
     OCCTBRIDGE_API int occt_model_export_brep(OcctModelHandle handle, OcctObjectId shapeId, const char* utf8Path);
     OCCTBRIDGE_API int occt_model_export_stl(OcctModelHandle handle, OcctObjectId shapeId, const char* utf8Path, double linearDeflection, double angularDeflection, int asciiMode);
 
-    OCCTBRIDGE_API int occt_model_history_generated_count(OcctModelHandle handle, OcctOperationId operationId, OcctObjectId sourceShapeId);
-    OCCTBRIDGE_API OcctObjectId occt_model_history_generated_at(OcctModelHandle handle, OcctOperationId operationId, OcctObjectId sourceShapeId, int index);
-    OCCTBRIDGE_API int occt_model_history_modified_count(OcctModelHandle handle, OcctOperationId operationId, OcctObjectId sourceShapeId);
-    OCCTBRIDGE_API OcctObjectId occt_model_history_modified_at(OcctModelHandle handle, OcctOperationId operationId, OcctObjectId sourceShapeId, int index);
+    OCCTBRIDGE_API int occt_model_history_generated_copy(OcctModelHandle handle, OcctOperationId operationId, OcctObjectId sourceShapeId, OcctObjectId* results, int capacity);
+    OCCTBRIDGE_API int occt_model_history_modified_copy(OcctModelHandle handle, OcctOperationId operationId, OcctObjectId sourceShapeId, OcctObjectId* results, int capacity);
     OCCTBRIDGE_API int occt_model_history_is_removed(OcctModelHandle handle, OcctOperationId operationId, OcctObjectId sourceShapeId);
 
     OCCTBRIDGE_API OcctObjectId occt_model_display_in_engine(OcctHandle engineHandle, OcctModelHandle modelHandle, OcctObjectId shapeId, int fit);

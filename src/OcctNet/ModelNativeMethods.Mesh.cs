@@ -11,11 +11,8 @@ internal static partial class ModelNativeMethods
     internal static extern int occt_model_clear_mesh(IntPtr handle, long shapeId);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_model_face_mesh_counts(IntPtr handle, long faceId, out int nodeCount, out int triangleCount);
+    internal static extern int occt_model_face_mesh_nodes_copy(IntPtr handle, long faceId, [Out] NativeModelMeshNode[]? results, int capacity);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_model_face_mesh_node(IntPtr handle, long faceId, int index, out NativeModelMeshNode result);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_model_face_mesh_triangle(IntPtr handle, long faceId, int index, out OcctModelMeshTriangle result);
+    internal static extern int occt_model_face_mesh_triangles_copy(IntPtr handle, long faceId, [Out] OcctModelMeshTriangle[]? results, int capacity);
 }

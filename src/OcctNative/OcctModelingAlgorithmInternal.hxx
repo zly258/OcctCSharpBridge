@@ -97,41 +97,33 @@ namespace OcctModelingInternal
         return {shapeId, operationId, 1, 0, 0};
     }
 
-    inline OcctObjectId historyShapeAt(
+    inline int historyCopy(
         ModelSession* model,
         OcctOperationId operationId,
         OcctObjectId sourceId,
-        int index,
-        bool generated)
+        bool generated,
+        OcctObjectId* results,
+        int capacity)
     {
-        if (index < 0) throw std::out_of_range("History index must not be negative.");
+        if (capacity < 0) throw std::invalid_argument("History buffer capacity must not be negative.");
         const OperationRecord& operation = requireOperation(model, operationId);
-        if (operation.history.IsNull())
-            throw std::runtime_error("The operation has no topology history.");
+        if (operation.history.IsNull()) return 0;
 
         const TopoDS_Shape& source = model->requireShape(sourceId);
         const auto& list = generated
             ? operation.history->Generated(source)
             : operation.history->Modified(source);
-        int current = 0;
-        for (TopTools_ListIteratorOfListOfShape iterator(list); iterator.More(); iterator.Next(), ++current)
+        const int count = list.Size();
+        if (results == nullptr)
         {
-            if (current == index) return model->addShape(iterator.Value());
+            if (capacity != 0) throw std::invalid_argument("Null history buffer requires zero capacity.");
+            return count;
         }
-        throw std::out_of_range("History index is out of range.");
-    }
+        if (capacity < count) throw std::invalid_argument("History buffer capacity is smaller than the result count.");
 
-    inline int historyCount(
-        ModelSession* model,
-        OcctOperationId operationId,
-        OcctObjectId sourceId,
-        bool generated)
-    {
-        const OperationRecord& operation = requireOperation(model, operationId);
-        if (operation.history.IsNull()) return 0;
-        const TopoDS_Shape& source = model->requireShape(sourceId);
-        return generated
-            ? operation.history->Generated(source).Size()
-            : operation.history->Modified(source).Size();
+        int index = 0;
+        for (TopTools_ListIteratorOfListOfShape iterator(list); iterator.More(); iterator.Next(), ++index)
+            results[index] = model->addShape(iterator.Value());
+        return count;
     }
 }

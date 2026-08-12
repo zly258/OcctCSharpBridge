@@ -84,6 +84,7 @@ public sealed partial class OcctEngine : IDisposable
     {
         ArgumentNullException.ThrowIfNull(value);
         EnsureNotDisposed();
+
         if (GetOwnerId(value) != _ownerId)
             throw new ArgumentException("Object does not belong to this OcctEngine.", nameof(value));
         if (value.Id <= 0 || NativeMethods.occt_object_exists(_handle, value.Id) == 0)

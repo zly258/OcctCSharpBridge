@@ -1,4 +1,5 @@
-﻿using System.Drawing;
+﻿using System.ComponentModel;
+using System.Drawing;
 
 namespace OcctNet;
 
@@ -44,6 +45,36 @@ public sealed partial class OcctEngine
         };
 
         CheckInitialized(() => AppearanceNativeMethods.occt_set_scene_lighting_ex(_handle, in native));
+    }
+
+    /// <summary>
+    /// Bridge 2.5 source-compatibility entry point. New code should construct
+    /// <see cref="OcctSceneLightingSettings"/> explicitly.
+    /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public void SetSceneLighting(
+        double ambientIntensity,
+        double directionalIntensity,
+        OcctVector3d direction,
+        bool headlight)
+    {
+        var directional = new OcctDirectionalLightSettings(
+            directionalIntensity > 0,
+            Color.White,
+            directionalIntensity,
+            direction);
+        var disabled = new OcctDirectionalLightSettings(
+            false,
+            Color.White,
+            0,
+            new OcctVector3d(0, 0, -1));
+
+        SetSceneLighting(new OcctSceneLightingSettings(
+            Color.White,
+            ambientIntensity,
+            headlight ? directional : disabled,
+            headlight ? disabled : directional,
+            disabled));
     }
 
     public void ApplyLightingPreset(OcctLightingPreset preset) =>

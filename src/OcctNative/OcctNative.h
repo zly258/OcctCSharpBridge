@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <cstdint>
 
@@ -59,6 +59,7 @@ extern "C"
         OcctVector3d fillLightDirection;
     };
     struct OcctUvBounds { double uMin; double uMax; double vMin; double vMax; };
+    struct OcctObjectDescriptor { OcctObjectId objectId; int kind; };
 
     enum OcctObjectKind { OcctObject_Unknown = 0, OcctObject_Shape = 1, OcctObject_Text = 2, OcctObject_Dimension = 3 };
     enum OcctShapeType { OcctShape_Compound = 0, OcctShape_CompSolid = 1, OcctShape_Solid = 2, OcctShape_Shell = 3, OcctShape_Face = 4, OcctShape_Wire = 5, OcctShape_Edge = 6, OcctShape_Vertex = 7, OcctShape_Shape = 8 };
@@ -162,8 +163,6 @@ extern "C"
     OCCTBRIDGE_API int occt_select_rectangle_ex(OcctHandle handle, int x1, int y1, int x2, int y2, int appendSelection, int allowOverlap);
     OCCTBRIDGE_API int occt_select_object(OcctHandle handle, OcctObjectId objectId, int appendSelection);
     OCCTBRIDGE_API int occt_set_selection_mode(OcctHandle handle, int selectionMode);
-    OCCTBRIDGE_API int occt_selected_count(OcctHandle handle);
-    OCCTBRIDGE_API OcctObjectId occt_selected_at(OcctHandle handle, int index);
     OCCTBRIDGE_API int occt_clear_selection(OcctHandle handle);
     OCCTBRIDGE_API int occt_start_rotation(OcctHandle handle, int x, int y);
     OCCTBRIDGE_API int occt_rotation(OcctHandle handle, int x, int y);
@@ -216,8 +215,7 @@ extern "C"
 
     // Registry, AIS attributes and lifecycle.
     OCCTBRIDGE_API int occt_object_count(OcctHandle handle);
-    OCCTBRIDGE_API OcctObjectId occt_object_id_at(OcctHandle handle, int index);
-    OCCTBRIDGE_API OcctObjectId occt_shape_id_at(OcctHandle handle, int index);
+    OCCTBRIDGE_API int occt_object_descriptors(OcctHandle handle, OcctObjectDescriptor* items, int capacity, int* objectCount, int* shapeCount);
     OCCTBRIDGE_API int occt_object_exists(OcctHandle handle, OcctObjectId objectId);
     OCCTBRIDGE_API int occt_object_kind(OcctHandle handle, OcctObjectId objectId);
     OCCTBRIDGE_API int occt_set_object_name(OcctHandle handle, OcctObjectId objectId, const char* utf8Name);
@@ -357,7 +355,4 @@ extern "C"
     OCCTBRIDGE_API int occt_export_all_iges(OcctHandle handle, const char* utf8Path);
     OCCTBRIDGE_API int occt_export_brep(OcctHandle handle, OcctObjectId shapeId, const char* utf8Path);
     OCCTBRIDGE_API int occt_export_stl(OcctHandle handle, OcctObjectId shapeId, const char* utf8Path, double linearDeflection, double angularDeflection, int asciiMode);
-
-    // Compatibility aliases retained for v1-v4 callers.
-    OCCTBRIDGE_API int occt_shape_count(OcctHandle handle);
 }

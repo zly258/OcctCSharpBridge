@@ -24,32 +24,42 @@ public sealed partial class OcctModelingSession
     public OcctMesh GetFaceMesh(OcctModelShape face)
     {
         EnsureShape(face);
-        Check(ModelNativeMethods.occt_model_face_mesh_counts(
-            _handle,
-            face.Id,
-            out var nodeCount,
-            out var triangleCount));
+
+        var nodeCount = ModelNativeMethods.occt_model_face_mesh_nodes_copy(_handle, face.Id, null, 0);
+        if (nodeCount < 0) throw CreateException();
+        var triangleCount = ModelNativeMethods.occt_model_face_mesh_triangles_copy(_handle, face.Id, null, 0);
+        if (triangleCount < 0) throw CreateException();
+
+        var nativeNodes = new NativeModelMeshNode[nodeCount];
+        var triangles = new OcctModelMeshTriangle[triangleCount];
+
+        if (nodeCount > 0)
+        {
+            var copiedNodes = ModelNativeMethods.occt_model_face_mesh_nodes_copy(
+                _handle,
+                face.Id,
+                nativeNodes,
+                nativeNodes.Length);
+            if (copiedNodes < 0) throw CreateException();
+            if (copiedNodes != nodeCount)
+                throw new InvalidOperationException("Native mesh-node count changed during bulk copy.");
+        }
+
+        if (triangleCount > 0)
+        {
+            var copiedTriangles = ModelNativeMethods.occt_model_face_mesh_triangles_copy(
+                _handle,
+                face.Id,
+                triangles,
+                triangles.Length);
+            if (copiedTriangles < 0) throw CreateException();
+            if (copiedTriangles != triangleCount)
+                throw new InvalidOperationException("Native mesh-triangle count changed during bulk copy.");
+        }
 
         var nodes = new OcctModelMeshNode[nodeCount];
-        var triangles = new OcctModelMeshTriangle[triangleCount];
         for (var index = 0; index < nodeCount; index++)
-        {
-            Check(ModelNativeMethods.occt_model_face_mesh_node(
-                _handle,
-                face.Id,
-                index,
-                out var native));
-            nodes[index] = native.ToManaged();
-        }
-
-        for (var index = 0; index < triangleCount; index++)
-        {
-            Check(ModelNativeMethods.occt_model_face_mesh_triangle(
-                _handle,
-                face.Id,
-                index,
-                out triangles[index]));
-        }
+            nodes[index] = nativeNodes[index].ToManaged();
 
         return new OcctMesh(nodes, triangles);
     }

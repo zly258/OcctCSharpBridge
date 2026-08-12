@@ -1,4 +1,4 @@
-﻿#include "OcctInternal.hxx"
+#include "OcctInternal.hxx"
 
 #include <Aspect_PolygonOffsetMode.hxx>
 #include <Aspect_TypeOfTriedronPosition.hxx>
@@ -72,6 +72,11 @@ namespace OcctBridge
         redrawPending = false;
     }
 
+    void Engine::invalidatePristineStepDocument()
+    {
+        pristineStepDocumentMatchesScene = false;
+    }
+
     ObjectEntry* Engine::findObject(OcctObjectId id)
     {
         const auto iterator = objects.find(id);
@@ -134,19 +139,31 @@ namespace OcctBridge
         context->Activate(presentation, mode, Standard_False);
     }
 
-    OcctObjectId Engine::addShape(const TopoDS_Shape& shape, bool /*fit*/, const std::string& name)
+    OcctObjectId Engine::addShapePresentation(
+        const TopoDS_Shape& shape,
+        const Handle(AIS_InteractiveObject)& presentation,
+        bool /*fit*/,
+        const std::string& name)
     {
         if (shape.IsNull()) throw std::runtime_error("OCCT returned a null shape.");
+        if (presentation.IsNull()) throw std::runtime_error("OCCT returned a null shape presentation.");
         if (!isInitialized()) throw std::runtime_error("The OCCT viewer has not been initialized.");
 
         const OcctObjectId id = nextId++;
-        Handle(AIS_Shape) ais = new AIS_Shape(shape);
-        ais->SetDisplayMode(displayMode);
-        context->Display(ais, Standard_False);
-        applySelectionMode(ais);
-        objects.emplace(id, ObjectEntry{OcctObject_Shape, shape, ais, name});
+        const Handle(AIS_Shape) aisShape = Handle(AIS_Shape)::DownCast(presentation);
+        if (!aisShape.IsNull()) aisShape->SetDisplayMode(displayMode);
+        context->Display(presentation, Standard_False);
+        objects.emplace(id, ObjectEntry{OcctObject_Shape, shape, presentation, name});
+        applySelectionMode(presentation);
         requestRedraw();
         return id;
+    }
+
+    OcctObjectId Engine::addShape(const TopoDS_Shape& shape, bool fit, const std::string& name)
+    {
+        invalidatePristineStepDocument();
+        Handle(AIS_Shape) ais = new AIS_Shape(shape);
+        return addShapePresentation(shape, ais, fit, name);
     }
 
     OcctObjectId Engine::addPresentation(const Handle(AIS_InteractiveObject)& presentation, int kind, const std::string& name)
@@ -154,8 +171,8 @@ namespace OcctBridge
         if (presentation.IsNull()) throw std::runtime_error("OCCT returned a null presentation.");
         const OcctObjectId id = nextId++;
         context->Display(presentation, Standard_False);
-        applySelectionMode(presentation);
         objects.emplace(id, ObjectEntry{kind, TopoDS_Shape(), presentation, name});
+        applySelectionMode(presentation);
         requestRedraw();
         return id;
     }
@@ -171,6 +188,7 @@ namespace OcctBridge
     {
         auto iterator = objects.find(id);
         if (iterator == objects.end()) return;
+        if (iterator->second.kind == OcctObject_Shape) invalidatePristineStepDocument();
         if (!iterator->second.presentation.IsNull())
             context->Remove(iterator->second.presentation, Standard_False);
         if (!iterator->second.applicationTag.empty())
@@ -264,7 +282,21 @@ namespace OcctBridge
         }
     }
 
-    int shapeTypeValue(const TopoDS_Shape& shape) { return static_cast<int>(shape.ShapeType()); }
+    int shapeTypeValue(const TopoDS_Shape& shape)
+    {
+        switch (shape.ShapeType())
+        {
+            case TopAbs_COMPOUND: return OcctShape_Compound;
+            case TopAbs_COMPSOLID: return OcctShape_CompSolid;
+            case TopAbs_SOLID: return OcctShape_Solid;
+            case TopAbs_SHELL: return OcctShape_Shell;
+            case TopAbs_FACE: return OcctShape_Face;
+            case TopAbs_WIRE: return OcctShape_Wire;
+            case TopAbs_EDGE: return OcctShape_Edge;
+            case TopAbs_VERTEX: return OcctShape_Vertex;
+            default: return OcctShape_Shape;
+        }
+    }
 
     void requirePositive(double value, const char* name)
     {
@@ -323,13 +355,13 @@ extern "C"
     }
 
     const char* occt_version() { return OCC_VERSION_COMPLETE; }
-    int occt_bridge_abi_version() { return 3; }
+    int occt_bridge_abi_version() { return 4; }
     const char* occt_bridge_version() { return "2.6.0"; }
 
     const char* occt_bridge_build_info()
     {
         static const std::string info =
-            std::string("OcctCSharpBridge/2.6.0; ABI=3; OCCT=") + OCC_VERSION_COMPLETE +
+            std::string("OcctCSharpBridge/2.6.0; ABI=4; OCCT=") + OCC_VERSION_COMPLETE +
 #if defined(_M_X64)
             "; Arch=x64" +
 #else

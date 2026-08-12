@@ -1,10 +1,16 @@
-﻿namespace OcctNet;
+namespace OcctNet;
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct OcctObjectDescriptorNative
+{
+    internal long ObjectId;
+    internal int Kind;
+}
 
 internal static partial class NativeMethods
 {
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_object_count(IntPtr handle);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern long occt_object_id_at(IntPtr handle, int index);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern long occt_shape_id_at(IntPtr handle, int index);
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_object_descriptors(IntPtr handle, [Out] OcctObjectDescriptorNative[]? items, int capacity, out int objectCount, out int shapeCount);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_object_exists(IntPtr handle, long objectId);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_object_kind(IntPtr handle, long objectId);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_object_name(IntPtr handle, long objectId, [MarshalAs(UnmanagedType.LPUTF8Str)] string name);
@@ -33,7 +39,6 @@ internal static partial class NativeMethods
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern long occt_scale(IntPtr handle, long shapeId, OcctPoint3d center, double factor, int hideInput);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern long occt_mirror_plane(IntPtr handle, long shapeId, OcctPoint3d planePoint, OcctVector3d planeNormal, int hideInput);
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_shape_count(IntPtr handle);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern long occt_shape_hash(IntPtr handle, long shapeId);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_vertex_point(IntPtr handle, long vertexId, out OcctPoint3d result);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_edge_endpoints(IntPtr handle, long edgeId, out OcctPoint3d start, out OcctPoint3d end);

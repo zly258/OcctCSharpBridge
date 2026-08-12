@@ -1,22 +1,35 @@
-﻿{
+{
   "schemaVersion": 1,
   "bridgeVersion": "2.6.0",
-  "nativeAbiVersion": 3,
+  "nativeAbiVersion": 4,
   "occtVersion": "7.9.0",
   "platform": "windows-x64",
   "cmakeMinimumVersion": "3.21",
+  "author": "zly258",
   "contactEmail": "zhangly1403@gmail.com",
   "dotnet": {
-    "targetFramework": "net8.0-windows",
-    "sdkVersion": "8.0.423",
-    "demoSdkVersion": "10.0.302",
-    "languageVersion": "12.0"
+    "targetFramework": "net10.0-windows",
+    "sdkVersion": "10.0.302",
+    "languageVersion": "14.0"
   },
   "api": {
-    "nativeExports": 348,
-    "managedPInvokes": 348,
-    "publicNetTypes": 95,
-    "viewer": 214,
-    "modeling": 134
+    "nativeExports": 344,
+    "managedPInvokes": 344,
+    "publicNetTypes": 108,
+    "viewer": 210,
+    "modeling": 134,
+    "nativeHeaders": [
+      "OcctNative.h",
+      "OcctSelectionOverlay.h",
+      "OcctSelectionState.h",
+      "OcctModeling.h",
+      "OcctModelingExtensions.h",
+      "OcctModelingBSpline.h",
+      "OcctModelingTopologyAnalysis.h",
+      "OcctModelingFaceAnalysis.h",
+      "OcctModelingInertia.h",
+      "OcctModelingIntersection.h",
+      "OcctModelingTopologyReference.h"
+    ]
   }
 }

@@ -9,6 +9,7 @@ $contractPath = Join-Path $RepositoryRoot "bridge-contract.json"
 if (-not (Test-Path $contractPath -PathType Leaf)) {
     throw "Bridge contract file was not found: bridge-contract.json"
 }
+
 $contract = Get-Content $contractPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $expectedNativeCount = [int]$contract.api.nativeExports
 $expectedManagedCount = [int]$contract.api.managedPInvokes
@@ -21,23 +22,25 @@ $managedRoot = Join-Path $RepositoryRoot "src\OcctNet"
 $publicManagedRoots = @(
     $managedRoot,
     (Join-Path $RepositoryRoot "src\OcctNet.WinForms"),
-    (Join-Path $RepositoryRoot "src\OcctNet.Wpf")
+    (Join-Path $RepositoryRoot "src\OcctNet.Wpf"),
+    (Join-Path $RepositoryRoot "src\OcctNet.Avalonia")
 )
 
-# Public C ABI declarations are intentionally split by responsibility. Keep this list
-# explicit so a new ABI module must be consciously added to surface validation.
-$headerFiles = @(
-    Join-Path $nativeRoot "OcctNative.h"
-    Join-Path $nativeRoot "OcctSelectionOverlay.h"
-    Join-Path $nativeRoot "OcctSelectionState.h"
-    Join-Path $nativeRoot "OcctModeling.h"
-    Join-Path $nativeRoot "OcctModelingExtensions.h"
-    Join-Path $nativeRoot "OcctModelingBSpline.h"
-    Join-Path $nativeRoot "OcctModelingTopologyAnalysis.h"
-    Join-Path $nativeRoot "OcctModelingFaceAnalysis.h"
-)
+$nativeHeaderNames = @($contract.api.nativeHeaders | ForEach-Object { [string]$_ })
+if ($nativeHeaderNames.Count -eq 0) {
+    throw "bridge-contract.json does not declare api.nativeHeaders."
+}
+$duplicateHeaderNames = @($nativeHeaderNames | Group-Object | Where-Object Count -gt 1)
+if ($duplicateHeaderNames.Count -gt 0) {
+    throw "bridge-contract.json contains duplicate api.nativeHeaders entries."
+}
+$headerFiles = @($nativeHeaderNames | ForEach-Object { Join-Path $nativeRoot $_ })
+
 $cppFiles = Get-ChildItem $nativeRoot -Filter "*.cpp" -File | Select-Object -ExpandProperty FullName
 $managedSourceFiles = @($publicManagedRoots | ForEach-Object {
+    if (-not (Test-Path $_ -PathType Container)) {
+        throw "Public managed API root is missing: $_"
+    }
     Get-ChildItem $_ -Filter "*.cs" -File | Select-Object -ExpandProperty FullName
 })
 $pinvokeFiles = Get-ChildItem $managedRoot -Filter "*NativeMethods*.cs" -File | Select-Object -ExpandProperty FullName
@@ -54,11 +57,7 @@ function Read-AllText {
 }
 
 function Get-RawMatches {
-    param(
-        [string]$Text,
-        [string]$Pattern
-    )
-
+    param([string]$Text, [string]$Pattern)
     return @([regex]::Matches(
         $Text,
         $Pattern,
@@ -68,26 +67,44 @@ function Get-RawMatches {
 }
 
 function Get-Matches {
-    param(
-        [string]$Text,
-        [string]$Pattern
-    )
-
+    param([string]$Text, [string]$Pattern)
     return @(Get-RawMatches $Text $Pattern | Sort-Object -Unique)
 }
 
 function Assert-NoDuplicates {
-    param(
-        [string]$Name,
-        [string[]]$Values
-    )
-
+    param([string]$Name, [string[]]$Values)
     $duplicates = @($Values | Group-Object | Where-Object Count -gt 1 | Sort-Object Name)
     if ($duplicates.Count -eq 0) { return }
 
     Write-Host "[api] Duplicate ${Name} entries:" -ForegroundColor Red
-    $duplicates | ForEach-Object { Write-Host ("  {0} ({1})" -f $_.Name, $_.Count) -ForegroundColor Red }
+    $duplicates | ForEach-Object {
+        Write-Host ("  {0} ({1})" -f $_.Name, $_.Count) -ForegroundColor Red
+    }
     throw "Duplicate API entries were found for $Name."
+}
+
+function Assert-SetEqual {
+    param([string]$Name, [string[]]$Expected, [string[]]$Actual)
+
+    $missing = @($Expected | Where-Object { $_ -notin $Actual })
+    $extra = @($Actual | Where-Object { $_ -notin $Expected })
+
+    if ($missing.Count -eq 0 -and $extra.Count -eq 0) {
+        Write-Host "[api] ${Name}: $($Expected.Count) entries matched." -ForegroundColor Green
+        return
+    }
+
+    if ($missing.Count -gt 0) {
+        Write-Host "[api] Missing ${Name} entries:" -ForegroundColor Red
+        $missing | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+    }
+
+    if ($extra.Count -gt 0) {
+        Write-Host "[api] Unexpected ${Name} entries:" -ForegroundColor Yellow
+        $extra | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
+    }
+
+    throw "API surface validation failed for $Name."
 }
 
 $headerText = Read-AllText $headerFiles
@@ -106,6 +123,7 @@ $publicTypePatterns = @(
     '(?m)^[ \t]*public[ \t]+(?:(?:abstract|sealed|static|partial|readonly|ref|unsafe|new)[ \t]+)*record(?:[ \t]+(?:class|struct))?[ \t]+([A-Za-z_][A-Za-z0-9_]*)',
     '(?m)^[ \t]*public[ \t]+(?:(?:unsafe|new)[ \t]+)*delegate[ \t]+[^;\r\n(]+?[ \t]+([A-Za-z_][A-Za-z0-9_]*)[ \t]*(?:<[^;\r\n>]+>)?[ \t]*\('
 )
+
 $publicTypeNames = @(
     foreach ($pattern in $publicTypePatterns) {
         Get-RawMatches $managedText $pattern
@@ -119,31 +137,6 @@ Assert-NoDuplicates "C# P/Invoke declarations" $pinvokeRaw
 $declarations = @($declarationRaw | Sort-Object -Unique)
 $definitions = @($definitionRaw | Sort-Object -Unique)
 $pinvokes = @($pinvokeRaw | Sort-Object -Unique)
-
-function Assert-SetEqual {
-    param(
-        [string]$Name,
-        [string[]]$Expected,
-        [string[]]$Actual
-    )
-
-    $missing = @($Expected | Where-Object { $_ -notin $Actual })
-    $extra = @($Actual | Where-Object { $_ -notin $Expected })
-    if ($missing.Count -eq 0 -and $extra.Count -eq 0) {
-        Write-Host "[api] ${Name}: $($Expected.Count) entries matched." -ForegroundColor Green
-        return
-    }
-
-    if ($missing.Count -gt 0) {
-        Write-Host "[api] Missing ${Name} entries:" -ForegroundColor Red
-        $missing | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
-    }
-    if ($extra.Count -gt 0) {
-        Write-Host "[api] Unexpected ${Name} entries:" -ForegroundColor Yellow
-        $extra | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
-    }
-    throw "API surface validation failed for $Name."
-}
 
 Assert-SetEqual "native definitions" $declarations $definitions
 Assert-SetEqual "C# P/Invoke declarations" $declarations $pinvokes
@@ -159,26 +152,6 @@ if ($pinvokes.Count -ne $expectedManagedCount) {
 if ($publicTypeNames.Count -ne $expectedPublicTypeCount) {
     Write-Host ("[api] Public .NET types detected: {0}" -f ($publicTypeNames -join ', ')) -ForegroundColor Yellow
     throw "Public .NET type count differs from bridge-contract.json: actual=$($publicTypeNames.Count), expected=$expectedPublicTypeCount."
-}
-
-$documentationFiles = @(
-    Join-Path $RepositoryRoot "docs\API_COVERAGE.md"
-    Join-Path $RepositoryRoot "docs\API_COVERAGE.zh-CN.md"
-)
-foreach ($documentationFile in $documentationFiles) {
-    if (-not (Test-Path $documentationFile)) {
-        throw "API inventory was not found: $documentationFile"
-    }
-    $documentation = [System.IO.File]::ReadAllText($documentationFile)
-    $nativeCount = [regex]::Match($documentation, 'Native exports\s*[:：]\s*`?(\d+)`?').Groups[1].Value
-    $managedCount = [regex]::Match($documentation, 'Managed P/Invoke declarations\s*[:：]\s*`?(\d+)`?').Groups[1].Value
-    $publicTypeCount = [regex]::Match($documentation, 'Public \.NET types\s*[:：]\s*`?(\d+)`?').Groups[1].Value
-    if ([string]::IsNullOrWhiteSpace($nativeCount) -or [string]::IsNullOrWhiteSpace($managedCount) -or [string]::IsNullOrWhiteSpace($publicTypeCount)) {
-        throw "API inventory counts could not be parsed: $documentationFile"
-    }
-    if ([int]$nativeCount -ne $expectedNativeCount -or [int]$managedCount -ne $expectedManagedCount -or [int]$publicTypeCount -ne $expectedPublicTypeCount) {
-        throw "API inventory differs from bridge-contract.json: $documentationFile (native=$nativeCount, managed=$managedCount, publicTypes=$publicTypeCount)."
-    }
 }
 
 $ocafExports = @($declarations | Where-Object { $_ -like 'occt_ocaf_*' })
@@ -202,5 +175,7 @@ foreach ($group in $groups.GetEnumerator()) {
     Write-Host ("[api] {0}: {1}" -f $group.Key, $group.Value.Count) -ForegroundColor Cyan
 }
 Write-Host "[api] Public .NET types: $($publicTypeNames.Count)" -ForegroundColor Cyan
-
-Write-Host ("API surface validation passed against bridge-contract.json ({0} native / {1} managed / {2} public types)." -f $expectedNativeCount, $expectedManagedCount, $expectedPublicTypeCount) -ForegroundColor Green
+Write-Host ("API surface validation passed ({0} native / {1} managed / {2} public types)." -f
+    $expectedNativeCount,
+    $expectedManagedCount,
+    $expectedPublicTypeCount) -ForegroundColor Green

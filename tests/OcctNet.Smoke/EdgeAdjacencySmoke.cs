@@ -28,8 +28,8 @@ internal static class EdgeAdjacencySmoke
         if (faceAdjacency.Entries.Any(entry => entry.AdjacentFaceCount != 1))
             throw new InvalidOperationException("Rectangle face edge did not have exactly one distinct adjacent face.");
 
-        var compatibilityCandidates = model.GetBoundaryEdgeCandidates(face);
-        if (compatibilityCandidates.Count != faceAdjacency.BoundaryCandidates.Count)
+        var boundaryCandidates = model.GetBoundaryEdgeCandidates(face);
+        if (boundaryCandidates.Count != faceAdjacency.BoundaryCandidates.Count)
             throw new InvalidOperationException("Convenience boundary classification differs from batched adjacency analysis.");
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace OcctNet;
+namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
@@ -16,7 +16,8 @@ public sealed partial class OcctEngine
         get
         {
             EnsureNotDisposed();
-            return NativeMethods.occt_shape_count(_handle);
+            Check(NativeMethods.occt_object_descriptors(_handle, null, 0, out _, out var shapeCount));
+            return shapeCount;
         }
     }
 
@@ -24,11 +25,9 @@ public sealed partial class OcctEngine
     {
         get
         {
-            EnsureNotDisposed();
-            return Enumerable.Range(0, ObjectCount)
-                .Select(index => NativeMethods.occt_object_id_at(_handle, index))
-                .Where(id => id > 0)
-                .Select(id => CreateBoundObject(id, GetObjectKind(id)))
+            var descriptors = GetObjectDescriptors();
+            return descriptors
+                .Select(item => CreateBoundObject(item.ObjectId, (OcctObjectKind)item.Kind))
                 .ToArray();
         }
     }
@@ -37,11 +36,10 @@ public sealed partial class OcctEngine
     {
         get
         {
-            EnsureNotDisposed();
-            return Enumerable.Range(0, ShapeCount)
-                .Select(index => NativeMethods.occt_shape_id_at(_handle, index))
-                .Where(id => id > 0)
-                .Select(id => new OcctShape(id, _ownerId))
+            var descriptors = GetObjectDescriptors();
+            return descriptors
+                .Where(item => item.Kind == (int)OcctObjectKind.Shape)
+                .Select(item => new OcctShape(item.ObjectId, _ownerId))
                 .ToArray();
         }
     }
@@ -58,6 +56,7 @@ public sealed partial class OcctEngine
     public bool Owns(IOcctObject value)
     {
         ArgumentNullException.ThrowIfNull(value);
+        EnsureNotDisposed();
         return GetOwnerId(value) == _ownerId;
     }
 
@@ -142,6 +141,26 @@ public sealed partial class OcctEngine
     }
 
     public void Clear() => CheckInitialized(() => NativeMethods.occt_clear(_handle));
+
+    private OcctObjectDescriptorNative[] GetObjectDescriptors()
+    {
+        EnsureNotDisposed();
+        Check(NativeMethods.occt_object_descriptors(_handle, null, 0, out var count, out _));
+        if (count == 0) return [];
+
+        var descriptors = new OcctObjectDescriptorNative[count];
+        Check(NativeMethods.occt_object_descriptors(
+            _handle,
+            descriptors,
+            descriptors.Length,
+            out var copiedCount,
+            out _));
+
+        if (copiedCount != descriptors.Length)
+            throw new InvalidOperationException("OCCT object registry changed while reading the object snapshot.");
+
+        return descriptors;
+    }
 
     private IOcctObject CreateBoundObject(long id, OcctObjectKind kind) => kind switch
     {

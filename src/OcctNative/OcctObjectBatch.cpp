@@ -2,6 +2,8 @@
 
 #include <Graphic3d_MaterialAspect.hxx>
 
+#include <unordered_set>
+
 using namespace OcctBridge;
 
 namespace
@@ -15,17 +17,16 @@ namespace
         if (count > 0 && objectIds == nullptr) throw std::invalid_argument("Object ID array is null.");
 
         std::vector<ObjectEntry*> entries;
-        std::vector<OcctObjectId> uniqueIds;
+        std::unordered_set<OcctObjectId> uniqueIds;
         entries.reserve(static_cast<std::size_t>(count));
         uniqueIds.reserve(static_cast<std::size_t>(count));
         for (int index = 0; index < count; ++index)
         {
             const OcctObjectId id = objectIds[index];
-            if (std::find(uniqueIds.begin(), uniqueIds.end(), id) != uniqueIds.end()) continue;
+            if (!uniqueIds.insert(id).second) continue;
             ObjectEntry* entry = engine->findObject(id);
             if (entry == nullptr || entry->presentation.IsNull())
                 throw std::invalid_argument("Object ID does not exist.");
-            uniqueIds.push_back(id);
             entries.push_back(entry);
         }
         return entries;

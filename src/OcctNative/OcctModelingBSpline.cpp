@@ -1,6 +1,8 @@
-﻿#include "OcctModelingInternal.hxx"
+﻿#include "OcctModelingShapeInternal.hxx"
 #include "OcctModelingBSpline.h"
 
+#include <BRepAdaptor_Curve.hxx>
+#include <BRepAdaptor_Surface.hxx>
 #include <Geom_BSplineCurve.hxx>
 #include <Geom_BSplineSurface.hxx>
 
@@ -27,7 +29,7 @@ namespace
     Handle(Geom_BSplineCurve) requireBSplineCurve(ModelSession* model, OcctObjectId edgeId)
     {
         const BRepAdaptor_Curve adaptor(requireEdge(model, edgeId));
-        if (adaptor.GetType() != GeomAbs_BSpline)
+        if (adaptor.GetType() != GeomAbs_BSplineCurve)
             throw std::invalid_argument("Edge curve is not a B-Spline.");
 
         Handle(Geom_BSplineCurve) curve = adaptor.BSpline();
@@ -51,10 +53,7 @@ namespace
 
 extern "C"
 {
-    int occt_model_edge_bspline_info(
-        OcctModelHandle handle,
-        OcctObjectId edgeId,
-        OcctModelBSplineCurveInfo* result)
+    int occt_model_edge_bspline_info(OcctModelHandle handle, OcctObjectId edgeId, OcctModelBSplineCurveInfo* result)
     {
         ModelSession* model = modelOf(handle);
         if (result == nullptr) return 0;
@@ -69,55 +68,36 @@ extern "C"
         });
     }
 
-    int occt_model_edge_bspline_pole_at(
-        OcctModelHandle handle,
-        OcctObjectId edgeId,
-        int index,
-        OcctPoint3d* pole,
-        double* weight)
+    int occt_model_edge_bspline_pole_at(OcctModelHandle handle, OcctObjectId edgeId, int index, OcctPoint3d* pole, double* weight)
     {
         ModelSession* model = modelOf(handle);
         if (pole == nullptr || weight == nullptr) return 0;
         return execute(model, [&]
         {
             const Handle(Geom_BSplineCurve) curve = requireBSplineCurve(model, edgeId);
-            if (index < 0 || index >= curve->NbPoles())
-                throw std::out_of_range("B-Spline pole index is out of range.");
-
+            if (index < 0 || index >= curve->NbPoles()) throw std::out_of_range("B-Spline pole index is out of range.");
             const int occtIndex = index + 1;
             const gp_Pnt point = curve->Pole(occtIndex);
-            pole->x = point.X();
-            pole->y = point.Y();
-            pole->z = point.Z();
+            pole->x = point.X(); pole->y = point.Y(); pole->z = point.Z();
             *weight = curve->Weight(occtIndex);
         });
     }
 
-    int occt_model_edge_bspline_knot_at(
-        OcctModelHandle handle,
-        OcctObjectId edgeId,
-        int index,
-        double* knot,
-        int* multiplicity)
+    int occt_model_edge_bspline_knot_at(OcctModelHandle handle, OcctObjectId edgeId, int index, double* knot, int* multiplicity)
     {
         ModelSession* model = modelOf(handle);
         if (knot == nullptr || multiplicity == nullptr) return 0;
         return execute(model, [&]
         {
             const Handle(Geom_BSplineCurve) curve = requireBSplineCurve(model, edgeId);
-            if (index < 0 || index >= curve->NbKnots())
-                throw std::out_of_range("B-Spline knot index is out of range.");
-
+            if (index < 0 || index >= curve->NbKnots()) throw std::out_of_range("B-Spline knot index is out of range.");
             const int occtIndex = index + 1;
             *knot = curve->Knot(occtIndex);
             *multiplicity = curve->Multiplicity(occtIndex);
         });
     }
 
-    int occt_model_face_bspline_info(
-        OcctModelHandle handle,
-        OcctObjectId faceId,
-        OcctModelBSplineSurfaceInfo* result)
+    int occt_model_face_bspline_info(OcctModelHandle handle, OcctObjectId faceId, OcctModelBSplineSurfaceInfo* result)
     {
         ModelSession* model = modelOf(handle);
         if (result == nullptr) return 0;
@@ -137,70 +117,45 @@ extern "C"
         });
     }
 
-    int occt_model_face_bspline_pole_at(
-        OcctModelHandle handle,
-        OcctObjectId faceId,
-        int uIndex,
-        int vIndex,
-        OcctPoint3d* pole,
-        double* weight)
+    int occt_model_face_bspline_pole_at(OcctModelHandle handle, OcctObjectId faceId, int uIndex, int vIndex, OcctPoint3d* pole, double* weight)
     {
         ModelSession* model = modelOf(handle);
         if (pole == nullptr || weight == nullptr) return 0;
         return execute(model, [&]
         {
             const Handle(Geom_BSplineSurface) surface = requireBSplineSurface(model, faceId);
-            if (uIndex < 0 || uIndex >= surface->NbUPoles())
-                throw std::out_of_range("B-Spline surface U pole index is out of range.");
-            if (vIndex < 0 || vIndex >= surface->NbVPoles())
-                throw std::out_of_range("B-Spline surface V pole index is out of range.");
-
+            if (uIndex < 0 || uIndex >= surface->NbUPoles()) throw std::out_of_range("B-Spline surface U pole index is out of range.");
+            if (vIndex < 0 || vIndex >= surface->NbVPoles()) throw std::out_of_range("B-Spline surface V pole index is out of range.");
             const int occtUIndex = uIndex + 1;
             const int occtVIndex = vIndex + 1;
             const gp_Pnt point = surface->Pole(occtUIndex, occtVIndex);
-            pole->x = point.X();
-            pole->y = point.Y();
-            pole->z = point.Z();
+            pole->x = point.X(); pole->y = point.Y(); pole->z = point.Z();
             *weight = surface->Weight(occtUIndex, occtVIndex);
         });
     }
 
-    int occt_model_face_bspline_u_knot_at(
-        OcctModelHandle handle,
-        OcctObjectId faceId,
-        int index,
-        double* knot,
-        int* multiplicity)
+    int occt_model_face_bspline_u_knot_at(OcctModelHandle handle, OcctObjectId faceId, int index, double* knot, int* multiplicity)
     {
         ModelSession* model = modelOf(handle);
         if (knot == nullptr || multiplicity == nullptr) return 0;
         return execute(model, [&]
         {
             const Handle(Geom_BSplineSurface) surface = requireBSplineSurface(model, faceId);
-            if (index < 0 || index >= surface->NbUKnots())
-                throw std::out_of_range("B-Spline surface U knot index is out of range.");
-
+            if (index < 0 || index >= surface->NbUKnots()) throw std::out_of_range("B-Spline surface U knot index is out of range.");
             const int occtIndex = index + 1;
             *knot = surface->UKnot(occtIndex);
             *multiplicity = surface->UMultiplicity(occtIndex);
         });
     }
 
-    int occt_model_face_bspline_v_knot_at(
-        OcctModelHandle handle,
-        OcctObjectId faceId,
-        int index,
-        double* knot,
-        int* multiplicity)
+    int occt_model_face_bspline_v_knot_at(OcctModelHandle handle, OcctObjectId faceId, int index, double* knot, int* multiplicity)
     {
         ModelSession* model = modelOf(handle);
         if (knot == nullptr || multiplicity == nullptr) return 0;
         return execute(model, [&]
         {
             const Handle(Geom_BSplineSurface) surface = requireBSplineSurface(model, faceId);
-            if (index < 0 || index >= surface->NbVKnots())
-                throw std::out_of_range("B-Spline surface V knot index is out of range.");
-
+            if (index < 0 || index >= surface->NbVKnots()) throw std::out_of_range("B-Spline surface V knot index is out of range.");
             const int occtIndex = index + 1;
             *knot = surface->VKnot(occtIndex);
             *multiplicity = surface->VMultiplicity(occtIndex);

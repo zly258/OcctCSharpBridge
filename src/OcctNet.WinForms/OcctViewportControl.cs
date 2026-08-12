@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -58,9 +58,7 @@ public sealed class OcctViewportControl : Control
     private long _lastHoverTimestamp;
     private long _lastWorldPointTimestamp;
     private bool _enableDefaultInteraction = true;
-
-    private static readonly long HoverIntervalTicks = Math.Max(1, Stopwatch.Frequency / 60);
-    private static readonly long WorldPointIntervalTicks = Math.Max(1, Stopwatch.Frequency / 30);
+    private double _zoomSensitivity = 1.0;
 
     public OcctViewportControl()
     {
@@ -74,6 +72,8 @@ public sealed class OcctViewportControl : Control
     }
 
     public OcctEngine Engine => _engine ?? throw new InvalidOperationException("The OCCT viewport handle has not been created yet.");
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public bool EnableDefaultInteraction
     {
         get => _enableDefaultInteraction;
@@ -90,12 +90,32 @@ public sealed class OcctViewportControl : Control
         }
     }
 
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public double ZoomSensitivity
+    {
+        get => _zoomSensitivity;
+        set => _zoomSensitivity = OcctViewportInteractionPolicy.NormalizeZoomSensitivity(value);
+    }
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public bool EnableRectangleSelection { get; set; } = true;
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public int RectangleSelectionThreshold { get; set; } = 3;
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public OcctRectangleSelectionBehavior RectangleSelectionBehavior { get; set; } = OcctRectangleSelectionBehavior.Inclusive;
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public Color RectangleSelectionLineColor { get; set; } = Color.FromArgb(35, 120, 210);
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public Color RectangleSelectionFillColor { get; set; } = Color.FromArgb(95, 165, 230);
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public double RectangleSelectionFillTransparency { get; set; } = 0.82;
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public double RectangleSelectionLineWidth { get; set; } = 1.0;
 
     public event EventHandler<OcctShape?>? SelectionChanged;
@@ -130,8 +150,7 @@ public sealed class OcctViewportControl : Control
         base.OnResize(e);
 
         // WindowsFormsHost and first-focus DPI/layout negotiation can resize the HWND while
-        // the first rectangle gesture is active. Cancelling here made the first box select
-        // silently turn into no selection. Preserve the gesture and rebuild only its overlay.
+        // the first rectangle gesture is active. Preserve the gesture and rebuild its overlay.
         var restoreRectangle = IsActiveRectangleGesture && _rectangleDragStarted;
         if (restoreRectangle) HideSelectionFrame();
         ResizeNativeView();
@@ -211,15 +230,21 @@ public sealed class OcctViewportControl : Control
         }
         else
         {
-            var now = Stopwatch.GetTimestamp();
-            if (HasElapsed(_lastHoverTimestamp, now, HoverIntervalTicks))
+            var now = System.Diagnostics.Stopwatch.GetTimestamp();
+            if (OcctViewportInteractionPolicy.HasElapsed(
+                    _lastHoverTimestamp,
+                    now,
+                    OcctViewportInteractionPolicy.HoverIntervalTicks))
             {
                 _lastHoverTimestamp = now;
                 TryInvoke(() => _engine.MoveTo(e.X, e.Y));
             }
 
             if (WorldPointChanged is not null
-                && HasElapsed(_lastWorldPointTimestamp, now, WorldPointIntervalTicks))
+                && OcctViewportInteractionPolicy.HasElapsed(
+                    _lastWorldPointTimestamp,
+                    now,
+                    OcctViewportInteractionPolicy.WorldPointIntervalTicks))
             {
                 _lastWorldPointTimestamp = now;
                 TryInvoke(() => WorldPointChanged.Invoke(
@@ -246,28 +271,28 @@ public sealed class OcctViewportControl : Control
         }
         if (e.Button != MouseButtons.Left || !_leftSelectionGesture) return;
 
-        var end = e.Location;
-        var eventDistance = Math.Max(
-            Math.Abs(end.X - _selectionStart.X),
-            Math.Abs(end.Y - _selectionStart.Y));
-        var trackedDistance = Math.Max(
-            Math.Abs(_selectionCurrent.X - _selectionStart.X),
-            Math.Abs(_selectionCurrent.Y - _selectionStart.Y));
-        if (_rectangleDragStarted && trackedDistance > eventDistance)
-            end = _selectionCurrent;
-
-        var dragDistance = Math.Abs(end.X - _selectionStart.X)
-                           + Math.Abs(end.Y - _selectionStart.Y);
-        var useRectangle = EnableRectangleSelection
-                           && (_rectangleDragStarted
-                               || dragDistance > RectangleSelectionThreshold);
+        var resolvedEnd = OcctViewportInteractionPolicy.ResolveSelectionEnd(
+            _selectionStart.X,
+            _selectionStart.Y,
+            e.X,
+            e.Y,
+            _selectionCurrent.X,
+            _selectionCurrent.Y,
+            _rectangleDragStarted);
+        var end = new Point(resolvedEnd.X, resolvedEnd.Y);
+        var useRectangle = OcctViewportInteractionPolicy.ShouldUseRectangle(
+            EnableRectangleSelection,
+            _rectangleDragStarted,
+            RectangleSelectionThreshold,
+            _selectionStart.X,
+            _selectionStart.Y,
+            end.X,
+            end.Y);
         var append = ModifierKeys.HasFlag(Keys.Control);
-        var allowOverlap = RectangleSelectionBehavior switch
-        {
-            OcctRectangleSelectionBehavior.Overlap => true,
-            OcctRectangleSelectionBehavior.Directional => end.X < _selectionStart.X,
-            _ => false
-        };
+        var allowOverlap = OcctViewportInteractionPolicy.AllowsOverlap(
+            RectangleSelectionBehavior,
+            _selectionStart.X,
+            end.X);
 
         // MouseCaptureChanged may be raised before MouseUp, especially when this WinForms
         // control is hosted by WPF. Keep a dedicated gesture flag until selection is committed.
@@ -298,7 +323,7 @@ public sealed class OcctViewportControl : Control
     {
         base.OnMouseWheel(e);
         if (EnableDefaultInteraction && _engine?.IsInitialized == true)
-            TryInvoke(() => _engine.Zoom(e.Delta > 0 ? 1.15 : 0.87));
+            TryInvoke(() => _engine.Zoom(OcctViewportInteractionPolicy.ZoomFactor(e.Delta, ZoomSensitivity)));
     }
 
     protected override void OnMouseCaptureChanged(EventArgs e)
@@ -364,9 +389,7 @@ public sealed class OcctViewportControl : Control
         }
 
         if (!force && _lastNativeSize == ClientSize)
-        {
             return;
-        }
 
         _lastNativeSize = ClientSize;
         TryInvoke(_engine.Resize);
@@ -377,9 +400,10 @@ public sealed class OcctViewportControl : Control
         if (_engine?.IsInitialized != true) return;
 
         _selectionCurrent = current;
+        var threshold = Math.Max(0, RectangleSelectionThreshold);
         var dx = Math.Abs(current.X - _selectionStart.X);
         var dy = Math.Abs(current.Y - _selectionStart.Y);
-        if (dx < RectangleSelectionThreshold && dy < RectangleSelectionThreshold)
+        if (dx < threshold && dy < threshold)
         {
             HideSelectionFrame();
             return;
@@ -445,9 +469,6 @@ public sealed class OcctViewportControl : Control
         ObjectSelectionChanged?.Invoke(this, new OcctViewportSelectionEventArgs(selected, _engine.SelectedObjects));
     }
 
-    private static bool HasElapsed(long previous, long current, long interval) =>
-        previous == 0 || current - previous >= interval;
-
     private void TryInvoke(Action action)
     {
         try
@@ -456,14 +477,14 @@ public sealed class OcctViewportControl : Control
         }
         catch (Exception exception)
         {
-            Debug.WriteLine(exception);
+            System.Diagnostics.Debug.WriteLine(exception);
             try
             {
                 ErrorOccurred?.Invoke(this, new OcctViewportErrorEventArgs(exception));
             }
             catch (Exception handlerException)
             {
-                Debug.WriteLine(handlerException);
+                System.Diagnostics.Debug.WriteLine(handlerException);
             }
         }
     }

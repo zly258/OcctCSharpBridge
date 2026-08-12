@@ -10,8 +10,7 @@ internal static partial class ModelNativeMethods
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern void occt_model_destroy(IntPtr handle);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern IntPtr occt_model_last_error(IntPtr handle);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern IntPtr occt_model_capabilities();
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_model_shape_count(IntPtr handle);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern long occt_model_shape_id_at(IntPtr handle, int index);
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_model_shape_ids_copy(IntPtr handle, [Out] long[]? results, int capacity);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_model_shape_exists(IntPtr handle, long shapeId);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_model_delete_shape(IntPtr handle, long shapeId);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_model_clear(IntPtr handle);
@@ -32,14 +31,6 @@ internal static partial class ModelNativeMethods
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern IntPtr occt_model_check_report(IntPtr handle, long shapeId);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_model_get_location(IntPtr handle, long shapeId, out OcctModelLocation result);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern long occt_model_set_location(IntPtr handle, long shapeId, in OcctModelLocation location, int copyShape);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_model_topology_count(IntPtr handle, long shapeId, int shapeType);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern long occt_model_get_subshape(IntPtr handle, long shapeId, int shapeType, int index);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern long occt_model_outer_wire(IntPtr handle, long faceId);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_model_inner_wire_count(IntPtr handle, long faceId);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern long occt_model_inner_wire_at(IntPtr handle, long faceId, int index);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_model_ancestor_count(IntPtr handle, long rootId, long childId, int ancestorType);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern long occt_model_ancestor_at(IntPtr handle, long rootId, long childId, int ancestorType, int index);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_model_vertex_point(IntPtr handle, long vertexId, out OcctPoint3d result);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_model_edge_endpoints(IntPtr handle, long edgeId, out OcctPoint3d start, out OcctPoint3d end);

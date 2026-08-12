@@ -94,21 +94,28 @@ add_library(OcctNative SHARED
     OcctModelingGeometry.Primitives.cpp
     OcctModelingGeometry.Assembly.cpp
     OcctModelingGeometry.Transform.cpp
-    OcctModelingAlgorithms.cpp
+    OcctModelingBoolean.cpp
+    OcctModelingFeatures.cpp
+    OcctModelingHealing.cpp
+    OcctModelingHistory.cpp
     OcctModelingAnalysis.cpp
+    OcctModelingMesh.cpp
+    OcctModelingExchange.cpp
     OcctModelingAnalyticGeometry.cpp
     OcctModelingDifferentialGeometry.cpp
     OcctModelingExtensions.cpp
     OcctModelingBSpline.cpp
     OcctModelingTopologyAnalysis.cpp
     OcctModelingFaceAnalysis.cpp
+    OcctModelingInertia.cpp
+    OcctModelingIntersection.cpp
+    OcctModelingTopologyReference.cpp
     OcctInternal.hxx
     OcctModelingSessionInternal.hxx
     OcctModelingShapeInternal.hxx
     OcctModelingAlgorithmInternal.hxx
     OcctModelingMeshInternal.hxx
     OcctModelingExchangeInternal.hxx
-    OcctModelingInternal.hxx
     OcctNative.h
     OcctSelectionOverlay.h
     OcctSelectionState.h
@@ -116,7 +123,10 @@ add_library(OcctNative SHARED
     OcctModelingExtensions.h
     OcctModelingBSpline.h
     OcctModelingTopologyAnalysis.h
-    OcctModelingFaceAnalysis.h)
+    OcctModelingFaceAnalysis.h
+    OcctModelingInertia.h
+    OcctModelingIntersection.h
+    OcctModelingTopologyReference.h)
 
 target_compile_definitions(OcctNative PRIVATE NOMINMAX _CRT_SECURE_NO_WARNINGS)
 if(MSVC)
@@ -128,6 +138,7 @@ target_link_directories(OcctNative PRIVATE "${OCCT_LIB_DIR}")
 
 set(occt_required_libraries
     TKernel TKMath TKG2d TKG3d TKGeomBase TKBRep TKGeomAlgo TKTopAlgo
+    TKLCAF TKCAF TKXCAF
     TKPrim TKBO TKBool TKFillet TKOffset TKMesh TKShHealing
     TKService TKV3d TKOpenGl TKXSBase TKDE TKDESTEP TKDEIGES TKDESTL)
 

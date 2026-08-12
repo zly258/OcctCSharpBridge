@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
@@ -11,8 +11,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
     <Title>OcctNet</Title>
-    <Description>Strongly typed .NET 8 x64 bridge for Open CASCADE Technology 7.9.0 modeling, topology, geometry analysis and runtime integration.</Description>
-    <Authors>zly258</Authors>
+    <Description>Strongly typed .NET 10 x64 bridge for Open CASCADE Technology 7.9.0 modeling, topology, geometry analysis and runtime integration.</Description>
     <PackageTags>OCCT;OpenCASCADE;CAD;BIM;3D;geometry;modeling</PackageTags>
     <PackageProjectUrl>https://github.com/zly258/OcctCSharpBridge</PackageProjectUrl>
     <RepositoryUrl>https://github.com/zly258/OcctCSharpBridge</RepositoryUrl>

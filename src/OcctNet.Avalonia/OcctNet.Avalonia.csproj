@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>OcctNet</RootNamespace>
+    <AssemblyName>OcctNet.Avalonia</AssemblyName>
+
+    <IsPackable>true</IsPackable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+    <Title>OcctNet.Avalonia</Title>
+    <Description>Reusable Windows HWND Avalonia viewport host for OcctNet and Open CASCADE Technology 7.9.0.</Description>
+    <PackageTags>OCCT;OpenCASCADE;CAD;Avalonia;Windows;viewport;3D</PackageTags>
+    <PackageProjectUrl>https://github.com/zly258/OcctCSharpBridge</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/zly258/OcctCSharpBridge</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OcctNet\OcctNet.csproj" />
+    <PackageReference Include="Avalonia" Version="12.1.0" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="/" Link="README.md" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="/" Link="LICENSE" />
+  </ItemGroup>
+</Project>

@@ -1,10 +1,14 @@
 ﻿<Project>
   <PropertyGroup>
-    <LangVersion>12.0</LangVersion>
+    <LangVersion>14.0</LangVersion>
     <Deterministic>true</Deterministic>
     <DebugType>portable</DebugType>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningLevel>7</WarningLevel>
+    <Version>2.6.0</Version>
+    <Authors>zly258</Authors>
+    <Company>zly258</Company>
+    <Product>OcctCSharpBridge</Product>
   </PropertyGroup>
 </Project>

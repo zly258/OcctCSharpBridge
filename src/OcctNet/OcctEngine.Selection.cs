@@ -42,26 +42,17 @@ public sealed partial class OcctEngine
         get
         {
             EnsureInitialized();
-            var count = NativeMethods.occt_selected_count(_handle);
-            var result = new List<IOcctObject>(Math.Max(count, 0));
-            for (var index = 0; index < count; index++)
+            var hits = GetSelectedHits();
+            if (hits.Count == 0) return Array.Empty<IOcctObject>();
+
+            var result = new List<IOcctObject>(hits.Count);
+            var seen = new HashSet<long>();
+            foreach (var hit in hits)
             {
-                var id = NativeMethods.occt_selected_at(_handle, index);
-                if (id > 0) result.Add(GetObject(id));
+                if (seen.Add(hit.Owner.Id))
+                    result.Add(hit.Owner);
             }
             return result;
-        }
-    }
-
-    public OcctShape? FirstSelected
-    {
-        get
-        {
-            EnsureInitialized();
-            var id = NativeMethods.occt_selected_at(_handle, 0);
-            return id > 0 && GetObjectKind(id) == OcctObjectKind.Shape
-                ? new OcctShape(id, _ownerId)
-                : null;
         }
     }
 
@@ -69,11 +60,13 @@ public sealed partial class OcctEngine
     {
         get
         {
-            EnsureInitialized();
-            var id = NativeMethods.occt_selected_at(_handle, 0);
-            return id > 0 ? GetObject(id) : null;
+            var selected = SelectedObjects;
+            return selected.Count == 0 ? null : selected[0];
         }
     }
+
+    public OcctShape? FirstSelected =>
+        FirstSelectedObject is OcctShape shape ? shape : null;
 
     public void ClearSelection() =>
         CheckInitialized(() => NativeMethods.occt_clear_selection(_handle));

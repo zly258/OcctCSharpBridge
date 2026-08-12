@@ -1,112 +1,713 @@
 ﻿#include "OcctInternal.hxx"
 
+#include <AIS_ColoredShape.hxx>
 #include <BRep_Builder.hxx>
 #include <BRepMesh_IncrementalMesh.hxx>
 #include <BRepTools.hxx>
+#include <IFSelect_ReturnStatus.hxx>
 #include <IGESControl_Reader.hxx>
 #include <IGESControl_Writer.hxx>
-#include <IFSelect_ReturnStatus.hxx>
-#include <STEPControl_Reader.hxx>
-#include <STEPControl_Writer.hxx>
+#include <STEPCAFControl_Reader.hxx>
+#include <STEPCAFControl_Writer.hxx>
 #include <StlAPI_Reader.hxx>
 #include <StlAPI_Writer.hxx>
+#include <TCollection_ExtendedString.hxx>
+#include <TDataStd_Name.hxx>
+#include <TDocStd_Document.hxx>
+#include <TopExp.hxx>
+#include <TopExp_Explorer.hxx>
+#include <TopLoc_Location.hxx>
+#include <TopTools_IndexedMapOfShape.hxx>
 #include <TopoDS_Compound.hxx>
+#include <XCAFApp_Application.hxx>
+#include <XCAFDoc_ColorTool.hxx>
+#include <XCAFDoc_DocumentTool.hxx>
+#include <XCAFDoc_ShapeTool.hxx>
+#include <XCAFPrs.hxx>
+#include <XCAFPrs_AISObject.hxx>
+#include <XCAFPrs_DocumentExplorer.hxx>
+#include <XCAFPrs_IndexedDataMapOfShapeStyle.hxx>
 
 #include <fstream>
+#include <iomanip>
+#include <map>
+#include <sstream>
 
 using namespace OcctBridge;
 
 namespace
 {
+    constexpr char StepPathPrefix[] = "step-path:";
+    constexpr char StepPathSeparator = '\x1f';
+
+    struct StepAssemblyNode
+    {
+        explicit StepAssemblyNode(std::string value) : name(std::move(value)) {}
+
+        std::string name;
+        std::map<std::string, std::unique_ptr<StepAssemblyNode>> children;
+        std::vector<const ObjectEntry*> leaves;
+    };
+
+    struct StepImportLeaf
+    {
+        TDF_Label label;
+        TDF_Label refLabel;
+        XCAFPrs_Style style;
+        TopLoc_Location location;
+        std::vector<std::string> path;
+    };
+
     ObjectEntry& requiredShape(Engine* engine, OcctObjectId id)
     {
-        ObjectEntry* entry=engine->findShape(id);if(entry==nullptr)throw std::invalid_argument("Shape ID does not exist.");return *entry;
+        ObjectEntry* entry = engine->findShape(id);
+        if (entry == nullptr) throw std::invalid_argument("Shape ID does not exist.");
+        return *entry;
     }
 
     std::ifstream inputStream(const std::filesystem::path& path)
     {
-        std::ifstream stream(path,std::ios::binary);if(!stream)throw std::runtime_error("Unable to open input file.");return stream;
+        std::ifstream stream(path, std::ios::binary);
+        if (!stream) throw std::runtime_error("Unable to open input file.");
+        return stream;
     }
 
     std::ofstream outputStream(const std::filesystem::path& path)
     {
-        if(path.has_parent_path())std::filesystem::create_directories(path.parent_path());
-        std::ofstream stream(path,std::ios::binary|std::ios::trunc);if(!stream)throw std::runtime_error("Unable to open output file.");return stream;
+        if (path.has_parent_path()) std::filesystem::create_directories(path.parent_path());
+        std::ofstream stream(path, std::ios::binary | std::ios::trunc);
+        if (!stream) throw std::runtime_error("Unable to open output file.");
+        return stream;
+    }
+
+    Handle(TDocStd_Document) newXdeDocument()
+    {
+        const Handle(XCAFApp_Application) application = XCAFApp_Application::GetApplication();
+        if (application.IsNull()) throw std::runtime_error("XCAF application could not be initialized.");
+        Handle(TDocStd_Document) document;
+        application->NewDocument("BinXCAF", document);
+        if (document.IsNull()) throw std::runtime_error("XCAF document could not be created.");
+        return document;
+    }
+
+    std::string extendedStringToUtf8(const TCollection_ExtendedString& value)
+    {
+        const Standard_Integer byteCount = value.LengthOfCString();
+        if (byteCount <= 0) return {};
+        std::vector<char> buffer(static_cast<std::size_t>(byteCount) + 1U, '\0');
+        Standard_PCharacter destination = buffer.data();
+        value.ToUTF8CString(destination);
+        return std::string(buffer.data());
+    }
+
+    std::string labelName(const TDF_Label& label)
+    {
+        if (label.IsNull()) return {};
+        Handle(TDataStd_Name) attribute;
+        if (!label.FindAttribute(TDataStd_Name::GetID(), attribute) || attribute.IsNull()) return {};
+        return extendedStringToUtf8(attribute->Get());
+    }
+
+    std::string nodeName(const XCAFPrs_DocumentNode& node)
+    {
+        std::string result = labelName(node.Label);
+        if (result.empty()) result = labelName(node.RefLabel);
+        if (result.empty()) result = node.IsAssembly ? "Assembly" : "Part";
+        return result;
+    }
+
+    void setLabelName(const TDF_Label& label, const std::string& name)
+    {
+        if (label.IsNull() || name.empty()) return;
+        TDataStd_Name::Set(label, TCollection_ExtendedString(name.c_str(), true));
+    }
+
+    std::string hierarchyTag(const std::vector<std::string>& path)
+    {
+        std::string result = StepPathPrefix;
+        for (std::size_t index = 0; index < path.size(); ++index)
+        {
+            if (index != 0U) result.push_back(StepPathSeparator);
+            result += path[index];
+        }
+        return result;
+    }
+
+    std::string indexedPartName(std::size_t index)
+    {
+        std::ostringstream stream;
+        stream << "Part_" << std::setw(3) << std::setfill('0') << index;
+        return stream.str();
+    }
+
+    bool tryStyleColor(const XCAFPrs_Style& style, Quantity_Color& result)
+    {
+        if (style.IsSetColorSurf())
+        {
+            result = style.GetColorSurf();
+            return true;
+        }
+        if (style.IsSetColorCurv())
+        {
+            result = style.GetColorCurv();
+            return true;
+        }
+        return false;
+    }
+
+    void rememberStyleColor(ObjectEntry& entry, const XCAFPrs_Style& style)
+    {
+        Quantity_Color value;
+        if (!tryStyleColor(style, value)) return;
+        entry.hasStoredColor = true;
+        entry.storedColorR = value.Red();
+        entry.storedColorG = value.Green();
+        entry.storedColorB = value.Blue();
+    }
+
+    void applyBaseStyle(const Handle(AIS_Shape)& presentation, const XCAFPrs_Style& style)
+    {
+        if (presentation.IsNull()) return;
+        Quantity_Color value;
+        if (tryStyleColor(style, value)) presentation->SetColor(value);
+    }
+
+    void applyCustomStyle(
+        const Handle(AIS_ColoredShape)& presentation,
+        const TopoDS_Shape& subShape,
+        const XCAFPrs_Style& style)
+    {
+        if (presentation.IsNull() || subShape.IsNull()) return;
+        Quantity_Color value;
+        if (tryStyleColor(style, value)) presentation->SetCustomColor(subShape, value);
+        if (!style.IsVisible()) presentation->CustomAspects(subShape)->SetHidden(Standard_True);
+    }
+
+    std::vector<std::string> currentHierarchy(const XCAFPrs_DocumentExplorer& explorer)
+    {
+        const Standard_Integer depth = explorer.CurrentDepth();
+        std::vector<std::string> path;
+        path.reserve(static_cast<std::size_t>(depth + 1));
+        for (Standard_Integer index = 0; index <= depth; ++index)
+            path.push_back(nodeName(explorer.Current(index)));
+        return path;
+    }
+
+    void finishImportedEntry(
+        Engine* engine,
+        OcctObjectId id,
+        const std::vector<std::string>& path,
+        const XCAFPrs_Style& style)
+    {
+        ObjectEntry* entry = engine->findShape(id);
+        if (entry == nullptr) throw std::runtime_error("Imported STEP shape could not be registered.");
+        entry->stepHierarchyPath = path;
+        entry->applicationTag = hierarchyTag(path);
+        rememberStyleColor(*entry, style);
+
+        // XCAFPrs_AISObject synchronizes definition/sub-shape styles during its
+        // first Display/Compute. Apply the merged assembly/instance base color
+        // afterwards so inherited colors are not overwritten by its default style.
+        Quantity_Color mergedColor;
+        if (tryStyleColor(style, mergedColor))
+            engine->context->SetColor(entry->presentation, mergedColor, Standard_False);
+        if (!style.IsVisible()) engine->context->Erase(entry->presentation, Standard_False);
+    }
+
+    OcctObjectId addStructuredLeaf(
+        Engine* engine,
+        const StepImportLeaf& leaf)
+    {
+        TopoDS_Shape localShape = XCAFDoc_ShapeTool::GetShape(leaf.refLabel);
+        if (localShape.IsNull()) localShape = XCAFDoc_ShapeTool::GetShape(leaf.label);
+        if (localShape.IsNull()) return 0;
+
+        const TDF_Label presentationLabel = leaf.refLabel.IsNull() ? leaf.label : leaf.refLabel;
+        Handle(XCAFPrs_AISObject) presentation = new XCAFPrs_AISObject(presentationLabel);
+        applyBaseStyle(presentation, leaf.style);
+        if (!leaf.location.IsIdentity())
+            presentation->SetLocalTransformation(leaf.location.Transformation());
+
+        const std::string name = leaf.path.empty() ? std::string("Part") : leaf.path.back();
+        const OcctObjectId id = engine->addShapePresentation(localShape, presentation, false, name);
+        finishImportedEntry(engine, id, leaf.path, leaf.style);
+        return id;
+    }
+
+    std::vector<TopoDS_Shape> collectSolids(const TopoDS_Shape& shape)
+    {
+        std::vector<TopoDS_Shape> result;
+        for (TopExp_Explorer explorer(shape, TopAbs_SOLID); explorer.More(); explorer.Next())
+            result.push_back(explorer.Current());
+        return result;
+    }
+
+    OcctObjectId addFlatCompoundLeaves(
+        Engine* engine,
+        const StepImportLeaf& leaf,
+        const std::vector<TopoDS_Shape>& solids)
+    {
+        if (solids.empty()) return 0;
+
+        XCAFPrs_IndexedDataMapOfShapeStyle settings;
+        XCAFPrs::CollectStyleSettings(leaf.refLabel.IsNull() ? leaf.label : leaf.refLabel,
+                                      TopLoc_Location(),
+                                      settings);
+
+        OcctObjectId firstId = 0;
+        for (std::size_t index = 0; index < solids.size(); ++index)
+        {
+            const TopoDS_Shape& solid = solids[index];
+            Handle(AIS_ColoredShape) presentation = new AIS_ColoredShape(solid);
+            applyBaseStyle(presentation, leaf.style);
+
+            TopTools_IndexedMapOfShape solidSubShapes;
+            TopExp::MapShapes(solid, solidSubShapes);
+            for (XCAFPrs_DataMapIteratorOfIndexedDataMapOfShapeStyle iterator(settings);
+                 iterator.More();
+                 iterator.Next())
+            {
+                const TopoDS_Shape& styledShape = iterator.Key();
+                if (styledShape.IsNull()) continue;
+                if (styledShape.IsSame(solid))
+                {
+                    applyBaseStyle(presentation, iterator.Value());
+                }
+                else if (solidSubShapes.Contains(styledShape))
+                {
+                    applyCustomStyle(presentation, styledShape, iterator.Value());
+                }
+            }
+
+            if (!leaf.location.IsIdentity())
+                presentation->SetLocalTransformation(leaf.location.Transformation());
+
+            std::vector<std::string> path = leaf.path;
+            if (path.empty()) path.push_back("Assembly");
+            const std::string partName = indexedPartName(index + 1U);
+            path.push_back(partName);
+
+            const OcctObjectId id = engine->addShapePresentation(solid, presentation, false, partName);
+            finishImportedEntry(engine, id, path, leaf.style);
+            if (firstId == 0) firstId = id;
+        }
+        return firstId;
+    }
+
+    OcctObjectId readStepXde(Engine* engine, const std::filesystem::path& path)
+    {
+        const bool sceneWasEmpty = engine->objects.empty();
+        auto stream = inputStream(path);
+        const Handle(TDocStd_Document) document = newXdeDocument();
+        STEPCAFControl_Reader reader;
+        reader.SetColorMode(true);
+        reader.SetNameMode(true);
+        reader.SetLayerMode(true);
+        reader.SetPropsMode(true);
+        if (reader.ReadStream(path.filename().string().c_str(), stream) != IFSelect_RetDone)
+            throw std::runtime_error("STEP file could not be read.");
+        if (!reader.Transfer(document))
+            throw std::runtime_error("STEP document could not be transferred to XDE.");
+
+        std::vector<StepImportLeaf> leaves;
+        XCAFPrs_DocumentExplorer explorer(document, XCAFPrs_DocumentExplorerFlags_None);
+        for (; explorer.More(); explorer.Next())
+        {
+            const XCAFPrs_DocumentNode& node = explorer.Current();
+            if (node.IsAssembly) continue;
+            StepImportLeaf leaf;
+            leaf.label = node.Label;
+            leaf.refLabel = node.RefLabel;
+            leaf.style = node.Style;
+            leaf.location = node.Location;
+            leaf.path = currentHierarchy(explorer);
+            leaves.push_back(std::move(leaf));
+        }
+        if (leaves.empty()) throw std::runtime_error("STEP file contains no displayable shape nodes.");
+
+        OcctObjectId firstImportedId = 0;
+        std::vector<OcctObjectId> importedIds;
+        engine->beginUpdate();
+        try
+        {
+            if (leaves.size() == 1U)
+            {
+                TopoDS_Shape onlyShape = XCAFDoc_ShapeTool::GetShape(leaves.front().refLabel);
+                if (onlyShape.IsNull()) onlyShape = XCAFDoc_ShapeTool::GetShape(leaves.front().label);
+                const std::vector<TopoDS_Shape> solids = collectSolids(onlyShape);
+                if (solids.size() > 1U)
+                {
+                    firstImportedId = addFlatCompoundLeaves(engine, leaves.front(), solids);
+                    const OcctObjectId lastId = engine->nextId;
+                    for (OcctObjectId id = firstImportedId; id < lastId; ++id)
+                        if (engine->findShape(id) != nullptr) importedIds.push_back(id);
+                }
+            }
+
+            if (firstImportedId == 0)
+            {
+                for (const StepImportLeaf& leaf : leaves)
+                {
+                    const OcctObjectId id = addStructuredLeaf(engine, leaf);
+                    if (id == 0) continue;
+                    importedIds.push_back(id);
+                    if (firstImportedId == 0) firstImportedId = id;
+                }
+            }
+
+            if (firstImportedId == 0)
+                throw std::runtime_error("STEP file contains no displayable leaf shapes.");
+            engine->endUpdate(false);
+        }
+        catch (...)
+        {
+            for (const OcctObjectId id : importedIds) engine->erase(id);
+            engine->endUpdate(false);
+            throw;
+        }
+
+        engine->stepDocuments.push_back(document);
+        if (sceneWasEmpty)
+        {
+            engine->pristineStepDocument = document;
+            engine->pristineStepDocumentMatchesScene = true;
+        }
+        else
+        {
+            engine->pristineStepDocumentMatchesScene = false;
+        }
+        engine->requestRedraw();
+        return firstImportedId;
     }
 
     TopoDS_Shape allShapes(Engine* engine)
     {
-        BRep_Builder builder;TopoDS_Compound compound;builder.MakeCompound(compound);int count=0;
-        for(const auto& pair:engine->objects){if(pair.second.kind==OcctObject_Shape&&!pair.second.shape.IsNull()){builder.Add(compound,pair.second.shape);++count;}}
-        if(count==0)throw std::runtime_error("There are no shapes to export.");return compound;
-    }
-
-    TopoDS_Shape readStep(const std::filesystem::path& path)
-    {
-        auto stream=inputStream(path);STEPControl_Reader reader;const IFSelect_ReturnStatus status=reader.ReadStream(path.filename().string().c_str(),stream);
-        if(status!=IFSelect_RetDone)throw std::runtime_error("STEP file could not be read.");if(reader.TransferRoots()<=0)throw std::runtime_error("STEP roots could not be transferred.");TopoDS_Shape shape=reader.OneShape();if(shape.IsNull())throw std::runtime_error("STEP file contains no transferable shape.");return shape;
+        BRep_Builder builder;
+        TopoDS_Compound compound;
+        builder.MakeCompound(compound);
+        int count = 0;
+        for (const auto& pair : engine->objects)
+        {
+            if (pair.second.kind == OcctObject_Shape && !pair.second.shape.IsNull())
+            {
+                builder.Add(compound, shapeWithPresentationTransformation(pair.second));
+                ++count;
+            }
+        }
+        if (count == 0) throw std::runtime_error("There are no shapes to export.");
+        return compound;
     }
 
     TopoDS_Shape readIges(const std::filesystem::path& path)
     {
-        auto stream=inputStream(path);IGESControl_Reader reader;const IFSelect_ReturnStatus status=reader.ReadStream(path.filename().string().c_str(),stream);
-        if(status!=IFSelect_RetDone)throw std::runtime_error("IGES file could not be read.");if(reader.TransferRoots()<=0)throw std::runtime_error("IGES roots could not be transferred.");TopoDS_Shape shape=reader.OneShape();if(shape.IsNull())throw std::runtime_error("IGES file contains no transferable shape.");return shape;
+        auto stream = inputStream(path);
+        IGESControl_Reader reader;
+        const IFSelect_ReturnStatus status = reader.ReadStream(path.filename().string().c_str(), stream);
+        if (status != IFSelect_RetDone) throw std::runtime_error("IGES file could not be read.");
+        if (reader.TransferRoots() <= 0) throw std::runtime_error("IGES roots could not be transferred.");
+        TopoDS_Shape shape = reader.OneShape();
+        if (shape.IsNull()) throw std::runtime_error("IGES file contains no transferable shape.");
+        return shape;
     }
 
     TopoDS_Shape readBrep(const std::filesystem::path& path)
     {
-        auto stream=inputStream(path);BRep_Builder builder;TopoDS_Shape shape;BRepTools::Read(shape,stream,builder);if(shape.IsNull())throw std::runtime_error("BREP file contains no readable shape.");return shape;
+        auto stream = inputStream(path);
+        BRep_Builder builder;
+        TopoDS_Shape shape;
+        BRepTools::Read(shape, stream, builder);
+        if (shape.IsNull()) throw std::runtime_error("BREP file contains no readable shape.");
+        return shape;
     }
 
     TopoDS_Shape readStl(const std::filesystem::path& path)
     {
-        TopoDS_Shape shape;StlAPI_Reader reader;if(!reader.Read(shape,path.string().c_str()))throw std::runtime_error("STL file could not be read. Use an ASCII-only file path if the OCCT package lacks wide-path support.");return shape;
+        TopoDS_Shape shape;
+        StlAPI_Reader reader;
+        if (!reader.Read(shape, path.string().c_str()))
+            throw std::runtime_error("STL file could not be read. Use an ASCII-only file path if the OCCT package lacks wide-path support.");
+        return shape;
     }
 
-    void writeStep(const TopoDS_Shape& shape,const std::filesystem::path& path)
+    void applyStoredColor(
+        const Handle(XCAFDoc_ColorTool)& colorTool,
+        const TDF_Label& label,
+        const ObjectEntry& entry)
     {
-        STEPControl_Writer writer;if(writer.Transfer(shape,STEPControl_AsIs)!=IFSelect_RetDone)throw std::runtime_error("Shape could not be transferred to STEP.");auto stream=outputStream(path);if(writer.WriteStream(stream)!=IFSelect_RetDone)throw std::runtime_error("STEP file could not be written.");
+        if (!entry.hasStoredColor || label.IsNull()) return;
+        const Quantity_Color value = color(entry.storedColorR, entry.storedColorG, entry.storedColorB);
+        colorTool->SetColor(label, value, XCAFDoc_ColorGen);
+        colorTool->SetColor(label, value, XCAFDoc_ColorSurf);
     }
 
-    void writeIges(const TopoDS_Shape& shape,const std::filesystem::path& path)
+    TDF_Label addStepLeaf(
+        const Handle(XCAFDoc_ShapeTool)& shapeTool,
+        const Handle(XCAFDoc_ColorTool)& colorTool,
+        const ObjectEntry& entry,
+        const std::string& fallbackName)
     {
-        IGESControl_Writer writer("MM",1);if(!writer.AddShape(shape))throw std::runtime_error("Shape could not be transferred to IGES.");writer.ComputeModel();auto stream=outputStream(path);if(!writer.Write(stream))throw std::runtime_error("IGES file could not be written.");
+        const TopoDS_Shape shape = shapeWithPresentationTransformation(entry);
+        if (shape.IsNull()) throw std::runtime_error("Shape could not be prepared for STEP export.");
+        const TDF_Label label = shapeTool->AddShape(shape, false);
+        const std::string name = entry.name.empty() ? fallbackName : entry.name;
+        setLabelName(label, name);
+        applyStoredColor(colorTool, label, entry);
+        return label;
+    }
+
+    TDF_Label buildStepAssembly(
+        const Handle(XCAFDoc_ShapeTool)& shapeTool,
+        const Handle(XCAFDoc_ColorTool)& colorTool,
+        const StepAssemblyNode& node)
+    {
+        const TDF_Label assemblyLabel = shapeTool->NewShape();
+        setLabelName(assemblyLabel, node.name);
+
+        for (const auto& childPair : node.children)
+        {
+            const StepAssemblyNode& child = *childPair.second;
+            const TDF_Label childLabel = buildStepAssembly(shapeTool, colorTool, child);
+            const TDF_Label occurrence = shapeTool->AddComponent(assemblyLabel, childLabel, TopLoc_Location());
+            setLabelName(occurrence, child.name);
+        }
+
+        for (const ObjectEntry* entry : node.leaves)
+        {
+            if (entry == nullptr) continue;
+            const std::string fallbackName = entry->stepHierarchyPath.empty()
+                ? std::string("Part")
+                : entry->stepHierarchyPath.back();
+            const TDF_Label partLabel = addStepLeaf(shapeTool, colorTool, *entry, fallbackName);
+            const TDF_Label occurrence = shapeTool->AddComponent(assemblyLabel, partLabel, TopLoc_Location());
+            setLabelName(occurrence, entry->name.empty() ? fallbackName : entry->name);
+            applyStoredColor(colorTool, occurrence, *entry);
+        }
+        return assemblyLabel;
+    }
+
+    void populateStepDocument(Engine* engine, const Handle(TDocStd_Document)& document)
+    {
+        const Handle(XCAFDoc_ShapeTool) shapeTool = XCAFDoc_DocumentTool::ShapeTool(document->Main());
+        const Handle(XCAFDoc_ColorTool) colorTool = XCAFDoc_DocumentTool::ColorTool(document->Main());
+
+        std::vector<std::pair<OcctObjectId, const ObjectEntry*>> shapes;
+        shapes.reserve(engine->objects.size());
+        for (const auto& pair : engine->objects)
+        {
+            if (pair.second.kind == OcctObject_Shape && !pair.second.shape.IsNull())
+                shapes.emplace_back(pair.first, &pair.second);
+        }
+        if (shapes.empty()) throw std::runtime_error("There are no shapes to export.");
+        std::sort(shapes.begin(), shapes.end(), [](const auto& left, const auto& right) { return left.first < right.first; });
+
+        std::map<std::string, std::unique_ptr<StepAssemblyNode>> assemblyRoots;
+        std::vector<const ObjectEntry*> topLevelShapes;
+        for (const auto& pair : shapes)
+        {
+            const ObjectEntry& entry = *pair.second;
+            if (entry.stepHierarchyPath.size() < 2U)
+            {
+                topLevelShapes.push_back(&entry);
+                continue;
+            }
+
+            StepAssemblyNode* node = nullptr;
+            for (std::size_t index = 0; index + 1U < entry.stepHierarchyPath.size(); ++index)
+            {
+                const std::string& segment = entry.stepHierarchyPath[index];
+                if (node == nullptr)
+                {
+                    auto& root = assemblyRoots[segment];
+                    if (!root) root = std::make_unique<StepAssemblyNode>(segment);
+                    node = root.get();
+                }
+                else
+                {
+                    auto& child = node->children[segment];
+                    if (!child) child = std::make_unique<StepAssemblyNode>(segment);
+                    node = child.get();
+                }
+            }
+            if (node != nullptr) node->leaves.push_back(&entry);
+        }
+
+        for (const auto& rootPair : assemblyRoots)
+            buildStepAssembly(shapeTool, colorTool, *rootPair.second);
+
+        for (const ObjectEntry* entry : topLevelShapes)
+        {
+            if (entry != nullptr) addStepLeaf(shapeTool, colorTool, *entry, "Part");
+        }
+        shapeTool->UpdateAssemblies();
+    }
+
+    void writeStepDocument(const Handle(TDocStd_Document)& document, const std::filesystem::path& path)
+    {
+        if (document.IsNull()) throw std::runtime_error("XDE document is null.");
+        STEPCAFControl_Writer writer;
+        writer.SetColorMode(true);
+        writer.SetNameMode(true);
+        writer.SetLayerMode(true);
+        if (!writer.Transfer(document, STEPControl_AsIs))
+            throw std::runtime_error("XDE document could not be transferred to STEP.");
+        auto stream = outputStream(path);
+        if (writer.WriteStream(stream) != IFSelect_RetDone)
+            throw std::runtime_error("STEP file could not be written.");
+    }
+
+    void writeStepObject(const ObjectEntry& entry, const std::filesystem::path& path)
+    {
+        const Handle(TDocStd_Document) document = newXdeDocument();
+        const Handle(XCAFDoc_ShapeTool) shapeTool = XCAFDoc_DocumentTool::ShapeTool(document->Main());
+        const Handle(XCAFDoc_ColorTool) colorTool = XCAFDoc_DocumentTool::ColorTool(document->Main());
+        addStepLeaf(shapeTool, colorTool, entry, "Part");
+        writeStepDocument(document, path);
+    }
+
+    void writeStepAll(Engine* engine, const std::filesystem::path& path)
+    {
+        if (engine->pristineStepDocumentMatchesScene && !engine->pristineStepDocument.IsNull())
+        {
+            writeStepDocument(engine->pristineStepDocument, path);
+            return;
+        }
+
+        const Handle(TDocStd_Document) document = newXdeDocument();
+        populateStepDocument(engine, document);
+        writeStepDocument(document, path);
+    }
+
+    void writeIges(const TopoDS_Shape& shape, const std::filesystem::path& path)
+    {
+        IGESControl_Writer writer("MM", 1);
+        if (!writer.AddShape(shape)) throw std::runtime_error("Shape could not be transferred to IGES.");
+        writer.ComputeModel();
+        auto stream = outputStream(path);
+        if (!writer.Write(stream)) throw std::runtime_error("IGES file could not be written.");
     }
 }
 
 extern "C"
 {
-    OcctObjectId occt_import_step(OcctHandle h,const char* utf8Path){Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return executeObject(e,[&]{const auto path=pathFromUtf8(utf8Path);if(path.empty())throw std::invalid_argument("Path is empty.");return e->addShape(readStep(path),true,path.stem().u8string());});}
-    OcctObjectId occt_import_iges(OcctHandle h,const char* utf8Path){Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return executeObject(e,[&]{const auto path=pathFromUtf8(utf8Path);if(path.empty())throw std::invalid_argument("Path is empty.");return e->addShape(readIges(path),true,path.stem().u8string());});}
-    OcctObjectId occt_import_brep(OcctHandle h,const char* utf8Path){Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return executeObject(e,[&]{const auto path=pathFromUtf8(utf8Path);if(path.empty())throw std::invalid_argument("Path is empty.");return e->addShape(readBrep(path),true,path.stem().u8string());});}
-    OcctObjectId occt_import_stl(OcctHandle h,const char* utf8Path){Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return executeObject(e,[&]{const auto path=pathFromUtf8(utf8Path);if(path.empty())throw std::invalid_argument("Path is empty.");return e->addShape(readStl(path),true,path.stem().u8string());});}
-
-    OcctObjectId occt_import_file(OcctHandle h,const char* utf8Path)
+    OcctObjectId occt_import_step(OcctHandle h, const char* utf8Path)
     {
-        const auto path=pathFromUtf8(utf8Path);const std::string extension=lowerExtension(path);
-        if(extension==".step"||extension==".stp")return occt_import_step(h,utf8Path);
-        if(extension==".iges"||extension==".igs")return occt_import_iges(h,utf8Path);
-        if(extension==".brep"||extension==".rle")return occt_import_brep(h,utf8Path);
-        if(extension==".stl")return occt_import_stl(h,utf8Path);
-        Engine* e=engineOf(h);if(e)e->setError("Unsupported file extension. Supported: STEP, IGES, BREP and STL.");return 0;
-    }
-
-    int occt_export_step(OcctHandle h,OcctObjectId id,const char* utf8Path){Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return execute(e,[&]{writeStep(requiredShape(e,id).shape,pathFromUtf8(utf8Path));});}
-    int occt_export_all_step(OcctHandle h,const char* utf8Path){Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return execute(e,[&]{writeStep(allShapes(e),pathFromUtf8(utf8Path));});}
-    int occt_export_iges(OcctHandle h,OcctObjectId id,const char* utf8Path){Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return execute(e,[&]{writeIges(requiredShape(e,id).shape,pathFromUtf8(utf8Path));});}
-    int occt_export_all_iges(OcctHandle h,const char* utf8Path){Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return execute(e,[&]{writeIges(allShapes(e),pathFromUtf8(utf8Path));});}
-
-    int occt_export_brep(OcctHandle h,OcctObjectId id,const char* utf8Path)
-    {
-        Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return execute(e,[&]{auto stream=outputStream(pathFromUtf8(utf8Path));BRepTools::Write(requiredShape(e,id).shape,stream);if(!stream)throw std::runtime_error("BREP file could not be written.");});
-    }
-
-    int occt_export_stl(OcctHandle h,OcctObjectId id,const char* utf8Path,double linearDeflection,double angularDeflection,int asciiMode)
-    {
-        Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return execute(e,[&]
+        Engine* e = engineOf(h);
+        if (!validateInitialized(e)) return 0;
+        return executeObject(e, [&]
         {
-            requirePositive(linearDeflection,"Linear deflection");requirePositive(angularDeflection,"Angular deflection");ObjectEntry& shape=requiredShape(e,id);BRepMesh_IncrementalMesh mesh(shape.shape,linearDeflection,Standard_False,angularDeflection,Standard_True);mesh.Perform();if(!mesh.IsDone())throw std::runtime_error("STL meshing failed.");
-            const auto path=pathFromUtf8(utf8Path);if(path.has_parent_path())std::filesystem::create_directories(path.parent_path());StlAPI_Writer writer;writer.ASCIIMode()=asciiMode!=0;if(!writer.Write(shape.shape,path.string().c_str()))throw std::runtime_error("STL file could not be written. Use an ASCII-only file path if the OCCT package lacks wide-path support.");
+            const auto path = pathFromUtf8(utf8Path);
+            if (path.empty()) throw std::invalid_argument("Path is empty.");
+            return readStepXde(e, path);
+        });
+    }
+
+    OcctObjectId occt_import_iges(OcctHandle h, const char* utf8Path)
+    {
+        Engine* e = engineOf(h);
+        if (!validateInitialized(e)) return 0;
+        return executeObject(e, [&]
+        {
+            const auto path = pathFromUtf8(utf8Path);
+            if (path.empty()) throw std::invalid_argument("Path is empty.");
+            return e->addShape(readIges(path), true, path.stem().u8string());
+        });
+    }
+
+    OcctObjectId occt_import_brep(OcctHandle h, const char* utf8Path)
+    {
+        Engine* e = engineOf(h);
+        if (!validateInitialized(e)) return 0;
+        return executeObject(e, [&]
+        {
+            const auto path = pathFromUtf8(utf8Path);
+            if (path.empty()) throw std::invalid_argument("Path is empty.");
+            return e->addShape(readBrep(path), true, path.stem().u8string());
+        });
+    }
+
+    OcctObjectId occt_import_stl(OcctHandle h, const char* utf8Path)
+    {
+        Engine* e = engineOf(h);
+        if (!validateInitialized(e)) return 0;
+        return executeObject(e, [&]
+        {
+            const auto path = pathFromUtf8(utf8Path);
+            if (path.empty()) throw std::invalid_argument("Path is empty.");
+            return e->addShape(readStl(path), true, path.stem().u8string());
+        });
+    }
+
+    OcctObjectId occt_import_file(OcctHandle h, const char* utf8Path)
+    {
+        const auto path = pathFromUtf8(utf8Path);
+        const std::string extension = lowerExtension(path);
+        if (extension == ".step" || extension == ".stp") return occt_import_step(h, utf8Path);
+        if (extension == ".iges" || extension == ".igs") return occt_import_iges(h, utf8Path);
+        if (extension == ".brep" || extension == ".rle") return occt_import_brep(h, utf8Path);
+        if (extension == ".stl") return occt_import_stl(h, utf8Path);
+        Engine* e = engineOf(h);
+        if (e) e->setError("Unsupported file extension. Supported: STEP, IGES, BREP and STL.");
+        return 0;
+    }
+
+    int occt_export_step(OcctHandle h, OcctObjectId id, const char* utf8Path)
+    {
+        Engine* e = engineOf(h);
+        if (!validateInitialized(e)) return 0;
+        return execute(e, [&] { writeStepObject(requiredShape(e, id), pathFromUtf8(utf8Path)); });
+    }
+
+    int occt_export_all_step(OcctHandle h, const char* utf8Path)
+    {
+        Engine* e = engineOf(h);
+        if (!validateInitialized(e)) return 0;
+        return execute(e, [&] { writeStepAll(e, pathFromUtf8(utf8Path)); });
+    }
+
+    int occt_export_iges(OcctHandle h, OcctObjectId id, const char* utf8Path)
+    {
+        Engine* e = engineOf(h);
+        if (!validateInitialized(e)) return 0;
+        return execute(e, [&] { writeIges(shapeWithPresentationTransformation(requiredShape(e, id)), pathFromUtf8(utf8Path)); });
+    }
+
+    int occt_export_all_iges(OcctHandle h, const char* utf8Path)
+    {
+        Engine* e = engineOf(h);
+        if (!validateInitialized(e)) return 0;
+        return execute(e, [&] { writeIges(allShapes(e), pathFromUtf8(utf8Path)); });
+    }
+
+    int occt_export_brep(OcctHandle h, OcctObjectId id, const char* utf8Path)
+    {
+        Engine* e = engineOf(h);
+        if (!validateInitialized(e)) return 0;
+        return execute(e, [&]
+        {
+            auto stream = outputStream(pathFromUtf8(utf8Path));
+            BRepTools::Write(shapeWithPresentationTransformation(requiredShape(e, id)), stream);
+            if (!stream) throw std::runtime_error("BREP file could not be written.");
+        });
+    }
+
+    int occt_export_stl(OcctHandle h, OcctObjectId id, const char* utf8Path, double linearDeflection, double angularDeflection, int asciiMode)
+    {
+        Engine* e = engineOf(h);
+        if (!validateInitialized(e)) return 0;
+        return execute(e, [&]
+        {
+            requirePositive(linearDeflection, "Linear deflection");
+            requirePositive(angularDeflection, "Angular deflection");
+            const TopoDS_Shape shape = shapeWithPresentationTransformation(requiredShape(e, id));
+            BRepMesh_IncrementalMesh mesh(shape, linearDeflection, Standard_False, angularDeflection, Standard_True);
+            mesh.Perform();
+            if (!mesh.IsDone()) throw std::runtime_error("STL meshing failed.");
+            const auto path = pathFromUtf8(utf8Path);
+            if (path.has_parent_path()) std::filesystem::create_directories(path.parent_path());
+            StlAPI_Writer writer;
+            writer.ASCIIMode() = asciiMode != 0;
+            if (!writer.Write(shape, path.string().c_str()))
+                throw std::runtime_error("STL file could not be written. Use an ASCII-only file path if the OCCT package lacks wide-path support.");
         });
     }
 }

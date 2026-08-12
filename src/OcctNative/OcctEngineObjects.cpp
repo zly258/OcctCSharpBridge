@@ -2,6 +2,8 @@
 
 #include <Graphic3d_MaterialAspect.hxx>
 
+#include <unordered_set>
+
 using namespace OcctBridge;
 
 extern "C"
@@ -12,28 +14,47 @@ extern "C"
         return e == nullptr ? 0 : static_cast<int>(e->objects.size());
     }
 
-    OcctObjectId occt_object_id_at(OcctHandle h, int index)
+    int occt_object_descriptors(
+        OcctHandle h,
+        OcctObjectDescriptor* items,
+        int capacity,
+        int* objectCount,
+        int* shapeCount)
     {
         Engine* e = engineOf(h);
-        if (e == nullptr || index < 0) return 0;
-        std::vector<OcctObjectId> ids;
-        ids.reserve(e->objects.size());
-        for (const auto& pair : e->objects) ids.push_back(pair.first);
-        std::sort(ids.begin(), ids.end());
-        return index < static_cast<int>(ids.size()) ? ids[static_cast<std::size_t>(index)] : 0;
-    }
-
-    OcctObjectId occt_shape_id_at(OcctHandle h, int index)
-    {
-        Engine* e = engineOf(h);
-        if (e == nullptr || index < 0) return 0;
-        std::vector<OcctObjectId> ids;
-        for (const auto& pair : e->objects)
+        if (e == nullptr || objectCount == nullptr || shapeCount == nullptr) return 0;
+        return execute(e, [&]
         {
-            if (pair.second.kind == OcctObject_Shape) ids.push_back(pair.first);
-        }
-        std::sort(ids.begin(), ids.end());
-        return index < static_cast<int>(ids.size()) ? ids[static_cast<std::size_t>(index)] : 0;
+            if (capacity < 0)
+                throw std::invalid_argument("Object descriptor capacity must not be negative.");
+
+            *objectCount = static_cast<int>(e->objects.size());
+            *shapeCount = 0;
+            for (const auto& pair : e->objects)
+            {
+                if (pair.second.kind == OcctObject_Shape) ++(*shapeCount);
+            }
+
+            if (items == nullptr)
+            {
+                if (capacity != 0)
+                    throw std::invalid_argument("Object descriptor output is null but capacity is non-zero.");
+                return;
+            }
+            if (capacity < *objectCount)
+                throw std::out_of_range("Object descriptor output capacity is too small.");
+
+            std::vector<OcctObjectDescriptor> descriptors;
+            descriptors.reserve(e->objects.size());
+            for (const auto& pair : e->objects)
+                descriptors.push_back(OcctObjectDescriptor{pair.first, pair.second.kind});
+
+            std::sort(descriptors.begin(), descriptors.end(), [](const OcctObjectDescriptor& left, const OcctObjectDescriptor& right)
+            {
+                return left.objectId < right.objectId;
+            });
+            std::copy(descriptors.begin(), descriptors.end(), items);
+        });
     }
 
     int occt_object_exists(OcctHandle h, OcctObjectId id)
@@ -58,6 +79,7 @@ extern "C"
             ObjectEntry* entry = e->findObject(id);
             if (entry == nullptr) throw std::invalid_argument("Object ID does not exist.");
             entry->name = name == nullptr ? "" : name;
+            if (entry->kind == OcctObject_Shape) e->invalidatePristineStepDocument();
         });
     }
 
@@ -78,7 +100,13 @@ extern "C"
         {
             ObjectEntry* entry = e->findObject(id);
             if (entry == nullptr) throw std::invalid_argument("Object ID does not exist.");
-            e->context->SetColor(entry->presentation, color(r, g, b), Standard_False);
+            const Quantity_Color value = color(r, g, b);
+            entry->hasStoredColor = true;
+            entry->storedColorR = value.Red();
+            entry->storedColorG = value.Green();
+            entry->storedColorB = value.Blue();
+            if (entry->kind == OcctObject_Shape) e->invalidatePristineStepDocument();
+            e->context->SetColor(entry->presentation, value, Standard_False);
             e->requestRedraw();
         });
     }
@@ -91,6 +119,7 @@ extern "C"
         {
             ObjectEntry* entry = e->findObject(id);
             if (entry == nullptr) throw std::invalid_argument("Object ID does not exist.");
+            if (entry->kind == OcctObject_Shape) e->invalidatePristineStepDocument();
             e->context->SetTransparency(entry->presentation, std::clamp(value, 0.0, 1.0), Standard_False);
             e->requestRedraw();
         });
@@ -151,6 +180,7 @@ extern "C"
             ObjectEntry* entry = e->findObject(id);
             if (entry == nullptr || entry->presentation.IsNull())
                 throw std::invalid_argument("Object ID does not exist.");
+            if (entry->kind == OcctObject_Shape) e->invalidatePristineStepDocument();
             e->context->SetMaterial(
                 entry->presentation,
                 Graphic3d_MaterialAspect(materialName(material)),
@@ -169,13 +199,14 @@ extern "C"
             if (count > 0 && ids == nullptr) throw std::invalid_argument("Object ID array is null.");
 
             std::vector<OcctObjectId> uniqueIds;
+            std::unordered_set<OcctObjectId> seenIds;
             uniqueIds.reserve(static_cast<std::size_t>(count));
+            seenIds.reserve(static_cast<std::size_t>(count));
             for (int index = 0; index < count; ++index)
             {
                 const OcctObjectId id = ids[index];
                 if (e->findObject(id) == nullptr) throw std::invalid_argument("Object ID does not exist.");
-                if (std::find(uniqueIds.begin(), uniqueIds.end(), id) == uniqueIds.end())
-                    uniqueIds.push_back(id);
+                if (seenIds.insert(id).second) uniqueIds.push_back(id);
             }
 
             for (const OcctObjectId id : uniqueIds) e->erase(id);
@@ -196,6 +227,9 @@ extern "C"
             }
             e->objects.clear();
             e->objectIdByApplicationTag.clear();
+            e->stepDocuments.clear();
+            e->pristineStepDocument.Nullify();
+            e->pristineStepDocumentMatchesScene = false;
             e->nextId = 1;
             e->context->ClearSelected(Standard_False);
             e->requestRedraw();
