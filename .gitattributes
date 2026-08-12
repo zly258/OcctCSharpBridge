@@ -1,5 +1,6 @@
 ﻿* text=auto
 
+*.sh text eol=lf
 *.png binary
 *.jpg binary
 *.jpeg binary
@@ -9,6 +10,7 @@
 *.zip binary
 *.7z binary
 *.dll binary
+*.so binary
 *.lib binary
 *.exe binary
 *.pdb binary
@@ -16,3 +18,4 @@
 # Binary SDK metadata is hashed byte-for-byte by bridge-manifest.json.
 # Keep Git from rewriting line endings after the hashes are generated.
 dist/win-x64/*.json binary
+dist/linux-x64/*.json binary
