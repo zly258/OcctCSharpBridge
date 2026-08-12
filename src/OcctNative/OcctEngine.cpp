@@ -127,6 +127,9 @@ namespace OcctBridge
     {
         if (presentation.IsNull()) return;
         context->Deactivate(presentation);
+        const OcctObjectId objectId = findPresentation(presentation);
+        const ObjectEntry* entry = findObject(objectId);
+        if (entry != nullptr && !entry->selectable) return;
         int mode = 0;
         const Handle(AIS_Shape) aisShape = Handle(AIS_Shape)::DownCast(presentation);
         if (!aisShape.IsNull() && selectionMode != OcctSelection_Object)
@@ -185,6 +188,8 @@ namespace OcctBridge
         auto iterator = objects.find(id);
         if (iterator == objects.end()) return;
         if (!iterator->second.presentation.IsNull()) context->Remove(iterator->second.presentation, Standard_False);
+        if (!iterator->second.applicationTag.empty())
+            objectIdByApplicationTag.erase(iterator->second.applicationTag);
         objects.erase(iterator);
     }
 
@@ -307,12 +312,12 @@ extern "C"
     void occt_destroy(OcctHandle handle) { delete engineOf(handle); }
     const char* occt_last_error(OcctHandle handle) { Engine* engine = engineOf(handle); return engine == nullptr ? "Invalid OCCT engine handle." : engine->lastError.c_str(); }
     const char* occt_version() { return OCC_VERSION_COMPLETE; }
-    int occt_bridge_abi_version() { return 2; }
-    const char* occt_bridge_version() { return "2.5.0"; }
+    int occt_bridge_abi_version() { return 3; }
+    const char* occt_bridge_version() { return "2.6.0"; }
     const char* occt_bridge_build_info()
     {
         static const std::string info =
-            std::string("OcctCSharpBridge/2.5.0; ABI=2; OCCT=") + OCC_VERSION_COMPLETE +
+            std::string("OcctCSharpBridge/2.6.0; ABI=3; OCCT=") + OCC_VERSION_COMPLETE +
 #if defined(_M_X64)
             "; Arch=x64" +
 #else
@@ -384,7 +389,7 @@ extern "C"
         return execute(e, [&]
         {
             ObjectEntry* entry = e->findShape(id); if (entry == nullptr) throw std::invalid_argument("Shape ID does not exist.");
-            Bnd_Box box; BRepBndLib::Add(entry->shape, box); e->view->FitAll(box, 0.05, Standard_True); e->view->ZFitAll();
+            Bnd_Box box; BRepBndLib::Add(shapeWithPresentationTransformation(*entry), box); e->view->FitAll(box, 0.05, Standard_True); e->view->ZFitAll();
         });
     }
 
@@ -517,32 +522,6 @@ extern "C"
         });
     }
 
-    int occt_set_scene_lighting(OcctHandle h, double ambientIntensity, double directionalIntensity, OcctVector3d lightDirection, int headlight)
-    {
-        Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
-        return execute(e, [&]
-        {
-            if (ambientIntensity < 0.0 || ambientIntensity > 10.0 || directionalIntensity <= 0.0 || directionalIntensity > 10.0)
-                throw std::invalid_argument("Light intensity is out of range.");
-
-            removeAllLights(e->viewer);
-            e->customAmbientLight.Nullify();
-            e->customDirectionalLight.Nullify();
-            e->customSunLight.Nullify();
-            e->customFillLight.Nullify();
-
-            e->customAmbientLight = new V3d_AmbientLight(Quantity_NOC_WHITE);
-            e->customAmbientLight->SetIntensity(static_cast<Standard_ShortReal>(ambientIntensity));
-            e->customDirectionalLight = new V3d_DirectionalLight(direction(lightDirection), Quantity_NOC_WHITE, headlight != 0);
-            e->customDirectionalLight->SetIntensity(static_cast<Standard_ShortReal>(directionalIntensity));
-            e->viewer->AddLight(e->customAmbientLight);
-            e->viewer->AddLight(e->customDirectionalLight);
-            e->viewer->SetLightOn(e->customAmbientLight);
-            e->viewer->SetLightOn(e->customDirectionalLight);
-            e->viewer->UpdateLights();
-            e->view->Redraw();
-        });
-    }
 
     int occt_reset_scene_lighting(OcctHandle h)
     {
@@ -631,10 +610,6 @@ extern "C"
         });
     }
 
-    int occt_select_rectangle(OcctHandle h, int x1, int y1, int x2, int y2, int append)
-    {
-        return occt_select_rectangle_ex(h, x1, y1, x2, y2, append, 0);
-    }
 
     int occt_select_object(OcctHandle h, OcctObjectId objectId, int append)
     {
@@ -643,6 +618,7 @@ extern "C"
         {
             ObjectEntry* entry = e->findObject(objectId);
             if (entry == nullptr || entry->presentation.IsNull()) throw std::invalid_argument("Object ID does not exist.");
+            if (!entry->selectable) throw std::invalid_argument("Object is not selectable.");
             if (!append) e->context->ClearSelected(Standard_False);
             e->context->SetSelected(entry->presentation, Standard_False);
             e->view->Redraw();
@@ -667,7 +643,6 @@ extern "C"
         int current = 0; for (e->context->InitSelected(); e->context->MoreSelected(); e->context->NextSelected(), ++current) if (current == index) return e->findPresentation(e->context->SelectedInteractive()); return 0;
     }
 
-    OcctObjectId occt_first_selected(OcctHandle h) { return occt_selected_at(h, 0); }
     int occt_clear_selection(OcctHandle h) { Engine* e = engineOf(h); if (!validateInitialized(e)) return 0; return execute(e, [&] { e->context->ClearSelected(Standard_True); }); }
     int occt_start_rotation(OcctHandle h, int x, int y) { Engine* e = engineOf(h); if (!validateInitialized(e)) return 0; return execute(e, [&] { e->view->StartRotation(x,y,0.4); }); }
     int occt_rotation(OcctHandle h, int x, int y) { Engine* e = engineOf(h); if (!validateInitialized(e)) return 0; return execute(e, [&] { e->view->Rotation(x,y); }); }
@@ -746,10 +721,6 @@ extern "C"
         });
     }
 
-    int occt_delete_object(OcctHandle h, OcctObjectId id)
-    {
-        return occt_delete_objects(h, &id, 1);
-    }
     int occt_clear(OcctHandle h)
     {
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
@@ -763,6 +734,7 @@ extern "C"
                 }
             }
             e->objects.clear();
+            e->objectIdByApplicationTag.clear();
             e->nextId = 1;
             e->context->ClearSelected(Standard_False);
             e->requestRedraw();
@@ -774,7 +746,7 @@ extern "C"
 
     int occt_shape_bounds(OcctHandle h, OcctObjectId id, OcctBounds* result)
     {
-        Engine* e=engineOf(h);if(!validateInitialized(e)||!result)return 0;return execute(e,[&]{ObjectEntry* o=e->findShape(id);if(!o)throw std::invalid_argument("Shape ID does not exist.");Bnd_Box box;BRepBndLib::Add(o->shape,box);box.Get(result->minX,result->minY,result->minZ,result->maxX,result->maxY,result->maxZ);});
+        Engine* e=engineOf(h);if(!validateInitialized(e)||!result)return 0;return execute(e,[&]{ObjectEntry* o=e->findShape(id);if(!o)throw std::invalid_argument("Shape ID does not exist.");Bnd_Box box;BRepBndLib::Add(shapeWithPresentationTransformation(*o),box);box.Get(result->minX,result->minY,result->minZ,result->maxX,result->maxY,result->maxZ);});
     }
 
     int occt_shape_linear_properties(OcctHandle h, OcctObjectId id, OcctMassProperties* result) { Engine* e=engineOf(h);if(!validateInitialized(e)||!result)return 0;return execute(e,[&]{ObjectEntry* o=e->findShape(id);if(!o)throw std::invalid_argument("Shape ID does not exist.");GProp_GProps p;BRepGProp::LinearProperties(o->shape,p);fillMassProperties(p,result);}); }
@@ -801,9 +773,5 @@ extern "C"
     OcctObjectId occt_scale(OcctHandle h, OcctObjectId id, OcctPoint3d center, double factor, int hideInput) { Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return executeObject(e,[&]{requirePositive(factor,"Scale factor");ObjectEntry* o=e->findShape(id);if(!o)throw std::invalid_argument("Shape ID does not exist.");gp_Trsf t;t.SetScale(point(center),factor);auto result=e->addShape(transformed(o->shape,t),false,"Scaled");if(hideInput)e->hide(id);return result;}); }
     OcctObjectId occt_mirror_plane(OcctHandle h, OcctObjectId id, OcctPoint3d p, OcctVector3d normal, int hideInput) { Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return executeObject(e,[&]{ObjectEntry* o=e->findShape(id);if(!o)throw std::invalid_argument("Shape ID does not exist.");gp_Trsf t;t.SetMirror(gp_Ax2(point(p),direction(normal)));auto result=e->addShape(transformed(o->shape,t),false,"Mirrored");if(hideInput)e->hide(id);return result;}); }
 
-    int occt_set_shape_color(OcctHandle h, OcctObjectId id, double r, double g, double b) { return occt_set_object_color(h,id,r,g,b); }
-    int occt_set_shape_transparency(OcctHandle h, OcctObjectId id, double value) { return occt_set_object_transparency(h,id,value); }
-    int occt_set_shape_visible(OcctHandle h, OcctObjectId id, int visible) { return occt_set_object_visible(h,id,visible); }
-    int occt_delete_shape(OcctHandle h, OcctObjectId id) { return occt_delete_object(h,id); }
     int occt_shape_count(OcctHandle h) { Engine* e=engineOf(h);if(!e)return 0;int count=0;for(const auto& p:e->objects)if(p.second.kind==OcctObject_Shape)++count;return count; }
 }

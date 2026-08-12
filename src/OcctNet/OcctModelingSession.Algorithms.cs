@@ -10,20 +10,40 @@ public sealed partial class OcctModelingSession
     {
         EnsureShape(left);
         EnsureShape(right);
+        if (!Enum.IsDefined(operation)) throw new ArgumentOutOfRangeException(nameof(operation));
         var actual = options ?? OcctModelBooleanOptions.Default;
-        return CheckAlgorithm(ModelNativeMethods.occt_model_boolean(_handle, (int)operation, left.Id, right.Id, in actual));
+        ValidateBooleanOptions(actual, nameof(options));
+        var native = actual.ToNative();
+        return CheckAlgorithm(ModelNativeMethods.occt_model_boolean(
+            _handle,
+            (int)operation,
+            left.Id,
+            right.Id,
+            in native));
     }
 
-    public OcctModelAlgorithmResult Fuse(OcctModelShape left, OcctModelShape right, OcctModelBooleanOptions? options = null) =>
+    public OcctModelAlgorithmResult Fuse(
+        OcctModelShape left,
+        OcctModelShape right,
+        OcctModelBooleanOptions? options = null) =>
         Boolean(OcctBooleanOperation.Fuse, left, right, options);
 
-    public OcctModelAlgorithmResult Cut(OcctModelShape left, OcctModelShape right, OcctModelBooleanOptions? options = null) =>
+    public OcctModelAlgorithmResult Cut(
+        OcctModelShape left,
+        OcctModelShape right,
+        OcctModelBooleanOptions? options = null) =>
         Boolean(OcctBooleanOperation.Cut, left, right, options);
 
-    public OcctModelAlgorithmResult Common(OcctModelShape left, OcctModelShape right, OcctModelBooleanOptions? options = null) =>
+    public OcctModelAlgorithmResult Common(
+        OcctModelShape left,
+        OcctModelShape right,
+        OcctModelBooleanOptions? options = null) =>
         Boolean(OcctBooleanOperation.Common, left, right, options);
 
-    public OcctModelAlgorithmResult Section(OcctModelShape left, OcctModelShape right, OcctModelBooleanOptions? options = null) =>
+    public OcctModelAlgorithmResult Section(
+        OcctModelShape left,
+        OcctModelShape right,
+        OcctModelBooleanOptions? options = null) =>
         Boolean(OcctBooleanOperation.Section, left, right, options);
 
     public OcctModelAlgorithmResult Split(
@@ -34,19 +54,42 @@ public sealed partial class OcctModelingSession
         var objectIds = ShapeIds(objects);
         var toolIds = ShapeIds(tools);
         var actual = options ?? OcctModelBooleanOptions.Default;
-        return CheckAlgorithm(ModelNativeMethods.occt_model_split(_handle, objectIds, objectIds.Length, toolIds, toolIds.Length, in actual));
+        ValidateBooleanOptions(actual, nameof(options));
+        var native = actual.ToNative();
+        return CheckAlgorithm(ModelNativeMethods.occt_model_split(
+            _handle,
+            objectIds,
+            objectIds.Length,
+            toolIds,
+            toolIds.Length,
+            in native));
     }
 
     public OcctModelAlgorithmResult Extrude(OcctModelShape profile, OcctVector3d vector)
     {
         EnsureShape(profile);
+        OcctGuard.NonZero(vector, nameof(vector));
         return CheckAlgorithm(ModelNativeMethods.occt_model_extrude(_handle, profile.Id, vector));
     }
 
-    public OcctModelAlgorithmResult Revolve(OcctModelShape profile, OcctPoint3d axisPoint, OcctVector3d axisDirection, double angleDegrees = 360)
+    public OcctModelAlgorithmResult Revolve(
+        OcctModelShape profile,
+        OcctPoint3d axisPoint,
+        OcctVector3d axisDirection,
+        double angleDegrees = 360)
     {
         EnsureShape(profile);
-        return CheckAlgorithm(ModelNativeMethods.occt_model_revolve(_handle, profile.Id, axisPoint, axisDirection, angleDegrees));
+        OcctGuard.Finite(axisPoint, nameof(axisPoint));
+        OcctGuard.NonZero(axisDirection, nameof(axisDirection));
+        OcctGuard.Finite(angleDegrees, nameof(angleDegrees));
+        if (Math.Abs(angleDegrees) <= double.Epsilon)
+            throw new ArgumentOutOfRangeException(nameof(angleDegrees), angleDegrees, "Revolve angle must be non-zero.");
+        return CheckAlgorithm(ModelNativeMethods.occt_model_revolve(
+            _handle,
+            profile.Id,
+            axisPoint,
+            axisDirection,
+            angleDegrees));
     }
 
     public OcctModelAlgorithmResult Sweep(OcctModelShape spineWire, OcctModelShape profile)
@@ -63,28 +106,67 @@ public sealed partial class OcctModelingSession
         double tolerance = 1e-6)
     {
         var ids = ShapeIds(sectionWires);
+        if (ids.Length < 2)
+            throw new ArgumentException("Loft requires at least two section wires.", nameof(sectionWires));
+        OcctGuard.Positive(tolerance, nameof(tolerance));
         return CheckAlgorithm(ModelNativeMethods.occt_model_loft(
-            _handle, ids, ids.Length, makeSolid ? 1 : 0, ruled ? 1 : 0, tolerance));
+            _handle,
+            ids,
+            ids.Length,
+            makeSolid ? 1 : 0,
+            ruled ? 1 : 0,
+            tolerance));
     }
 
-    public OcctModelAlgorithmResult FilletEdges(OcctModelShape shape, IEnumerable<int> edgeIndices, double radius)
+    public OcctModelAlgorithmResult FilletEdges(
+        OcctModelShape shape,
+        IEnumerable<int> edgeIndices,
+        double radius)
     {
         EnsureShape(shape);
+        OcctGuard.Positive(radius, nameof(radius));
         var indices = RequiredArray(edgeIndices, nameof(edgeIndices)).Distinct().ToArray();
-        return CheckAlgorithm(ModelNativeMethods.occt_model_fillet_edges(_handle, shape.Id, indices, indices.Length, radius));
+        foreach (var index in indices) OcctGuard.PositiveIndex(index, nameof(edgeIndices));
+        return CheckAlgorithm(ModelNativeMethods.occt_model_fillet_edges(
+            _handle,
+            shape.Id,
+            indices,
+            indices.Length,
+            radius));
     }
 
-    public OcctModelAlgorithmResult ChamferEdges(OcctModelShape shape, IEnumerable<int> edgeIndices, double distance)
+    public OcctModelAlgorithmResult ChamferEdges(
+        OcctModelShape shape,
+        IEnumerable<int> edgeIndices,
+        double distance)
     {
         EnsureShape(shape);
+        OcctGuard.Positive(distance, nameof(distance));
         var indices = RequiredArray(edgeIndices, nameof(edgeIndices)).Distinct().ToArray();
-        return CheckAlgorithm(ModelNativeMethods.occt_model_chamfer_edges(_handle, shape.Id, indices, indices.Length, distance));
+        foreach (var index in indices) OcctGuard.PositiveIndex(index, nameof(edgeIndices));
+        return CheckAlgorithm(ModelNativeMethods.occt_model_chamfer_edges(
+            _handle,
+            shape.Id,
+            indices,
+            indices.Length,
+            distance));
     }
 
-    public OcctModelAlgorithmResult Offset(OcctModelShape shape, double offset, double tolerance = 1e-4)
+    public OcctModelAlgorithmResult OffsetShape(
+        OcctModelShape shape,
+        double offset,
+        double tolerance = 1e-4)
     {
         EnsureShape(shape);
-        return CheckAlgorithm(ModelNativeMethods.occt_model_offset(_handle, shape.Id, offset, tolerance));
+        OcctGuard.Finite(offset, nameof(offset));
+        if (Math.Abs(offset) <= 1e-15)
+            throw new ArgumentOutOfRangeException(nameof(offset), offset, "Offset must be non-zero.");
+        OcctGuard.Positive(tolerance, nameof(tolerance));
+        return CheckAlgorithm(ModelNativeMethods.occt_model_offset(
+            _handle,
+            shape.Id,
+            offset,
+            tolerance));
     }
 
     public OcctModelAlgorithmResult MakeThickSolid(
@@ -94,8 +176,19 @@ public sealed partial class OcctModelingSession
         double tolerance = 1e-4)
     {
         EnsureShape(solid);
+        OcctGuard.Finite(thickness, nameof(thickness));
+        if (Math.Abs(thickness) <= double.Epsilon)
+            throw new ArgumentOutOfRangeException(nameof(thickness), thickness, "Thickness must be non-zero.");
+        OcctGuard.Positive(tolerance, nameof(tolerance));
         var indices = RequiredArray(faceIndicesToRemove, nameof(faceIndicesToRemove)).Distinct().ToArray();
-        return CheckAlgorithm(ModelNativeMethods.occt_model_thick_solid(_handle, solid.Id, indices, indices.Length, thickness, tolerance));
+        foreach (var index in indices) OcctGuard.PositiveIndex(index, nameof(faceIndicesToRemove));
+        return CheckAlgorithm(ModelNativeMethods.occt_model_thick_solid(
+            _handle,
+            solid.Id,
+            indices,
+            indices.Length,
+            thickness,
+            tolerance));
     }
 
     public OcctModelAlgorithmResult UnifySameDomain(
@@ -120,6 +213,24 @@ public sealed partial class OcctModelingSession
         double maxTolerance = 1.0)
     {
         EnsureShape(shape);
-        return CheckAlgorithm(ModelNativeMethods.occt_model_fix_shape(_handle, shape.Id, precision, minTolerance, maxTolerance));
+        OcctGuard.Positive(precision, nameof(precision));
+        OcctGuard.NonNegative(minTolerance, nameof(minTolerance));
+        OcctGuard.Positive(maxTolerance, nameof(maxTolerance));
+        if (minTolerance > maxTolerance)
+            throw new ArgumentException("minTolerance must not exceed maxTolerance.", nameof(minTolerance));
+        return CheckAlgorithm(ModelNativeMethods.occt_model_fix_shape(
+            _handle,
+            shape.Id,
+            precision,
+            minTolerance,
+            maxTolerance));
+    }
+
+    private static void ValidateBooleanOptions(OcctModelBooleanOptions options, string parameterName)
+    {
+        OcctGuard.NonNegative(options.FuzzyValue, $"{parameterName}.{nameof(options.FuzzyValue)}");
+        OcctGuard.Positive(options.AngularTolerance, $"{parameterName}.{nameof(options.AngularTolerance)}");
+        if (!Enum.IsDefined(options.Glue))
+            throw new ArgumentOutOfRangeException(parameterName, options.Glue, "Boolean glue mode is invalid.");
     }
 }

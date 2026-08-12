@@ -1,58 +1,106 @@
 ﻿name: Wrapper Branch Sync
 
 on:
+  push:
+    branches:
+      - main
+      - demo
   workflow_dispatch:
-  schedule:
-    - cron: "23 2 * * *"
 
 permissions:
   contents: read
 
+concurrency:
+  group: wrapper-sync
+  cancel-in-progress: true
+
 jobs:
   compare:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
           path: main
           fetch-depth: 1
 
       - name: Checkout demo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: demo
           path: demo
           fetch-depth: 1
 
-      - name: Compare reusable wrapper content
+      - name: Compare reusable wrapper source
         shell: pwsh
         run: |
-          $paths = @(
+          # Branch-specific policy is intentionally excluded:
+          # - global.json: demo needs the newer Avalonia SDK.
+          # - *.csproj: NuGet packaging metadata exists only on main.
+          # - build.ps1: main builds the SDK; demo builds/publishes applications.
+          # - main SDK guides and demo application docs have different audiences.
+          $fixedPaths = @(
+            ".editorconfig",
+            ".gitattributes",
+            "bridge-contract.json",
+            "Directory.Build.props",
             "src/OcctNative",
-            "src/OcctNet",
-            "src/OcctNet.WinForms",
-            "src/OcctNet.Wpf",
-            "docs",
+            "docs/API_COVERAGE.md",
+            "docs/API_COVERAGE.zh-CN.md",
+            "docs/GEOMETRY_UTILITIES.md",
+            "docs/GEOMETRY_UTILITIES.zh-CN.md",
+            "docs/BSPLINE_CURVES.md",
+            "docs/BSPLINE_CURVES.zh-CN.md",
+            "tests/OcctNet.ManagedTests",
             "tests/OcctNet.Smoke",
-            "tests/check-analytic-geometry-api.ps1",
             "tests/check-api-organization.ps1",
             "tests/check-api-surface.ps1",
-            "tests/check-differential-geometry-api.ps1",
+            "tests/check-geometry-api.ps1",
             "tests/check-native-build-structure.ps1",
             "tests/check-selection-contract.ps1",
             "tests/check-version-contract.ps1",
-            "tests/check-viewport-api.ps1",
-            "tests/check-ui-hosts.ps1"
+            "tests/check-viewport-api.ps1"
           )
+
           $failed = $false
-          foreach ($path in $paths) {
+          foreach ($path in $fixedPaths) {
             Write-Host "[sync] Comparing $path" -ForegroundColor Cyan
             & git diff --no-index --exit-code -- "main/$path" "demo/$path"
             if ($LASTEXITCODE -ne 0) { $failed = $true }
           }
-          if ($failed) {
-            throw "main and demo reusable wrapper content are not synchronized."
+
+          foreach ($directory in @("src/OcctNet", "src/OcctNet.WinForms", "src/OcctNet.Wpf")) {
+            $mainRoot = Join-Path "main" $directory
+            $demoRoot = Join-Path "demo" $directory
+            $mainFiles = @(
+              Get-ChildItem $mainRoot -Filter "*.cs" -File -Recurse |
+                ForEach-Object { $_.FullName.Substring((Resolve-Path $mainRoot).Path.Length + 1).Replace('\', '/') } |
+                Sort-Object
+            )
+            $demoFiles = @(
+              Get-ChildItem $demoRoot -Filter "*.cs" -File -Recurse |
+                ForEach-Object { $_.FullName.Substring((Resolve-Path $demoRoot).Path.Length + 1).Replace('\', '/') } |
+                Sort-Object
+            )
+
+            if (Compare-Object $mainFiles $demoFiles) {
+              Write-Host "[sync] C# file set differs in $directory" -ForegroundColor Red
+              Compare-Object $mainFiles $demoFiles | Format-Table
+              $failed = $true
+              continue
+            }
+
+            foreach ($relative in $mainFiles) {
+              $mainFile = Join-Path $mainRoot $relative
+              $demoFile = Join-Path $demoRoot $relative
+              & git diff --no-index --exit-code -- $mainFile $demoFile
+              if ($LASTEXITCODE -ne 0) { $failed = $true }
+            }
           }
-          Write-Host "main and demo reusable wrapper content are synchronized." -ForegroundColor Green
+
+          if ($failed) {
+            throw "main and demo reusable wrapper source are not synchronized."
+          }
+          Write-Host "main and demo reusable wrapper source are synchronized; branch-specific packaging/app policy is intentionally independent." -ForegroundColor Green

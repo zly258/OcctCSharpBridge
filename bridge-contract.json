@@ -1,0 +1,22 @@
+﻿{
+  "schemaVersion": 1,
+  "bridgeVersion": "2.6.0",
+  "nativeAbiVersion": 3,
+  "occtVersion": "7.9.0",
+  "platform": "windows-x64",
+  "cmakeMinimumVersion": "3.21",
+  "contactEmail": "zhangly1403@gmail.com",
+  "dotnet": {
+    "targetFramework": "net8.0-windows",
+    "sdkVersion": "8.0.423",
+    "demoSdkVersion": "10.0.302",
+    "languageVersion": "12.0"
+  },
+  "api": {
+    "nativeExports": 345,
+    "managedPInvokes": 345,
+    "publicNetTypes": 88,
+    "viewer": 212,
+    "modeling": 133
+  }
+}

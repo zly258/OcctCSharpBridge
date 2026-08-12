@@ -19,6 +19,13 @@ public sealed class OcctWpfViewport : WpfUserControl
     private readonly WindowsFormsHost _host;
     private readonly OcctViewportControl _viewport;
 
+    public static readonly DependencyProperty EnableDefaultInteractionProperty =
+        DependencyProperty.Register(
+            nameof(EnableDefaultInteraction),
+            typeof(bool),
+            typeof(OcctWpfViewport),
+            new FrameworkPropertyMetadata(true, OnInteractionPropertyChanged));
+
     public static readonly DependencyProperty EnableRectangleSelectionProperty =
         DependencyProperty.Register(
             nameof(EnableRectangleSelection),
@@ -83,6 +90,7 @@ public sealed class OcctWpfViewport : WpfUserControl
         Focusable = true;
         HorizontalContentAlignment = System.Windows.HorizontalAlignment.Stretch;
         VerticalContentAlignment = System.Windows.VerticalAlignment.Stretch;
+        ApplyInteractionProperties();
         ApplySelectionProperties();
 
         _viewport.EngineInitialized += (_, _) => ScheduleNativeLayoutUpdate();
@@ -100,6 +108,12 @@ public sealed class OcctWpfViewport : WpfUserControl
 
     /// <summary>Access to the low-level WinForms HWND host for advanced interoperability.</summary>
     public OcctViewportControl WinFormsViewport => _viewport;
+
+    public bool EnableDefaultInteraction
+    {
+        get => (bool)GetValue(EnableDefaultInteractionProperty);
+        set => SetValue(EnableDefaultInteractionProperty, value);
+    }
 
     public bool EnableRectangleSelection
     {
@@ -189,6 +203,11 @@ public sealed class OcctWpfViewport : WpfUserControl
         ScheduleNativeLayoutUpdate();
     }
 
+    private static void OnInteractionPropertyChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs _)
+    {
+        ((OcctWpfViewport)dependencyObject).ApplyInteractionProperties();
+    }
+
     private static void OnSelectionPropertyChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs _)
     {
         ((OcctWpfViewport)dependencyObject).ApplySelectionProperties();
@@ -197,6 +216,11 @@ public sealed class OcctWpfViewport : WpfUserControl
     private static void OnDpiSynchronizationChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs _)
     {
         ((OcctWpfViewport)dependencyObject).ScheduleNativeLayoutUpdate();
+    }
+
+    private void ApplyInteractionProperties()
+    {
+        _viewport.EnableDefaultInteraction = EnableDefaultInteraction;
     }
 
     private void ApplySelectionProperties()

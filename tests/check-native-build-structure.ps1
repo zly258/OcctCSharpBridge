@@ -42,6 +42,46 @@ foreach ($source in $sourceTokens) {
     }
 }
 
+foreach ($required in @(
+    "OcctModelingExtensions.cpp",
+    "OcctModelingExtensions.h",
+    "OcctModelingBSpline.cpp",
+    "OcctModelingBSpline.h"
+)) {
+    if ($required -notin $sourceTokens) {
+        throw "Bridge 2.6 native extension file is not listed in add_library: $required"
+    }
+}
+
+$extensionHeader = [System.IO.File]::ReadAllText((Join-Path $nativeRoot "OcctModelingExtensions.h"))
+foreach ($symbol in @(
+    "occt_model_shape_is_same",
+    "occt_model_shape_is_partner",
+    "occt_model_shape_oriented_bounds",
+    "occt_model_make_face_with_holes",
+    "occt_model_trim_edge",
+    "occt_model_offset_wire"
+)) {
+    if (-not $extensionHeader.Contains($symbol)) {
+        throw "Bridge 2.6 native extension declaration is missing: $symbol"
+    }
+}
+
+$bsplineHeader = [System.IO.File]::ReadAllText((Join-Path $nativeRoot "OcctModelingBSpline.h"))
+foreach ($symbol in @(
+    "occt_model_edge_bspline_info",
+    "occt_model_edge_bspline_pole_at",
+    "occt_model_edge_bspline_knot_at",
+    "occt_model_face_bspline_info",
+    "occt_model_face_bspline_pole_at",
+    "occt_model_face_bspline_u_knot_at",
+    "occt_model_face_bspline_v_knot_at"
+)) {
+    if (-not $bsplineHeader.Contains($symbol)) {
+        throw "Bridge 2.6 B-Spline declaration is missing: $symbol"
+    }
+}
+
 $forbiddenPatterns = [ordered]@{
     'OCAF/XDE source' = 'OcctOcaf|occt_ocaf_'
     'OCAF/XDE toolkit' = '\b(?:TKCDF|TKLCAF|TKCAF|TKXCAF|TKBinL|TKXmlL|TKBinXCAF|TKXmlXCAF)\b'
@@ -61,4 +101,9 @@ if ($unlistedCpp.Count -gt 0) {
     throw "Native C++ files are not listed in add_library: $($unlistedCpp -join ', ')"
 }
 
-Write-Host "[native-build] $($sourceTokens.Count) source entries validated; no OCAF/XDE build inputs remain." -ForegroundColor Green
+$migrationWorkflow = Join-Path $RepositoryRoot ".github\workflows\bridge-26-native-migration.yml"
+if (Test-Path $migrationWorkflow) {
+    throw "Completed one-time Bridge 2.6 migration workflow must not remain in the repository."
+}
+
+Write-Host "[native-build] $($sourceTokens.Count) native source entries, generic extensions, and dedicated B-Spline layout validated; no OCAF/XDE inputs remain." -ForegroundColor Green

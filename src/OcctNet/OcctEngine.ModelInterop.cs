@@ -10,6 +10,9 @@ public sealed partial class OcctEngine
     {
         ArgumentNullException.ThrowIfNull(model);
         EnsureInitialized();
+        if (!model.Exists(shape))
+            throw new ArgumentException("Shape does not belong to the supplied modeling session.", nameof(shape));
+
         var id = ModelNativeMethods.occt_model_display_in_engine(_handle, model.NativeHandle, shape.Id, fit ? 1 : 0);
         return CheckShape(id);
     }

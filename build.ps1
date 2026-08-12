@@ -1,6 +1,6 @@
 ﻿param(
     [Parameter(Position = 0)]
-    [ValidateSet("validate", "native", "managed", "smoke", "all")]
+    [ValidateSet("validate", "native", "managed", "pack", "smoke", "ci", "all")]
     [string]$Target = "all",
 
     [Parameter(Position = 1)]
@@ -29,24 +29,40 @@ $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $NativeSource = Join-Path $RepoRoot "src\OcctNative"
 $NativeBuild = Join-Path $RepoRoot "build\native"
 $NativeDll = Join-Path $NativeBuild "bin\$Configuration\OcctNative.dll"
+$PackageOutput = Join-Path $RepoRoot "artifacts\packages"
+$ContractPath = Join-Path $RepoRoot "bridge-contract.json"
+
+if (-not (Test-Path $ContractPath -PathType Leaf)) {
+    throw "Bridge contract file was not found: $ContractPath"
+}
+$Contract = Get-Content $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$BridgeVersion = [string]$Contract.bridgeVersion
+$RequiredOcctVersion = [string]$Contract.occtVersion
+$TargetFramework = [string]$Contract.dotnet.targetFramework
+$SdkVersion = [string]$Contract.dotnet.sdkVersion
 
 $Projects = [ordered]@{
     Core = "src\OcctNet\OcctNet.csproj"
     WinForms = "src\OcctNet.WinForms\OcctNet.WinForms.csproj"
     Wpf = "src\OcctNet.Wpf\OcctNet.Wpf.csproj"
+    ManagedTests = "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj"
     Smoke = "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
 }
+
+$PackageProjects = @("Core", "WinForms", "Wpf")
 
 $Checks = [ordered]@{
     Version = "tests\check-version-contract.ps1"
     Organization = "tests\check-api-organization.ps1"
-    AnalyticGeometry = "tests\check-analytic-geometry-api.ps1"
-    DifferentialGeometry = "tests\check-differential-geometry-api.ps1"
+    Geometry = "tests\check-geometry-api.ps1"
+    TopologyAnalysis = "tests\check-topology-analysis.ps1"
+    RuntimeDiagnostics = "tests\check-runtime-diagnostics.ps1"
     UiHosts = "tests\check-ui-hosts.ps1"
     Viewport = "tests\check-viewport-api.ps1"
     Selection = "tests\check-selection-contract.ps1"
     NativeBuild = "tests\check-native-build-structure.ps1"
     ApiSurface = "tests\check-api-surface.ps1"
+    SdkPackage = "tests\check-sdk-package.ps1"
 }
 
 function Assert-Path {
@@ -113,7 +129,7 @@ function Build-Native {
     Assert-Command "cmake"
     Resolve-OcctConfiguration
 
-    Write-Host "[native] Configuring OCCT 7.9.0 bridge..." -ForegroundColor Cyan
+    Write-Host "[native] Configuring OCCT $RequiredOcctVersion bridge..." -ForegroundColor Cyan
     Invoke-Checked "cmake" @(
         "-S", $NativeSource,
         "-B", $NativeBuild,
@@ -151,13 +167,25 @@ function Build-Project {
     Remove-Item (Join-Path $projectDirectory "bin") -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item (Join-Path $projectDirectory "obj") -Recurse -Force -ErrorAction SilentlyContinue
 
-    Write-Host "[$($Name.ToLowerInvariant())] Building $Configuration..." -ForegroundColor Cyan
+    Write-Host "[$($Name.ToLowerInvariant())] Building $Configuration / $BridgeVersion..." -ForegroundColor Cyan
     Invoke-Checked "dotnet" @(
         "build", $project,
         "-c", $Configuration,
         "-p:Platform=x64",
+        "-p:Version=$BridgeVersion",
+        "-p:PackageVersion=$BridgeVersion",
         "--nologo"
     ) "$Name build failed."
+}
+
+function Run-ManagedTests {
+    Assert-Command "dotnet"
+    $project = Join-Path $RepoRoot $Projects.ManagedTests
+    $output = Join-Path (Split-Path -Parent $project) "bin\x64\$Configuration\$TargetFramework"
+    $assembly = Join-Path $output "OcctNet.ManagedTests.dll"
+    Assert-Path $assembly
+    Write-Host "[managed-tests] Running managed-only bridge regression tests..." -ForegroundColor Cyan
+    Invoke-Checked "dotnet" @($assembly) "Managed bridge regression tests failed."
 }
 
 function Build-Managed {
@@ -166,12 +194,97 @@ function Build-Managed {
     Build-Project "Wpf"
 }
 
+function Test-ManagedPackage {
+    param(
+        [Parameter(Mandatory = $true)][string]$PackagePath,
+        [Parameter(Mandatory = $true)][string]$AssemblyName
+    )
+
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($PackagePath)
+    try {
+        $entries = @($archive.Entries | ForEach-Object { $_.FullName.Replace('\', '/') })
+        $nativeLeak = @($entries | Where-Object {
+            $_ -match '(^|/)OcctNative\.dll$' -or
+            $_ -match '(^|/)TK[^/]*\.dll$' -or
+            $_.StartsWith('runtimes/', [StringComparison]::OrdinalIgnoreCase)
+        })
+        if ($nativeLeak.Count -gt 0) {
+            throw "Managed package contains native runtime content: $($nativeLeak -join ', ')"
+        }
+
+        $managedDll = @($entries | Where-Object { $_ -match "^lib/.+/$([regex]::Escape($AssemblyName))\.dll$" })
+        $xmlDocs = @($entries | Where-Object { $_ -match "^lib/.+/$([regex]::Escape($AssemblyName))\.xml$" })
+        if ($managedDll.Count -ne 1) {
+            throw "Managed package does not contain exactly one $AssemblyName.dll under lib/."
+        }
+        if ($xmlDocs.Count -ne 1) {
+            throw "Managed package does not contain exactly one $AssemblyName.xml IntelliSense document under lib/."
+        }
+        if ('README.md' -notin $entries -or 'LICENSE' -notin $entries) {
+            throw "Managed package must include README.md and LICENSE."
+        }
+    }
+    finally {
+        $archive.Dispose()
+    }
+}
+
+function Pack-ManagedSdk {
+    param([switch]$SkipBuild)
+
+    Assert-Command "dotnet"
+    if (-not $SkipBuild) {
+        Build-Managed
+    }
+
+    Remove-Item $PackageOutput -Recurse -Force -ErrorAction SilentlyContinue
+    New-Item -ItemType Directory -Path $PackageOutput -Force | Out-Null
+
+    foreach ($name in $PackageProjects) {
+        $project = Join-Path $RepoRoot $Projects[$name]
+        Write-Host "[pack] Packing $name $BridgeVersion..." -ForegroundColor Cyan
+        Invoke-Checked "dotnet" @(
+            "pack", $project,
+            "-c", $Configuration,
+            "-p:Platform=x64",
+            "-p:Version=$BridgeVersion",
+            "-p:PackageVersion=$BridgeVersion",
+            "--no-build",
+            "--nologo",
+            "-o", $PackageOutput
+        ) "$name package creation failed."
+    }
+
+    $packages = [ordered]@{
+        "OcctNet" = "OcctNet"
+        "OcctNet.WinForms" = "OcctNet.WinForms"
+        "OcctNet.Wpf" = "OcctNet.Wpf"
+    }
+    foreach ($entry in $packages.GetEnumerator()) {
+        $packagePath = Join-Path $PackageOutput "$($entry.Key).$BridgeVersion.nupkg"
+        Assert-Path $packagePath
+        Assert-Path (Join-Path $PackageOutput "$($entry.Key).$BridgeVersion.snupkg")
+        Test-ManagedPackage -PackagePath $packagePath -AssemblyName $entry.Value
+    }
+
+    Write-Host "Packages: $PackageOutput" -ForegroundColor Green
+    Write-Host "Managed packages validated: assemblies/XML docs only; no OCCT or OcctNative runtime bundled." -ForegroundColor Green
+}
+
+function Build-Ci {
+    Build-Managed
+    Build-Project "ManagedTests"
+    Run-ManagedTests
+    Build-Project "Smoke"
+    Pack-ManagedSdk -SkipBuild
+}
+
 function Run-Smoke {
     Assert-Path $NativeDll
     Build-Project "Smoke"
 
     $smokeProject = Join-Path $RepoRoot $Projects.Smoke
-    $smokeOutput = Join-Path (Split-Path -Parent $smokeProject) "bin\x64\$Configuration\net8.0-windows"
+    $smokeOutput = Join-Path (Split-Path -Parent $smokeProject) "bin\x64\$Configuration\$TargetFramework"
     Copy-Item $NativeDll (Join-Path $smokeOutput "OcctNative.dll") -Force
 
     $previousNativeDirectory = $env:OCCT_BRIDGE_NATIVE_DIR
@@ -183,6 +296,7 @@ function Run-Smoke {
             "--project", $smokeProject,
             "-c", $Configuration,
             "-p:Platform=x64",
+            "-p:Version=$BridgeVersion",
             "--no-build"
         ) "Smoke test failed."
     }
@@ -193,8 +307,10 @@ function Run-Smoke {
 
 Write-Host "Target:        $Target"
 Write-Host "Configuration: $Configuration"
+Write-Host "Bridge:        $BridgeVersion"
+Write-Host "SDK:           $SdkVersion" -ForegroundColor DarkGray
 if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
-    Write-Host "OCCT root:     not configured (valid for validate/managed)" -ForegroundColor DarkGray
+    Write-Host "OCCT root:     not configured (valid for validate/managed/pack/ci)" -ForegroundColor DarkGray
 }
 else {
     Write-Host "OCCT root:     $OcctRoot" -ForegroundColor DarkGray
@@ -206,6 +322,8 @@ switch ($Target) {
     "validate" { }
     "native" { Build-Native }
     "managed" { Build-Managed }
+    "pack" { Pack-ManagedSdk }
+    "ci" { Build-Ci }
     "smoke" {
         Build-Native
         Build-Managed
