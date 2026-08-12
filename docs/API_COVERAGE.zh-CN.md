@@ -110,7 +110,7 @@ using (engine.BeginDisplayBatch())
 
 ### 解析几何参数读取
 
-`GetCurveType()` 和 `GetSurfaceType()` 用于判断几何类型；确认类型后，可读取精确解析参数，而不是通过离散采样反推半径、轴线和中心。
+优先使用 `GetEdgeCurveType()` 和 `GetFaceSurfaceType()` 判断几何类型；确认类型后，可读取精确解析参数，而不是通过离散采样反推半径、轴线和中心。旧的 `GetCurveType()` 和 `GetSurfaceType()` 仅作为兼容别名保留。
 
 | 托管接口 | 适用类型 | 返回内容 |
 |---|---|---|
@@ -124,14 +124,14 @@ using (engine.BeginDisplayBatch())
 | `GetTorusGeometry()` | 圆环面 | 中心、轴向、X 方向、主半径、次半径 |
 
 ```csharp
-var edgeType = model.GetCurveType(edge);
+var edgeType = model.GetEdgeCurveType(edge);
 if (edgeType == OcctCurveType.Circle)
 {
     OcctCircleGeometry circle = model.GetCircleGeometry(edge);
     Console.WriteLine($"R = {circle.Radius:F3}");
 }
 
-var faceType = model.GetSurfaceType(face);
+var faceType = model.GetFaceSurfaceType(face);
 if (faceType == OcctSurfaceType.Cylinder)
 {
     OcctCylinderGeometry cylinder = model.GetCylinderGeometry(face);
