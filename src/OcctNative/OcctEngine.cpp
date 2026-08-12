@@ -1,6 +1,7 @@
-#include "OcctInternal.hxx"
+﻿#include "OcctInternal.hxx"
 
 #include <AIS_SelectionScheme.hxx>
+#include <Aspect_GradientFillMethod.hxx>
 #include <Aspect_PolygonOffsetMode.hxx>
 #include <Aspect_TypeOfTriedronPosition.hxx>
 #include <BRepBndLib.hxx>
@@ -22,6 +23,7 @@
 #include <Graphic3d_Vec2.hxx>
 #include <Precision.hxx>
 #include <Standard_Version.hxx>
+#include <StdSelect_ViewerSelector3d.hxx>
 #include <TopAbs_ShapeEnum.hxx>
 #include <TopExp_Explorer.hxx>
 #include <TopoDS.hxx>
@@ -305,6 +307,24 @@ extern "C"
     void occt_destroy(OcctHandle handle) { delete engineOf(handle); }
     const char* occt_last_error(OcctHandle handle) { Engine* engine = engineOf(handle); return engine == nullptr ? "Invalid OCCT engine handle." : engine->lastError.c_str(); }
     const char* occt_version() { return OCC_VERSION_COMPLETE; }
+    int occt_bridge_abi_version() { return 2; }
+    const char* occt_bridge_version() { return "2.5.0"; }
+    const char* occt_bridge_build_info()
+    {
+        static const std::string info =
+            std::string("OcctCSharpBridge/2.5.0; ABI=2; OCCT=") + OCC_VERSION_COMPLETE +
+#if defined(_M_X64)
+            "; Arch=x64" +
+#else
+            "; Arch=unknown" +
+#endif
+#if defined(_MSC_VER)
+            "; Compiler=MSVC " + std::to_string(_MSC_VER);
+#else
+            "; Compiler=unknown";
+#endif
+        return info.c_str();
+    }
 
     int occt_initialize(OcctHandle handle, void* windowHandle)
     {
@@ -402,7 +422,17 @@ extern "C"
         return execute(e, [&] { if (degrees <= 1.0 || degrees >= 179.0) throw std::invalid_argument("FOV must be between 1 and 179 degrees."); e->view->Camera()->SetFOVy(degrees); e->view->Redraw(); });
     }
 
-    int occt_set_background(OcctHandle h, double r, double g, double b) { Engine* e = engineOf(h); if (!validateInitialized(e)) return 0; return execute(e, [&] { e->view->SetBackgroundColor(color(r,g,b)); e->view->Redraw(); }); }
+    int occt_set_background(OcctHandle h, double r, double g, double b)
+    {
+        Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
+        return execute(e, [&]
+        {
+            // A previously enabled gradient otherwise remains the active background.
+            e->view->SetBgGradientStyle(Aspect_GradientFillMethod_None, Standard_False);
+            e->view->SetBackgroundColor(color(r, g, b));
+            e->view->Redraw();
+        });
+    }
 
     int occt_set_display_mode(OcctHandle h, int mode)
     {
@@ -498,6 +528,8 @@ extern "C"
             removeAllLights(e->viewer);
             e->customAmbientLight.Nullify();
             e->customDirectionalLight.Nullify();
+            e->customSunLight.Nullify();
+            e->customFillLight.Nullify();
 
             e->customAmbientLight = new V3d_AmbientLight(Quantity_NOC_WHITE);
             e->customAmbientLight->SetIntensity(static_cast<Standard_ShortReal>(ambientIntensity));
@@ -520,6 +552,8 @@ extern "C"
             removeAllLights(e->viewer);
             e->customAmbientLight.Nullify();
             e->customDirectionalLight.Nullify();
+            e->customSunLight.Nullify();
+            e->customFillLight.Nullify();
             e->viewer->SetDefaultLights();
             e->viewer->SetLightOn();
             e->viewer->UpdateLights();
@@ -560,17 +594,46 @@ extern "C"
     int occt_select(OcctHandle h, int x, int y, int append)
     {
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { e->context->MoveTo(x,y,e->view,Standard_False); e->context->SelectDetected(append ? AIS_SelectionScheme_Add : AIS_SelectionScheme_Replace); e->view->Redraw(); });
+        return execute(e, [&]
+        {
+            e->context->MoveTo(x, y, e->view, Standard_False);
+            if (e->context->HasDetected())
+            {
+                e->context->SelectDetected(
+                    append ? AIS_SelectionScheme_Add : AIS_SelectionScheme_Replace);
+            }
+            else if (!append)
+            {
+                e->context->ClearSelected(Standard_False);
+            }
+            e->context->UpdateCurrentViewer();
+        });
     }
 
-    int occt_select_rectangle(OcctHandle h, int x1, int y1, int x2, int y2, int append)
+    int occt_select_rectangle_ex(OcctHandle h, int x1, int y1, int x2, int y2, int append, int allowOverlap)
     {
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            Graphic3d_Vec2i minPoint(std::min(x1,x2), std::min(y1,y2)); Graphic3d_Vec2i maxPoint(std::max(x1,x2), std::max(y1,y2));
-            e->context->SelectRectangle(minPoint, maxPoint, e->view, append ? AIS_SelectionScheme_Add : AIS_SelectionScheme_Replace); e->view->Redraw();
+            // Keep the standard OCCT rectangle-selection path used by the reference
+            // Viewport examples. Full inclusion is the default; overlap is opt-in only.
+            const Handle(StdSelect_ViewerSelector3d)& selector = e->context->MainSelector();
+            selector->AllowOverlapDetection(allowOverlap != 0);
+            const Graphic3d_Vec2i minPoint(std::min(x1, x2), std::min(y1, y2));
+            const Graphic3d_Vec2i maxPoint(std::max(x1, x2), std::max(y1, y2));
+            e->context->SelectRectangle(
+                minPoint,
+                maxPoint,
+                e->view,
+                append ? AIS_SelectionScheme_Add : AIS_SelectionScheme_Replace);
+            selector->AllowOverlapDetection(Standard_False);
+            e->context->UpdateCurrentViewer();
         });
+    }
+
+    int occt_select_rectangle(OcctHandle h, int x1, int y1, int x2, int y2, int append)
+    {
+        return occt_select_rectangle_ex(h, x1, y1, x2, y2, append, 0);
     }
 
     int occt_select_object(OcctHandle h, OcctObjectId objectId, int append)
@@ -658,7 +721,35 @@ extern "C"
             e->requestRedraw();
         });
     }
-    int occt_delete_object(OcctHandle h, OcctObjectId id) { Engine* e=engineOf(h);if(!validateInitialized(e))return 0;return execute(e,[&]{e->erase(id);e->requestRedraw();}); }
+    int occt_delete_objects(OcctHandle h, const OcctObjectId* ids, int count)
+    {
+        Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
+        return execute(e, [&]
+        {
+            if (count < 0) throw std::invalid_argument("Object count must not be negative.");
+            if (count > 0 && ids == nullptr) throw std::invalid_argument("Object ID array is null.");
+
+            std::vector<OcctObjectId> uniqueIds;
+            uniqueIds.reserve(static_cast<std::size_t>(count));
+            for (int index = 0; index < count; ++index)
+            {
+                const OcctObjectId id = ids[index];
+                if (e->findObject(id) == nullptr) throw std::invalid_argument("Object ID does not exist.");
+                if (std::find(uniqueIds.begin(), uniqueIds.end(), id) == uniqueIds.end())
+                    uniqueIds.push_back(id);
+            }
+
+            // Validate the complete request before mutating the registry. Removal is then
+            // performed without viewer updates and flushed exactly once for the whole batch.
+            for (const OcctObjectId id : uniqueIds) e->erase(id);
+            if (!uniqueIds.empty()) e->requestRedraw();
+        });
+    }
+
+    int occt_delete_object(OcctHandle h, OcctObjectId id)
+    {
+        return occt_delete_objects(h, &id, 1);
+    }
     int occt_clear(OcctHandle h)
     {
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;

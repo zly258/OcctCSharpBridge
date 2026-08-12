@@ -1,0 +1,58 @@
+﻿name: Wrapper Branch Sync
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 2 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+          fetch-depth: 1
+
+      - name: Checkout demo
+        uses: actions/checkout@v4
+        with:
+          ref: demo
+          path: demo
+          fetch-depth: 1
+
+      - name: Compare reusable wrapper content
+        shell: pwsh
+        run: |
+          $paths = @(
+            "src/OcctNative",
+            "src/OcctNet",
+            "src/OcctNet.WinForms",
+            "src/OcctNet.Wpf",
+            "docs",
+            "tests/OcctNet.Smoke",
+            "tests/check-analytic-geometry-api.ps1",
+            "tests/check-api-organization.ps1",
+            "tests/check-api-surface.ps1",
+            "tests/check-differential-geometry-api.ps1",
+            "tests/check-native-build-structure.ps1",
+            "tests/check-selection-contract.ps1",
+            "tests/check-version-contract.ps1",
+            "tests/check-viewport-api.ps1",
+            "tests/check-ui-hosts.ps1"
+          )
+          $failed = $false
+          foreach ($path in $paths) {
+            Write-Host "[sync] Comparing $path" -ForegroundColor Cyan
+            & git diff --no-index --exit-code -- "main/$path" "demo/$path"
+            if ($LASTEXITCODE -ne 0) { $failed = $true }
+          }
+          if ($failed) {
+            throw "main and demo reusable wrapper content are not synchronized."
+          }
+          Write-Host "main and demo reusable wrapper content are synchronized." -ForegroundColor Green

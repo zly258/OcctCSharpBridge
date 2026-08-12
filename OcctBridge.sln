@@ -14,6 +14,10 @@ Project("{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") = "Solution Items", "Solution 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet", "src\OcctNet\OcctNet.csproj", "{217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.WinForms", "src\OcctNet.WinForms\OcctNet.WinForms.csproj", "{7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.Wpf", "src\OcctNet.Wpf\OcctNet.Wpf.csproj", "{B65176A4-9A31-4C15-BE31-2F4FB10EFB56}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.Smoke", "tests\OcctNet.Smoke\OcctNet.Smoke.csproj", "{A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}"
 EndProject
 Global
@@ -26,6 +30,14 @@ Global
         {217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3}.Debug|x64.Build.0 = Debug|x64
         {217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3}.Release|x64.ActiveCfg = Release|x64
         {217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3}.Release|x64.Build.0 = Release|x64
+        {7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58}.Debug|x64.ActiveCfg = Debug|x64
+        {7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58}.Debug|x64.Build.0 = Debug|x64
+        {7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58}.Release|x64.ActiveCfg = Release|x64
+        {7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58}.Release|x64.Build.0 = Release|x64
+        {B65176A4-9A31-4C15-BE31-2F4FB10EFB56}.Debug|x64.ActiveCfg = Debug|x64
+        {B65176A4-9A31-4C15-BE31-2F4FB10EFB56}.Debug|x64.Build.0 = Debug|x64
+        {B65176A4-9A31-4C15-BE31-2F4FB10EFB56}.Release|x64.ActiveCfg = Release|x64
+        {B65176A4-9A31-4C15-BE31-2F4FB10EFB56}.Release|x64.Build.0 = Release|x64
         {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}.Debug|x64.ActiveCfg = Debug|x64
         {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}.Debug|x64.Build.0 = Debug|x64
         {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}.Release|x64.ActiveCfg = Release|x64

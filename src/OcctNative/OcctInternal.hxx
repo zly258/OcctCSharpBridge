@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "OcctNative.h"
 
@@ -63,6 +63,8 @@ namespace OcctBridge
         Handle(WNT_Window) window;
         Handle(V3d_AmbientLight) customAmbientLight;
         Handle(V3d_DirectionalLight) customDirectionalLight;
+        Handle(V3d_DirectionalLight) customSunLight;
+        Handle(V3d_DirectionalLight) customFillLight;
         std::unordered_map<OcctObjectId, ObjectEntry> objects;
         OcctObjectId nextId = 1;
         int displayMode = AIS_Shaded;
@@ -108,6 +110,7 @@ namespace OcctBridge
     void requireCount(int count, int minimum, const char* name);
     TopoDS_Shape transformed(const TopoDS_Shape& source, const gp_Trsf& transform);
     void fillMassProperties(const GProp_GProps& properties, OcctMassProperties* result);
+    Graphic3d_NameOfMaterial materialName(int value);
 
     template<typename Function>
     int execute(Engine* engine, Function&& function)

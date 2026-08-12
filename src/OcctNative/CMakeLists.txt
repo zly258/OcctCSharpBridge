@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+﻿cmake_minimum_required(VERSION 3.21)
 
 project(OcctNative LANGUAGES CXX)
 
@@ -6,12 +6,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS OFF)
 
-set(_occt_default_root "$ENV{OCCT_ROOT}")
-if(NOT _occt_default_root)
-    set(_occt_default_root "D:/tools/occt-vc144-64")
+set(OCCT_ROOT "$ENV{OCCT_ROOT}" CACHE PATH "OCCT installation root")
+if(NOT OCCT_ROOT)
+    message(FATAL_ERROR "OCCT_ROOT is not configured. Pass -DOCCT_ROOT=<path> or set the OCCT_ROOT environment variable.")
 endif()
-
-set(OCCT_ROOT "${_occt_default_root}" CACHE PATH "OCCT installation root")
 set(OCCT_INCLUDE_DIR "${OCCT_ROOT}/inc" CACHE PATH "OCCT include directory")
 set(OCCT_LIB_DIR "${OCCT_ROOT}/win64/vc14/lib" CACHE PATH "OCCT library directory")
 set(OCCT_BIN_DIR "${OCCT_ROOT}/win64/vc14/bin" CACHE PATH "OCCT runtime directory")
@@ -36,36 +34,31 @@ endif()
 
 add_library(OcctNative SHARED
     OcctEngine.cpp
+    OcctAppearance.cpp
     OcctSelectionOverlay.cpp
     OcctView.cpp
+    OcctViewportExtensions.cpp
+    OcctViewportState.cpp
+    OcctObjectBatch.cpp
     OcctDepth.cpp
     OcctQueries.cpp
     OcctGeometry.cpp
     OcctAdvancedGeometry.cpp
     OcctFeatures.cpp
     OcctAnnotations.cpp
+    OcctVectorAnnotations.cpp
     OcctIO.cpp
     OcctModelingCore.cpp
     OcctModelingGeometry.cpp
     OcctModelingAlgorithms.cpp
     OcctModelingAnalysis.cpp
-    OcctOcafCore.cpp
-    OcctOcafAttributes.cpp
-    OcctOcafNaming.cpp
-    OcctOcafXde.cpp
-    OcctOcafXdeAppearance.cpp
-    OcctOcafXdeProperties.cpp
-    OcctOcafExchange.cpp
-    OcctOcafExtendedDocument.cpp
-    OcctOcafExtendedXde.cpp
+    OcctModelingAnalyticGeometry.cpp
+    OcctModelingDifferentialGeometry.cpp
     OcctInternal.hxx
     OcctModelingInternal.hxx
-    OcctOcafInternal.hxx
     OcctNative.h
     OcctSelectionOverlay.h
-    OcctModeling.h
-    OcctOcaf.h
-    OcctOcafExtended.h)
+    OcctModeling.h)
 
 target_compile_definitions(OcctNative PRIVATE NOMINMAX _CRT_SECURE_NO_WARNINGS)
 if(MSVC)
@@ -88,17 +81,6 @@ foreach(library_name IN LISTS occt_candidate_libraries)
     endif()
 endforeach()
 
-# These toolkits are directly referenced by the OCAF/XDE bridge and are mandatory.
-set(ocaf_required_libraries
-    TKCDF TKLCAF TKCAF TKXCAF
-    TKBinL TKXmlL TKBin TKXml TKBinXCAF TKXmlXCAF
-    TKDESTEP TKDEIGES)
-foreach(library_name IN LISTS ocaf_required_libraries)
-    if(NOT EXISTS "${OCCT_LIB_DIR}/${library_name}.lib")
-        message(FATAL_ERROR "Required OCCT 7.9.0 OCAF library was not found: ${OCCT_LIB_DIR}/${library_name}.lib")
-    endif()
-    list(APPEND occt_libraries "${library_name}")
-endforeach()
 list(REMOVE_DUPLICATES occt_libraries)
 
 message(STATUS "OCCT version: 7.9.0 (required exactly)")
