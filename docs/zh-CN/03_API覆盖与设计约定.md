@@ -1,38 +1,24 @@
-# 03 API 覆盖与设计约定
+# API 覆盖与设计约定
 
-## 当前契约
+`avalonia` 当前源码契约：
 
-来自 `bridge-contract.json`：
+```text
+Native exports:     350
+P/Invoke mappings:  350
+Public .NET types:  109
+Viewer API:         216
+Modeling API:       134
+```
 
-- Bridge 2.7.0
-- Native ABI 4
-- 349 Native exports
-- 349 Managed P/Invoke
-- 117 Public .NET types
-- Viewer API 215
-- Modeling API 134
+相对于 main，多出的 Viewer ABI 是平台无关 Native Surface 初始化入口。
 
-只有不兼容的 Native 契约变化才需要提升 ABI；纯新增 API 可以保持 ABI 不变并提升 Bridge 语义版本。
+公开 Managed Assembly 只有：
 
-## API 分组
+```text
+OcctNet
+OcctNet.Avalonia
+```
 
-- Viewer / Camera / Rendering / Appearance；
-- Selection、Hit Test、Selectability、Raw Input；
-- Shape、Text、Dimension 与真正 `AIS_Point` 支撑的一等 Point；
-- Headless Primitive、Boolean、Feature、Healing、History；
-- Geometry/Topology、Adjacency、Curvature、Inertia、Intersection、Persistent Topology Reference；
-- Mesh 与 Face provenance；
-- STEP/IGES/BREP/STL；
-- STEP 一等装配快照 `OcctAssemblyDocument`。
+继续遵循 Native/PInvoke 精确对等、Cdecl + ExactSpelling、Bulk 高基数传输、Core 不依赖 UI Framework、明确 Owner/Identity、Bridge 不承担应用层 Document/Command/Tool Framework 等规则。
 
-## 设计约定
-
-- 优先强类型值对象，避免魔法数组和字符串协议；
-- 高基数结果优先 Bulk Native Copy，避免 N+1 P/Invoke；
-- 明确 Handle 所有权；
-- 不为兼容偶然用法恢复已删除 Legacy Alias；
-- 版本与统计统一读取 `bridge-contract.json`，不在文档各处手工硬编码旧数字。
-
-## API Reference
-
-`docs/*/api` 由 `tools/OcctApiDocsGenerator` 和 `build.ps1 docs` 生成。逐类型与 Native ABI 明细属于生成物，不手工维护。
+API 文档生成器按当前分支实际存在项目自动发现。

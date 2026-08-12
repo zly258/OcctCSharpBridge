@@ -122,6 +122,7 @@ namespace OcctBridge
 
     Engine* engineOf(OcctHandle handle);
     bool validateInitialized(Engine* engine);
+    void initializeViewer(Engine* engine, void* windowHandle, void* displayHandle = nullptr);
     std::string failureMessage(const Standard_Failure& failure);
     std::filesystem::path pathFromUtf8(const char* utf8Path);
     std::string lowerExtension(const std::filesystem::path& path);
@@ -147,10 +148,7 @@ namespace OcctBridge
     template<typename Function>
     int execute(Engine* engine, Function&& function)
     {
-        if (engine == nullptr)
-        {
-            return 0;
-        }
+        if (engine == nullptr) return 0;
         engine->clearError();
         try
         {
@@ -175,10 +173,7 @@ namespace OcctBridge
     template<typename Function>
     OcctObjectId executeObject(Engine* engine, Function&& function)
     {
-        if (engine == nullptr)
-        {
-            return 0;
-        }
+        if (engine == nullptr) return 0;
         engine->clearError();
         try
         {

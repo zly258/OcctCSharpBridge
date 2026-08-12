@@ -74,7 +74,7 @@ $projectFiles = @(
     "src/OcctNet.Avalonia/OcctNet.Avalonia.csproj",
     "tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj",
     "tests/OcctNet.Smoke/OcctNet.Smoke.csproj",
-    "tests/OcctNet.X11Smoke/OcctNet.X11Smoke.csproj"
+    "tests/OcctNet.AvaloniaSmoke/OcctNet.AvaloniaSmoke.csproj"
 )
 foreach ($relativePath in $projectFiles) {
     [xml]$project = Read-Text $relativePath

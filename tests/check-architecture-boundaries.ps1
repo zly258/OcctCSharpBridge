@@ -59,6 +59,10 @@ foreach ($forbiddenPath in @(
     "src/OcctDemo.WinForms",
     "src/OcctDemo.Wpf",
     "src/OcctDemo.Avalonia",
+    "tests/OcctNet.X11Smoke",
+    "dist",
+    "publish.ps1",
+    "publish.sh",
     "sync.ps1",
     "sync-dist.ps1"
 )) {
@@ -84,4 +88,4 @@ foreach ($legacyFile in @(
     if (Test-TrackedPath $legacyFile) { throw "Legacy/compatibility source must not be reintroduced: $legacyFile" }
 }
 
-Write-Host "[architecture] Standalone OcctNet + OcctNet.Avalonia dependency boundary validated for Windows/Linux." -ForegroundColor Green
+Write-Host "[architecture] Source-only OcctNet + OcctNet.Avalonia boundary validated for Windows/Linux." -ForegroundColor Green

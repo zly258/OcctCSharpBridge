@@ -1,10 +1,25 @@
-# OcctCSharpBridge Documentation
+# OcctCSharpBridge Avalonia Documentation
 
-Current **source** contract: **Bridge 2.7.0 · ABI 4 · OCCT 7.9.0 · .NET 10 / C# 14 · Windows x64**.
+This documentation describes the standalone **`avalonia` branch**. It contains only `OcctNet + OcctNet.Avalonia` and targets Windows x64 + Linux x64 without depending on `main`, WinForms, WPF, sync, tracked `dist`, or branch-local binary publication.
 
-`bridge-contract.json` is the source of truth for source code: **349 Native exports, 349 P/Invoke mappings, 117 public .NET types, Viewer 215, Modeling 134**.
+Current source contract:
 
-> Published Binary SDK status is authoritative only from the tracked `main/dist/win-x64` payload. Read `dist/win-x64/bridge-contract.json` for its actual Bridge/ABI/API contract and `dist/win-x64/bridge-manifest.json` for the exact source commit and hashes; this documentation intentionally does not duplicate a release version that can become stale.
+- Bridge 2.7.0 / Native ABI 4
+- 350 Native exports / 350 P/Invoke mappings
+- 109 public .NET types
+- Viewer / Modeling API: 216 / 134
+- Target framework: `net10.0`
+- Platforms: `windows-x64`, `linux-x64`
+- Avalonia 12.1.0
+
+Linux development defaults:
+
+```text
+/usr/local/include/opencascade
+/usr/local/lib
+```
+
+The public viewport API is always `OcctAvaloniaViewport`. Windows uses an HWND/WNT_Window backend internally; Linux currently uses X11/XWayland XID/Xw_Window internally. Native Wayland hosting is not claimed yet.
 
 ## Guide
 
@@ -15,19 +30,5 @@ Current **source** contract: **Bridge 2.7.0 · ABI 4 · OCCT 7.9.0 · .NET 10 / 
 5. [Viewer, Selection and Interaction](05_Viewer-Selection-and-Interaction.md)
 6. [Mesh and Data Exchange](06_Mesh-and-Data-Exchange.md)
 7. [Runtime Deployment and Diagnostics](07_Runtime-Deployment-and-Diagnostics.md)
-8. [Build, Test and Publish](08_Build-Test-and-Publish.md)
+8. [Build and Test](08_Build-and-Test.md)
 9. [Generated API Reference](api/README.md)
-
-## Important boundary
-
-XDE is used internally for STEP assembly/product structure and styles. It is not the application document/persistence model. The managed boundary is `OcctAssemblyDocument`; product documents, undo/redo and JSON persistence remain above the Bridge.
-
-## Licensing
-
-OcctCSharpBridge is licensed under **GNU LGPL version 2.1 + OcctCSharpBridge Exception 1.0**.
-
-Commercial and proprietary applications may use the Bridge through .NET assembly references, dynamic linking, P/Invoke, or equivalent runtime linking without requiring the application itself to adopt the GNU LGPL solely because of that use. GNU LGPL obligations still apply to OcctCSharpBridge itself and to modified/derivative versions of the Bridge that are distributed.
-
-See [`LICENSE`](../../LICENSE), [`LICENSE_LGPL_21.txt`](../../LICENSE_LGPL_21.txt), [`OcctCSharpBridge_LGPL_EXCEPTION.txt`](../../OcctCSharpBridge_LGPL_EXCEPTION.txt), and [`COMMERCIAL.md`](../../COMMERCIAL.md).
-
-Open CASCADE Technology and other third-party components remain subject to their own licenses; OCCT keeps its own GNU LGPL 2.1 + Open CASCADE Exception terms.

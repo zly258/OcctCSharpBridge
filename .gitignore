@@ -2,6 +2,7 @@
 build/
 artifacts/
 publish/
+dist/
 [Bb]in/
 [Oo]bj/
 TestResults/
@@ -49,14 +50,6 @@ Makefile
 *.exe
 *.so
 *.dylib
-
-# dist contains versioned, validated Bridge Binary SDKs and is intentionally tracked.
-!dist/
-!dist/**
-/dist/.win-x64-staging/
-/dist/.win-x64-backup/
-/dist/.linux-x64-staging-*/
-/dist/.linux-x64-backup/
 
 # CAD test and generated files
 *.brep

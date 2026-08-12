@@ -1,61 +1,38 @@
-# 01 Getting Started
+# Getting Started
 
-## Requirements
+The `avalonia` branch is self-contained source. There is no sync flow, tracked `dist`, branch-local binary publication, WinForms or WPF dependency.
 
-- Windows 10/11 x64
-- .NET SDK 10.0.302
-- CMake 3.21+ and a compatible MSVC toolchain for building the Native Bridge
-- Open CASCADE Technology 7.9.0 runtime/toolkit
-
-## Source and published SDK
-
-The current source contract is **Bridge 2.7.0 / ABI 4**. The authoritative published Binary SDK is always the tracked `main/dist/win-x64` payload; read `dist/win-x64/bridge-contract.json` for its actual version and API contract instead of relying on a duplicated hard-coded release value in documentation.
-
-## Build the Bridge from source
+## Windows
 
 ```powershell
-.\build.ps1 validate Release
 .\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
+.\build.ps1 avalonia-smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-## Headless modeling
+## Linux
+
+Required baseline: Linux x64, .NET SDK 10.0.302, OCCT 7.9.0, CMake 3.21+, C++17 compiler, and OpenGL/X11 development libraries for the current Viewer backend.
+
+Default OCCT paths:
+
+```text
+/usr/local/include/opencascade
+/usr/local/lib
+```
+
+```bash
+./build.sh all Release
+./build.sh avalonia-smoke Release
+```
+
+`all` performs Native + Managed + ManagedTests + headless Smoke. `avalonia-smoke` is separate because Linux Viewer validation requires an X11/XWayland desktop session.
+
+## Avalonia use
+
+The application-facing control is identical on Windows and Linux:
 
 ```csharp
-using OcctNet;
-
-using var model = new OcctModelingSession();
-var box = model.MakeBox(100, 80, 20);
-var hole = model.MakeCylinder(new OcctPoint3d(50, 40, -5), OcctVector3d.UnitZ, 10, 30);
-var result = model.Cut(box, hole);
-model.ExportStep(result.Shape, "result.step");
+var viewport = new OcctAvaloniaViewport();
 ```
 
-## 2.7 source: STEP assembly import
-
-```csharp
-using var engine = new OcctEngine();
-OcctAssemblyDocument doc = engine.ImportStepDocument("assembly.step");
-```
-
-Use `ImportStep()` for the legacy shape-oriented path and `ImportStepDocument()` when real assembly hierarchy, instances, transforms and styles matter.
-
-## Publish the Binary SDK
-
-```powershell
-.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-Then, on the demo branch:
-
-```powershell
-git switch demo
-.\sync.ps1
-.\build.ps1 all Release
-.\run.ps1 wpf Release
-```
-
-`sync.ps1` always copies and prints the contract that is **actually** published on `main`.
-
-## License
-
-OcctCSharpBridge is licensed under **GNU LGPL version 2.1 + OcctCSharpBridge Exception 1.0**. Commercial and proprietary applications may use the Bridge under the Exception; GNU LGPL obligations continue to apply to OcctCSharpBridge itself and distributed modifications. See the repository root `LICENSE`, `LICENSE_LGPL_21.txt`, `OcctCSharpBridge_LGPL_EXCEPTION.txt`, and `COMMERCIAL.md`.
+No application code should depend on HWND, XID, `WNT_Window`, or `Xw_Window`.

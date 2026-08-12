@@ -1,25 +1,27 @@
-# 07 Runtime Deployment and Diagnostics
+# Runtime Deployment and Diagnostics
 
-## Runtime layout
+The `avalonia` branch resolves the Native bridge by operating system:
 
-Managed applications load `OcctNet*.dll` and `OcctNative.dll`; `OcctNative.dll` then requires the OCCT 7.9.0 toolkit and third-party runtime dependencies used by the build.
+```text
+Windows: OcctNative.dll
+Linux:   libOcctNative.so
+```
 
-`OcctRuntime` can resolve/configure the runtime from an explicit path, `OCCT_ROOT`, or `CASROOT`.
+Windows developer default:
 
-## Typical startup failures
+```text
+D:\tools\occt-vc144-64
+```
 
-For `DllNotFoundException`, Win32 error 126, or a process that exits before creating a viewport, verify:
+Linux developer defaults:
 
-1. `OcctNative.dll` is beside the managed application or otherwise resolvable;
-2. the matching OCCT 7.9.0 `TK*.dll` files are on the runtime search path;
-3. required third-party DLLs are present;
-4. x64 architecture matches all Native binaries;
-5. the managed Bridge version is compatible with the Native Bridge version/ABI.
+```text
+/usr/local/include/opencascade
+/usr/local/lib
+```
 
-## UI hosts
+`OCCT_ROOT`, `OCCT_BRIDGE_NATIVE_DIR` and platform loader configuration can be used for non-default development or application deployment layouts.
 
-WinForms, WPF and Avalonia use Windows HWND-based OCCT rendering. Avalonia may publish its shell `MainWindowHandle` later than process startup, so process-liveness and actual application exceptions are more reliable than a fixed shell-window timeout.
+The `avalonia` branch is source-only and does not track Binary SDK output. Applications that deploy these assemblies are responsible for deploying the matching platform Native bridge and OCCT runtime dependencies.
 
-## Portable demo publishing
-
-The demo `publish.ps1` collects the Bridge and the OCCT runtime dependencies required by the demo applications. The local `demo/dist` SDK itself remains ignored by Git.
+Linux Viewer execution currently requires X11/XWayland for the Viewer backend. Headless modeling does not require a Viewer surface.

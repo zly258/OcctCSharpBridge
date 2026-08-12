@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("validate", "native", "managed", "test", "smoke", "docs", "dist", "ci", "clean", "all")]
+    [ValidateSet("validate", "native", "managed", "test", "smoke", "avalonia-smoke", "docs", "clean", "all")]
     [string]$Target = "all",
 
     [Parameter(Position = 1)]
@@ -30,10 +30,6 @@ $NativeSource = Join-Path $RepoRoot "src\OcctNative"
 $NativeBuild = Join-Path $RepoRoot "build\native"
 $NativeDll = Join-Path $NativeBuild "bin\$Configuration\OcctNative.dll"
 $ContractPath = Join-Path $RepoRoot "bridge-contract.json"
-$DistParent = Join-Path $RepoRoot "dist"
-$DistRoot = Join-Path $DistParent "win-x64"
-$DistStaging = Join-Path $DistParent ".win-x64-staging"
-$DistBackup = Join-Path $DistParent ".win-x64-backup"
 $ApiDocsGenerator = Join-Path $RepoRoot "tools\OcctApiDocsGenerator\OcctApiDocsGenerator.csproj"
 
 if (-not (Test-Path $ContractPath -PathType Leaf)) { throw "Bridge contract file was not found: $ContractPath" }
@@ -49,6 +45,7 @@ $Projects = [ordered]@{
     Avalonia = "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj"
     ManagedTests = "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj"
     Smoke = "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
+    AvaloniaSmoke = "tests\OcctNet.AvaloniaSmoke\OcctNet.AvaloniaSmoke.csproj"
 }
 
 $Checks = [ordered]@{
@@ -143,25 +140,40 @@ function Run-ManagedTests {
     Invoke-Checked "dotnet" @("test", $project, "-c", $Configuration, "-p:Platform=x64", "-p:Version=$BridgeVersion", "--no-build") "Managed bridge regression tests failed."
 }
 
-function Run-Smoke {
+function Invoke-WithNativeRuntime {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectKey,
+        [Parameter(Mandatory = $true)][string]$Label,
+        [Parameter(Mandatory = $true)][string]$ErrorMessage
+    )
+
     Assert-Path $NativeDll
     Resolve-OcctConfiguration
-    Build-Project "Smoke"
-    $smokeProject = Join-Path $RepoRoot $Projects.Smoke
-    $smokeOutput = Join-Path (Split-Path -Parent $smokeProject) "bin\x64\$Configuration\$TargetFramework"
-    Copy-Item $NativeDll (Join-Path $smokeOutput "OcctNative.dll") -Force
+    Build-Project $ProjectKey
+    $project = Join-Path $RepoRoot $Projects[$ProjectKey]
+    $output = Join-Path (Split-Path -Parent $project) "bin\x64\$Configuration\$TargetFramework"
+    Copy-Item $NativeDll (Join-Path $output "OcctNative.dll") -Force
+
     $previousNativeDirectory = $env:OCCT_BRIDGE_NATIVE_DIR
     $previousOcctRoot = $env:OCCT_ROOT
     try {
-        $env:OCCT_BRIDGE_NATIVE_DIR = $smokeOutput
+        $env:OCCT_BRIDGE_NATIVE_DIR = $output
         $env:OCCT_ROOT = $script:OcctRoot
-        Write-Host "[smoke] Running native modeling scenarios..." -ForegroundColor Cyan
-        Invoke-Checked "dotnet" @("run", "--project", $smokeProject, "-c", $Configuration, "-p:Platform=x64", "-p:Version=$BridgeVersion", "--no-build") "Smoke test failed."
+        Write-Host "[$Label] Running..." -ForegroundColor Cyan
+        Invoke-Checked "dotnet" @("run", "--project", $project, "-c", $Configuration, "-p:Platform=x64", "-p:Version=$BridgeVersion", "--no-build") $ErrorMessage
     }
     finally {
         $env:OCCT_BRIDGE_NATIVE_DIR = $previousNativeDirectory
         $env:OCCT_ROOT = $previousOcctRoot
     }
+}
+
+function Run-Smoke {
+    Invoke-WithNativeRuntime -ProjectKey "Smoke" -Label "smoke" -ErrorMessage "Smoke test failed."
+}
+
+function Run-AvaloniaSmoke {
+    Invoke-WithNativeRuntime -ProjectKey "AvaloniaSmoke" -Label "avalonia-smoke" -ErrorMessage "Avalonia viewer smoke failed."
 }
 
 function Generate-ApiDocumentation {
@@ -185,55 +197,6 @@ function Clean-Outputs {
     Write-Host "Generated build outputs removed." -ForegroundColor Green
 }
 
-function Assert-CleanSourceTree {
-    Assert-Command "git"
-    $changes = @(& git -C $RepoRoot status --porcelain --untracked-files=all)
-    if ($LASTEXITCODE -ne 0) { throw "Failed to inspect the Git working tree." }
-    if ($changes.Count -gt 0) { throw "The working tree must be clean before producing dist/win-x64." }
-    $commit = (& git -C $RepoRoot rev-parse HEAD).Trim()
-    if (-not $commit) { throw "Failed to resolve source commit." }
-    return $commit
-}
-
-function Build-BinaryDistribution {
-    if ($Configuration -ne "Release") { throw "Binary SDK distribution is Release-only." }
-    $sourceCommit = Assert-CleanSourceTree
-    Build-Native
-    Build-Managed
-    $files = [ordered]@{
-        "OcctNative.dll" = Join-Path $RepoRoot "build\native\bin\Release\OcctNative.dll"
-        "OcctNet.dll" = Join-Path $RepoRoot "src\OcctNet\bin\x64\Release\$TargetFramework\OcctNet.dll"
-        "OcctNet.Avalonia.dll" = Join-Path $RepoRoot "src\OcctNet.Avalonia\bin\x64\Release\$TargetFramework\OcctNet.Avalonia.dll"
-    }
-    foreach ($source in $files.Values) { Assert-Path $source }
-    Remove-Item $DistStaging -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item $DistBackup -Recurse -Force -ErrorAction SilentlyContinue
-    New-Item -ItemType Directory -Path $DistStaging -Force | Out-Null
-    foreach ($entry in $files.GetEnumerator()) { Copy-Item $entry.Value (Join-Path $DistStaging $entry.Key) -Force }
-    Copy-Item $ContractPath (Join-Path $DistStaging "bridge-contract.json") -Force
-    $manifestFiles = @()
-    foreach ($name in @($files.Keys) + @("bridge-contract.json")) {
-        $path = Join-Path $DistStaging $name
-        $manifestFiles += [ordered]@{ name = $name; sha256 = (Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant() }
-    }
-    $manifest = [ordered]@{
-        schemaVersion = 1; author = $Author; bridgeVersion = $BridgeVersion; nativeAbiVersion = [int]$Contract.nativeAbiVersion;
-        occtVersion = $RequiredOcctVersion; platform = "windows-x64"; targetFramework = $TargetFramework;
-        sdkVersion = $SdkVersion; languageVersion = [string]$Contract.dotnet.languageVersion; configuration = "Release";
-        sourceCommit = $sourceCommit; files = $manifestFiles
-    }
-    [System.IO.File]::WriteAllText((Join-Path $DistStaging "bridge-manifest.json"), ($manifest | ConvertTo-Json -Depth 8) + [Environment]::NewLine, $utf8)
-    $hadPrevious = Test-Path $DistRoot -PathType Container
-    if ($hadPrevious) { Move-Item $DistRoot $DistBackup }
-    try { Move-Item $DistStaging $DistRoot }
-    catch {
-        if ($hadPrevious -and (Test-Path $DistBackup)) { Move-Item $DistBackup $DistRoot }
-        throw
-    }
-    Remove-Item $DistBackup -Recurse -Force -ErrorAction SilentlyContinue
-    Write-Host "[dist] Avalonia Windows Binary SDK updated: $DistRoot" -ForegroundColor Green
-}
-
 Write-Host "Target:        $Target"
 Write-Host "Configuration: $Configuration"
 Write-Host "Bridge:        $BridgeVersion"
@@ -251,9 +214,8 @@ switch ($Target) {
     "managed" { Build-Managed }
     "test" { Run-ManagedTests }
     "smoke" { Build-Native; Build-Managed; Run-Smoke }
+    "avalonia-smoke" { Build-Native; Build-Managed; Run-AvaloniaSmoke }
     "docs" { Generate-ApiDocumentation }
-    "dist" { Build-BinaryDistribution }
-    "ci" { Build-Managed; Run-ManagedTests; Build-Project "Smoke" }
-    "all" { Build-Native; Build-Managed }
+    "all" { Build-Native; Build-Managed; Run-ManagedTests; Run-Smoke }
 }
 Write-Host "Build completed." -ForegroundColor Green
