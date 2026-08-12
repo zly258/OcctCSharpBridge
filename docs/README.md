@@ -49,14 +49,14 @@ Demo does not contain Bridge producer source, Bridge tests, CMake validation, Na
 
 ## Binary SDK publication
 
-Synchronization is one-way and starts from `main`:
+Synchronization is one-way and starts from `main`. The normal publish path uses the main script defaults:
 
 ```powershell
 # main branch
-.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
+.\publish.ps1
 ```
 
-The main publish flow generates bilingual API documentation, runs the complete Release validation gate, creates `dist/win-x64`, validates Contract/Manifest/SHA-256, then updates the demo branch through a temporary detached worktree.
+The main publish flow generates bilingual API documentation, runs the Release Native/Managed build, creates `dist/win-x64`, validates Contract/Manifest/SHA-256, then updates the demo branch through a temporary detached worktree. Managed regression tests and Native Smoke remain explicit test targets and are intentionally not repeated by Binary SDK publication.
 
 ## Binary SDK contents
 
@@ -70,7 +70,16 @@ bridge-contract.json
 bridge-manifest.json
 ```
 
-OCCT `TK*.dll` and third-party runtime DLLs are not stored in `dist`. Runtime resolution uses `OCCT_ROOT`, `CASROOT`, or explicit `OcctRuntime` configuration.
+OCCT `TK*.dll` and third-party runtime DLLs are not stored in `dist`. Runtime resolution uses `OCCT_ROOT`, `CASROOT`, or explicit `OcctRuntime` configuration for local execution. Demo application packaging copies the required runtime subset into the final application package.
+
+## Demo behavior contract
+
+The three UI hosts share the same command/model layer. Host-specific code should only adapt UI events and controls to the shared behavior.
+
+- Multi-selection must not expose the first object as the active property object; the property panel shows only the selection count for more than one selected object.
+- Viewport wheel sensitivity uses the current SDK `ZoomSensitivity` API directly. Do not add reflection or old-Binary-SDK fallbacks.
+- Surface and mesh sample tests execute real `OcctModelingSession` APIs and validate returned topology/mesh metadata rather than simulating results in the UI.
+- Avalonia Undo/Redo state must be refreshed from shared history events and model changes, and its UI typography uses `Microsoft YaHei UI` consistently.
 
 ## Build
 
@@ -101,6 +110,10 @@ Individual targets:
 
 Demo `publish.ps1` packages applications only; it never publishes or rebuilds the Bridge SDK. The consumed Contract version is passed to `dotnet publish`, so build and publish assembly metadata stay aligned.
 
+For `all`, WinForms, WPF and Avalonia are published through temporary staging directories and merged into one final `OcctCSharpBridge-Demo-all-win-x64` directory. Shared .NET/Bridge/OCCT files are stored once; different files with the same relative path are treated as a packaging error rather than silently overwriting one another.
+
+Native packaging uses an explicit OCCT runtime closure instead of recursively copying the complete OCCT installation. Qt, VTK, Tcl/Tk, Draw/Test and debug runtimes are excluded. The small CAF/XCAF subset required transitively by OCCT STEP/IGES support is retained as an OCCT runtime implementation dependency; it is not a Demo document-model dependency.
+
 ## Product metadata
 
 `Directory.Build.props` defines demo-wide build policy, product name and Author **zly258**, but does not duplicate the Bridge version/ABI/OCCT contract. `OcctDemo.Common/DemoProductInfo.cs` reads Bridge version and expected ABI from `OcctNet` and obtains the loaded OCCT version from the Bridge at runtime for all three About dialogs.
@@ -111,5 +124,5 @@ Demo `publish.ps1` packages applications only; it never publishes or rebuilds th
 - English Bridge documentation: `main/docs/en-US`.
 - Complete Managed + Native API Reference: `api/` below both language roots.
 - Demo maintains only application, UI, build, run, packaging and screenshot documentation.
-- Do not restore deleted `dist.ps1`, `sync-dist.ps1`, Bridge source mirrors, or legacy compatibility wrappers.
+- Do not restore deleted `dist.ps1`, `sync-dist.ps1`, Bridge source mirrors, reflection-based compatibility helpers, or legacy compatibility wrappers.
 - GitHub Actions are not used for build, validation, publication, or branch synchronization.

@@ -33,6 +33,20 @@ src/OcctDemo.Avalonia
 
 All three desktop demos share the same product metadata and About information through `OcctDemo.Common/DemoProductInfo.cs`, so author, version and technology baseline cannot drift between WinForms, WPF and Avalonia.
 
+## Shared interaction and modeling coverage
+
+WinForms, WPF and Avalonia use the same demo behavior and cover the following interaction and modeling scenarios:
+
+- object, vertex, edge, wire, face, shell and solid selection filters; the WinForms toolbar selector is wired directly to the Viewer selection mode;
+- rectangle/Ctrl multi-selection shows only the selected object count instead of presenting the first object as the active property object;
+- all three Viewports consume the Binary SDK `ZoomSensitivity` API directly, defaulting to `1.0`, with mouse-wheel sensitivity configurable from the View menu;
+- Undo/Redo is driven by the shared history model; Avalonia menu and toolbar states refresh from `HistoryChanged` and `ModelChanged`;
+- the Avalonia main window, property area, log, status bar and parameter dialog use `Microsoft YaHei UI` consistently;
+- the Samples menu includes a **B-Spline Surface Test** that creates a real non-ruled loft and validates degrees, poles, weights, knots and multiplicities;
+- the Samples menu includes a **Mesh Generation Test** that calls `GetShapeMeshData` and validates face count, nodes, triangles and contiguous per-face provenance ranges.
+
+These are executable Bridge API tests rather than static screenshots; results are written to the demo command log.
+
 ## Binary SDK
 
 `main/publish.ps1` publishes the validated SDK into this branch:
@@ -48,14 +62,14 @@ dist/win-x64/
 └─ bridge-manifest.json
 ```
 
-The demo branch does **not** own a reverse synchronization script. SDK publication always starts from `main`:
+The demo branch does **not** own a reverse synchronization script. SDK publication always starts from `main`; the main script already provides the normal default OCCT root:
 
 ```powershell
 # main branch
-.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
+.\publish.ps1
 ```
 
-The main publish flow generates the bilingual API Reference, runs the Release native/managed build, managed tests and native smoke validation, creates the Binary SDK, then synchronizes `dist/win-x64` to `demo` through a temporary worktree.
+The main publish flow generates the bilingual API Reference, runs the Release native/managed build, creates the Binary SDK, then synchronizes `dist/win-x64` to `demo` through a temporary worktree. Managed regression and Native Smoke remain explicit test targets and no longer block Binary SDK publication.
 
 ## Requirements
 
@@ -105,6 +119,28 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 .\publish.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64" -Zip
 ```
 
+All three demos are merged into one package directory and share one .NET, Bridge and OCCT runtime instead of creating three duplicated runtime trees:
+
+```text
+artifacts/publish/OcctCSharpBridge-Demo-all-win-x64/
+├─ CAD-Winform.exe
+├─ CAD-WPF.exe
+├─ CAD-Avalonia.exe
+├─ OcctDemo.Common.dll
+├─ OcctNet*.dll
+├─ OcctNative.dll
+├─ required OCCT 7.9 runtime modules
+└─ shared .NET/Avalonia runtime
+```
+
+The publisher copies only the OCCT toolkits used by the Bridge and their required transitive runtime dependencies. It no longer recursively copies the full OCCT/third-party SDK, so Qt, VTK, Tcl/Tk, Draw/Test and debug DLLs are excluded. A small CAF/XCAF runtime subset remains because OCCT's STEP/IGES toolkits depend on it internally; this does not mean the Demo or Bridge uses OCAF/XDE as its document architecture.
+
+Self-contained remains the default. When the target machine already has the .NET 10 Desktop Runtime, use a smaller framework-dependent package:
+
+```powershell
+.\publish.ps1 all Release -FrameworkDependent -Zip
+```
+
 The demo `publish.ps1` packages demo applications only. It consumes the Binary SDK and never builds Bridge source.
 
 ## Structure
@@ -133,13 +169,15 @@ publish.ps1                 Demo application publisher
 
 ## Runtime troubleshooting
 
-For `DllNotFoundException` or Win32 error 126, verify:
+For local `run.ps1`, if `DllNotFoundException` or Win32 error 126 occurs, verify:
 
 ```text
 application/OcctNative.dll
 %OCCT_ROOT%/win64/vc14/bin/TKernel.dll
-%OCCT_ROOT%/3rdparty-vc14-64/**/bin/*.dll
+%OCCT_ROOT%/3rdparty-vc14-64/**/bin/required runtime files
 ```
+
+The formal `publish.ps1` output places the required native runtime beside the three executables, so the target machine does not need a complete OCCT SDK installation.
 
 The Avalonia host uses a Windows child HWND, so WinForms, WPF and Avalonia demos all target Windows x64.
 
