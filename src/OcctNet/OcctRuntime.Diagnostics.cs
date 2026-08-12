@@ -82,6 +82,12 @@ public sealed class OcctRuntimeDiagnosticInfo
 
 public static partial class OcctRuntime
 {
+    private static string OcctKernelFileName => OperatingSystem.IsWindows()
+        ? "TKernel.dll"
+        : OperatingSystem.IsLinux()
+            ? "libTKernel.so"
+            : "TKernel";
+
     /// <summary>
     /// Returns a structured, side-effect-free snapshot of runtime paths and loaded modules.
     /// The snapshot does not configure the runtime or force a native library load.
@@ -90,7 +96,7 @@ public static partial class OcctRuntime
     {
         var baseDirectory = AppContext.BaseDirectory;
         var applicationNativeBridgePath = Path.Combine(baseDirectory, NativeLibraryFileName);
-        var applicationOcctKernelPath = Path.Combine(baseDirectory, "TKernel.dll");
+        var applicationOcctKernelPath = Path.Combine(baseDirectory, OcctKernelFileName);
         var configuredNativeDirectory = DiagnosticGetEnvironmentPath("OCCT_BRIDGE_NATIVE_DIR");
         var configuredOcctRoot = DiagnosticGetEnvironmentPath("OCCT_ROOT");
         var configuredCasRoot = DiagnosticGetEnvironmentPath("CASROOT");
@@ -99,9 +105,7 @@ public static partial class OcctRuntime
         var configuredNativeBridgePath = configuredNativeDirectory is null
             ? null
             : Path.Combine(configuredNativeDirectory, NativeLibraryFileName);
-        var configuredOcctKernelPath = effectiveOcctRoot is null
-            ? null
-            : Path.Combine(effectiveOcctRoot, "win64", "vc14", "bin", "TKernel.dll");
+        var configuredOcctKernelPath = ResolveDiagnosticOcctKernelPath(effectiveOcctRoot);
 
         return new OcctRuntimeDiagnosticInfo(
             DateTimeOffset.UtcNow,
@@ -124,7 +128,7 @@ public static partial class OcctRuntime
             configuredOcctKernelPath,
             DiagnosticFileExistsOrNull(configuredOcctKernelPath),
             DiagnosticTryFindLoadedRuntimeModule(NativeLibraryFileName),
-            DiagnosticTryFindLoadedRuntimeModule("TKernel.dll"),
+            DiagnosticTryFindLoadedRuntimeModule(OcctKernelFileName),
             GetDiagnosticReport());
     }
 
@@ -136,18 +140,20 @@ public static partial class OcctRuntime
     {
         var baseDirectory = AppContext.BaseDirectory;
         var appLocalBridge = Path.Combine(baseDirectory, NativeLibraryFileName);
-        var appLocalKernel = Path.Combine(baseDirectory, "TKernel.dll");
+        var appLocalKernel = Path.Combine(baseDirectory, OcctKernelFileName);
         var builder = new StringBuilder();
         builder.AppendLine($"Configured: {_configured}");
         builder.AppendLine($"Base directory: {baseDirectory}");
         builder.AppendLine($"App-local bridge: {(File.Exists(appLocalBridge) ? "[found]" : "[missing]")} {appLocalBridge}");
-        builder.AppendLine($"App-local TKernel: {(File.Exists(appLocalKernel) ? "[found]" : "[missing]")} {appLocalKernel}");
+        builder.AppendLine($"App-local OCCT kernel: {(File.Exists(appLocalKernel) ? "[found]" : "[missing]")} {appLocalKernel}");
         builder.AppendLine($"Native bridge directory: {ConfiguredNativeDirectory ?? "<not resolved>"}");
         builder.AppendLine($"OCCT root: {ConfiguredRoot ?? "<not resolved>"}");
         builder.AppendLine($"Repository probing: {_repositoryProbingEnabled}");
         builder.AppendLine($"OCCT_BRIDGE_NATIVE_DIR: {Environment.GetEnvironmentVariable("OCCT_BRIDGE_NATIVE_DIR") ?? "<unset>"}");
         builder.AppendLine($"OCCT_ROOT: {Environment.GetEnvironmentVariable("OCCT_ROOT") ?? "<unset>"}");
         builder.AppendLine($"CASROOT: {Environment.GetEnvironmentVariable("CASROOT") ?? "<unset>"}");
+        if (OperatingSystem.IsLinux())
+            builder.AppendLine($"LD_LIBRARY_PATH: {Environment.GetEnvironmentVariable("LD_LIBRARY_PATH") ?? "<unset>"}");
         builder.AppendLine("Native bridge candidates:");
         foreach (var candidate in GetNativeLibraryCandidatesCore())
         {
@@ -168,6 +174,21 @@ public static partial class OcctRuntime
         }
 
         return builder.ToString().TrimEnd();
+    }
+
+    private static string? ResolveDiagnosticOcctKernelPath(string? occtRoot)
+    {
+        if (string.IsNullOrWhiteSpace(occtRoot)) return null;
+        if (OperatingSystem.IsWindows())
+            return Path.Combine(occtRoot, "win64", "vc14", "bin", OcctKernelFileName);
+        if (OperatingSystem.IsLinux())
+        {
+            var lib = Path.Combine(occtRoot, "lib", OcctKernelFileName);
+            if (File.Exists(lib)) return lib;
+            var lib64 = Path.Combine(occtRoot, "lib64", OcctKernelFileName);
+            return File.Exists(lib64) ? lib64 : lib;
+        }
+        return null;
     }
 
     private static string? DiagnosticGetEnvironmentPath(string variableName)
@@ -195,7 +216,10 @@ public static partial class OcctRuntime
             using var process = Process.GetCurrentProcess();
             foreach (ProcessModule module in process.Modules)
             {
-                if (string.Equals(module.ModuleName, moduleName, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(
+                        module.ModuleName,
+                        moduleName,
+                        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
                     return module.FileName;
             }
         }

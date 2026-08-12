@@ -204,6 +204,9 @@ else()
     find_package(OpenGL REQUIRED)
     find_package(X11 REQUIRED)
     target_link_libraries(OcctNative PRIVATE ${occt_link_libraries} OpenGL::GL X11::X11)
+    set_target_properties(OcctNative PROPERTIES
+        BUILD_RPATH "${OCCT_LIB_DIR}"
+        INSTALL_RPATH "$ORIGIN")
 endif()
 
 set_target_properties(OcctNative PROPERTIES

@@ -6,16 +6,11 @@ TARGET="${1:-all}"
 CONFIGURATION="${2:-Release}"
 
 OCCT_ROOT="${OCCT_ROOT:-/usr/local}"
-OCCT_INCLUDE_DIR="${OCCT_INCLUDE_DIR:-/usr/local/include/opencascade}"
-OCCT_LIB_DIR="${OCCT_LIB_DIR:-/usr/local/lib}"
+OCCT_INCLUDE_DIR="${OCCT_INCLUDE_DIR:-${OCCT_ROOT}/include/opencascade}"
+OCCT_LIB_DIR="${OCCT_LIB_DIR:-${OCCT_ROOT}/lib}"
 BUILD_DIR="${ROOT_DIR}/build/native"
 NATIVE_BIN_DIR="${BUILD_DIR}/bin"
 DOTNET_SDK_VERSION="10.0.302"
-
-if [[ "${OCCT_ROOT}" != "/usr/local" ]]; then
-    OCCT_INCLUDE_DIR="${OCCT_INCLUDE_DIR_OVERRIDE:-${OCCT_ROOT}/include/opencascade}"
-    OCCT_LIB_DIR="${OCCT_LIB_DIR_OVERRIDE:-${OCCT_ROOT}/lib}"
-fi
 
 log() {
     printf '[linux] %s\n' "$*"
@@ -98,8 +93,15 @@ managed() {
 
 test_managed() {
     validate
-    log "Compiling Linux smoke consumer..."
+    log "Compiling Linux headless smoke consumer..."
     dotnet build "${ROOT_DIR}/tests/OcctNet.Smoke/OcctNet.Smoke.csproj" \
+        -c "${CONFIGURATION}" -p:Platform=x64 --nologo
+}
+
+build_x11_smoke() {
+    validate
+    log "Compiling Linux X11 viewer smoke consumer..."
+    dotnet build "${ROOT_DIR}/tests/OcctNet.X11Smoke/OcctNet.X11Smoke.csproj" \
         -c "${CONFIGURATION}" -p:Platform=x64 --nologo
 }
 
@@ -123,18 +125,34 @@ smoke() {
         --no-build
 }
 
+x11_smoke() {
+    native
+    build_x11_smoke
+    configure_runtime_environment
+    [[ -n "${DISPLAY:-}" ]] || fail "DISPLAY is not set. X11 viewer smoke requires an X11/XWayland desktop session."
+
+    log "Running X11 viewer smoke tests on DISPLAY=${DISPLAY}..."
+    dotnet run \
+        --project "${ROOT_DIR}/tests/OcctNet.X11Smoke/OcctNet.X11Smoke.csproj" \
+        -c "${CONFIGURATION}" \
+        -p:Platform=x64 \
+        --no-build
+}
+
 clean() {
     log "Cleaning Linux build outputs..."
     rm -rf "${ROOT_DIR}/build/native"
     rm -rf "${ROOT_DIR}/src/OcctNet/bin" "${ROOT_DIR}/src/OcctNet/obj"
     rm -rf "${ROOT_DIR}/src/OcctNet.Avalonia/bin" "${ROOT_DIR}/src/OcctNet.Avalonia/obj"
     rm -rf "${ROOT_DIR}/tests/OcctNet.Smoke/bin" "${ROOT_DIR}/tests/OcctNet.Smoke/obj"
+    rm -rf "${ROOT_DIR}/tests/OcctNet.X11Smoke/bin" "${ROOT_DIR}/tests/OcctNet.X11Smoke/obj"
 }
 
 all() {
     native
     managed
     test_managed
+    build_x11_smoke
     configure_runtime_environment
     log "Running headless native smoke tests..."
     dotnet run \
@@ -142,7 +160,7 @@ all() {
         -c "${CONFIGURATION}" \
         -p:Platform=x64 \
         --no-build
-    log "Linux build completed."
+    log "Linux build completed. X11 viewer smoke is separate: ./build.sh x11-smoke ${CONFIGURATION}"
 }
 
 case "${TARGET}" in
@@ -151,7 +169,8 @@ case "${TARGET}" in
     managed) managed ;;
     test) test_managed ;;
     smoke) smoke ;;
+    x11-smoke) x11_smoke ;;
     clean) clean ;;
     all) all ;;
-    *) fail "Unknown target '${TARGET}'. Supported targets: validate, native, managed, test, smoke, clean, all." ;;
+    *) fail "Unknown target '${TARGET}'. Supported targets: validate, native, managed, test, smoke, x11-smoke, clean, all." ;;
 esac
