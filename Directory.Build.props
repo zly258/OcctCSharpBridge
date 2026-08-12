@@ -1,10 +1,15 @@
 ﻿<Project>
   <PropertyGroup>
-    <LangVersion>latest</LangVersion>
+    <LangVersion>14.0</LangVersion>
     <Deterministic>true</Deterministic>
     <DebugType>portable</DebugType>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningLevel>7</WarningLevel>
+    <Authors>zly258</Authors>
+    <Company>zly258</Company>
+    <Product>OcctCSharpBridge Demo</Product>
+    <Description>Binary SDK consumer demos for OcctCSharpBridge on .NET 10 and Windows x64.</Description>
+    <OcctBridgeDistRoot>$(MSBuildThisFileDirectory)dist\win-x64</OcctBridgeDistRoot>
   </PropertyGroup>
 </Project>

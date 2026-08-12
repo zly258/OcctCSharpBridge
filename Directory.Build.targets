@@ -1,12 +1,18 @@
 ﻿<Project>
-  <PropertyGroup>
-    <OcctNativeBridge>$(MSBuildThisFileDirectory)build\native\bin\$(Configuration)\OcctNative.dll</OcctNativeBridge>
-  </PropertyGroup>
+  <Target Name="ValidateOcctBridgeBinarySdk" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(OcctBridgeDistRoot)\OcctNative.dll')" Text="OcctNative.dll is missing from dist/win-x64. Publish the validated Binary SDK from main with publish.ps1." />
+    <Error Condition="!Exists('$(OcctBridgeDistRoot)\OcctNet.dll')" Text="OcctNet.dll is missing from dist/win-x64. Publish the validated Binary SDK from main with publish.ps1." />
+    <Error Condition="!Exists('$(OcctBridgeDistRoot)\OcctNet.WinForms.dll')" Text="OcctNet.WinForms.dll is missing from dist/win-x64." />
+    <Error Condition="!Exists('$(OcctBridgeDistRoot)\OcctNet.Wpf.dll')" Text="OcctNet.Wpf.dll is missing from dist/win-x64." />
+    <Error Condition="!Exists('$(OcctBridgeDistRoot)\OcctNet.Avalonia.dll')" Text="OcctNet.Avalonia.dll is missing from dist/win-x64." />
+    <Error Condition="!Exists('$(OcctBridgeDistRoot)\bridge-contract.json')" Text="bridge-contract.json is missing from dist/win-x64." />
+    <Error Condition="!Exists('$(OcctBridgeDistRoot)\bridge-manifest.json')" Text="bridge-manifest.json is missing from dist/win-x64." />
+  </Target>
 
   <Target Name="CopyOcctNativeBridge"
           AfterTargets="Build"
-          Condition="('$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe') and Exists('$(OcctNativeBridge)')">
-    <Copy SourceFiles="$(OcctNativeBridge)"
+          Condition="'$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe'">
+    <Copy SourceFiles="$(OcctBridgeDistRoot)\OcctNative.dll"
           DestinationFolder="$(TargetDir)"
           SkipUnchangedFiles="true" />
   </Target>

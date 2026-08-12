@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <AssemblyName>CAD-WPF</AssemblyName>
+    <RootNamespace>OcctDemo.Wpf</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\OcctDemo.Common\OcctDemo.Common.csproj" />
+    <Reference Include="OcctNet">
+      <HintPath>$(OcctBridgeDistRoot)\OcctNet.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="OcctNet.WinForms">
+      <HintPath>$(OcctBridgeDistRoot)\OcctNet.WinForms.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="OcctNet.Wpf">
+      <HintPath>$(OcctBridgeDistRoot)\OcctNet.Wpf.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+</Project>
