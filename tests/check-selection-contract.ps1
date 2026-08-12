@@ -24,14 +24,21 @@ function Assert-Contains {
     }
 }
 
-$engine = Read-Text (Join-Path $RepositoryRoot "src\OcctNative\OcctEngine.cpp")
+$engineSelection = Read-Text (Join-Path $RepositoryRoot "src\OcctNative\OcctEngineSelection.cpp")
+$selectionState = Read-Text (Join-Path $RepositoryRoot "src\OcctNative\OcctSelectionState.cpp")
+$selectionHeader = Read-Text (Join-Path $RepositoryRoot "src\OcctNative\OcctSelectionState.h")
 $overlay = Read-Text (Join-Path $RepositoryRoot "src\OcctNative\OcctSelectionOverlay.cpp")
 $control = Read-Text (Join-Path $RepositoryRoot "src\OcctNet.WinForms\OcctViewportControl.cs")
+$managedHits = Read-Text (Join-Path $RepositoryRoot "src\OcctNet\OcctEngine.SelectionHits.cs")
+$managedOverlay = Read-Text (Join-Path $RepositoryRoot "src\OcctNet\OcctEngine.SelectionOverlay.cs")
+$managedTypes = Read-Text (Join-Path $RepositoryRoot "src\OcctNet\OcctSelectionHitTypes.cs")
+$managedStateNative = Read-Text (Join-Path $RepositoryRoot "src\OcctNet\SelectionStateNativeMethods.cs")
+$managedOverlayNative = Read-Text (Join-Path $RepositoryRoot "src\OcctNet\SelectionOverlayNativeMethods.cs")
 
-Assert-Contains $engine 'AIS_SelectionScheme_Add : AIS_SelectionScheme_Replace' 'add/replace selection schemes'
-Assert-Contains $engine 'SelectRectangle(' 'the standard OCCT SelectRectangle call'
-Assert-Contains $engine 'UpdateCurrentViewer();' 'viewer updates after selection'
-if ($engine.Contains('AIS_SelectionScheme_XOR')) {
+Assert-Contains $engineSelection 'AIS_SelectionScheme_Add : AIS_SelectionScheme_Replace' 'add/replace selection schemes'
+Assert-Contains $engineSelection 'SelectRectangle(' 'the standard OCCT SelectRectangle call'
+Assert-Contains $engineSelection 'UpdateCurrentViewer();' 'viewer updates after selection'
+if ($engineSelection.Contains('AIS_SelectionScheme_XOR')) {
     throw 'Point selection must not use XOR; Ctrl selection follows the reference Add behavior.'
 }
 
@@ -40,6 +47,57 @@ Assert-Contains $overlay 'windowHeight - maxClientY' 'top-left to bottom-left Y 
 Assert-Contains $overlay 'windowHeight - minClientY' 'top-left to bottom-left Y conversion'
 if ($overlay.Contains('Aspect_TOTP_LEFT_UPPER') -or $overlay.Contains('SetRectangle(minX, -maxY')) {
     throw 'Legacy inverted rubber-band coordinates remain.'
+}
+
+Assert-Contains $selectionHeader 'struct OcctSelectionHit' 'the structured native selection-hit DTO'
+Assert-Contains $selectionHeader 'occt_selected_hits' 'the batched selected-hit declaration'
+Assert-Contains $selectionHeader 'occt_detected_hit' 'the detected-hit declaration'
+Assert-Contains $selectionHeader 'ordering as occt_get_subshape' 'the subshape-index ordering contract'
+if ($selectionHeader.Contains('hasPoint') -or $selectionHeader.Contains('OcctPoint3d point')) {
+    throw 'Selection hit ABI must not expose an unimplemented hit-point field.'
+}
+
+Assert-Contains $selectionState 'StdSelect_BRepOwner' 'BRep entity-owner extraction'
+Assert-Contains $selectionState 'TopExp_Explorer' 'subshape indexing compatible with GetSubshapeAt'
+Assert-Contains $selectionState 'IsSame(selected)' 'topological identity matching'
+Assert-Contains $selectionState 'collectSelectedHits' 'single-pass selected-hit collection'
+Assert-Contains $selectionState 'occt_selected_hits' 'batched selected-hit implementation'
+Assert-Contains $selectionState 'occt_detected_hit' 'detected-hit implementation'
+Assert-Contains $selectionState 'subshapeIndex = -1' 'object-level selection sentinel'
+Assert-Contains $selectionState 'SelectedOwner()' 'selected entity-owner lookup'
+Assert-Contains $selectionState 'DetectedOwner()' 'detected entity-owner lookup'
+if ($selectionState.Contains('occt_selected_hit_count') -or $selectionState.Contains('occt_selected_hit_at')) {
+    throw 'Legacy N+1 selected-hit ABI must not be reintroduced.'
+}
+
+Assert-Contains $managedTypes 'public readonly record struct OcctSelectionHit' 'the public managed selection-hit type'
+Assert-Contains $managedTypes 'public bool IsSubshape => SubshapeIndex >= 0;' 'managed subshape sentinel semantics'
+if ($managedTypes.Contains('Point)') -or $managedTypes.Contains('OcctPoint3d? Point')) {
+    throw 'Managed selection hit must not expose an unimplemented hit-point property.'
+}
+Assert-Contains $managedStateNative 'internal static class SelectionStateNativeMethods' 'dedicated selection-state native-method class'
+Assert-Contains $managedStateNative 'occt_selected_hits' 'batched selected-hit P/Invoke'
+Assert-Contains $managedStateNative 'occt_detected_hit' 'detected-hit P/Invoke'
+Assert-Contains $managedOverlayNative 'internal static class SelectionOverlayNativeMethods' 'dedicated selection-overlay native-method class'
+Assert-Contains $managedOverlayNative 'occt_show_selection_rectangle' 'overlay show P/Invoke'
+Assert-Contains $managedHits 'public IReadOnlyList<OcctSelectionHit> GetSelectedHits()' 'managed selected-hit API'
+Assert-Contains $managedHits 'public bool TryGetDetectedHit(out OcctSelectionHit hit)' 'managed detected-hit API'
+Assert-Contains $managedHits 'Check(SelectionStateNativeMethods.occt_selected_hits(_handle, null, 0, out var count));' 'two-call selected-hit count query'
+Assert-Contains $managedHits 'Check(SelectionStateNativeMethods.occt_detected_hit(_handle, out var native, out var hasHit));' 'normal native error propagation'
+Assert-Contains $managedHits 'var subshapeType = (OcctShapeType)native.SubshapeType;' 'typed managed selection-hit validation'
+Assert-Contains $managedHits 'native.SubshapeIndex == -1 && subshapeType != OcctShapeType.Shape' 'whole-object Shape/-1 invariant'
+Assert-Contains $managedHits 'native.SubshapeIndex >= 0 && subshapeType == OcctShapeType.Shape' 'concrete subshape type invariant'
+Assert-Contains $managedHits 'native.SubshapeIndex >= 0 && owner.Kind != OcctObjectKind.Shape' 'shape-owner invariant for subshape hits'
+Assert-Contains $managedHits 'GetObject(native.OwnerObjectId)' 'managed owner-object resolution'
+Assert-Contains $managedOverlay 'SelectionOverlayNativeMethods.occt_show_selection_rectangle' 'overlay API/native responsibility separation'
+
+foreach ($obsoletePath in @(
+    "src\OcctNet\SelectionNativeMethods.cs",
+    "src\OcctNet\NativeMethods.SelectionHits.cs"
+)) {
+    if (Test-Path (Join-Path $RepositoryRoot $obsoletePath)) {
+        throw "Obsolete selection native-method file must not remain: $obsoletePath"
+    }
 }
 
 Assert-Contains $control 'RectangleSelectionThreshold { get; set; } = 3;' 'the three-pixel reference threshold'
@@ -63,4 +121,4 @@ if ($resizeBlock.Contains('CancelRectangleSelection();')) {
     throw 'OnResize must preserve an active rectangle gesture instead of cancelling the first drag.'
 }
 
-Write-Host '[selection] Point selection, first-gesture capture recovery, box coordinates, and default behavior validated.' -ForegroundColor Green
+Write-Host '[selection] Split base selection, overlay/state native methods, structured hit invariants, point/box selection, batched selected/detected hits, subshape-index contract, and first-gesture capture recovery validated.' -ForegroundColor Green

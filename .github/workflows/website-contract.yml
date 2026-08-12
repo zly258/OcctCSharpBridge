@@ -76,4 +76,22 @@ jobs:
           if "zhangly1403" + "@" + "qq.com" in all_text:
               raise SystemExit("Legacy contact email remains on website branch.")
 
-          print("Website branch matches main bridge-contract.json, including contact metadata.")
+          preview_names = [
+              "winform-demo-en.png",
+              "winform-demo-zh.png",
+              "wpf-demo-en.png",
+              "wpf-demo-zh.png",
+              "avalonia-demo-en.png",
+              "avalonia-demo-zh.png",
+          ]
+          for preview_name in preview_names:
+              expected = f"demo/assets/previews/{preview_name}"
+              if expected not in index:
+                  raise SystemExit(f"Website preview reference is missing: {expected}")
+
+          if ".webp" in index or ".webp" in app:
+              raise SystemExit("Website must not reference retired WebP demo previews.")
+          if "data-fallback" in index or "dataset.fallback" in app:
+              raise SystemExit("Retired preview fallback wiring remains on the website.")
+
+          print("Website branch matches main bridge contract, contact metadata, and canonical PNG preview policy.")

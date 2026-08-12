@@ -7,9 +7,12 @@ This index covers the reusable bridge content shared by `main` and `demo`. NuGet
 | Document | Use it for |
 |---|---|
 | [API Coverage](API_COVERAGE.md) | Current Bridge/ABI/API scope, ownership rules, façade responsibilities, validation boundaries |
+| [Structured Viewer Selection Hits](SELECTION_HITS.md) | Registered object/subshape identity for selected and detected AIS entities |
 | [Managed Geometry and Transform Utilities](GEOMETRY_UTILITIES.md) | Point/vector math, bounds, UV ranges, affine matrices, locations and transforms |
 | [B-Spline Curve and Surface Inspection](BSPLINE_CURVES.md) | Degree, poles, weights, knots, multiplicities and surface control grids |
-| [Topology Adjacency and Free-Boundary Analysis](TOPOLOGY_ANALYSIS.md) | Adjacency screening, manifold/non-manifold checks and strict free-boundary analysis |
+| [Topology Adjacency and Free-Boundary Analysis](TOPOLOGY_ANALYSIS.md) | Batched adjacency, manifold/non-manifold checks and strict free-boundary analysis |
+| [Batch Face Analysis and Shape Inspection](SHAPE_INSPECTION.md) | Batched Face metadata and structured model-audit snapshots without application-specific pass/fail rules |
+| [Shape Mesh Face Provenance](MESH_PROVENANCE.md) | Combined-mesh source-Face ranges, picking and CAD/BIM property mapping |
 | [Structured Runtime Diagnostics](RUNTIME_DIAGNOSTICS.md) | Startup/runtime troubleshooting, configured paths, loaded modules and Win32 126 diagnostics |
 
 ## API layers
@@ -30,6 +33,8 @@ The repository distinguishes checks by what they can prove:
 - **Managed regression tests** run without an OCCT SDK and cover ownership/value/runtime utility behavior.
 - **Smoke project compilation** ensures the native integration scenarios remain source-compatible with the managed API.
 - **Local Native Smoke** is the release gate that actually loads OCCT 7.9.0 and executes geometry/topology algorithms.
+
+The responsibilities of the individual test projects and contract scripts are documented in [`tests/README.md`](../tests/README.md).
 
 Run the cloud-equivalent managed gate:
 
@@ -59,4 +64,4 @@ Static project site. Its public API statistics are validated against `main/bridg
 
 ## Compatibility rule
 
-Bridge `2.6.0` uses Native ABI `3`. New capabilities in this expansion are additive ABI 3 functions; existing ABI 3 signatures are not silently repurposed. Managed callers should still deploy `OcctNet`, UI host assemblies, `OcctNative.dll`, OCCT runtime DLLs, and third-party dependencies from one compatible build.
+Bridge `2.6.0` uses Native ABI `3`. New Native capabilities in this expansion are additive ABI 3 functions; existing ABI 3 signatures are not silently repurposed. Managed-only additions such as mesh provenance and structured inspection composition do not change the Native ABI. Managed callers should deploy `OcctNet`, UI host assemblies, `OcctNative.dll`, OCCT runtime DLLs, and third-party dependencies from one compatible build.

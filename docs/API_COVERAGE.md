@@ -10,11 +10,11 @@ OCAF/XDE is intentionally excluded. Document persistence, undo/redo, application
 - Native bridge version: `2.6.0`
 - Native ABI: `3`
 - OCCT: `7.9.0`
-- Native exports: `345`
-- Managed P/Invoke declarations: `345`
-- Public .NET types: `88`
-- Viewer API: `212`
-- Modeling API: `133`
+- Native exports: `348`
+- Managed P/Invoke declarations: `348`
+- Public .NET types: `95`
+- Viewer API: `214`
+- Modeling API: `134`
 
 ## 2.6 API rules
 
@@ -25,11 +25,13 @@ Bridge 2.6 removes compatibility aliases instead of carrying multiple names for 
 | Shape query | `GetShape...` / `IsShape...` / `SetShape...` | `GetShapeBounds()` |
 | Edge query | `GetEdge...` / `EvaluateEdge...` | `GetEdgeCurveType()` |
 | Face query | `GetFace...` / `EvaluateFace...` | `GetFaceUvBounds()` |
+| Batch analysis | `Analyze...` | `AnalyzeFaces()`, `AnalyzeEdgeAdjacency()` |
+| Structured inspection | `Inspect...` | `InspectShape()` |
 | Indexed topology | `...At` suffix | `GetSubshapeAt()` |
 | Construction | `Make...` | `MakePlanarFace()` |
 | Algorithms | operation verb | `Extrude()`, `OffsetWire()` |
-| Mesh | triangulation vocabulary | `Triangulate()`, `GetShapeMesh()` |
-| Native C ABI | exact `occt_...` symbol | `occt_model_trim_edge` |
+| Mesh | triangulation vocabulary | `Triangulate()`, `GetShapeMeshData()` |
+| Native C ABI | exact `occt_...` symbol | `occt_model_shape_face_analysis` |
 
 Public object handles are session/engine owned. Raw `long` IDs cannot be used to construct `OcctShape` or `OcctModelShape`; persisted IDs must be resolved through `GetShape()`, `TryGetShape()`, or `GetObject()`.
 
@@ -51,6 +53,18 @@ The full WinForms/WPF/Avalonia CAD applications live on the `demo` branch, not i
 
 Coverage includes camera/view control, screen/world conversion, selection, object lifecycle, appearance, transformations, interactive primitives/features, annotations, and STEP/IGES/BREP/STL exchange. Lighting uses the strongly typed `OcctSceneLightingSettings` API; the older simplified lighting overload and redundant C ABI aliases were removed in ABI 3.
 
+Selection now exposes structured runtime identity rather than forcing applications to reconstruct it from selected object IDs:
+
+- `GetSelectedHits()` returns the current registered AIS selection as `OcctSelectionHit` values.
+- `TryGetDetectedHit()` returns the current registered detected/hovered AIS entity when available.
+- `OcctSelectionHit` contains `Owner`, `SubshapeType`, and `SubshapeIndex`; whole-object selection uses `Shape / -1`.
+- selected-hit retrieval uses one two-call batch ABI (`occt_selected_hits`) instead of `count + hit_at(index)` N+1 P/Invoke crossings.
+- detected-hit absence is represented by `false`; native failures still use the normal bridge error contract.
+- no placeholder hit-point property is exposed because the current viewer path does not provide one with sufficiently clear semantics.
+- runtime subshape indices follow the same `TopExp_Explorer` ordering as `GetSubshapeAt()` and are explicitly not persistent naming.
+
+See [Structured Viewer Selection Hits](SELECTION_HITS.md).
+
 ## Headless `OcctModelingSession`
 
 ### Construction
@@ -71,9 +85,9 @@ Coverage includes camera/view control, screen/world conversion, selection, objec
 - Convenience collections: `GetVertices()`, `GetEdges()`, `GetWires()`, `GetFaces()`, `GetShells()`, `GetSolids()`, `GetCompSolids()`, and `GetCompounds()`.
 - Local topology helpers: `GetEdgeVertices()`, `GetWireEdges()`, `GetFaceEdges()`, `GetFaceVertices()`, and `GetTopologyCounts()`.
 - Local adjacency helpers: `GetAdjacentFaces()`, `GetIncidentEdges()`, and `GetIncidentFaces()`.
-- `AnalyzeEdgeAdjacency()` builds one native Edge→distinct-Face map for the entire root shape and returns `OcctEdgeAdjacencyResult`, including isolated, boundary-candidate, manifold-interior, and non-manifold classifications. Existing `GetBoundaryEdgeCandidates()`, `GetManifoldInteriorEdges()`, `GetNonManifoldEdges()`, and `GetEdgesByAdjacentFaceCount()` reuse this batch path.
-- `GetBoundaryEdgeCandidates()` intentionally returns topological candidates; periodic seam topology may require a stricter free-boundary analysis before every returned edge is treated as an open geometric edge.
-- `AnalyzeFreeBounds()` runs OCCT `ShapeAnalysis_FreeBounds` and returns `OcctFreeBoundsResult` with closed and open free-boundary wires plus the tolerance used. See [Topology Adjacency and Free-Boundary Analysis](TOPOLOGY_ANALYSIS.md).
+- `AnalyzeEdgeAdjacency()` builds one native Edge→distinct-Face map for the entire root shape and returns `OcctEdgeAdjacencyResult`, including isolated, boundary-candidate, manifold-interior, and non-manifold classifications. Existing edge-classification helpers reuse this batch path.
+- `GetBoundaryEdgeCandidates()` intentionally returns topological candidates; periodic seam topology may require stricter free-boundary analysis.
+- `AnalyzeFreeBounds()` runs OCCT `ShapeAnalysis_FreeBounds` and returns `OcctFreeBoundsResult` with closed/open free-boundary wires and the tolerance used. See [Topology Adjacency and Free-Boundary Analysis](TOPOLOGY_ANALYSIS.md).
 - `IsSameShape()` and `IsPartnerShape()` expose OCCT topological identity semantics.
 
 ### Geometry and differential geometry
@@ -85,9 +99,19 @@ Coverage includes camera/view control, screen/world conversion, selection, objec
 - Face U/V bounds, periodicity, derivatives, normals, and principal/mean/Gaussian curvature.
 - Point projection to edge/face, ray intersections, and solid point classification.
 - `TrimEdge()` creates an edge from an exact sub-range of the source curve.
-- `GetBSplineCurveData()` returns an immutable B-Spline curve snapshot containing degree, rational/periodic flags, poles, weights, distinct knots, and multiplicities.
-- `GetBSplineSurfaceData()` returns an immutable B-Spline surface snapshot containing U/V degree, rational/periodic flags, pole/weight grid, U/V knots, and multiplicities. Surface pole storage is U-major with V varying fastest, while `GetPole(u,v)` / `GetWeight(u,v)` provide direct grid access.
-- Managed B-Spline collections are zero-based even though OCCT indexes poles and knots from one. See [B-Spline Curve and Surface Inspection](BSPLINE_CURVES.md).
+- `GetBSplineCurveData()` returns an immutable B-Spline curve definition snapshot.
+- `GetBSplineSurfaceData()` returns an immutable B-Spline surface definition snapshot with U/V pole and knot data. See [B-Spline Curve and Surface Inspection](BSPLINE_CURVES.md).
+
+### Batch face analysis and structured inspection
+
+- `AnalyzeFaces()` maps all Faces once in Native and returns one `OcctFaceAnalysisResult` instead of requiring separate P/Invoke calls per Face/property.
+- Each `OcctFaceAnalysisInfo` contains source Face, surface type, orientation, area, tolerance, U/V bounds, AABB, unique edge count, and wire count.
+- `OcctFaceAnalysisResult` provides total surface area, maximum Face tolerance, surface-type counts, and type filtering.
+- `InspectShape()` composes validity, closure, tolerance, check report, bounds, topology counts, batched edge adjacency, batched Face analysis, optional free bounds, and optional mesh statistics into `OcctShapeInspectionReport`.
+- `InspectShape()` deliberately returns facts rather than an application-specific pass/fail result.
+- Mesh statistics are opt-in because enabling them invokes the normal triangulation path and can populate/update triangulation caches.
+
+See [Batch Face Analysis and Shape Inspection](SHAPE_INSPECTION.md).
 
 ### Modeling algorithms
 
@@ -98,9 +122,16 @@ Coverage includes camera/view control, screen/world conversion, selection, objec
 - `OffsetWire()` for planar wire offset with arc/tangent/intersection join rules.
 - Thick solid, same-domain unification, shape healing, and operation history.
 
-### Triangulation
+### Triangulation and provenance
 
-`Triangulate()` creates OCCT triangulation using managed `OcctModelMeshParameters`. `GetFaceMesh()` returns one face mesh; `GetShapeMesh()` combines all face triangulations into one `OcctMesh` with adjusted triangle indices. `ClearTriangulation()` removes cached triangulation.
+- `Triangulate()` creates OCCT triangulation using managed `OcctModelMeshParameters`.
+- `GetFaceMesh()` returns one Face mesh.
+- `GetShapeMesh()` remains the compatibility API for one combined `OcctMesh`.
+- `GetShapeMeshData()` returns the combined mesh plus `OcctShapeMeshFaceRange` entries preserving each source Face's node/triangle contribution.
+- `OcctShapeMeshData.GetFaceForNode()` and `GetFaceForTriangle()` resolve combined mesh indices back to source Faces without a per-triangle FaceId array.
+- `ClearTriangulation()` removes cached triangulation.
+
+See [Shape Mesh Face Provenance](MESH_PROVENANCE.md).
 
 ### Exchange
 
@@ -127,7 +158,7 @@ Angles are radians. Matrix multiplication uses row-major affine matrices with co
 - Cross-engine and cross-session object use is rejected before native invocation.
 - `OcctRuntime` resolves application-local runtime files first.
 - `OcctRuntime.GetDiagnosticReport()` remains the full human-readable troubleshooting report and is side-effect free.
-- `OcctRuntime.GetDiagnosticInfo()` returns a typed `OcctRuntimeDiagnosticInfo` snapshot with process/OS architecture, configured bridge/OCCT paths and existence states, already-loaded `OcctNative.dll` / `TKernel.dll` paths, and the original text report. The snapshot does not configure or force native loading. See [Structured Runtime Diagnostics](RUNTIME_DIAGNOSTICS.md).
+- `OcctRuntime.GetDiagnosticInfo()` returns a typed, side-effect-free runtime snapshot. See [Structured Runtime Diagnostics](RUNTIME_DIAGNOSTICS.md).
 - Native errors become `OcctException` with operation and native-message metadata.
 
 ## Validation
@@ -139,8 +170,8 @@ Cloud CI has no project OCCT SDK, so it validates declarations and managed code 
 - Counts come from `bridge-contract.json`.
 - Managed projects and managed-only regression tests run in CI.
 - Managed geometry/transform helpers and structured runtime diagnostics are regression-tested without loading OCCT.
-- B-Spline curve/surface declaration, definition, P/Invoke, and high-level API parity is checked statically.
-- Batched edge adjacency and strict free-boundary topology analysis have a dedicated static contract check.
+- Structured selected/detected-hit identity, B-Spline, topology, mesh provenance, batched Face analysis, and shape inspection have explicit static contract coverage.
+- Smoke projects are compiled in cloud CI; real Native execution remains a local Windows gate.
 - `main` and `demo` reusable wrapper content is compared directly.
 
 Before release, run on Windows with OCCT 7.9.0:
@@ -149,4 +180,4 @@ Before release, run on Windows with OCCT 7.9.0:
 .\build.ps1 smoke Release -OcctRoot "<OCCT 7.9.0 root>"
 ```
 
-The native smoke suite covers ABI/version loading, Booleans, batched adjacency, strict free-boundary analysis, analytic/differential geometry, B-Spline curve/surface data extraction, OBB, shape identity, face-with-hole construction, edge trimming, planar wire offset, whole-shape triangulation, loft, healing, and BREP/STEP round trips.
+The native smoke suite covers ABI/version loading, Booleans, adjacency/free bounds, analytic/differential geometry, B-Spline data, Face/Shape inspection, mesh provenance, OBB, shape identity, trimming/offset, triangulation, loft, healing, and BREP/STEP round trips.

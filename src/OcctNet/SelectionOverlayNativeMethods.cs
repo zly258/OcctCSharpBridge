@@ -2,7 +2,7 @@
 
 namespace OcctNet;
 
-internal static class SelectionNativeMethods
+internal static class SelectionOverlayNativeMethods
 {
     private const string LibraryName = "OcctNative";
 

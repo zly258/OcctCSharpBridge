@@ -1,12 +1,12 @@
 ﻿# OcctCSharpBridge
 
-[English](README.md) · [桌面 Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo)
+[English](README.md) · [文档索引](docs/INDEX.zh-CN.md) · [桌面 Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
-OcctCSharpBridge 是面向 Windows x64 的 **Open CASCADE Technology 7.9.0 → .NET 8** 桥接项目。`main` 分支只保留可复用的 C++ Bridge、严格 C ABI、类型安全 C# 封装、WinForms/WPF 可复用视口宿主、接口契约测试、Native Smoke 项目以及 Managed SDK 打包定义；完整 CAD 应用位于 `demo` 分支。
+OcctCSharpBridge 是面向 Windows x64 的 **Open CASCADE Technology 7.9.0 → .NET 8** 桥接项目。`main` 分支只保留可复用 C++ Bridge、严格 C ABI、类型安全 C# 封装、WinForms/WPF 可复用视口宿主、契约测试、Native Smoke 场景和 Managed SDK 打包；完整 CAD 应用位于 `demo` 分支。
 
-**Bridge 2.6.0 / ABI 3** 是一次破坏性收口版本：删除兼容别名和公开裸 ID 构造方式，公开配置不再暴露 0/1 Native 标志位，统一接口命名，并补充 OBB、拓扑身份判断、带孔平面、精确 Edge 裁剪、平面 Wire Offset 和整 Shape Mesh 等 Headless 能力。
+**Bridge 2.6.0 / ABI 3** 已完成接口收口与能力扩展：删除兼容别名和公开裸 ID 构造方式，统一命名与所有权，并补充 Viewer 结构化 Selected/Detected 身份、批量 Edge/Face 分析、严格自由边界、结构化 Shape Inspection、B-Spline Curve/Surface 数据读取、Mesh Face 来源追溯、结构化 Runtime 诊断、OBB、Trim/Offset、Healing、Triangulation 和工程文件交换等能力。
 
-桥接层明确不使用 OCAF/XDE。Document、Entity、Command、Undo/Redo、JSON 持久化、Tool、捕捉等应用职责由上层实现。
+桥接层明确不使用 OCAF/XDE。Document、Entity、Command、Tool、Undo/Redo、JSON 持久化、捕捉等应用职责由上层实现。
 
 ## 环境要求
 
@@ -38,33 +38,47 @@ src/OcctNative          C++17 Bridge 与 C ABI
 src/OcctNet             C# 核心封装
 src/OcctNet.WinForms    可复用 WinForms 视口宿主
 src/OcctNet.Wpf         可复用 WPF 视口宿主
-tests                   契约测试、Managed Test、Native Smoke
-docs                    API 覆盖、快速开始、打包与 Runtime 说明
+tests                   契约检查、Managed Test、Native Smoke
+docs                    结构化 API/集成/Runtime 文档
 build.ps1               校验、构建、打包、Smoke 统一入口
 ```
 
 托管层明确保留两个职责不同的入口：
 
-- `OcctEngine`：交互式 CAD/AIS/Viewer 会话，负责显示对象、选择、外观、相机、交互、标注以及直接进入当前 CAD 文档的交互式几何。
-- `OcctModelingSession`：无界面建模内核，负责批处理、服务端和算法场景中的几何、拓扑、建模算法、网格、分析、修复、历史和工程文件交换。
+- `OcctEngine`：交互式 CAD/AIS/Viewer 会话，负责显示对象、结构化 Selection 身份、外观、相机、交互和标注；
+- `OcctModelingSession`：无界面建模内核，负责批处理、服务端、几何、拓扑、算法、网格、检查、修复、历史和工程文件交换。
 
-两者可能拥有等价的 OCCT 能力，因为对象模型和使用场景不同；但 **同一个 façade 内不再保留旧名+新名两套接口**。
+同一个 façade 内不保留旧名+新名两套接口。当前可复用 SDK 共 **95 个公开 .NET 类型**。
 
-交互对象统一使用 `IOcctObject`，提供 `Id`、`Kind`、`IsValid`；具体实例仅为 `OcctShape`、`OcctText`、`OcctDimension`。不再存在通用 `OcctObject` 包装，也没有公开裸 ID 构造器。加上 Headless 类型，目前可复用 SDK 共 **86 个公开 .NET 类型**。
-
-## 统一命名规则
+## 统一 API 规则
 
 - Shape 查询：`GetShape...`、`IsShape...`、`SetShape...`
 - Edge 查询：`GetEdge...`、`EvaluateEdge...`、`TrimEdge()`
-- Face 查询：`GetFace...`、`EvaluateFace()`
-- 索引访问：`...At`，如 `GetSubshapeAt()`
+- Face 查询：`GetFace...`、`EvaluateFace...`
+- 批量分析：`AnalyzeEdgeAdjacency()`、`AnalyzeFaces()`、`AnalyzeFreeBounds()`
+- 结构化检查：`InspectShape()`
+- 索引访问：`...At`
 - 构造：`Make...`
 - 算法：`Extrude()`、`OffsetShape()`、`OffsetWire()` 等操作动词
-- 网格：`Triangulate()`、`ClearTriangulation()`、`GetFaceMesh()`、`GetShapeMesh()`
+- Mesh：`Triangulate()`、`GetFaceMesh()`、`GetShapeMesh()`、`GetShapeMeshData()`
 
-所有 Shape/Object 都绑定其所属 Engine/Session。持久化 ID 必须通过 `GetShape()`、`TryGetShape()`、`GetObject()`、`TryGetObject()` 解析，不能再用一个 `long` 伪造托管对象。
+所有 Shape/Object 都绑定所属 Engine/Session。持久化 ID 必须通过 `GetShape()`、`TryGetShape()`、`GetObject()`、`TryGetObject()` 解析，不能用裸 `long` 伪造托管对象。
 
-## Headless 建模示例
+## Viewer 结构化 Selection
+
+`OcctEngine` 可以直接返回 Selected/Detected AIS 身份，上层无需处理 OCCT Owner 或根据裸 ID 自行反查：
+
+```csharp
+var hits = engine.GetSelectedHits();
+if (engine.TryGetDetectedHit(out var hover) && hover.IsSubshape)
+{
+    Console.WriteLine($"{hover.Owner.Id}: {hover.SubshapeType} #{hover.SubshapeIndex}");
+}
+```
+
+`GetSelectedHits()` 使用两次调用的批量 Native ABI，不会随着选择数量变成 N+1 次 P/Invoke。`OcctSelectionHit` 只暴露真实存在的 `Owner`、`SubshapeType` 和运行时 `SubshapeIndex`，不预留永远为空的命中点字段。Subshape Index 与 `GetSubshapeAt()` 使用相同拓扑顺序，但**不是 Persistent Naming**。详见 [Viewer 结构化选择命中](docs/SELECTION_HITS.zh-CN.md)。
+
+## Headless 建模与检查
 
 ```csharp
 using var model = new OcctModelingSession();
@@ -78,20 +92,48 @@ var hole = model.MakeCylinder(
 
 var cut = model.Cut(plate, hole);
 var bounds = model.GetShapeOrientedBounds(cut.Shape, optimal: true);
-var mesh = model.GetShapeMesh(cut.Shape);
+var adjacency = model.AnalyzeEdgeAdjacency(cut.Shape);
+var faces = model.AnalyzeFaces(cut.Shape);
+var inspection = model.InspectShape(cut.Shape);
+var meshData = model.GetShapeMeshData(cut.Shape);
+
 model.ExportStep(cut.Shape, "plate.step");
 ```
 
-带孔平面和 Wire Offset 可直接构造：
+`AnalyzeFaces()` 在 Native 中一次遍历全部 Face，批量返回 SurfaceType、Orientation、Area、Tolerance、UV Bounds、AABB、EdgeCount 和 WireCount，避免大型 STEP/BIM 模型逐 Face、逐属性跨 P/Invoke。
+
+`InspectShape()` 将有效性、闭合性、容差、Check Report、Bounds、拓扑数量、批量 Edge 邻接、批量 Face 分析、严格自由边界和可选 Mesh 统计组合为 `OcctShapeInspectionReport`。它只返回**客观数据**，不在 Bridge 中硬编码项目自己的“通过/不通过”规则。Mesh Statistics 默认关闭，因为启用后会触发三角化。
+
+### 批量拓扑与严格自由边界
 
 ```csharp
-var outer = model.MakeRectangleWire(100, 80);
-var inner = model.MakeRectangleWire(20, 20, new OcctPoint3d(40, 30, 0));
-var face = model.MakePlanarFace(outer, new[] { inner });
-var offset = model.OffsetWire(outer, 5.0, joinType: OcctJoinType.Arc);
+var nonManifold = adjacency.NonManifoldEdges;
+var freeBounds = model.AnalyzeFreeBounds(cut.Shape, tolerance: 1e-6);
 ```
 
-完整能力分类见 [中文 API 覆盖说明](docs/API_COVERAGE.zh-CN.md)，快速接入流程见 [快速开始](docs/GETTING_STARTED.zh-CN.md)。
+`AnalyzeEdgeAdjacency()` 对整个 Root Shape 一次构建 Edge→不同 Face 的 Native 索引；真正判断 Shell 是否存在开口时再使用 `AnalyzeFreeBounds()`。
+
+### Mesh Face 来源追溯
+
+```csharp
+if (meshData.TryGetFaceForTriangle(hitTriangleIndex, out var sourceFace))
+{
+    // 根据源 Face 查询 CAD/BIM 属性、做选择、分析或局部导出。
+}
+```
+
+`GetShapeMesh()` 保持原接口；`GetShapeMeshData()` 额外记录每个源 Face 对应的连续 Node/Triangle 区间，不增加 Native ABI，也不为每个 Triangle 单独保存 FaceId。
+
+### B-Spline 曲线与曲面
+
+```csharp
+var curveData = model.GetBSplineCurveData(edge);
+var surfaceData = model.GetBSplineSurfaceData(face);
+```
+
+可读取 Degree、Pole、Weight、Knot、Multiplicity，以及 Surface U/V 控制网格。
+
+完整分类见 [文档索引](docs/INDEX.zh-CN.md)。
 
 ## 构建与校验
 
@@ -116,7 +158,7 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 | `pack` | 构建并校验本地 Managed NuGet 与符号包 | 否 |
 | `ci` | 契约检查 + Managed 构建/Test + Smoke 编译 + 包校验 | 否 |
 | `native` | CMake/MSVC 构建 `OcctNative.dll` | 是 |
-| `smoke` | 构建并真实执行 OCCT Native 建模 | 是 |
+| `smoke` | 构建并真实执行 OCCT Native 场景 | 是 |
 | `all` | 构建 Native + 可复用 Managed Host | 是 |
 
 没有 OCCT SDK 时，提交前执行：
@@ -131,21 +173,23 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 .\build.ps1 pack Release
 ```
 
-输出位于 `artifacts/packages`。版本统一来自 `bridge-contract.json`，包内包含 XML IntelliSense 文档和符号包，并自动检查不得包含 `OcctNative.dll`、OCCT `TK*.dll` 或 `runtimes/` Native Payload。**NuGet 仅属于 main SDK 分支**；`demo` 分支明确设置为不可打包，只负责完整桌面应用和 Native 发布。详见 [打包与运行时部署](docs/PACKAGING.zh-CN.md)。
+输出位于 `artifacts/packages`。版本来自 `bridge-contract.json`，包内包含 XML IntelliSense 文档和符号包，并自动检查不得包含 `OcctNative.dll`、OCCT `TK*.dll` 或 `runtimes/` Native Payload。**NuGet 只属于 main SDK 分支**；`demo` 分支共享项目保持不可打包，只负责完整桌面应用和 Native 发布。
 
-正式发布前必须执行：
+正式发布前执行真实 Native 门禁：
 
 ```powershell
 .\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-GitHub 托管环境无法配置本项目真实 OCCT SDK，所以仓库不再保留长期 skipped 的 Native 云端 workflow。Native 真实执行明确作为本地发布门禁，云端负责完整 Managed/静态契约以及 main 分支 Managed 包校验。
+GitHub 托管环境没有本项目真实 OCCT SDK，因此云端负责静态契约、Managed 构建/Test、Smoke 源码编译和 NuGet 包校验；真实 OCCT 几何/拓扑执行仍由本地 Native Smoke 保证。
 
-## 运行时部署
+`tests` 下每个测试工程和 PowerShell 契约脚本的职责已整理到 [`tests/README.md`](tests/README.md)。只有在断言完整迁移到等价或更强门禁后才删除脚本，不按文件数量机械清理。
 
-`OcctNet.dll`、对应 UI Host、`OcctNative.dll`、OCCT DLL 和第三方 DLL 必须来自**同一 Bridge 构建**，不要混用不同 ABI 文件。
+## Runtime 部署与诊断
 
-`OcctRuntime.GetDiagnosticReport()` 会输出 Native 候选路径、OCCT 路径和资源环境变量，用于排查 Win32 126 等部署问题。
+`OcctNet.dll`、对应 UI Host、`OcctNative.dll`、OCCT DLL 和第三方 DLL 必须来自**同一 Bridge 构建**。
+
+`OcctRuntime.GetDiagnosticReport()` 是无副作用文本诊断；`OcctRuntime.GetDiagnosticInfo()` 返回 app-local/环境配置/实际 Loaded 的 `OcctNative.dll`、`TKernel.dll` 路径和存在状态、进程架构等结构化信息，调用本身不会配置或强制加载 Runtime。详见 [结构化 Runtime 诊断](docs/RUNTIME_DIAGNOSTICS.zh-CN.md)。
 
 ## 桌面 Demo
 
@@ -160,11 +204,9 @@ $env:OCCT_ROOT = "D:\tools\occt-vc144-64"
 .\run.ps1 avalonia
 ```
 
-Demo 发布脚本会复制应用本地 Native 依赖，并在生成最终包前执行 Native LoadLibrary 探针。Demo 中共享项目明确 `IsPackable=false`，不会承担 NuGet SDK 发布职责。
+Demo 发布脚本负责应用本地 Native 依赖和 Native Load 探针；Demo 中共享项目明确 `IsPackable=false`。
 
 ## 其它项目引用
-
-开发阶段可以直接 ProjectReference：
 
 ```xml
 <ItemGroup>
@@ -175,7 +217,7 @@ Demo 发布脚本会复制应用本地 Native 依赖，并在生成最终包前�
 </ItemGroup>
 ```
 
-如需本地 NuGet 源，在 `main` 执行 `build.ps1 pack`，再把 `artifacts/packages` 添加为 NuGet Source。业务应用仍需自行部署匹配版本的 Native Bridge/OCCT Runtime。
+如需本地 NuGet 源，在 `main` 执行 `build.ps1 pack`，再将 `artifacts/packages` 添加为 NuGet Source。业务应用仍需部署匹配版本的 Native Bridge/OCCT Runtime。
 
 ## 2.6 契约
 
@@ -185,13 +227,13 @@ Demo 发布脚本会复制应用本地 Native 依赖，并在生成最终包前�
 - Native ABI：`3`
 - OCCT：严格 `7.9.0`
 - Target：`.NET 8` / Windows x64
-- Native exports：`344`
-- Managed P/Invoke：`344`
-- Public .NET types：`86`
-- Viewer API：`212`
-- Modeling API：`132`
+- Native exports：`348`
+- Managed P/Invoke：`348`
+- Public .NET types：`95`
+- Viewer API：`214`
+- Modeling API：`134`
 
-`build.ps1 validate` 会在 API 数量、Native/PInvoke 映射、命名和职责边界、版本、SDK/包策略或文档漂移时直接失败。
+`build.ps1 validate` 会在 API 数量、Native/PInvoke 映射、命名/职责边界、版本、SDK/包策略或文档漂移时直接失败。
 
 ## 常见问题
 
@@ -199,10 +241,10 @@ Demo 发布脚本会复制应用本地 Native 依赖，并在生成最终包前�
 设置 `$env:OCCT_ROOT` 或通过 `-OcctRoot` 指定。
 
 **找不到 `TKernel.lib` / `TKernel.dll`**  
-检查 `win64\vc14\lib`、`win64\vc14\bin` 和 OCCT 7.9.0 版本。
+检查 `win64\vc14\lib`、`win64\vc14\bin` 和 OCCT 7.9.0。
 
 **Managed 编译通过，但 Native 加载失败**  
-Managed 编译和 NuGet 包都不会自动部署 OCCT。请使用 Demo Publish，或将匹配的 Native/OCCT/第三方依赖闭包放在 EXE 目录。
+Managed 编译和 NuGet 包不会自动部署 OCCT。使用 Demo Publish 或将匹配的 Native/OCCT/第三方依赖放在 EXE 目录，并查看 `OcctRuntime.GetDiagnosticInfo()`。
 
 **需要完整可运行 CAD 示例**  
 切换 `demo` 分支，不要把应用层 Document/Tool 逻辑塞进 `main`。

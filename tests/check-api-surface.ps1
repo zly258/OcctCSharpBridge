@@ -29,10 +29,12 @@ $publicManagedRoots = @(
 $headerFiles = @(
     Join-Path $nativeRoot "OcctNative.h"
     Join-Path $nativeRoot "OcctSelectionOverlay.h"
+    Join-Path $nativeRoot "OcctSelectionState.h"
     Join-Path $nativeRoot "OcctModeling.h"
     Join-Path $nativeRoot "OcctModelingExtensions.h"
     Join-Path $nativeRoot "OcctModelingBSpline.h"
     Join-Path $nativeRoot "OcctModelingTopologyAnalysis.h"
+    Join-Path $nativeRoot "OcctModelingFaceAnalysis.h"
 )
 $cppFiles = Get-ChildItem $nativeRoot -Filter "*.cpp" -File | Select-Object -ExpandProperty FullName
 $managedSourceFiles = @($publicManagedRoots | ForEach-Object {

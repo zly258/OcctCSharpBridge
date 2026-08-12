@@ -10,8 +10,19 @@ $requiredFiles = @(
     "src/OcctNet/OcctEngine.View.cs",
     "src/OcctNet/OcctEngine.Selection.cs",
     "src/OcctNet/OcctEngine.Objects.cs",
-    "src/OcctNet/OcctEngine.Geometry.cs",
+    "src/OcctNet/OcctEngine.ObjectIdentity.cs",
+    "src/OcctNet/OcctEngine.ObjectAppearance.cs",
+    "src/OcctNet/OcctEngine.ObjectInteraction.cs",
+    "src/OcctNet/OcctEngine.ObjectTransform.cs",
+    "src/OcctNet/OcctEngine.ShapeQueries.cs",
+    "src/OcctNet/OcctEngine.ShapeTransform.cs",
+    "src/OcctNet/OcctEngine.Geometry.Curves.cs",
+    "src/OcctNet/OcctEngine.Geometry.Planar.cs",
+    "src/OcctNet/OcctEngine.Geometry.Primitives.cs",
+    "src/OcctNet/OcctEngine.Geometry.Assembly.cs",
     "src/OcctNet/OcctEngine.Features.cs",
+    "src/OcctNet/OcctEngine.AnnotationShapes.cs",
+    "src/OcctNet/OcctEngine.Annotations.cs",
     "src/OcctNet/OcctSafeHandles.cs",
     "src/OcctNet/OcctModelingSession.cs",
     "src/OcctNet/OcctModelingSession.ShapeQueries.cs",
@@ -19,8 +30,14 @@ $requiredFiles = @(
     "src/OcctNet/OcctModelingSession.GeometryQueries.cs",
     "src/OcctNet/OcctModelingSession.AnalyticGeometry.cs",
     "src/OcctNet/OcctModelingSession.DifferentialGeometry.cs",
-    "src/OcctNet/OcctModelingSession.Geometry.cs",
-    "src/OcctNet/OcctModelingSession.Algorithms.cs",
+    "src/OcctNet/OcctModelingSession.Geometry.Curves.cs",
+    "src/OcctNet/OcctModelingSession.Geometry.Planar.cs",
+    "src/OcctNet/OcctModelingSession.Geometry.Primitives.cs",
+    "src/OcctNet/OcctModelingSession.Geometry.Assembly.cs",
+    "src/OcctNet/OcctModelingSession.Geometry.Transform.cs",
+    "src/OcctNet/OcctModelingSession.Algorithms.Boolean.cs",
+    "src/OcctNet/OcctModelingSession.Algorithms.Features.cs",
+    "src/OcctNet/OcctModelingSession.Algorithms.Healing.cs",
     "src/OcctNet/OcctModelingSession.Analysis.cs",
     "src/OcctNet/OcctModelingSession.Mesh.cs",
     "src/OcctNet/OcctModelingSession.Exchange.cs",
@@ -30,9 +47,22 @@ $requiredFiles = @(
     "src/OcctNet/NativeMethods.cs",
     "src/OcctNet/NativeMethods.View.cs",
     "src/OcctNet/NativeMethods.Objects.cs",
-    "src/OcctNet/NativeMethods.Modeling.cs",
+    "src/OcctNet/NativeMethods.Geometry.Curves.cs",
+    "src/OcctNet/NativeMethods.Geometry.Planar.cs",
+    "src/OcctNet/NativeMethods.Geometry.Primitives.cs",
+    "src/OcctNet/NativeMethods.Geometry.Assembly.cs",
+    "src/OcctNet/NativeMethods.Features.cs",
     "src/OcctNet/NativeMethods.Annotations.cs",
     "src/OcctNet/NativeMethods.Exchange.cs",
+    "src/OcctNet/ModelNativeMethods.Geometry.Curves.cs",
+    "src/OcctNet/ModelNativeMethods.Geometry.Planar.cs",
+    "src/OcctNet/ModelNativeMethods.Geometry.Primitives.cs",
+    "src/OcctNet/ModelNativeMethods.Geometry.Assembly.cs",
+    "src/OcctNet/ModelNativeMethods.Geometry.Transform.cs",
+    "src/OcctNet/ModelNativeMethods.Algorithms.Boolean.cs",
+    "src/OcctNet/ModelNativeMethods.Algorithms.Features.cs",
+    "src/OcctNet/ModelNativeMethods.Algorithms.Healing.cs",
+    "src/OcctNet/ModelNativeMethods.History.cs",
     "src/OcctNet/ModelNativeMethods.Analysis.cs",
     "src/OcctNet/ModelNativeMethods.Mesh.cs",
     "src/OcctNet/ModelNativeMethods.Exchange.cs",
@@ -45,17 +75,59 @@ foreach ($relativePath in $requiredFiles) {
     }
 }
 
-$forbiddenFiles = @("src/OcctNet/OcctEngine.ApiAliases.cs")
+$forbiddenFiles = @(
+    "src/OcctNet/OcctEngine.ApiAliases.cs",
+    "src/OcctNet/OcctEngine.Geometry.cs",
+    "src/OcctNet/NativeMethods.Modeling.cs",
+    "src/OcctNet/OcctModelingSession.Geometry.cs",
+    "src/OcctNet/ModelNativeMethods.Geometry.cs",
+    "src/OcctNet/OcctModelingSession.Algorithms.cs",
+    "src/OcctNet/ModelNativeMethods.Algorithms.cs"
+)
 foreach ($relativePath in $forbiddenFiles) {
     if (Test-Path (Join-Path $RepositoryRoot $relativePath)) {
-        throw "Compatibility alias file is not allowed in Bridge 2.6: $relativePath"
+        throw "Legacy/compatibility aggregate file is not allowed in Bridge 2.6: $relativePath"
     }
 }
 
 $canonicalContracts = [ordered]@{
-    "src/OcctNet/OcctEngine.View.cs" = @("public void Initialize(", "public void SetView(", "public void SetProjection(", "public OcctCameraState GetCamera(")
+    "src/OcctNet/OcctEngine.View.cs" = @("public void Initialize(", "public void SetView(", "public void SetProjection(", "public void SetViewCubeLanguage(", "public OcctCameraState GetCamera(")
     "src/OcctNet/OcctEngine.Selection.cs" = @("public void Select(", "public void SelectRectangle(", "public IReadOnlyList<IOcctObject> SelectedObjects")
-    "src/OcctNet/OcctEngine.Objects.cs" = @("public IOcctObject GetObject(", "public OcctShape GetShape(", "public bool IsShapeValid(", "public OcctBounds GetShapeBounds(", "public OcctDistanceResult GetShapeDistance(", "public OcctShape GetSubshapeAt(", "public OcctCurveType GetEdgeCurveType(", "public OcctSurfaceType GetFaceSurfaceType(", "public OcctUvBounds GetFaceUvBounds(")
+    "src/OcctNet/OcctEngine.Objects.cs" = @("public int ObjectCount", "public IReadOnlyList<IOcctObject> Objects", "public IOcctObject GetObject(", "public OcctShape GetShape(", "public void Delete(", "public void Clear(")
+    "src/OcctNet/OcctEngine.ObjectIdentity.cs" = @("public string GetName(", "public void SetName(", "public void SetApplicationTag(", "public string GetApplicationTag(", "public bool TryGetObjectByApplicationTag(")
+    "src/OcctNet/OcctEngine.ObjectAppearance.cs" = @("public void SetColor(", "public void SetTransparency(", "public void SetVisible(", "public void SetDisplayMode(IOcctObject", "public void SetMaterial(", "public void Redisplay(")
+    "src/OcctNet/OcctEngine.ObjectInteraction.cs" = @("public void SetSelectable(", "public bool IsSelectable(", "public void Highlight(", "public void Unhighlight(")
+    "src/OcctNet/OcctEngine.ShapeQueries.cs" = @("public bool IsShapeValid(", "public OcctBounds GetShapeBounds(", "public OcctDistanceResult GetShapeDistance(", "public OcctShape GetSubshapeAt(", "public OcctCurveType GetEdgeCurveType(", "public OcctSurfaceType GetFaceSurfaceType(", "public OcctUvBounds GetFaceUvBounds(")
+    "src/OcctNet/OcctEngine.ShapeTransform.cs" = @("public OcctShape Copy(", "public OcctShape Translate(", "public OcctShape Rotate(", "public OcctShape Scale(", "public OcctShape MirrorPlane(")
+    "src/OcctNet/OcctEngine.Geometry.Curves.cs" = @("public OcctShape MakeVertex(", "public OcctShape MakeLine(", "public OcctShape MakePolyline(", "public OcctShape MakeCircle(", "public OcctShape MakeArc(", "public OcctShape MakeEllipse(", "public OcctShape MakeBezier(", "public OcctShape MakeInterpolatedBSpline(")
+    "src/OcctNet/OcctEngine.Geometry.Planar.cs" = @("public OcctShape MakeRegularPolygon(", "public OcctShape MakeRectangleWire(", "public OcctShape MakeFace(", "public OcctShape MakePlaneFace(")
+    "src/OcctNet/OcctEngine.Geometry.Primitives.cs" = @("public OcctShape MakeBox(", "public OcctShape MakeCylinder(", "public OcctShape MakeSphere(", "public OcctShape MakeCone(", "public OcctShape MakeTorus(", "public OcctShape MakeWedge(")
+    "src/OcctNet/OcctEngine.Geometry.Assembly.cs" = @("public OcctShape MakeCompound(", "public OcctShape MakeWire(", "public OcctShape Sew(", "public OcctShape MakeSolidFromShell(", "private long[] ShapeIds(")
+    "src/OcctNet/OcctEngine.Features.cs" = @("public OcctShape Boolean(", "public OcctShape Extrude(", "public OcctShape FilletEdges(", "public OcctShape MakeThickSolid(", "public OcctShape DrillHole(")
+    "src/OcctNet/OcctEngine.AnnotationShapes.cs" = @("public OcctShape MakeTextShape(", "public OcctShape MakeLengthAnnotationShape(", "public OcctShape MakeAngleAnnotationShape(", "public OcctShape MakeRadiusAnnotationShape(", "public OcctShape MakeDiameterAnnotationShape(")
+    "src/OcctNet/OcctEngine.Annotations.cs" = @("public OcctText AddText(", "public void SetText(", "public void SetDimensionFlyout(", "public OcctDimension AddLengthDimension(", "public OcctDimension AddAngleDimension(", "public OcctDimension AddRadiusDimension(", "public OcctDimension AddDiameterDimension(")
+    "src/OcctNet/NativeMethods.Geometry.Curves.cs" = @("occt_make_vertex", "occt_make_line", "occt_make_circle", "occt_make_arc_center", "occt_make_bspline_interpolated")
+    "src/OcctNet/NativeMethods.Geometry.Planar.cs" = @("occt_make_regular_polygon", "occt_make_rectangle_wire", "occt_make_face_from_wire", "occt_make_plane_face")
+    "src/OcctNet/NativeMethods.Geometry.Primitives.cs" = @("occt_make_box", "occt_make_cylinder", "occt_make_sphere", "occt_make_cone", "occt_make_torus", "occt_make_wedge")
+    "src/OcctNet/NativeMethods.Geometry.Assembly.cs" = @("occt_make_compound", "occt_make_wire", "occt_sew_shapes", "occt_make_solid_from_shell")
+    "src/OcctNet/NativeMethods.Features.cs" = @("occt_boolean", "occt_extrude", "occt_revolve", "occt_sweep", "occt_loft", "occt_fillet_edges", "occt_chamfer_edges")
+    "src/OcctNet/OcctModelingSession.Geometry.Curves.cs" = @("public OcctModelShape MakeVertex(", "public OcctModelShape MakeLine(", "public OcctModelShape MakePolyline(", "public OcctModelShape MakeCircle(", "public OcctModelShape MakeArc(", "public OcctModelShape MakeEllipse(", "public OcctModelShape MakeBezier(", "public OcctModelShape MakeInterpolatedBSpline(")
+    "src/OcctNet/OcctModelingSession.Geometry.Planar.cs" = @("public OcctModelShape MakeRegularPolygon(", "public OcctModelShape MakeRectangleWire(", "public OcctModelShape MakePlaneFace(", "public OcctModelShape MakeFace(")
+    "src/OcctNet/OcctModelingSession.Geometry.Primitives.cs" = @("public OcctModelShape MakeBox(", "public OcctModelShape MakeCylinder(", "public OcctModelShape MakeCone(", "public OcctModelShape MakeSphere(", "public OcctModelShape MakeTorus(", "public OcctModelShape MakeWedge(")
+    "src/OcctNet/OcctModelingSession.Geometry.Assembly.cs" = @("public OcctModelShape MakeCompound(", "public OcctModelShape MakeWire(", "public OcctModelShape Sew(", "public OcctModelShape MakeSolidFromShell(")
+    "src/OcctNet/OcctModelingSession.Geometry.Transform.cs" = @("public OcctModelShape Translate(", "public OcctModelShape Rotate(", "public OcctModelShape Scale(", "public OcctModelShape MirrorPlane(")
+    "src/OcctNet/ModelNativeMethods.Geometry.Curves.cs" = @("occt_model_make_vertex", "occt_model_make_line", "occt_model_make_circle", "occt_model_make_arc_center", "occt_model_make_bspline_interpolated")
+    "src/OcctNet/ModelNativeMethods.Geometry.Planar.cs" = @("occt_model_make_regular_polygon", "occt_model_make_rectangle_wire", "occt_model_make_plane_face", "occt_model_make_face_from_wire")
+    "src/OcctNet/ModelNativeMethods.Geometry.Primitives.cs" = @("occt_model_make_box", "occt_model_make_cylinder", "occt_model_make_cone", "occt_model_make_sphere", "occt_model_make_torus", "occt_model_make_wedge")
+    "src/OcctNet/ModelNativeMethods.Geometry.Assembly.cs" = @("occt_model_make_compound", "occt_model_make_wire", "occt_model_sew", "occt_model_make_solid_from_shell")
+    "src/OcctNet/ModelNativeMethods.Geometry.Transform.cs" = @("occt_model_translate", "occt_model_rotate", "occt_model_scale", "occt_model_mirror_plane")
+    "src/OcctNet/OcctModelingSession.Algorithms.Boolean.cs" = @("public OcctModelAlgorithmResult Boolean(", "public OcctModelAlgorithmResult Fuse(", "public OcctModelAlgorithmResult Cut(", "public OcctModelAlgorithmResult Common(", "public OcctModelAlgorithmResult Section(", "public OcctModelAlgorithmResult Split(")
+    "src/OcctNet/OcctModelingSession.Algorithms.Features.cs" = @("public OcctModelAlgorithmResult Extrude(", "public OcctModelAlgorithmResult Revolve(", "public OcctModelAlgorithmResult Sweep(", "public OcctModelAlgorithmResult Loft(", "public OcctModelAlgorithmResult FilletEdges(", "public OcctModelAlgorithmResult ChamferEdges(", "public OcctModelAlgorithmResult OffsetShape(", "public OcctModelAlgorithmResult MakeThickSolid(")
+    "src/OcctNet/OcctModelingSession.Algorithms.Healing.cs" = @("public OcctModelAlgorithmResult UnifySameDomain(", "public OcctModelAlgorithmResult FixShape(")
+    "src/OcctNet/ModelNativeMethods.Algorithms.Boolean.cs" = @("occt_model_boolean", "occt_model_split")
+    "src/OcctNet/ModelNativeMethods.Algorithms.Features.cs" = @("occt_model_extrude", "occt_model_revolve", "occt_model_sweep", "occt_model_loft", "occt_model_fillet_edges", "occt_model_chamfer_edges", "occt_model_offset", "occt_model_thick_solid")
+    "src/OcctNet/ModelNativeMethods.Algorithms.Healing.cs" = @("occt_model_unify_same_domain", "occt_model_fix_shape")
+    "src/OcctNet/ModelNativeMethods.History.cs" = @("occt_model_history_generated_count", "occt_model_history_generated_at", "occt_model_history_modified_count", "occt_model_history_modified_at", "occt_model_history_is_removed")
     "src/OcctNet/OcctModelingSession.ShapeQueries.cs" = @("GetShapeOrientation", "IsShapeClosed", "IsShapeValid", "GetShapeMaximumTolerance", "GetShapeCheckReport", "GetShapeBounds", "GetShapeDistance", "GetShapeLocation", "SetShapeLocation")
     "src/OcctNet/OcctModelingSession.Topology.cs" = @("GetSubshapeAt", "GetSubshapes", "GetOuterWire", "GetInnerWires", "GetAncestors")
     "src/OcctNet/OcctModelingSession.GeometryQueries.cs" = @("EvaluateEdge(", "GetEdgeCurveType", "GetFaceSurfaceType", "GetFaceUvBounds", "EvaluateFace(")
@@ -73,6 +145,59 @@ foreach ($contract in $canonicalContracts.GetEnumerator()) {
     }
 }
 
+function Assert-NoResponsibilityTokens {
+    param(
+        [string]$RelativePath,
+        [string[]]$Tokens,
+        [string]$Responsibility
+    )
+
+    $text = [System.IO.File]::ReadAllText((Join-Path $RepositoryRoot $RelativePath))
+    foreach ($token in $Tokens) {
+        if ($text.Contains($token)) {
+            throw "$RelativePath contains $Responsibility responsibility: $token"
+        }
+    }
+}
+
+Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.Objects.cs" @("GetName(", "SetColor(", "Highlight(", "IsShapeValid(", "GetShapeBounds(", "GetSubshapeAt(", "public OcctShape Copy(") "non-registry"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.ObjectInteraction.cs" @("SetViewCubeLanguage(") "view"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.ShapeQueries.cs" @("public OcctShape Copy(", "public void SetColor(", "public void Delete(") "mutation/object"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.ShapeTransform.cs" @("IsShapeValid(", "GetShapeBounds(", "public void SetLocalTransformation(") "query/view-local transform"
+
+Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.Geometry.Curves.cs" @("public OcctShape MakeBox(", "public OcctShape MakeFace(", "public OcctShape MakeCompound(", "public OcctShape Boolean(") "primitive/planar/assembly/feature"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.Geometry.Planar.cs" @("public OcctShape MakeBezier(", "public OcctShape MakeCylinder(", "public OcctShape MakeCompound(", "public OcctShape Boolean(") "curve/primitive/assembly/feature"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.Geometry.Primitives.cs" @("public OcctShape MakeArc(", "public OcctShape MakeFace(", "public OcctShape MakeWire(", "public OcctShape Boolean(") "curve/planar/assembly/feature"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.Geometry.Assembly.cs" @("public OcctShape MakeCircle(", "public OcctShape MakePlaneFace(", "public OcctShape MakeSphere(", "public OcctShape Boolean(") "curve/planar/primitive/feature"
+Assert-NoResponsibilityTokens "src/OcctNet/NativeMethods.Geometry.Curves.cs" @("occt_make_box", "occt_make_face_from_wire", "occt_make_compound", "occt_boolean") "primitive/planar/assembly/feature PInvoke"
+Assert-NoResponsibilityTokens "src/OcctNet/NativeMethods.Geometry.Planar.cs" @("occt_make_bezier", "occt_make_cylinder", "occt_make_compound", "occt_boolean") "curve/primitive/assembly/feature PInvoke"
+Assert-NoResponsibilityTokens "src/OcctNet/NativeMethods.Geometry.Primitives.cs" @("occt_make_arc_center", "occt_make_face_from_wire", "occt_make_wire", "occt_boolean") "curve/planar/assembly/feature PInvoke"
+Assert-NoResponsibilityTokens "src/OcctNet/NativeMethods.Geometry.Assembly.cs" @("occt_make_circle", "occt_make_plane_face", "occt_make_sphere", "occt_boolean") "curve/planar/primitive/feature PInvoke"
+Assert-NoResponsibilityTokens "src/OcctNet/NativeMethods.Features.cs" @("occt_make_line", "occt_make_plane_face", "occt_make_box", "occt_make_compound") "geometry PInvoke"
+
+Assert-NoResponsibilityTokens "src/OcctNet/OcctModelingSession.Geometry.Curves.cs" @("public OcctModelShape MakeBox(", "public OcctModelShape MakeFace(", "public OcctModelShape MakeCompound(", "public OcctModelShape Translate(") "primitive/planar/assembly/transform"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctModelingSession.Geometry.Planar.cs" @("public OcctModelShape MakeBezier(", "public OcctModelShape MakeCylinder(", "public OcctModelShape MakeCompound(", "public OcctModelShape Translate(") "curve/primitive/assembly/transform"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctModelingSession.Geometry.Primitives.cs" @("public OcctModelShape MakeArc(", "public OcctModelShape MakeFace(", "public OcctModelShape MakeWire(", "public OcctModelShape Translate(") "curve/planar/assembly/transform"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctModelingSession.Geometry.Assembly.cs" @("public OcctModelShape MakeCircle(", "public OcctModelShape MakePlaneFace(", "public OcctModelShape MakeSphere(", "public OcctModelShape Translate(") "curve/planar/primitive/transform"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctModelingSession.Geometry.Transform.cs" @("public OcctModelShape MakeLine(", "public OcctModelShape MakePlaneFace(", "public OcctModelShape MakeBox(", "public OcctModelShape MakeCompound(") "geometry construction"
+Assert-NoResponsibilityTokens "src/OcctNet/ModelNativeMethods.Geometry.Curves.cs" @("occt_model_make_box", "occt_model_make_face_from_wire", "occt_model_make_compound", "occt_model_translate") "primitive/planar/assembly/transform PInvoke"
+Assert-NoResponsibilityTokens "src/OcctNet/ModelNativeMethods.Geometry.Planar.cs" @("occt_model_make_bezier", "occt_model_make_cylinder", "occt_model_make_compound", "occt_model_translate") "curve/primitive/assembly/transform PInvoke"
+Assert-NoResponsibilityTokens "src/OcctNet/ModelNativeMethods.Geometry.Primitives.cs" @("occt_model_make_arc_center", "occt_model_make_face_from_wire", "occt_model_make_wire", "occt_model_translate") "curve/planar/assembly/transform PInvoke"
+Assert-NoResponsibilityTokens "src/OcctNet/ModelNativeMethods.Geometry.Assembly.cs" @("occt_model_make_circle", "occt_model_make_plane_face", "occt_model_make_sphere", "occt_model_translate") "curve/planar/primitive/transform PInvoke"
+Assert-NoResponsibilityTokens "src/OcctNet/ModelNativeMethods.Geometry.Transform.cs" @("occt_model_make_line", "occt_model_make_plane_face", "occt_model_make_box", "occt_model_make_compound") "geometry construction PInvoke"
+
+Assert-NoResponsibilityTokens "src/OcctNet/OcctModelingSession.Algorithms.Boolean.cs" @("public OcctModelAlgorithmResult Extrude(", "public OcctModelAlgorithmResult FixShape(") "feature/healing"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctModelingSession.Algorithms.Features.cs" @("public OcctModelAlgorithmResult Boolean(", "public OcctModelAlgorithmResult FixShape(") "boolean/healing"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctModelingSession.Algorithms.Healing.cs" @("public OcctModelAlgorithmResult Boolean(", "public OcctModelAlgorithmResult Extrude(") "boolean/feature"
+Assert-NoResponsibilityTokens "src/OcctNet/ModelNativeMethods.Algorithms.Boolean.cs" @("occt_model_extrude", "occt_model_fix_shape", "occt_model_history_") "feature/healing/history PInvoke"
+Assert-NoResponsibilityTokens "src/OcctNet/ModelNativeMethods.Algorithms.Features.cs" @("occt_model_boolean", "occt_model_fix_shape", "occt_model_history_") "boolean/healing/history PInvoke"
+Assert-NoResponsibilityTokens "src/OcctNet/ModelNativeMethods.Algorithms.Healing.cs" @("occt_model_boolean", "occt_model_extrude", "occt_model_history_") "boolean/feature/history PInvoke"
+Assert-NoResponsibilityTokens "src/OcctNet/ModelNativeMethods.History.cs" @("occt_model_boolean", "occt_model_extrude", "occt_model_fix_shape") "algorithm PInvoke"
+
+Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.Features.cs" @("MakeTextShape(", "MakeLengthAnnotationShape(", "AddText(", "SetText(", "AddLengthDimension(") "annotation"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.AnnotationShapes.cs" @("public OcctText AddText(", "public OcctDimension AddLengthDimension(") "interactive annotation"
+Assert-NoResponsibilityTokens "src/OcctNet/OcctEngine.Annotations.cs" @("public OcctShape Boolean(", "public OcctShape MakeTextShape(") "modeling/BRep annotation"
+
 $sourceRoot = Join-Path $RepositoryRoot "src/OcctNet"
 $sourceText = (Get-ChildItem $sourceRoot -Filter "*.cs" -File | ForEach-Object { [System.IO.File]::ReadAllText($_.FullName) }) -join "`n"
 
@@ -89,8 +214,6 @@ foreach ($token in $forbiddenManagedTokens) {
     }
 }
 
-# IsBound was an older leaked OCCT-style member name. Match it as an identifier/call instead of
-# using substring search so valid APIs such as IsBoundaryCandidate are not rejected.
 if ($sourceText -match '(?<![A-Za-z0-9_])IsBound\s*(?:\(|=>|\{|;)') {
     throw "Bridge 2.6 compatibility/native-leak identifier remains in public wrapper: IsBound"
 }
