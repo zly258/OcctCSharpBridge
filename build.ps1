@@ -1,11 +1,13 @@
 ﻿param(
     [Parameter(Position = 0)]
-    [ValidateSet("native", "winform", "wpf", "all")]
+    [ValidateSet("validate", "native", "managed", "smoke", "all")]
     [string]$Target = "all",
 
     [Parameter(Position = 1)]
     [ValidateSet("Debug", "Release", "RelWithDebInfo")]
-    [string]$Configuration = "Release"
+    [string]$Configuration = "Release",
+
+    [string]$OcctRoot = $env:OCCT_ROOT
 )
 
 $ErrorActionPreference = "Stop"
@@ -17,27 +19,47 @@ $utf8 = [System.Text.UTF8Encoding]::new($false)
 $OutputEncoding = $utf8
 $env:DOTNET_CLI_UI_LANGUAGE = "en-US"
 $env:VSLANG = "1033"
+
 if (Test-Path "$env:SystemRoot\System32\chcp.com") {
     & "$env:SystemRoot\System32\chcp.com" 65001 | Out-Null
 }
 
 $Target = $Target.ToLowerInvariant()
-$OcctRoot = "D:\tools\occt-vc144-64"
-$OcctIncludeDir = Join-Path $OcctRoot "inc"
-$OcctLibDir = Join-Path $OcctRoot "win64\vc14\lib"
-$OcctBinDir = Join-Path $OcctRoot "win64\vc14\bin"
-$OcctThirdPartyDir = Join-Path $OcctRoot "3rdparty-vc14-64"
-
 $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $NativeSource = Join-Path $RepoRoot "src\OcctNative"
 $NativeBuild = Join-Path $RepoRoot "build\native"
 $NativeDll = Join-Path $NativeBuild "bin\$Configuration\OcctNative.dll"
 
+$Projects = [ordered]@{
+    Core = "src\OcctNet\OcctNet.csproj"
+    WinForms = "src\OcctNet.WinForms\OcctNet.WinForms.csproj"
+    Wpf = "src\OcctNet.Wpf\OcctNet.Wpf.csproj"
+    Smoke = "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
+}
+
+$Checks = [ordered]@{
+    Version = "tests\check-version-contract.ps1"
+    Organization = "tests\check-api-organization.ps1"
+    AnalyticGeometry = "tests\check-analytic-geometry-api.ps1"
+    DifferentialGeometry = "tests\check-differential-geometry-api.ps1"
+    UiHosts = "tests\check-ui-hosts.ps1"
+    Viewport = "tests\check-viewport-api.ps1"
+    Selection = "tests\check-selection-contract.ps1"
+    NativeBuild = "tests\check-native-build-structure.ps1"
+    ApiSurface = "tests\check-api-surface.ps1"
+}
+
 function Assert-Path {
     param([Parameter(Mandatory = $true)][string]$Path)
-
     if (-not (Test-Path $Path)) {
         throw "Required path was not found: $Path"
+    }
+}
+
+function Assert-Command {
+    param([Parameter(Mandatory = $true)][string]$Name)
+    if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
+        throw "$Name was not found in PATH."
     }
 }
 
@@ -47,31 +69,60 @@ function Invoke-Checked {
         [Parameter(Mandatory = $true)][object[]]$Arguments,
         [Parameter(Mandatory = $true)][string]$ErrorMessage
     )
-
     & $Command @Arguments
     if ($LASTEXITCODE -ne 0) {
         throw $ErrorMessage
     }
 }
 
-function Clean-ProjectOutput {
-    param([Parameter(Mandatory = $true)][string]$ProjectDirectory)
+function Invoke-ContractChecks {
+    foreach ($check in $Checks.GetEnumerator()) {
+        $path = Join-Path $RepoRoot $check.Value
+        Assert-Path $path
+        Write-Host ("[{0}] Running {1}..." -f $check.Key.ToLowerInvariant(), $check.Value) -ForegroundColor Cyan
+        & $path -RepositoryRoot $RepoRoot
+        if (-not $?) {
+            throw "$($check.Key) validation failed."
+        }
+    }
+}
 
-    Remove-Item (Join-Path $ProjectDirectory "bin") -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item (Join-Path $ProjectDirectory "obj") -Recurse -Force -ErrorAction SilentlyContinue
+function Resolve-OcctConfiguration {
+    if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
+        throw "OCCT_ROOT is not configured. Pass -OcctRoot <path> or set the OCCT_ROOT environment variable."
+    }
+
+    $script:OcctRoot = [System.IO.Path]::GetFullPath($OcctRoot)
+    $script:OcctIncludeDir = Join-Path $script:OcctRoot "inc"
+    $script:OcctLibDir = Join-Path $script:OcctRoot "win64\vc14\lib"
+    $script:OcctBinDir = Join-Path $script:OcctRoot "win64\vc14\bin"
+
+    foreach ($path in @(
+        $script:OcctIncludeDir,
+        $script:OcctLibDir,
+        $script:OcctBinDir,
+        (Join-Path $script:OcctIncludeDir "Standard.hxx"),
+        (Join-Path $script:OcctLibDir "TKernel.lib"),
+        (Join-Path $script:OcctBinDir "TKernel.dll")
+    )) {
+        Assert-Path $path
+    }
 }
 
 function Build-Native {
-    Write-Host "[native] Configuring..." -ForegroundColor Cyan
+    Assert-Command "cmake"
+    Resolve-OcctConfiguration
+
+    Write-Host "[native] Configuring OCCT 7.9.0 bridge..." -ForegroundColor Cyan
     Invoke-Checked "cmake" @(
         "-S", $NativeSource,
         "-B", $NativeBuild,
         "-G", "Visual Studio 17 2022",
         "-A", "x64",
-        "-DOCCT_ROOT=$OcctRoot",
-        "-DOCCT_INCLUDE_DIR=$OcctIncludeDir",
-        "-DOCCT_LIB_DIR=$OcctLibDir",
-        "-DOCCT_BIN_DIR=$OcctBinDir"
+        "-DOCCT_ROOT=$script:OcctRoot",
+        "-DOCCT_INCLUDE_DIR=$script:OcctIncludeDir",
+        "-DOCCT_LIB_DIR=$script:OcctLibDir",
+        "-DOCCT_BIN_DIR=$script:OcctBinDir"
     ) "CMake configure failed."
 
     Write-Host "[native] Building $Configuration..." -ForegroundColor Cyan
@@ -85,91 +136,85 @@ function Build-Native {
     Write-Host "Native: $NativeDll" -ForegroundColor Green
 }
 
-function Build-ManagedProject {
-    param(
-        [Parameter(Mandatory = $true)][string]$Name,
-        [Parameter(Mandatory = $true)][string]$ProjectFile,
-        [Parameter(Mandatory = $true)][string]$TargetFramework,
-        [Parameter(Mandatory = $true)][string]$ExecutableName
-    )
+function Build-Project {
+    param([Parameter(Mandatory = $true)][string]$Name)
 
-    $projectDirectory = Split-Path -Parent $ProjectFile
-    Clean-ProjectOutput $projectDirectory
+    Assert-Command "dotnet"
+    $relativePath = $Projects[$Name]
+    if ([string]::IsNullOrWhiteSpace($relativePath)) {
+        throw "Unknown project key: $Name"
+    }
 
-    Write-Host "[$Name] Building $Configuration..." -ForegroundColor Cyan
+    $project = Join-Path $RepoRoot $relativePath
+    Assert-Path $project
+    $projectDirectory = Split-Path -Parent $project
+    Remove-Item (Join-Path $projectDirectory "bin") -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item (Join-Path $projectDirectory "obj") -Recurse -Force -ErrorAction SilentlyContinue
+
+    Write-Host "[$($Name.ToLowerInvariant())] Building $Configuration..." -ForegroundColor Cyan
     Invoke-Checked "dotnet" @(
-        "build", $ProjectFile,
+        "build", $project,
         "-c", $Configuration,
         "-p:Platform=x64",
         "--nologo"
-    ) "$ExecutableName build failed."
-
-    $outputDirectory = Join-Path $projectDirectory "bin\x64\$Configuration\$TargetFramework"
-    $executablePath = Join-Path $outputDirectory $ExecutableName
-    Assert-Path $executablePath
-    Assert-Path (Join-Path $outputDirectory "OcctNative.dll")
-    Write-Host ("{0}: {1}" -f $Name, $executablePath) -ForegroundColor Green
+    ) "$Name build failed."
 }
 
-foreach ($tool in @("cmake", "dotnet")) {
-    if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
-        throw "$tool was not found in PATH."
+function Build-Managed {
+    Build-Project "Core"
+    Build-Project "WinForms"
+    Build-Project "Wpf"
+}
+
+function Run-Smoke {
+    Assert-Path $NativeDll
+    Build-Project "Smoke"
+
+    $smokeProject = Join-Path $RepoRoot $Projects.Smoke
+    $smokeOutput = Join-Path (Split-Path -Parent $smokeProject) "bin\x64\$Configuration\net8.0-windows"
+    Copy-Item $NativeDll (Join-Path $smokeOutput "OcctNative.dll") -Force
+
+    $previousNativeDirectory = $env:OCCT_BRIDGE_NATIVE_DIR
+    try {
+        $env:OCCT_BRIDGE_NATIVE_DIR = $smokeOutput
+        Write-Host "[smoke] Running native modeling scenarios..." -ForegroundColor Cyan
+        Invoke-Checked "dotnet" @(
+            "run",
+            "--project", $smokeProject,
+            "-c", $Configuration,
+            "-p:Platform=x64",
+            "--no-build"
+        ) "Smoke test failed."
     }
-}
-
-foreach ($path in @(
-    $OcctIncludeDir,
-    $OcctLibDir,
-    $OcctBinDir,
-    $OcctThirdPartyDir,
-    (Join-Path $OcctIncludeDir "Standard.hxx"),
-    (Join-Path $OcctLibDir "TKernel.lib"),
-    (Join-Path $OcctBinDir "TKernel.dll")
-)) {
-    Assert-Path $path
+    finally {
+        $env:OCCT_BRIDGE_NATIVE_DIR = $previousNativeDirectory
+    }
 }
 
 Write-Host "Target:        $Target"
 Write-Host "Configuration: $Configuration"
-Write-Host "OCCT root:     $OcctRoot" -ForegroundColor DarkGray
-
-Build-Native
-if ($Target -eq "native") {
-    return
-}
-
-Clean-ProjectOutput (Join-Path $RepoRoot "src\OcctNet")
-Clean-ProjectOutput (Join-Path $RepoRoot "src\CadCommon")
-
-$projects = @{
-    winform = @{
-        Name = "CAD-Winform"
-        Project = "src\CadWinForms\CadWinForms.csproj"
-        Framework = "net8.0-windows"
-        Executable = "CAD-Winform.exe"
-    }
-    wpf = @{
-        Name = "CAD-WPF"
-        Project = "src\CadWpf\CadWpf.csproj"
-        Framework = "net8.0-windows"
-        Executable = "CAD-WPF.exe"
-    }
-}
-
-$selectedTargets = if ($Target -eq "all") {
-    @("winform", "wpf")
+if ([string]::IsNullOrWhiteSpace($OcctRoot)) {
+    Write-Host "OCCT root:     not configured (valid for validate/managed)" -ForegroundColor DarkGray
 }
 else {
-    @($Target)
+    Write-Host "OCCT root:     $OcctRoot" -ForegroundColor DarkGray
 }
 
-foreach ($selectedTarget in $selectedTargets) {
-    $project = $projects[$selectedTarget]
-    Build-ManagedProject `
-        -Name $project.Name `
-        -ProjectFile (Join-Path $RepoRoot $project.Project) `
-        -TargetFramework $project.Framework `
-        -ExecutableName $project.Executable
+Invoke-ContractChecks
+
+switch ($Target) {
+    "validate" { }
+    "native" { Build-Native }
+    "managed" { Build-Managed }
+    "smoke" {
+        Build-Native
+        Build-Managed
+        Run-Smoke
+    }
+    "all" {
+        Build-Native
+        Build-Managed
+    }
 }
 
 Write-Host "Build completed." -ForegroundColor Green

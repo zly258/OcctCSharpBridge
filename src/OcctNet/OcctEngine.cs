@@ -1,5 +1,6 @@
 ﻿using System.Drawing;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace OcctNet;
 
@@ -11,12 +12,13 @@ public sealed partial class OcctEngine : IDisposable
     public OcctEngine()
     {
         OcctRuntime.Configure();
+        OcctBridgeInfo.EnsureCompatible();
         _handle = NativeMethods.occt_create();
         if (_handle == IntPtr.Zero) throw new OcctException("Unable to create the native OCCT engine.");
     }
 
-    public bool IsInitialized => _initialized;
-    public static string OcctVersion => Marshal.PtrToStringUTF8(NativeMethods.occt_version()) ?? "Unknown";
+    public bool IsInitialized => Volatile.Read(ref _initialized) && Volatile.Read(ref _handle) != IntPtr.Zero;
+    public static string OcctVersion => OcctBridgeInfo.OcctVersion;
     public int ObjectCount { get { EnsureNotDisposed(); return NativeMethods.occt_object_count(_handle); } }
     public int ShapeCount { get { EnsureNotDisposed(); return NativeMethods.occt_shape_count(_handle); } }
     public IReadOnlyList<OcctObject> Objects
@@ -47,9 +49,9 @@ public sealed partial class OcctEngine : IDisposable
     public void Initialize(IntPtr windowHandle)
     {
         EnsureNotDisposed();
-        if (_initialized) return;
+        if (Volatile.Read(ref _initialized)) return;
         Check(NativeMethods.occt_initialize(_handle, windowHandle));
-        _initialized = true;
+        Volatile.Write(ref _initialized, true);
     }
 
     public void Resize() => CheckInitialized(() => NativeMethods.occt_resize(_handle));
@@ -88,7 +90,7 @@ public sealed partial class OcctEngine : IDisposable
 
     public void MoveTo(int x, int y) => CheckInitialized(() => NativeMethods.occt_move_to(_handle, x, y));
     public void Select(int x, int y, bool appendSelection = false) => CheckInitialized(() => NativeMethods.occt_select(_handle, x, y, appendSelection ? 1 : 0));
-    public void SelectRectangle(int x1, int y1, int x2, int y2, bool appendSelection = false) => CheckInitialized(() => NativeMethods.occt_select_rectangle(_handle, x1, y1, x2, y2, appendSelection ? 1 : 0));
+    public void SelectRectangle(int x1, int y1, int x2, int y2, bool appendSelection = false, bool allowOverlap = false) => CheckInitialized(() => NativeMethods.occt_select_rectangle_ex(_handle, x1, y1, x2, y2, appendSelection ? 1 : 0, allowOverlap ? 1 : 0));
     public void SelectObject(OcctObject value, bool appendSelection = false) => CheckInitialized(() => NativeMethods.occt_select_object(_handle, value.Id, appendSelection ? 1 : 0));
     public void SetSelectionMode(OcctSelectionMode mode) => CheckInitialized(() => NativeMethods.occt_set_selection_mode(_handle, (int)mode));
 
@@ -160,7 +162,29 @@ public sealed partial class OcctEngine : IDisposable
     public void SetDisplayMode(IOcctObject value, OcctDisplayMode displayMode) => CheckInitialized(() => NativeMethods.occt_set_object_display_mode(_handle, value.Id, (int)displayMode));
     public void SetLineWidth(IOcctObject value, double width) => CheckInitialized(() => NativeMethods.occt_set_object_line_width(_handle, value.Id, width));
     public void SetMaterial(IOcctObject value, OcctMaterial material) => CheckInitialized(() => NativeMethods.occt_set_object_material(_handle, value.Id, (int)material));
-    public void Delete(IOcctObject value) => CheckInitialized(() => NativeMethods.occt_delete_object(_handle, value.Id));
+    public void Delete(IOcctObject value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        Delete(new[] { value });
+    }
+
+    public void Delete(IEnumerable<IOcctObject> values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        EnsureInitialized();
+
+        var ids = new HashSet<long>();
+        foreach (var value in values)
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            if (value.Id <= 0) throw new ArgumentException("Object IDs must be greater than zero.", nameof(values));
+            ids.Add(value.Id);
+        }
+
+        if (ids.Count == 0) return;
+        var objectIds = ids.ToArray();
+        Check(NativeMethods.occt_delete_objects(_handle, objectIds, objectIds.Length));
+    }
     public void Clear() => CheckInitialized(() => NativeMethods.occt_clear(_handle));
     public void ShowAll() => CheckInitialized(() => NativeMethods.occt_show_all(_handle));
     public void HideAll() => CheckInitialized(() => NativeMethods.occt_hide_all(_handle));
@@ -238,19 +262,39 @@ public sealed partial class OcctEngine : IDisposable
     private void EnsureInitialized()
     {
         EnsureNotDisposed();
-        if (!_initialized) throw new InvalidOperationException("Initialize the OCCT engine with a valid window handle first.");
+        if (!Volatile.Read(ref _initialized)) throw new InvalidOperationException("Initialize the OCCT engine with a valid window handle first.");
     }
 
-    private void EnsureNotDisposed() => ObjectDisposedException.ThrowIf(_handle == IntPtr.Zero, this);
+    private void EnsureNotDisposed() =>
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _handle) == IntPtr.Zero, this);
 
     public void Dispose()
     {
-        if (_handle == IntPtr.Zero) return;
-        NativeMethods.occt_destroy(_handle);
-        _handle = IntPtr.Zero;
-        _initialized = false;
+        ReleaseHandle(throwOnError: true);
         GC.SuppressFinalize(this);
     }
 
-    ~OcctEngine() => Dispose();
+    private void ReleaseHandle(bool throwOnError)
+    {
+        var handle = Interlocked.Exchange(ref _handle, IntPtr.Zero);
+        Volatile.Write(ref _initialized, false);
+        if (handle == IntPtr.Zero) return;
+
+        if (throwOnError)
+        {
+            NativeMethods.occt_destroy(handle);
+            return;
+        }
+
+        try
+        {
+            NativeMethods.occt_destroy(handle);
+        }
+        catch
+        {
+            // Finalizers must not allow native unload failures to terminate the process.
+        }
+    }
+
+    ~OcctEngine() => ReleaseHandle(throwOnError: false);
 }

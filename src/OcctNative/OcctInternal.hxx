@@ -4,6 +4,7 @@
 
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_InteractiveObject.hxx>
+#include <AIS_RubberBand.hxx>
 #include <AIS_Shape.hxx>
 #include <AIS_ViewCube.hxx>
 #include <Aspect_DisplayConnection.hxx>
@@ -45,6 +46,8 @@ namespace OcctBridge
         TopoDS_Shape shape;
         Handle(AIS_InteractiveObject) presentation;
         std::string name;
+        std::string applicationTag;
+        bool selectable = true;
     };
 
     class Engine
@@ -58,13 +61,20 @@ namespace OcctBridge
         Handle(V3d_View) view;
         Handle(AIS_InteractiveContext) context;
         Handle(AIS_ViewCube) viewCube;
+        Handle(AIS_RubberBand) selectionRubberBand;
         Handle(WNT_Window) window;
         Handle(V3d_AmbientLight) customAmbientLight;
         Handle(V3d_DirectionalLight) customDirectionalLight;
+        Handle(V3d_DirectionalLight) customSunLight;
+        Handle(V3d_DirectionalLight) customFillLight;
         std::unordered_map<OcctObjectId, ObjectEntry> objects;
+        std::unordered_map<std::string, OcctObjectId> objectIdByApplicationTag;
         OcctObjectId nextId = 1;
         int displayMode = AIS_Shaded;
         int selectionMode = OcctSelection_Object;
+        int updateDepth = 0;
+        bool redrawPending = false;
+        bool fitAllPending = false;
 
         bool isInitialized() const;
         void clearError();
@@ -79,6 +89,11 @@ namespace OcctBridge
         void hide(OcctObjectId id);
         void erase(OcctObjectId id);
         void applySelectionMode(const Handle(AIS_InteractiveObject)& presentation);
+        void beginUpdate();
+        void endUpdate(bool fitAll);
+        void requestRedraw();
+        void requestFitAll();
+        bool isUpdating() const;
     };
 
     Engine* engineOf(OcctHandle handle);
@@ -97,7 +112,9 @@ namespace OcctBridge
     void requirePositive(double value, const char* name);
     void requireCount(int count, int minimum, const char* name);
     TopoDS_Shape transformed(const TopoDS_Shape& source, const gp_Trsf& transform);
+    TopoDS_Shape shapeWithPresentationTransformation(const ObjectEntry& entry);
     void fillMassProperties(const GProp_GProps& properties, OcctMassProperties* result);
+    Graphic3d_NameOfMaterial materialName(int value);
 
     template<typename Function>
     int execute(Engine* engine, Function&& function)

@@ -6,33 +6,64 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS OFF)
 
-set(OCCT_ROOT "D:/tools/occt-vc144-64")
-set(OCCT_INCLUDE_DIR "D:/tools/occt-vc144-64/inc")
-set(OCCT_LIB_DIR "D:/tools/occt-vc144-64/win64/vc14/lib")
-set(OCCT_BIN_DIR "D:/tools/occt-vc144-64/win64/vc14/bin")
+set(OCCT_ROOT "$ENV{OCCT_ROOT}" CACHE PATH "OCCT installation root")
+if(NOT OCCT_ROOT)
+    message(FATAL_ERROR "OCCT_ROOT is not configured. Pass -DOCCT_ROOT=<path> or set the OCCT_ROOT environment variable.")
+endif()
+set(OCCT_INCLUDE_DIR "${OCCT_ROOT}/inc" CACHE PATH "OCCT include directory")
+set(OCCT_LIB_DIR "${OCCT_ROOT}/win64/vc14/lib" CACHE PATH "OCCT library directory")
+set(OCCT_BIN_DIR "${OCCT_ROOT}/win64/vc14/bin" CACHE PATH "OCCT runtime directory")
 set(OCCT_CASROOT "${OCCT_ROOT}")
 
-if(NOT EXISTS "${OCCT_INCLUDE_DIR}/Standard.hxx")
-    message(FATAL_ERROR "OCCT header was not found: ${OCCT_INCLUDE_DIR}/Standard.hxx")
-endif()
-if(NOT EXISTS "${OCCT_LIB_DIR}/TKernel.lib")
-    message(FATAL_ERROR "OCCT library was not found: ${OCCT_LIB_DIR}/TKernel.lib")
-endif()
-if(NOT EXISTS "${OCCT_BIN_DIR}/TKernel.dll")
-    message(FATAL_ERROR "OCCT runtime was not found: ${OCCT_BIN_DIR}/TKernel.dll")
+foreach(required_path
+    "${OCCT_INCLUDE_DIR}/Standard.hxx"
+    "${OCCT_INCLUDE_DIR}/Standard_Version.hxx"
+    "${OCCT_LIB_DIR}/TKernel.lib"
+    "${OCCT_BIN_DIR}/TKernel.dll")
+    if(NOT EXISTS "${required_path}")
+        message(FATAL_ERROR "Required OCCT file was not found: ${required_path}")
+    endif()
+endforeach()
+
+file(READ "${OCCT_INCLUDE_DIR}/Standard_Version.hxx" _occt_version_header)
+if(NOT _occt_version_header MATCHES "#define[ \t]+OCC_VERSION_MAJOR[ \t]+7([^0-9]|$)" OR
+   NOT _occt_version_header MATCHES "#define[ \t]+OCC_VERSION_MINOR[ \t]+9([^0-9]|$)" OR
+   NOT _occt_version_header MATCHES "#define[ \t]+OCC_VERSION_MAINTENANCE[ \t]+0([^0-9]|$)")
+    message(FATAL_ERROR "OcctCSharpBridge requires exactly OCCT 7.9.0.")
 endif()
 
 add_library(OcctNative SHARED
     OcctEngine.cpp
+    OcctAppearance.cpp
+    OcctSelectionOverlay.cpp
     OcctView.cpp
+    OcctViewportExtensions.cpp
+    OcctViewportState.cpp
+    OcctObjectBatch.cpp
+    OcctObjectIdentity.cpp
+    OcctObjectUpdate.cpp
+    OcctObjectInteraction.cpp
+    OcctObjectTransform.cpp
+    OcctSelectionState.cpp
+    OcctDepth.cpp
     OcctQueries.cpp
     OcctGeometry.cpp
     OcctAdvancedGeometry.cpp
     OcctFeatures.cpp
     OcctAnnotations.cpp
+    OcctVectorAnnotations.cpp
     OcctIO.cpp
+    OcctModelingCore.cpp
+    OcctModelingGeometry.cpp
+    OcctModelingAlgorithms.cpp
+    OcctModelingAnalysis.cpp
+    OcctModelingAnalyticGeometry.cpp
+    OcctModelingDifferentialGeometry.cpp
     OcctInternal.hxx
-    OcctNative.h)
+    OcctModelingInternal.hxx
+    OcctNative.h
+    OcctSelectionOverlay.h
+    OcctModeling.h)
 
 target_compile_definitions(OcctNative PRIVATE NOMINMAX _CRT_SECURE_NO_WARNINGS)
 if(MSVC)
@@ -55,6 +86,9 @@ foreach(library_name IN LISTS occt_candidate_libraries)
     endif()
 endforeach()
 
+list(REMOVE_DUPLICATES occt_libraries)
+
+message(STATUS "OCCT version: 7.9.0 (required exactly)")
 message(STATUS "OCCT CASROOT: ${OCCT_CASROOT}")
 message(STATUS "OCCT include: ${OCCT_INCLUDE_DIR}")
 message(STATUS "OCCT lib: ${OCCT_LIB_DIR}")
@@ -75,4 +109,4 @@ foreach(configuration Debug Release RelWithDebInfo MinSizeRel)
 endforeach()
 
 file(WRITE "${CMAKE_BINARY_DIR}/occt_paths.txt"
-    "OCCT_CASROOT=${OCCT_CASROOT}\nOCCT_INCLUDE_DIR=${OCCT_INCLUDE_DIR}\nOCCT_LIB_DIR=${OCCT_LIB_DIR}\nOCCT_BIN_DIR=${OCCT_BIN_DIR}\n")
+    "OCCT_CASROOT=${OCCT_CASROOT}\nOCCT_INCLUDE_DIR=${OCCT_INCLUDE_DIR}\nOCCT_LIB_DIR=${OCCT_LIB_DIR}\nOCCT_BIN_DIR=${OCCT_BIN_DIR}\nOCCT_VERSION=7.9.0\n")
