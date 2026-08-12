@@ -1,4 +1,4 @@
-﻿# Build output
+# Build output
 build/
 artifacts/
 publish/
@@ -44,19 +44,17 @@ Makefile
 *.idb
 *.tlog
 
-# .NET / NuGet
-packages/
-*.nupkg
-*.snupkg
-project.assets.json
-
-
-
 # Runtime binaries
 *.dll
 *.exe
 *.so
 *.dylib
+
+# dist/win-x64 is a versioned, validated Bridge Binary SDK and is intentionally tracked.
+!dist/
+!dist/**
+/dist/.win-x64-staging/
+/dist/.win-x64-backup/
 
 # CAD test and generated files
 *.brep

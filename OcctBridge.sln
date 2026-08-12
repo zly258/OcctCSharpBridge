@@ -1,24 +1,73 @@
-﻿Microsoft Visual Studio Solution File, Format Version 12.00
+Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") = "Solution Items", "Solution Items", "{CBACB41C-6B78-4FD8-9F3B-D7AF292A17D9}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{CBACB41C-6B78-4FD8-9F3B-D7AF292A17D9}"
     ProjectSection(SolutionItems) = preProject
+        .editorconfig = .editorconfig
+        .gitattributes = .gitattributes
         .gitignore = .gitignore
+        bridge-contract.json = bridge-contract.json
         build.ps1 = build.ps1
+        publish.ps1 = publish.ps1
+        Directory.Build.props = Directory.Build.props
+        global.json = global.json
         LICENSE = LICENSE
-        README.en-US.md = README.en-US.md
+        LICENSE_LGPL_21.txt = LICENSE_LGPL_21.txt
+        OcctCSharpBridge_LGPL_EXCEPTION.txt = OcctCSharpBridge_LGPL_EXCEPTION.txt
+        COMMERCIAL.md = COMMERCIAL.md
+        THIRD_PARTY_NOTICES.md = THIRD_PARTY_NOTICES.md
+        third-party\OCCT\OCCT_LGPL_EXCEPTION.txt = third-party\OCCT\OCCT_LGPL_EXCEPTION.txt
         README.md = README.md
-        run.ps1 = run.ps1
+        README.zh-CN.md = README.zh-CN.md
     EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Bridge", "Bridge", "{E3C3E281-D16F-44C3-A694-EC620E3BB101}"
+    ProjectSection(SolutionItems) = preProject
+        src\OcctNative\CMakeLists.txt = src\OcctNative\CMakeLists.txt
+    EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{E3C3E281-D16F-44C3-A694-EC620E3BB102}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentation", "{E3C3E281-D16F-44C3-A694-EC620E3BB103}"
+    ProjectSection(SolutionItems) = preProject
+        docs\zh-CN\README.md = docs\zh-CN\README.md
+        docs\zh-CN\01_快速开始.md = docs\zh-CN\01_快速开始.md
+        docs\zh-CN\02_架构与边界.md = docs\zh-CN\02_架构与边界.md
+        docs\zh-CN\03_API覆盖与设计约定.md = docs\zh-CN\03_API覆盖与设计约定.md
+        docs\zh-CN\04_几何建模与拓扑分析.md = docs\zh-CN\04_几何建模与拓扑分析.md
+        docs\zh-CN\05_Viewer选择与交互.md = docs\zh-CN\05_Viewer选择与交互.md
+        docs\zh-CN\06_网格与数据交换.md = docs\zh-CN\06_网格与数据交换.md
+        docs\zh-CN\07_运行时部署与诊断.md = docs\zh-CN\07_运行时部署与诊断.md
+        docs\zh-CN\08_构建测试与发布.md = docs\zh-CN\08_构建测试与发布.md
+        docs\zh-CN\api\README.md = docs\zh-CN\api\README.md
+        docs\en-US\README.md = docs\en-US\README.md
+        docs\en-US\01_Getting-Started.md = docs\en-US\01_Getting-Started.md
+        docs\en-US\02_Architecture-and-Boundaries.md = docs\en-US\02_Architecture-and-Boundaries.md
+        docs\en-US\03_API-Coverage-and-Design-Conventions.md = docs\en-US\03_API-Coverage-and-Design-Conventions.md
+        docs\en-US\04_Geometry-Modeling-and-Topology.md = docs\en-US\04_Geometry-Modeling-and-Topology.md
+        docs\en-US\05_Viewer-Selection-and-Interaction.md = docs\en-US\05_Viewer-Selection-and-Interaction.md
+        docs\en-US\06_Mesh-and-Data-Exchange.md = docs\en-US\06_Mesh-and-Data-Exchange.md
+        docs\en-US\07_Runtime-Deployment-and-Diagnostics.md = docs\en-US\07_Runtime-Deployment-and-Diagnostics.md
+        docs\en-US\08_Build-Test-and-Publish.md = docs\en-US\08_Build-Test-and-Publish.md
+        docs\en-US\api\README.md = docs\en-US\api\README.md
+    EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tools", "Tools", "{E3C3E281-D16F-44C3-A694-EC620E3BB104}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet", "src\OcctNet\OcctNet.csproj", "{217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CadCommon", "src\CadCommon\CadCommon.csproj", "{A01D0BAA-2AE2-487D-A76C-A6BD09ED92FA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.WinForms", "src\OcctNet.WinForms\OcctNet.WinForms.csproj", "{7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CAD-Winform", "src\CadWinForms\CadWinForms.csproj", "{9FD55C83-D84B-498A-86E9-0413E8A5AE69}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.Wpf", "src\OcctNet.Wpf\OcctNet.Wpf.csproj", "{B65176A4-9A31-4C15-BE31-2F4FB10EFB56}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CAD-WPF", "src\CadWpf\CadWpf.csproj", "{FF3305BE-D770-4E1E-A730-49F67353F64E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.Avalonia", "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj", "{3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.ManagedTests", "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj", "{D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.Smoke", "tests\OcctNet.Smoke\OcctNet.Smoke.csproj", "{A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctApiDocsGenerator", "tools\OcctApiDocsGenerator\OcctApiDocsGenerator.csproj", "{7A6D5D4A-66CC-4A8B-A2C6-D4D8BF254C31}"
 EndProject
 Global
     GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -30,18 +79,39 @@ Global
         {217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3}.Debug|x64.Build.0 = Debug|x64
         {217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3}.Release|x64.ActiveCfg = Release|x64
         {217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3}.Release|x64.Build.0 = Release|x64
-        {A01D0BAA-2AE2-487D-A76C-A6BD09ED92FA}.Debug|x64.ActiveCfg = Debug|x64
-        {A01D0BAA-2AE2-487D-A76C-A6BD09ED92FA}.Debug|x64.Build.0 = Debug|x64
-        {A01D0BAA-2AE2-487D-A76C-A6BD09ED92FA}.Release|x64.ActiveCfg = Release|x64
-        {A01D0BAA-2AE2-487D-A76C-A6BD09ED92FA}.Release|x64.Build.0 = Release|x64
-        {9FD55C83-D84B-498A-86E9-0413E8A5AE69}.Debug|x64.ActiveCfg = Debug|x64
-        {9FD55C83-D84B-498A-86E9-0413E8A5AE69}.Debug|x64.Build.0 = Debug|x64
-        {9FD55C83-D84B-498A-86E9-0413E8A5AE69}.Release|x64.ActiveCfg = Release|x64
-        {9FD55C83-D84B-498A-86E9-0413E8A5AE69}.Release|x64.Build.0 = Release|x64
-        {FF3305BE-D770-4E1E-A730-49F67353F64E}.Debug|x64.ActiveCfg = Debug|x64
-        {FF3305BE-D770-4E1E-A730-49F67353F64E}.Debug|x64.Build.0 = Debug|x64
-        {FF3305BE-D770-4E1E-A730-49F67353F64E}.Release|x64.ActiveCfg = Release|x64
-        {FF3305BE-D770-4E1E-A730-49F67353F64E}.Release|x64.Build.0 = Release|x64
+        {7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58}.Debug|x64.ActiveCfg = Debug|x64
+        {7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58}.Debug|x64.Build.0 = Debug|x64
+        {7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58}.Release|x64.ActiveCfg = Release|x64
+        {7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58}.Release|x64.Build.0 = Release|x64
+        {B65176A4-9A31-4C15-BE31-2F4FB10EFB56}.Debug|x64.ActiveCfg = Debug|x64
+        {B65176A4-9A31-4C15-BE31-2F4FB10EFB56}.Debug|x64.Build.0 = Debug|x64
+        {B65176A4-9A31-4C15-BE31-2F4FB10EFB56}.Release|x64.ActiveCfg = Release|x64
+        {B65176A4-9A31-4C15-BE31-2F4FB10EFB56}.Release|x64.Build.0 = Release|x64
+        {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}.Debug|x64.ActiveCfg = Debug|x64
+        {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}.Debug|x64.Build.0 = Debug|x64
+        {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}.Release|x64.ActiveCfg = Release|x64
+        {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}.Release|x64.Build.0 = Release|x64
+        {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}.Debug|x64.ActiveCfg = Debug|x64
+        {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}.Debug|x64.Build.0 = Debug|x64
+        {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}.Release|x64.ActiveCfg = Release|x64
+        {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}.Release|x64.Build.0 = Release|x64
+        {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}.Debug|x64.ActiveCfg = Debug|x64
+        {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}.Debug|x64.Build.0 = Debug|x64
+        {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}.Release|x64.ActiveCfg = Release|x64
+        {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}.Release|x64.Build.0 = Release|x64
+        {7A6D5D4A-66CC-4A8B-A2C6-D4D8BF254C31}.Debug|x64.ActiveCfg = Debug|x64
+        {7A6D5D4A-66CC-4A8B-A2C6-D4D8BF254C31}.Debug|x64.Build.0 = Debug|x64
+        {7A6D5D4A-66CC-4A8B-A2C6-D4D8BF254C31}.Release|x64.ActiveCfg = Release|x64
+        {7A6D5D4A-66CC-4A8B-A2C6-D4D8BF254C31}.Release|x64.Build.0 = Release|x64
+    EndGlobalSection
+    GlobalSection(NestedProjects) = preSolution
+        {217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3} = {E3C3E281-D16F-44C3-A694-EC620E3BB101}
+        {7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58} = {E3C3E281-D16F-44C3-A694-EC620E3BB101}
+        {B65176A4-9A31-4C15-BE31-2F4FB10EFB56} = {E3C3E281-D16F-44C3-A694-EC620E3BB101}
+        {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C} = {E3C3E281-D16F-44C3-A694-EC620E3BB101}
+        {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095} = {E3C3E281-D16F-44C3-A694-EC620E3BB102}
+        {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E} = {E3C3E281-D16F-44C3-A694-EC620E3BB102}
+        {7A6D5D4A-66CC-4A8B-A2C6-D4D8BF254C31} = {E3C3E281-D16F-44C3-A694-EC620E3BB104}
     EndGlobalSection
     GlobalSection(SolutionProperties) = preSolution
         HideSolutionNode = FALSE

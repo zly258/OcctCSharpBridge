@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <cstdint>
 
@@ -19,13 +19,61 @@ extern "C"
     struct OcctMassProperties { double mass; double centerX; double centerY; double centerZ; };
     struct OcctDistanceResult { double distance; OcctPoint3d pointOnFirst; OcctPoint3d pointOnSecond; };
     struct OcctCameraState { OcctPoint3d eye; OcctPoint3d center; OcctVector3d up; OcctVector3d direction; double scale; };
+    struct OcctProjectionRay { OcctPoint3d origin; OcctVector3d direction; };
+    struct OcctViewportState
+    {
+        int width;
+        int height;
+        int projectionType;
+        int computedMode;
+        int antialiasingEnabled;
+        int msaaSamples;
+        int renderingMethod;
+        int shadowsEnabled;
+        int frustumCullingEnabled;
+        int faceBoundariesVisible;
+        int selectionTolerance;
+        int automaticHighlight;
+        double perspectiveFov;
+        double renderResolutionScale;
+        double renderResolutionDpi;
+    };
+    struct OcctAutoZFitSettings { int enabled; double scaleFactor; };
+    struct OcctPolygonOffsetSettings { int mode; double factor; double units; };
+    struct OcctColorRgb { double r; double g; double b; };
+    struct OcctSceneLightingSettings
+    {
+        OcctColorRgb ambientColor;
+        double ambientIntensity;
+        int cameraLightEnabled;
+        OcctColorRgb cameraLightColor;
+        double cameraLightIntensity;
+        OcctVector3d cameraLightDirection;
+        int sunLightEnabled;
+        OcctColorRgb sunLightColor;
+        double sunLightIntensity;
+        OcctVector3d sunLightDirection;
+        int fillLightEnabled;
+        OcctColorRgb fillLightColor;
+        double fillLightIntensity;
+        OcctVector3d fillLightDirection;
+    };
     struct OcctUvBounds { double uMin; double uMax; double vMin; double vMax; };
+    struct OcctObjectDescriptor { OcctObjectId objectId; int kind; };
 
     enum OcctObjectKind { OcctObject_Unknown = 0, OcctObject_Shape = 1, OcctObject_Text = 2, OcctObject_Dimension = 3 };
     enum OcctShapeType { OcctShape_Compound = 0, OcctShape_CompSolid = 1, OcctShape_Solid = 2, OcctShape_Shell = 3, OcctShape_Face = 4, OcctShape_Wire = 5, OcctShape_Edge = 6, OcctShape_Vertex = 7, OcctShape_Shape = 8 };
     enum OcctViewOrientation { OcctView_Isometric = 0, OcctView_Front = 1, OcctView_Back = 2, OcctView_Left = 3, OcctView_Right = 4, OcctView_Top = 5, OcctView_Bottom = 6 };
     enum OcctProjectionType { OcctProjection_Orthographic = 0, OcctProjection_Perspective = 1 };
     enum OcctDisplayMode { OcctDisplay_Wireframe = 0, OcctDisplay_Shaded = 1 };
+    enum OcctRenderingMethod { OcctRendering_Rasterization = 0, OcctRendering_RayTracing = 1 };
+    enum OcctZUpViewOrientation
+    {
+        OcctZUp_Front = 0, OcctZUp_Back = 1, OcctZUp_Left = 2, OcctZUp_Right = 3,
+        OcctZUp_Top = 4, OcctZUp_Bottom = 5,
+        OcctZUp_XNegativeYNegative = 6, OcctZUp_XPositiveYNegative = 7,
+        OcctZUp_XNegativeYPositive = 8, OcctZUp_XPositiveYPositive = 9
+    };
     enum OcctSelectionMode { OcctSelection_Object = 0, OcctSelection_Vertex = 1, OcctSelection_Edge = 2, OcctSelection_Wire = 3, OcctSelection_Face = 4, OcctSelection_Shell = 5, OcctSelection_Solid = 6 };
     enum OcctBooleanOperation { OcctBoolean_Fuse = 0, OcctBoolean_Cut = 1, OcctBoolean_Common = 2, OcctBoolean_Section = 3 };
     enum OcctCurveType { OcctCurve_Line = 0, OcctCurve_Circle = 1, OcctCurve_Ellipse = 2, OcctCurve_Hyperbola = 3, OcctCurve_Parabola = 4, OcctCurve_Bezier = 5, OcctCurve_BSpline = 6, OcctCurve_Offset = 7, OcctCurve_Other = 8 };
@@ -41,15 +89,61 @@ extern "C"
         OcctMaterial_Default = 24
     };
 
+    enum OcctSelectionOperation
+    {
+        OcctSelection_Replace = 0,
+        OcctSelection_Add = 1,
+        OcctSelection_Remove = 2,
+        OcctSelection_Toggle = 3,
+        OcctSelection_Clear = 4
+    };
+
+    enum OcctShapeUpdateOptions
+    {
+        OcctShapeUpdate_None = 0,
+        OcctShapeUpdate_PreserveAppearance = 1 << 0,
+        OcctShapeUpdate_PreserveTransformation = 1 << 1,
+        OcctShapeUpdate_PreserveSelection = 1 << 2,
+        OcctShapeUpdate_PreserveSelectability = 1 << 3,
+        OcctShapeUpdate_RecomputePresentation = 1 << 4,
+        OcctShapeUpdate_RecomputeSelection = 1 << 5,
+        OcctShapeUpdate_PreserveAll =
+            OcctShapeUpdate_PreserveAppearance |
+            OcctShapeUpdate_PreserveTransformation |
+            OcctShapeUpdate_PreserveSelection |
+            OcctShapeUpdate_PreserveSelectability |
+            OcctShapeUpdate_RecomputePresentation |
+            OcctShapeUpdate_RecomputeSelection
+    };
+
+    enum OcctViewCubeLanguage
+    {
+        OcctViewCubeLanguage_English = 0,
+        OcctViewCubeLanguage_ChineseSimplified = 1
+    };
+
+    struct OcctTransform3d
+    {
+        double m00; double m01; double m02; double m03;
+        double m10; double m11; double m12; double m13;
+        double m20; double m21; double m22; double m23;
+    };
+
     OCCTBRIDGE_API OcctHandle occt_create();
     OCCTBRIDGE_API void occt_destroy(OcctHandle handle);
     OCCTBRIDGE_API const char* occt_last_error(OcctHandle handle);
     OCCTBRIDGE_API const char* occt_version();
+    OCCTBRIDGE_API int occt_bridge_abi_version();
+    OCCTBRIDGE_API const char* occt_bridge_version();
+    OCCTBRIDGE_API const char* occt_bridge_build_info();
 
     // Viewer and interaction.
     OCCTBRIDGE_API int occt_initialize(OcctHandle handle, void* windowHandle);
     OCCTBRIDGE_API int occt_resize(OcctHandle handle);
     OCCTBRIDGE_API int occt_redraw(OcctHandle handle);
+    OCCTBRIDGE_API int occt_begin_update(OcctHandle handle);
+    OCCTBRIDGE_API int occt_end_update(OcctHandle handle, int fitAll);
+    OCCTBRIDGE_API int occt_is_updating(OcctHandle handle);
     OCCTBRIDGE_API int occt_fit_all(OcctHandle handle);
     OCCTBRIDGE_API int occt_fit_object(OcctHandle handle, OcctObjectId objectId);
     OCCTBRIDGE_API int occt_window_fit(OcctHandle handle, int x1, int y1, int x2, int y2);
@@ -66,12 +160,9 @@ extern "C"
     OCCTBRIDGE_API int occt_world_to_screen(OcctHandle handle, OcctPoint3d point, int* x, int* y);
     OCCTBRIDGE_API int occt_move_to(OcctHandle handle, int x, int y);
     OCCTBRIDGE_API int occt_select(OcctHandle handle, int x, int y, int appendSelection);
-    OCCTBRIDGE_API int occt_select_rectangle(OcctHandle handle, int x1, int y1, int x2, int y2, int appendSelection);
+    OCCTBRIDGE_API int occt_select_rectangle_ex(OcctHandle handle, int x1, int y1, int x2, int y2, int appendSelection, int allowOverlap);
     OCCTBRIDGE_API int occt_select_object(OcctHandle handle, OcctObjectId objectId, int appendSelection);
     OCCTBRIDGE_API int occt_set_selection_mode(OcctHandle handle, int selectionMode);
-    OCCTBRIDGE_API int occt_selected_count(OcctHandle handle);
-    OCCTBRIDGE_API OcctObjectId occt_selected_at(OcctHandle handle, int index);
-    OCCTBRIDGE_API OcctObjectId occt_first_selected(OcctHandle handle);
     OCCTBRIDGE_API int occt_clear_selection(OcctHandle handle);
     OCCTBRIDGE_API int occt_start_rotation(OcctHandle handle, int x, int y);
     OCCTBRIDGE_API int occt_rotation(OcctHandle handle, int x, int y);
@@ -85,32 +176,84 @@ extern "C"
     OCCTBRIDGE_API int occt_set_gradient_background(OcctHandle handle, double r1, double g1, double b1, double r2, double g2, double b2, int fillMethod);
     OCCTBRIDGE_API int occt_set_display_precision(OcctHandle handle, double deviationCoefficient, double deviationAngleDegrees, int applyExisting);
     OCCTBRIDGE_API int occt_set_default_material(OcctHandle handle, int material, int applyExisting);
-    OCCTBRIDGE_API int occt_set_scene_lighting(OcctHandle handle, double ambientIntensity, double directionalIntensity, OcctVector3d direction, int headlight);
+    OCCTBRIDGE_API int occt_set_scene_lighting_ex(OcctHandle handle, const OcctSceneLightingSettings* settings);
+    OCCTBRIDGE_API int occt_set_selection_highlight_color(OcctHandle handle, double r, double g, double b);
+    OCCTBRIDGE_API int occt_set_hover_highlight_color(OcctHandle handle, double r, double g, double b);
     OCCTBRIDGE_API int occt_reset_scene_lighting(OcctHandle handle);
     OCCTBRIDGE_API int occt_set_selection_tolerance(OcctHandle handle, int pixelTolerance);
+    OCCTBRIDGE_API int occt_set_auto_z_fit_mode(OcctHandle handle, int enabled, double scaleFactor);
+    OCCTBRIDGE_API int occt_get_auto_z_fit_mode(OcctHandle handle, OcctAutoZFitSettings* result);
+    OCCTBRIDGE_API int occt_auto_z_fit(OcctHandle handle);
+    OCCTBRIDGE_API int occt_set_default_polygon_offsets(OcctHandle handle, int mode, double factor, double units, int applyExisting);
+    OCCTBRIDGE_API int occt_get_default_polygon_offsets(OcctHandle handle, OcctPolygonOffsetSettings* result);
+    OCCTBRIDGE_API int occt_set_object_polygon_offsets(OcctHandle handle, OcctObjectId objectId, int mode, double factor, double units);
+    OCCTBRIDGE_API int occt_get_object_polygon_offsets(OcctHandle handle, OcctObjectId objectId, OcctPolygonOffsetSettings* result);
+    OCCTBRIDGE_API int occt_reset_object_polygon_offsets(OcctHandle handle, OcctObjectId objectId);
+
+    OCCTBRIDGE_API int occt_fit_objects(OcctHandle handle, const OcctObjectId* objectIds, int count, double margin);
+    OCCTBRIDGE_API int occt_set_zup_view(OcctHandle handle, int orientation, int fitAll);
+    OCCTBRIDGE_API int occt_screen_to_ray(OcctHandle handle, int x, int y, OcctProjectionRay* result);
+    OCCTBRIDGE_API int occt_zoom_at_point(OcctHandle handle, int x, int y, double delta);
+    OCCTBRIDGE_API int occt_select_all_visible(OcctHandle handle);
+    OCCTBRIDGE_API int occt_invert_selection(OcctHandle handle);
+    OCCTBRIDGE_API int occt_hide_selected(OcctHandle handle);
+    OCCTBRIDGE_API int occt_set_automatic_highlight(OcctHandle handle, int enabled);
+    OCCTBRIDGE_API int occt_set_msaa_samples(OcctHandle handle, int samples);
+    OCCTBRIDGE_API int occt_set_render_resolution_scale(OcctHandle handle, double scale);
+    OCCTBRIDGE_API int occt_set_render_resolution(OcctHandle handle, double dpi);
+    OCCTBRIDGE_API int occt_set_rendering_method(OcctHandle handle, int method);
+    OCCTBRIDGE_API int occt_set_shadows_enabled(OcctHandle handle, int enabled);
+    OCCTBRIDGE_API int occt_set_immediate_update(OcctHandle handle, int enabled);
+    OCCTBRIDGE_API int occt_set_frustum_culling(OcctHandle handle, int enabled);
+    OCCTBRIDGE_API int occt_set_face_boundaries_visible(OcctHandle handle, int visible, int applyExisting);
+    OCCTBRIDGE_API int occt_get_viewport_state(OcctHandle handle, OcctViewportState* result);
+    OCCTBRIDGE_API int occt_reset_view(OcctHandle handle);
+    OCCTBRIDGE_API int occt_reset_view_orientation(OcctHandle handle);
+    OCCTBRIDGE_API int occt_reset_view_mapping(OcctHandle handle);
+    OCCTBRIDGE_API int occt_fit_selected(OcctHandle handle, double margin);
+    OCCTBRIDGE_API int occt_get_scene_gravity_point(OcctHandle handle, OcctPoint3d* result);
 
     // Registry, AIS attributes and lifecycle.
     OCCTBRIDGE_API int occt_object_count(OcctHandle handle);
-    OCCTBRIDGE_API OcctObjectId occt_object_id_at(OcctHandle handle, int index);
-    OCCTBRIDGE_API OcctObjectId occt_shape_id_at(OcctHandle handle, int index);
+    OCCTBRIDGE_API int occt_object_descriptors(OcctHandle handle, OcctObjectDescriptor* items, int capacity, int* objectCount, int* shapeCount);
     OCCTBRIDGE_API int occt_object_exists(OcctHandle handle, OcctObjectId objectId);
     OCCTBRIDGE_API int occt_object_kind(OcctHandle handle, OcctObjectId objectId);
     OCCTBRIDGE_API int occt_set_object_name(OcctHandle handle, OcctObjectId objectId, const char* utf8Name);
     OCCTBRIDGE_API const char* occt_get_object_name(OcctHandle handle, OcctObjectId objectId);
+    OCCTBRIDGE_API int occt_set_object_application_tag(OcctHandle handle, OcctObjectId objectId, const char* utf8Tag);
+    OCCTBRIDGE_API const char* occt_get_object_application_tag(OcctHandle handle, OcctObjectId objectId);
+    OCCTBRIDGE_API OcctObjectId occt_find_object_by_application_tag(OcctHandle handle, const char* utf8Tag);
+    OCCTBRIDGE_API int occt_set_object_selectable(OcctHandle handle, OcctObjectId objectId, int selectable);
+    OCCTBRIDGE_API int occt_get_object_selectable(OcctHandle handle, OcctObjectId objectId);
+    OCCTBRIDGE_API int occt_set_objects_selectable(OcctHandle handle, const OcctObjectId* objectIds, int count, int selectable);
+    OCCTBRIDGE_API int occt_set_selected_objects_ex(OcctHandle handle, const OcctObjectId* objectIds, int count, int operation);
+    OCCTBRIDGE_API int occt_set_object_transform(OcctHandle handle, OcctObjectId objectId, const double* matrix3x4);
+    OCCTBRIDGE_API int occt_get_object_transform(OcctHandle handle, OcctObjectId objectId, double* matrix3x4, int* hasTransform);
+    OCCTBRIDGE_API int occt_reset_object_transform(OcctHandle handle, OcctObjectId objectId);
+    OCCTBRIDGE_API int occt_set_view_cube_language(OcctHandle handle, int language);
     OCCTBRIDGE_API int occt_set_object_color(OcctHandle handle, OcctObjectId objectId, double r, double g, double b);
     OCCTBRIDGE_API int occt_set_object_transparency(OcctHandle handle, OcctObjectId objectId, double transparency);
     OCCTBRIDGE_API int occt_set_object_visible(OcctHandle handle, OcctObjectId objectId, int visible);
     OCCTBRIDGE_API int occt_set_object_display_mode(OcctHandle handle, OcctObjectId objectId, int displayMode);
     OCCTBRIDGE_API int occt_set_object_line_width(OcctHandle handle, OcctObjectId objectId, double width);
     OCCTBRIDGE_API int occt_set_object_material(OcctHandle handle, OcctObjectId objectId, int material);
-    OCCTBRIDGE_API int occt_delete_object(OcctHandle handle, OcctObjectId objectId);
+    OCCTBRIDGE_API int occt_set_objects_color(OcctHandle handle, const OcctObjectId* objectIds, int count, double r, double g, double b);
+    OCCTBRIDGE_API int occt_set_objects_transparency(OcctHandle handle, const OcctObjectId* objectIds, int count, double transparency);
+    OCCTBRIDGE_API int occt_set_objects_visible(OcctHandle handle, const OcctObjectId* objectIds, int count, int visible);
+    OCCTBRIDGE_API int occt_set_objects_display_mode(OcctHandle handle, const OcctObjectId* objectIds, int count, int displayMode);
+    OCCTBRIDGE_API int occt_set_objects_line_width(OcctHandle handle, const OcctObjectId* objectIds, int count, double width);
+    OCCTBRIDGE_API int occt_set_objects_material(OcctHandle handle, const OcctObjectId* objectIds, int count, int material);
+    OCCTBRIDGE_API int occt_redisplay_objects(OcctHandle handle, const OcctObjectId* objectIds, int count);
+    OCCTBRIDGE_API int occt_select_objects(OcctHandle handle, const OcctObjectId* objectIds, int count, int appendSelection);
+    OCCTBRIDGE_API int occt_object_is_visible(OcctHandle handle, OcctObjectId objectId);
+    OCCTBRIDGE_API int occt_object_is_selected(OcctHandle handle, OcctObjectId objectId);
+    OCCTBRIDGE_API int occt_delete_objects(OcctHandle handle, const OcctObjectId* objectIds, int count);
     OCCTBRIDGE_API int occt_clear(OcctHandle handle);
     OCCTBRIDGE_API int occt_show_all(OcctHandle handle);
     OCCTBRIDGE_API int occt_hide_all(OcctHandle handle);
     OCCTBRIDGE_API int occt_redisplay_object(OcctHandle handle, OcctObjectId objectId);
     OCCTBRIDGE_API int occt_highlight_object(OcctHandle handle, OcctObjectId objectId);
     OCCTBRIDGE_API int occt_unhighlight_object(OcctHandle handle, OcctObjectId objectId);
-    OCCTBRIDGE_API OcctObjectId occt_copy_selected_subshape(OcctHandle handle);
     OCCTBRIDGE_API OcctObjectId occt_copy_selected_subshape_at(OcctHandle handle, int index);
 
     // Shape query and analysis.
@@ -182,6 +325,11 @@ extern "C"
     OCCTBRIDGE_API OcctObjectId occt_thick_solid(OcctHandle handle, OcctObjectId solidId, int faceIndexToRemove, double thickness, double tolerance, int hideInput);
 
     // Text and dimensional annotations.
+    OCCTBRIDGE_API OcctObjectId occt_make_text_shape(OcctHandle handle, const char* utf8Text, OcctPoint3d position, OcctVector3d normal, OcctVector3d xDirection, double height, double extrusionDepth, const char* utf8FontName, int bold, int italic);
+    OCCTBRIDGE_API OcctObjectId occt_make_length_annotation_shape(OcctHandle handle, OcctObjectId edgeId, double flyout, double textHeight, double arrowSize, const char* utf8FontName);
+    OCCTBRIDGE_API OcctObjectId occt_make_angle_annotation_shape(OcctHandle handle, OcctObjectId firstEdgeId, OcctObjectId secondEdgeId, double radius, double textHeight, double arrowSize, const char* utf8FontName);
+    OCCTBRIDGE_API OcctObjectId occt_make_radius_annotation_shape(OcctHandle handle, OcctObjectId circularEdgeId, double flyout, double textHeight, double arrowSize, const char* utf8FontName);
+    OCCTBRIDGE_API OcctObjectId occt_make_diameter_annotation_shape(OcctHandle handle, OcctObjectId circularEdgeId, double flyout, double textHeight, double arrowSize, const char* utf8FontName);
     OCCTBRIDGE_API OcctObjectId occt_add_text(OcctHandle handle, const char* utf8Text, OcctPoint3d position, double height, double r, double g, double b, int zoomable);
     OCCTBRIDGE_API int occt_set_text(OcctHandle handle, OcctObjectId textId, const char* utf8Text);
     OCCTBRIDGE_API int occt_set_text_position(OcctHandle handle, OcctObjectId textId, OcctPoint3d position);
@@ -207,11 +355,4 @@ extern "C"
     OCCTBRIDGE_API int occt_export_all_iges(OcctHandle handle, const char* utf8Path);
     OCCTBRIDGE_API int occt_export_brep(OcctHandle handle, OcctObjectId shapeId, const char* utf8Path);
     OCCTBRIDGE_API int occt_export_stl(OcctHandle handle, OcctObjectId shapeId, const char* utf8Path, double linearDeflection, double angularDeflection, int asciiMode);
-
-    // Compatibility aliases retained for v1-v4 callers.
-    OCCTBRIDGE_API int occt_set_shape_color(OcctHandle handle, OcctObjectId shapeId, double r, double g, double b);
-    OCCTBRIDGE_API int occt_set_shape_transparency(OcctHandle handle, OcctObjectId shapeId, double transparency);
-    OCCTBRIDGE_API int occt_set_shape_visible(OcctHandle handle, OcctObjectId shapeId, int visible);
-    OCCTBRIDGE_API int occt_delete_shape(OcctHandle handle, OcctObjectId shapeId);
-    OCCTBRIDGE_API int occt_shape_count(OcctHandle handle);
 }

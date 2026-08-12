@@ -30,13 +30,28 @@ public sealed partial class OcctEngine
         CheckInitialized(() => NativeMethods.occt_export_all_iges(_handle, Path.GetFullPath(filePath)));
     }
 
-    public void ExportStl(OcctShape shape, string filePath, double linearDeflection = 0.1, double angularDeflection = 0.5, bool ascii = false)
+    public void ExportStl(
+        OcctShape shape,
+        string filePath,
+        double linearDeflection = 0.1,
+        double angularDeflection = 0.5,
+        bool ascii = false)
     {
+        EnsureShape(shape);
         ValidatePath(filePath);
-        CheckInitialized(() => NativeMethods.occt_export_stl(_handle, shape.Id, Path.GetFullPath(filePath), linearDeflection, angularDeflection, ascii ? 1 : 0));
+        OcctGuard.Positive(linearDeflection, nameof(linearDeflection));
+        OcctGuard.Positive(angularDeflection, nameof(angularDeflection));
+        CheckInitialized(() => NativeMethods.occt_export_stl(
+            _handle,
+            shape.Id,
+            Path.GetFullPath(filePath),
+            linearDeflection,
+            angularDeflection,
+            ascii ? 1 : 0));
     }
 
     private delegate long ImportCall(IntPtr handle, string path);
+
     private OcctShape ImportSpecific(string filePath, ImportCall call)
     {
         ValidatePath(filePath);
@@ -45,8 +60,10 @@ public sealed partial class OcctEngine
     }
 
     private delegate int ExportCall(IntPtr handle, long shapeId, string path);
+
     private void ExportShape(OcctShape shape, string filePath, ExportCall call)
     {
+        EnsureShape(shape);
         ValidatePath(filePath);
         CheckInitialized(() => call(_handle, shape.Id, Path.GetFullPath(filePath)));
     }

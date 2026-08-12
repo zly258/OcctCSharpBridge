@@ -4,20 +4,24 @@
 
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_InteractiveObject.hxx>
+#include <AIS_RubberBand.hxx>
 #include <AIS_Shape.hxx>
 #include <AIS_ViewCube.hxx>
 #include <Aspect_DisplayConnection.hxx>
+#include <Aspect_Window.hxx>
 #include <Graphic3d_GraphicDriver.hxx>
+#include <Graphic3d_NameOfMaterial.hxx>
 #include <GProp_GProps.hxx>
 #include <OpenGl_GraphicDriver.hxx>
 #include <Quantity_Color.hxx>
 #include <Standard_Failure.hxx>
+#include <TDocStd_Document.hxx>
+#include <TopAbs_ShapeEnum.hxx>
 #include <TopoDS_Shape.hxx>
 #include <V3d_AmbientLight.hxx>
 #include <V3d_DirectionalLight.hxx>
 #include <V3d_View.hxx>
 #include <V3d_Viewer.hxx>
-#include <WNT_Window.hxx>
 #include <gp_Ax1.hxx>
 #include <gp_Ax2.hxx>
 #include <gp_Dir.hxx>
@@ -45,6 +49,19 @@ namespace OcctBridge
         TopoDS_Shape shape;
         Handle(AIS_InteractiveObject) presentation;
         std::string name;
+        std::string applicationTag;
+        std::vector<std::string> stepHierarchyPath;
+        bool hasStoredColor = false;
+        double storedColorR = 0.0;
+        double storedColorG = 0.0;
+        double storedColorB = 0.0;
+        bool selectable = true;
+        double storedColorA = 1.0;
+        bool hasStoredAlpha = false;
+        bool storedVisible = true;
+        bool hasStoredVisibility = false;
+        int stepDocumentIndex = -1;
+        std::string stepNodeId;
     };
 
     class Engine
@@ -58,13 +75,24 @@ namespace OcctBridge
         Handle(V3d_View) view;
         Handle(AIS_InteractiveContext) context;
         Handle(AIS_ViewCube) viewCube;
-        Handle(WNT_Window) window;
+        Handle(AIS_RubberBand) selectionRubberBand;
+        Handle(Aspect_Window) window;
         Handle(V3d_AmbientLight) customAmbientLight;
         Handle(V3d_DirectionalLight) customDirectionalLight;
+        Handle(V3d_DirectionalLight) customSunLight;
+        Handle(V3d_DirectionalLight) customFillLight;
         std::unordered_map<OcctObjectId, ObjectEntry> objects;
+        std::unordered_map<std::string, OcctObjectId> objectIdByApplicationTag;
+        std::vector<Handle(TDocStd_Document)> stepDocuments;
+        std::vector<OcctObjectId> lastStepImportObjectIds;
+        Handle(TDocStd_Document) pristineStepDocument;
+        bool pristineStepDocumentMatchesScene = false;
         OcctObjectId nextId = 1;
         int displayMode = AIS_Shaded;
         int selectionMode = OcctSelection_Object;
+        int updateDepth = 0;
+        bool redrawPending = false;
+        bool fitAllPending = false;
 
         bool isInitialized() const;
         void clearError();
@@ -75,10 +103,21 @@ namespace OcctBridge
         const ObjectEntry* findShape(OcctObjectId id) const;
         OcctObjectId findPresentation(const Handle(AIS_InteractiveObject)& presentation) const;
         OcctObjectId addShape(const TopoDS_Shape& shape, bool fit = false, const std::string& name = {});
+        OcctObjectId addShapePresentation(
+            const TopoDS_Shape& shape,
+            const Handle(AIS_InteractiveObject)& presentation,
+            bool fit = false,
+            const std::string& name = {});
         OcctObjectId addPresentation(const Handle(AIS_InteractiveObject)& presentation, int kind, const std::string& name = {});
         void hide(OcctObjectId id);
         void erase(OcctObjectId id);
         void applySelectionMode(const Handle(AIS_InteractiveObject)& presentation);
+        void beginUpdate();
+        void endUpdate(bool fitAll);
+        void requestRedraw();
+        void requestFitAll();
+        bool isUpdating() const;
+        void invalidatePristineStepDocument();
     };
 
     Engine* engineOf(OcctHandle handle);
@@ -97,7 +136,13 @@ namespace OcctBridge
     void requirePositive(double value, const char* name);
     void requireCount(int count, int minimum, const char* name);
     TopoDS_Shape transformed(const TopoDS_Shape& source, const gp_Trsf& transform);
+    TopoDS_Shape shapeWithPresentationTransformation(const ObjectEntry& entry);
     void fillMassProperties(const GProp_GProps& properties, OcctMassProperties* result);
+    Graphic3d_NameOfMaterial materialName(int value);
+
+    bool syncStepObjectName(Engine* engine, ObjectEntry& entry);
+    bool syncStepObjectColor(Engine* engine, ObjectEntry& entry);
+    bool syncStepObjectVisibility(Engine* engine, ObjectEntry& entry);
 
     template<typename Function>
     int execute(Engine* engine, Function&& function)

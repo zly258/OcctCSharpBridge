@@ -1,173 +1,158 @@
 ﻿namespace OcctNet;
 
 /// <summary>
-/// Configures the fixed OCCT 7.9.0 runtime before the native bridge is loaded.
+/// Configures the OCCT runtime before the native bridge is loaded.
 /// </summary>
-public static class OcctRuntime
+public static partial class OcctRuntime
 {
-    private const string NativeLibraryFileName = "OcctNative.dll";
-    private const string OcctRoot = @"D:\tools\occt-vc144-64";
-    private const string OcctBinDirectory = @"D:\tools\occt-vc144-64\win64\vc14\bin";
-    private const string OcctThirdPartyDirectory = @"D:\tools\occt-vc144-64\3rdparty-vc14-64";
+    internal static string NativeLibraryFileName => OperatingSystem.IsWindows()
+        ? "OcctNative.dll"
+        : OperatingSystem.IsLinux()
+            ? "libOcctNative.so"
+            : throw new PlatformNotSupportedException("OcctCSharpBridge currently supports Windows and Linux only.");
+
+    internal static string RuntimeIdentifier => OperatingSystem.IsWindows()
+        ? "win-x64"
+        : OperatingSystem.IsLinux()
+            ? "linux-x64"
+            : throw new PlatformNotSupportedException("OcctCSharpBridge currently supports Windows and Linux only.");
 
     private static readonly object SyncRoot = new();
     private static bool _configured;
+    private static bool _repositoryProbingEnabled = true;
 
+    /// <summary>
+    /// Gets the OCCT root selected during runtime configuration.
+    /// </summary>
+    public static string? ConfiguredRoot { get; private set; }
+
+    /// <summary>
+    /// Gets the directory containing the configured native bridge.
+    /// </summary>
+    public static string? ConfiguredNativeDirectory { get; private set; }
+
+    /// <summary>
+    /// Configures the runtime using the portable package layout, OCCT_ROOT, or CASROOT.
+    /// </summary>
     public static void Configure()
     {
         lock (SyncRoot)
         {
+            if (_configured) return;
+        }
+
+        Configure(new OcctRuntimeOptions());
+    }
+
+    /// <summary>
+    /// Configures the runtime using explicit locations.
+    /// Call this before creating the first <see cref="OcctEngine"/> or <see cref="OcctModelingSession"/> instance.
+    /// </summary>
+    public static void Configure(string? occtRoot, string? nativeBridgeDirectory = null) =>
+        Configure(new OcctRuntimeOptions
+        {
+            OcctRoot = occtRoot,
+            NativeBridgeDirectory = nativeBridgeDirectory
+        });
+
+    internal static void Configure(OcctRuntimeOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        lock (SyncRoot)
+        {
             if (_configured)
             {
+                ValidateReconfiguration(options);
                 return;
             }
 
-            PrependPath(AppContext.BaseDirectory);
-            PrependPath(OcctBinDirectory);
-            AddThirdPartyRuntimePaths();
-            SetIfMissing("CASROOT", OcctRoot);
-            ConfigureResources(FindResourceDirectory(OcctRoot));
+            ValidateExplicitConfiguration(options);
+            _repositoryProbingEnabled = options.EnableRepositoryProbing;
+
+            InitializeNativeSearchPolicy();
+            AddRuntimeSearchPath(AppContext.BaseDirectory);
+
+            ConfiguredNativeDirectory = ResolveNativeBridgeDirectory(options.NativeBridgeDirectory);
+            if (!string.IsNullOrWhiteSpace(ConfiguredNativeDirectory))
+            {
+                Environment.SetEnvironmentVariable("OCCT_BRIDGE_NATIVE_DIR", ConfiguredNativeDirectory);
+                AddRuntimeSearchPath(ConfiguredNativeDirectory);
+            }
+
+            ConfiguredRoot = ResolveOcctRoot(options.OcctRoot);
+            if (!string.IsNullOrWhiteSpace(ConfiguredRoot))
+            {
+                if (OperatingSystem.IsWindows())
+                {
+                    var occtBinDirectory = Path.Combine(ConfiguredRoot, "win64", "vc14", "bin");
+                    var thirdPartyDirectory = Path.Combine(ConfiguredRoot, "3rdparty-vc14-64");
+                    AddRuntimeSearchPath(occtBinDirectory);
+                    AddThirdPartyRuntimePaths(thirdPartyDirectory);
+                }
+                else if (OperatingSystem.IsLinux())
+                {
+                    AddRuntimeSearchPath(Path.Combine(ConfiguredRoot, "lib"));
+                    AddRuntimeSearchPath(Path.Combine(ConfiguredRoot, "lib64"));
+                }
+
+                SetIfMissing("OCCT_ROOT", ConfiguredRoot);
+                SetIfMissing("CASROOT", ConfiguredRoot);
+                ConfigureResources(FindResourceDirectory(ConfiguredRoot));
+            }
+
             _configured = true;
         }
     }
 
-    internal static IReadOnlyList<string> GetNativeLibraryCandidates()
+    private static void ValidateExplicitConfiguration(OcctRuntimeOptions options)
     {
-        Configure();
-
-        var candidates = new List<string>
+        if (!string.IsNullOrWhiteSpace(options.NativeBridgeDirectory))
         {
-            Path.Combine(AppContext.BaseDirectory, NativeLibraryFileName),
-            Path.Combine(AppContext.BaseDirectory, "runtimes", "win-x64", "native", NativeLibraryFileName)
-        };
-
-        var configuredDirectory = Environment.GetEnvironmentVariable("OCCT_BRIDGE_NATIVE_DIR");
-        if (!string.IsNullOrWhiteSpace(configuredDirectory))
-        {
-            candidates.Insert(0, Path.Combine(configuredDirectory, NativeLibraryFileName));
+            var directory = Path.GetFullPath(options.NativeBridgeDirectory);
+            if (!Directory.Exists(directory))
+                throw new DirectoryNotFoundException($"Native bridge directory was not found: {directory}");
+            var bridge = Path.Combine(directory, NativeLibraryFileName);
+            if (!File.Exists(bridge))
+                throw new FileNotFoundException($"{NativeLibraryFileName} was not found in the configured native bridge directory.", bridge);
         }
 
-        var repositoryRoot = FindRepositoryRoot(AppContext.BaseDirectory);
-        if (!string.IsNullOrWhiteSpace(repositoryRoot))
+        if (!string.IsNullOrWhiteSpace(options.OcctRoot))
         {
-            candidates.Add(Path.Combine(repositoryRoot, "build", "native", "bin", "Release", NativeLibraryFileName));
-            candidates.Add(Path.Combine(repositoryRoot, "build", "native", "bin", "Debug", NativeLibraryFileName));
-            candidates.Add(Path.Combine(repositoryRoot, "build", "native", "bin", "RelWithDebInfo", NativeLibraryFileName));
-        }
-
-        return candidates.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-    }
-
-    private static void AddThirdPartyRuntimePaths()
-    {
-        if (!Directory.Exists(OcctThirdPartyDirectory))
-        {
-            return;
-        }
-
-        foreach (var componentDirectory in Directory.EnumerateDirectories(OcctThirdPartyDirectory)
-                     .OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
-        {
-            PrependPath(Path.Combine(componentDirectory, "bin", "x64"));
-            PrependPath(Path.Combine(componentDirectory, "bin", "win64"));
-            PrependPath(Path.Combine(componentDirectory, "bin"));
+            var root = Path.GetFullPath(options.OcctRoot);
+            if (!Directory.Exists(root))
+                throw new DirectoryNotFoundException($"OCCT root was not found: {root}");
         }
     }
 
-    private static string? FindRepositoryRoot(string startDirectory)
+    private static void ValidateReconfiguration(OcctRuntimeOptions options)
     {
-        var directory = new DirectoryInfo(startDirectory);
-        while (directory is not null)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "OcctBridge.sln")))
-            {
-                return directory.FullName;
-            }
+        if (!options.ThrowOnConfigurationConflict) return;
 
-            directory = directory.Parent;
+        if (!string.IsNullOrWhiteSpace(options.NativeBridgeDirectory))
+        {
+            var requested = Path.GetFullPath(options.NativeBridgeDirectory);
+            if (!PathsEqual(requested, ConfiguredNativeDirectory))
+                throw new InvalidOperationException($"OCCT runtime is already configured with native bridge directory '{ConfiguredNativeDirectory ?? "<none>"}', not '{requested}'.");
         }
 
-        return null;
-    }
-
-    private static string? FindResourceDirectory(string casRoot)
-    {
-        var candidates = new[]
+        if (!string.IsNullOrWhiteSpace(options.OcctRoot))
         {
-            Path.Combine(casRoot, "src"),
-            Path.Combine(casRoot, "share", "opencascade", "resources"),
-            Path.Combine(casRoot, "resources")
-        };
-
-        return candidates.FirstOrDefault(Directory.Exists);
-    }
-
-    private static void ConfigureResources(string? resourceDirectory)
-    {
-        if (string.IsNullOrWhiteSpace(resourceDirectory) || !Directory.Exists(resourceDirectory))
-        {
-            return;
+            var requested = Path.GetFullPath(options.OcctRoot);
+            if (!PathsEqual(requested, ConfiguredRoot))
+                throw new InvalidOperationException($"OCCT runtime is already configured with root '{ConfiguredRoot ?? "<none>"}', not '{requested}'.");
         }
 
-        SetIfMissing("CSF_OCCTResourcePath", resourceDirectory);
-        SetDirectoryIfExists("CSF_SHMessage", resourceDirectory, "SHMessage");
-        SetDirectoryIfExists("CSF_XSMessage", resourceDirectory, "XSMessage");
-        SetDirectoryIfExists("CSF_TObjMessage", resourceDirectory, "TObj");
-        SetDirectoryIfExists("CSF_StandardDefaults", resourceDirectory, "StdResource");
-        SetDirectoryIfExists("CSF_PluginDefaults", resourceDirectory, "StdResource");
-        SetDirectoryIfExists("CSF_XCAFDefaults", resourceDirectory, "XCAFResources");
-        SetDirectoryIfExists("CSF_IGESDefaults", resourceDirectory, "XSTEPResource");
-        SetDirectoryIfExists("CSF_STEPDefaults", resourceDirectory, "XSTEPResource");
-        SetDirectoryIfExists("CSF_XmlOcafResource", resourceDirectory, "XmlOcafResource");
-        SetDirectoryIfExists("CSF_ShadersDirectory", resourceDirectory, "Shaders");
-        SetDirectoryIfExists("CSF_MDTVTexturesDirectory", resourceDirectory, "Textures");
-        SetFileIfExists("CSF_UnitsLexicon", resourceDirectory, "UnitsAPI", "Lexi_Expr.dat");
-        SetFileIfExists("CSF_UnitsDefinition", resourceDirectory, "UnitsAPI", "Units.dat");
-    }
-
-    private static void SetDirectoryIfExists(string variableName, params string[] parts)
-    {
-        var path = Path.Combine(parts);
-        if (Directory.Exists(path))
+        if (options.EnableRepositoryProbing != _repositoryProbingEnabled &&
+            (!string.IsNullOrWhiteSpace(options.OcctRoot) || !string.IsNullOrWhiteSpace(options.NativeBridgeDirectory)))
         {
-            SetIfMissing(variableName, path);
+            throw new InvalidOperationException("OCCT runtime repository probing policy cannot be changed after configuration.");
         }
     }
 
-    private static void SetFileIfExists(string variableName, params string[] parts)
-    {
-        var path = Path.Combine(parts);
-        if (File.Exists(path))
-        {
-            SetIfMissing(variableName, path);
-        }
-    }
-
-    private static void SetIfMissing(string variableName, string value)
-    {
-        if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(variableName)))
-        {
-            Environment.SetEnvironmentVariable(variableName, value);
-        }
-    }
-
-    private static void PrependPath(string directory)
-    {
-        if (!Directory.Exists(directory))
-        {
-            return;
-        }
-
-        var currentPath = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
-        var entries = currentPath.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
-        if (entries.Any(entry => string.Equals(
-                entry.TrimEnd(Path.DirectorySeparatorChar),
-                directory.TrimEnd(Path.DirectorySeparatorChar),
-                StringComparison.OrdinalIgnoreCase)))
-        {
-            return;
-        }
-
-        Environment.SetEnvironmentVariable("PATH", directory + Path.PathSeparator + currentPath);
-    }
+    private static bool PathsEqual(string left, string? right) =>
+        !string.IsNullOrWhiteSpace(right) && string.Equals(
+            left.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+            Path.GetFullPath(right).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 }
