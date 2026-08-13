@@ -169,7 +169,8 @@ extern "C"
             if (appendSelection == 0) engine->context->ClearSelected(Standard_False);
             for (ObjectEntry* entry : entries)
                 engine->context->SetSelected(entry->presentation, Standard_False);
-            engine->context->UpdateCurrentViewer();
+            engine->context->HilightSelected(Standard_False);
+            engine->requestRedraw();
         });
     }
 

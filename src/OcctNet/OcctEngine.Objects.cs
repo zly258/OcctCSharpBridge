@@ -1,4 +1,4 @@
-namespace OcctNet;
+﻿namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
@@ -113,7 +113,10 @@ public sealed partial class OcctEngine
     {
         EnsureNotDisposed();
         if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
-        return (OcctObjectKind)NativeMethods.occt_object_kind(_handle, id);
+        var value = NativeMethods.occt_object_kind(_handle, id);
+        if (!Enum.IsDefined(typeof(OcctObjectKind), value))
+            throw new InvalidOperationException($"Native object kind {value} is not supported by the managed bridge.");
+        return (OcctObjectKind)value;
     }
 
     public void Delete(IOcctObject value)
@@ -168,6 +171,8 @@ public sealed partial class OcctEngine
         OcctObjectKind.Text => new OcctText(id, _ownerId),
         OcctObjectKind.Dimension => new OcctDimension(id, _ownerId),
         OcctObjectKind.Point => new OcctPoint(id, _ownerId),
+        OcctObjectKind.Overlay => new OcctOverlay(id, _ownerId, GetOverlayPrimitiveType(id)),
+        OcctObjectKind.Manipulator => new OcctManipulator(id, _ownerId),
         _ => throw new InvalidOperationException($"Unsupported OCCT object kind: {kind}.")
     };
 }

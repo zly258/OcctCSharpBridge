@@ -1,7 +1,10 @@
 ﻿#include "OcctInternal.hxx"
 #include "OcctSelectionState.h"
 
+#include <Graphic3d_Camera.hxx>
+#include <SelectMgr_SortCriterion.hxx>
 #include <StdSelect_BRepOwner.hxx>
+#include <StdSelect_ViewerSelector3d.hxx>
 #include <TopExp_Explorer.hxx>
 
 #include <unordered_set>
@@ -85,6 +88,26 @@ namespace
         return true;
     }
 
+    bool tryCreateSelectionHitDetail(
+        Engine* engine,
+        const Handle(SelectMgr_EntityOwner)& owner,
+        const gp_Pnt& pickedPoint,
+        double depth,
+        OcctSelectionHitDetail& result)
+    {
+        OcctSelectionHit identity{};
+        if (!tryCreateSelectionHit(engine, owner, identity)) return false;
+
+        result = {};
+        result.ownerObjectId = identity.ownerObjectId;
+        result.subshapeType = identity.subshapeType;
+        result.subshapeIndex = identity.subshapeIndex;
+        result.point = {pickedPoint.X(), pickedPoint.Y(), pickedPoint.Z()};
+        result.depth = depth;
+        result.distanceToEye = engine->view->Camera()->Eye().Distance(pickedPoint);
+        return true;
+    }
+
     std::vector<OcctSelectionHit> collectSelectedHits(Engine* engine)
     {
         std::vector<OcctSelectionHit> hits;
@@ -95,6 +118,23 @@ namespace
                 hits.push_back(hit);
         }
         return hits;
+    }
+
+    bool tryFindPickedDetail(
+        Engine* engine,
+        const Handle(SelectMgr_EntityOwner)& targetOwner,
+        OcctSelectionHitDetail& result)
+    {
+        const Handle(StdSelect_ViewerSelector3d)& selector = engine->context->MainSelector();
+        for (int rank = 1; rank <= selector->NbPicked(); ++rank)
+        {
+            const Handle(SelectMgr_EntityOwner) owner = selector->Picked(rank);
+            if (owner != targetOwner) continue;
+            const gp_Pnt pickedPoint = selector->PickedPoint(rank);
+            const SelectMgr_SortCriterion& criterion = selector->PickedData(rank);
+            return tryCreateSelectionHitDetail(engine, owner, pickedPoint, criterion.Depth, result);
+        }
+        return false;
     }
 }
 
@@ -115,7 +155,7 @@ extern "C"
             if (operation == OcctSelection_Clear)
             {
                 engine->context->ClearSelected(Standard_False);
-                engine->context->UpdateCurrentViewer();
+                engine->requestRedraw();
                 return;
             }
 
@@ -143,7 +183,7 @@ extern "C"
                 }
             }
             engine->context->HilightSelected(Standard_False);
-            engine->context->UpdateCurrentViewer();
+            engine->requestRedraw();
         });
     }
 
@@ -192,6 +232,65 @@ extern "C"
             if (!engine->context->HasDetected()) return;
             if (tryCreateSelectionHit(engine, engine->context->DetectedOwner(), *result))
                 *hasHit = 1;
+        });
+    }
+
+    int occt_detected_hit_detail(
+        OcctHandle handle,
+        OcctSelectionHitDetail* result,
+        int* hasHit)
+    {
+        Engine* engine = engineOf(handle);
+        if (!validateInitialized(engine) || result == nullptr || hasHit == nullptr) return 0;
+        return execute(engine, [&]
+        {
+            *result = {};
+            result->subshapeType = OcctShape_Shape;
+            result->subshapeIndex = -1;
+            *hasHit = 0;
+
+            if (!engine->context->HasDetected()) return;
+            const Handle(SelectMgr_EntityOwner) owner = engine->context->DetectedOwner();
+            if (tryFindPickedDetail(engine, owner, *result))
+                *hasHit = 1;
+        });
+    }
+
+    int occt_detect_at(
+        OcctHandle handle,
+        int x,
+        int y,
+        int maxHits,
+        OcctSelectionHitDetail* items,
+        int capacity,
+        int* count)
+    {
+        Engine* engine = engineOf(handle);
+        if (!validateInitialized(engine) || count == nullptr) return 0;
+        return execute(engine, [&]
+        {
+            if (maxHits <= 0 || maxHits > 1024)
+                throw std::invalid_argument("Maximum hit count must be between 1 and 1024.");
+            if (capacity < maxHits)
+                throw std::out_of_range("Detection output capacity is smaller than maxHits.");
+            if (items == nullptr)
+                throw std::invalid_argument("Detection output buffer is null.");
+
+            const Handle(StdSelect_ViewerSelector3d)& selector = engine->context->MainSelector();
+            selector->Pick(x, y, engine->view);
+
+            int filled = 0;
+            for (int rank = 1; rank <= selector->NbPicked() && filled < maxHits; ++rank)
+            {
+                const Handle(SelectMgr_EntityOwner) owner = selector->Picked(rank);
+                const gp_Pnt pickedPoint = selector->PickedPoint(rank);
+                const SelectMgr_SortCriterion& criterion = selector->PickedData(rank);
+                OcctSelectionHitDetail hit{};
+                if (!tryCreateSelectionHitDetail(engine, owner, pickedPoint, criterion.Depth, hit))
+                    continue;
+                items[filled++] = hit;
+            }
+            *count = filled;
         });
     }
 }

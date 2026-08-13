@@ -1,5 +1,8 @@
 ﻿#include "OcctInternal.hxx"
+#include "OcctManipulator.h"
 
+#include <AIS_Manipulator.hxx>
+#include <AIS_ManipulatorMode.hxx>
 #include <TCollection_AsciiString.hxx>
 
 using namespace OcctBridge;
@@ -28,6 +31,20 @@ namespace
         return result;
     }
 
+    void restoreManipulatorModes(Engine* engine, ObjectEntry& entry)
+    {
+        Handle(AIS_Manipulator) manipulator = Handle(AIS_Manipulator)::DownCast(entry.presentation);
+        if (manipulator.IsNull() || !manipulator->IsAttached()) return;
+        if ((entry.presentationSubtype & (1 << OcctManipulator_Translation)) != 0)
+            manipulator->EnableMode(AIS_MM_Translation);
+        if ((entry.presentationSubtype & (1 << OcctManipulator_Rotation)) != 0)
+            manipulator->EnableMode(AIS_MM_Rotation);
+        if ((entry.presentationSubtype & (1 << OcctManipulator_Scaling)) != 0)
+            manipulator->EnableMode(AIS_MM_Scaling);
+        if ((entry.presentationSubtype & (1 << OcctManipulator_TranslationPlane)) != 0)
+            manipulator->EnableMode(AIS_MM_TranslationPlane);
+    }
+
     void setSelectable(Engine* engine, ObjectEntry& entry, bool selectable)
     {
         if (entry.selectable == selectable) return;
@@ -36,7 +53,20 @@ namespace
         {
             if (engine->context->IsSelected(entry.presentation))
                 engine->context->AddOrRemoveSelected(entry.presentation, Standard_False);
+            if (entry.kind == OcctManipulatorObjectKind)
+            {
+                Handle(AIS_Manipulator) manipulator = Handle(AIS_Manipulator)::DownCast(entry.presentation);
+                if (!manipulator.IsNull())
+                {
+                    if (manipulator->HasActiveTransformation()) manipulator->StopTransform(Standard_False);
+                    if (manipulator->HasActiveMode()) manipulator->DeactivateCurrentMode();
+                }
+            }
             engine->context->Deactivate(entry.presentation);
+        }
+        else if (entry.kind == OcctManipulatorObjectKind)
+        {
+            restoreManipulatorModes(engine, entry);
         }
         else
         {
@@ -101,7 +131,7 @@ extern "C"
         {
             const auto entries = requireObjects(engine, objectIds, count);
             for (ObjectEntry* entry : entries) setSelectable(engine, *entry, selectable != 0);
-            if (!entries.empty()) engine->context->UpdateCurrentViewer();
+            if (!entries.empty()) engine->requestRedraw();
         });
     }
 

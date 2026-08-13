@@ -1,4 +1,4 @@
-#include "OcctInternal.hxx"
+﻿#include "OcctInternal.hxx"
 
 #include <AIS_SelectionScheme.hxx>
 #include <Graphic3d_Vec2.hxx>
@@ -24,7 +24,11 @@ extern "C"
     {
         Engine* e = engineOf(h);
         if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { e->context->MoveTo(x, y, e->view, Standard_True); });
+        return execute(e, [&]
+        {
+            e->context->MoveTo(x, y, e->view, Standard_False);
+            e->requestRedraw();
+        });
     }
 
     int occt_select(OcctHandle h, int x, int y, int append)
@@ -36,17 +40,26 @@ extern "C"
             e->context->MoveTo(x, y, e->view, Standard_False);
             if (e->context->HasDetected())
             {
-                e->context->SelectDetected(append ? AIS_SelectionScheme_Add : AIS_SelectionScheme_Replace);
+                e->context->SelectDetected(
+                    append ? AIS_SelectionScheme_Add : AIS_SelectionScheme_Replace);
             }
             else if (!append)
             {
                 e->context->ClearSelected(Standard_False);
             }
-            e->context->UpdateCurrentViewer();
+            e->context->HilightSelected(Standard_False);
+            e->requestRedraw();
         });
     }
 
-    int occt_select_rectangle_ex(OcctHandle h, int x1, int y1, int x2, int y2, int append, int allowOverlap)
+    int occt_select_rectangle_ex(
+        OcctHandle h,
+        int x1,
+        int y1,
+        int x2,
+        int y2,
+        int append,
+        int allowOverlap)
     {
         Engine* e = engineOf(h);
         if (!validateInitialized(e)) return 0;
@@ -62,7 +75,8 @@ extern "C"
                 e->view,
                 append ? AIS_SelectionScheme_Add : AIS_SelectionScheme_Replace);
             selector->AllowOverlapDetection(Standard_False);
-            e->context->UpdateCurrentViewer();
+            e->context->HilightSelected(Standard_False);
+            e->requestRedraw();
         });
     }
 
@@ -79,7 +93,8 @@ extern "C"
                 throw std::invalid_argument("Object is not selectable.");
             if (!append) e->context->ClearSelected(Standard_False);
             e->context->SetSelected(entry->presentation, Standard_False);
-            e->view->Redraw();
+            e->context->HilightSelected(Standard_False);
+            e->requestRedraw();
         });
     }
 
@@ -91,7 +106,7 @@ extern "C"
         {
             e->selectionMode = mode;
             for (auto& pair : e->objects) e->applySelectionMode(pair.second.presentation);
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 
@@ -99,6 +114,10 @@ extern "C"
     {
         Engine* e = engineOf(h);
         if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { e->context->ClearSelected(Standard_True); });
+        return execute(e, [&]
+        {
+            e->context->ClearSelected(Standard_False);
+            e->requestRedraw();
+        });
     }
 }

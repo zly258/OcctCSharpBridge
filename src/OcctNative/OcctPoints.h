@@ -24,6 +24,12 @@ extern "C"
         OcctPointMarker_Ball = 12
     };
 
+    enum OcctPixelFormat
+    {
+        OcctPixelFormat_Bgra32 = 0,
+        OcctPixelFormat_Rgba32 = 1
+    };
+
     OCCTBRIDGE_API OcctObjectId occt_add_point(
         OcctHandle handle,
         OcctPoint3d position,
@@ -46,4 +52,22 @@ extern "C"
         double r,
         double g,
         double b);
+
+    OCCTBRIDGE_API OcctObjectId occt_add_point_pixmap(
+        OcctHandle handle,
+        OcctPoint3d position,
+        int width,
+        int height,
+        const unsigned char* pixels,
+        int pixelCount,
+        int pixelFormat);
+
+    OCCTBRIDGE_API int occt_set_point_pixmap_style(
+        OcctHandle handle,
+        OcctObjectId pointId,
+        int width,
+        int height,
+        const unsigned char* pixels,
+        int pixelCount,
+        int pixelFormat);
 }

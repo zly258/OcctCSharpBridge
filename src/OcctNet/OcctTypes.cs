@@ -2,7 +2,7 @@
 
 namespace OcctNet;
 
-public enum OcctObjectKind { Unknown = 0, Shape = 1, Text = 2, Dimension = 3, Point = 4 }
+public enum OcctObjectKind { Unknown = 0, Shape = 1, Text = 2, Dimension = 3, Point = 4, Overlay = 5, Manipulator = 6 }
 public enum OcctShapeType { Compound = 0, CompSolid = 1, Solid = 2, Shell = 3, Face = 4, Wire = 5, Edge = 6, Vertex = 7, Shape = 8 }
 public enum OcctViewOrientation { Isometric = 0, Front = 1, Back = 2, Left = 3, Right = 4, Top = 5, Bottom = 6 }
 public enum OcctProjectionType { Orthographic = 0, Perspective = 1 }

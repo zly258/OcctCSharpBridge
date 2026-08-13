@@ -87,7 +87,7 @@ extern "C"
                     AIS_DS_Displayed);
             }
 
-            engine->view->Redraw();
+            engine->requestRedraw();
         });
     }
 
@@ -105,7 +105,7 @@ extern "C"
                 engine->context->Remove(engine->selectionRubberBand, Standard_False);
             }
             engine->selectionRubberBand->ClearPoints();
-            engine->view->Redraw();
+            engine->requestRedraw();
         });
     }
 }

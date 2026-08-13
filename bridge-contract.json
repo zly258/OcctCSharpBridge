@@ -1,4 +1,4 @@
-{
+﻿{
   "schemaVersion": 1,
   "bridgeVersion": "2.7.0",
   "nativeAbiVersion": 4,
@@ -13,10 +13,10 @@
     "languageVersion": "14.0"
   },
   "api": {
-    "nativeExports": 349,
-    "managedPInvokes": 349,
-    "publicNetTypes": 113,
-    "viewer": 215,
+    "nativeExports": 419,
+    "managedPInvokes": 419,
+    "publicNetTypes": 139,
+    "viewer": 285,
     "modeling": 134,
     "nativeHeaders": [
       "OcctNative.h",
@@ -25,6 +25,12 @@
       "OcctPoints.h",
       "OcctSelectionOverlay.h",
       "OcctSelectionState.h",
+      "OcctViewerInteraction.h",
+      "OcctViewerInteractionExtensions.h",
+      "OcctOverlay.h",
+      "OcctViewerAdvanced.h",
+      "OcctManipulator.h",
+      "OcctDetection.h",
       "OcctModeling.h",
       "OcctModelingExtensions.h",
       "OcctModelingBSpline.h",
