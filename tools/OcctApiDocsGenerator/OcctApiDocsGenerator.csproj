@@ -10,4 +10,8 @@
     <PlatformTarget>x64</PlatformTarget>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System.IO" />
+  </ItemGroup>
 </Project>

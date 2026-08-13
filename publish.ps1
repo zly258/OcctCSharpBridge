@@ -117,7 +117,6 @@ function Test-BinarySdk {
         "OcctNet.dll",
         "OcctNet.WinForms.dll",
         "OcctNet.Wpf.dll",
-        "OcctNet.Avalonia.dll",
         "bridge-contract.json",
         "bridge-manifest.json"
     )
@@ -158,7 +157,6 @@ function Test-BinarySdk {
         "OcctNet.dll",
         "OcctNet.WinForms.dll",
         "OcctNet.Wpf.dll",
-        "OcctNet.Avalonia.dll",
         "bridge-contract.json"
     )
     $entries = @($manifest.files)
