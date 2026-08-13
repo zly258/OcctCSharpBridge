@@ -2,9 +2,7 @@
 
 [简体中文](README.zh-CN.md) · [Main](https://github.com/zly258/OcctCSharpBridge/tree/main) · [Cross-platform Avalonia](https://github.com/zly258/OcctCSharpBridge/tree/avalonia)
 
-The `demo` branch contains the Windows demonstration applications for the published `main` Binary SDK.
-
-It intentionally contains only:
+The `demo` branch contains the Windows demonstration applications for the published `main` Binary SDK. It keeps the shared demo scenarios plus the two Windows UI hosts:
 
 ```text
 OcctDemo.Common
@@ -12,7 +10,19 @@ OcctDemo.WinForms
 OcctDemo.Wpf
 ```
 
-Avalonia is no longer part of the demo branch. The real Windows/Linux Avalonia host is developed independently on the `avalonia` branch.
+Avalonia is developed independently on the `avalonia` branch, where the same CAD-style scenarios are demonstrated on Windows and Linux.
+
+## Demo previews
+
+### WinForms
+
+[![WinForms demo](assets/previews/winform-demo-en.png)](assets/previews/winform-demo-en.png)
+
+### WPF
+
+[![WPF demo](assets/previews/wpf-demo-en.png)](assets/previews/wpf-demo-en.png)
+
+Click a preview to open the original PNG.
 
 ## SDK consumption
 
@@ -49,22 +59,11 @@ The synchronized SDK must provide the Core, WinForms and WPF Bridge assemblies. 
 .\publish.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-## Preview images
-
-Canonical screenshots are limited to WinForms and WPF:
-
-```text
-assets/previews/winform-demo-en.png
-assets/previews/winform-demo-zh.png
-assets/previews/wpf-demo-en.png
-assets/previews/wpf-demo-zh.png
-```
-
 ## Branch responsibilities
 
 - `main`: Windows Bridge source + tracked Windows Binary SDK (`OcctNet`, WinForms, WPF).
-- `demo`: Windows WinForms/WPF demos only.
-- `avalonia`: standalone `OcctNet + OcctNet.Avalonia`, Windows x64 + Linux x64.
-- `website`: public website.
+- `demo`: Windows WinForms/WPF demonstration applications.
+- `avalonia`: standalone `OcctNet + OcctNet.Avalonia` for Windows x64 + Linux x64, with its own Windows/Linux previews.
+- `website`: bilingual project website presenting both demo families.
 
 The project uses GNU LGPL 2.1 + OcctCSharpBridge Exception 1.0; see the repository license files.

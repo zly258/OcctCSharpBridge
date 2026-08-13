@@ -2,7 +2,7 @@
 
 [English](README.md) · [main](https://github.com/zly258/OcctCSharpBridge/tree/main) · [跨平台 Avalonia](https://github.com/zly258/OcctCSharpBridge/tree/avalonia)
 
-`demo` 分支只保留消费 main 已发布 Windows Binary SDK 的演示程序：
+`demo` 分支用于展示 `main` 已发布 Windows Binary SDK 的实际应用效果，保留共享 Demo 场景以及两个 Windows UI Host：
 
 ```text
 OcctDemo.Common
@@ -10,7 +10,19 @@ OcctDemo.WinForms
 OcctDemo.Wpf
 ```
 
-Avalonia 已从 demo 移除。真正的 Windows/Linux Avalonia Host 位于独立 `avalonia` 分支。
+Avalonia 独立维护在 `avalonia` 分支，并在 Windows/Linux 上展示同类 CAD 场景。
+
+## Demo 运行预览
+
+### WinForms
+
+[![WinForms 中文运行界面](assets/previews/winform-demo-zh.png)](assets/previews/winform-demo-zh.png)
+
+### WPF
+
+[![WPF 中文运行界面](assets/previews/wpf-demo-zh.png)](assets/previews/wpf-demo-zh.png)
+
+点击图片可查看原始 PNG 大图。
 
 ## 同步 main Windows SDK
 
@@ -20,7 +32,7 @@ Avalonia 已从 demo 移除。真正的 Windows/Linux Avalonia Host 位于独立
 .\sync.ps1
 ```
 
-该分支只要求 Core、WinForms、WPF Bridge Assembly，不再要求 `OcctNet.Avalonia.dll`。
+该分支只要求 Core、WinForms、WPF Bridge Assembly，不要求 `OcctNet.Avalonia.dll`。
 
 ## 构建
 
@@ -47,22 +59,11 @@ Avalonia 已从 demo 移除。真正的 Windows/Linux Avalonia Host 位于独立
 .\publish.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-## 预览图
-
-只保留四张 WinForms/WPF Canonical Screenshot：
-
-```text
-assets/previews/winform-demo-en.png
-assets/previews/winform-demo-zh.png
-assets/previews/wpf-demo-en.png
-assets/previews/wpf-demo-zh.png
-```
-
 ## 分支职责
 
 - `main`：Windows Bridge + 正式 Windows Binary SDK（Core、WinForms、WPF）。
-- `demo`：仅 Windows WinForms/WPF Demo。
-- `avalonia`：独立 `OcctNet + OcctNet.Avalonia`，同时面向 Windows x64 + Linux x64。
-- `website`：公开官网。
+- `demo`：Windows WinForms/WPF 演示应用。
+- `avalonia`：独立 `OcctNet + OcctNet.Avalonia`，同时面向 Windows x64 + Linux x64，并维护各自平台运行预览。
+- `website`：统一展示两组 Demo 的中英文官网。
 
 许可证为 GNU LGPL 2.1 + OcctCSharpBridge Exception 1.0。
