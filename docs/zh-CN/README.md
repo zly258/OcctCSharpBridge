@@ -1,25 +1,36 @@
 # OcctCSharpBridge Avalonia 文档
 
-本目录描述独立的 **`avalonia` 分支**。该分支只包含 `OcctNet + OcctNet.Avalonia`，同时面向 Windows x64 与 Linux x64，不依赖 main、WinForms、WPF，也没有 sync、跟踪式 `dist` 或分支内 Binary SDK 发布流程。
+本目录描述独立的 **`avalonia` 分支**，同时面向 Windows x64 与 Linux x64。
 
 当前源码契约：
 
 - Bridge 2.7.0 / Native ABI 4
-- Native exports / P/Invoke：350 / 350
-- Public .NET types：109
-- Viewer / Modeling API：216 / 134
+- Native exports / P/Invoke：**420 / 420**
+- Public .NET types：**135**
+- Viewer / Modeling API：**286 / 134**
 - Target Framework：`net10.0`
 - Platforms：`windows-x64`、`linux-x64`
 - Avalonia 12.1.0
 
-Linux 默认 OCCT：
+公开 Viewport 始终是 `OcctAvaloniaViewport`。Windows 内部使用 HWND/WNT_Window；Linux 当前使用 X11/XWayland XID/Xw_Window，暂不宣称 Native Wayland Viewer 已完成。
 
-```text
-/usr/local/include/opencascade
-/usr/local/lib
+Linux 下通过 X11 原生子窗口处理选择、平移、旋转和缩放，连续鼠标 Motion 事件在进入 OCCT 交互更新前合并。UI 使用项目内置 Inter，OCCT 矢量文字/标注使用跨平台 `sans-serif` 字体别名。
+
+## 构建 / 运行
+
+Windows：
+
+```powershell
+.\build.ps1
+.\run.ps1
 ```
 
-公开 Viewport 始终是 `OcctAvaloniaViewport`。Windows 内部使用 HWND/WNT_Window，Linux 当前内部使用 X11/XWayland XID/Xw_Window；暂不宣称 Native Wayland Viewer 已完成。
+Linux：
+
+```bash
+./build.sh
+./run.sh
+```
 
 ## 文档目录
 

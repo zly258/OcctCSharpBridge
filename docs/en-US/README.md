@@ -1,25 +1,36 @@
 # OcctCSharpBridge Avalonia Documentation
 
-This documentation describes the standalone **`avalonia` branch**. It contains only `OcctNet + OcctNet.Avalonia` and targets Windows x64 + Linux x64 without depending on `main`, WinForms, WPF, sync, tracked `dist`, or branch-local binary publication.
+This documentation describes the standalone **`avalonia` branch** for Windows x64 and Linux x64.
 
 Current source contract:
 
 - Bridge 2.7.0 / Native ABI 4
-- 350 Native exports / 350 P/Invoke mappings
-- 109 public .NET types
-- Viewer / Modeling API: 216 / 134
+- Native exports / P/Invoke: **420 / 420**
+- Public .NET types: **135**
+- Viewer / Modeling API: **286 / 134**
 - Target framework: `net10.0`
 - Platforms: `windows-x64`, `linux-x64`
 - Avalonia 12.1.0
 
-Linux development defaults:
+The public viewport API is always `OcctAvaloniaViewport`. Windows uses an HWND/WNT_Window backend internally. Linux currently uses X11/XWayland XID/Xw_Window; native Wayland hosting is not claimed.
 
-```text
-/usr/local/include/opencascade
-/usr/local/lib
+Linux native-child input handles selection, pan, rotate and zoom through X11. Consecutive pointer motion events are coalesced before OCCT interaction updates. UI text uses bundled Inter and OCCT vector text/dimensions use the portable `sans-serif` alias.
+
+## Build / run
+
+Windows:
+
+```powershell
+.\build.ps1
+.\run.ps1
 ```
 
-The public viewport API is always `OcctAvaloniaViewport`. Windows uses an HWND/WNT_Window backend internally; Linux currently uses X11/XWayland XID/Xw_Window internally. Native Wayland hosting is not claimed yet.
+Linux:
+
+```bash
+./build.sh
+./run.sh
+```
 
 ## Guide
 
