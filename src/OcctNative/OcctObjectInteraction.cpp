@@ -31,7 +31,7 @@ namespace
         return result;
     }
 
-    void restoreManipulatorModes(Engine* engine, ObjectEntry& entry)
+    void restoreManipulatorModes(ObjectEntry& entry)
     {
         Handle(AIS_Manipulator) manipulator = Handle(AIS_Manipulator)::DownCast(entry.presentation);
         if (manipulator.IsNull() || !manipulator->IsAttached()) return;
@@ -66,7 +66,7 @@ namespace
         }
         else if (entry.kind == OcctManipulatorObjectKind)
         {
-            restoreManipulatorModes(engine, entry);
+            restoreManipulatorModes(entry);
         }
         else
         {

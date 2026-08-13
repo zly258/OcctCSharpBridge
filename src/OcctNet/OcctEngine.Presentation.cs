@@ -27,7 +27,7 @@ public sealed partial class OcctEngine
             };
         }
 
-        CheckInitialized(() => ViewerAdvancedNativeMethods.occt_set_object_clip_planes(
+        CheckInitialized(() => PresentationNativeMethods.occt_set_object_clip_planes(
             _handle,
             value.Id,
             native,
@@ -41,14 +41,14 @@ public sealed partial class OcctEngine
     {
         if (!Enum.IsDefined(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
         var native = ToNativeHighlightStyle(style);
-        CheckInitialized(() => ViewerAdvancedNativeMethods.occt_set_global_highlight_style(_handle, (int)kind, in native));
+        CheckInitialized(() => PresentationNativeMethods.occt_set_global_highlight_style(_handle, (int)kind, in native));
     }
 
     public void SetObjectHighlightStyle(IOcctObject value, bool dynamic, OcctHighlightStyle style)
     {
         EnsureObject(value);
         var native = ToNativeHighlightStyle(style);
-        CheckInitialized(() => ViewerAdvancedNativeMethods.occt_set_object_highlight_style(
+        CheckInitialized(() => PresentationNativeMethods.occt_set_object_highlight_style(
             _handle,
             value.Id,
             dynamic ? 1 : 0,
@@ -58,7 +58,7 @@ public sealed partial class OcctEngine
     public void ClearObjectHighlightStyle(IOcctObject value, bool dynamic)
     {
         EnsureObject(value);
-        CheckInitialized(() => ViewerAdvancedNativeMethods.occt_clear_object_highlight_style(
+        CheckInitialized(() => PresentationNativeMethods.occt_clear_object_highlight_style(
             _handle,
             value.Id,
             dynamic ? 1 : 0));
@@ -67,13 +67,13 @@ public sealed partial class OcctEngine
     public void ResetDisplayMode(IOcctObject value)
     {
         EnsureObject(value);
-        Check(ViewerAdvancedNativeMethods.occt_reset_object_display_mode(_handle, value.Id));
+        Check(PresentationNativeMethods.occt_reset_object_display_mode(_handle, value.Id));
     }
 
     public OcctDisplayMode? GetDisplayModeOverride(IOcctObject value)
     {
         EnsureObject(value);
-        Check(ViewerAdvancedNativeMethods.occt_get_object_display_mode(
+        Check(PresentationNativeMethods.occt_get_object_display_mode(
             _handle,
             value.Id,
             out var hasOverride,
@@ -87,7 +87,7 @@ public sealed partial class OcctEngine
     public void SetAutoHighlight(IOcctObject value, bool enabled)
     {
         EnsureObject(value);
-        Check(ViewerAdvancedNativeMethods.occt_set_object_auto_highlight(
+        Check(PresentationNativeMethods.occt_set_object_auto_highlight(
             _handle,
             value.Id,
             enabled ? 1 : 0));
@@ -96,14 +96,14 @@ public sealed partial class OcctEngine
     public bool GetAutoHighlight(IOcctObject value)
     {
         EnsureObject(value);
-        Check(ViewerAdvancedNativeMethods.occt_get_object_auto_highlight(_handle, value.Id, out var enabled));
+        Check(PresentationNativeMethods.occt_get_object_auto_highlight(_handle, value.Id, out var enabled));
         return enabled != 0;
     }
 
     public void SetInfiniteState(IOcctObject value, bool infinite)
     {
         EnsureObject(value);
-        Check(ViewerAdvancedNativeMethods.occt_set_object_infinite_state(
+        Check(PresentationNativeMethods.occt_set_object_infinite_state(
             _handle,
             value.Id,
             infinite ? 1 : 0));
@@ -112,7 +112,7 @@ public sealed partial class OcctEngine
     public bool GetInfiniteState(IOcctObject value)
     {
         EnsureObject(value);
-        Check(ViewerAdvancedNativeMethods.occt_get_object_infinite_state(_handle, value.Id, out var infinite));
+        Check(PresentationNativeMethods.occt_get_object_infinite_state(_handle, value.Id, out var infinite));
         return infinite != 0;
     }
 

@@ -1,5 +1,5 @@
 ﻿#include "OcctInternal.hxx"
-#include "OcctViewerAdvanced.h"
+#include "OcctPresentation.h"
 #include "OcctViewerInteraction.h"
 
 #include <Aspect_TypeOfLine.hxx>
@@ -27,10 +27,10 @@ namespace
     {
         switch (value)
         {
-            case OcctZLayer_Bottom: return Graphic3d_ZLayerId_BotOSD;
-            case OcctZLayer_Default: return Graphic3d_ZLayerId_Default;
-            case OcctZLayer_Top: return Graphic3d_ZLayerId_Top;
-            case OcctZLayer_Topmost: return Graphic3d_ZLayerId_Topmost;
+            case OcctViewerZLayer_Bottom: return Graphic3d_ZLayerId_BotOSD;
+            case OcctViewerZLayer_Default: return Graphic3d_ZLayerId_Default;
+            case OcctViewerZLayer_Top: return Graphic3d_ZLayerId_Top;
+            case OcctViewerZLayer_Topmost: return Graphic3d_ZLayerId_Topmost;
             default: throw std::invalid_argument("Highlight Z-layer is out of range.");
         }
     }
@@ -57,7 +57,7 @@ namespace
         requirePositive(settings.lineWidth, "Highlight line width");
         if (settings.displayMode < -1 || settings.displayMode > 1)
             throw std::invalid_argument("Highlight display mode is out of range.");
-        if (settings.zLayer < -1 || settings.zLayer > OcctZLayer_Topmost)
+        if (settings.zLayer < -1 || settings.zLayer > OcctViewerZLayer_Topmost)
             throw std::invalid_argument("Highlight Z-layer is out of range.");
 
         const Quantity_Color value = color(settings.r, settings.g, settings.b);
