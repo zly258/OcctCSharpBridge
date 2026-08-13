@@ -37,14 +37,23 @@ public sealed partial class OcctEngine
     {
         ArgumentNullException.ThrowIfNull(updates);
         EnsureInitialized();
-        using var batch = BeginDisplayBatch();
-        foreach (var update in updates)
+
+        var native = new NativeOcctObjectTransformUpdate[updates.Count];
+        for (var index = 0; index < updates.Count; index++)
         {
+            var update = updates[index];
             ArgumentNullException.ThrowIfNull(update.Object);
             EnsureObject(update.Object);
             if (!update.Transformation.IsFinite)
                 throw new ArgumentException("Transformation matrix must contain only finite values.", nameof(updates));
-            Check(NativeMethods.occt_set_object_transform(_handle, update.Object.Id, update.Transformation.ToArray()));
+
+            native[index] = new NativeOcctObjectTransformUpdate
+            {
+                ObjectId = update.Object.Id,
+                Transformation = update.Transformation
+            };
         }
+
+        Check(ViewerInteractionNativeMethods.occt_set_object_transforms(_handle, native, native.Length));
     }
 }

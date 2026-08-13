@@ -1,10 +1,60 @@
 ﻿#include "OcctInternal.hxx"
+#include "OcctManipulator.h"
 
+#include <AIS_Manipulator.hxx>
 #include <Graphic3d_MaterialAspect.hxx>
 
 #include <unordered_set>
 
 using namespace OcctBridge;
+
+namespace
+{
+    void stopAndDetachManipulator(const Handle(AIS_Manipulator)& manipulator)
+    {
+        if (manipulator.IsNull()) return;
+        if (manipulator->HasActiveTransformation()) manipulator->StopTransform(Standard_False);
+        if (manipulator->IsAttached()) manipulator->Detach();
+        else if (manipulator->HasActiveMode()) manipulator->DeactivateCurrentMode();
+    }
+
+    void detachManipulatorsReferencing(
+        Engine* engine,
+        const std::unordered_set<OcctObjectId>& objectIds)
+    {
+        if (objectIds.empty()) return;
+
+        for (auto& pair : engine->objects)
+        {
+            ObjectEntry& entry = pair.second;
+            if (entry.kind != OcctManipulatorObjectKind || entry.presentation.IsNull()) continue;
+
+            Handle(AIS_Manipulator) manipulator = Handle(AIS_Manipulator)::DownCast(entry.presentation);
+            if (manipulator.IsNull()) continue;
+
+            if (objectIds.find(pair.first) != objectIds.end())
+            {
+                stopAndDetachManipulator(manipulator);
+                continue;
+            }
+            if (!manipulator->IsAttached()) continue;
+
+            const Handle(AIS_ManipulatorObjectSequence)& targets = manipulator->Objects();
+            if (targets.IsNull()) continue;
+            bool referencesDeletedObject = false;
+            for (int index = targets->Lower(); index <= targets->Upper(); ++index)
+            {
+                const OcctObjectId targetId = engine->findPresentation(targets->Value(index));
+                if (objectIds.find(targetId) != objectIds.end())
+                {
+                    referencesDeletedObject = true;
+                    break;
+                }
+            }
+            if (referencesDeletedObject) stopAndDetachManipulator(manipulator);
+        }
+    }
+}
 
 extern "C"
 {
@@ -218,6 +268,7 @@ extern "C"
                 if (seenIds.insert(id).second) uniqueIds.push_back(id);
             }
 
+            detachManipulatorsReferencing(e, seenIds);
             for (const OcctObjectId id : uniqueIds) e->erase(id);
             if (!uniqueIds.empty()) e->requestRedraw();
         });
@@ -229,6 +280,11 @@ extern "C"
         if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
+            std::unordered_set<OcctObjectId> allIds;
+            allIds.reserve(e->objects.size());
+            for (const auto& pair : e->objects) allIds.insert(pair.first);
+            detachManipulatorsReferencing(e, allIds);
+
             for (auto& pair : e->objects)
             {
                 if (!pair.second.presentation.IsNull())

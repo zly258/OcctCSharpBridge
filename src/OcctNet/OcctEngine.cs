@@ -57,6 +57,21 @@ public sealed partial class OcctEngine : IDisposable
         return new OcctDimension(id, _ownerId);
     }
 
+    private OcctOverlay CheckOverlay(
+        long id,
+        OcctOverlayPrimitiveType primitiveType,
+        [CallerMemberName] string? operation = null)
+    {
+        if (id <= 0) throw CreateException(operation);
+        return new OcctOverlay(id, _ownerId, primitiveType);
+    }
+
+    private OcctManipulator CheckManipulator(long id, [CallerMemberName] string? operation = null)
+    {
+        if (id <= 0) throw CreateException(operation);
+        return new OcctManipulator(id, _ownerId);
+    }
+
     private void CheckInitialized(Func<int> nativeCall, [CallerMemberName] string? operation = null)
     {
         EnsureInitialized();
@@ -117,12 +132,30 @@ public sealed partial class OcctEngine : IDisposable
             throw new ArgumentException("Object is not a dimension object in this OcctEngine.", nameof(dimension));
     }
 
+    private void EnsureOverlay(OcctOverlay overlay, OcctOverlayPrimitiveType? primitiveType = null)
+    {
+        EnsureObject(overlay);
+        if (NativeMethods.occt_object_kind(_handle, overlay.Id) != (int)OcctObjectKind.Overlay)
+            throw new ArgumentException("Object is not an overlay object in this OcctEngine.", nameof(overlay));
+        if (primitiveType is { } expected && overlay.PrimitiveType != expected)
+            throw new ArgumentException($"Overlay must be of type {expected}.", nameof(overlay));
+    }
+
+    private void EnsureManipulator(OcctManipulator manipulator)
+    {
+        EnsureObject(manipulator);
+        if (NativeMethods.occt_object_kind(_handle, manipulator.Id) != (int)OcctObjectKind.Manipulator)
+            throw new ArgumentException("Object is not a manipulator in this OcctEngine.", nameof(manipulator));
+    }
+
     private static long GetOwnerId(IOcctObject value) => value switch
     {
         OcctShape item => item.OwnerId,
         OcctText item => item.OwnerId,
         OcctDimension item => item.OwnerId,
         OcctPoint item => item.OwnerId,
+        OcctOverlay item => item.OwnerId,
+        OcctManipulator item => item.OwnerId,
         _ => long.MinValue
     };
 

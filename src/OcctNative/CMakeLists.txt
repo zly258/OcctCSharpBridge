@@ -75,6 +75,12 @@ add_library(OcctNative SHARED
     OcctObjectUpdate.cpp
     OcctObjectInteraction.cpp
     OcctObjectTransform.cpp
+    OcctViewerInteraction.cpp
+    OcctViewerInteractionExtensions.cpp
+    OcctOverlay.cpp
+    OcctViewerAdvanced.cpp
+    OcctManipulator.cpp
+    OcctDetection.cpp
     OcctSelectionState.cpp
     OcctDepth.cpp
     OcctQueries.cpp
@@ -122,6 +128,12 @@ add_library(OcctNative SHARED
     OcctPoints.h
     OcctSelectionOverlay.h
     OcctSelectionState.h
+    OcctViewerInteraction.h
+    OcctViewerInteractionExtensions.h
+    OcctOverlay.h
+    OcctViewerAdvanced.h
+    OcctManipulator.h
+    OcctDetection.h
     OcctModeling.h
     OcctModelingExtensions.h
     OcctModelingBSpline.h
