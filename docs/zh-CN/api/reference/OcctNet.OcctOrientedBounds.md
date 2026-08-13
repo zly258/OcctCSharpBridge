@@ -1,0 +1,59 @@
+# OcctOrientedBounds
+
+- **程序集:** `OcctNet.dll`
+- **命名空间:** `OcctNet`
+
+## 构造函数
+
+无。
+
+## 属性
+
+### `IsFinite`
+
+```csharp
+public bool IsFinite { get; }
+```
+
+### `SizeX`
+
+```csharp
+public double SizeX { get; }
+```
+
+### `SizeY`
+
+```csharp
+public double SizeY { get; }
+```
+
+### `SizeZ`
+
+```csharp
+public double SizeZ { get; }
+```
+
+### `Volume`
+
+```csharp
+public double Volume { get; }
+```
+
+## 事件
+
+无。
+
+## 方法
+
+无。
+
+## 字段 / 枚举值
+
+- `Center` — `OcctPoint3d`
+- `HalfSizeX` — `double`
+- `HalfSizeY` — `double`
+- `HalfSizeZ` — `double`
+- `XDirection` — `OcctVector3d`
+- `YDirection` — `OcctVector3d`
+- `ZDirection` — `OcctVector3d`
+
