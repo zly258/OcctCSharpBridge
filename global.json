@@ -1,8 +1,9 @@
-﻿{
+{
   "sdk": {
-    "version": "10.0.302",
-    "rollForward": "latestPatch",
-    "allowPrerelease": false
+    "version": "10.0.100",
+    "rollForward": "latestMinor",
+    "allowPrerelease": false,
+    "errorMessage": "OcctCSharpBridge requires a stable .NET 10 SDK."
   },
   "test": {
     "runner": "Microsoft.Testing.Platform"
