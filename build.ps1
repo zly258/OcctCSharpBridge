@@ -1,4 +1,4 @@
-﻿param(
+param(
     [Parameter(Position = 0)]
     [ValidateSet("validate", "common", "winform", "wpf", "clean", "all")]
     [string]$Target = "all",
@@ -38,6 +38,13 @@ $globalJson = Get-Content -LiteralPath $GlobalJsonPath -Raw | ConvertFrom-Json
 $ExpectedAuthor = [string]$propertyGroup.Authors
 $ExpectedLanguageVersion = [string]$propertyGroup.LangVersion
 $ExpectedSdkVersion = [string]$globalJson.sdk.version
+try { $ExpectedSdk = [version]$ExpectedSdkVersion }
+catch { throw "global.json contains an invalid .NET SDK version: '$ExpectedSdkVersion'." }
+$ExpectedSdkMajor = $ExpectedSdk.Major
+if ([string]$globalJson.sdk.rollForward -ne "latestMinor") {
+    throw "global.json must use rollForward 'latestMinor' so the demo accepts any stable .NET $ExpectedSdkMajor.x SDK."
+}
+if ([bool]$globalJson.sdk.allowPrerelease) { throw "global.json must not allow prerelease SDKs." }
 
 $Projects = [ordered]@{
     common = @{
@@ -135,8 +142,11 @@ function Test-BinarySdk {
     if ([string]$contract.dotnet.targetFramework -ne "net10.0-windows") {
         throw "Unsupported Bridge target framework: $($contract.dotnet.targetFramework)"
     }
-    if ([string]$contract.dotnet.sdkVersion -ne $ExpectedSdkVersion) {
-        throw "Unsupported Bridge .NET SDK: $($contract.dotnet.sdkVersion). Demo expects $ExpectedSdkVersion."
+    $contractSdkText = [string]$contract.dotnet.sdkVersion
+    try { $contractSdk = [version]$contractSdkText }
+    catch { throw "Bridge contract contains an invalid .NET SDK version: '$contractSdkText'." }
+    if ($contractSdk.Major -ne $ExpectedSdkMajor) {
+        throw "Unsupported Bridge .NET SDK major: $contractSdkText. Demo requires .NET $ExpectedSdkMajor.x."
     }
     if ([string]$contract.dotnet.languageVersion -ne $ExpectedLanguageVersion) {
         throw "Unsupported Bridge C# language version: $($contract.dotnet.languageVersion). Demo expects $ExpectedLanguageVersion."
@@ -196,11 +206,12 @@ function Test-BinarySdk {
         }
     }
 
-    Write-Host ("Bridge Binary SDK: {0}, author {1}, ABI {2}, OCCT {3}, .NET SDK {4}, C# {5}" -f
+    Write-Host ("Bridge Binary SDK: {0}, author {1}, ABI {2}, OCCT {3}, .NET SDK major {4} (reference {5}), C# {6}" -f
         $contract.bridgeVersion,
         $contract.author,
         $contract.nativeAbiVersion,
         $contract.occtVersion,
+        $contractSdk.Major,
         $contract.dotnet.sdkVersion,
         $contract.dotnet.languageVersion) -ForegroundColor Green
 }
@@ -249,6 +260,7 @@ function Clean-Outputs {
 Write-Host "Target:        $Target"
 Write-Host "Configuration: $Configuration"
 Write-Host "Bridge SDK:    $DistRoot" -ForegroundColor DarkGray
+Write-Host "SDK policy:    stable .NET $ExpectedSdkMajor.x" -ForegroundColor DarkGray
 
 if ($Target -eq "clean") {
     Clean-Outputs
