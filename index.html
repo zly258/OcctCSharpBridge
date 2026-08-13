@@ -46,7 +46,7 @@
           <a class="button secondary" href="https://github.com/zly258/OcctCSharpBridge/tree/avalonia" target="_blank" rel="noreferrer" data-i18n="viewAvalonia">Cross-platform Avalonia</a>
         </div>
         <div class="badges" aria-label="Technology baseline">
-          <span>Bridge 2.7.0</span><span>ABI 4</span><span>OCCT 7.9.0</span><span>.NET 10.0.302</span><span>C# 14</span>
+          <span>Bridge 2.7.0</span><span>ABI 4</span><span>OCCT 7.9.0</span><span>.NET 10</span><span>C# 14</span>
         </div>
       </div>
       <div class="hero-panel" aria-label="Branch architecture">
@@ -65,9 +65,9 @@
       <div class="shell">
         <div class="section-heading"><div class="eyebrow" data-i18n="branchEyebrow">BRANCHES</div><h2 data-i18n="branchTitle">Clear responsibilities instead of mixed platform projects</h2></div>
         <div class="feature-grid">
-          <article class="feature-card"><span>01</span><h3>main</h3><p data-i18n="mainText">Windows source and Binary SDK producer. Public assemblies: OcctNet, OcctNet.WinForms and OcctNet.Wpf. Contract: 349/349 Native/PInvoke, 113 public .NET types, net10.0-windows.</p><a href="https://github.com/zly258/OcctCSharpBridge/tree/main" target="_blank" rel="noreferrer" data-i18n="openBranch">Open branch ↗</a></article>
-          <article class="feature-card"><span>02</span><h3>avalonia</h3><p data-i18n="avaloniaText">Standalone cross-platform source. Only OcctNet + OcctNet.Avalonia; no sync, WinForms or WPF. Contract: 350/350, 109 public .NET types, net10.0, Windows x64 + Linux x64.</p><a href="https://github.com/zly258/OcctCSharpBridge/tree/avalonia" target="_blank" rel="noreferrer" data-i18n="openBranch">Open branch ↗</a></article>
-          <article class="feature-card"><span>03</span><h3>demo</h3><p data-i18n="demoBranchText">Windows demo consumer for the published main SDK. Contains Common, WinForms and WPF demos only; Avalonia previews and projects are intentionally absent.</p><a href="https://github.com/zly258/OcctCSharpBridge/tree/demo" target="_blank" rel="noreferrer" data-i18n="openBranch">Open branch ↗</a></article>
+          <article class="feature-card"><span>01</span><h3>main</h3><p data-i18n="mainText">Windows source and Binary SDK producer. Public assemblies: OcctNet, OcctNet.WinForms and OcctNet.Wpf. Contract: 419/419 Native/PInvoke, 139 public .NET types, net10.0-windows.</p><a href="https://github.com/zly258/OcctCSharpBridge/tree/main" target="_blank" rel="noreferrer" data-i18n="openBranch">Open branch ↗</a></article>
+          <article class="feature-card"><span>02</span><h3>avalonia</h3><p data-i18n="avaloniaText">Standalone cross-platform source. OcctNet + OcctNet.Avalonia with one API for Windows x64 and Linux x64. Contract: 420/420 Native/PInvoke, 135 public .NET types, net10.0.</p><a href="https://github.com/zly258/OcctCSharpBridge/tree/avalonia" target="_blank" rel="noreferrer" data-i18n="openBranch">Open branch ↗</a></article>
+          <article class="feature-card"><span>03</span><h3>demo</h3><p data-i18n="demoBranchText">Windows demo consumer for the published main SDK. Contains Common, WinForms and WPF demos only; Avalonia projects remain on the dedicated avalonia branch.</p><a href="https://github.com/zly258/OcctCSharpBridge/tree/demo" target="_blank" rel="noreferrer" data-i18n="openBranch">Open branch ↗</a></article>
           <article class="feature-card"><span>04</span><h3>website</h3><p data-i18n="websiteText">Static bilingual project website. It describes both product branches without treating the Windows main SDK as the Avalonia/Linux distribution.</p></article>
         </div>
       </div>
@@ -83,7 +83,7 @@
         <article class="feature-card"><span>05</span><h3 data-i18n="f5Title">Meshing</h3><p data-i18n="f5Text">Configurable triangulation with bulk node/triangle transfers and per-face provenance.</p></article>
         <article class="feature-card"><span>06</span><h3 data-i18n="f6Title">STEP assembly exchange</h3><p data-i18n="f6Text">XDE-derived managed assembly snapshots preserve hierarchy, occurrences, transforms, visibility, colors and subshape styles.</p></article>
         <article class="feature-card"><span>07</span><h3 data-i18n="f7Title">Windows hosts</h3><p data-i18n="f7Text">main keeps independent WinForms and WPF adapters on net10.0-windows.</p></article>
-        <article class="feature-card"><span>08</span><h3 data-i18n="f8Title">Cross-platform Avalonia</h3><p data-i18n="f8Text">avalonia exposes one OcctAvaloniaViewport API. Windows uses HWND/WNT_Window; Linux currently uses X11/XWayland XID/Xw_Window internally.</p></article>
+        <article class="feature-card"><span>08</span><h3 data-i18n="f8Title">Cross-platform Avalonia</h3><p data-i18n="f8Text">avalonia exposes one OcctAvaloniaViewport API. Windows uses HWND/WNT_Window; Linux uses the X11/XWayland XID/Xw_Window backend with native-child pointer input and coalesced motion processing.</p></article>
       </div>
     </section>
 
@@ -116,14 +116,13 @@ git switch main
 
 # Cross-platform Avalonia on Windows
 git switch avalonia
-.\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
-.\build.ps1 avalonia-smoke Release -OcctRoot "D:\tools\occt-vc144-64"
+.\build.ps1
+.\run.ps1
 
 # Cross-platform Avalonia on Linux
 git switch avalonia
-./build.sh all Release
-./build.sh x11-smoke Release
-./build.sh avalonia-smoke Release</code></pre></div>
+./build.sh
+./run.sh</code></pre></div>
       </div>
     </section>
 
