@@ -24,8 +24,10 @@ extern "C"
         return execute(e, [&]
         {
             const Handle(Graphic3d_Camera)& camera = e->view->Camera();
-            const gp_Pnt eye = camera->Eye(); const gp_Pnt center = camera->Center();
-            const gp_Dir up = camera->Up(); const gp_Dir directionValue = camera->Direction();
+            const gp_Pnt eye = camera->Eye();
+            const gp_Pnt center = camera->Center();
+            const gp_Dir up = camera->Up();
+            const gp_Dir directionValue = camera->Direction();
             result->eye = {eye.X(), eye.Y(), eye.Z()};
             result->center = {center.X(), center.Y(), center.Z()};
             result->up = {up.X(), up.Y(), up.Z()};
@@ -45,66 +47,120 @@ extern "C"
             camera->SetUp(direction(state->up));
             camera->OrthogonalizeUp();
             camera->SetScale(state->scale);
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 
     double occt_get_view_scale(OcctHandle h)
     {
-        Engine* e = engineOf(h); return e != nullptr && e->isInitialized() ? e->view->Camera()->Scale() : 0.0;
+        Engine* e = engineOf(h);
+        return e != nullptr && e->isInitialized() ? e->view->Camera()->Scale() : 0.0;
     }
 
     int occt_set_view_scale(OcctHandle h, double scale)
     {
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { requirePositive(scale, "View scale"); e->view->Camera()->SetScale(scale); e->view->Redraw(); });
+        return execute(e, [&]
+        {
+            requirePositive(scale, "View scale");
+            e->view->Camera()->SetScale(scale);
+            e->requestRedraw();
+        });
     }
 
     int occt_set_antialiasing(OcctHandle h, int enabled)
     {
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { e->view->ChangeRenderingParams().IsAntialiasingEnabled = enabled != 0; e->view->Redraw(); });
+        return execute(e, [&]
+        {
+            e->view->ChangeRenderingParams().IsAntialiasingEnabled = enabled != 0;
+            e->requestRedraw();
+        });
     }
 
-    int occt_set_gradient_background(OcctHandle h, double r1, double g1, double b1, double r2, double g2, double b2, int fillMethod)
+    int occt_set_gradient_background(
+        OcctHandle h,
+        double r1,
+        double g1,
+        double b1,
+        double r2,
+        double g2,
+        double b2,
+        int fillMethod)
     {
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            if (fillMethod < static_cast<int>(Aspect_GradientFillMethod_None) || fillMethod > static_cast<int>(Aspect_GradientFillMethod_Elliptical))
+            if (fillMethod < static_cast<int>(Aspect_GradientFillMethod_None)
+                || fillMethod > static_cast<int>(Aspect_GradientFillMethod_Elliptical))
                 throw std::invalid_argument("Gradient fill method is out of range.");
-            e->view->SetBgGradientColors(color(r1,g1,b1), color(r2,g2,b2), static_cast<Aspect_GradientFillMethod>(fillMethod), true);
+            e->view->SetBgGradientColors(
+                color(r1, g1, b1),
+                color(r2, g2, b2),
+                static_cast<Aspect_GradientFillMethod>(fillMethod),
+                Standard_False);
+            e->requestRedraw();
         });
     }
 
     int occt_show_all(OcctHandle h)
     {
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { for (auto& pair : e->objects) if (!pair.second.presentation.IsNull()) e->context->Display(pair.second.presentation, Standard_False); e->view->Redraw(); });
+        return execute(e, [&]
+        {
+            for (auto& pair : e->objects)
+                if (!pair.second.presentation.IsNull())
+                    e->context->Display(pair.second.presentation, Standard_False);
+            e->requestRedraw();
+        });
     }
 
     int occt_hide_all(OcctHandle h)
     {
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { for (auto& pair : e->objects) if (!pair.second.presentation.IsNull()) e->context->Erase(pair.second.presentation, Standard_False); e->view->Redraw(); });
+        return execute(e, [&]
+        {
+            for (auto& pair : e->objects)
+                if (!pair.second.presentation.IsNull())
+                    e->context->Erase(pair.second.presentation, Standard_False);
+            e->requestRedraw();
+        });
     }
 
     int occt_redisplay_object(OcctHandle h, OcctObjectId id)
     {
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { ObjectEntry& entry = requiredObject(e, id); e->context->Redisplay(entry.presentation, Standard_True, Standard_True); });
+        return execute(e, [&]
+        {
+            ObjectEntry& entry = requiredObject(e, id);
+            e->context->Redisplay(entry.presentation, Standard_False, Standard_True);
+            e->requestRedraw();
+        });
     }
 
     int occt_highlight_object(OcctHandle h, OcctObjectId id)
     {
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { ObjectEntry& entry = requiredObject(e, id); e->context->HilightWithColor(entry.presentation, e->context->HighlightStyle(), Standard_True); });
+        return execute(e, [&]
+        {
+            ObjectEntry& entry = requiredObject(e, id);
+            e->context->HilightWithColor(
+                entry.presentation,
+                e->context->HighlightStyle(),
+                Standard_False);
+            e->requestRedraw();
+        });
     }
 
     int occt_unhighlight_object(OcctHandle h, OcctObjectId id)
     {
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { ObjectEntry& entry = requiredObject(e, id); e->context->Unhilight(entry.presentation, Standard_True); });
+        return execute(e, [&]
+        {
+            ObjectEntry& entry = requiredObject(e, id);
+            e->context->Unhilight(entry.presentation, Standard_False);
+            e->requestRedraw();
+        });
     }
 
     OcctObjectId occt_copy_selected_subshape_at(OcctHandle h, int index)
@@ -113,16 +169,19 @@ extern "C"
         return executeObject(e, [&]() -> OcctObjectId
         {
             int current = 0;
-            for (e->context->InitSelected(); e->context->MoreSelected(); e->context->NextSelected(), ++current)
+            for (e->context->InitSelected();
+                 e->context->MoreSelected();
+                 e->context->NextSelected(), ++current)
             {
                 if (current != index) continue;
-                if (!e->context->HasSelectedShape()) throw std::runtime_error("The selected item has no topological shape.");
+                if (!e->context->HasSelectedShape())
+                    throw std::runtime_error("The selected item has no topological shape.");
                 const TopoDS_Shape selected = e->context->SelectedShape();
-                if (selected.IsNull()) throw std::runtime_error("The selected topological subshape is null.");
+                if (selected.IsNull())
+                    throw std::runtime_error("The selected topological subshape is null.");
                 return e->addShape(selected, false, "SelectedSubshape");
             }
             throw std::out_of_range("Selected subshape index is out of range.");
         });
     }
-
 }

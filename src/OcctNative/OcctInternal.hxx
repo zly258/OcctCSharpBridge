@@ -62,6 +62,7 @@ namespace OcctBridge
         bool hasStoredVisibility = false;
         int stepDocumentIndex = -1;
         std::string stepNodeId;
+        int presentationSubtype = 0;
     };
 
     class Engine

@@ -44,8 +44,9 @@ extern "C"
             if (entry == nullptr) throw std::invalid_argument("Shape ID does not exist.");
             Bnd_Box box;
             BRepBndLib::Add(shapeWithPresentationTransformation(*entry), box);
-            e->view->FitAll(box, 0.05, Standard_True);
+            e->view->FitAll(box, 0.05, Standard_False);
             e->view->ZFitAll();
+            e->requestRedraw();
         });
     }
 
@@ -74,8 +75,9 @@ extern "C"
                 default: break;
             }
             e->view->SetProj(value);
-            e->view->FitAll(0.01, Standard_True);
+            e->view->FitAll(0.01, Standard_False);
             e->view->ZFitAll();
+            e->requestRedraw();
         });
     }
 
@@ -89,7 +91,7 @@ extern "C"
                 type == OcctProjection_Perspective
                     ? Graphic3d_Camera::Projection_Perspective
                     : Graphic3d_Camera::Projection_Orthographic);
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 
@@ -102,7 +104,7 @@ extern "C"
             if (degrees <= 1.0 || degrees >= 179.0)
                 throw std::invalid_argument("FOV must be between 1 and 179 degrees.");
             e->view->Camera()->SetFOVy(degrees);
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 
@@ -114,7 +116,7 @@ extern "C"
         {
             e->view->SetBgGradientStyle(Aspect_GradientFillMethod_None, Standard_False);
             e->view->SetBackgroundColor(color(r, g, b));
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 
@@ -128,9 +130,12 @@ extern "C"
             for (auto& pair : e->objects)
             {
                 if (pair.second.kind == OcctObject_Shape)
-                    e->context->SetDisplayMode(pair.second.presentation, e->displayMode, Standard_False);
+                    e->context->SetDisplayMode(
+                        pair.second.presentation,
+                        e->displayMode,
+                        Standard_False);
             }
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 
@@ -141,10 +146,14 @@ extern "C"
         return execute(e, [&]
         {
             if (visible)
-                e->view->TriedronDisplay(Aspect_TOTP_RIGHT_LOWER, Quantity_NOC_GRAY40, 0.08, V3d_ZBUFFER);
+                e->view->TriedronDisplay(
+                    Aspect_TOTP_RIGHT_LOWER,
+                    Quantity_NOC_GRAY40,
+                    0.08,
+                    V3d_ZBUFFER);
             else
                 e->view->TriedronErase();
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 
@@ -159,7 +168,7 @@ extern "C"
                 e->context->Display(e->viewCube, Standard_False);
             else
                 e->context->Erase(e->viewCube, Standard_False);
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 
@@ -170,11 +179,15 @@ extern "C"
         return execute(e, [&]
         {
             e->view->SetComputedMode(enabled != 0);
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 
-    int occt_set_display_precision(OcctHandle h, double deviationCoefficient, double deviationAngleDegrees, int applyExisting)
+    int occt_set_display_precision(
+        OcctHandle h,
+        double deviationCoefficient,
+        double deviationAngleDegrees,
+        int applyExisting)
     {
         Engine* e = engineOf(h);
         if (!validateInitialized(e)) return 0;
@@ -184,7 +197,8 @@ extern "C"
             if (deviationAngleDegrees <= 0.0 || deviationAngleDegrees >= 90.0)
                 throw std::invalid_argument("Deviation angle must be between 0 and 90 degrees.");
 
-            const double angleRadians = deviationAngleDegrees * 3.14159265358979323846 / 180.0;
+            const double angleRadians =
+                deviationAngleDegrees * 3.14159265358979323846 / 180.0;
             const Handle(Prs3d_Drawer)& drawer = e->context->DefaultDrawer();
             drawer->SetDeviationCoefficient(deviationCoefficient);
             drawer->SetDeviationAngle(angleRadians);
@@ -193,12 +207,21 @@ extern "C"
                 for (auto& pair : e->objects)
                 {
                     if (pair.second.kind != OcctObject_Shape || pair.second.presentation.IsNull()) continue;
-                    e->context->SetDeviationCoefficient(pair.second.presentation, deviationCoefficient, Standard_False);
-                    e->context->SetDeviationAngle(pair.second.presentation, angleRadians, Standard_False);
-                    e->context->Redisplay(pair.second.presentation, Standard_False, Standard_True);
+                    e->context->SetDeviationCoefficient(
+                        pair.second.presentation,
+                        deviationCoefficient,
+                        Standard_False);
+                    e->context->SetDeviationAngle(
+                        pair.second.presentation,
+                        angleRadians,
+                        Standard_False);
+                    e->context->Redisplay(
+                        pair.second.presentation,
+                        Standard_False,
+                        Standard_True);
                 }
             }
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 
@@ -220,7 +243,7 @@ extern "C"
                     e->context->SetMaterial(pair.second.presentation, aspect, Standard_False);
                 }
             }
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 
@@ -238,7 +261,7 @@ extern "C"
             e->viewer->SetDefaultLights();
             e->viewer->SetLightOn();
             e->viewer->UpdateLights();
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 
@@ -250,7 +273,8 @@ extern "C"
         {
             const auto p = pathFromUtf8(path);
             if (p.empty()) throw std::invalid_argument("Path is empty.");
-            if (!e->view->Dump(p.string().c_str())) throw std::runtime_error("View image export failed.");
+            if (!e->view->Dump(p.string().c_str()))
+                throw std::runtime_error("View image export failed.");
         });
     }
 
@@ -258,7 +282,10 @@ extern "C"
     {
         Engine* e = engineOf(h);
         if (!validateInitialized(e) || result == nullptr) return 0;
-        return execute(e, [&] { e->view->Convert(x, y, result->x, result->y, result->z); });
+        return execute(e, [&]
+        {
+            e->view->Convert(x, y, result->x, result->y, result->z);
+        });
     }
 
     int occt_world_to_screen(OcctHandle h, OcctPoint3d p, int* x, int* y)

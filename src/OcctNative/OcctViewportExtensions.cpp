@@ -1,9 +1,19 @@
 ﻿#include "OcctInternal.hxx"
+#include "OcctViewerInteraction.h"
 
+#include <Aspect_GradientFillMethod.hxx>
+#include <Aspect_TypeOfLine.hxx>
+#include <Aspect_TypeOfTriedronPosition.hxx>
 #include <BRepBndLib.hxx>
 #include <Bnd_Box.hxx>
 #include <Graphic3d_RenderingParams.hxx>
+#include <Graphic3d_TransformPers.hxx>
+#include <Graphic3d_TransModeFlags.hxx>
+#include <Graphic3d_Vec2.hxx>
+#include <Graphic3d_ZLayerId.hxx>
+#include <Precision.hxx>
 #include <Prs3d_Drawer.hxx>
+#include <Prs3d_LineAspect.hxx>
 #include <V3d_TypeOfOrientation.hxx>
 
 using namespace OcctBridge;
@@ -33,6 +43,7 @@ namespace
         if (margin < 0.0 || margin >= 1.0)
             throw std::invalid_argument("Fit margin must be in the range [0, 1).");
     }
+
 }
 
 extern "C"
@@ -56,7 +67,7 @@ extern "C"
             if (bounds.IsVoid()) throw std::runtime_error("Selected shapes have no finite bounds.");
             e->view->FitAll(bounds, margin, Standard_False);
             e->view->ZFitAll();
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 
@@ -71,7 +82,7 @@ extern "C"
                 e->view->FitAll(0.01, Standard_False);
                 e->view->ZFitAll();
             }
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 
@@ -121,7 +132,7 @@ extern "C"
                     e->context->AddSelect(pair.second.presentation);
             }
             e->context->HilightSelected(Standard_False);
-            e->context->UpdateCurrentViewer();
+            e->requestRedraw();
         });
     }
 
@@ -138,7 +149,7 @@ extern "C"
                     e->context->AddOrRemoveSelected(pair.second.presentation, Standard_False);
             }
             e->context->HilightSelected(Standard_False);
-            e->context->UpdateCurrentViewer();
+            e->requestRedraw();
         });
     }
 
@@ -155,7 +166,7 @@ extern "C"
             }
             for (const auto& value : selected) e->context->Erase(value, Standard_False);
             e->context->ClearSelected(Standard_False);
-            e->context->UpdateCurrentViewer();
+            e->requestRedraw();
         });
     }
 
@@ -170,9 +181,10 @@ extern "C"
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            if (samples < 0 || samples > 16) throw std::invalid_argument("MSAA sample count must be between 0 and 16.");
+            if (samples < 0 || samples > 16)
+                throw std::invalid_argument("MSAA sample count must be between 0 and 16.");
             e->view->ChangeRenderingParams().NbMsaaSamples = samples;
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 
@@ -184,7 +196,7 @@ extern "C"
             if (!std::isfinite(scale) || scale < 0.25 || scale > 4.0)
                 throw std::invalid_argument("Render resolution scale must be between 0.25 and 4.0.");
             e->view->ChangeRenderingParams().RenderResolutionScale = static_cast<Standard_ShortReal>(scale);
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 
@@ -196,7 +208,7 @@ extern "C"
             if (!std::isfinite(dpi) || dpi < 36.0 || dpi > 600.0)
                 throw std::invalid_argument("Render resolution must be between 36 and 600 DPI.");
             e->view->ChangeRenderingParams().Resolution = static_cast<unsigned int>(std::lround(dpi));
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 
@@ -210,7 +222,7 @@ extern "C"
             e->view->ChangeRenderingParams().Method = method == OcctRendering_RayTracing
                 ? Graphic3d_RM_RAYTRACING
                 : Graphic3d_RM_RASTERIZATION;
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 
@@ -220,7 +232,7 @@ extern "C"
         return execute(e, [&]
         {
             e->view->ChangeRenderingParams().IsShadowEnabled = enabled != 0;
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 
@@ -233,7 +245,11 @@ extern "C"
     int occt_set_frustum_culling(OcctHandle h, int enabled)
     {
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { e->view->SetFrustumCulling(enabled != 0); e->view->Redraw(); });
+        return execute(e, [&]
+        {
+            e->view->SetFrustumCulling(enabled != 0);
+            e->requestRedraw();
+        });
     }
 
     int occt_set_face_boundaries_visible(OcctHandle h, int visible, int applyExisting)
@@ -251,7 +267,8 @@ extern "C"
                     e->context->Redisplay(pair.second.presentation, Standard_False, Standard_True);
                 }
             }
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
+
 }

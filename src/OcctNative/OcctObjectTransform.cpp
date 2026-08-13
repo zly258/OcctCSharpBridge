@@ -1,4 +1,5 @@
 ﻿#include "OcctInternal.hxx"
+#include "OcctViewerInteraction.h"
 
 using namespace OcctBridge;
 
@@ -13,6 +14,17 @@ namespace
             matrix[4], matrix[5], matrix[6], matrix[7],
             matrix[8], matrix[9], matrix[10], matrix[11]);
         return transform;
+    }
+
+    gp_Trsf transformFromValue(const OcctTransform3d& value)
+    {
+        const double matrix[12] =
+        {
+            value.m00, value.m01, value.m02, value.m03,
+            value.m10, value.m11, value.m12, value.m13,
+            value.m20, value.m21, value.m22, value.m23
+        };
+        return transformFromMatrix(matrix);
     }
 
     void writeMatrix(const gp_Trsf& transform, double* matrix)
@@ -88,6 +100,47 @@ extern "C"
             entry->presentation->UpdateTransformation();
             engine->context->RecomputeSelectionOnly(entry->presentation);
             engine->requestRedraw();
+        });
+    }
+
+    int occt_set_object_transforms(
+        OcctHandle handle,
+        const OcctObjectTransformUpdate* updates,
+        int count)
+    {
+        Engine* engine = engineOf(handle); if (!validateInitialized(engine)) return 0;
+        return execute(engine, [&]
+        {
+            if (count < 0) throw std::invalid_argument("Transformation update count must not be negative.");
+            if (count > 0 && updates == nullptr)
+                throw std::invalid_argument("Transformation update array is null.");
+
+            struct PreparedUpdate
+            {
+                ObjectEntry* entry;
+                gp_Trsf transformation;
+            };
+
+            std::vector<PreparedUpdate> prepared;
+            prepared.reserve(static_cast<std::size_t>(count));
+            bool containsShape = false;
+            for (int index = 0; index < count; ++index)
+            {
+                ObjectEntry* entry = engine->findObject(updates[index].objectId);
+                if (entry == nullptr || entry->presentation.IsNull())
+                    throw std::invalid_argument("Object ID does not exist.");
+                prepared.push_back({entry, transformFromValue(updates[index].transformation)});
+                containsShape = containsShape || entry->kind == OcctObject_Shape;
+            }
+
+            if (containsShape) engine->invalidatePristineStepDocument();
+            for (const PreparedUpdate& update : prepared)
+            {
+                update.entry->presentation->SetLocalTransformation(update.transformation);
+                update.entry->presentation->UpdateTransformation();
+                engine->context->RecomputeSelectionOnly(update.entry->presentation);
+            }
+            if (!prepared.empty()) engine->requestRedraw();
         });
     }
 }

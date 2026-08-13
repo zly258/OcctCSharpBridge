@@ -45,7 +45,7 @@ extern "C"
             e->context->HighlightStyle(Prs3d_TypeOfHighlight_Selected)->SetColor(value);
             e->context->HighlightStyle(Prs3d_TypeOfHighlight_LocalSelected)->SetColor(value);
             e->context->UpdateSelected(Standard_False);
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 
@@ -57,11 +57,13 @@ extern "C"
             const Quantity_Color value = color(r, g, b);
             e->context->HighlightStyle(Prs3d_TypeOfHighlight_Dynamic)->SetColor(value);
             e->context->HighlightStyle(Prs3d_TypeOfHighlight_LocalDynamic)->SetColor(value);
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 
-    int occt_set_scene_lighting_ex(OcctHandle h, const OcctSceneLightingSettings* settings)
+    int occt_set_scene_lighting_ex(
+        OcctHandle h,
+        const OcctSceneLightingSettings* settings)
     {
         Engine* e = engineOf(h); if (!validateInitialized(e) || settings == nullptr) return 0;
         return execute(e, [&]
@@ -76,7 +78,8 @@ extern "C"
             if (settings->ambientIntensity > 0.0)
             {
                 e->customAmbientLight = new V3d_AmbientLight(lightColor(settings->ambientColor));
-                e->customAmbientLight->SetIntensity(static_cast<Standard_ShortReal>(settings->ambientIntensity));
+                e->customAmbientLight->SetIntensity(
+                    static_cast<Standard_ShortReal>(settings->ambientIntensity));
                 e->viewer->AddLight(e->customAmbientLight);
                 e->viewer->SetLightOn(e->customAmbientLight);
             }
@@ -87,7 +90,8 @@ extern "C"
                     direction(settings->cameraLightDirection),
                     lightColor(settings->cameraLightColor),
                     Standard_True);
-                e->customDirectionalLight->SetIntensity(static_cast<Standard_ShortReal>(settings->cameraLightIntensity));
+                e->customDirectionalLight->SetIntensity(
+                    static_cast<Standard_ShortReal>(settings->cameraLightIntensity));
                 e->viewer->AddLight(e->customDirectionalLight);
                 e->viewer->SetLightOn(e->customDirectionalLight);
             }
@@ -98,7 +102,8 @@ extern "C"
                     direction(settings->sunLightDirection),
                     lightColor(settings->sunLightColor),
                     Standard_False);
-                e->customSunLight->SetIntensity(static_cast<Standard_ShortReal>(settings->sunLightIntensity));
+                e->customSunLight->SetIntensity(
+                    static_cast<Standard_ShortReal>(settings->sunLightIntensity));
                 e->viewer->AddLight(e->customSunLight);
                 e->viewer->SetLightOn(e->customSunLight);
             }
@@ -109,13 +114,14 @@ extern "C"
                     direction(settings->fillLightDirection),
                     lightColor(settings->fillLightColor),
                     Standard_False);
-                e->customFillLight->SetIntensity(static_cast<Standard_ShortReal>(settings->fillLightIntensity));
+                e->customFillLight->SetIntensity(
+                    static_cast<Standard_ShortReal>(settings->fillLightIntensity));
                 e->viewer->AddLight(e->customFillLight);
                 e->viewer->SetLightOn(e->customFillLight);
             }
 
             e->viewer->UpdateLights();
-            e->view->Redraw();
+            e->requestRedraw();
         });
     }
 }
