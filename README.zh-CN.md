@@ -19,6 +19,14 @@
 
 `bridge-contract.json` 是机器可读事实源。
 
+## CAD-Avalonia 运行预览
+
+| Windows x64 | Linux x64 |
+| --- | --- |
+| [![CAD-Avalonia Windows 中文界面](assets/previews/avalonia-win-demo-zh.png)](assets/previews/avalonia-win-demo-zh.png) | [![CAD-Avalonia Linux 中文界面](assets/previews/avalonia-linux-demo-zh.png)](assets/previews/avalonia-linux-demo-zh.png) |
+
+点击预览图可查看原始 PNG 大图。
+
 ## 跨平台 Demo
 
 `src/OcctDemo.Avalonia` 在 Windows 与 Linux 均保持 `net10.0`，平台差异封装在 `OcctNet.Avalonia` 内部：

@@ -19,6 +19,14 @@ The `avalonia` branch is the Windows x64 + Linux x64 cross-platform edition of O
 
 `bridge-contract.json` is the machine-readable source of truth.
 
+## CAD-Avalonia previews
+
+| Windows x64 | Linux x64 |
+| --- | --- |
+| [![CAD-Avalonia Windows English UI](assets/previews/avalonia-win-demo-en.png)](assets/previews/avalonia-win-demo-en.png) | [![CAD-Avalonia Linux English UI](assets/previews/avalonia-linux-demo-en.png)](assets/previews/avalonia-linux-demo-en.png) |
+
+Click a preview to open the original PNG.
+
 ## Cross-platform demo
 
 `src/OcctDemo.Avalonia` stays on `net10.0` for both platforms. Platform-specific native hosting is isolated inside `OcctNet.Avalonia`:
