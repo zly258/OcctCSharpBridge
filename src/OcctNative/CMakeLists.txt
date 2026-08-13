@@ -96,14 +96,14 @@ add_library(OcctNative SHARED
     OcctViewerInteraction.cpp
     OcctViewerInteractionExtensions.cpp
     OcctOverlay.cpp
-    OcctViewerAdvanced.cpp
+    OcctPresentation.cpp
     OcctDetection.cpp
     OcctManipulator.cpp
     OcctSelectionState.cpp
     OcctDepth.cpp
     OcctQueries.cpp
     OcctGeometry.cpp
-    OcctAdvancedGeometry.cpp
+    OcctPlanarGeometry.cpp
     OcctFeatures.cpp
     OcctAnnotations.cpp
     OcctPoints.cpp
@@ -150,7 +150,7 @@ add_library(OcctNative SHARED
     OcctViewerInteraction.h
     OcctViewerInteractionExtensions.h
     OcctOverlay.h
-    OcctViewerAdvanced.h
+    OcctPresentation.h
     OcctDetection.h
     OcctManipulator.h
     OcctModeling.h

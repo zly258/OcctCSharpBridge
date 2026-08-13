@@ -14,6 +14,7 @@
 #include <Prs3d_LineAspect.hxx>
 #include <Prs3d_PointAspect.hxx>
 #include <TCollection_ExtendedString.hxx>
+#include <TopoDS_Wire.hxx>
 
 using namespace OcctBridge;
 
@@ -57,7 +58,8 @@ namespace
         BRepBuilderAPI_MakePolygon builder;
         for (int index = 0; index < count; ++index) builder.Add(point(points[index]));
         if (!builder.IsDone()) throw std::runtime_error("Unable to create overlay polyline geometry.");
-        return builder.Wire();
+        const TopoDS_Wire wire = builder.Wire();
+        return wire;
     }
 
     ObjectEntry& requiredOverlay(Engine* engine, OcctObjectId id, int subtype)

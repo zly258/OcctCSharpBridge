@@ -2,7 +2,7 @@
 
 namespace OcctNet;
 
-internal static class ViewerAdvancedNativeMethods
+internal static class PresentationNativeMethods
 {
     private const string LibraryName = "OcctNative";
 

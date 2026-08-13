@@ -29,7 +29,7 @@
       "OcctViewerInteraction.h",
       "OcctViewerInteractionExtensions.h",
       "OcctOverlay.h",
-      "OcctViewerAdvanced.h",
+      "OcctPresentation.h",
       "OcctDetection.h",
       "OcctManipulator.h",
       "OcctModeling.h",
