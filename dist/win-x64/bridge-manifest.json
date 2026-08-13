@@ -9,31 +9,27 @@
   "sdkVersion": "10.0.302",
   "languageVersion": "14.0",
   "configuration": "Release",
-  "sourceCommit": "c7d1ad852e1f116c1248c3fe1c774aa3be5f01e7",
+  "sourceCommit": "7fa5759ccb26e09de20b9f45cdf12549f7154bf0",
   "files": [
     {
       "name": "OcctNative.dll",
-      "sha256": "0b1b4bb0e7e519825cc4b8753980b59ffe6880dfc59f2232fe836cfad720eb9e"
+      "sha256": "ce13a8b8f4971842231b3a7d79eff7547a8911b44164fcc31fb06f5c586b5856"
     },
     {
       "name": "OcctNet.dll",
-      "sha256": "9461053df58073010ac1638c189c6b4da4aa8ede6e3974bd6e2e462484e2bd1f"
+      "sha256": "fe29b293ea01d2b7fa3a5b4a134cbf11c2e4974fbe21a137bbaad1d22aac7c92"
     },
     {
       "name": "OcctNet.WinForms.dll",
-      "sha256": "a1fb256dd1cf36a5cefd342bd4fd5a75c392e7b3794f25dc20ba2929f144b0f4"
+      "sha256": "6279da2adb26324dfbcceeb39e1aae8403f6e8f1f7501fae1789e4cecde7e6aa"
     },
     {
       "name": "OcctNet.Wpf.dll",
-      "sha256": "53d95c9e4767d5e881a22f38f2f7efe31c930e6aef8b4f95d6baf832d6793aa5"
-    },
-    {
-      "name": "OcctNet.Avalonia.dll",
-      "sha256": "47e67f280cbbbb76b47ea0f382ac911ee485b517029926669469a5903e75c64c"
+      "sha256": "c1cd74079cf51345a076e607e57c70393a273bd61d008c787e31ec9a5bb5bcb4"
     },
     {
       "name": "bridge-contract.json",
-      "sha256": "6021fbb14cef9d188b216a3ad8f4ace8241dfba6ddbb18ef430ec8ebffcbfa02"
+      "sha256": "e879f243f3e82f413680550107469b40884dfa67d7381161b2beb03c0c753194"
     }
   ]
 }
