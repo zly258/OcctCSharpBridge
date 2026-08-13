@@ -16,9 +16,9 @@ Avalonia is intentionally not hosted on `main`. The dedicated [`avalonia`](https
 | --- | --- |
 | Bridge | **2.7.0** |
 | Native ABI | **4** |
-| Native exports / P/Invoke | **349 / 349** |
-| Public .NET types | **113** |
-| Viewer / Modeling API | **215 / 134** |
+| Native exports / P/Invoke | **419 / 419** |
+| Public .NET types | **139** |
+| Viewer / Modeling API | **285 / 134** |
 | OCCT | **7.9.0** |
 | .NET SDK | **10.0.302** |
 | Target Framework | **`net10.0-windows`** |
@@ -42,6 +42,15 @@ The authoritative Windows Binary SDK is the tracked `main/dist/win-x64` payload.
 - non-geometric STEP edits can round-trip through the pristine imported XDE document while geometry is unchanged;
 - first-class `OcctPoint` / `OcctPointMarker` backed by `AIS_Point`;
 - WPF uses a no-redraw native surface resize path and coalesces presentation at render priority instead of redrawing from `WM_PAINT`.
+
+## Windows demo previews
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-en.png" alt="WinForms demo" width="49%" />
+  <img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-en.png" alt="WPF demo" width="49%" />
+</p>
+
+The full WinForms/WPF demo sources are maintained on the [`demo`](https://github.com/zly258/OcctCSharpBridge/tree/demo) branch. Cross-platform Avalonia remains on the dedicated [`avalonia`](https://github.com/zly258/OcctCSharpBridge/tree/avalonia) branch.
 
 ## Architecture
 

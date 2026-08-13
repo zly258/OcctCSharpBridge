@@ -16,9 +16,9 @@ Avalonia 不再放在 `main`。独立的 [`avalonia`](https://github.com/zly258/
 | --- | --- |
 | Bridge | **2.7.0** |
 | Native ABI | **4** |
-| Native exports / P/Invoke | **349 / 349** |
-| Public .NET types | **113** |
-| Viewer / Modeling API | **215 / 134** |
+| Native exports / P/Invoke | **419 / 419** |
+| Public .NET types | **139** |
+| Viewer / Modeling API | **285 / 134** |
 | OCCT | **7.9.0** |
 | .NET SDK | **10.0.302** |
 | Target Framework | **`net10.0-windows`** |
@@ -42,6 +42,15 @@ Avalonia 不再放在 `main`。独立的 [`avalonia`](https://github.com/zly258/
 - 几何未改变时，名称、颜色、透明度、显隐等非几何编辑可继续通过原始 XDE 文档 round-trip；
 - 一等 `OcctPoint` / `OcctPointMarker`，Native 使用真正的 `AIS_Point`；
 - WPF Resize 使用“不触发 redraw 的 Native surface resize + Render 优先级合并刷新”，不再从 `WM_PAINT` 强制重绘。
+
+## Windows Demo 预览
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-zh.png" alt="WinForms Demo 中文界面" width="49%" />
+  <img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-zh.png" alt="WPF Demo 中文界面" width="49%" />
+</p>
+
+完整 WinForms/WPF Demo 源码位于 [`demo`](https://github.com/zly258/OcctCSharpBridge/tree/demo) 分支；跨平台 Avalonia 独立维护在 [`avalonia`](https://github.com/zly258/OcctCSharpBridge/tree/avalonia) 分支。
 
 ## 架构
 
