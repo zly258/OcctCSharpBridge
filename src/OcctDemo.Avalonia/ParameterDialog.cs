@@ -27,9 +27,7 @@ internal sealed class ParameterDialog : Window
         CanResize = false;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         ShowInTaskbar = false;
-        FontFamily = OperatingSystem.IsWindows()
-            ? new AvaloniaFontFamily("Microsoft YaHei UI")
-            : new AvaloniaFontFamily("Inter");
+        FontFamily = new AvaloniaFontFamily("Inter");
 
         var root = new DockPanel { Margin = new Thickness(16) };
         var buttons = new StackPanel

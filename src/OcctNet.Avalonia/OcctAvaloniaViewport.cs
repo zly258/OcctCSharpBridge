@@ -85,11 +85,34 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
     private const int VkShift = 0x10;
     private const int VkControl = 0x11;
 
+    private const long X11ButtonPressMask = 1L << 2;
+    private const long X11ButtonReleaseMask = 1L << 3;
+    private const long X11PointerMotionMask = 1L << 6;
+    private const long X11ExposureMask = 1L << 15;
+    private const long X11StructureNotifyMask = 1L << 17;
+    private const int X11ButtonPress = 4;
+    private const int X11ButtonRelease = 5;
+    private const int X11MotionNotify = 6;
+    private const int X11Expose = 12;
+    private const int X11ConfigureNotify = 22;
+    private const uint X11ShiftMask = 1U << 0;
+    private const uint X11ControlMask = 1U << 2;
+    private const uint X11Button1Mask = 1U << 8;
+    private const uint X11Button2Mask = 1U << 9;
+    private const uint X11Button3Mask = 1U << 10;
+    private const uint X11Button1 = 1;
+    private const uint X11Button2 = 2;
+    private const uint X11Button3 = 3;
+    private const uint X11Button4 = 4;
+    private const uint X11Button5 = 5;
+    private const int X11MaxEventsPerTick = 128;
+
     private readonly WndProcDelegate _windowProcedure;
     private OcctEngine? _engine;
     private IntPtr _nativeHandle;
     private IntPtr _previousWindowProcedure;
     private IntPtr _x11Display;
+    private DispatcherTimer? _x11InputTimer;
     private IPointer? _capturedPointer;
     private bool _enableDefaultInteraction = true;
     private double _zoomSensitivity = 1.0;
@@ -354,6 +377,8 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
             _engine = new OcctEngine();
             _engine.InitializeNativeSurface(OcctNativeSurfaceKind.X11Window, _nativeHandle, _x11Display);
             FinishEngineInitialization();
+            InstallX11Input(window);
+            StartX11InputPump();
             return new PlatformHandle(_nativeHandle, "XID");
         }
         catch
@@ -361,6 +386,168 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
             DisposeNativeHost(_nativeHandle);
             throw;
         }
+    }
+
+    private void InstallX11Input(nuint window)
+    {
+        if (_x11Display == IntPtr.Zero || window == 0) return;
+        var mask = X11ButtonPressMask
+            | X11ButtonReleaseMask
+            | X11PointerMotionMask
+            | X11ExposureMask
+            | X11StructureNotifyMask;
+        XSelectInput(_x11Display, window, (nint)mask);
+        XFlush(_x11Display);
+    }
+
+    private void StartX11InputPump()
+    {
+        if (!OperatingSystem.IsLinux() || _x11InputTimer is not null) return;
+        _x11InputTimer = new DispatcherTimer(DispatcherPriority.Input)
+        {
+            Interval = TimeSpan.FromMilliseconds(16)
+        };
+        _x11InputTimer.Tick += X11InputTimerTick;
+        _x11InputTimer.Start();
+    }
+
+    private void StopX11InputPump()
+    {
+        var timer = _x11InputTimer;
+        _x11InputTimer = null;
+        if (timer is null) return;
+        timer.Tick -= X11InputTimerTick;
+        timer.Stop();
+    }
+
+    private void X11InputTimerTick(object? sender, EventArgs e)
+    {
+        if (_x11Display == IntPtr.Zero || _nativeHandle == IntPtr.Zero) return;
+        try
+        {
+            X11MotionEvent? pendingMotion = null;
+            var processed = 0;
+            while (processed++ < X11MaxEventsPerTick && XPending(_x11Display) > 0)
+            {
+                XNextEvent(_x11Display, out var nativeEvent);
+                if (nativeEvent.Type == X11MotionNotify)
+                {
+                    pendingMotion = nativeEvent.Motion;
+                    continue;
+                }
+
+                if (pendingMotion is { } motion)
+                {
+                    HandleX11Motion(motion);
+                    pendingMotion = null;
+                }
+                ProcessX11Event(nativeEvent);
+            }
+
+            if (pendingMotion is { } finalMotion)
+                HandleX11Motion(finalMotion);
+        }
+        catch (Exception exception)
+        {
+            ReportError(exception);
+        }
+    }
+
+    private void ProcessX11Event(X11Event nativeEvent)
+    {
+        switch (nativeEvent.Type)
+        {
+            case X11ButtonPress:
+                HandleX11ButtonPress(nativeEvent.Button);
+                break;
+            case X11ButtonRelease:
+                HandleX11ButtonRelease(nativeEvent.Button);
+                break;
+            case X11MotionNotify:
+                HandleX11Motion(nativeEvent.Motion);
+                break;
+            case X11Expose:
+            case X11ConfigureNotify:
+                ScheduleNativeViewRefresh();
+                break;
+        }
+    }
+
+    private void HandleX11ButtonPress(X11ButtonEvent buttonEvent)
+    {
+        if (_engine?.IsInitialized != true || !EnableDefaultInteraction) return;
+        Focus();
+
+        if (buttonEvent.Button is X11Button4 or X11Button5)
+        {
+            var delta = buttonEvent.Button == X11Button4 ? 120 : -120;
+            var scaledDelta = OcctViewportInteractionPolicy.ScaleWheelDelta(delta, ZoomSensitivity);
+            TryInvoke(() => _engine.ZoomAtPoint(buttonEvent.X, buttonEvent.Y, scaledDelta));
+            return;
+        }
+
+        switch (buttonEvent.Button)
+        {
+            case X11Button1 when (buttonEvent.State & X11ShiftMask) == 0:
+                BeginSelection(buttonEvent.X, buttonEvent.Y);
+                _selectingRectangle = EnableRectangleSelection;
+                break;
+            case X11Button2:
+                CancelRectangleSelection(releaseCapture: false);
+                _lastMouseX = buttonEvent.X;
+                _lastMouseY = buttonEvent.Y;
+                _panning = true;
+                break;
+            case X11Button3:
+                CancelRectangleSelection(releaseCapture: false);
+                _lastMouseX = buttonEvent.X;
+                _lastMouseY = buttonEvent.Y;
+                _rotating = true;
+                TryInvoke(() => _engine.StartRotation(buttonEvent.X, buttonEvent.Y));
+                break;
+        }
+    }
+
+    private void HandleX11ButtonRelease(X11ButtonEvent buttonEvent)
+    {
+        if (!EnableDefaultInteraction) return;
+        switch (buttonEvent.Button)
+        {
+            case X11Button1:
+                CompleteSelection(
+                    buttonEvent.X,
+                    buttonEvent.Y,
+                    (buttonEvent.State & X11ControlMask) != 0);
+                break;
+            case X11Button2:
+                _panning = false;
+                break;
+            case X11Button3:
+                _rotating = false;
+                break;
+        }
+    }
+
+    private void HandleX11Motion(X11MotionEvent motionEvent)
+    {
+        if (_engine?.IsInitialized != true || !EnableDefaultInteraction)
+        {
+            _lastMouseX = motionEvent.X;
+            _lastMouseY = motionEvent.Y;
+            return;
+        }
+
+        if (_rotating && (motionEvent.State & X11Button3Mask) != 0)
+            TryInvoke(() => _engine.Rotation(motionEvent.X, motionEvent.Y));
+        else if (_panning && (motionEvent.State & X11Button2Mask) != 0)
+            TryInvoke(() => _engine.Pan(motionEvent.X - _lastMouseX, -(motionEvent.Y - _lastMouseY)));
+        else if (_leftSelectionGesture && _selectingRectangle && (motionEvent.State & X11Button1Mask) != 0)
+            UpdateSelectionFrame(motionEvent.X, motionEvent.Y);
+        else
+            UpdateHoverAndWorldPoint(motionEvent.X, motionEvent.Y);
+
+        _lastMouseX = motionEvent.X;
+        _lastMouseY = motionEvent.Y;
     }
 
     private void FinishEngineInitialization()
@@ -647,6 +834,7 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
 
     private void DisposeNativeHost(IntPtr handle)
     {
+        StopX11InputPump();
         CancelInteraction();
         var engine = _engine;
         _engine = null;
@@ -719,6 +907,54 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
         public int Y;
     }
 
+    [StructLayout(LayoutKind.Explicit, Size = 192)]
+    private struct X11Event
+    {
+        [FieldOffset(0)] public int Type;
+        [FieldOffset(0)] public X11ButtonEvent Button;
+        [FieldOffset(0)] public X11MotionEvent Motion;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct X11ButtonEvent
+    {
+        public int Type;
+        public nuint Serial;
+        public int SendEvent;
+        public IntPtr Display;
+        public nuint Window;
+        public nuint Root;
+        public nuint Subwindow;
+        public nuint Time;
+        public int X;
+        public int Y;
+        public int XRoot;
+        public int YRoot;
+        public uint State;
+        public uint Button;
+        public int SameScreen;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct X11MotionEvent
+    {
+        public int Type;
+        public nuint Serial;
+        public int SendEvent;
+        public IntPtr Display;
+        public nuint Window;
+        public nuint Root;
+        public nuint Subwindow;
+        public nuint Time;
+        public int X;
+        public int Y;
+        public int XRoot;
+        public int YRoot;
+        public uint State;
+        public byte IsHint;
+        public int SameScreen;
+    }
+
     [UnmanagedFunctionPointer(CallingConvention.Winapi)]
     private delegate IntPtr WndProcDelegate(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
 
@@ -755,6 +991,12 @@ public sealed class OcctAvaloniaViewport : NativeControlHost
     private static extern nuint XCreateSimpleWindow(IntPtr display, nuint parent, int x, int y, uint width, uint height, uint borderWidth, nuint border, nuint background);
     [DllImport("libX11.so.6")]
     private static extern int XMapWindow(IntPtr display, nuint window);
+    [DllImport("libX11.so.6")]
+    private static extern int XSelectInput(IntPtr display, nuint window, nint eventMask);
+    [DllImport("libX11.so.6")]
+    private static extern int XPending(IntPtr display);
+    [DllImport("libX11.so.6")]
+    private static extern int XNextEvent(IntPtr display, out X11Event nativeEvent);
     [DllImport("libX11.so.6")]
     private static extern int XDestroyWindow(IntPtr display, nuint window);
     [DllImport("libX11.so.6")]

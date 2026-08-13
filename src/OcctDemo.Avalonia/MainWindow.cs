@@ -28,9 +28,7 @@ namespace OcctDemo.Avalonia;
 
 public sealed partial class MainWindow : Window
 {
-    private static readonly AvaloniaFontFamily UiFontFamily = OperatingSystem.IsWindows()
-        ? new AvaloniaFontFamily("Microsoft YaHei UI")
-        : new AvaloniaFontFamily("Inter");
+    private static readonly AvaloniaFontFamily UiFontFamily = new("Inter");
 
     private readonly Dictionary<long, TreeViewItem> _objectNodes = new();
     private readonly OcctAvaloniaViewport _viewport;
