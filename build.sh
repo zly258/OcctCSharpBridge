@@ -20,14 +20,17 @@ contract_string() { local key="$1"; sed -nE "s/^[[:space:]]*\"${key}\"[[:space:]
 [[ -f "${CONTRACT_FILE}" ]] || fail "Bridge contract was not found: ${CONTRACT_FILE}"
 BRIDGE_VERSION="$(contract_string bridgeVersion)"
 DOTNET_SDK_VERSION="$(contract_string sdkVersion)"
-[[ -n "${BRIDGE_VERSION}" && -n "${DOTNET_SDK_VERSION}" ]] || fail "Unable to read Bridge version or .NET SDK version from bridge-contract.json."
+DOTNET_SDK_MAJOR="${DOTNET_SDK_VERSION%%.*}"
+[[ -n "${BRIDGE_VERSION}" && -n "${DOTNET_SDK_VERSION}" && -n "${DOTNET_SDK_MAJOR}" ]] || fail "Unable to read Bridge version or .NET SDK version from bridge-contract.json."
 
 validate_base() {
     [[ "$(uname -s)" == "Linux" ]] || fail "build.sh supports Linux only; use build.ps1 on Windows."
     case "$(uname -m)" in x86_64|amd64) ;; *) fail "The Avalonia branch currently supports Linux x64 only; detected $(uname -m)." ;; esac
     require_command dotnet
-    local sdk_version; sdk_version="$(dotnet --version)"
-    [[ "${sdk_version}" == "${DOTNET_SDK_VERSION}" ]] || fail "OcctCSharpBridge requires .NET SDK ${DOTNET_SDK_VERSION}; detected ${sdk_version}."
+    local sdk_version sdk_major
+    sdk_version="$(dotnet --version)"
+    sdk_major="${sdk_version%%.*}"
+    [[ "${sdk_major}" == "${DOTNET_SDK_MAJOR}" ]] || fail "OcctCSharpBridge requires a stable .NET SDK major ${DOTNET_SDK_MAJOR}; detected ${sdk_version}."
     grep -q '"platform": "cross-platform-x64"' "${CONTRACT_FILE}" || fail "bridge-contract.json is not the Avalonia cross-platform contract."
     grep -q '"windows-x64"' "${CONTRACT_FILE}" || fail "windows-x64 is missing from the contract."
     grep -q '"linux-x64"' "${CONTRACT_FILE}" || fail "linux-x64 is missing from the contract."
@@ -44,13 +47,14 @@ validate_native() {
 
 validate() {
     validate_native
+    local sdk_version; sdk_version="$(dotnet --version)"
     log "Target:        ${TARGET}"
     log "Configuration: ${CONFIGURATION}"
     log "Bridge:        ${BRIDGE_VERSION}"
     log "OCCT root:     ${OCCT_ROOT}"
     log "OCCT include:  ${OCCT_INCLUDE_DIR}"
     log "OCCT lib:      ${OCCT_LIB_DIR}"
-    log "Dotnet SDK:    ${DOTNET_SDK_VERSION}"
+    log "Dotnet SDK:    ${sdk_version} (required major ${DOTNET_SDK_MAJOR})"
 }
 
 native() {

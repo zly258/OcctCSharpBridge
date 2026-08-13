@@ -19,6 +19,12 @@ function Get-ProjectProperty {
     return [string]$node.InnerText
 }
 
+function Convert-ToSdkVersion {
+    param([Parameter(Mandatory = $true)][string]$Value, [Parameter(Mandatory = $true)][string]$Source)
+    try { return [version]$Value }
+    catch { throw "$Source contains an invalid .NET SDK version: '$Value'." }
+}
+
 $contractPath = Join-Path $RepositoryRoot "bridge-contract.json"
 try { $contract = Get-Content $contractPath -Raw -Encoding UTF8 | ConvertFrom-Json }
 catch { throw "bridge-contract.json is not valid JSON: $($_.Exception.Message)" }
@@ -61,6 +67,7 @@ foreach ($entry in ([ordered]@{
 if (($expectedViewerCount + $expectedModelingCount) -ne $expectedNativeCount) { throw "Viewer + Modeling API counts must equal nativeExports." }
 if ($expectedNativeCount -ne $expectedManagedCount) { throw "Native export and managed P/Invoke counts must stay equal." }
 if ($expectedTargetFramework -ne "net10.0") { throw "Avalonia Core and UI host must target net10.0." }
+$contractSdk = Convert-ToSdkVersion $expectedSdkVersion "bridge-contract.json"
 
 $nativeEngine = Read-Text "src/OcctNative/OcctEngine.cpp"
 if (-not $nativeEngine.Contains("return `"$expectedVersion`";")) { throw "Native bridge version differs from bridge-contract.json." }
@@ -80,14 +87,21 @@ foreach ($relativePath in $projectFiles) {
     [xml]$project = Read-Text $relativePath
     $targetFramework = Get-ProjectProperty $project "TargetFramework"
     $platformTarget = Get-ProjectProperty $project "PlatformTarget"
-    if ($targetFramework -ne $expectedTargetFramework) {
-        throw "$relativePath target framework is '$targetFramework'; expected '$expectedTargetFramework'."
-    }
+    if ($targetFramework -ne $expectedTargetFramework) { throw "$relativePath target framework is '$targetFramework'; expected '$expectedTargetFramework'." }
     if ($platformTarget -ne "x64") { throw "$relativePath PlatformTarget is '$platformTarget'; expected 'x64'." }
 }
 
-$globalJson = Get-Content (Join-Path $RepositoryRoot "global.json") -Raw -Encoding UTF8 | ConvertFrom-Json
-if ([string]$globalJson.sdk.version -ne $expectedSdkVersion) { throw "global.json SDK differs from bridge-contract.json." }
+try { $globalJson = Get-Content (Join-Path $RepositoryRoot "global.json") -Raw -Encoding UTF8 | ConvertFrom-Json }
+catch { throw "global.json is not valid JSON: $($_.Exception.Message)" }
+$globalSdkText = [string]$globalJson.sdk.version
+$globalSdk = Convert-ToSdkVersion $globalSdkText "global.json"
+if ($globalSdk.Major -ne $contractSdk.Major) {
+    throw "global.json must select .NET SDK major $($contractSdk.Major); found $globalSdkText."
+}
+if ([string]$globalJson.sdk.rollForward -ne "latestMinor") {
+    throw "global.json must use rollForward 'latestMinor' so any stable .NET $($contractSdk.Major).x SDK can be used without rolling to the next major."
+}
+if ([bool]$globalJson.sdk.allowPrerelease) { throw "global.json must not allow prerelease SDKs." }
 if ([string]$globalJson.test.runner -ne "Microsoft.Testing.Platform") { throw "global.json must select Microsoft.Testing.Platform." }
 
 [xml]$directoryProps = Read-Text "Directory.Build.props"
@@ -104,6 +118,6 @@ foreach ($token in @(
     if (-not $nativeCmake.Contains($token)) { throw "Native CMake version/platform contract is missing: $token" }
 }
 
-Write-Host ("[version] Avalonia Bridge {0}, ABI {1}, OCCT {2}, SDK {3}, target {4}, platforms windows-x64/linux-x64, API {5}/{6}, public types {7}, viewer/modeling {8}/{9}." -f
-    $expectedVersion, $expectedAbiVersion, $expectedOcctVersion, $expectedSdkVersion, $expectedTargetFramework,
+Write-Host ("[version] Avalonia Bridge {0}, ABI {1}, OCCT {2}, SDK major {3} (reference {4}), target {5}, platforms windows-x64/linux-x64, API {6}/{7}, public types {8}, viewer/modeling {9}/{10}." -f
+    $expectedVersion, $expectedAbiVersion, $expectedOcctVersion, $contractSdk.Major, $expectedSdkVersion, $expectedTargetFramework,
     $expectedNativeCount, $expectedManagedCount, $expectedPublicTypeCount, $expectedViewerCount, $expectedModelingCount) -ForegroundColor Green
