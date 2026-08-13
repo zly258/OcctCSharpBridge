@@ -10,6 +10,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
         bridge-contract.json = bridge-contract.json
         build.ps1 = build.ps1
         build.sh = build.sh
+        run.ps1 = run.ps1
         Directory.Build.props = Directory.Build.props
         global.json = global.json
         LICENSE = LICENSE
@@ -32,9 +33,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentat
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tools", "Tools", "{E3C3E281-D16F-44C3-A694-EC620E3BB104}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Demos", "Demos", "{E3C3E281-D16F-44C3-A694-EC620E3BB105}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet", "src\OcctNet\OcctNet.csproj", "{217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.Avalonia", "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj", "{3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctDemo.Common", "src\OcctDemo.Common\OcctDemo.Common.csproj", "{5B7C7B2C-89B1-4E6F-B18E-4AF13140B6A1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctDemo.Avalonia", "src\OcctDemo.Avalonia\OcctDemo.Avalonia.csproj", "{933B31E8-5C16-4D4E-9DA2-A9D1CA5C3AA1}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.ManagedTests", "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj", "{D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}"
 EndProject
@@ -58,6 +65,14 @@ Global
         {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}.Debug|x64.Build.0 = Debug|x64
         {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}.Release|x64.ActiveCfg = Release|x64
         {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C}.Release|x64.Build.0 = Release|x64
+        {5B7C7B2C-89B1-4E6F-B18E-4AF13140B6A1}.Debug|x64.ActiveCfg = Debug|x64
+        {5B7C7B2C-89B1-4E6F-B18E-4AF13140B6A1}.Debug|x64.Build.0 = Debug|x64
+        {5B7C7B2C-89B1-4E6F-B18E-4AF13140B6A1}.Release|x64.ActiveCfg = Release|x64
+        {5B7C7B2C-89B1-4E6F-B18E-4AF13140B6A1}.Release|x64.Build.0 = Release|x64
+        {933B31E8-5C16-4D4E-9DA2-A9D1CA5C3AA1}.Debug|x64.ActiveCfg = Debug|x64
+        {933B31E8-5C16-4D4E-9DA2-A9D1CA5C3AA1}.Debug|x64.Build.0 = Debug|x64
+        {933B31E8-5C16-4D4E-9DA2-A9D1CA5C3AA1}.Release|x64.ActiveCfg = Release|x64
+        {933B31E8-5C16-4D4E-9DA2-A9D1CA5C3AA1}.Release|x64.Build.0 = Release|x64
         {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}.Debug|x64.ActiveCfg = Debug|x64
         {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}.Debug|x64.Build.0 = Debug|x64
         {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}.Release|x64.ActiveCfg = Release|x64
@@ -78,6 +93,8 @@ Global
     GlobalSection(NestedProjects) = preSolution
         {217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3} = {E3C3E281-D16F-44C3-A694-EC620E3BB101}
         {3F67E1D2-2973-4D1E-9379-A2BC2A7E2B0C} = {E3C3E281-D16F-44C3-A694-EC620E3BB101}
+        {5B7C7B2C-89B1-4E6F-B18E-4AF13140B6A1} = {E3C3E281-D16F-44C3-A694-EC620E3BB105}
+        {933B31E8-5C16-4D4E-9DA2-A9D1CA5C3AA1} = {E3C3E281-D16F-44C3-A694-EC620E3BB105}
         {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095} = {E3C3E281-D16F-44C3-A694-EC620E3BB102}
         {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E} = {E3C3E281-D16F-44C3-A694-EC620E3BB102}
         {A17B91D5-76EE-4B10-AF22-5F2C8E69C901} = {E3C3E281-D16F-44C3-A694-EC620E3BB102}

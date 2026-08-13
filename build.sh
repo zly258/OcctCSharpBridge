@@ -2,17 +2,36 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TARGET="${1:-all}"
-CONFIGURATION="${2:-Release}"
+log() { printf '[avalonia-linux] %s\n' "$*"; }
+fail() { printf '[avalonia-linux] ERROR: %s\n' "$*" >&2; exit 1; }
+
+ARG1="${1:-}"
+ARG2="${2:-}"
+case "${ARG1}" in
+    "") TARGET="avalonia"; CONFIGURATION="Release" ;;
+    Debug|Release|RelWithDebInfo)
+        TARGET="avalonia"
+        CONFIGURATION="${ARG1}"
+        [[ -z "${ARG2}" ]] || fail "Unexpected second argument: ${ARG2}"
+        ;;
+    validate|native|managed|test|smoke|avalonia-smoke|avalonia|demo|docs|clean|all)
+        TARGET="${ARG1}"
+        CONFIGURATION="${ARG2:-Release}"
+        ;;
+    *) fail "Unknown argument '${ARG1}'. Use Debug/Release/RelWithDebInfo, or an explicit maintenance target." ;;
+esac
+case "${CONFIGURATION}" in Debug|Release|RelWithDebInfo) ;; *) fail "Unknown configuration '${CONFIGURATION}'." ;; esac
+
 OCCT_ROOT="${OCCT_ROOT:-/usr/local}"
 OCCT_INCLUDE_DIR="${OCCT_INCLUDE_DIR:-${OCCT_ROOT}/include/opencascade}"
 OCCT_LIB_DIR="${OCCT_LIB_DIR:-${OCCT_ROOT}/lib}"
 BUILD_DIR="${ROOT_DIR}/build/native"
 NATIVE_BIN_DIR="${BUILD_DIR}/bin/${CONFIGURATION}"
 CONTRACT_FILE="${ROOT_DIR}/bridge-contract.json"
+DEMO_TFM="net10.0"
+DEMO_PROJECT="${ROOT_DIR}/src/OcctDemo.Avalonia/OcctDemo.Avalonia.csproj"
+DEMO_OUTPUT="${ROOT_DIR}/src/OcctDemo.Avalonia/bin/x64/${CONFIGURATION}/${DEMO_TFM}"
 
-log() { printf '[avalonia-linux] %s\n' "$*"; }
-fail() { printf '[avalonia-linux] ERROR: %s\n' "$*" >&2; exit 1; }
 require_command() { command -v "$1" >/dev/null 2>&1 || fail "Required command was not found: $1"; }
 find_occt_library() { local name="$1"; compgen -G "${OCCT_LIB_DIR}/lib${name}.so*" | head -n 1 || true; }
 contract_string() { local key="$1"; sed -nE "s/^[[:space:]]*\"${key}\"[[:space:]]*:[[:space:]]*\"([^\"]+)\".*/\\1/p" "${CONTRACT_FILE}" | head -n 1; }
@@ -74,6 +93,18 @@ managed() {
     dotnet build "${ROOT_DIR}/src/OcctNet.Avalonia/OcctNet.Avalonia.csproj" -c "${CONFIGURATION}" -p:Platform=x64 -p:Version="${BRIDGE_VERSION}" --nologo
 }
 
+build_demo() {
+    validate_base
+    [[ -f "${NATIVE_BIN_DIR}/libOcctNative.so" ]] || fail "Native bridge is missing. Run ./build.sh native ${CONFIGURATION} first."
+    dotnet build "${ROOT_DIR}/src/OcctDemo.Common/OcctDemo.Common.csproj" -c "${CONFIGURATION}" -p:Platform=x64 -p:Version="${BRIDGE_VERSION}" --nologo
+    dotnet build "${DEMO_PROJECT}" -c "${CONFIGURATION}" -p:Platform=x64 -p:Version="${BRIDGE_VERSION}" --nologo
+    [[ -d "${DEMO_OUTPUT}" ]] || fail "Demo output directory was not produced: ${DEMO_OUTPUT}"
+    cp -f "${NATIVE_BIN_DIR}/libOcctNative.so" "${DEMO_OUTPUT}/libOcctNative.so"
+    [[ -f "${DEMO_OUTPUT}/CAD-Avalonia.dll" ]] || fail "CAD-Avalonia.dll was not produced in ${DEMO_OUTPUT}"
+    [[ -f "${DEMO_OUTPUT}/libOcctNative.so" ]] || fail "libOcctNative.so was not deployed beside CAD-Avalonia."
+    log "Demo: ${DEMO_OUTPUT}"
+}
+
 managed_tests() {
     validate_base
     dotnet test "${ROOT_DIR}/tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj" -c "${CONFIGURATION}" -p:Platform=x64 -p:Version="${BRIDGE_VERSION}" --nologo
@@ -117,9 +148,15 @@ avalonia_smoke() {
     dotnet run --project "${ROOT_DIR}/tests/OcctNet.AvaloniaSmoke/OcctNet.AvaloniaSmoke.csproj" -c "${CONFIGURATION}" -p:Platform=x64 -p:Version="${BRIDGE_VERSION}" --no-build
 }
 
+avalonia_demo() {
+    native
+    managed
+    build_demo
+}
+
 clean() {
     rm -rf "${ROOT_DIR}/build" "${ROOT_DIR}/artifacts"
-    for path in "src/OcctNet" "src/OcctNet.Avalonia" "tests/OcctNet.ManagedTests" "tests/OcctNet.Smoke" "tests/OcctNet.AvaloniaSmoke"; do
+    for path in "src/OcctNet" "src/OcctNet.Avalonia" "src/OcctDemo.Common" "src/OcctDemo.Avalonia" "tests/OcctNet.ManagedTests" "tests/OcctNet.Smoke" "tests/OcctNet.AvaloniaSmoke"; do
         rm -rf "${ROOT_DIR}/${path}/bin" "${ROOT_DIR}/${path}/obj"
     done
     rm -rf "${ROOT_DIR}/tools/OcctApiDocsGenerator/bin" "${ROOT_DIR}/tools/OcctApiDocsGenerator/obj"
@@ -132,7 +169,8 @@ all() {
     build_headless_smoke
     configure_runtime_environment
     dotnet run --project "${ROOT_DIR}/tests/OcctNet.Smoke/OcctNet.Smoke.csproj" -c "${CONFIGURATION}" -p:Platform=x64 -p:Version="${BRIDGE_VERSION}" --no-build
-    log "Linux Native + Managed + ManagedTests + headless Smoke passed. Run avalonia-smoke in an X11/XWayland session to validate Viewer hosting."
+    build_demo
+    log "Linux Native + Managed + ManagedTests + headless Smoke + CAD-Avalonia build passed. Use ./run.sh ${CONFIGURATION} in X11/XWayland to launch the demo."
 }
 
 case "${TARGET}" in
@@ -142,8 +180,9 @@ case "${TARGET}" in
     test) managed_tests ;;
     smoke) smoke ;;
     avalonia-smoke) avalonia_smoke ;;
+    avalonia|demo) avalonia_demo ;;
     docs) docs ;;
     clean) clean ;;
     all) all ;;
-    *) fail "Unknown target '${TARGET}'. Supported: validate, native, managed, test, smoke, avalonia-smoke, docs, clean, all." ;;
+    *) fail "Unknown target '${TARGET}'. Supported maintenance targets: validate, native, managed, test, smoke, avalonia-smoke, avalonia, demo, docs, clean, all." ;;
 esac

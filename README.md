@@ -1,127 +1,72 @@
 # OcctCSharpBridge · Avalonia
 
-[简体中文](README.zh-CN.md) · [Main branch](https://github.com/zly258/OcctCSharpBridge/tree/main) · [Windows demos](https://github.com/zly258/OcctCSharpBridge/tree/demo) · [Website](https://github.com/zly258/OcctCSharpBridge/tree/website)
+The `avalonia` branch is the Windows x64 + Linux x64 Avalonia source edition of OcctCSharpBridge. It contains the reusable Core, Native bridge and Avalonia viewport host, plus an aligned CAD-Avalonia demo that shares `OcctDemo.Common` modeling scenarios with the WinForms/WPF demo baseline.
 
-The `avalonia` branch is the standalone cross-platform source edition of OcctCSharpBridge for **Windows x64 + Linux x64**. It contains only the reusable Core, Native bridge and Avalonia viewport host:
+## Contract
 
-```text
-OcctNet.Avalonia
-       │
-       ▼
-    OcctNet
-       │
-       ▼
- stable C ABI
-       │
-       ▼
-  OcctNative
-   /      \
-Windows   Linux
-WNT_Window Xw_Window
-```
+- Bridge: 2.7.0
+- Native ABI: 4
+- Native exports / P/Invoke: 420 / 420
+- Public .NET types: 135
+- Viewer / Modeling API: 286 / 134
+- OCCT: 7.9.0
+- .NET SDK: 10.0.302
+- Target Framework: `net10.0`
+- Avalonia: 12.1.0
+- Platforms: Windows x64 + Linux x64
 
-There is no sync flow, tracked `dist`, branch-local binary publication, WinForms or WPF dependency.
+`bridge-contract.json` is the machine-readable Bridge source of truth.
 
-## Source contract
+## Cross-platform demo
 
-| Item | Avalonia branch |
-| --- | --- |
-| Bridge | **2.7.0** |
-| Native ABI | **4** |
-| Native exports / P/Invoke | **350 / 350** |
-| Public .NET types | **109** |
-| Viewer / Modeling API | **216 / 134** |
-| OCCT | **7.9.0** |
-| .NET SDK | **10.0.302** |
-| Target Framework | **`net10.0`** |
-| Avalonia | **12.1.0** |
-| Platforms | **Windows x64 + Linux x64** |
+`src/OcctDemo.Avalonia` is a single `net10.0` desktop project for Windows and Linux. It does not use `System.Windows.Forms`, a Windows-only manifest, `user32.dll`, or `System.Media.SystemSounds`.
 
-`bridge-contract.json` is the machine-readable source of truth.
+Desktop integration is Avalonia-native:
 
-## Platform model
+- file open/import/save/export: `Window.StorageProvider`
+- messages and confirmations: modal Avalonia `Window.ShowDialog<T>` dialogs
+- color selection: `Avalonia.Controls.ColorPicker`
+- runtime bridge: `OcctNative.dll` on Windows, `libOcctNative.so` on Linux
 
-Applications use the same public control on both systems:
-
-```csharp
-var viewport = new OcctAvaloniaViewport();
-```
-
-Internally:
-
-```text
-Windows x64
-Avalonia NativeControlHost → HWND → WNT_Window → OCCT Viewer
-
-Linux x64
-Avalonia NativeControlHost → XID → Xw_Window → OCCT Viewer
-```
-
-The current Linux Viewer backend supports X11/XWayland. Native Wayland hosting is not claimed yet.
+The Linux viewer backend currently uses X11/XWayland through OCCT `Xw_Window`. Native Wayland hosting is not claimed.
 
 ## Windows
 
-Default OCCT SDK:
-
-```text
-D:\tools\occt-vc144-64
-```
-
-Full non-GUI validation:
+Default OCCT SDK: `D:\tools\occt-vc144-64`
 
 ```powershell
 .\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
+.\build.ps1 avalonia Release -OcctRoot "D:\tools\occt-vc144-64"
+.\run.ps1 avalonia Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-This runs Native + Managed + ManagedTests + headless Smoke. The complete Avalonia Viewer host can be validated separately:
-
-```powershell
-.\build.ps1 avalonia-smoke Release -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-Other useful targets are `validate`, `native`, `managed`, `test`, `smoke`, `docs` and `clean`.
+`demo` is an alias for the `avalonia` build target.
 
 ## Linux
 
-Default OCCT layout:
-
-```text
-/usr/local/include/opencascade
-/usr/local/lib
-```
-
-Full non-GUI validation:
+Default OCCT layout uses `/usr/local/include/opencascade` and `/usr/local/lib`.
 
 ```bash
 ./build.sh all Release
+./build.sh avalonia Release
+./run.sh avalonia Release
 ```
 
-The Linux Viewer smoke requires an X11/XWayland desktop session:
-
-```bash
-./build.sh avalonia-smoke Release
-```
-
-Other useful targets are `validate`, `native`, `managed`, `test`, `smoke`, `docs` and `clean`.
+`run.sh` requires an X11/XWayland desktop session with `DISPLAY` set. For a non-default OCCT installation, configure `OCCT_ROOT`, `OCCT_INCLUDE_DIR`, and/or `OCCT_LIB_DIR`.
 
 ## Runtime
 
-`OcctRuntime` resolves the native bridge by platform:
+The launch scripts configure the platform runtime environment:
 
-```text
-Windows: OcctNative.dll
-Linux:   libOcctNative.so
-```
-
-Non-default deployments can configure `OCCT_ROOT`, `OCCT_BRIDGE_NATIVE_DIR` and the platform dynamic-loader environment.
+- Windows: `OCCT_ROOT`, `CASROOT`, `OCCT_BRIDGE_NATIVE_DIR`, `PATH`
+- Linux: `OCCT_ROOT`, `CASROOT`, `OCCT_BRIDGE_NATIVE_DIR`, `LD_LIBRARY_PATH`
 
 ## Branch responsibilities
 
-- `main` — Windows Bridge and Windows distribution work.
-- `demo` — Windows demo applications.
-- `avalonia` — source-only cross-platform `OcctNet + OcctNet.Avalonia` for Windows/Linux.
-- `website` — public project website.
+- `main`: Windows Bridge and Windows distribution work.
+- `demo`: WinForms/WPF Windows demos consuming the published Windows SDK.
+- `avalonia`: cross-platform Core/Native/Avalonia source and the Windows/Linux CAD-Avalonia demo.
 
 ## License
 
-OcctCSharpBridge is licensed under **GNU LGPL 2.1 + OcctCSharpBridge Exception 1.0**. Open CASCADE Technology and other third-party components keep their own licenses. See [LICENSE](LICENSE), [OcctCSharpBridge_LGPL_EXCEPTION.txt](OcctCSharpBridge_LGPL_EXCEPTION.txt), [COMMERCIAL.md](COMMERCIAL.md), and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+OcctCSharpBridge uses GNU LGPL 2.1 with the OcctCSharpBridge Exception 1.0. Open CASCADE Technology and other third-party components retain their own licenses.

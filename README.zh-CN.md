@@ -1,127 +1,72 @@
 # OcctCSharpBridge · Avalonia
 
-[English](README.md) · [main 分支](https://github.com/zly258/OcctCSharpBridge/tree/main) · [Windows Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo) · [Website](https://github.com/zly258/OcctCSharpBridge/tree/website)
+`avalonia` 分支是 OcctCSharpBridge 面向 Windows x64 + Linux x64 的 Avalonia 跨平台源码版本。该分支包含可复用的 Core、Native Bridge、Avalonia Viewport Host，以及与 WinForms/WPF Demo 共用 `OcctDemo.Common` 建模场景的 CAD-Avalonia Demo。
 
-`avalonia` 是 OcctCSharpBridge 的**独立跨平台源码分支**，同时面向 **Windows x64 + Linux x64**。该分支只保留可复用 Core、Native Bridge 与 Avalonia Viewport Host：
+## 契约
 
-```text
-OcctNet.Avalonia
-       │
-       ▼
-    OcctNet
-       │
-       ▼
- stable C ABI
-       │
-       ▼
-  OcctNative
-   /      \
-Windows   Linux
-WNT_Window Xw_Window
-```
+- Bridge：2.7.0
+- Native ABI：4
+- Native exports / P/Invoke：420 / 420
+- Public .NET types：135
+- Viewer / Modeling API：286 / 134
+- OCCT：7.9.0
+- .NET SDK：10.0.302
+- Target Framework：`net10.0`
+- Avalonia：12.1.0
+- 平台：Windows x64 + Linux x64
 
-该分支没有 sync、没有跟踪 `dist`、没有分支内 Binary SDK 发布流程，也不依赖 WinForms/WPF。
+`bridge-contract.json` 是 Bridge 的机器可读事实源。
 
-## 源码契约
+## 跨平台 Demo
 
-| 项目 | avalonia 分支 |
-| --- | --- |
-| Bridge | **2.7.0** |
-| Native ABI | **4** |
-| Native exports / P/Invoke | **350 / 350** |
-| Public .NET types | **109** |
-| Viewer / Modeling API | **216 / 134** |
-| OCCT | **7.9.0** |
-| .NET SDK | **10.0.302** |
-| Target Framework | **`net10.0`** |
-| Avalonia | **12.1.0** |
-| 平台 | **Windows x64 + Linux x64** |
+`src/OcctDemo.Avalonia` 现在是同一个 `net10.0` 桌面项目，可在 Windows 和 Linux 构建。Demo 不再依赖 `System.Windows.Forms`、Windows-only manifest、`user32.dll` 或 `System.Media.SystemSounds`。
 
-`bridge-contract.json` 是机器可读的源码事实源。
+桌面交互全部使用 Avalonia 原生能力：
 
-## 平台模型
+- 打开、导入、保存、导出：`Window.StorageProvider`
+- 消息和确认：Avalonia `Window.ShowDialog<T>` 模态对话框
+- 颜色选择：`Avalonia.Controls.ColorPicker`
+- Native Bridge：Windows 使用 `OcctNative.dll`，Linux 使用 `libOcctNative.so`
 
-Windows 和 Linux 都使用同一个公开控件：
-
-```csharp
-var viewport = new OcctAvaloniaViewport();
-```
-
-底层内部实现：
-
-```text
-Windows x64
-Avalonia NativeControlHost → HWND → WNT_Window → OCCT Viewer
-
-Linux x64
-Avalonia NativeControlHost → XID → Xw_Window → OCCT Viewer
-```
-
-Linux 当前 Viewer Backend 支持 X11/XWayland；暂不宣称 Native Wayland Viewer 已完成。
+Linux Viewer 当前通过 OCCT `Xw_Window` 支持 X11/XWayland；暂不宣称 Native Wayland Viewer 已完成。
 
 ## Windows
 
-默认 OCCT SDK：
-
-```text
-D:\tools\occt-vc144-64
-```
-
-完整非 GUI 验证：
+默认 OCCT SDK：`D:\tools\occt-vc144-64`
 
 ```powershell
 .\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
+.\build.ps1 avalonia Release -OcctRoot "D:\tools\occt-vc144-64"
+.\run.ps1 avalonia Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-`all` 统一执行 Native + Managed + ManagedTests + Headless Smoke。完整 Avalonia Viewer Host 单独验证：
-
-```powershell
-.\build.ps1 avalonia-smoke Release -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-其它保留 Target：`validate`、`native`、`managed`、`test`、`smoke`、`docs`、`clean`。
+`demo` 保留为 `avalonia` 构建目标的别名。
 
 ## Linux
 
-默认 OCCT 路径：
-
-```text
-/usr/local/include/opencascade
-/usr/local/lib
-```
-
-完整非 GUI 验证：
+默认 OCCT 路径为 `/usr/local/include/opencascade` 和 `/usr/local/lib`。
 
 ```bash
 ./build.sh all Release
+./build.sh avalonia Release
+./run.sh avalonia Release
 ```
 
-Linux Viewer Smoke 需要 X11/XWayland 桌面会话：
-
-```bash
-./build.sh avalonia-smoke Release
-```
-
-其它保留 Target：`validate`、`native`、`managed`、`test`、`smoke`、`docs`、`clean`。
+`run.sh` 需要 X11/XWayland 桌面会话，并要求已设置 `DISPLAY`。非默认 OCCT 安装可配置 `OCCT_ROOT`、`OCCT_INCLUDE_DIR` 和/或 `OCCT_LIB_DIR`。
 
 ## Runtime
 
-`OcctRuntime` 按操作系统解析 Native Bridge：
+启动脚本按平台配置运行环境：
 
-```text
-Windows: OcctNative.dll
-Linux:   libOcctNative.so
-```
-
-非默认部署可以配置 `OCCT_ROOT`、`OCCT_BRIDGE_NATIVE_DIR` 与对应平台的 Dynamic Loader 环境。
+- Windows：`OCCT_ROOT`、`CASROOT`、`OCCT_BRIDGE_NATIVE_DIR`、`PATH`
+- Linux：`OCCT_ROOT`、`CASROOT`、`OCCT_BRIDGE_NATIVE_DIR`、`LD_LIBRARY_PATH`
 
 ## 分支职责
 
-- `main`：Windows Bridge 与 Windows 发布工作。
-- `demo`：Windows Demo 应用。
-- `avalonia`：源码型跨平台 `OcctNet + OcctNet.Avalonia`，面向 Windows/Linux。
-- `website`：项目公开官网。
+- `main`：Windows Bridge 与 Windows 发布。
+- `demo`：消费 Windows Binary SDK 的 WinForms/WPF Demo。
+- `avalonia`：跨平台 Core/Native/Avalonia 源码，以及 Windows/Linux CAD-Avalonia Demo。
 
 ## 许可证
 
-OcctCSharpBridge 使用 **GNU LGPL 2.1 + OcctCSharpBridge Exception 1.0**。Open CASCADE Technology 与其它第三方组件继续遵循各自许可证。详见 [LICENSE](LICENSE)、[OcctCSharpBridge_LGPL_EXCEPTION.txt](OcctCSharpBridge_LGPL_EXCEPTION.txt)、[COMMERCIAL.md](COMMERCIAL.md) 与 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+OcctCSharpBridge 使用 GNU LGPL 2.1 + OcctCSharpBridge Exception 1.0；Open CASCADE Technology 与其它第三方组件继续遵循各自许可证。

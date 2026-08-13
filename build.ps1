@@ -1,11 +1,10 @@
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("validate", "native", "managed", "test", "smoke", "avalonia-smoke", "docs", "clean", "all")]
-    [string]$Target = "all",
-
-    [Parameter(Position = 1)]
     [ValidateSet("Debug", "Release", "RelWithDebInfo")]
     [string]$Configuration = "Release",
+
+    [ValidateSet("validate", "native", "managed", "test", "smoke", "avalonia-smoke", "avalonia", "demo", "docs", "clean", "all")]
+    [string]$Target = "avalonia",
 
     [string]$OcctRoot = $env:OCCT_ROOT
 )
@@ -31,6 +30,7 @@ $NativeBuild = Join-Path $RepoRoot "build\native"
 $NativeDll = Join-Path $NativeBuild "bin\$Configuration\OcctNative.dll"
 $ContractPath = Join-Path $RepoRoot "bridge-contract.json"
 $ApiDocsGenerator = Join-Path $RepoRoot "tools\OcctApiDocsGenerator\OcctApiDocsGenerator.csproj"
+$DemoTargetFramework = "net10.0"
 
 if (-not (Test-Path $ContractPath -PathType Leaf)) { throw "Bridge contract file was not found: $ContractPath" }
 $Contract = Get-Content $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -43,6 +43,8 @@ $SdkVersion = [string]$Contract.dotnet.sdkVersion
 $Projects = [ordered]@{
     Core = "src\OcctNet\OcctNet.csproj"
     Avalonia = "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj"
+    DemoCommon = "src\OcctDemo.Common\OcctDemo.Common.csproj"
+    DemoAvalonia = "src\OcctDemo.Avalonia\OcctDemo.Avalonia.csproj"
     ManagedTests = "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj"
     Smoke = "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
     AvaloniaSmoke = "tests\OcctNet.AvaloniaSmoke\OcctNet.AvaloniaSmoke.csproj"
@@ -132,6 +134,21 @@ function Build-Managed {
     Build-Project "Avalonia"
 }
 
+function Build-Demo {
+    if (-not $IsWindows) { throw "build.ps1 is the Windows demo build entry point. Use ./build.sh on Linux." }
+    Assert-Path $NativeDll
+    Build-Project "DemoCommon"
+    Build-Project "DemoAvalonia"
+
+    $demoProject = Join-Path $RepoRoot $Projects.DemoAvalonia
+    $demoOutput = Join-Path (Split-Path -Parent $demoProject) "bin\x64\$Configuration\$DemoTargetFramework"
+    Assert-Path $demoOutput
+    Copy-Item $NativeDll (Join-Path $demoOutput "OcctNative.dll") -Force
+    Assert-Path (Join-Path $demoOutput "CAD-Avalonia.exe")
+    Assert-Path (Join-Path $demoOutput "OcctNative.dll")
+    Write-Host "Demo: $demoOutput" -ForegroundColor Green
+}
+
 function Run-ManagedTests {
     Assert-Command "dotnet"
     $project = Join-Path $RepoRoot $Projects.ManagedTests
@@ -215,7 +232,9 @@ switch ($Target) {
     "test" { Run-ManagedTests }
     "smoke" { Build-Native; Build-Managed; Run-Smoke }
     "avalonia-smoke" { Build-Native; Build-Managed; Run-AvaloniaSmoke }
+    "avalonia" { Build-Native; Build-Demo }
+    "demo" { Build-Native; Build-Demo }
     "docs" { Generate-ApiDocumentation }
-    "all" { Build-Native; Build-Managed; Run-ManagedTests; Run-Smoke }
+    "all" { Build-Native; Build-Managed; Run-ManagedTests; Run-Smoke; Build-Demo }
 }
 Write-Host "Build completed." -ForegroundColor Green
