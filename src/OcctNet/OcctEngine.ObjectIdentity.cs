@@ -1,43 +1,122 @@
-﻿namespace OcctNet;
+using System.Runtime.InteropServices;
+
+namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
-    public string GetName(IOcctObject value)
+    public void SetObjectName(IOcctObject value, string? name)
     {
         EnsureObject(value);
-        return Marshal.PtrToStringUTF8(NativeMethods.occt_get_object_name(_handle, value.Id)) ?? string.Empty;
+        SetObjectUtf8(value.Id, NativeViewerObjectUpdateMask.Name, name);
     }
 
-    public void SetName(IOcctObject value, string name)
+    public string GetObjectName(IOcctObject value)
     {
         EnsureObject(value);
-        CheckInitialized(() => NativeMethods.occt_set_object_name(_handle, value.Id, name ?? string.Empty));
+        return ReadObjectUtf8(value.Id, applicationTag: false);
     }
 
-    public void SetApplicationTag(IOcctObject value, string applicationTag)
+    public void SetApplicationTag(IOcctObject value, string? tag)
     {
         EnsureObject(value);
-        CheckInitialized(() => NativeMethods.occt_set_object_application_tag(_handle, value.Id, applicationTag ?? string.Empty));
+        SetObjectUtf8(value.Id, NativeViewerObjectUpdateMask.ApplicationTag, tag);
     }
 
     public string GetApplicationTag(IOcctObject value)
     {
         EnsureObject(value);
-        return Marshal.PtrToStringUTF8(NativeMethods.occt_get_object_application_tag(_handle, value.Id)) ?? string.Empty;
+        return ReadObjectUtf8(value.Id, applicationTag: true);
     }
 
-    public bool TryGetObjectByApplicationTag(string applicationTag, out IOcctObject? value)
+    public IOcctObject? FindObjectByApplicationTag(string tag)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(applicationTag);
         EnsureNotDisposed();
-        var id = NativeMethods.occt_find_object_by_application_tag(_handle, applicationTag);
-        if (id <= 0 || NativeMethods.occt_object_exists(_handle, id) == 0)
-        {
-            value = null;
-            return false;
-        }
+        ArgumentException.ThrowIfNullOrWhiteSpace(tag);
+        CheckObjectStatus(ObjectNativeMethods.occt_engine_object_find_by_application_tag(
+            _handle,
+            tag,
+            out var objectId,
+            out var found));
+        if (found == 0) return null;
+        if (found != 1 || objectId <= 0)
+            throw new OcctException("Native ApplicationTag lookup returned an invalid result.");
+        return GetObject(objectId);
+    }
 
-        value = CreateBoundObject(id, GetObjectKind(id));
-        return true;
+    private void SetObjectUtf8(long objectId, NativeViewerObjectUpdateMask mask, string? value)
+    {
+        var pointer = Marshal.StringToCoTaskMemUTF8(value ?? string.Empty);
+        try
+        {
+            var options = ObjectUpdateOptions(mask);
+            if (mask == NativeViewerObjectUpdateMask.Name) options.Name = pointer;
+            else if (mask == NativeViewerObjectUpdateMask.ApplicationTag) options.ApplicationTag = pointer;
+            else throw new ArgumentOutOfRangeException(nameof(mask));
+            UpdateObject(objectId, options);
+        }
+        finally
+        {
+            Marshal.FreeCoTaskMem(pointer);
+        }
+    }
+
+    private string ReadObjectUtf8(long objectId, bool applicationTag)
+    {
+        EnsureNotDisposed();
+        OcctStatus status;
+        int required;
+        if (applicationTag)
+        {
+            status = ObjectNativeMethods.occt_engine_object_application_tag_get(
+                _handle,
+                objectId,
+                IntPtr.Zero,
+                0,
+                out required);
+        }
+        else
+        {
+            status = ObjectNativeMethods.occt_engine_object_name_get(
+                _handle,
+                objectId,
+                IntPtr.Zero,
+                0,
+                out required);
+        }
+        CheckObjectStatus(status);
+        if (required <= 0) throw new OcctException("Native UTF-8 string size is invalid.");
+
+        var buffer = Marshal.AllocHGlobal(required);
+        try
+        {
+            if (applicationTag)
+            {
+                status = ObjectNativeMethods.occt_engine_object_application_tag_get(
+                    _handle,
+                    objectId,
+                    buffer,
+                    required,
+                    out var writtenRequired);
+                if (writtenRequired != required)
+                    throw new OcctException("Native ApplicationTag size changed during retrieval.");
+            }
+            else
+            {
+                status = ObjectNativeMethods.occt_engine_object_name_get(
+                    _handle,
+                    objectId,
+                    buffer,
+                    required,
+                    out var writtenRequired);
+                if (writtenRequired != required)
+                    throw new OcctException("Native object name size changed during retrieval.");
+            }
+            CheckObjectStatus(status);
+            return Marshal.PtrToStringUTF8(buffer) ?? string.Empty;
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
     }
 }
