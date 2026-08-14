@@ -19,7 +19,6 @@ namespace OcctBridge
         if (windowHandle == nullptr) throw std::invalid_argument("The target native window handle is null.");
 
         engine->viewerContext.displayConnection = createPlatformDisplayConnection(displayHandle);
-
         engine->viewerContext.graphicDriver = new OpenGl_GraphicDriver(engine->viewerContext.displayConnection);
         engine->viewerContext.viewer = new V3d_Viewer(engine->viewerContext.graphicDriver);
         engine->viewerContext.viewer->SetDefaultLights();
@@ -68,15 +67,18 @@ namespace OcctBridge
 
 using namespace OcctBridge;
 
+namespace
+{
+    OcctStatus requireInitializedEngine(Engine* engine)
+    {
+        if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (!validateInitialized(engine)) return engine->errors.code;
+        return OcctStatus_Ok;
+    }
+}
+
 extern "C"
 {
-    struct LegacyNativeSurface
-    {
-        int kind;
-        void* handle;
-        void* display;
-    };
-
     OcctStatus occt_engine_initialize_surface(
         OcctEngineHandle handle,
         const OcctNativeSurface* surface)
@@ -118,28 +120,25 @@ extern "C"
         return succeeded != 0 ? OcctStatus_Ok : engine->errors.code;
     }
 
-    int occt_initialize_surface(OcctHandle handle, const void* legacySurface)
+    OcctStatus occt_engine_surface_resize(OcctEngineHandle handle, int redraw)
     {
-        Engine* engine = engineOf(handle);
-        if (engine == nullptr) return 0;
-        engine->clearError();
-
-        if (legacySurface == nullptr)
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        const OcctStatus initialized = requireInitializedEngine(engine);
+        if (initialized != OcctStatus_Ok) return initialized;
+        return execute(engine, [&]
         {
-            engine->setError(OcctStatus_ErrorInvalidArgument, "The native surface descriptor is null.");
-            return 0;
-        }
+            engine->viewerContext.view->MustBeResized();
+            if (redraw != 0) engine->viewerContext.view->Redraw();
+        }) != 0 ? OcctStatus_Ok : engine->errors.code;
+    }
 
-        const auto* legacy = static_cast<const LegacyNativeSurface*>(legacySurface);
-        const OcctNativeSurface surface{
-            static_cast<std::uint32_t>(sizeof(OcctNativeSurface)),
-            1,
-            static_cast<OcctNativeSurfaceKind>(legacy->kind),
-            legacy->handle,
-            legacy->display};
-
-        return occt_engine_initialize_surface(
-            reinterpret_cast<OcctEngineHandle>(handle),
-            &surface) == OcctStatus_Ok ? 1 : 0;
+    OcctStatus occt_engine_surface_redraw(OcctEngineHandle handle)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        const OcctStatus initialized = requireInitializedEngine(engine);
+        if (initialized != OcctStatus_Ok) return initialized;
+        return execute(engine, [&] { engine->requestRedraw(); }) != 0
+            ? OcctStatus_Ok
+            : engine->errors.code;
     }
 }
