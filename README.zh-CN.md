@@ -104,6 +104,14 @@ main 必须干净且基于最新 origin/main
 ```
 
 `demo/dist` 已加入 `.gitignore`，Demo 是 SDK 消费者，不再作为第二份 Binary SDK 仓库。
+在 Linux x64 发布主机上，从干净且已同步的 `main` 分支发布经过验证的 Linux SDK：
+
+```bash
+./publish.sh
+```
+
+该流程只更新 `dist/linux-x64`；Avalonia 应用打包仍由消费者分支负责。
+
 
 ## 使用示例
 

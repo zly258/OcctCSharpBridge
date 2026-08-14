@@ -104,6 +104,14 @@ clean, up-to-date main
 ```
 
 `demo/dist` is intentionally ignored by Git. The demo branch is a consumer, not a second Binary SDK repository.
+On a Linux x64 release host, publish the validated Linux SDK from a clean, synchronized `main` branch:
+
+```bash
+./publish.sh
+```
+
+This updates only `dist/linux-x64`; Avalonia application packaging remains on the consumer branch.
+
 
 ## Usage
 
