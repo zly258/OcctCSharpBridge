@@ -11,8 +11,6 @@
 #include <Prs3d_ShadingAspect.hxx>
 #include <V3d_TypeOfOrientation.hxx>
 
-
-
 namespace OcctBridge
 {
     void initializeViewer(Engine* engine, void* windowHandle, void* displayHandle)
@@ -79,37 +77,6 @@ extern "C"
         void* display;
     };
 
-    int occt_initialize_surface(OcctHandle handle, const void* legacySurface)
-    {
-        Engine* engine = engineOf(handle);
-        if (engine == nullptr) return 0;
-
-        engine->clearError();
-        if (legacySurface == nullptr)
-        {
-            engine->setError("The native surface descriptor is null.");
-            return 0;
-        }
-        const auto* surface = static_cast<const LegacyNativeSurface*>(legacySurface);
-        if (surface->handle == nullptr)
-        {
-            engine->setError("The native surface handle is null.");
-            return 0;
-        }
-
-        std::string platformError;
-        const OcctStatus platformStatus = validatePlatformSurfaceKind(surface->kind, platformError);
-        if (platformStatus != OcctStatus_Ok)
-        {
-            engine->setError(platformStatus, platformError);
-            return 0;
-        }
-
-        return execute(engine, [&]
-        {
-            initializeViewer(engine, surface->handle, surface->display);
-        });
-    }
     OcctStatus occt_engine_initialize_surface(
         OcctEngineHandle handle,
         const OcctNativeSurface* surface)
@@ -128,15 +95,51 @@ extern "C"
             engine->setError(OcctStatus_ErrorInvalidArgument, "Unsupported native surface descriptor size or version.");
             return engine->errors.code;
         }
+        if (surface->handle == nullptr)
+        {
+            engine->setError(OcctStatus_ErrorInvalidArgument, "The native surface handle is null.");
+            return engine->errors.code;
+        }
 
-        const LegacyNativeSurface legacy{
+        std::string platformError;
+        const OcctStatus platformStatus = validatePlatformSurfaceKind(
             static_cast<int>(surface->kind),
-            surface->handle,
-            surface->display};
-        return occt_initialize_surface(reinterpret_cast<OcctHandle>(handle), &legacy) != 0
-            ? OcctStatus_Ok
-            : engine->errors.code;
+            platformError);
+        if (platformStatus != OcctStatus_Ok)
+        {
+            engine->setError(platformStatus, platformError);
+            return engine->errors.code;
+        }
+
+        const int succeeded = execute(engine, [&]
+        {
+            initializeViewer(engine, surface->handle, surface->display);
+        });
+        return succeeded != 0 ? OcctStatus_Ok : engine->errors.code;
     }
 
+    int occt_initialize_surface(OcctHandle handle, const void* legacySurface)
+    {
+        Engine* engine = engineOf(handle);
+        if (engine == nullptr) return 0;
+        engine->clearError();
 
+        if (legacySurface == nullptr)
+        {
+            engine->setError(OcctStatus_ErrorInvalidArgument, "The native surface descriptor is null.");
+            return 0;
+        }
+
+        const auto* legacy = static_cast<const LegacyNativeSurface*>(legacySurface);
+        const OcctNativeSurface surface{
+            static_cast<std::uint32_t>(sizeof(OcctNativeSurface)),
+            1,
+            static_cast<OcctNativeSurfaceKind>(legacy->kind),
+            legacy->handle,
+            legacy->display};
+
+        return occt_engine_initialize_surface(
+            reinterpret_cast<OcctEngineHandle>(handle),
+            &surface) == OcctStatus_Ok ? 1 : 0;
+    }
 }
