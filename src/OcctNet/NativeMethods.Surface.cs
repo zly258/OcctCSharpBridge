@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace OcctNet;
@@ -11,13 +12,6 @@ internal enum OcctNativeSurfaceKind
 }
 
 [StructLayout(LayoutKind.Sequential)]
-internal struct LegacyNativeSurface
-{
-    public int Kind;
-    public IntPtr Handle;
-    public IntPtr Display;
-}
-[StructLayout(LayoutKind.Sequential)]
 internal struct NativeOcctSurface
 {
     public uint StructSize;
@@ -27,14 +21,22 @@ internal struct NativeOcctSurface
     public IntPtr Display;
 }
 
-
-
 internal static partial class NativeMethods
 {
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_initialize_surface(OcctEngineSafeHandle engine, in LegacyNativeSurface surface);
     [LibraryImport(LibraryName)]
-    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
-    internal static partial OcctStatus occt_engine_initialize_surface(OcctEngineSafeHandle engine, in NativeOcctSurface surface);
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_initialize_surface(
+        OcctEngineSafeHandle engine,
+        in NativeOcctSurface surface);
 
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_surface_resize(
+        OcctEngineSafeHandle engine,
+        int redraw);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_surface_redraw(
+        OcctEngineSafeHandle engine);
 }
