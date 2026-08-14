@@ -23,6 +23,104 @@ extern "C"
         OcctOverlayLine_DashDot = 3
     };
 
+    enum OcctOverlayLineUpdateMask : std::uint32_t
+    {
+        OcctOverlayLineUpdate_Geometry = 1u << 0,
+        OcctOverlayLineUpdate_Style = 1u << 1
+    };
+
+    enum OcctOverlayMarkerUpdateMask : std::uint32_t
+    {
+        OcctOverlayMarkerUpdate_Position = 1u << 0,
+        OcctOverlayMarkerUpdate_Style = 1u << 1
+    };
+
+    enum OcctOverlayTextUpdateMask : std::uint32_t
+    {
+        OcctOverlayTextUpdate_Content = 1u << 0,
+        OcctOverlayTextUpdate_Position = 1u << 1,
+        OcctOverlayTextUpdate_Style = 1u << 2
+    };
+
+    struct OcctOverlayLineOptions
+    {
+        std::uint32_t structSize;
+        std::uint32_t apiVersion;
+        std::uint32_t updateMask;
+        int primitiveType;
+        const OcctPoint3d* points;
+        int pointCount;
+        int pattern;
+        double width;
+        double red;
+        double green;
+        double blue;
+    };
+
+    struct OcctOverlayMarkerOptions
+    {
+        std::uint32_t structSize;
+        std::uint32_t apiVersion;
+        std::uint32_t updateMask;
+        OcctPoint3d position;
+        int marker;
+        double scale;
+        double red;
+        double green;
+        double blue;
+    };
+
+    struct OcctOverlayTextOptions
+    {
+        std::uint32_t structSize;
+        std::uint32_t apiVersion;
+        std::uint32_t updateMask;
+        const char* text;
+        OcctPoint3d position;
+        double height;
+        double red;
+        double green;
+        double blue;
+        int zoomable;
+        const char* fontName;
+    };
+
+    OCCTBRIDGE_API OcctStatus occt_engine_overlay_line_create(
+        OcctEngineHandle handle,
+        const OcctOverlayLineOptions* options,
+        OcctObjectId* resultOverlayId);
+
+    OCCTBRIDGE_API OcctStatus occt_engine_overlay_line_update(
+        OcctEngineHandle handle,
+        OcctObjectId overlayId,
+        const OcctOverlayLineOptions* options);
+
+    OCCTBRIDGE_API OcctStatus occt_engine_overlay_marker_create(
+        OcctEngineHandle handle,
+        const OcctOverlayMarkerOptions* options,
+        OcctObjectId* resultOverlayId);
+
+    OCCTBRIDGE_API OcctStatus occt_engine_overlay_marker_update(
+        OcctEngineHandle handle,
+        OcctObjectId overlayId,
+        const OcctOverlayMarkerOptions* options);
+
+    OCCTBRIDGE_API OcctStatus occt_engine_overlay_text_create(
+        OcctEngineHandle handle,
+        const OcctOverlayTextOptions* options,
+        OcctObjectId* resultOverlayId);
+
+    OCCTBRIDGE_API OcctStatus occt_engine_overlay_text_update(
+        OcctEngineHandle handle,
+        OcctObjectId overlayId,
+        const OcctOverlayTextOptions* options);
+
+    OCCTBRIDGE_API OcctStatus occt_engine_overlay_primitive_type_get(
+        OcctEngineHandle handle,
+        OcctObjectId overlayId,
+        int* primitiveType);
+
+    // Frozen ABI 4 compatibility shell. New SDK code uses occt_engine_overlay_*.
     OCCTBRIDGE_API OcctObjectId occt_add_overlay_line(OcctHandle handle, OcctPoint3d start, OcctPoint3d end, int pattern, double width, double r, double g, double b);
     OCCTBRIDGE_API OcctObjectId occt_add_overlay_polyline(OcctHandle handle, const OcctPoint3d* points, int count, int pattern, double width, double r, double g, double b);
     OCCTBRIDGE_API OcctObjectId occt_add_overlay_marker(OcctHandle handle, OcctPoint3d position, int marker, double scale, double r, double g, double b);
