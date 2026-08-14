@@ -1,4 +1,6 @@
-﻿namespace OcctNet;
+using System.Runtime.InteropServices;
+
+namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
@@ -18,27 +20,48 @@ public sealed partial class OcctEngine
             : GetObjectIds(filter.Owners, nameof(filter.Owners));
         var objectKindMask = BuildObjectKindMask(filter.ObjectKinds);
         var shapeTypeMask = BuildShapeTypeMask(filter.ShapeTypes);
-
         var native = new NativeOcctSelectionHitDetail[maxHits];
-        Check(DetectionNativeMethods.occt_detect_at_filtered(
-            _handle,
-            x,
-            y,
-            maxHits,
-            ownerIds,
-            ownerIds.Length,
-            objectKindMask,
-            shapeTypeMask,
-            filter.IncludeWholeObjects ? 1 : 0,
-            native,
-            native.Length,
-            out var count));
-        if (count < 0 || count > native.Length)
-            throw new InvalidOperationException("Native filtered detection result count is invalid.");
 
-        var result = new OcctSelectionHitDetail[count];
-        for (var index = 0; index < count; index++) result[index] = CreateSelectionHitDetail(native[index]);
-        return result;
+        var ownerBuffer = IntPtr.Zero;
+        try
+        {
+            if (ownerIds.Length > 0)
+            {
+                ownerBuffer = Marshal.AllocHGlobal(sizeof(long) * ownerIds.Length);
+                Marshal.Copy(ownerIds, 0, ownerBuffer, ownerIds.Length);
+            }
+
+            var options = new NativeViewerDetectionOptions
+            {
+                StructSize = (uint)Marshal.SizeOf<NativeViewerDetectionOptions>(),
+                ApiVersion = 1,
+                X = x,
+                Y = y,
+                MaxHits = maxHits,
+                OwnerIds = ownerBuffer,
+                OwnerCount = ownerIds.Length,
+                ObjectKindMask = objectKindMask,
+                ShapeTypeMask = shapeTypeMask,
+                IncludeWholeObjects = filter.IncludeWholeObjects ? 1 : 0
+            };
+            CheckSelectionStatus(DetectionNativeMethods.occt_engine_selection_detect_filtered(
+                _handle,
+                in options,
+                native,
+                native.Length,
+                out var count));
+            if (count < 0 || count > native.Length)
+                throw new InvalidOperationException("Native filtered detection result count is invalid.");
+
+            var result = new OcctSelectionHitDetail[count];
+            for (var index = 0; index < count; index++)
+                result[index] = CreateSelectionHitDetail(native[index]);
+            return result;
+        }
+        finally
+        {
+            if (ownerBuffer != IntPtr.Zero) Marshal.FreeHGlobal(ownerBuffer);
+        }
     }
 
     public bool TryGetDetectionCandidate(
