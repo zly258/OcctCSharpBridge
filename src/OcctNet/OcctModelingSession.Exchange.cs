@@ -1,36 +1,50 @@
-﻿namespace OcctNet;
+﻿using System.Runtime.InteropServices;
+
+namespace OcctNet;
 
 public sealed partial class OcctModelingSession
 {
-    private delegate long ImportCall(OcctModelingSafeHandle handle, string path);
-    private delegate int ExportCall(OcctModelingSafeHandle handle, long shapeId, string path);
+    private delegate OcctStatus ImportCall(
+        OcctModelingSafeHandle session,
+        string path,
+        out long resultShapeId);
+
+    private delegate OcctStatus ExportCall(
+        OcctModelingSafeHandle session,
+        long shapeId,
+        string path);
 
     public OcctModelShape Import(string filePath)
     {
         ValidateExchangePath(filePath);
-        return CheckShape(ModelNativeMethods.occt_model_import_file(_handle, Path.GetFullPath(filePath)));
+        EnsureNotDisposed();
+        var status = ModelNativeMethods.occt_model_file_import(
+            _handle,
+            Path.GetFullPath(filePath),
+            out var shapeId);
+        return CheckExchangeShape(status, shapeId, nameof(Import));
     }
 
     public OcctModelShape ImportStep(string filePath) =>
-        ImportSpecific(filePath, ModelNativeMethods.occt_model_import_step);
+        ImportSpecific(filePath, ModelNativeMethods.occt_model_step_import, nameof(ImportStep));
 
     public OcctModelShape ImportIges(string filePath) =>
-        ImportSpecific(filePath, ModelNativeMethods.occt_model_import_iges);
+        ImportSpecific(filePath, ModelNativeMethods.occt_model_iges_import, nameof(ImportIges));
 
     public OcctModelShape ImportBrep(string filePath) =>
-        ImportSpecific(filePath, ModelNativeMethods.occt_model_import_brep);
+        ImportSpecific(filePath, ModelNativeMethods.occt_model_brep_import, nameof(ImportBrep));
 
     public OcctModelShape ImportStl(string filePath) =>
-        ImportSpecific(filePath, ModelNativeMethods.occt_model_import_stl);
+        ImportSpecific(filePath, ModelNativeMethods.occt_model_stl_import, nameof(ImportStl));
 
     public void ExportStep(OcctModelShape shape, string filePath) =>
-        ExportShape(shape, filePath, ModelNativeMethods.occt_model_export_step);
+        ExportShape(shape, filePath, ModelNativeMethods.occt_model_step_export, nameof(ExportStep));
 
     public void ExportIges(OcctModelShape shape, string filePath) =>
-        ExportShape(shape, filePath, ModelNativeMethods.occt_model_export_iges);
+        ExportShape(shape, filePath, ModelNativeMethods.occt_model_iges_export, nameof(ExportIges));
 
     public void ExportBrep(OcctModelShape shape, string filePath) =>
-        ExportShape(shape, filePath, ModelNativeMethods.occt_model_export_brep);
+        ExportShape(shape, filePath, ModelNativeMethods.occt_model_brep_export, nameof(ExportBrep));
 
     public void ExportStl(
         OcctModelShape shape,
@@ -41,26 +55,50 @@ public sealed partial class OcctModelingSession
     {
         EnsureShape(shape);
         ValidateExchangePath(filePath);
-        Check(ModelNativeMethods.occt_model_export_stl(
+        OcctGuard.Positive(linearDeflection, nameof(linearDeflection));
+        OcctGuard.Positive(angularDeflection, nameof(angularDeflection));
+        var options = new NativeStlExportOptions
+        {
+            StructSize = (uint)Marshal.SizeOf<NativeStlExportOptions>(),
+            ApiVersion = 1,
+            LinearDeflection = linearDeflection,
+            AngularDeflection = angularDeflection,
+            Ascii = ascii ? 1 : 0
+        };
+        var status = ModelNativeMethods.occt_model_stl_export(
             _handle,
             shape.Id,
             Path.GetFullPath(filePath),
-            linearDeflection,
-            angularDeflection,
-            ascii ? 1 : 0));
+            in options);
+        CheckExchangeStatus(status, nameof(ExportStl));
     }
 
-    private OcctModelShape ImportSpecific(string filePath, ImportCall call)
+    private OcctModelShape ImportSpecific(string filePath, ImportCall call, string operation)
     {
         ValidateExchangePath(filePath);
-        return CheckShape(call(_handle, Path.GetFullPath(filePath)));
+        EnsureNotDisposed();
+        var status = call(_handle, Path.GetFullPath(filePath), out var shapeId);
+        return CheckExchangeShape(status, shapeId, operation);
     }
 
-    private void ExportShape(OcctModelShape shape, string filePath, ExportCall call)
+    private void ExportShape(OcctModelShape shape, string filePath, ExportCall call, string operation)
     {
         EnsureShape(shape);
         ValidateExchangePath(filePath);
-        Check(call(_handle, shape.Id, Path.GetFullPath(filePath)));
+        CheckExchangeStatus(call(_handle, shape.Id, Path.GetFullPath(filePath)), operation);
+    }
+
+    private OcctModelShape CheckExchangeShape(OcctStatus status, long shapeId, string operation)
+    {
+        if (status != OcctStatus.Ok || shapeId <= 0)
+            throw CreateException(operation);
+        return new OcctModelShape(shapeId, _ownerId);
+    }
+
+    private void CheckExchangeStatus(OcctStatus status, string operation)
+    {
+        if (status != OcctStatus.Ok)
+            throw CreateException(operation);
     }
 
     private static void ValidateExchangePath(string path) =>
