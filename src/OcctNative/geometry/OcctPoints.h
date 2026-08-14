@@ -1,8 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include "OcctNative.h"
 
-// Appended object-kind value. Existing OcctObjectKind numeric values remain stable.
 constexpr int OcctPointObjectKind = 4;
 
 extern "C"
@@ -87,46 +86,4 @@ extern "C"
         OcctEngineHandle handle,
         OcctObjectId pointId,
         const OcctViewerPointPixmapOptions* options);
-
-    // Frozen ABI 4 compatibility shell. New SDK code uses occt_engine_point_*.
-    OCCTBRIDGE_API OcctObjectId occt_add_point(
-        OcctHandle handle,
-        OcctPoint3d position,
-        int marker,
-        double scale,
-        double r,
-        double g,
-        double b);
-
-    OCCTBRIDGE_API int occt_set_point_position(
-        OcctHandle handle,
-        OcctObjectId pointId,
-        OcctPoint3d position);
-
-    OCCTBRIDGE_API int occt_set_point_style(
-        OcctHandle handle,
-        OcctObjectId pointId,
-        int marker,
-        double scale,
-        double r,
-        double g,
-        double b);
-
-    OCCTBRIDGE_API OcctObjectId occt_add_point_pixmap(
-        OcctHandle handle,
-        OcctPoint3d position,
-        int width,
-        int height,
-        const unsigned char* pixels,
-        int pixelCount,
-        int pixelFormat);
-
-    OCCTBRIDGE_API int occt_set_point_pixmap_style(
-        OcctHandle handle,
-        OcctObjectId pointId,
-        int width,
-        int height,
-        const unsigned char* pixels,
-        int pixelCount,
-        int pixelFormat);
 }
