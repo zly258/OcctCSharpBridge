@@ -4,6 +4,15 @@
 
 extern "C"
 {
+    enum OcctViewerSelectionOperation
+    {
+        OcctViewerSelection_Replace = 0,
+        OcctViewerSelection_Add = 1,
+        OcctViewerSelection_Remove = 2,
+        OcctViewerSelection_Toggle = 3,
+        OcctViewerSelection_Clear = 4
+    };
+
     enum OcctViewerSelectionSettingsUpdateMask : std::uint32_t
     {
         OcctViewerSelectionSettingsUpdate_Mode = 1u << 0,
