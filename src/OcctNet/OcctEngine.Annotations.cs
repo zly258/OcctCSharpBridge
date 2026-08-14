@@ -1,4 +1,6 @@
-﻿namespace OcctNet;
+﻿using System.Runtime.InteropServices;
+
+namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
@@ -8,89 +10,181 @@ public sealed partial class OcctEngine
         OcctGuard.Positive(height, nameof(height));
         var actualColor = color ?? System.Drawing.Color.Black;
         EnsureInitialized();
-        return CheckText(NativeMethods.occt_add_text(_handle, text ?? string.Empty, position, height, actualColor.R / 255.0, actualColor.G / 255.0, actualColor.B / 255.0, zoomable ? 1 : 0));
+        var options = TextOptions(
+            NativeViewerTextUpdateMask.Content |
+            NativeViewerTextUpdateMask.Position |
+            NativeViewerTextUpdateMask.Height |
+            NativeViewerTextUpdateMask.Angle |
+            NativeViewerTextUpdateMask.Zoomable |
+            NativeViewerTextUpdateMask.Color,
+            position,
+            height,
+            0,
+            actualColor,
+            zoomable);
+        var status = NativeMethods.occt_engine_text_create(
+            _handle,
+            text ?? string.Empty,
+            string.Empty,
+            in options,
+            out var textId);
+        if (status != OcctStatus.Ok) throw CreateException();
+        return CheckText(textId);
     }
 
     public void SetText(OcctText textObject, string text)
     {
         EnsureText(textObject);
-        CheckInitialized(() => NativeMethods.occt_set_text(_handle, textObject.Id, text ?? string.Empty));
+        var options = TextOptions(NativeViewerTextUpdateMask.Content);
+        CheckAnnotationStatus(NativeMethods.occt_engine_text_update(
+            _handle, textObject.Id, text ?? string.Empty, string.Empty, in options));
     }
 
     public void SetTextPosition(OcctText textObject, OcctPoint3d position)
     {
         EnsureText(textObject);
         OcctGuard.Finite(position, nameof(position));
-        CheckInitialized(() => NativeMethods.occt_set_text_position(_handle, textObject.Id, position));
+        var options = TextOptions(NativeViewerTextUpdateMask.Position, position: position);
+        CheckAnnotationStatus(NativeMethods.occt_engine_text_update(
+            _handle, textObject.Id, string.Empty, string.Empty, in options));
     }
 
     public void SetTextHeight(OcctText textObject, double height)
     {
         EnsureText(textObject);
         OcctGuard.Positive(height, nameof(height));
-        CheckInitialized(() => NativeMethods.occt_set_text_height(_handle, textObject.Id, height));
+        var options = TextOptions(NativeViewerTextUpdateMask.Height, height: height);
+        CheckAnnotationStatus(NativeMethods.occt_engine_text_update(
+            _handle, textObject.Id, string.Empty, string.Empty, in options));
     }
 
     public void SetTextFont(OcctText textObject, string fontName)
     {
         EnsureText(textObject);
-        CheckInitialized(() => NativeMethods.occt_set_text_font(_handle, textObject.Id, fontName ?? string.Empty));
+        var options = TextOptions(NativeViewerTextUpdateMask.Font);
+        CheckAnnotationStatus(NativeMethods.occt_engine_text_update(
+            _handle, textObject.Id, string.Empty, fontName ?? string.Empty, in options));
     }
 
     public void SetTextAngle(OcctText textObject, double angleDegrees)
     {
         EnsureText(textObject);
         OcctGuard.Finite(angleDegrees, nameof(angleDegrees));
-        CheckInitialized(() => NativeMethods.occt_set_text_angle(_handle, textObject.Id, angleDegrees));
+        var options = TextOptions(NativeViewerTextUpdateMask.Angle, angleDegrees: angleDegrees);
+        CheckAnnotationStatus(NativeMethods.occt_engine_text_update(
+            _handle, textObject.Id, string.Empty, string.Empty, in options));
     }
 
     public void SetTextZoomable(OcctText textObject, bool zoomable)
     {
         EnsureText(textObject);
-        CheckInitialized(() => NativeMethods.occt_set_text_zoomable(_handle, textObject.Id, zoomable ? 1 : 0));
+        var options = TextOptions(NativeViewerTextUpdateMask.Zoomable, zoomable: zoomable);
+        CheckAnnotationStatus(NativeMethods.occt_engine_text_update(
+            _handle, textObject.Id, string.Empty, string.Empty, in options));
     }
 
     public void SetDimensionFlyout(OcctDimension dimension, double flyout)
     {
         EnsureDimension(dimension);
         OcctGuard.Finite(flyout, nameof(flyout));
-        CheckInitialized(() => NativeMethods.occt_set_dimension_flyout(_handle, dimension.Id, flyout));
+        var options = DimensionOptions(NativeViewerDimensionUpdateMask.Flyout, flyout);
+        CheckAnnotationStatus(NativeMethods.occt_engine_dimension_update(_handle, dimension.Id, in options));
     }
 
     public OcctDimension AddLengthDimension(OcctShape edge, double flyout = 20, System.Drawing.Color? color = null)
     {
         EnsureShape(edge);
-        OcctGuard.Finite(flyout, nameof(flyout));
-        var actualColor = color ?? System.Drawing.Color.Black;
-        EnsureInitialized();
-        return CheckDimension(NativeMethods.occt_add_length_dimension(_handle, edge.Id, flyout, actualColor.R / 255.0, actualColor.G / 255.0, actualColor.B / 255.0));
+        return AddDimension(NativeViewerDimensionKind.Length, edge.Id, 0, flyout, color);
     }
 
     public OcctDimension AddAngleDimension(OcctShape firstEdge, OcctShape secondEdge, double flyout = 20, System.Drawing.Color? color = null)
     {
         EnsureShape(firstEdge);
         EnsureShape(secondEdge);
-        OcctGuard.Finite(flyout, nameof(flyout));
-        var actualColor = color ?? System.Drawing.Color.Black;
-        EnsureInitialized();
-        return CheckDimension(NativeMethods.occt_add_angle_dimension(_handle, firstEdge.Id, secondEdge.Id, flyout, actualColor.R / 255.0, actualColor.G / 255.0, actualColor.B / 255.0));
+        return AddDimension(NativeViewerDimensionKind.Angle, firstEdge.Id, secondEdge.Id, flyout, color);
     }
 
     public OcctDimension AddRadiusDimension(OcctShape circularShape, double flyout = 20, System.Drawing.Color? color = null)
     {
         EnsureShape(circularShape);
-        OcctGuard.Finite(flyout, nameof(flyout));
-        var actualColor = color ?? System.Drawing.Color.Black;
-        EnsureInitialized();
-        return CheckDimension(NativeMethods.occt_add_radius_dimension(_handle, circularShape.Id, flyout, actualColor.R / 255.0, actualColor.G / 255.0, actualColor.B / 255.0));
+        return AddDimension(NativeViewerDimensionKind.Radius, circularShape.Id, 0, flyout, color);
     }
 
     public OcctDimension AddDiameterDimension(OcctShape circularShape, double flyout = 20, System.Drawing.Color? color = null)
     {
         EnsureShape(circularShape);
+        return AddDimension(NativeViewerDimensionKind.Diameter, circularShape.Id, 0, flyout, color);
+    }
+
+    private OcctDimension AddDimension(
+        NativeViewerDimensionKind kind,
+        long firstShapeId,
+        long secondShapeId,
+        double flyout,
+        System.Drawing.Color? color)
+    {
         OcctGuard.Finite(flyout, nameof(flyout));
         var actualColor = color ?? System.Drawing.Color.Black;
         EnsureInitialized();
-        return CheckDimension(NativeMethods.occt_add_diameter_dimension(_handle, circularShape.Id, flyout, actualColor.R / 255.0, actualColor.G / 255.0, actualColor.B / 255.0));
+        var options = DimensionOptions(
+            NativeViewerDimensionUpdateMask.Flyout | NativeViewerDimensionUpdateMask.Color,
+            flyout,
+            actualColor);
+        var status = NativeMethods.occt_engine_dimension_create(
+            _handle,
+            kind,
+            firstShapeId,
+            secondShapeId,
+            in options,
+            out var dimensionId);
+        if (status != OcctStatus.Ok) throw CreateException();
+        return CheckDimension(dimensionId);
+    }
+
+    private static NativeViewerTextOptions TextOptions(
+        NativeViewerTextUpdateMask updateMask,
+        OcctPoint3d position = default,
+        double height = 1,
+        double angleDegrees = 0,
+        System.Drawing.Color? color = null,
+        bool zoomable = false)
+    {
+        var actualColor = color ?? System.Drawing.Color.Black;
+        return new NativeViewerTextOptions
+        {
+            StructSize = (uint)Marshal.SizeOf<NativeViewerTextOptions>(),
+            ApiVersion = 1,
+            UpdateMask = updateMask,
+            Position = position,
+            Height = height,
+            AngleDegrees = angleDegrees,
+            Red = actualColor.R / 255.0,
+            Green = actualColor.G / 255.0,
+            Blue = actualColor.B / 255.0,
+            Zoomable = zoomable ? 1 : 0
+        };
+    }
+
+    private static NativeViewerDimensionOptions DimensionOptions(
+        NativeViewerDimensionUpdateMask updateMask,
+        double flyout,
+        System.Drawing.Color? color = null)
+    {
+        var actualColor = color ?? System.Drawing.Color.Black;
+        return new NativeViewerDimensionOptions
+        {
+            StructSize = (uint)Marshal.SizeOf<NativeViewerDimensionOptions>(),
+            ApiVersion = 1,
+            UpdateMask = updateMask,
+            Flyout = flyout,
+            Red = actualColor.R / 255.0,
+            Green = actualColor.G / 255.0,
+            Blue = actualColor.B / 255.0
+        };
+    }
+
+    private void CheckAnnotationStatus(OcctStatus status)
+    {
+        if (status != OcctStatus.Ok) throw CreateException();
     }
 }
