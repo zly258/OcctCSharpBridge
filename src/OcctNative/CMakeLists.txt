@@ -139,6 +139,7 @@ add_library(OcctNative SHARED
     modeling/OcctModelingInertia.cpp
     modeling/OcctModelingIntersection.cpp
     topology/OcctModelingTopologyReference.cpp
+    topology/OcctShapeResource.cpp
     core/OcctInternal.hxx
     core/OcctErrorContext.hxx
     viewer/OcctViewerContext.hxx
@@ -170,6 +171,7 @@ add_library(OcctNative SHARED
     modeling/OcctModelingInertia.h
     modeling/OcctModelingIntersection.h
     topology/OcctModelingTopologyReference.h
+    topology/OcctShapeResource.h
     OcctStatus.h
     include/occt_bridge/api.h
     include/occt_bridge/status.h

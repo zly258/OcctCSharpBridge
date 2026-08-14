@@ -10,6 +10,15 @@ if (string.IsNullOrWhiteSpace(OcctBridgeInfo.BuildInfo))
 
 using var model = new OcctModelingSession();
 
+var snapshotSource = model.MakeBox(3, 4, 5);
+using var snapshot = model.AcquireShape(snapshotSource);
+model.Delete(snapshotSource);
+if (snapshot.ShapeType != OcctShapeType.Solid)
+{
+    throw new InvalidOperationException(
+        "Owned shape snapshot did not survive deletion of its source registry entry.");
+}
+
 var box = model.MakeBox(100, 80, 60);
 var cylinder = model.MakeCylinder(new OcctPoint3d(50, 40, -10), OcctVector3d.UnitZ, 12, 80);
 var cut = model.Cut(box, cylinder);

@@ -55,3 +55,31 @@ internal sealed class OcctModelingSafeHandle : SafeHandleZeroOrMinusOneIsInvalid
         }
     }
 }
+
+internal sealed class OcctShapeSafeHandle : SafeHandleZeroOrMinusOneIsInvalid
+{
+    private OcctShapeSafeHandle()
+        : base(ownsHandle: true)
+    {
+    }
+
+    internal static OcctShapeSafeHandle AdoptOwned(IntPtr nativeHandle)
+    {
+        var result = new OcctShapeSafeHandle();
+        result.SetHandle(nativeHandle);
+        return result;
+    }
+
+    protected override bool ReleaseHandle()
+    {
+        try
+        {
+            ModelNativeMethods.occt_shape_release(handle);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+}

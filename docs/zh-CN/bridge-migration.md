@@ -20,6 +20,8 @@ ABI 5 是当前契约。ABI 4 固定为 419 个导出并保持二进制兼容，
 
 正式托管 SDK 使用类型化生命周期和语义化 native surface API。旧生命周期与 surface 入口仅作为兼容适配器，并由固定旧 Consumer 可执行程序验证。
 正式 current ABI 的托管声明使用 source-generated `LibraryImport`，并明确指定 C calling convention。冻结的 ABI 4 声明与兼容扩展继续隔离在 `DllImport`；契约检查会阻止两组声明越界。
+Current ABI 还提供 opaque `OcctShapeHandle`。`occt_model_shape_acquire` 创建 owned immutable snapshot，`occt_shape_release` 负责销毁，Managed `OcctShapeResource` 通过 `SafeHandle` 持有它。即使源 Session registry entry 已删除，snapshot 仍然有效；调用方不得让查询与 Dispose 并发发生。
+
 
 
 ## 兼容性门禁
@@ -28,7 +30,7 @@ ABI 5 是当前契约。ABI 4 固定为 419 个导出并保持二进制兼容，
 
 - ABI 4 固定的 419 个符号全部保留；
 - Native 声明、实现与 P/Invoke 集合完全一致；
-- 11 个正式 current ABI 声明全部使用 `LibraryImport`，兼容扩展保持隔离；
+- 14 个正式 current ABI 声明全部使用 `LibraryImport`，兼容扩展保持隔离；
 - 新导出与受跟踪文件名遵守语义化命名；
 - WinForms 与 WPF 通过平台无关的托管 Engine API 工作；
 - 固定 ABI 4 Consumer 和当前 ABI 5 Native smoke 都能成功运行。
