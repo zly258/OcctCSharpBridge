@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.21)
 
 project(OcctNative LANGUAGES CXX)
 
@@ -169,6 +169,9 @@ add_library(OcctNative SHARED
     selection/OcctSelectionState.h
     OcctViewerInteraction.h
     OcctViewerInteractionExtensions.h
+    presentation/OcctAppearance.h
+    presentation/OcctAnnotations.h
+    presentation/OcctViewport.h
     presentation/OcctOverlay.h
     presentation/OcctPresentation.h
     selection/OcctDetection.h
