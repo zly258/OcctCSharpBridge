@@ -30,6 +30,9 @@ extern "C"
         OcctEngineHandle handle,
         const OcctViewerLightingOptions* options);
 
+    OCCTBRIDGE_API OcctStatus occt_engine_scene_lighting_reset(
+        OcctEngineHandle handle);
+
     OCCTBRIDGE_API OcctStatus occt_engine_highlight_colors_set(
         OcctEngineHandle handle,
         const OcctViewerHighlightOptions* options);
