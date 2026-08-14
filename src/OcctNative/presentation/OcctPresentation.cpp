@@ -15,6 +15,13 @@ using namespace OcctBridge;
 
 namespace
 {
+    constexpr std::uint32_t PresentationStateApiVersion = 1;
+    constexpr std::uint32_t AllPresentationStateUpdateBits =
+        OcctViewerPresentationStateUpdate_DisplayMode |
+        OcctViewerPresentationStateUpdate_ResetDisplayMode |
+        OcctViewerPresentationStateUpdate_AutoHighlight |
+        OcctViewerPresentationStateUpdate_Infinite;
+
     ObjectEntry& requiredObject(Engine* engine, OcctObjectId id)
     {
         ObjectEntry* entry = engine->findObject(id);
@@ -96,10 +103,127 @@ namespace
         if (!viewPlanes.IsNull()) viewPlaneCount = viewPlanes->Size();
         return std::max(0, engine->viewerContext.view->PlaneLimit() - viewPlaneCount);
     }
+
+    OcctStatus requireInitializedEngine(Engine* engine)
+    {
+        if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (!validateInitialized(engine)) return engine->errors.code;
+        return OcctStatus_Ok;
+    }
+
+    template<typename Function>
+    OcctStatus executePresentationStatus(Engine* engine, Function&& function)
+    {
+        const OcctStatus initialized = requireInitializedEngine(engine);
+        if (initialized != OcctStatus_Ok) return initialized;
+        return execute(engine, std::forward<Function>(function)) != 0
+            ? OcctStatus_Ok
+            : engine->errors.code;
+    }
+
+    void validatePresentationStateOptions(const OcctViewerPresentationStateOptions* options)
+    {
+        if (options == nullptr) throw std::invalid_argument("Presentation state options are null.");
+        if (options->structSize < sizeof(OcctViewerPresentationStateOptions) ||
+            options->apiVersion != PresentationStateApiVersion)
+        {
+            throw std::invalid_argument("Unsupported presentation state options size or version.");
+        }
+        if (options->updateMask == 0 || (options->updateMask & ~AllPresentationStateUpdateBits) != 0)
+            throw std::invalid_argument("Presentation state update mask is invalid.");
+        if ((options->updateMask & OcctViewerPresentationStateUpdate_DisplayMode) != 0 &&
+            (options->updateMask & OcctViewerPresentationStateUpdate_ResetDisplayMode) != 0)
+        {
+            throw std::invalid_argument("Display mode set and reset cannot be requested together.");
+        }
+        if ((options->updateMask & OcctViewerPresentationStateUpdate_DisplayMode) != 0 &&
+            options->displayMode != OcctDisplay_Wireframe &&
+            options->displayMode != OcctDisplay_Shaded)
+        {
+            throw std::invalid_argument("Object display mode is out of range.");
+        }
+    }
+
+    OcctViewerPresentationStateOptions presentationStateOptions(
+        std::uint32_t updateMask,
+        int displayMode = OcctDisplay_Shaded,
+        int autoHighlight = 0,
+        int infinite = 0)
+    {
+        return {
+            static_cast<std::uint32_t>(sizeof(OcctViewerPresentationStateOptions)),
+            PresentationStateApiVersion,
+            updateMask,
+            displayMode,
+            autoHighlight,
+            infinite };
+    }
 }
 
 extern "C"
 {
+    OcctStatus occt_engine_presentation_state_update(
+        OcctEngineHandle handle,
+        OcctObjectId objectId,
+        const OcctViewerPresentationStateOptions* options)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executePresentationStatus(engine, [&]
+        {
+            validatePresentationStateOptions(options);
+            ObjectEntry& entry = requiredObject(engine, objectId);
+
+            if ((options->updateMask & OcctViewerPresentationStateUpdate_DisplayMode) != 0)
+            {
+                engine->viewerContext.context->SetDisplayMode(
+                    entry.presentation,
+                    options->displayMode == OcctDisplay_Wireframe ? AIS_WireFrame : AIS_Shaded,
+                    Standard_False);
+            }
+            if ((options->updateMask & OcctViewerPresentationStateUpdate_ResetDisplayMode) != 0)
+                engine->viewerContext.context->UnsetDisplayMode(entry.presentation, Standard_False);
+            if ((options->updateMask & OcctViewerPresentationStateUpdate_AutoHighlight) != 0)
+            {
+                const Standard_Boolean requested = options->autoHighlight != 0;
+                entry.presentation->SetAutoHilight(requested);
+                if (entry.presentation->IsAutoHilight() != requested)
+                    throw std::invalid_argument("Object does not support the requested AutoHighlight state.");
+            }
+            if ((options->updateMask & OcctViewerPresentationStateUpdate_Infinite) != 0)
+            {
+                entry.presentation->SetInfiniteState(options->infinite != 0);
+                engine->viewerContext.context->Redisplay(entry.presentation, Standard_False, Standard_True);
+            }
+            engine->requestRedraw();
+        });
+    }
+
+    OcctStatus occt_engine_presentation_state_get(
+        OcctEngineHandle handle,
+        OcctObjectId objectId,
+        OcctViewerPresentationState* result)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executePresentationStatus(engine, [&]
+        {
+            if (result == nullptr) throw std::invalid_argument("Presentation state result is null.");
+            const ObjectEntry& entry = requiredObject(engine, objectId);
+            result->structSize = static_cast<std::uint32_t>(sizeof(OcctViewerPresentationState));
+            result->apiVersion = PresentationStateApiVersion;
+            result->hasDisplayModeOverride = entry.presentation->HasDisplayMode() ? 1 : 0;
+            result->displayMode = -1;
+            if (result->hasDisplayModeOverride != 0)
+            {
+                const int nativeMode = entry.presentation->DisplayMode();
+                if (nativeMode == AIS_WireFrame) result->displayMode = OcctDisplay_Wireframe;
+                else if (nativeMode == AIS_Shaded) result->displayMode = OcctDisplay_Shaded;
+                else result->displayMode = nativeMode;
+            }
+            result->autoHighlight = entry.presentation->IsAutoHilight() ? 1 : 0;
+            result->infinite = entry.presentation->IsInfinite() ? 1 : 0;
+        });
+    }
+
     int occt_set_object_clip_planes(
         OcctHandle h,
         OcctObjectId objectId,
@@ -171,13 +295,12 @@ extern "C"
 
     int occt_reset_object_display_mode(OcctHandle h, OcctObjectId objectId)
     {
-        Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
-        return execute(e, [&]
-        {
-            ObjectEntry& entry = requiredObject(e, objectId);
-            e->viewerContext.context->UnsetDisplayMode(entry.presentation, Standard_False);
-            e->requestRedraw();
-        });
+        const OcctViewerPresentationStateOptions options = presentationStateOptions(
+            OcctViewerPresentationStateUpdate_ResetDisplayMode);
+        return occt_engine_presentation_state_update(
+                   reinterpret_cast<OcctEngineHandle>(h), objectId, &options) == OcctStatus_Ok
+            ? 1
+            : 0;
     }
 
     int occt_get_object_display_mode(
@@ -186,67 +309,78 @@ extern "C"
         int* hasOverride,
         int* displayMode)
     {
-        Engine* e = engineOf(h); if (!validateInitialized(e) || hasOverride == nullptr || displayMode == nullptr) return 0;
-        return execute(e, [&]
+        if (hasOverride == nullptr || displayMode == nullptr)
         {
-            const ObjectEntry& entry = requiredObject(e, objectId);
-            *hasOverride = entry.presentation->HasDisplayMode() ? 1 : 0;
-            if (*hasOverride == 0)
-            {
-                *displayMode = -1;
-                return;
-            }
-
-            const int nativeMode = entry.presentation->DisplayMode();
-            if (nativeMode == AIS_WireFrame) *displayMode = OcctDisplay_Wireframe;
-            else if (nativeMode == AIS_Shaded) *displayMode = OcctDisplay_Shaded;
-            else *displayMode = nativeMode;
-        });
+            Engine* engine = engineOf(h);
+            if (engine != nullptr)
+                engine->setError(OcctStatus_ErrorInvalidArgument, "Display mode output is null.");
+            return 0;
+        }
+        OcctViewerPresentationState state{};
+        if (occt_engine_presentation_state_get(
+                reinterpret_cast<OcctEngineHandle>(h), objectId, &state) != OcctStatus_Ok)
+            return 0;
+        *hasOverride = state.hasDisplayModeOverride;
+        *displayMode = state.displayMode;
+        return 1;
     }
 
     int occt_set_object_auto_highlight(OcctHandle h, OcctObjectId objectId, int enabled)
     {
-        Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
-        return execute(e, [&]
-        {
-            ObjectEntry& entry = requiredObject(e, objectId);
-            const Standard_Boolean requested = enabled != 0;
-            entry.presentation->SetAutoHilight(requested);
-            if (entry.presentation->IsAutoHilight() != requested)
-                throw std::invalid_argument("Object does not support the requested AutoHighlight state.");
-            e->requestRedraw();
-        });
+        const OcctViewerPresentationStateOptions options = presentationStateOptions(
+            OcctViewerPresentationStateUpdate_AutoHighlight,
+            OcctDisplay_Shaded,
+            enabled);
+        return occt_engine_presentation_state_update(
+                   reinterpret_cast<OcctEngineHandle>(h), objectId, &options) == OcctStatus_Ok
+            ? 1
+            : 0;
     }
 
     int occt_get_object_auto_highlight(OcctHandle h, OcctObjectId objectId, int* enabled)
     {
-        Engine* e = engineOf(h); if (!validateInitialized(e) || enabled == nullptr) return 0;
-        return execute(e, [&]
+        if (enabled == nullptr)
         {
-            const ObjectEntry& entry = requiredObject(e, objectId);
-            *enabled = entry.presentation->IsAutoHilight() ? 1 : 0;
-        });
+            Engine* engine = engineOf(h);
+            if (engine != nullptr)
+                engine->setError(OcctStatus_ErrorInvalidArgument, "AutoHighlight output is null.");
+            return 0;
+        }
+        OcctViewerPresentationState state{};
+        if (occt_engine_presentation_state_get(
+                reinterpret_cast<OcctEngineHandle>(h), objectId, &state) != OcctStatus_Ok)
+            return 0;
+        *enabled = state.autoHighlight;
+        return 1;
     }
 
     int occt_set_object_infinite_state(OcctHandle h, OcctObjectId objectId, int infinite)
     {
-        Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
-        return execute(e, [&]
-        {
-            ObjectEntry& entry = requiredObject(e, objectId);
-            entry.presentation->SetInfiniteState(infinite != 0);
-            e->viewerContext.context->Redisplay(entry.presentation, Standard_False, Standard_True);
-            e->requestRedraw();
-        });
+        const OcctViewerPresentationStateOptions options = presentationStateOptions(
+            OcctViewerPresentationStateUpdate_Infinite,
+            OcctDisplay_Shaded,
+            0,
+            infinite);
+        return occt_engine_presentation_state_update(
+                   reinterpret_cast<OcctEngineHandle>(h), objectId, &options) == OcctStatus_Ok
+            ? 1
+            : 0;
     }
 
     int occt_get_object_infinite_state(OcctHandle h, OcctObjectId objectId, int* infinite)
     {
-        Engine* e = engineOf(h); if (!validateInitialized(e) || infinite == nullptr) return 0;
-        return execute(e, [&]
+        if (infinite == nullptr)
         {
-            const ObjectEntry& entry = requiredObject(e, objectId);
-            *infinite = entry.presentation->IsInfinite() ? 1 : 0;
-        });
+            Engine* engine = engineOf(h);
+            if (engine != nullptr)
+                engine->setError(OcctStatus_ErrorInvalidArgument, "Infinite-state output is null.");
+            return 0;
+        }
+        OcctViewerPresentationState state{};
+        if (occt_engine_presentation_state_get(
+                reinterpret_cast<OcctEngineHandle>(h), objectId, &state) != OcctStatus_Ok)
+            return 0;
+        *infinite = state.infinite;
+        return 1;
     }
 }
