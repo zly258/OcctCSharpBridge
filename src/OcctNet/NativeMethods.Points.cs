@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace OcctNet;
@@ -74,51 +74,4 @@ internal static partial class NativeMethods
         OcctEngineSafeHandle handle,
         long pointId,
         in NativeViewerPointPixmapOptions options);
-
-    // Frozen ABI 4 declarations retained only for compatibility-surface verification.
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern long occt_add_point(
-        OcctEngineSafeHandle handle,
-        OcctPoint3d position,
-        int marker,
-        double scale,
-        double r,
-        double g,
-        double b);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_set_point_position(
-        OcctEngineSafeHandle handle,
-        long pointId,
-        OcctPoint3d position);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_set_point_style(
-        OcctEngineSafeHandle handle,
-        long pointId,
-        int marker,
-        double scale,
-        double r,
-        double g,
-        double b);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern long occt_add_point_pixmap(
-        OcctEngineSafeHandle handle,
-        OcctPoint3d position,
-        int width,
-        int height,
-        IntPtr pixels,
-        int pixelCount,
-        int pixelFormat);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_set_point_pixmap_style(
-        OcctEngineSafeHandle handle,
-        long pointId,
-        int width,
-        int height,
-        IntPtr pixels,
-        int pixelCount,
-        int pixelFormat);
 }
