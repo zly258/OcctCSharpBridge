@@ -19,9 +19,13 @@ using namespace OcctBridge;
 namespace
 {
     constexpr std::uint32_t PointOptionsApiVersion = 1;
+    constexpr std::uint32_t PointPixmapOptionsApiVersion = 1;
     constexpr std::uint32_t AllPointUpdateBits =
         OcctViewerPointUpdate_Position |
         OcctViewerPointUpdate_Style;
+    constexpr std::uint32_t AllPointPixmapUpdateBits =
+        OcctViewerPointPixmapUpdate_Position |
+        OcctViewerPointPixmapUpdate_Image;
 
     Aspect_TypeOfMarker pointMarker(int marker)
     {
@@ -84,61 +88,6 @@ namespace
         }
     }
 
-    OcctStatus requireInitializedEngine(Engine* engine)
-    {
-        if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
-        if (!validateInitialized(engine)) return engine->errors.code;
-        return OcctStatus_Ok;
-    }
-
-    OcctStatus executePointStatus(Engine* engine, const std::function<void()>& function)
-    {
-        const OcctStatus initialized = requireInitializedEngine(engine);
-        if (initialized != OcctStatus_Ok) return initialized;
-        return execute(engine, function) != 0 ? OcctStatus_Ok : engine->errors.code;
-    }
-
-    OcctStatus executePointObjectStatus(
-        Engine* engine,
-        OcctObjectId* output,
-        const std::function<OcctObjectId()>& function)
-    {
-        const OcctStatus initialized = requireInitializedEngine(engine);
-        if (initialized != OcctStatus_Ok) return initialized;
-        if (output == nullptr)
-        {
-            engine->setError(OcctStatus_ErrorInvalidArgument, "Result point ID output is null.");
-            return OcctStatus_ErrorInvalidArgument;
-        }
-
-        *output = 0;
-        const OcctObjectId value = executeObject(engine, function);
-        if (value == 0) return engine->errors.code;
-        *output = value;
-        return OcctStatus_Ok;
-    }
-
-    OcctViewerPointOptions pointOptions(
-        std::uint32_t updateMask,
-        OcctPoint3d position,
-        int marker,
-        double scale,
-        double red,
-        double green,
-        double blue)
-    {
-        return {
-            static_cast<std::uint32_t>(sizeof(OcctViewerPointOptions)),
-            PointOptionsApiVersion,
-            updateMask,
-            position,
-            marker,
-            scale,
-            red,
-            green,
-            blue };
-    }
-
     Handle(Image_AlienPixMap) markerPixmap(
         int width,
         int height,
@@ -199,6 +148,109 @@ namespace
         presentation->Attributes()->SetPointAspect(
             new Prs3d_PointAspect(markerAspect));
     }
+
+    void validatePointPixmapOptions(const OcctViewerPointPixmapOptions* options, bool isUpdate)
+    {
+        if (options == nullptr) throw std::invalid_argument("Viewer point pixmap options are null.");
+        if (options->structSize < sizeof(OcctViewerPointPixmapOptions) ||
+            options->apiVersion != PointPixmapOptionsApiVersion)
+        {
+            throw std::invalid_argument("Unsupported viewer point pixmap options size or version.");
+        }
+        if ((options->updateMask & ~AllPointPixmapUpdateBits) != 0)
+            throw std::invalid_argument("Viewer point pixmap update mask contains unsupported bits.");
+        if (isUpdate && options->updateMask == 0)
+            throw std::invalid_argument("Viewer point pixmap update mask is empty.");
+
+        if (!isUpdate || (options->updateMask & OcctViewerPointPixmapUpdate_Position) != 0)
+            requireFinitePoint(options->position);
+        if (!isUpdate || (options->updateMask & OcctViewerPointPixmapUpdate_Image) != 0)
+        {
+            // Reuse the single image validator/allocator and immediately release the temporary map.
+            (void)markerPixmap(
+                options->width,
+                options->height,
+                options->pixels,
+                options->pixelCount,
+                options->pixelFormat);
+        }
+    }
+
+    OcctStatus requireInitializedEngine(Engine* engine)
+    {
+        if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (!validateInitialized(engine)) return engine->errors.code;
+        return OcctStatus_Ok;
+    }
+
+    OcctStatus executePointStatus(Engine* engine, const std::function<void()>& function)
+    {
+        const OcctStatus initialized = requireInitializedEngine(engine);
+        if (initialized != OcctStatus_Ok) return initialized;
+        return execute(engine, function) != 0 ? OcctStatus_Ok : engine->errors.code;
+    }
+
+    OcctStatus executePointObjectStatus(
+        Engine* engine,
+        OcctObjectId* output,
+        const std::function<OcctObjectId()>& function)
+    {
+        const OcctStatus initialized = requireInitializedEngine(engine);
+        if (initialized != OcctStatus_Ok) return initialized;
+        if (output == nullptr)
+        {
+            engine->setError(OcctStatus_ErrorInvalidArgument, "Result point ID output is null.");
+            return OcctStatus_ErrorInvalidArgument;
+        }
+
+        *output = 0;
+        const OcctObjectId value = executeObject(engine, function);
+        if (value == 0) return engine->errors.code;
+        *output = value;
+        return OcctStatus_Ok;
+    }
+
+    OcctViewerPointOptions pointOptions(
+        std::uint32_t updateMask,
+        OcctPoint3d position,
+        int marker,
+        double scale,
+        double red,
+        double green,
+        double blue)
+    {
+        return {
+            static_cast<std::uint32_t>(sizeof(OcctViewerPointOptions)),
+            PointOptionsApiVersion,
+            updateMask,
+            position,
+            marker,
+            scale,
+            red,
+            green,
+            blue };
+    }
+
+    OcctViewerPointPixmapOptions pointPixmapOptions(
+        std::uint32_t updateMask,
+        OcctPoint3d position,
+        int width,
+        int height,
+        const unsigned char* pixels,
+        int pixelCount,
+        int pixelFormat)
+    {
+        return {
+            static_cast<std::uint32_t>(sizeof(OcctViewerPointPixmapOptions)),
+            PointPixmapOptionsApiVersion,
+            updateMask,
+            position,
+            width,
+            height,
+            pixels,
+            pixelCount,
+            pixelFormat };
+    }
 }
 
 extern "C"
@@ -255,6 +307,65 @@ extern "C"
                     options->red,
                     options->green,
                     options->blue);
+            }
+
+            engine->viewerContext.context->Redisplay(presentation, Standard_False);
+            engine->requestRedraw();
+        });
+    }
+
+    OcctStatus occt_engine_point_pixmap_create(
+        OcctEngineHandle handle,
+        const OcctViewerPointPixmapOptions* options,
+        OcctObjectId* resultPointId)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executePointObjectStatus(engine, resultPointId, [&]
+        {
+            validatePointPixmapOptions(options, false);
+            Handle(Geom_CartesianPoint) component = new Geom_CartesianPoint(point(options->position));
+            Handle(AIS_Point) presentation = new AIS_Point(component);
+            applyPixmapStyle(
+                presentation,
+                options->width,
+                options->height,
+                options->pixels,
+                options->pixelCount,
+                options->pixelFormat);
+            return engine->addPresentation(presentation, OcctPointObjectKind, "Point");
+        });
+    }
+
+    OcctStatus occt_engine_point_pixmap_update(
+        OcctEngineHandle handle,
+        OcctObjectId pointId,
+        const OcctViewerPointPixmapOptions* options)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executePointStatus(engine, [&]
+        {
+            validatePointPixmapOptions(options, true);
+            Handle(AIS_Point) presentation = requiredPoint(engine, pointId);
+
+            if ((options->updateMask & OcctViewerPointPixmapUpdate_Position) != 0)
+            {
+                Handle(Geom_CartesianPoint) component =
+                    Handle(Geom_CartesianPoint)::DownCast(presentation->Component());
+                if (component.IsNull())
+                    presentation->SetComponent(new Geom_CartesianPoint(point(options->position)));
+                else
+                    component->SetPnt(point(options->position));
+            }
+
+            if ((options->updateMask & OcctViewerPointPixmapUpdate_Image) != 0)
+            {
+                applyPixmapStyle(
+                    presentation,
+                    options->width,
+                    options->height,
+                    options->pixels,
+                    options->pixelCount,
+                    options->pixelFormat);
             }
 
             engine->viewerContext.context->Redisplay(presentation, Standard_False);
@@ -343,16 +454,21 @@ extern "C"
         int pixelCount,
         int pixelFormat)
     {
-        Engine* engine = engineOf(h);
-        if (!validateInitialized(engine)) return 0;
-
-        return executeObject(engine, [&]
-        {
-            Handle(Geom_CartesianPoint) component = new Geom_CartesianPoint(point(position));
-            Handle(AIS_Point) presentation = new AIS_Point(component);
-            applyPixmapStyle(presentation, width, height, pixels, pixelCount, pixelFormat);
-            return engine->addPresentation(presentation, OcctPointObjectKind, "Point");
-        });
+        const OcctViewerPointPixmapOptions options = pointPixmapOptions(
+            AllPointPixmapUpdateBits,
+            position,
+            width,
+            height,
+            pixels,
+            pixelCount,
+            pixelFormat);
+        OcctObjectId pointId = 0;
+        return occt_engine_point_pixmap_create(
+                   reinterpret_cast<OcctEngineHandle>(h),
+                   &options,
+                   &pointId) == OcctStatus_Ok
+            ? pointId
+            : 0;
     }
 
     int occt_set_point_pixmap_style(
@@ -364,15 +480,19 @@ extern "C"
         int pixelCount,
         int pixelFormat)
     {
-        Engine* engine = engineOf(h);
-        if (!validateInitialized(engine)) return 0;
-
-        return execute(engine, [&]
-        {
-            Handle(AIS_Point) presentation = requiredPoint(engine, pointId);
-            applyPixmapStyle(presentation, width, height, pixels, pixelCount, pixelFormat);
-            engine->viewerContext.context->Redisplay(presentation, Standard_False);
-            engine->requestRedraw();
-        });
+        const OcctViewerPointPixmapOptions options = pointPixmapOptions(
+            OcctViewerPointPixmapUpdate_Image,
+            {},
+            width,
+            height,
+            pixels,
+            pixelCount,
+            pixelFormat);
+        return occt_engine_point_pixmap_update(
+                   reinterpret_cast<OcctEngineHandle>(h),
+                   pointId,
+                   &options) == OcctStatus_Ok
+            ? 1
+            : 0;
     }
 }
