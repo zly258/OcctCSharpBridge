@@ -26,7 +26,6 @@ if ($compatibilityExtensionNames.Count -ne [int]$contract.api.compatibilityExten
     throw "Compatibility extension names differ from bridge-contract.json count."
 }
 
-
 $nativeRoot = Join-Path $RepositoryRoot "src\OcctNative"
 $managedRoot = Join-Path $RepositoryRoot "src\OcctNet"
 $publicManagedRoots = @(
@@ -178,9 +177,24 @@ if ($ocafExports.Count -ne 0) {
     throw "OCAF/XDE exports are not allowed in the reusable bridge."
 }
 
+# Modeling owns the headless session API and every resource whose lifetime originates
+# from that session. Keep these prefixes explicit so new owned resources cannot silently
+# inflate the Viewer count merely because they do not start with occt_model_.
+$modelingPrefixes = @(
+    'occt_model_',
+    'occt_shape_',
+    'occt_mesh_',
+    'occt_algorithm_'
+)
+$modelingExports = @($declarations | Where-Object {
+    $name = $_
+    @($modelingPrefixes | Where-Object { $name.StartsWith($_, [StringComparison]::Ordinal) }).Count -gt 0
+})
+$viewerExports = @($declarations | Where-Object { $_ -notin $modelingExports })
+
 $groups = [ordered]@{
-    Viewer = @($declarations | Where-Object { $_ -notlike 'occt_model_*' })
-    Modeling = @($declarations | Where-Object { $_ -like 'occt_model_*' })
+    Viewer = $viewerExports
+    Modeling = $modelingExports
 }
 
 if ($groups.Viewer.Count -ne $expectedViewerCount) {
@@ -188,6 +202,9 @@ if ($groups.Viewer.Count -ne $expectedViewerCount) {
 }
 if ($groups.Modeling.Count -ne $expectedModelingCount) {
     throw "Modeling API count differs from bridge-contract.json: actual=$($groups.Modeling.Count), expected=$expectedModelingCount."
+}
+if (($groups.Viewer.Count + $groups.Modeling.Count) -ne $declarations.Count) {
+    throw "Viewer/Modeling API groups do not partition the native export set."
 }
 
 foreach ($group in $groups.GetEnumerator()) {
