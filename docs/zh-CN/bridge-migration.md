@@ -1,4 +1,4 @@
-# Bridge 迁移
+﻿# Bridge 迁移
 
 Bridge 3 将 `main` 定义为唯一正式 SDK 源。仓库按以下顺序迁移：
 
@@ -20,9 +20,7 @@ ABI 5 是当前契约。ABI 4 固定为 419 个导出并保持二进制兼容，
 
 正式托管 SDK 使用类型化生命周期和语义化 native surface API。旧生命周期与 surface 入口仅作为兼容适配器，并由固定旧 Consumer 可执行程序验证。
 正式 current ABI 的托管声明使用 source-generated `LibraryImport`，并明确指定 C calling convention。冻结的 ABI 4 声明与兼容扩展继续隔离在 `DllImport`；契约检查会阻止两组声明越界。
-Current ABI 提供 opaque `OcctShapeHandle` 与 `OcctMeshHandle` 资源。Shape snapshot 与独立分配的连续 Mesh buffer 都由 Managed `SafeHandle` wrapper 持有，即使源 Session registry entry 已删除仍然有效。Mesh 创建参数采用可扩展的 `structSize`/`apiVersion` 结构，节点和三角形通过 caller-owned bulk buffer 复制；调用方不得让资源查询与 Dispose 并发发生。
-
-
+Current ABI 提供 opaque `OcctShapeHandle`、`OcctMeshHandle` 与 `OcctAlgorithmHandle` 资源。Shape snapshot、独立 Mesh buffer 与算法诊断快照均由 Managed `SafeHandle` wrapper 持有。Algorithm resource 会复制 operation ID、warning/error flags 与 report，因此源 Modeling Session 释放后仍可读取诊断信息；Topology lineage 继续由 Session history API 管理。Mesh 创建参数采用可扩展的 `structSize`/`apiVersion` 结构，节点和三角形通过 caller-owned bulk buffer 复制；调用方不得让资源查询与 Dispose 并发发生。
 
 ## 兼容性门禁
 
@@ -30,7 +28,7 @@ Current ABI 提供 opaque `OcctShapeHandle` 与 `OcctMeshHandle` 资源。Shape 
 
 - ABI 4 固定的 419 个符号全部保留；
 - Native 声明、实现与 P/Invoke 集合完全一致；
-- 19 个正式 current ABI 声明全部使用 `LibraryImport`，兼容扩展保持隔离；
+- 23 个正式 current ABI 声明全部使用 `LibraryImport`，兼容扩展保持隔离；
 - 新导出与受跟踪文件名遵守语义化命名；
 - WinForms 与 WPF 通过平台无关的托管 Engine API 工作；
 - 固定 ABI 4 Consumer 和当前 ABI 5 Native smoke 都能成功运行。
