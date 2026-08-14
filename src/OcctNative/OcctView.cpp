@@ -73,26 +73,4 @@ extern "C"
             e->requestRedraw();
         });
     }
-
-    OcctObjectId occt_copy_selected_subshape_at(OcctHandle h, int index)
-    {
-        Engine* e = engineOf(h); if (!validateInitialized(e) || index < 0) return 0;
-        return executeObject(e, [&]() -> OcctObjectId
-        {
-            int current = 0;
-            for (e->viewerContext.context->InitSelected();
-                 e->viewerContext.context->MoreSelected();
-                 e->viewerContext.context->NextSelected(), ++current)
-            {
-                if (current != index) continue;
-                if (!e->viewerContext.context->HasSelectedShape())
-                    throw std::runtime_error("The selected item has no topological shape.");
-                const TopoDS_Shape selected = e->viewerContext.context->SelectedShape();
-                if (selected.IsNull())
-                    throw std::runtime_error("The selected topological subshape is null.");
-                return e->addShape(selected, false, "SelectedSubshape");
-            }
-            throw std::out_of_range("Selected subshape index is out of range.");
-        });
-    }
 }
