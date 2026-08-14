@@ -111,7 +111,6 @@ add_library(OcctNative SHARED
     OcctFeatures.cpp
     OcctAnnotations.cpp
     geometry/OcctPoints.cpp
-    OcctVectorAnnotations.cpp
     exchange/OcctIO.cpp
     exchange/OcctStepDocument.cpp
     modeling/OcctModelingCore.cpp
