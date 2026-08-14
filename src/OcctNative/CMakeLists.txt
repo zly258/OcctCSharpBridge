@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+﻿cmake_minimum_required(VERSION 3.21)
 
 project(OcctNative LANGUAGES CXX)
 
@@ -126,6 +126,7 @@ add_library(OcctNative SHARED
     modeling/OcctModelingBoolean.cpp
     modeling/OcctModelingFeatures.cpp
     modeling/OcctModelingHealing.cpp
+    modeling/OcctAlgorithmResource.cpp
     topology/OcctModelingHistory.cpp
     modeling/OcctModelingAnalysis.cpp
     mesh/OcctModelingMesh.cpp
@@ -150,6 +151,7 @@ add_library(OcctNative SHARED
     exchange/OcctDocumentStore.hxx
     modeling/OcctModelingShapeInternal.hxx
     modeling/OcctModelingAlgorithmInternal.hxx
+    modeling/OcctAlgorithmResource.h
     mesh/OcctModelingMeshInternal.hxx
     mesh/OcctMeshResource.h
     exchange/OcctModelingExchangeInternal.hxx

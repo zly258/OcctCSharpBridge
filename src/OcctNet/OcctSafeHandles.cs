@@ -111,3 +111,31 @@ internal sealed class OcctMeshSafeHandle : SafeHandleZeroOrMinusOneIsInvalid
         }
     }
 }
+
+internal sealed class OcctAlgorithmSafeHandle : SafeHandleZeroOrMinusOneIsInvalid
+{
+    private OcctAlgorithmSafeHandle()
+        : base(ownsHandle: true)
+    {
+    }
+
+    internal static OcctAlgorithmSafeHandle AdoptOwned(IntPtr nativeHandle)
+    {
+        var result = new OcctAlgorithmSafeHandle();
+        result.SetHandle(nativeHandle);
+        return result;
+    }
+
+    protected override bool ReleaseHandle()
+    {
+        try
+        {
+            ModelNativeMethods.occt_algorithm_release(handle);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+}
