@@ -567,7 +567,7 @@ try {
         Assert-Path $projectPath
         New-Item -ItemType Directory -Path $stagingDestination -Force | Out-Null
 
-        Write-Host "[publish] $($definition.Name) from Bridge $($contract.bridgeVersion), ABI $($contract.nativeAbiVersion)..." -ForegroundColor Cyan
+        Write-Host "[publish] $($definition.Name) from Bridge $($contract.bridgeVersion), ABI $($contract.nativeAbi.current)..." -ForegroundColor Cyan
         Invoke-Checked "dotnet" @(
             "publish", $projectPath,
             "-c", $Configuration,

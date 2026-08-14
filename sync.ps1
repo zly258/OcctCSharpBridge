@@ -40,6 +40,7 @@ try {
         "OcctNet.WinForms.dll",
         "OcctNet.Wpf.dll",
         "bridge-contract.json",
+        "OcctNet.Avalonia.dll",
         "bridge-manifest.json"
     )
 
@@ -57,7 +58,7 @@ try {
 
     $Contract = Get-Content (Join-Path $LocalSdkRoot "bridge-contract.json") -Raw -Encoding UTF8 | ConvertFrom-Json
     Write-Host "Binary SDK synchronized." -ForegroundColor Green
-    Write-Host ("Bridge: {0}, ABI {1}, OCCT {2}, .NET SDK {3}" -f $Contract.bridgeVersion, $Contract.nativeAbiVersion, $Contract.occtVersion, $Contract.dotnet.sdkVersion) -ForegroundColor DarkGray
+    Write-Host ("Bridge: {0}, ABI {1}, OCCT {2}, .NET SDK {3}" -f $Contract.bridgeVersion, $Contract.nativeAbi.current, $Contract.occtVersion, $Contract.dotnet.sdkVersion) -ForegroundColor DarkGray
     Write-Host "Path:   $LocalSdkRoot" -ForegroundColor DarkGray
 }
 finally {

@@ -29,6 +29,7 @@ $ContractPath = Join-Path $DistRoot "bridge-contract.json"
 $ManifestPath = Join-Path $DistRoot "bridge-manifest.json"
 $PropsPath = Join-Path $RepoRoot "Directory.Build.props"
 $GlobalJsonPath = Join-Path $RepoRoot "global.json"
+$ConsumerCheckPath = Join-Path $RepoRoot "tests\check-sdk-consumer.ps1"
 $script:TargetFramework = "net10.0-windows"
 $script:BridgeVersion = ""
 
@@ -115,6 +116,7 @@ function Test-BinarySdk {
         "OcctNet.WinForms.dll",
         "OcctNet.Wpf.dll",
         "bridge-contract.json",
+        "OcctNet.Avalonia.dll",
         "bridge-manifest.json"
     )
     foreach ($name in $required) {
@@ -130,8 +132,8 @@ function Test-BinarySdk {
     if ([string]::IsNullOrWhiteSpace([string]$contract.bridgeVersion)) {
         throw "Bridge version is missing from bridge-contract.json."
     }
-    if ([int]$contract.nativeAbiVersion -le 0) {
-        throw "Bridge native ABI version must be positive."
+    if ([int]$contract.schemaVersion -ne 2 -or [int]$contract.nativeAbi.current -ne 5) {
+        throw "Demo requires the Bridge schema 2 contract with current ABI 5."
     }
     if ([string]::IsNullOrWhiteSpace([string]$contract.occtVersion)) {
         throw "OCCT version is missing from bridge-contract.json."
@@ -139,8 +141,11 @@ function Test-BinarySdk {
     if ([string]$contract.platform -ne "windows-x64") {
         throw "Unsupported Bridge platform: $($contract.platform)"
     }
-    if ([string]$contract.dotnet.targetFramework -ne "net10.0-windows") {
-        throw "Unsupported Bridge target framework: $($contract.dotnet.targetFramework)"
+    if ([string]$contract.dotnet.targetFramework -ne "net10.0") {
+        throw "Unsupported Bridge core target framework: $($contract.dotnet.targetFramework)"
+    }
+    if ([string]$contract.dotnet.desktopTargetFramework -ne "net10.0-windows") {
+        throw "Unsupported Bridge desktop target framework: $($contract.dotnet.desktopTargetFramework)"
     }
     $contractSdkText = [string]$contract.dotnet.sdkVersion
     try { $contractSdk = [version]$contractSdkText }
@@ -152,14 +157,14 @@ function Test-BinarySdk {
         throw "Unsupported Bridge C# language version: $($contract.dotnet.languageVersion). Demo expects $ExpectedLanguageVersion."
     }
     $script:BridgeVersion = [string]$contract.bridgeVersion
-    $script:TargetFramework = [string]$contract.dotnet.targetFramework
+    $script:TargetFramework = [string]$contract.dotnet.desktopTargetFramework
 
     if ([int]$manifest.schemaVersion -ne 1) {
         throw "Unsupported Bridge binary manifest schema: $($manifest.schemaVersion)"
     }
     if ([string]$manifest.author -ne [string]$contract.author -or
         [string]$manifest.bridgeVersion -ne [string]$contract.bridgeVersion -or
-        [int]$manifest.nativeAbiVersion -ne [int]$contract.nativeAbiVersion -or
+        [int]$manifest.nativeAbiVersion -ne [int]$contract.nativeAbi.current -or
         [string]$manifest.occtVersion -ne [string]$contract.occtVersion -or
         [string]$manifest.platform -ne [string]$contract.platform -or
         [string]$manifest.targetFramework -ne [string]$contract.dotnet.targetFramework -or
@@ -177,6 +182,7 @@ function Test-BinarySdk {
         "OcctNet.dll",
         "OcctNet.WinForms.dll",
         "OcctNet.Wpf.dll",
+        "OcctNet.Avalonia.dll",
         "bridge-contract.json"
     )
     $entries = @($manifest.files)
@@ -209,7 +215,7 @@ function Test-BinarySdk {
     Write-Host ("Bridge Binary SDK: {0}, author {1}, ABI {2}, OCCT {3}, .NET SDK major {4} (reference {5}), C# {6}" -f
         $contract.bridgeVersion,
         $contract.author,
-        $contract.nativeAbiVersion,
+        $contract.nativeAbi.current,
         $contract.occtVersion,
         $contractSdk.Major,
         $contract.dotnet.sdkVersion,
@@ -268,6 +274,10 @@ if ($Target -eq "clean") {
     exit 0
 }
 
+Assert-Path $ConsumerCheckPath
+Write-Host "[consumer] Running SDK consumer boundary check..." -ForegroundColor Cyan
+& $ConsumerCheckPath -RepositoryRoot $RepoRoot
+if (-not $?) { throw "SDK consumer boundary validation failed." }
 Test-BinarySdk
 
 switch ($Target) {

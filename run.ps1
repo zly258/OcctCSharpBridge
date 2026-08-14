@@ -29,7 +29,7 @@ if (-not (Test-Path -LiteralPath $ContractPath -PathType Leaf)) {
 & $BuildScript validate $Configuration
 
 $contract = Get-Content -LiteralPath $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
-$targetFramework = [string]$contract.dotnet.targetFramework
+$targetFramework = [string]$contract.dotnet.desktopTargetFramework
 $OcctRoot = [System.IO.Path]::GetFullPath($OcctRoot)
 $OcctBinDir = Join-Path $OcctRoot "win64\vc14\bin"
 $OcctThirdPartyDir = Join-Path $OcctRoot "3rdparty-vc14-64"
@@ -97,7 +97,7 @@ if (Test-Path -LiteralPath $OcctThirdPartyDir -PathType Container) {
 }
 
 Write-Host "Application: $executable"
-Write-Host "Bridge:      $($contract.bridgeVersion), ABI $($contract.nativeAbiVersion)" -ForegroundColor DarkGray
+Write-Host "Bridge:      $($contract.bridgeVersion), ABI $($contract.nativeAbi.current)" -ForegroundColor DarkGray
 Write-Host "OCCT root:   $OcctRoot" -ForegroundColor DarkGray
 
 $process = Start-Process -FilePath $executable -WorkingDirectory $applicationDirectory -PassThru

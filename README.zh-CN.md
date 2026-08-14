@@ -10,7 +10,7 @@ OcctDemo.WinForms
 OcctDemo.Wpf
 ```
 
-Avalonia 独立维护在 `avalonia` 分支，并在 Windows/Linux 上展示同类 CAD 场景。
+Avalonia 示例与打包流程位于 `avalonia` 分支，但所有正式 SDK 程序集都由 `main` 产出。
 
 ## Demo 运行预览
 
@@ -32,7 +32,7 @@ Avalonia 独立维护在 `avalonia` 分支，并在 Windows/Linux 上展示同�
 .\sync.ps1
 ```
 
-该分支只要求 Core、WinForms、WPF Bridge Assembly，不要求 `OcctNet.Avalonia.dll`。
+同步内容是完整的 `main` SDK。本分支示例只引用 Core、WinForms、WPF；`OcctNet.Avalonia.dll` 仍随完整 SDK 同步，以保持契约和哈希一致。
 
 ## 构建
 
@@ -61,9 +61,9 @@ Avalonia 独立维护在 `avalonia` 分支，并在 Windows/Linux 上展示同�
 
 ## 分支职责
 
-- `main`：Windows Bridge + 正式 Windows Binary SDK（Core、WinForms、WPF）。
+- `main`：唯一正式 SDK 源（`OcctNative`、`OcctNet`、WinForms、WPF、Avalonia）。
 - `demo`：Windows WinForms/WPF 演示应用。
-- `avalonia`：独立 `OcctNet + OcctNet.Avalonia`，同时面向 Windows x64 + Linux x64，并维护各自平台运行预览。
+- `avalonia`：Avalonia Consumer 示例、Windows/Linux 打包与预览。
 - `website`：统一展示两组 Demo 的中英文官网。
 
 许可证为 GNU LGPL 2.1 + OcctCSharpBridge Exception 1.0。

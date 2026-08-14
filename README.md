@@ -10,7 +10,7 @@ OcctDemo.WinForms
 OcctDemo.Wpf
 ```
 
-Avalonia is developed independently on the `avalonia` branch, where the same CAD-style scenarios are demonstrated on Windows and Linux.
+Avalonia examples and packaging live on the `avalonia` branch, but all formal SDK assemblies are produced from `main`.
 
 ## Demo previews
 
@@ -32,7 +32,7 @@ Click a preview to open the original PNG.
 .\sync.ps1
 ```
 
-The synchronized SDK must provide the Core, WinForms and WPF Bridge assemblies. No `OcctNet.Avalonia.dll` is required by this branch.
+The synchronized distribution is the complete `main` SDK. These Windows examples reference only Core, WinForms and WPF; `OcctNet.Avalonia.dll` remains part of the synchronized SDK for contract and hash consistency.
 
 ## Build
 
@@ -61,9 +61,9 @@ The synchronized SDK must provide the Core, WinForms and WPF Bridge assemblies. 
 
 ## Branch responsibilities
 
-- `main`: Windows Bridge source + tracked Windows Binary SDK (`OcctNet`, WinForms, WPF).
+- `main`: sole formal SDK source (`OcctNative`, `OcctNet`, WinForms, WPF and Avalonia).
 - `demo`: Windows WinForms/WPF demonstration applications.
-- `avalonia`: standalone `OcctNet + OcctNet.Avalonia` for Windows x64 + Linux x64, with its own Windows/Linux previews.
+- `avalonia`: Avalonia consumer examples, Windows/Linux packaging and previews.
 - `website`: bilingual project website presenting both demo families.
 
 The project uses GNU LGPL 2.1 + OcctCSharpBridge Exception 1.0; see the repository license files.
