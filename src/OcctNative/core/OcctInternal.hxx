@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "viewer/OcctViewerContext.hxx"
 #include "OcctErrorContext.hxx"
@@ -87,8 +87,6 @@ namespace OcctBridge
     bool validateInitialized(Engine* engine);
     void initializeViewer(Engine* engine, void* windowHandle, void* displayHandle = nullptr);
     std::string failureMessage(const Standard_Failure& failure);
-    std::filesystem::path pathFromUtf8(const char* utf8Path);
-    std::string lowerExtension(const std::filesystem::path& path);
     Quantity_Color color(double r, double g, double b);
     gp_Pnt point(OcctPoint3d value);
     gp_Vec vector(OcctVector3d value);

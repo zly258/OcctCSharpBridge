@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 #include "core/OcctErrorContext.hxx"
-#include "OcctModeling.h"
-#include "OcctModelingIntersection.h"
+#include "modeling/OcctModeling.h"
+#include "modeling/OcctModelingIntersection.h"
 
 #include <BRepTools_History.hxx>
 #include <Standard_Failure.hxx>

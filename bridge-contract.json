@@ -45,13 +45,13 @@
       "presentation/OcctPresentation.h",
       "selection/OcctManipulator.h",
       "selection/OcctDetection.h",
-      "OcctModeling.h",
-      "OcctModelingExtensions.h",
+      "modeling/OcctModeling.h",
+      "modeling/OcctModelingExtensions.h",
       "geometry/OcctModelingBSpline.h",
       "topology/OcctModelingTopologyAnalysis.h",
       "topology/OcctModelingFaceAnalysis.h",
-      "OcctModelingInertia.h",
-      "OcctModelingIntersection.h",
+      "modeling/OcctModelingInertia.h",
+      "modeling/OcctModelingIntersection.h",
       "topology/OcctModelingTopologyReference.h"
     ]
   }

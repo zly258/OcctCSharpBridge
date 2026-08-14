@@ -1,5 +1,5 @@
-#include "OcctModelingShapeInternal.hxx"
-#include "OcctModelingExtensions.h"
+#include "modeling/OcctModelingShapeInternal.hxx"
+#include "modeling/OcctModelingExtensions.h"
 
 #include <BRepBndLib.hxx>
 #include <BRepBuilderAPI_MakeEdge.hxx>

@@ -1,4 +1,4 @@
-﻿#include "OcctModelingShapeInternal.hxx"
+﻿#include "modeling/OcctModelingShapeInternal.hxx"
 #include "OcctModelingTopologyAnalysis.h"
 
 #include <BRep_Builder.hxx>

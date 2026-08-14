@@ -1,4 +1,4 @@
-﻿#include "OcctModelingAlgorithmInternal.hxx"
+﻿#include "modeling/OcctModelingAlgorithmInternal.hxx"
 
 #include <BRepAlgoAPI_Common.hxx>
 #include <BRepAlgoAPI_Cut.hxx>

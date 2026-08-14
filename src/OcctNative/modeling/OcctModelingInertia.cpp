@@ -1,5 +1,5 @@
-﻿#include "OcctModelingInertia.h"
-#include "OcctModelingSessionInternal.hxx"
+﻿#include "modeling/OcctModelingInertia.h"
+#include "modeling/OcctModelingSessionInternal.hxx"
 
 #include <BRepGProp.hxx>
 #include <GProp_GProps.hxx>

@@ -1,4 +1,4 @@
-﻿#include "OcctModelingAlgorithmInternal.hxx"
+﻿#include "modeling/OcctModelingAlgorithmInternal.hxx"
 
 #include <ShapeFix_Shape.hxx>
 #include <ShapeUpgrade_UnifySameDomain.hxx>

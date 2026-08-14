@@ -1,4 +1,4 @@
-﻿#include "OcctModelingShapeInternal.hxx"
+﻿#include "modeling/OcctModelingShapeInternal.hxx"
 
 #include <BRepBndLib.hxx>
 #include <BRepCheck_Analyzer.hxx>

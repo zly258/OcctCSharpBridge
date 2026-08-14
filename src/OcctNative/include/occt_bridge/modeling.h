@@ -1,5 +1,5 @@
 #pragma once
 
-#include "OcctModeling.h"
-#include "OcctModelingExtensions.h"
+#include "modeling/OcctModeling.h"
+#include "modeling/OcctModelingExtensions.h"
 #include "topology/OcctModelingTopologyReference.h"

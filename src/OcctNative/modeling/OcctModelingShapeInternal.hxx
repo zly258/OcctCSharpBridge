@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "OcctModelingSessionInternal.hxx"
+#include "modeling/OcctModelingSessionInternal.hxx"
 
 #include <BRepBuilderAPI_MakePolygon.hxx>
 #include <BRep_Tool.hxx>

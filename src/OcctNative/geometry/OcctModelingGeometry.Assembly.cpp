@@ -1,4 +1,4 @@
-﻿#include "OcctModelingShapeInternal.hxx"
+﻿#include "modeling/OcctModelingShapeInternal.hxx"
 
 #include <BRepBuilderAPI_MakeSolid.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>

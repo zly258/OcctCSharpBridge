@@ -191,26 +191,6 @@ namespace OcctBridge
         return message == nullptr ? "Open CASCADE operation failed." : std::string(message);
     }
 
-    std::filesystem::path pathFromUtf8(const char* utf8Path)
-    {
-        if (utf8Path == nullptr || *utf8Path == '\0') return {};
-#if defined(_WIN32)
-        return std::filesystem::u8path(utf8Path);
-#else
-        return std::filesystem::path(utf8Path);
-#endif
-    }
-
-    std::string lowerExtension(const std::filesystem::path& path)
-    {
-        std::string value = path.extension().u8string();
-        std::transform(value.begin(), value.end(), value.begin(), [](unsigned char ch)
-        {
-            return static_cast<char>(std::tolower(ch));
-        });
-        return value;
-    }
-
     Quantity_Color color(double r, double g, double b)
     {
         return Quantity_Color(

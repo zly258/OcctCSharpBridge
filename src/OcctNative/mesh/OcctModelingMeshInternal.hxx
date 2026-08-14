@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "OcctModelingSessionInternal.hxx"
+#include "modeling/OcctModelingSessionInternal.hxx"
 
 #include <BRep_Tool.hxx>
 #include <Poly_Triangulation.hxx>

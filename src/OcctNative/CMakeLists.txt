@@ -113,43 +113,44 @@ add_library(OcctNative SHARED
     OcctVectorAnnotations.cpp
     exchange/OcctIO.cpp
     exchange/OcctStepDocument.cpp
-    OcctModelingCore.cpp
+    modeling/OcctModelingCore.cpp
     topology/OcctModelingShapeQueries.cpp
     geometry/OcctModelingGeometryQueries.cpp
     topology/OcctModelingTopology.cpp
-    OcctModelingInterop.cpp
+    scene/OcctModelingInterop.cpp
     geometry/OcctModelingGeometry.Curves.cpp
     geometry/OcctModelingGeometry.Planar.cpp
     geometry/OcctModelingGeometry.Primitives.cpp
     geometry/OcctModelingGeometry.Assembly.cpp
     geometry/OcctModelingGeometry.Transform.cpp
-    OcctModelingBoolean.cpp
-    OcctModelingFeatures.cpp
-    OcctModelingHealing.cpp
+    modeling/OcctModelingBoolean.cpp
+    modeling/OcctModelingFeatures.cpp
+    modeling/OcctModelingHealing.cpp
     topology/OcctModelingHistory.cpp
-    OcctModelingAnalysis.cpp
+    modeling/OcctModelingAnalysis.cpp
     mesh/OcctModelingMesh.cpp
     exchange/OcctModelingExchange.cpp
     geometry/OcctModelingAnalyticGeometry.cpp
     geometry/OcctModelingDifferentialGeometry.cpp
-    OcctModelingExtensions.cpp
+    modeling/OcctModelingExtensions.cpp
     geometry/OcctModelingBSpline.cpp
     topology/OcctModelingTopologyAnalysis.cpp
     topology/OcctModelingFaceAnalysis.cpp
-    OcctModelingInertia.cpp
-    OcctModelingIntersection.cpp
+    modeling/OcctModelingInertia.cpp
+    modeling/OcctModelingIntersection.cpp
     topology/OcctModelingTopologyReference.cpp
     core/OcctInternal.hxx
     core/OcctErrorContext.hxx
     viewer/OcctViewerContext.hxx
     scene/OcctSceneRegistry.hxx
     platform/OcctPlatformWindow.hxx
-    OcctModelingSessionInternal.hxx
+    modeling/OcctModelingSessionInternal.hxx
     exchange/OcctDocumentStore.hxx
-    OcctModelingShapeInternal.hxx
-    OcctModelingAlgorithmInternal.hxx
+    modeling/OcctModelingShapeInternal.hxx
+    modeling/OcctModelingAlgorithmInternal.hxx
     mesh/OcctModelingMeshInternal.hxx
     exchange/OcctModelingExchangeInternal.hxx
+    exchange/OcctExchangePath.hxx
     OcctNative.h
     platform/OcctNativeSurface.h
     geometry/OcctPoints.h
@@ -161,13 +162,13 @@ add_library(OcctNative SHARED
     presentation/OcctPresentation.h
     selection/OcctDetection.h
     selection/OcctManipulator.h
-    OcctModeling.h
-    OcctModelingExtensions.h
+    modeling/OcctModeling.h
+    modeling/OcctModelingExtensions.h
     geometry/OcctModelingBSpline.h
     topology/OcctModelingTopologyAnalysis.h
     topology/OcctModelingFaceAnalysis.h
-    OcctModelingInertia.h
-    OcctModelingIntersection.h
+    modeling/OcctModelingInertia.h
+    modeling/OcctModelingIntersection.h
     topology/OcctModelingTopologyReference.h
     OcctStatus.h
     include/occt_bridge/api.h

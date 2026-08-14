@@ -1,4 +1,4 @@
-﻿#include "OcctModelingShapeInternal.hxx"
+﻿#include "modeling/OcctModelingShapeInternal.hxx"
 
 #include <BRepBuilderAPI_MakeFace.hxx>
 #include <BRepBuilderAPI_MakePolygon.hxx>

@@ -59,12 +59,29 @@ foreach ($requiredToolkit in @("TKDESTEP", "TKDEIGES", "TKDESTL", "TKLCAF", "TKC
 $nativeFiles = @(Get-ChildItem $nativeRoot -File -Recurse | Where-Object {
     $_.Extension -in @('.h', '.hpp', '.hxx', '.cpp')
 })
-foreach ($requiredDomain in @("core", "exchange", "geometry", "mesh", "platform", "presentation", "scene", "selection", "topology", "viewer")) {
+foreach ($requiredDomain in @("core", "exchange", "geometry", "mesh", "modeling", "platform", "presentation", "scene", "selection", "topology", "viewer")) {
     $domainRoot = Join-Path $nativeRoot $requiredDomain
     if (-not (Test-Path $domainRoot -PathType Container)) {
         throw "Native domain directory is missing: $requiredDomain"
     }
 }
+$headlessModelingFiles = @(
+    foreach ($domain in @("modeling", "geometry", "topology", "mesh", "exchange")) {
+        $domainRoot = Join-Path $nativeRoot $domain
+        Get-ChildItem $domainRoot -File -Recurse | Where-Object {
+            $_.Extension -in @(".cpp", ".hxx") -and
+            ($domain -eq "modeling" -or $_.Name -like "OcctModeling*")
+        }
+    }
+)
+$modelingViewerPattern = 'core/OcctInternal\.hxx|\b(?:AIS_|V3d_|Aspect_Window|ViewerContext)\b'
+$modelingViewerViolations = @($headlessModelingFiles | Where-Object {
+    [System.IO.File]::ReadAllText($_.FullName) -match $modelingViewerPattern
+} | ForEach-Object { [System.IO.Path]::GetRelativePath($nativeRoot, $_.FullName) })
+if ($modelingViewerViolations.Count -gt 0) {
+    throw "Headless Modeling implementation depends on Viewer/Core state: $($modelingViewerViolations -join ', ')"
+}
+
 $platformRoot = Join-Path $nativeRoot "platform"
 $platformPrefix = [System.IO.Path]::GetFullPath($platformRoot).TrimEnd(
     [System.IO.Path]::DirectorySeparatorChar,
@@ -112,7 +129,7 @@ foreach ($requiredCmakeToken in @("CXX_VISIBILITY_PRESET hidden", "VISIBILITY_IN
 }
 
 $viewerHeader = [System.IO.File]::ReadAllText((Join-Path $nativeRoot "OcctNative.h"))
-$modelingHeader = [System.IO.File]::ReadAllText((Join-Path $nativeRoot "OcctModeling.h"))
+$modelingHeader = [System.IO.File]::ReadAllText((Join-Path $nativeRoot "modeling/OcctModeling.h"))
 $surfaceHeader = [System.IO.File]::ReadAllText((Join-Path $nativeRoot "platform/OcctNativeSurface.h"))
 foreach ($requiredApi in @("occt_create", "occt_engine_create", "occt_engine_last_error_code")) {
     if (-not $viewerHeader.Contains($requiredApi, [System.StringComparison]::Ordinal)) {

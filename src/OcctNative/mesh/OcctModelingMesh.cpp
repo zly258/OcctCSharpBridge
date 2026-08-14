@@ -1,5 +1,5 @@
 ﻿#include "OcctModelingMeshInternal.hxx"
-#include "OcctModelingShapeInternal.hxx"
+#include "modeling/OcctModelingShapeInternal.hxx"
 
 #include <BRepLib_ToolTriangulatedShape.hxx>
 #include <BRepMesh_IncrementalMesh.hxx>

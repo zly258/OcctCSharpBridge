@@ -1,6 +1,6 @@
-﻿#include "OcctModelingIntersection.h"
-#include "OcctModelingSessionInternal.hxx"
-#include "OcctModelingShapeInternal.hxx"
+﻿#include "modeling/OcctModelingIntersection.h"
+#include "modeling/OcctModelingSessionInternal.hxx"
+#include "modeling/OcctModelingShapeInternal.hxx"
 
 #include <BRepAdaptor_Curve.hxx>
 #include <IntTools_CommonPrt.hxx>

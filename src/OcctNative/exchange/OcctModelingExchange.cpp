@@ -1,7 +1,7 @@
 ﻿#include "OcctModelingExchangeInternal.hxx"
-#include "OcctModelingSessionInternal.hxx"
-#include "OcctModelingShapeInternal.hxx"
-#include "core/OcctInternal.hxx"
+#include "OcctExchangePath.hxx"
+#include "modeling/OcctModelingSessionInternal.hxx"
+#include "modeling/OcctModelingShapeInternal.hxx"
 
 #include <BRepMesh_IncrementalMesh.hxx>
 #include <BRepTools.hxx>

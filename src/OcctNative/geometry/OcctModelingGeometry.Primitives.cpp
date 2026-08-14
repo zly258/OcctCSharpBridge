@@ -1,4 +1,4 @@
-﻿#include "OcctModelingShapeInternal.hxx"
+﻿#include "modeling/OcctModelingShapeInternal.hxx"
 
 #include <BRepPrimAPI_MakeBox.hxx>
 #include <BRepPrimAPI_MakeCone.hxx>

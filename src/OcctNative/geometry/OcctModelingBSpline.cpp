@@ -1,4 +1,4 @@
-﻿#include "OcctModelingShapeInternal.hxx"
+﻿#include "modeling/OcctModelingShapeInternal.hxx"
 #include "OcctModelingBSpline.h"
 
 #include <BRepAdaptor_Curve.hxx>

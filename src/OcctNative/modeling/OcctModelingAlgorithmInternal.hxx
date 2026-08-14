@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "OcctModelingShapeInternal.hxx"
+#include "modeling/OcctModelingShapeInternal.hxx"
 
 #include <BOPAlgo_GlueEnum.hxx>
 #include <TopTools_ListIteratorOfListOfShape.hxx>

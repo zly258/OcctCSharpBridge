@@ -1,5 +1,5 @@
-﻿#include "OcctModelingSessionInternal.hxx"
-#include "OcctModelingShapeInternal.hxx"
+﻿#include "modeling/OcctModelingSessionInternal.hxx"
+#include "modeling/OcctModelingShapeInternal.hxx"
 
 #include <BRepClass3d_SolidClassifier.hxx>
 #include <BRepTools.hxx>

@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "OcctModeling.h"
+#include "modeling/OcctModeling.h"
 
 extern "C"
 {

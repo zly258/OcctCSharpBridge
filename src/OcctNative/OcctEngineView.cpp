@@ -1,4 +1,5 @@
 ﻿#include "core/OcctInternal.hxx"
+#include "exchange/OcctExchangePath.hxx"
 
 #include <Aspect_GradientFillMethod.hxx>
 #include <Aspect_TypeOfTriedronPosition.hxx>

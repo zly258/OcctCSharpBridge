@@ -1,4 +1,4 @@
-﻿#include "OcctModelingAlgorithmInternal.hxx"
+﻿#include "modeling/OcctModelingAlgorithmInternal.hxx"
 
 #include <BRepFilletAPI_MakeChamfer.hxx>
 #include <BRepFilletAPI_MakeFillet.hxx>

@@ -1,4 +1,4 @@
-﻿#include "OcctModelingShapeInternal.hxx"
+﻿#include "modeling/OcctModelingShapeInternal.hxx"
 #include "OcctModelingFaceAnalysis.h"
 
 #include <BRepAdaptor_Surface.hxx>

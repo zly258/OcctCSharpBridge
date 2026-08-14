@@ -37,3 +37,5 @@ Engine coordination and structured native error state belong to `src/OcctNative/
 Shared geometric queries, point collections, analytic and differential geometry, planar construction, transforms, and B-Spline implementation belong to `src/OcctNative/geometry`. Viewer-facing entry points may use Engine coordination, while headless entry points use only ModelingSession state.
 
 Shape traversal, topology queries, topology history, face analysis, and persistent topology references belong to `src/OcctNative/topology`. They operate on ModelingSession-owned shapes and remain independent of Viewer and AIS state.
+
+ModelingSession lifecycle, algorithm execution, Boolean/features/healing, analysis, inertia, and intersection implementation belong to `src/OcctNative/modeling`. A recursive contract rejects Viewer/Core/AIS dependencies in headless Modeling sources. The frozen Engine/Modeling display bridge is implemented as a Scene compatibility adapter rather than part of Modeling Core.
