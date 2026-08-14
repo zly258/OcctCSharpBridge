@@ -1,6 +1,5 @@
-﻿#include "core/OcctInternal.hxx"
-#include "OcctPresentation.h"
-#include "OcctViewerInteraction.h"
+#include "presentation/OcctPresentation.h"
+#include "core/OcctInternal.hxx"
 
 #include <Aspect_TypeOfLine.hxx>
 #include <Graphic3d_ClipPlane.hxx>
@@ -11,11 +10,16 @@
 #include <Prs3d_TypeOfHighlight.hxx>
 #include <gp_Pln.hxx>
 
+#include <algorithm>
+#include <cmath>
+#include <stdexcept>
+#include <utility>
+
 using namespace OcctBridge;
 
 namespace
 {
-    constexpr std::uint32_t PresentationStateApiVersion = 1;
+    constexpr std::uint32_t PresentationApiVersion = 1;
     constexpr std::uint32_t AllPresentationStateUpdateBits =
         OcctViewerPresentationStateUpdate_DisplayMode |
         OcctViewerPresentationStateUpdate_ResetDisplayMode |
@@ -34,10 +38,10 @@ namespace
     {
         switch (value)
         {
-            case OcctViewerZLayer_Bottom: return Graphic3d_ZLayerId_BotOSD;
-            case OcctViewerZLayer_Default: return Graphic3d_ZLayerId_Default;
-            case OcctViewerZLayer_Top: return Graphic3d_ZLayerId_Top;
-            case OcctViewerZLayer_Topmost: return Graphic3d_ZLayerId_Topmost;
+            case OcctPresentationZLayer_Bottom: return Graphic3d_ZLayerId_BotOSD;
+            case OcctPresentationZLayer_Default: return Graphic3d_ZLayerId_Default;
+            case OcctPresentationZLayer_Top: return Graphic3d_ZLayerId_Top;
+            case OcctPresentationZLayer_Topmost: return Graphic3d_ZLayerId_Topmost;
             default: throw std::invalid_argument("Highlight Z-layer is out of range.");
         }
     }
@@ -54,19 +58,27 @@ namespace
         }
     }
 
+    void validateHighlightStyle(const OcctHighlightStyleSettings& settings)
+    {
+        (void)color(settings.r, settings.g, settings.b);
+        if (!std::isfinite(settings.transparency) ||
+            settings.transparency < 0.0 || settings.transparency > 1.0)
+        {
+            throw std::invalid_argument("Highlight transparency must be between 0 and 1.");
+        }
+        requirePositive(settings.lineWidth, "Highlight line width");
+        if (settings.displayMode < -1 || settings.displayMode > 1)
+            throw std::invalid_argument("Highlight display mode is out of range.");
+        if (settings.zLayer < -1 || settings.zLayer > OcctPresentationZLayer_Topmost)
+            throw std::invalid_argument("Highlight Z-layer is out of range.");
+    }
+
     void applyHighlightStyle(
         const Handle(Prs3d_Drawer)& drawer,
         const OcctHighlightStyleSettings& settings)
     {
         if (drawer.IsNull()) throw std::runtime_error("Highlight drawer is null.");
-        if (!std::isfinite(settings.transparency) || settings.transparency < 0.0 || settings.transparency > 1.0)
-            throw std::invalid_argument("Highlight transparency must be between 0 and 1.");
-        requirePositive(settings.lineWidth, "Highlight line width");
-        if (settings.displayMode < -1 || settings.displayMode > 1)
-            throw std::invalid_argument("Highlight display mode is out of range.");
-        if (settings.zLayer < -1 || settings.zLayer > OcctViewerZLayer_Topmost)
-            throw std::invalid_argument("Highlight Z-layer is out of range.");
-
+        validateHighlightStyle(settings);
         const Quantity_Color value = color(settings.r, settings.g, settings.b);
         drawer->SetColor(value);
         drawer->SetTransparency(static_cast<float>(settings.transparency));
@@ -75,8 +87,8 @@ namespace
         drawer->SetZLayer(settings.zLayer >= 0 ? zLayer(settings.zLayer) : Graphic3d_ZLayerId_UNKNOWN);
     }
 
-    Handle(Graphic3d_SequenceOfHClipPlane) clipPlanes(
-        const OcctViewClipPlane* planes,
+    Handle(Graphic3d_SequenceOfHClipPlane) buildClipPlanes(
+        const OcctPresentationClipPlane* planes,
         int count)
     {
         if (count < 0) throw std::invalid_argument("Clip plane count must not be negative.");
@@ -85,7 +97,8 @@ namespace
         Handle(Graphic3d_SequenceOfHClipPlane) sequence = new Graphic3d_SequenceOfHClipPlane();
         for (int index = 0; index < count; ++index)
         {
-            const OcctViewClipPlane& source = planes[index];
+            const OcctPresentationClipPlane& source = planes[index];
+            (void)color(source.cappingR, source.cappingG, source.cappingB);
             Handle(Graphic3d_ClipPlane) plane =
                 new Graphic3d_ClipPlane(gp_Pln(point(source.point), direction(source.normal)));
             plane->SetOn(source.enabled != 0);
@@ -99,7 +112,8 @@ namespace
     int availableObjectClipPlanes(Engine* engine)
     {
         int viewPlaneCount = 0;
-        const Handle(Graphic3d_SequenceOfHClipPlane)& viewPlanes = engine->viewerContext.view->ClipPlanes();
+        const Handle(Graphic3d_SequenceOfHClipPlane)& viewPlanes =
+            engine->viewerContext.view->ClipPlanes();
         if (!viewPlanes.IsNull()) viewPlaneCount = viewPlanes->Size();
         return std::max(0, engine->viewerContext.view->PlaneLimit() - viewPlaneCount);
     }
@@ -121,11 +135,11 @@ namespace
             : engine->errors.code;
     }
 
-    void validatePresentationStateOptions(const OcctViewerPresentationStateOptions* options)
+    void validateStateOptions(const OcctViewerPresentationStateOptions* options)
     {
         if (options == nullptr) throw std::invalid_argument("Presentation state options are null.");
         if (options->structSize < sizeof(OcctViewerPresentationStateOptions) ||
-            options->apiVersion != PresentationStateApiVersion)
+            options->apiVersion != PresentationApiVersion)
         {
             throw std::invalid_argument("Unsupported presentation state options size or version.");
         }
@@ -144,19 +158,30 @@ namespace
         }
     }
 
-    OcctViewerPresentationStateOptions presentationStateOptions(
-        std::uint32_t updateMask,
-        int displayMode = OcctDisplay_Shaded,
-        int autoHighlight = 0,
-        int infinite = 0)
+    void validateClipPlaneOptions(const OcctViewerClipPlanesOptions* options)
     {
-        return {
-            static_cast<std::uint32_t>(sizeof(OcctViewerPresentationStateOptions)),
-            PresentationStateApiVersion,
-            updateMask,
-            displayMode,
-            autoHighlight,
-            infinite };
+        if (options == nullptr) throw std::invalid_argument("Clip plane options are null.");
+        if (options->structSize < sizeof(OcctViewerClipPlanesOptions) ||
+            options->apiVersion != PresentationApiVersion)
+        {
+            throw std::invalid_argument("Unsupported clip plane options size or version.");
+        }
+        if (options->count < 0)
+            throw std::invalid_argument("Clip plane count must not be negative.");
+        if (options->count > 0 && options->planes == nullptr)
+            throw std::invalid_argument("Clip plane array is null.");
+    }
+
+    void validateHighlightOptions(const OcctViewerHighlightStyleOptions* options)
+    {
+        if (options == nullptr) throw std::invalid_argument("Highlight style options are null.");
+        if (options->structSize < sizeof(OcctViewerHighlightStyleOptions) ||
+            options->apiVersion != PresentationApiVersion)
+        {
+            throw std::invalid_argument("Unsupported highlight style options size or version.");
+        }
+        (void)highlightKind(options->kind);
+        validateHighlightStyle(options->settings);
     }
 }
 
@@ -170,7 +195,7 @@ extern "C"
         Engine* engine = reinterpret_cast<Engine*>(handle);
         return executePresentationStatus(engine, [&]
         {
-            validatePresentationStateOptions(options);
+            validateStateOptions(options);
             ObjectEntry& entry = requiredObject(engine, objectId);
 
             if ((options->updateMask & OcctViewerPresentationStateUpdate_DisplayMode) != 0)
@@ -209,7 +234,7 @@ extern "C"
             if (result == nullptr) throw std::invalid_argument("Presentation state result is null.");
             const ObjectEntry& entry = requiredObject(engine, objectId);
             result->structSize = static_cast<std::uint32_t>(sizeof(OcctViewerPresentationState));
-            result->apiVersion = PresentationStateApiVersion;
+            result->apiVersion = PresentationApiVersion;
             result->hasDisplayModeOverride = entry.presentation->HasDisplayMode() ? 1 : 0;
             result->displayMode = -1;
             if (result->hasDisplayModeOverride != 0)
@@ -224,163 +249,78 @@ extern "C"
         });
     }
 
-    int occt_set_object_clip_planes(
-        OcctHandle h,
+    OcctStatus occt_engine_presentation_clip_planes_set(
+        OcctEngineHandle handle,
         OcctObjectId objectId,
-        const OcctViewClipPlane* planes,
-        int count)
+        const OcctViewerClipPlanesOptions* options)
     {
-        Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
-        return execute(e, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executePresentationStatus(engine, [&]
         {
-            if (count > availableObjectClipPlanes(e))
-                throw std::invalid_argument("Object clip plane count exceeds the remaining view plane limit.");
-            ObjectEntry& entry = requiredObject(e, objectId);
-            entry.presentation->SetClipPlanes(clipPlanes(planes, count));
-            e->viewerContext.context->Redisplay(entry.presentation, Standard_False);
-            e->requestRedraw();
+            validateClipPlaneOptions(options);
+            if (options->count > availableObjectClipPlanes(engine))
+            {
+                throw std::invalid_argument(
+                    "Object clip plane count exceeds the remaining view plane limit.");
+            }
+            ObjectEntry& entry = requiredObject(engine, objectId);
+            entry.presentation->SetClipPlanes(buildClipPlanes(options->planes, options->count));
+            engine->viewerContext.context->Redisplay(entry.presentation, Standard_False);
+            engine->requestRedraw();
         });
     }
 
-    int occt_set_global_highlight_style(
-        OcctHandle h,
-        int kind,
-        const OcctHighlightStyleSettings* settings)
+    OcctStatus occt_engine_highlight_style_global_set(
+        OcctEngineHandle handle,
+        const OcctViewerHighlightStyleOptions* options)
     {
-        Engine* e = engineOf(h); if (!validateInitialized(e) || settings == nullptr) return 0;
-        return execute(e, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executePresentationStatus(engine, [&]
         {
-            const Prs3d_TypeOfHighlight type = highlightKind(kind);
-            applyHighlightStyle(e->viewerContext.context->HighlightStyle(type), *settings);
-            if (type == Prs3d_TypeOfHighlight_Selected || type == Prs3d_TypeOfHighlight_LocalSelected)
-                e->viewerContext.context->UpdateSelected(Standard_False);
-            e->requestRedraw();
+            validateHighlightOptions(options);
+            const Prs3d_TypeOfHighlight type = highlightKind(options->kind);
+            applyHighlightStyle(engine->viewerContext.context->HighlightStyle(type), options->settings);
+            if (type == Prs3d_TypeOfHighlight_Selected ||
+                type == Prs3d_TypeOfHighlight_LocalSelected)
+            {
+                engine->viewerContext.context->UpdateSelected(Standard_False);
+            }
+            engine->requestRedraw();
         });
     }
 
-    int occt_set_object_highlight_style(
-        OcctHandle h,
+    OcctStatus occt_engine_highlight_style_object_set(
+        OcctEngineHandle handle,
         OcctObjectId objectId,
-        int dynamic,
-        const OcctHighlightStyleSettings* settings)
+        const OcctViewerHighlightStyleOptions* options)
     {
-        Engine* e = engineOf(h); if (!validateInitialized(e) || settings == nullptr) return 0;
-        return execute(e, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executePresentationStatus(engine, [&]
         {
-            ObjectEntry& entry = requiredObject(e, objectId);
+            validateHighlightOptions(options);
+            ObjectEntry& entry = requiredObject(engine, objectId);
             Handle(Prs3d_Drawer) drawer = new Prs3d_Drawer();
-            drawer->SetLink(e->viewerContext.context->DefaultDrawer());
-            applyHighlightStyle(drawer, *settings);
-            if (dynamic != 0) entry.presentation->SetDynamicHilightAttributes(drawer);
+            drawer->SetLink(engine->viewerContext.context->DefaultDrawer());
+            applyHighlightStyle(drawer, options->settings);
+            if (options->dynamic != 0) entry.presentation->SetDynamicHilightAttributes(drawer);
             else entry.presentation->SetHilightAttributes(drawer);
-            e->requestRedraw();
+            engine->requestRedraw();
         });
     }
 
-    int occt_clear_object_highlight_style(
-        OcctHandle h,
+    OcctStatus occt_engine_highlight_style_object_clear(
+        OcctEngineHandle handle,
         OcctObjectId objectId,
         int dynamic)
     {
-        Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
-        return execute(e, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executePresentationStatus(engine, [&]
         {
-            ObjectEntry& entry = requiredObject(e, objectId);
+            ObjectEntry& entry = requiredObject(engine, objectId);
             Handle(Prs3d_Drawer) empty;
             if (dynamic != 0) entry.presentation->SetDynamicHilightAttributes(empty);
             else entry.presentation->SetHilightAttributes(empty);
-            e->requestRedraw();
+            engine->requestRedraw();
         });
-    }
-
-    int occt_reset_object_display_mode(OcctHandle h, OcctObjectId objectId)
-    {
-        const OcctViewerPresentationStateOptions options = presentationStateOptions(
-            OcctViewerPresentationStateUpdate_ResetDisplayMode);
-        return occt_engine_presentation_state_update(
-                   reinterpret_cast<OcctEngineHandle>(h), objectId, &options) == OcctStatus_Ok
-            ? 1
-            : 0;
-    }
-
-    int occt_get_object_display_mode(
-        OcctHandle h,
-        OcctObjectId objectId,
-        int* hasOverride,
-        int* displayMode)
-    {
-        if (hasOverride == nullptr || displayMode == nullptr)
-        {
-            Engine* engine = engineOf(h);
-            if (engine != nullptr)
-                engine->setError(OcctStatus_ErrorInvalidArgument, "Display mode output is null.");
-            return 0;
-        }
-        OcctViewerPresentationState state{};
-        if (occt_engine_presentation_state_get(
-                reinterpret_cast<OcctEngineHandle>(h), objectId, &state) != OcctStatus_Ok)
-            return 0;
-        *hasOverride = state.hasDisplayModeOverride;
-        *displayMode = state.displayMode;
-        return 1;
-    }
-
-    int occt_set_object_auto_highlight(OcctHandle h, OcctObjectId objectId, int enabled)
-    {
-        const OcctViewerPresentationStateOptions options = presentationStateOptions(
-            OcctViewerPresentationStateUpdate_AutoHighlight,
-            OcctDisplay_Shaded,
-            enabled);
-        return occt_engine_presentation_state_update(
-                   reinterpret_cast<OcctEngineHandle>(h), objectId, &options) == OcctStatus_Ok
-            ? 1
-            : 0;
-    }
-
-    int occt_get_object_auto_highlight(OcctHandle h, OcctObjectId objectId, int* enabled)
-    {
-        if (enabled == nullptr)
-        {
-            Engine* engine = engineOf(h);
-            if (engine != nullptr)
-                engine->setError(OcctStatus_ErrorInvalidArgument, "AutoHighlight output is null.");
-            return 0;
-        }
-        OcctViewerPresentationState state{};
-        if (occt_engine_presentation_state_get(
-                reinterpret_cast<OcctEngineHandle>(h), objectId, &state) != OcctStatus_Ok)
-            return 0;
-        *enabled = state.autoHighlight;
-        return 1;
-    }
-
-    int occt_set_object_infinite_state(OcctHandle h, OcctObjectId objectId, int infinite)
-    {
-        const OcctViewerPresentationStateOptions options = presentationStateOptions(
-            OcctViewerPresentationStateUpdate_Infinite,
-            OcctDisplay_Shaded,
-            0,
-            infinite);
-        return occt_engine_presentation_state_update(
-                   reinterpret_cast<OcctEngineHandle>(h), objectId, &options) == OcctStatus_Ok
-            ? 1
-            : 0;
-    }
-
-    int occt_get_object_infinite_state(OcctHandle h, OcctObjectId objectId, int* infinite)
-    {
-        if (infinite == nullptr)
-        {
-            Engine* engine = engineOf(h);
-            if (engine != nullptr)
-                engine->setError(OcctStatus_ErrorInvalidArgument, "Infinite-state output is null.");
-            return 0;
-        }
-        OcctViewerPresentationState state{};
-        if (occt_engine_presentation_state_get(
-                reinterpret_cast<OcctEngineHandle>(h), objectId, &state) != OcctStatus_Ok)
-            return 0;
-        *infinite = state.infinite;
-        return 1;
     }
 }
