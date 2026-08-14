@@ -49,7 +49,6 @@ elseif(UNIX AND NOT APPLE)
         set(OCCT_ROOT "${OCCT_DEFAULT_ROOT}" CACHE PATH "OCCT installation root" FORCE)
     endif()
 
-    # Linux branch defaults requested for a conventional /usr/local OCCT install.
     set(OCCT_INCLUDE_DIR "/usr/local/include/opencascade" CACHE PATH "OCCT include directory")
     set(OCCT_LIB_DIR "/usr/local/lib" CACHE PATH "OCCT library directory")
     if(NOT OCCT_ROOT STREQUAL "/usr/local")
@@ -107,6 +106,7 @@ add_library(OcctNative SHARED
     geometry/OcctQueries.cpp
     geometry/OcctGeometry.cpp
     geometry/OcctPlanarGeometry.cpp
+    geometry/OcctBRepTextBuilder.cpp
     OcctFeatures.cpp
     OcctAnnotations.cpp
     geometry/OcctPoints.cpp
@@ -114,6 +114,7 @@ add_library(OcctNative SHARED
     exchange/OcctIO.cpp
     exchange/OcctStepDocument.cpp
     modeling/OcctModelingCore.cpp
+    modeling/OcctModelingAnnotations.cpp
     topology/OcctModelingShapeQueries.cpp
     geometry/OcctModelingGeometryQueries.cpp
     topology/OcctModelingTopology.cpp
@@ -148,10 +149,12 @@ add_library(OcctNative SHARED
     scene/OcctSceneRegistry.hxx
     platform/OcctPlatformWindow.hxx
     modeling/OcctModelingSessionInternal.hxx
+    geometry/OcctBRepTextBuilder.hxx
     exchange/OcctDocumentStore.hxx
     modeling/OcctModelingShapeInternal.hxx
     modeling/OcctModelingAlgorithmInternal.hxx
     modeling/OcctAlgorithmResource.h
+    modeling/OcctModelingAnnotations.h
     mesh/OcctModelingMeshInternal.hxx
     mesh/OcctMeshResource.h
     exchange/OcctModelingExchangeInternal.hxx
