@@ -1,6 +1,6 @@
 ﻿#include "core/OcctInternal.hxx"
 #include "OcctOverlay.h"
-#include "OcctPoints.h"
+#include "geometry/OcctPoints.h"
 
 #include <AIS_Point.hxx>
 #include <AIS_Shape.hxx>

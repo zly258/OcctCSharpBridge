@@ -104,25 +104,25 @@ add_library(OcctNative SHARED
     selection/OcctManipulator.cpp
     selection/OcctSelectionState.cpp
     OcctDepth.cpp
-    OcctQueries.cpp
-    OcctGeometry.cpp
-    OcctPlanarGeometry.cpp
+    geometry/OcctQueries.cpp
+    geometry/OcctGeometry.cpp
+    geometry/OcctPlanarGeometry.cpp
     OcctFeatures.cpp
     OcctAnnotations.cpp
-    OcctPoints.cpp
+    geometry/OcctPoints.cpp
     OcctVectorAnnotations.cpp
     exchange/OcctIO.cpp
     exchange/OcctStepDocument.cpp
     OcctModelingCore.cpp
     OcctModelingShapeQueries.cpp
-    OcctModelingGeometryQueries.cpp
+    geometry/OcctModelingGeometryQueries.cpp
     OcctModelingTopology.cpp
     OcctModelingInterop.cpp
-    OcctModelingGeometry.Curves.cpp
-    OcctModelingGeometry.Planar.cpp
-    OcctModelingGeometry.Primitives.cpp
-    OcctModelingGeometry.Assembly.cpp
-    OcctModelingGeometry.Transform.cpp
+    geometry/OcctModelingGeometry.Curves.cpp
+    geometry/OcctModelingGeometry.Planar.cpp
+    geometry/OcctModelingGeometry.Primitives.cpp
+    geometry/OcctModelingGeometry.Assembly.cpp
+    geometry/OcctModelingGeometry.Transform.cpp
     OcctModelingBoolean.cpp
     OcctModelingFeatures.cpp
     OcctModelingHealing.cpp
@@ -130,10 +130,10 @@ add_library(OcctNative SHARED
     OcctModelingAnalysis.cpp
     mesh/OcctModelingMesh.cpp
     exchange/OcctModelingExchange.cpp
-    OcctModelingAnalyticGeometry.cpp
-    OcctModelingDifferentialGeometry.cpp
+    geometry/OcctModelingAnalyticGeometry.cpp
+    geometry/OcctModelingDifferentialGeometry.cpp
     OcctModelingExtensions.cpp
-    OcctModelingBSpline.cpp
+    geometry/OcctModelingBSpline.cpp
     OcctModelingTopologyAnalysis.cpp
     OcctModelingFaceAnalysis.cpp
     OcctModelingInertia.cpp
@@ -152,7 +152,7 @@ add_library(OcctNative SHARED
     exchange/OcctModelingExchangeInternal.hxx
     OcctNative.h
     platform/OcctNativeSurface.h
-    OcctPoints.h
+    geometry/OcctPoints.h
     selection/OcctSelectionOverlay.h
     selection/OcctSelectionState.h
     OcctViewerInteraction.h
@@ -163,7 +163,7 @@ add_library(OcctNative SHARED
     selection/OcctManipulator.h
     OcctModeling.h
     OcctModelingExtensions.h
-    OcctModelingBSpline.h
+    geometry/OcctModelingBSpline.h
     OcctModelingTopologyAnalysis.h
     OcctModelingFaceAnalysis.h
     OcctModelingInertia.h

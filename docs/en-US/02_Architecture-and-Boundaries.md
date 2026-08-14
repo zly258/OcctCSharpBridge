@@ -33,3 +33,5 @@ Exchange implementation, STEP/XCAF document state, and import source metadata be
 Selection state, detection, selection overlays, and manipulators belong to `src/OcctNative/selection`. Visual appearance, overlays, and custom presentations belong to `src/OcctNative/presentation`; both use Viewer services without taking ownership of the Viewer context.
 
 Engine coordination and structured native error state belong to `src/OcctNative/core`. Core composes ViewerContext, SceneRegistry, DocumentStore, and rendering state; it does not own UI-framework adapters or application-level document and command models.
+
+Shared geometric queries, point collections, analytic and differential geometry, planar construction, transforms, and B-Spline implementation belong to `src/OcctNative/geometry`. Viewer-facing entry points may use Engine coordination, while headless entry points use only ModelingSession state.

@@ -1,5 +1,5 @@
 ﻿#include "core/OcctInternal.hxx"
-#include "OcctPoints.h"
+#include "geometry/OcctPoints.h"
 #include "OcctViewerInteraction.h"
 #include "OcctViewerInteractionExtensions.h"
 
