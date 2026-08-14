@@ -83,4 +83,11 @@ extern "C"
         OcctEngineHandle handle,
         int index,
         OcctObjectId* resultShapeId);
+
+    OCCTBRIDGE_API OcctStatus occt_engine_selection_all_visible(OcctEngineHandle handle);
+    OCCTBRIDGE_API OcctStatus occt_engine_selection_invert(OcctEngineHandle handle);
+    OCCTBRIDGE_API OcctStatus occt_engine_selection_hide_selected(OcctEngineHandle handle);
+    OCCTBRIDGE_API OcctStatus occt_engine_selection_automatic_highlight_set(
+        OcctEngineHandle handle,
+        int enabled);
 }
