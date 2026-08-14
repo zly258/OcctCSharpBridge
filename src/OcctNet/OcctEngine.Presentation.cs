@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
@@ -8,16 +8,15 @@ public sealed partial class OcctEngine
     {
         EnsureObject(value);
         ArgumentNullException.ThrowIfNull(planes);
-        if (planes.Count > ViewClipPlaneLimit)
-            throw new ArgumentException("Clip plane count exceeds the current view limit.", nameof(planes));
 
-        var native = new NativeOcctViewClipPlane[planes.Count];
+        var native = new NativePresentationClipPlane[planes.Count];
         for (var index = 0; index < planes.Count; index++)
         {
-            var plane = planes[index] ?? throw new ArgumentException("Clip plane entries must not be null.", nameof(planes));
+            var plane = planes[index] ??
+                throw new ArgumentException("Clip plane entries must not be null.", nameof(planes));
             OcctGuard.Finite(plane.Point, nameof(planes));
             OcctGuard.NonZero(plane.Normal, nameof(planes));
-            native[index] = new NativeOcctViewClipPlane
+            native[index] = new NativePresentationClipPlane
             {
                 Point = plane.Point,
                 Normal = plane.Normal,
@@ -29,11 +28,33 @@ public sealed partial class OcctEngine
             };
         }
 
-        CheckInitialized(() => PresentationNativeMethods.occt_set_object_clip_planes(
-            _handle,
-            value.Id,
-            native,
-            native.Length));
+        GCHandle pinned = default;
+        try
+        {
+            var pointer = IntPtr.Zero;
+            if (native.Length > 0)
+            {
+                pinned = GCHandle.Alloc(native, GCHandleType.Pinned);
+                pointer = pinned.AddrOfPinnedObject();
+            }
+
+            var options = new NativeViewerClipPlanesOptions
+            {
+                StructSize = (uint)Marshal.SizeOf<NativeViewerClipPlanesOptions>(),
+                ApiVersion = 1,
+                Planes = pointer,
+                Count = native.Length
+            };
+            EnsureInitialized();
+            CheckPresentationStatus(PresentationNativeMethods.occt_engine_presentation_clip_planes_set(
+                _handle,
+                value.Id,
+                in options));
+        }
+        finally
+        {
+            if (pinned.IsAllocated) pinned.Free();
+        }
     }
 
     public void ClearObjectClipPlanes(IOcctObject value) =>
@@ -42,25 +63,29 @@ public sealed partial class OcctEngine
     public void SetHighlightStyle(OcctHighlightStyleKind kind, OcctHighlightStyle style)
     {
         if (!Enum.IsDefined(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
-        var native = ToNativeHighlightStyle(style);
-        CheckInitialized(() => PresentationNativeMethods.occt_set_global_highlight_style(_handle, (int)kind, in native));
+        var options = HighlightStyleOptions(kind, dynamic: false, style);
+        EnsureInitialized();
+        CheckPresentationStatus(PresentationNativeMethods.occt_engine_highlight_style_global_set(
+            _handle,
+            in options));
     }
 
     public void SetObjectHighlightStyle(IOcctObject value, bool dynamic, OcctHighlightStyle style)
     {
         EnsureObject(value);
-        var native = ToNativeHighlightStyle(style);
-        CheckInitialized(() => PresentationNativeMethods.occt_set_object_highlight_style(
+        var options = HighlightStyleOptions(OcctHighlightStyleKind.Dynamic, dynamic, style);
+        EnsureInitialized();
+        CheckPresentationStatus(PresentationNativeMethods.occt_engine_highlight_style_object_set(
             _handle,
             value.Id,
-            dynamic ? 1 : 0,
-            in native));
+            in options));
     }
 
     public void ClearObjectHighlightStyle(IOcctObject value, bool dynamic)
     {
         EnsureObject(value);
-        CheckInitialized(() => PresentationNativeMethods.occt_clear_object_highlight_style(
+        EnsureInitialized();
+        CheckPresentationStatus(PresentationNativeMethods.occt_engine_highlight_style_object_clear(
             _handle,
             value.Id,
             dynamic ? 1 : 0));
@@ -130,13 +155,15 @@ public sealed partial class OcctEngine
     {
         EnsureObject(value);
         EnsureInitialized();
-        var status = PresentationNativeMethods.occt_engine_presentation_state_get(
+        CheckPresentationStatus(PresentationNativeMethods.occt_engine_presentation_state_get(
             _handle,
             value.Id,
-            out var state);
-        CheckPresentationStatus(status);
-        if (state.ApiVersion != 1 || state.StructSize < (uint)Marshal.SizeOf<NativeViewerPresentationState>())
-            throw new InvalidOperationException("Native presentation state version is not supported by this bridge.");
+            out var state));
+        if (state.ApiVersion != 1 ||
+            state.StructSize < (uint)Marshal.SizeOf<NativeViewerPresentationState>())
+        {
+            throw new OcctException("Native presentation state ABI is incompatible with this SDK.");
+        }
         return state;
     }
 
@@ -152,6 +179,18 @@ public sealed partial class OcctEngine
         DisplayMode = (int)displayMode,
         AutoHighlight = autoHighlight ? 1 : 0,
         Infinite = infinite ? 1 : 0
+    };
+
+    private static NativeViewerHighlightStyleOptions HighlightStyleOptions(
+        OcctHighlightStyleKind kind,
+        bool dynamic,
+        OcctHighlightStyle style) => new()
+    {
+        StructSize = (uint)Marshal.SizeOf<NativeViewerHighlightStyleOptions>(),
+        ApiVersion = 1,
+        Kind = (int)kind,
+        Dynamic = dynamic ? 1 : 0,
+        Settings = ToNativeHighlightStyle(style)
     };
 
     private void CheckPresentationStatus(OcctStatus status)
