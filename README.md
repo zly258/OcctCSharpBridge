@@ -16,23 +16,25 @@ The [`demo`](https://github.com/zly258/OcctCSharpBridge/tree/demo) and [`avaloni
 | --- | --- |
 | Bridge | **3.0.0-preview.1** |
 | Native ABI | **5 current / 4 compatible** |
-| Native exports / P/Invoke | **431 / 431** |
-| Public .NET types | **145** |
-| Viewer / Modeling API | **292 / 139** |
+| Native exports / P/Invoke | **443 / 443** |
+| ABI 5 / legacy ABI 4 / compatibility extension | **23 / 419 / 1** |
+| Public .NET types | **148** |
+| Viewer / Modeling API | **292 / 151** |
 | OCCT | **7.9.0** |
 | .NET SDK | **10.0.302** |
-| Target Framework | **`net10.0` core / `net10.0-windows` desktop** |
+| Target Framework | **`net10.0` core/tests/smoke / `net10.0-windows` desktop adapters** |
 | C# / Native | **14.0 / C++17** |
 | UI adapters | **WinForms / WPF / Avalonia** |
-| Platform | **Windows x64** |
+| Source platform contract | **cross-platform x64** |
+| Binary SDK RIDs | **windows-x64 / linux-x64** |
 
-`bridge-contract.json` is the machine-readable source of truth for the **main source** contract.
+`bridge-contract.json` is the machine-readable source of truth for the **main source** contract. Source metadata stays cross-platform; each `dist/<rid>/bridge-contract.json` is specialized to the concrete Binary SDK RID during packaging.
 
 ### Published Binary SDK status
 
-The authoritative Windows Binary SDK is the tracked `main/dist/win-x64` payload. Read [`dist/win-x64/bridge-contract.json`](dist/win-x64/bridge-contract.json) for its actual Bridge/ABI/API contract and [`dist/win-x64/bridge-manifest.json`](dist/win-x64/bridge-manifest.json) for the exact source commit and file hashes.
+The authoritative platform Binary SDKs are the tracked `main/dist/win-x64` and `main/dist/linux-x64` payloads. Read each package's `bridge-contract.json` for its actual Bridge/ABI/API contract and `bridge-manifest.json` for the exact source commit and file hashes.
 
-`publish.ps1` replaces those files only after a validated Windows/MSVC + OCCT 7.9 Release build. Documentation deliberately does not hard-code a second “published version” value that can become stale immediately after a release.
+`publish.ps1` and `publish.sh` replace those files only after validated platform Release builds. Documentation deliberately does not hard-code a second “published version” value that can become stale immediately after a release.
 
 ## Highlights in 2.7 source
 
@@ -60,10 +62,11 @@ Your CAD / BIM application
                  │
                  ▼
 OcctNet.WinForms ─┐
-OcctNet.Wpf      ─┴─> OcctNet -> stable C ABI -> OcctNative -> OCCT 7.9.0
+OcctNet.Wpf      ─┼─> OcctNet -> stable C ABI -> OcctNative -> OCCT 7.9.0
+OcctNet.Avalonia ─┘
 ```
 
-`OcctModelingSession` owns headless modeling/topology. `OcctEngine` owns AIS/viewer presentation and interactive scene state. Windows UI adapters depend on `OcctNet` directly and do not reference each other.
+`OcctModelingSession` owns headless modeling/topology. `OcctEngine` owns AIS/viewer presentation and interactive scene state. UI adapters depend on `OcctNet` directly and do not reference each other.
 
 Cross-platform Avalonia examples and application packaging live on the `avalonia` branch. The formal `OcctNet.Avalonia` host and both native platform backends remain owned by `main`.
 
@@ -78,40 +81,31 @@ Cross-platform Avalonia examples and application packaging live on the `avalonia
 .\build.ps1 docs Release
 .\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
-Linux x64 uses the same source tree and produces the consumer SDK under `dist/linux-x64`:
+Linux x64 uses the same source tree. Managed validation/tests do not require a local OCCT installation; native/smoke/dist do. The consumer SDK is produced under `dist/linux-x64`:
 
 ```bash
 ./build.sh validate Release
+./build.sh managed Release
+./build.sh test Release
 ./build.sh all Release
 ./build.sh dist Release
 ```
 
+## Publish tracked Binary SDKs
 
-## Publish the tracked Windows Binary SDK
+Windows:
 
 ```powershell
 .\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-The Windows Binary SDK release flow is one-directional:
-
-```text
-clean, up-to-date main
-→ generate bilingual API reference
-→ build/validate Release Binary SDK
-→ commit/push main dist/win-x64
-→ demo users run demo/sync.ps1 locally
-```
-
-`demo/dist` is intentionally ignored by Git. The demo branch is a consumer, not a second Binary SDK repository.
-On a Linux x64 release host, publish the validated Linux SDK from a clean, synchronized `main` branch:
+Linux x64:
 
 ```bash
 ./publish.sh
 ```
 
-This updates only `dist/linux-x64`; Avalonia application packaging remains on the consumer branch.
-
+Both publish flows validate the package contract/manifest and source commit before updating their respective `dist/<rid>` payload. Consumer branches synchronize those published SDKs instead of carrying a second copy of Core/Native source.
 
 ## Usage
 
