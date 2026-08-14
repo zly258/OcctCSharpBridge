@@ -3,7 +3,7 @@
 #include "viewer/OcctViewerContext.hxx"
 #include "OcctErrorContext.hxx"
 #include "scene/OcctSceneRegistry.hxx"
-#include "OcctDocumentStore.hxx"
+#include "exchange/OcctDocumentStore.hxx"
 #include "OcctNative.h"
 
 #include <AIS_InteractiveContext.hxx>

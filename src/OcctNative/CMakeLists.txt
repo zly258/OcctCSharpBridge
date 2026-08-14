@@ -111,8 +111,8 @@ add_library(OcctNative SHARED
     OcctAnnotations.cpp
     OcctPoints.cpp
     OcctVectorAnnotations.cpp
-    OcctIO.cpp
-    OcctStepDocument.cpp
+    exchange/OcctIO.cpp
+    exchange/OcctStepDocument.cpp
     OcctModelingCore.cpp
     OcctModelingShapeQueries.cpp
     OcctModelingGeometryQueries.cpp
@@ -128,8 +128,8 @@ add_library(OcctNative SHARED
     OcctModelingHealing.cpp
     OcctModelingHistory.cpp
     OcctModelingAnalysis.cpp
-    OcctModelingMesh.cpp
-    OcctModelingExchange.cpp
+    mesh/OcctModelingMesh.cpp
+    exchange/OcctModelingExchange.cpp
     OcctModelingAnalyticGeometry.cpp
     OcctModelingDifferentialGeometry.cpp
     OcctModelingExtensions.cpp
@@ -145,11 +145,11 @@ add_library(OcctNative SHARED
     scene/OcctSceneRegistry.hxx
     platform/OcctPlatformWindow.hxx
     OcctModelingSessionInternal.hxx
-    OcctDocumentStore.hxx
+    exchange/OcctDocumentStore.hxx
     OcctModelingShapeInternal.hxx
     OcctModelingAlgorithmInternal.hxx
-    OcctModelingMeshInternal.hxx
-    OcctModelingExchangeInternal.hxx
+    mesh/OcctModelingMeshInternal.hxx
+    exchange/OcctModelingExchangeInternal.hxx
     OcctNative.h
     platform/OcctNativeSurface.h
     OcctPoints.h

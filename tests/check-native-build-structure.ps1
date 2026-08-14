@@ -59,7 +59,7 @@ foreach ($requiredToolkit in @("TKDESTEP", "TKDEIGES", "TKDESTL", "TKLCAF", "TKC
 $nativeFiles = @(Get-ChildItem $nativeRoot -File -Recurse | Where-Object {
     $_.Extension -in @('.h', '.hpp', '.hxx', '.cpp')
 })
-foreach ($requiredDomain in @("platform", "viewer", "scene")) {
+foreach ($requiredDomain in @("exchange", "mesh", "platform", "scene", "viewer")) {
     $domainRoot = Join-Path $nativeRoot $requiredDomain
     if (-not (Test-Path $domainRoot -PathType Container)) {
         throw "Native domain directory is missing: $requiredDomain"

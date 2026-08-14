@@ -34,7 +34,7 @@
     "nativeHeaders": [
       "OcctNative.h",
       "OcctRenderSurface.h",
-      "OcctStepDocument.h",
+      "exchange/OcctStepDocument.h",
       "platform/OcctNativeSurface.h",
       "OcctPoints.h",
       "OcctSelectionOverlay.h",
