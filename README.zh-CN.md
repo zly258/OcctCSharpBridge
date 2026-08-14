@@ -36,13 +36,14 @@ OcctCSharpBridge `main` 是 **Open CASCADE Technology 7.9.0 → .NET 10 / C# 14*
 
 `publish.ps1` 与 `publish.sh` 只有在各自平台 Release 构建和校验通过后才会替换对应 Binary SDK。文档不再额外硬编码一份“当前已发布版本”，避免发布后立即产生过期信息。
 
-## 2.7 源码重点能力
+## Bridge 3 Preview 重点能力
 
 - 一等 `OcctAssemblyDocument` / `OcctAssemblyNode` STEP-XDE occurrence 模型；
 - 保留稳定 XDE 节点 ID、Assembly/Instance/Part 角色、Local/Global Transform、Visibility、Surface RGBA、Curve Color 和 Subshape Style；
 - 合法的多 Solid Part 仍保持为一个 Part，不再按 Solid 数量错误拆成 `Part_###`；
 - 几何未改变时，名称、颜色、透明度、显隐等非几何编辑可继续通过原始 XDE 文档 round-trip；
 - 一等 `OcctPoint` / `OcctPointMarker`，Native 使用真正的 `AIS_Point`；
+- Shape/Mesh/Algorithm 采用拥有所有权的独立 Resource Handle，为 Headless 工作流提供明确 Native 生命周期边界；
 - WPF Resize 使用“不触发 redraw 的 Native surface resize + Render 优先级合并刷新”，不再从 `WM_PAINT` 强制重绘。
 
 ## Windows Demo 预览
@@ -82,15 +83,18 @@ OcctNet.Avalonia ─┘
 .\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-Linux x64 使用同一源码树。`managed/test` 不再要求本机安装 OCCT；只有 `native/smoke/dist` 需要 OCCT Native SDK。消费者 SDK 输出到 `dist/linux-x64`：
+Linux x64 使用同一源码树。`managed/test` 不要求本机安装 OCCT；只有 `native/smoke/avalonia-smoke/dist` 需要 OCCT Native SDK。消费者 SDK 输出到 `dist/linux-x64`：
 
 ```bash
 ./build.sh validate Release
 ./build.sh managed Release
 ./build.sh test Release
 ./build.sh all Release
+./build.sh avalonia-smoke Release   # 需要 X11/XWayland DISPLAY
 ./build.sh dist Release
 ```
+
+普通 `all` 保持 Headless，可在无图形桌面的 Linux 主机上执行；`avalonia-smoke` 是显式 Viewer 测试，因为当前 OCCT 7.9 Linux Viewer 后端使用 X11/XWayland，尚未直接支持原生 Wayland Surface。
 
 ## 正式发布 Binary SDK
 
@@ -120,7 +124,7 @@ var cut = model.Cut(plate, hole);
 model.ExportStep(cut.Shape, "plate.step");
 ```
 
-2.7 源码中的真实 STEP 装配读取：
+当前 Bridge 3 Preview 源码中的真实 STEP 装配读取：
 
 ```csharp
 using var engine = new OcctEngine();
