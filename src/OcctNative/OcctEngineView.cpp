@@ -9,22 +9,9 @@
 #include <Graphic3d_MaterialAspect.hxx>
 #include <Prs3d_Drawer.hxx>
 #include <Prs3d_ShadingAspect.hxx>
-#include <V3d_ListOfLight.hxx>
 #include <V3d_TypeOfOrientation.hxx>
 
 using namespace OcctBridge;
-
-namespace
-{
-    void removeAllLights(const Handle(V3d_Viewer)& viewer)
-    {
-        V3d_ListOfLight lights = viewer->DefinedLights();
-        for (V3d_ListOfLight::Iterator iterator(lights); iterator.More(); iterator.Next())
-        {
-            viewer->DelLight(iterator.Value());
-        }
-    }
-}
 
 extern "C"
 {
@@ -244,24 +231,6 @@ extern "C"
                     e->viewerContext.context->SetMaterial(pair.second.presentation, aspect, Standard_False);
                 }
             }
-            e->requestRedraw();
-        });
-    }
-
-    int occt_reset_scene_lighting(OcctHandle h)
-    {
-        Engine* e = engineOf(h);
-        if (!validateInitialized(e)) return 0;
-        return execute(e, [&]
-        {
-            removeAllLights(e->viewerContext.viewer);
-            e->viewerContext.customAmbientLight.Nullify();
-            e->viewerContext.customDirectionalLight.Nullify();
-            e->viewerContext.customSunLight.Nullify();
-            e->viewerContext.customFillLight.Nullify();
-            e->viewerContext.viewer->SetDefaultLights();
-            e->viewerContext.viewer->SetLightOn();
-            e->viewerContext.viewer->UpdateLights();
             e->requestRedraw();
         });
     }
