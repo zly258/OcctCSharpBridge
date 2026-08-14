@@ -30,24 +30,28 @@ CURRENT_ABI="$(contract_number current)"
 SDK_MAJOR="${SDK_VERSION%%.*}"
 TFM="net10.0"
 
-validate() {
+validate_common() {
     [[ "$(uname -s)" == "Linux" ]] || fail "build.sh supports Linux only; use build.ps1 on Windows."
     case "$(uname -m)" in x86_64|amd64) ;; *) fail "Linux x64 is required; detected $(uname -m)." ;; esac
     case "${CONFIGURATION}" in Debug|Release|RelWithDebInfo) ;; *) fail "Unknown configuration: ${CONFIGURATION}" ;; esac
-    require_command cmake
-    require_command c++
     require_command dotnet
     [[ "${SOURCE_PLATFORM}" == "cross-platform-x64" ]] || fail "Source contract platform must be cross-platform-x64; found ${SOURCE_PLATFORM}."
-    [[ -f "${OCCT_INCLUDE_DIR}/Standard.hxx" ]] || fail "OCCT headers were not found under ${OCCT_INCLUDE_DIR}."
-    compgen -G "${OCCT_LIB_DIR}/libTKernel.so*" >/dev/null || fail "OCCT TKernel was not found under ${OCCT_LIB_DIR}."
     local detected_sdk="$(dotnet --version)"
     [[ "${detected_sdk%%.*}" == "${SDK_MAJOR}" ]] || fail ".NET ${SDK_MAJOR}.x is required; detected ${detected_sdk}."
     [[ -n "${BRIDGE_VERSION}" && -n "${CURRENT_ABI}" ]] || fail "Bridge contract metadata is incomplete."
+}
+
+validate_native() {
+    validate_common
+    require_command cmake
+    require_command c++
+    [[ -f "${OCCT_INCLUDE_DIR}/Standard.hxx" ]] || fail "OCCT headers were not found under ${OCCT_INCLUDE_DIR}."
+    compgen -G "${OCCT_LIB_DIR}/libTKernel.so*" >/dev/null || fail "OCCT TKernel was not found under ${OCCT_LIB_DIR}."
     log "Bridge ${BRIDGE_VERSION}, ABI ${CURRENT_ABI}, OCCT ${OCCT_VERSION}, Linux x64"
 }
 
 native() {
-    validate
+    validate_native
     cmake -S "${ROOT_DIR}/src/OcctNative" -B "${BUILD_DIR}" \
         -DCMAKE_BUILD_TYPE="${CONFIGURATION}" \
         -DOCCT_ROOT="${OCCT_ROOT}" \
@@ -58,23 +62,29 @@ native() {
 }
 
 managed() {
-    validate
+    validate_common
     dotnet build "${ROOT_DIR}/src/OcctNet/OcctNet.csproj" -c "${CONFIGURATION}" -p:Platform=x64 -p:Version="${BRIDGE_VERSION}" --nologo
     dotnet build "${ROOT_DIR}/src/OcctNet.Avalonia/OcctNet.Avalonia.csproj" -c "${CONFIGURATION}" -p:Platform=x64 -p:Version="${BRIDGE_VERSION}" --nologo
 }
 
 test_managed() {
-    validate
+    validate_common
     dotnet test "${ROOT_DIR}/tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj" -c "${CONFIGURATION}" -p:Platform=x64 -p:Version="${BRIDGE_VERSION}" --nologo
 }
 
-smoke() {
-    native
+run_smoke() {
+    validate_native
+    [[ -f "${NATIVE_DIR}/libOcctNative.so" ]] || fail "Native bridge must be built before running smoke tests."
     dotnet build "${ROOT_DIR}/tests/OcctNet.Smoke/OcctNet.Smoke.csproj" -c "${CONFIGURATION}" -p:Platform=x64 -p:Version="${BRIDGE_VERSION}" --nologo
     export OCCT_BRIDGE_NATIVE_DIR="${NATIVE_DIR}"
     export CASROOT="${CASROOT:-${OCCT_ROOT}}"
     export LD_LIBRARY_PATH="${NATIVE_DIR}:${OCCT_LIB_DIR}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
     dotnet run --project "${ROOT_DIR}/tests/OcctNet.Smoke/OcctNet.Smoke.csproj" -c "${CONFIGURATION}" -p:Platform=x64 -p:Version="${BRIDGE_VERSION}" --no-build
+}
+
+smoke() {
+    native
+    run_smoke
 }
 
 dist() {
@@ -131,13 +141,13 @@ clean() {
 }
 
 case "${TARGET}" in
-    validate) validate ;;
+    validate) validate_common ;;
     native) native ;;
     managed) managed ;;
     test) test_managed ;;
     smoke) smoke ;;
     dist) dist ;;
     clean) clean ;;
-    all) native; managed; test_managed; smoke ;;
+    all) native; managed; test_managed; run_smoke ;;
     *) fail "Unknown target '${TARGET}'. Use validate, native, managed, test, smoke, dist, clean, or all." ;;
 esac
