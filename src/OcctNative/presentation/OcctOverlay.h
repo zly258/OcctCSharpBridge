@@ -1,8 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include "OcctNative.h"
 
-// Appended object-kind value. Existing numeric values remain stable.
 constexpr int OcctOverlayObjectKind = 5;
 
 extern "C"
@@ -119,18 +118,4 @@ extern "C"
         OcctEngineHandle handle,
         OcctObjectId overlayId,
         int* primitiveType);
-
-    // Frozen ABI 4 compatibility shell. New SDK code uses occt_engine_overlay_*.
-    OCCTBRIDGE_API OcctObjectId occt_add_overlay_line(OcctHandle handle, OcctPoint3d start, OcctPoint3d end, int pattern, double width, double r, double g, double b);
-    OCCTBRIDGE_API OcctObjectId occt_add_overlay_polyline(OcctHandle handle, const OcctPoint3d* points, int count, int pattern, double width, double r, double g, double b);
-    OCCTBRIDGE_API OcctObjectId occt_add_overlay_marker(OcctHandle handle, OcctPoint3d position, int marker, double scale, double r, double g, double b);
-    OCCTBRIDGE_API OcctObjectId occt_add_overlay_text(OcctHandle handle, const char* text, OcctPoint3d position, double height, double r, double g, double b, int zoomable, const char* fontName);
-    OCCTBRIDGE_API int occt_update_overlay_line(OcctHandle handle, OcctObjectId overlayId, OcctPoint3d start, OcctPoint3d end);
-    OCCTBRIDGE_API int occt_update_overlay_polyline(OcctHandle handle, OcctObjectId overlayId, const OcctPoint3d* points, int count);
-    OCCTBRIDGE_API int occt_update_overlay_marker(OcctHandle handle, OcctObjectId overlayId, OcctPoint3d position);
-    OCCTBRIDGE_API int occt_update_overlay_text(OcctHandle handle, OcctObjectId overlayId, const char* text, OcctPoint3d position);
-    OCCTBRIDGE_API int occt_set_overlay_line_style(OcctHandle handle, OcctObjectId overlayId, int pattern, double width, double r, double g, double b);
-    OCCTBRIDGE_API int occt_set_overlay_marker_style(OcctHandle handle, OcctObjectId overlayId, int marker, double scale, double r, double g, double b);
-    OCCTBRIDGE_API int occt_set_overlay_text_style(OcctHandle handle, OcctObjectId overlayId, double height, double r, double g, double b, int zoomable, const char* fontName);
-    OCCTBRIDGE_API int occt_get_overlay_primitive_type(OcctHandle handle, OcctObjectId overlayId, int* primitiveType);
 }
