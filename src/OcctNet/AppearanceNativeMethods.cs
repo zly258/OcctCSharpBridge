@@ -67,6 +67,11 @@ internal static partial class AppearanceNativeMethods
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_scene_lighting_reset(
+        OcctEngineSafeHandle handle);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_engine_highlight_colors_set(
         OcctEngineSafeHandle handle,
         in NativeViewerHighlightOptions options);
