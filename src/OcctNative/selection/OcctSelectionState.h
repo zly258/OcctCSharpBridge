@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "OcctNative.h"
 
@@ -21,32 +21,24 @@ extern "C"
         double distanceToEye;
     };
 
-    // Returns the current registered AIS selection as structured object/subshape identities.
-    // Call with items=nullptr/capacity=0 to query count, then call again with a large enough buffer.
-    // subshapeIndex follows the same TopExp_Explorer ordering as occt_get_subshape;
-    // whole-object selection uses OcctShape_Shape and index -1.
-    OCCTBRIDGE_API int occt_selected_hits(
-        OcctHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_engine_selection_hits_get(
+        OcctEngineHandle handle,
         OcctSelectionHit* items,
         int capacity,
         int* count);
 
-    // Returns success/failure through the normal bridge error contract and reports whether
-    // a registered object is currently detected through hasHit.
-    OCCTBRIDGE_API int occt_detected_hit(
-        OcctHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_engine_selection_detected_hit_get(
+        OcctEngineHandle handle,
         OcctSelectionHit* result,
         int* hasHit);
 
-    OCCTBRIDGE_API int occt_detected_hit_detail(
-        OcctHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_engine_selection_detected_hit_detail_get(
+        OcctEngineHandle handle,
         OcctSelectionHitDetail* result,
         int* hasHit);
 
-    // Performs native point detection and returns up to maxHits sorted AIS owners with
-    // world pick point and depth data. This does not create registry/viewer subshape objects.
-    OCCTBRIDGE_API int occt_detect_at(
-        OcctHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_engine_selection_detect_at(
+        OcctEngineHandle handle,
         int x,
         int y,
         int maxHits,
