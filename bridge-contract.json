@@ -11,7 +11,8 @@
     "plannedRemoval": "4.0"
   },
   "occtVersion": "7.9.0",
-  "platform": "windows-x64",
+  "platform": "cross-platform-x64",
+  "supportedPlatforms": ["windows-x64", "linux-x64"],
   "cmakeMinimumVersion": "3.21",
   "author": "zly258",
   "contactEmail": "zhangly1403@gmail.com",
