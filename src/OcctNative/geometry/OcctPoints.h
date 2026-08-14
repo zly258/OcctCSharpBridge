@@ -30,6 +30,36 @@ extern "C"
         OcctPixelFormat_Rgba32 = 1
     };
 
+    enum OcctViewerPointUpdateMask : std::uint32_t
+    {
+        OcctViewerPointUpdate_Position = 1u << 0,
+        OcctViewerPointUpdate_Style = 1u << 1
+    };
+
+    struct OcctViewerPointOptions
+    {
+        std::uint32_t structSize;
+        std::uint32_t apiVersion;
+        std::uint32_t updateMask;
+        OcctPoint3d position;
+        int marker;
+        double scale;
+        double red;
+        double green;
+        double blue;
+    };
+
+    OCCTBRIDGE_API OcctStatus occt_engine_point_create(
+        OcctEngineHandle handle,
+        const OcctViewerPointOptions* options,
+        OcctObjectId* resultPointId);
+
+    OCCTBRIDGE_API OcctStatus occt_engine_point_update(
+        OcctEngineHandle handle,
+        OcctObjectId pointId,
+        const OcctViewerPointOptions* options);
+
+    // Frozen ABI 4 compatibility shell. New SDK code uses occt_engine_point_*.
     OCCTBRIDGE_API OcctObjectId occt_add_point(
         OcctHandle handle,
         OcctPoint3d position,
