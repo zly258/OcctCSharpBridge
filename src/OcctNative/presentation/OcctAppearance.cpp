@@ -133,6 +133,15 @@ namespace
         engine->requestRedraw();
     }
 
+    void resetLighting(Engine* engine)
+    {
+        removeAllLights(engine);
+        engine->viewerContext.viewer->SetDefaultLights();
+        engine->viewerContext.viewer->SetLightOn();
+        engine->viewerContext.viewer->UpdateLights();
+        engine->requestRedraw();
+    }
+
     OcctViewerLightingOptions lightingOptions(const OcctSceneLightingSettings& settings)
     {
         return {
@@ -167,6 +176,12 @@ extern "C"
             validateLightingOptions(options);
             applyLighting(engine, options->settings);
         });
+    }
+
+    OcctStatus occt_engine_scene_lighting_reset(OcctEngineHandle handle)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeAppearanceStatus(engine, [&] { resetLighting(engine); });
     }
 
     OcctStatus occt_engine_highlight_colors_set(
@@ -243,6 +258,14 @@ extern "C"
         return occt_engine_scene_lighting_set(
                    reinterpret_cast<OcctEngineHandle>(h),
                    &options) == OcctStatus_Ok
+            ? 1
+            : 0;
+    }
+
+    int occt_reset_scene_lighting(OcctHandle h)
+    {
+        return occt_engine_scene_lighting_reset(
+                   reinterpret_cast<OcctEngineHandle>(h)) == OcctStatus_Ok
             ? 1
             : 0;
     }
