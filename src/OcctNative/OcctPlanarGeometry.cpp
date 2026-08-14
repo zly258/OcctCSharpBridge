@@ -1,4 +1,4 @@
-﻿#include "OcctInternal.hxx"
+﻿#include "core/OcctInternal.hxx"
 
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>

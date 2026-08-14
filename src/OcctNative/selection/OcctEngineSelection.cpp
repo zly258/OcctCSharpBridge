@@ -1,4 +1,4 @@
-﻿#include "OcctInternal.hxx"
+﻿#include "core/OcctInternal.hxx"
 
 #include <AIS_SelectionScheme.hxx>
 #include <Graphic3d_Vec2.hxx>

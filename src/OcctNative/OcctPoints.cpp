@@ -1,4 +1,4 @@
-﻿#include "OcctInternal.hxx"
+﻿#include "core/OcctInternal.hxx"
 #include "OcctPoints.h"
 
 #include <AIS_Point.hxx>

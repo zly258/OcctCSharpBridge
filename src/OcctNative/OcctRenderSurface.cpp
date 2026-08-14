@@ -1,5 +1,5 @@
 ﻿#include "OcctRenderSurface.h"
-#include "OcctInternal.hxx"
+#include "core/OcctInternal.hxx"
 
 using namespace OcctBridge;
 

@@ -1,4 +1,4 @@
-﻿#include "OcctInternal.hxx"
+﻿#include "core/OcctInternal.hxx"
 #include "OcctViewerInteraction.h"
 
 #include <BRepAdaptor_Curve.hxx>

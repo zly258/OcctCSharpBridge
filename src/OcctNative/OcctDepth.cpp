@@ -1,4 +1,4 @@
-﻿#include "OcctInternal.hxx"
+﻿#include "core/OcctInternal.hxx"
 
 #include <Aspect_PolygonOffsetMode.hxx>
 #include <Graphic3d_AspectFillArea3d.hxx>

@@ -1,4 +1,4 @@
-﻿#include "OcctInternal.hxx"
+﻿#include "core/OcctInternal.hxx"
 #include "OcctSelectionOverlay.h"
 
 #include <AIS_DisplayStatus.hxx>

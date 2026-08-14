@@ -1,4 +1,4 @@
-﻿#include "OcctInternal.hxx"
+﻿#include "core/OcctInternal.hxx"
 #include "OcctPresentation.h"
 #include "OcctViewerInteraction.h"
 

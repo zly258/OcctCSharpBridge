@@ -1,4 +1,4 @@
-﻿#include "OcctInternal.hxx"
+﻿#include "core/OcctInternal.hxx"
 
 #include <Aspect_GradientFillMethod.hxx>
 #include <Graphic3d_Camera.hxx>

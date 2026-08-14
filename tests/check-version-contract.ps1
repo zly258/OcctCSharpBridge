@@ -92,7 +92,7 @@ if ([string]$contract.compatibility.abi4 -ne "deprecated" -or [string]$contract.
 if (($expectedCurrentAbiExports + $expectedLegacyAbiExports + $expectedCompatibilityExtensions) -ne $expectedNativeCount) {
     throw "ABI export accounting must equal nativeExports."
 }
-$nativeEngine = Read-Text "src/OcctNative/OcctEngine.cpp"
+$nativeEngine = Read-Text "src/OcctNative/core/OcctEngine.cpp"
 if (-not $nativeEngine.Contains("return `"$expectedVersion`";")) { throw "Native bridge version differs from bridge-contract.json." }
 if (-not $nativeEngine.Contains("return $expectedAbiVersion;")) { throw "Native ABI version differs from bridge-contract.json." }
 $bridgeInfo = Read-Text "src/OcctNet/OcctBridgeInfo.cs"

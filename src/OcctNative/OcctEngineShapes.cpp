@@ -1,4 +1,4 @@
-#include "OcctInternal.hxx"
+#include "core/OcctInternal.hxx"
 
 #include <BRepBndLib.hxx>
 #include <BRepBuilderAPI_Copy.hxx>

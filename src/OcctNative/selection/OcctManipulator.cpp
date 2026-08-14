@@ -1,4 +1,4 @@
-﻿#include "OcctInternal.hxx"
+﻿#include "core/OcctInternal.hxx"
 #include "OcctManipulator.h"
 
 #include <AIS_Manipulator.hxx>

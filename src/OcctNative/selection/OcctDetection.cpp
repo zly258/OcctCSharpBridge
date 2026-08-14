@@ -1,4 +1,4 @@
-﻿#include "OcctInternal.hxx"
+﻿#include "core/OcctInternal.hxx"
 #include "OcctDetection.h"
 
 #include <Graphic3d_Camera.hxx>

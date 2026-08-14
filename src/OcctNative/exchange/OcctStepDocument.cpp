@@ -1,5 +1,5 @@
 ﻿#include "OcctStepDocument.h"
-#include "OcctInternal.hxx"
+#include "core/OcctInternal.hxx"
 
 #include <Quantity_ColorRGBA.hxx>
 #include <TCollection_AsciiString.hxx>

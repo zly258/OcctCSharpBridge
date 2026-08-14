@@ -76,7 +76,7 @@ if(NOT _occt_version_header MATCHES "#define[ \t]+OCC_VERSION_MAJOR[ \t]+${REQUI
 endif()
 
 add_library(OcctNative SHARED
-    OcctEngine.cpp
+    core/OcctEngine.cpp
     viewer/OcctViewerContext.cpp
     scene/OcctSceneRegistry.cpp
     platform/OcctPlatformWindow.cpp
@@ -139,8 +139,8 @@ add_library(OcctNative SHARED
     OcctModelingInertia.cpp
     OcctModelingIntersection.cpp
     OcctModelingTopologyReference.cpp
-    OcctInternal.hxx
-    OcctErrorContext.hxx
+    core/OcctInternal.hxx
+    core/OcctErrorContext.hxx
     viewer/OcctViewerContext.hxx
     scene/OcctSceneRegistry.hxx
     platform/OcctPlatformWindow.hxx

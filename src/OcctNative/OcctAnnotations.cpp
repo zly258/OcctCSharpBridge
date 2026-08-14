@@ -1,4 +1,4 @@
-﻿#include "OcctInternal.hxx"
+﻿#include "core/OcctInternal.hxx"
 
 #include <AIS_TextLabel.hxx>
 #include <BRepAdaptor_Curve.hxx>

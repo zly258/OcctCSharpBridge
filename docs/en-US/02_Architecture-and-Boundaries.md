@@ -31,3 +31,5 @@ Native operating-system integration is confined to `src/OcctNative/platform`. Wi
 Exchange implementation, STEP/XCAF document state, and import source metadata belong to `src/OcctNative/exchange`. Triangulation extraction belongs to `src/OcctNative/mesh`. Neither domain owns Viewer state; headless Modeling reaches them through the shared Modeling Session.
 
 Selection state, detection, selection overlays, and manipulators belong to `src/OcctNative/selection`. Visual appearance, overlays, and custom presentations belong to `src/OcctNative/presentation`; both use Viewer services without taking ownership of the Viewer context.
+
+Engine coordination and structured native error state belong to `src/OcctNative/core`. Core composes ViewerContext, SceneRegistry, DocumentStore, and rendering state; it does not own UI-framework adapters or application-level document and command models.

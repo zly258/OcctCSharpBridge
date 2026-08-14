@@ -1,5 +1,5 @@
 ﻿#include "OcctModelingSessionInternal.hxx"
-#include "OcctInternal.hxx"
+#include "core/OcctInternal.hxx"
 
 using namespace OcctModelingInternal;
 

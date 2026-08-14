@@ -1,4 +1,4 @@
-﻿#include "OcctInternal.hxx"
+﻿#include "core/OcctInternal.hxx"
 
 #include <BRep_Builder.hxx>
 #include <BRepMesh_IncrementalMesh.hxx>

@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "OcctErrorContext.hxx"
+#include "core/OcctErrorContext.hxx"
 #include "OcctModeling.h"
 #include "OcctModelingIntersection.h"
 

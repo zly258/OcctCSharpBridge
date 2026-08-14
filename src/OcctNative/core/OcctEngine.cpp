@@ -1,4 +1,4 @@
-﻿#include "OcctInternal.hxx"
+﻿#include "core/OcctInternal.hxx"
 #include "platform/OcctNativeSurface.h"
 
 #include <Aspect_PolygonOffsetMode.hxx>
