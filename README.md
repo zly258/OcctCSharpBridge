@@ -6,7 +6,7 @@ OcctCSharpBridge `main` is the formal SDK source from **Open CASCADE Technology 
 
 The [`demo`](https://github.com/zly258/OcctCSharpBridge/tree/demo) and [`avalonia`](https://github.com/zly258/OcctCSharpBridge/tree/avalonia) branches are consumer examples and packaging flows. Formal `OcctNative`, `OcctNet`, and UI-host implementations are owned by `main`.
 
-`main` builds the shared Windows/Linux Native Core; the current tracked binary distribution remains Windows x64. Product-level document models, feature trees, commands/tools, undo/redo, snapping, grips and project persistence remain application responsibilities.
+`main` builds the shared Windows/Linux Native Core and is the only producer of platform Binary SDKs. Product-level document models, feature trees, commands/tools, undo/redo, snapping, grips and project persistence remain application responsibilities.
 
 > STEP/XDE boundary: XDE is used internally for STEP assembly/product structure, occurrence transforms and presentation metadata. OcctCSharpBridge does **not** expose OCAF/XDE as the consuming application's document/persistence architecture. Assembly-aware consumers use the managed `OcctAssemblyDocument` snapshot instead.
 
@@ -65,7 +65,7 @@ OcctNet.Wpf      ─┴─> OcctNet -> stable C ABI -> OcctNative -> OCCT 7.9.0
 
 `OcctModelingSession` owns headless modeling/topology. `OcctEngine` owns AIS/viewer presentation and interactive scene state. Windows UI adapters depend on `OcctNet` directly and do not reference each other.
 
-Cross-platform Avalonia is developed separately on the `avalonia` branch so the Windows-only source and release contract on `main` stay compact and deterministic.
+Cross-platform Avalonia examples and application packaging live on the `avalonia` branch. The formal `OcctNet.Avalonia` host and both native platform backends remain owned by `main`.
 
 ## Build
 
@@ -78,6 +78,14 @@ Cross-platform Avalonia is developed separately on the `avalonia` branch so the 
 .\build.ps1 docs Release
 .\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
+Linux x64 uses the same source tree and produces the consumer SDK under `dist/linux-x64`:
+
+```bash
+./build.sh validate Release
+./build.sh all Release
+./build.sh dist Release
+```
+
 
 ## Publish the tracked Windows Binary SDK
 
@@ -122,9 +130,9 @@ foreach (OcctAssemblyNode root in assembly.Roots)
 
 ## Branches
 
-- `main` — Windows x64 Bridge source, WinForms/WPF adapters, tests, documentation and tracked `dist/win-x64` Binary SDK producer.
+- `main` — sole Bridge SDK source, all UI host adapters, tests, documentation, and `win-x64`/`linux-x64` Binary SDK production.
 - `demo` — Windows WinForms/WPF demo applications consuming a **local ignored** `dist/win-x64` copied from the currently published `main` SDK.
-- `avalonia` — cross-platform Avalonia Bridge variant for Windows and Linux, with platform-specific native viewer backends hidden behind one Avalonia API.
+- `avalonia` — Windows/Linux Avalonia example, packaging, run scripts and preview assets consuming the SDK from `main`.
 - `website` — static project website/GitHub Pages source.
 
 ## License

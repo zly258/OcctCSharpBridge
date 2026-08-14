@@ -6,7 +6,7 @@ OcctCSharpBridge `main` 是 **Open CASCADE Technology 7.9.0 → .NET 10 / C# 14*
 
 `demo` 与 `avalonia` 分支只负责 Consumer 示例和打包流程；正式的 `OcctNative`、`OcctNet` 与 UI Host 实现统一由 `main` 维护。
 
-`main` 使用同一套 Native Core 构建 Windows/Linux；当前受跟踪的二进制发行包仍是 Windows x64。应用层的 Document、Feature Tree、Command/Tool、Undo/Redo、捕捉、夹点和项目持久化仍由上层 CAD/BIM 应用负责。
+`main` 使用同一套 Native Core 构建 Windows/Linux，并且是各平台 Binary SDK 的唯一生产者。应用层的 Document、Feature Tree、Command/Tool、Undo/Redo、捕捉、夹点和项目持久化仍由上层 CAD/BIM 应用负责。
 
 > STEP/XDE 边界：Bridge 会在 STEP 装配交换内部使用 XDE 保存真实产品结构、Occurrence Transform 与显示样式，但**不会把 OCAF/XDE 暴露成应用层 Document/持久化架构**。上层通过托管的 `OcctAssemblyDocument` 快照读取装配语义。
 
@@ -65,7 +65,7 @@ OcctNet.Wpf      ─┴─> OcctNet -> stable C ABI -> OcctNative -> OCCT 7.9.0
 
 `OcctModelingSession` 负责 Headless 建模/拓扑；`OcctEngine` 负责 AIS/Viewer 展示与交互场景。Windows UI Adapter 都直接依赖 `OcctNet`，互不引用。
 
-跨平台 Avalonia 在 `avalonia` 分支独立开发，使 `main` 的 Windows 源码契约和发布链保持紧凑、确定。
+跨平台 Avalonia 示例与应用打包位于 `avalonia` 分支；正式 `OcctNet.Avalonia` Host 和两个 Native 平台后端仍统一由 `main` 维护。
 
 ## 构建
 
@@ -78,6 +78,14 @@ OcctNet.Wpf      ─┴─> OcctNet -> stable C ABI -> OcctNative -> OCCT 7.9.0
 .\build.ps1 docs Release
 .\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
+Linux x64 使用同一源码树，并在 `dist/linux-x64` 生成消费者 SDK：
+
+```bash
+./build.sh validate Release
+./build.sh all Release
+./build.sh dist Release
+```
+
 
 ## 正式发布 Windows Binary SDK
 
@@ -122,9 +130,9 @@ foreach (OcctAssemblyNode root in assembly.Roots)
 
 ## 分支职责
 
-- `main`：Windows x64 Bridge 源码、WinForms/WPF Adapter、测试、文档和正式 `dist/win-x64` Binary SDK 生产者。
+- `main`：唯一 Bridge SDK 源码、全部 UI Host Adapter、测试、文档及 `win-x64`/`linux-x64` Binary SDK 生产者。
 - `demo`：Windows WinForms/WPF Demo，消费当前已发布 SDK 的本地被忽略副本 `dist/win-x64`。
-- `avalonia`：真正跨平台的 Avalonia Bridge 版本，同时面向 Windows 与 Linux，上层使用统一 Avalonia API，平台相关 Viewer Backend 在内部处理。
+- `avalonia`：消费 `main` SDK 的 Windows/Linux Avalonia 示例、打包脚本、运行脚本和预览资源。
 - `website`：静态官网 / GitHub Pages 源码。
 
 ## 许可证
