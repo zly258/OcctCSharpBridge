@@ -39,6 +39,7 @@ validate_common() {
     local detected_sdk="$(dotnet --version)"
     [[ "${detected_sdk%%.*}" == "${SDK_MAJOR}" ]] || fail ".NET ${SDK_MAJOR}.x is required; detected ${detected_sdk}."
     [[ -n "${BRIDGE_VERSION}" && -n "${CURRENT_ABI}" ]] || fail "Bridge contract metadata is incomplete."
+    bash "${ROOT_DIR}/tests/check-linux-contract.sh" "${ROOT_DIR}"
 }
 
 validate_native() {
