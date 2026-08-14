@@ -1,5 +1,6 @@
 ﻿#include "core/OcctInternal.hxx"
 #include "selection/OcctManipulator.h"
+#include "presentation/OcctPresentation.h"
 
 #include <AIS_Manipulator.hxx>
 #include <Graphic3d_MaterialAspect.hxx>
@@ -202,18 +203,19 @@ extern "C"
 
     int occt_set_object_display_mode(OcctHandle h, OcctObjectId id, int mode)
     {
-        Engine* e = engineOf(h);
-        if (!validateInitialized(e)) return 0;
-        return execute(e, [&]
-        {
-            ObjectEntry* entry = e->findObject(id);
-            if (entry == nullptr) throw std::invalid_argument("Object ID does not exist.");
-            e->viewerContext.context->SetDisplayMode(
-                entry->presentation,
-                mode == OcctDisplay_Wireframe ? AIS_WireFrame : AIS_Shaded,
-                Standard_False);
-            e->requestRedraw();
-        });
+        const OcctViewerPresentationStateOptions options {
+            static_cast<std::uint32_t>(sizeof(OcctViewerPresentationStateOptions)),
+            1,
+            OcctViewerPresentationStateUpdate_DisplayMode,
+            mode,
+            0,
+            0 };
+        return occt_engine_presentation_state_update(
+                   reinterpret_cast<OcctEngineHandle>(h),
+                   id,
+                   &options) == OcctStatus_Ok
+            ? 1
+            : 0;
     }
 
     int occt_set_object_line_width(OcctHandle h, OcctObjectId id, double width)
