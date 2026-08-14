@@ -1,27 +1,35 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
-internal static class SelectionOverlayNativeMethods
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeViewerSelectionRectangleOptions
+{
+    internal uint StructSize;
+    internal uint ApiVersion;
+    internal int X1;
+    internal int Y1;
+    internal int X2;
+    internal int Y2;
+    internal NativeViewColorRgb LineColor;
+    internal NativeViewColorRgb FillColor;
+    internal double FillTransparency;
+    internal double LineWidth;
+}
+
+internal static partial class SelectionOverlayNativeMethods
 {
     private const string LibraryName = "OcctNative";
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_show_selection_rectangle(
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_selection_rectangle_overlay_show(
         OcctEngineSafeHandle handle,
-        int x1,
-        int y1,
-        int x2,
-        int y2,
-        double lineR,
-        double lineG,
-        double lineB,
-        double fillR,
-        double fillG,
-        double fillB,
-        double fillTransparency,
-        double lineWidth);
+        in NativeViewerSelectionRectangleOptions options);
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_hide_selection_rectangle(OcctEngineSafeHandle handle);
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_selection_rectangle_overlay_hide(
+        OcctEngineSafeHandle handle);
 }
