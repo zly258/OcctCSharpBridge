@@ -264,7 +264,7 @@ function Run-Smoke {
     Invoke-LegacyCompatibility
 
     $smokeProject = Join-Path $RepoRoot $Projects.Smoke
-    $smokeOutput = Join-Path (Split-Path -Parent $smokeProject) "bin\x64\$Configuration\$DesktopTargetFramework"
+    $smokeOutput = Join-Path (Split-Path -Parent $smokeProject) "bin\x64\$Configuration\$TargetFramework"
     Copy-Item $NativeDll (Join-Path $smokeOutput "OcctNative.dll") -Force
 
     $previousNativeDirectory = $env:OCCT_BRIDGE_NATIVE_DIR
