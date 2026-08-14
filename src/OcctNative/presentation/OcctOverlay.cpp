@@ -1,5 +1,5 @@
-﻿#include "core/OcctInternal.hxx"
-#include "OcctOverlay.h"
+#include "presentation/OcctOverlay.h"
+#include "core/OcctInternal.hxx"
 #include "geometry/OcctPoints.h"
 
 #include <AIS_Point.hxx>
@@ -14,9 +14,10 @@
 #include <Prs3d_LineAspect.hxx>
 #include <Prs3d_PointAspect.hxx>
 #include <TCollection_ExtendedString.hxx>
-#include <TopoDS_Wire.hxx>
 
 #include <cmath>
+#include <stdexcept>
+#include <string>
 #include <utility>
 
 using namespace OcctBridge;
@@ -71,39 +72,33 @@ namespace
             throw std::invalid_argument("Overlay line primitive type must be Line or Polyline.");
     }
 
-    TopoDS_Shape lineShape(OcctPoint3d start, OcctPoint3d end)
-    {
-        requireFinitePoint(start, "Overlay line start");
-        requireFinitePoint(end, "Overlay line end");
-        BRepBuilderAPI_MakeEdge builder(point(start), point(end));
-        if (!builder.IsDone()) throw std::runtime_error("Unable to create overlay line geometry.");
-        return builder.Edge();
-    }
-
-    TopoDS_Shape polylineShape(const OcctPoint3d* points, int count)
-    {
-        if (count < 2) throw std::invalid_argument("Overlay polyline requires at least two points.");
-        if (points == nullptr) throw std::invalid_argument("Overlay polyline point array is null.");
-        BRepBuilderAPI_MakePolygon builder;
-        for (int index = 0; index < count; ++index)
-        {
-            requireFinitePoint(points[index], "Overlay polyline point");
-            builder.Add(point(points[index]));
-        }
-        if (!builder.IsDone()) throw std::runtime_error("Unable to create overlay polyline geometry.");
-        return builder.Wire();
-    }
-
-    TopoDS_Shape lineGeometry(const OcctOverlayLineOptions& options)
+    void validateLineGeometry(const OcctOverlayLineOptions& options)
     {
         validateLinePrimitive(options.primitiveType);
+        if (options.points == nullptr)
+            throw std::invalid_argument("Overlay line point array is null.");
+        if (options.primitiveType == OcctOverlay_Line && options.pointCount != 2)
+            throw std::invalid_argument("Overlay line requires exactly two points.");
+        if (options.primitiveType == OcctOverlay_Polyline && options.pointCount < 2)
+            throw std::invalid_argument("Overlay polyline requires at least two points.");
+        for (int index = 0; index < options.pointCount; ++index)
+            requireFinitePoint(options.points[index], "Overlay line point");
+    }
+
+    TopoDS_Shape buildLineGeometry(const OcctOverlayLineOptions& options)
+    {
         if (options.primitiveType == OcctOverlay_Line)
         {
-            if (options.points == nullptr || options.pointCount != 2)
-                throw std::invalid_argument("Overlay line requires exactly two points.");
-            return lineShape(options.points[0], options.points[1]);
+            BRepBuilderAPI_MakeEdge builder(point(options.points[0]), point(options.points[1]));
+            if (!builder.IsDone()) throw std::runtime_error("Unable to create overlay line geometry.");
+            return builder.Edge();
         }
-        return polylineShape(options.points, options.pointCount);
+
+        BRepBuilderAPI_MakePolygon builder;
+        for (int index = 0; index < options.pointCount; ++index)
+            builder.Add(point(options.points[index]));
+        if (!builder.IsDone()) throw std::runtime_error("Unable to create overlay polyline geometry.");
+        return builder.Wire();
     }
 
     ObjectEntry& requiredOverlay(Engine* engine, OcctObjectId id, int subtype)
@@ -127,6 +122,7 @@ namespace
         presentation->SetInfiniteState(Standard_True);
         const OcctObjectId id = engine->scene.allocateId();
         engine->viewerContext.context->Display(presentation, Standard_False);
+
         ObjectEntry entry;
         entry.kind = OcctOverlayObjectKind;
         entry.presentation = presentation;
@@ -248,7 +244,7 @@ namespace
             throw std::invalid_argument("Overlay line creation requires geometry and style.");
 
         if (!isUpdate || (options->updateMask & OcctOverlayLineUpdate_Geometry) != 0)
-            (void)lineGeometry(*options);
+            validateLineGeometry(*options);
         if (!isUpdate || (options->updateMask & OcctOverlayLineUpdate_Style) != 0)
         {
             requirePositive(options->width, "Overlay line width");
@@ -307,77 +303,6 @@ namespace
             (void)color(options->red, options->green, options->blue);
         }
     }
-
-    OcctOverlayLineOptions lineOptions(
-        std::uint32_t updateMask,
-        int primitiveType,
-        const OcctPoint3d* points,
-        int pointCount,
-        int pattern,
-        double width,
-        double r,
-        double g,
-        double b)
-    {
-        return {
-            static_cast<std::uint32_t>(sizeof(OcctOverlayLineOptions)),
-            OverlayOptionsApiVersion,
-            updateMask,
-            primitiveType,
-            points,
-            pointCount,
-            pattern,
-            width,
-            r,
-            g,
-            b };
-    }
-
-    OcctOverlayMarkerOptions markerOptions(
-        std::uint32_t updateMask,
-        OcctPoint3d position,
-        int marker,
-        double scale,
-        double r,
-        double g,
-        double b)
-    {
-        return {
-            static_cast<std::uint32_t>(sizeof(OcctOverlayMarkerOptions)),
-            OverlayOptionsApiVersion,
-            updateMask,
-            position,
-            marker,
-            scale,
-            r,
-            g,
-            b };
-    }
-
-    OcctOverlayTextOptions textOptions(
-        std::uint32_t updateMask,
-        const char* text,
-        OcctPoint3d position,
-        double height,
-        double r,
-        double g,
-        double b,
-        int zoomable,
-        const char* fontName)
-    {
-        return {
-            static_cast<std::uint32_t>(sizeof(OcctOverlayTextOptions)),
-            OverlayOptionsApiVersion,
-            updateMask,
-            text,
-            position,
-            height,
-            r,
-            g,
-            b,
-            zoomable,
-            fontName };
-    }
 }
 
 extern "C"
@@ -391,7 +316,7 @@ extern "C"
         return executeOverlayObjectStatus(engine, resultOverlayId, [&]
         {
             validateLineOptions(options, false);
-            Handle(AIS_Shape) presentation = new AIS_Shape(lineGeometry(*options));
+            Handle(AIS_Shape) presentation = new AIS_Shape(buildLineGeometry(*options));
             applyLineStyle(
                 presentation,
                 options->pattern,
@@ -430,7 +355,7 @@ extern "C"
             {
                 if (entry.presentationSubtype != options->primitiveType)
                     throw std::invalid_argument("Overlay line primitive type cannot change during update.");
-                presentation->SetShape(lineGeometry(*options));
+                presentation->SetShape(buildLineGeometry(*options));
             }
             if ((options->updateMask & OcctOverlayLineUpdate_Style) != 0)
             {
@@ -578,253 +503,5 @@ extern "C"
             ObjectEntry& entry = requiredOverlay(engine, overlayId, -1);
             *primitiveType = entry.presentationSubtype;
         });
-    }
-
-    OcctObjectId occt_add_overlay_line(
-        OcctHandle h,
-        OcctPoint3d start,
-        OcctPoint3d end,
-        int pattern,
-        double width,
-        double r,
-        double g,
-        double b)
-    {
-        const OcctPoint3d points[] = { start, end };
-        const OcctOverlayLineOptions options = lineOptions(
-            AllLineUpdateBits, OcctOverlay_Line, points, 2, pattern, width, r, g, b);
-        OcctObjectId overlayId = 0;
-        return occt_engine_overlay_line_create(
-                   reinterpret_cast<OcctEngineHandle>(h), &options, &overlayId) == OcctStatus_Ok
-            ? overlayId
-            : 0;
-    }
-
-    OcctObjectId occt_add_overlay_polyline(
-        OcctHandle h,
-        const OcctPoint3d* points,
-        int count,
-        int pattern,
-        double width,
-        double r,
-        double g,
-        double b)
-    {
-        const OcctOverlayLineOptions options = lineOptions(
-            AllLineUpdateBits, OcctOverlay_Polyline, points, count, pattern, width, r, g, b);
-        OcctObjectId overlayId = 0;
-        return occt_engine_overlay_line_create(
-                   reinterpret_cast<OcctEngineHandle>(h), &options, &overlayId) == OcctStatus_Ok
-            ? overlayId
-            : 0;
-    }
-
-    OcctObjectId occt_add_overlay_marker(
-        OcctHandle h,
-        OcctPoint3d position,
-        int marker,
-        double scale,
-        double r,
-        double g,
-        double b)
-    {
-        const OcctOverlayMarkerOptions options = markerOptions(
-            AllMarkerUpdateBits, position, marker, scale, r, g, b);
-        OcctObjectId overlayId = 0;
-        return occt_engine_overlay_marker_create(
-                   reinterpret_cast<OcctEngineHandle>(h), &options, &overlayId) == OcctStatus_Ok
-            ? overlayId
-            : 0;
-    }
-
-    OcctObjectId occt_add_overlay_text(
-        OcctHandle h,
-        const char* text,
-        OcctPoint3d position,
-        double height,
-        double r,
-        double g,
-        double b,
-        int zoomable,
-        const char* fontName)
-    {
-        const OcctOverlayTextOptions options = textOptions(
-            AllTextUpdateBits, text, position, height, r, g, b, zoomable, fontName);
-        OcctObjectId overlayId = 0;
-        return occt_engine_overlay_text_create(
-                   reinterpret_cast<OcctEngineHandle>(h), &options, &overlayId) == OcctStatus_Ok
-            ? overlayId
-            : 0;
-    }
-
-    int occt_update_overlay_line(
-        OcctHandle h,
-        OcctObjectId overlayId,
-        OcctPoint3d start,
-        OcctPoint3d end)
-    {
-        const OcctPoint3d points[] = { start, end };
-        const OcctOverlayLineOptions options = lineOptions(
-            OcctOverlayLineUpdate_Geometry,
-            OcctOverlay_Line,
-            points,
-            2,
-            OcctOverlayLine_Solid,
-            1.0,
-            0.0,
-            0.0,
-            0.0);
-        return occt_engine_overlay_line_update(
-                   reinterpret_cast<OcctEngineHandle>(h), overlayId, &options) == OcctStatus_Ok
-            ? 1
-            : 0;
-    }
-
-    int occt_update_overlay_polyline(
-        OcctHandle h,
-        OcctObjectId overlayId,
-        const OcctPoint3d* points,
-        int count)
-    {
-        const OcctOverlayLineOptions options = lineOptions(
-            OcctOverlayLineUpdate_Geometry,
-            OcctOverlay_Polyline,
-            points,
-            count,
-            OcctOverlayLine_Solid,
-            1.0,
-            0.0,
-            0.0,
-            0.0);
-        return occt_engine_overlay_line_update(
-                   reinterpret_cast<OcctEngineHandle>(h), overlayId, &options) == OcctStatus_Ok
-            ? 1
-            : 0;
-    }
-
-    int occt_update_overlay_marker(
-        OcctHandle h,
-        OcctObjectId overlayId,
-        OcctPoint3d position)
-    {
-        const OcctOverlayMarkerOptions options = markerOptions(
-            OcctOverlayMarkerUpdate_Position,
-            position,
-            OcctPointMarker_Point,
-            1.0,
-            0.0,
-            0.0,
-            0.0);
-        return occt_engine_overlay_marker_update(
-                   reinterpret_cast<OcctEngineHandle>(h), overlayId, &options) == OcctStatus_Ok
-            ? 1
-            : 0;
-    }
-
-    int occt_update_overlay_text(
-        OcctHandle h,
-        OcctObjectId overlayId,
-        const char* text,
-        OcctPoint3d position)
-    {
-        const OcctOverlayTextOptions options = textOptions(
-            OcctOverlayTextUpdate_Content | OcctOverlayTextUpdate_Position,
-            text,
-            position,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0,
-            nullptr);
-        return occt_engine_overlay_text_update(
-                   reinterpret_cast<OcctEngineHandle>(h), overlayId, &options) == OcctStatus_Ok
-            ? 1
-            : 0;
-    }
-
-    int occt_set_overlay_line_style(
-        OcctHandle h,
-        OcctObjectId overlayId,
-        int pattern,
-        double width,
-        double r,
-        double g,
-        double b)
-    {
-        const OcctOverlayLineOptions options = lineOptions(
-            OcctOverlayLineUpdate_Style,
-            -1,
-            nullptr,
-            0,
-            pattern,
-            width,
-            r,
-            g,
-            b);
-        return occt_engine_overlay_line_update(
-                   reinterpret_cast<OcctEngineHandle>(h), overlayId, &options) == OcctStatus_Ok
-            ? 1
-            : 0;
-    }
-
-    int occt_set_overlay_marker_style(
-        OcctHandle h,
-        OcctObjectId overlayId,
-        int marker,
-        double scale,
-        double r,
-        double g,
-        double b)
-    {
-        const OcctOverlayMarkerOptions options = markerOptions(
-            OcctOverlayMarkerUpdate_Style,
-            {},
-            marker,
-            scale,
-            r,
-            g,
-            b);
-        return occt_engine_overlay_marker_update(
-                   reinterpret_cast<OcctEngineHandle>(h), overlayId, &options) == OcctStatus_Ok
-            ? 1
-            : 0;
-    }
-
-    int occt_set_overlay_text_style(
-        OcctHandle h,
-        OcctObjectId overlayId,
-        double height,
-        double r,
-        double g,
-        double b,
-        int zoomable,
-        const char* fontName)
-    {
-        const OcctOverlayTextOptions options = textOptions(
-            OcctOverlayTextUpdate_Style,
-            nullptr,
-            {},
-            height,
-            r,
-            g,
-            b,
-            zoomable,
-            fontName);
-        return occt_engine_overlay_text_update(
-                   reinterpret_cast<OcctEngineHandle>(h), overlayId, &options) == OcctStatus_Ok
-            ? 1
-            : 0;
-    }
-
-    int occt_get_overlay_primitive_type(
-        OcctHandle h,
-        OcctObjectId overlayId,
-        int* primitiveType)
-    {
-        return occt_engine_overlay_primitive_type_get(
-                   reinterpret_cast<OcctEngineHandle>(h), overlayId, primitiveType) == OcctStatus_Ok
-            ? 1
-            : 0;
     }
 }
