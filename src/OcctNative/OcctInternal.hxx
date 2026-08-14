@@ -1,5 +1,9 @@
 ﻿#pragma once
 
+#include "OcctViewerContext.hxx"
+#include "OcctErrorContext.hxx"
+#include "OcctSceneRegistry.hxx"
+#include "OcctDocumentStore.hxx"
 #include "OcctNative.h"
 
 #include <AIS_InteractiveContext.hxx>
@@ -8,6 +12,7 @@
 #include <AIS_Shape.hxx>
 #include <AIS_ViewCube.hxx>
 #include <Aspect_DisplayConnection.hxx>
+#include <Aspect_Window.hxx>
 #include <Graphic3d_GraphicDriver.hxx>
 #include <Graphic3d_NameOfMaterial.hxx>
 #include <GProp_GProps.hxx>
@@ -21,7 +26,6 @@
 #include <V3d_DirectionalLight.hxx>
 #include <V3d_View.hxx>
 #include <V3d_Viewer.hxx>
-#include <WNT_Window.hxx>
 #include <gp_Ax1.hxx>
 #include <gp_Ax2.hxx>
 #include <gp_Dir.hxx>
@@ -36,6 +40,7 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
+#include <new>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -43,61 +48,18 @@
 
 namespace OcctBridge
 {
-    struct ObjectEntry
-    {
-        int kind = OcctObject_Unknown;
-        TopoDS_Shape shape;
-        Handle(AIS_InteractiveObject) presentation;
-        std::string name;
-        std::string applicationTag;
-        std::vector<std::string> stepHierarchyPath;
-        bool hasStoredColor = false;
-        double storedColorR = 0.0;
-        double storedColorG = 0.0;
-        double storedColorB = 0.0;
-        bool selectable = true;
-        double storedColorA = 1.0;
-        bool hasStoredAlpha = false;
-        bool storedVisible = true;
-        bool hasStoredVisibility = false;
-        int stepDocumentIndex = -1;
-        std::string stepNodeId;
-        int presentationSubtype = 0;
-    };
-
     class Engine
     {
     public:
-        std::string lastError;
-        std::string scratchString;
-        Handle(Aspect_DisplayConnection) displayConnection;
-        Handle(OpenGl_GraphicDriver) graphicDriver;
-        Handle(V3d_Viewer) viewer;
-        Handle(V3d_View) view;
-        Handle(AIS_InteractiveContext) context;
-        Handle(AIS_ViewCube) viewCube;
-        Handle(AIS_RubberBand) selectionRubberBand;
-        Handle(WNT_Window) window;
-        Handle(V3d_AmbientLight) customAmbientLight;
-        Handle(V3d_DirectionalLight) customDirectionalLight;
-        Handle(V3d_DirectionalLight) customSunLight;
-        Handle(V3d_DirectionalLight) customFillLight;
-        std::unordered_map<OcctObjectId, ObjectEntry> objects;
-        std::unordered_map<std::string, OcctObjectId> objectIdByApplicationTag;
-        std::vector<Handle(TDocStd_Document)> stepDocuments;
-        std::vector<OcctObjectId> lastStepImportObjectIds;
-        Handle(TDocStd_Document) pristineStepDocument;
-        bool pristineStepDocumentMatchesScene = false;
-        OcctObjectId nextId = 1;
-        int displayMode = AIS_Shaded;
-        int selectionMode = OcctSelection_Object;
-        int updateDepth = 0;
-        bool redrawPending = false;
-        bool fitAllPending = false;
+        ErrorContext errors;
+        ViewerContext viewerContext;
+        SceneRegistry scene;
+        DocumentStore documents;
 
         bool isInitialized() const;
         void clearError();
         void setError(const std::string& message);
+        void setError(OcctStatus code, const std::string& message);
         ObjectEntry* findObject(OcctObjectId id);
         const ObjectEntry* findObject(OcctObjectId id) const;
         ObjectEntry* findShape(OcctObjectId id);
@@ -123,6 +85,7 @@ namespace OcctBridge
 
     Engine* engineOf(OcctHandle handle);
     bool validateInitialized(Engine* engine);
+    void initializeViewer(Engine* engine, void* windowHandle, void* displayHandle = nullptr);
     std::string failureMessage(const Standard_Failure& failure);
     std::filesystem::path pathFromUtf8(const char* utf8Path);
     std::string lowerExtension(const std::filesystem::path& path);
@@ -148,10 +111,7 @@ namespace OcctBridge
     template<typename Function>
     int execute(Engine* engine, Function&& function)
     {
-        if (engine == nullptr)
-        {
-            return 0;
-        }
+        if (engine == nullptr) return 0;
         engine->clearError();
         try
         {
@@ -160,15 +120,27 @@ namespace OcctBridge
         }
         catch (const Standard_Failure& failure)
         {
-            engine->setError(failureMessage(failure));
+            engine->setError(OcctStatus_ErrorOcct, failureMessage(failure));
+        }
+        catch (const std::invalid_argument& exception)
+        {
+            engine->setError(OcctStatus_ErrorInvalidArgument, exception.what());
+        }
+        catch (const std::logic_error& exception)
+        {
+            engine->setError(OcctStatus_ErrorInvalidState, exception.what());
+        }
+        catch (const std::bad_alloc&)
+        {
+            engine->setError(OcctStatus_ErrorOutOfMemory, "Native memory allocation failed.");
         }
         catch (const std::exception& exception)
         {
-            engine->setError(exception.what());
+            engine->setError(OcctStatus_ErrorUnknown, exception.what());
         }
         catch (...)
         {
-            engine->setError("Unknown native error.");
+            engine->setError(OcctStatus_ErrorUnknown, "Unknown native error.");
         }
         return 0;
     }
@@ -176,10 +148,7 @@ namespace OcctBridge
     template<typename Function>
     OcctObjectId executeObject(Engine* engine, Function&& function)
     {
-        if (engine == nullptr)
-        {
-            return 0;
-        }
+        if (engine == nullptr) return 0;
         engine->clearError();
         try
         {
@@ -187,15 +156,27 @@ namespace OcctBridge
         }
         catch (const Standard_Failure& failure)
         {
-            engine->setError(failureMessage(failure));
+            engine->setError(OcctStatus_ErrorOcct, failureMessage(failure));
+        }
+        catch (const std::invalid_argument& exception)
+        {
+            engine->setError(OcctStatus_ErrorInvalidArgument, exception.what());
+        }
+        catch (const std::logic_error& exception)
+        {
+            engine->setError(OcctStatus_ErrorInvalidState, exception.what());
+        }
+        catch (const std::bad_alloc&)
+        {
+            engine->setError(OcctStatus_ErrorOutOfMemory, "Native memory allocation failed.");
         }
         catch (const std::exception& exception)
         {
-            engine->setError(exception.what());
+            engine->setError(OcctStatus_ErrorUnknown, exception.what());
         }
         catch (...)
         {
-            engine->setError("Unknown native error.");
+            engine->setError(OcctStatus_ErrorUnknown, "Unknown native error.");
         }
         return 0;
     }

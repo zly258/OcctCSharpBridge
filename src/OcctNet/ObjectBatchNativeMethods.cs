@@ -6,7 +6,7 @@ internal static partial class NativeMethods
 {
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_set_objects_color(
-        IntPtr handle,
+        OcctEngineSafeHandle handle,
         [In] long[] objectIds,
         int count,
         double r,
@@ -15,55 +15,55 @@ internal static partial class NativeMethods
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_set_objects_transparency(
-        IntPtr handle,
+        OcctEngineSafeHandle handle,
         [In] long[] objectIds,
         int count,
         double transparency);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_set_objects_visible(
-        IntPtr handle,
+        OcctEngineSafeHandle handle,
         [In] long[] objectIds,
         int count,
         int visible);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_set_objects_display_mode(
-        IntPtr handle,
+        OcctEngineSafeHandle handle,
         [In] long[] objectIds,
         int count,
         int displayMode);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_set_objects_line_width(
-        IntPtr handle,
+        OcctEngineSafeHandle handle,
         [In] long[] objectIds,
         int count,
         double width);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_set_objects_material(
-        IntPtr handle,
+        OcctEngineSafeHandle handle,
         [In] long[] objectIds,
         int count,
         int material);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_redisplay_objects(
-        IntPtr handle,
+        OcctEngineSafeHandle handle,
         [In] long[] objectIds,
         int count);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_select_objects(
-        IntPtr handle,
+        OcctEngineSafeHandle handle,
         [In] long[] objectIds,
         int count,
         int appendSelection);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_object_is_visible(IntPtr handle, long objectId);
+    internal static extern int occt_object_is_visible(OcctEngineSafeHandle handle, long objectId);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_object_is_selected(IntPtr handle, long objectId);
+    internal static extern int occt_object_is_selected(OcctEngineSafeHandle handle, long objectId);
 }

@@ -134,7 +134,7 @@ function Test-BinarySdk {
     if ([int]$manifest.schemaVersion -ne 1 -or
         [string]$manifest.author -ne [string]$contract.author -or
         [string]$manifest.bridgeVersion -ne [string]$contract.bridgeVersion -or
-        [int]$manifest.nativeAbiVersion -ne [int]$contract.nativeAbiVersion -or
+        [int]$manifest.nativeAbiVersion -ne [int]$contract.nativeAbi.current -or
         [string]$manifest.occtVersion -ne [string]$contract.occtVersion -or
         [string]$manifest.platform -ne [string]$contract.platform -or
         [string]$manifest.targetFramework -ne [string]$contract.dotnet.targetFramework -or

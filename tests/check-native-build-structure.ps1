@@ -67,4 +67,44 @@ if ($nativeText -match '\bSTEPCAFControl_(?:Reader|Writer)\b') {
     }
 }
 
+$modularHeaders = @(
+    "include/occt_bridge/api.h",
+    "include/occt_bridge/status.h",
+    "include/occt_bridge/types.h",
+    "include/occt_bridge/viewer.h",
+    "include/occt_bridge/modeling.h",
+    "include/occt_bridge/occt_bridge.h"
+)
+foreach ($relativePath in $modularHeaders) {
+    if (-not (Test-Path (Join-Path $nativeRoot $relativePath) -PathType Leaf)) {
+        throw "Bridge 3 modular native header is missing: $relativePath"
+    }
+}
+
+foreach ($requiredCmakeToken in @("CXX_VISIBILITY_PRESET hidden", "VISIBILITY_INLINES_HIDDEN YES", "include/occt_bridge")) {
+    if (-not $cmakeText.Contains($requiredCmakeToken, [System.StringComparison]::Ordinal)) {
+        throw "Bridge 3 native build contract is missing: $requiredCmakeToken"
+    }
+}
+
+$viewerHeader = [System.IO.File]::ReadAllText((Join-Path $nativeRoot "OcctNative.h"))
+$modelingHeader = [System.IO.File]::ReadAllText((Join-Path $nativeRoot "OcctModeling.h"))
+$surfaceHeader = [System.IO.File]::ReadAllText((Join-Path $nativeRoot "OcctNativeSurface.h"))
+foreach ($requiredApi in @("occt_create", "occt_engine_create", "occt_engine_last_error_code")) {
+    if (-not $viewerHeader.Contains($requiredApi, [System.StringComparison]::Ordinal)) {
+        throw "Viewer compatibility/typed-handle contract is missing: $requiredApi"
+    }
+}
+foreach ($requiredApi in @("occt_model_create", "occt_model_session_create", "occt_model_history_summary")) {
+    if (-not $modelingHeader.Contains($requiredApi, [System.StringComparison]::Ordinal)) {
+        throw "Modeling compatibility/history contract is missing: $requiredApi"
+    }
+}
+foreach ($requiredToken in @("structSize", "apiVersion", "occt_engine_initialize_surface")) {
+    if (-not $surfaceHeader.Contains($requiredToken, [System.StringComparison]::Ordinal)) {
+        throw "Versioned cross-platform surface contract is missing: $requiredToken"
+    }
+}
+
+
 Write-Host "[native-build] CMake source inventory and OCCT 7.9 exchange/XDE toolkits validated." -ForegroundColor Green

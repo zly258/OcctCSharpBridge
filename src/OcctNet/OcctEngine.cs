@@ -9,8 +9,7 @@ public sealed partial class OcctEngine : IDisposable
     private static long s_nextOwnerId;
 
     private readonly long _ownerId = Interlocked.Increment(ref s_nextOwnerId);
-    private readonly OcctEngineSafeHandle _safeHandle;
-    private IntPtr _handle;
+    private readonly OcctEngineSafeHandle _handle;
     private bool _initialized;
 
     public OcctEngine()
@@ -18,17 +17,18 @@ public sealed partial class OcctEngine : IDisposable
         OcctRuntime.Configure();
         OcctBridgeInfo.EnsureCompatible();
 
-        var nativeHandle = NativeMethods.occt_create();
-        if (nativeHandle == IntPtr.Zero)
-            throw new OcctException("Unable to create the native OCCT engine.", nameof(OcctEngine));
-
-        _safeHandle = new OcctEngineSafeHandle(nativeHandle);
-        _handle = nativeHandle;
+        var safeHandle = NativeMethods.occt_engine_create();
+        if (safeHandle is null || safeHandle.IsInvalid)
+        {
+            safeHandle?.Dispose();
+            throw new OcctException("Unable to create the native OCCT engine.", OcctStatus.ErrorUnknown, nameof(OcctEngine));
+        }
+        _handle = safeHandle;
     }
 
     internal long OwnerId => _ownerId;
 
-    public bool IsDisposed => Volatile.Read(ref _handle) == IntPtr.Zero || _safeHandle.IsClosed;
+    public bool IsDisposed => _handle.IsClosed || _handle.IsInvalid;
 
     public bool IsInitialized =>
         Volatile.Read(ref _initialized) &&
@@ -85,14 +85,11 @@ public sealed partial class OcctEngine : IDisposable
 
     private OcctException CreateException(string? operation = null)
     {
-        var pointer = _handle == IntPtr.Zero
-            ? IntPtr.Zero
-            : NativeMethods.occt_last_error(_handle);
-        var nativeMessage = pointer == IntPtr.Zero ? null : Marshal.PtrToStringUTF8(pointer);
+        var (status, nativeMessage) = NativeError.ReadEngine(_handle);
         var message = string.IsNullOrWhiteSpace(nativeMessage)
             ? "The native OCCT operation failed."
             : nativeMessage;
-        return new OcctException(message, operation, nativeMessage);
+        return new OcctException(message, status, operation, nativeMessage);
     }
 
     private void EnsureObject(IOcctObject value)
@@ -192,7 +189,6 @@ public sealed partial class OcctEngine : IDisposable
     public void Dispose()
     {
         Volatile.Write(ref _initialized, false);
-        if (Interlocked.Exchange(ref _handle, IntPtr.Zero) == IntPtr.Zero) return;
-        _safeHandle.Dispose();
+        _handle.Dispose();
     }
 }

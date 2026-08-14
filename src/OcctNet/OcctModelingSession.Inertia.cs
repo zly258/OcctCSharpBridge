@@ -18,5 +18,5 @@ public sealed partial class OcctModelingSession
         return result.ToManaged();
     }
 
-    private delegate int InertiaQuery(IntPtr handle, long shapeId, out NativeModelInertiaProperties result);
+    private delegate int InertiaQuery(OcctModelingSafeHandle handle, long shapeId, out NativeModelInertiaProperties result);
 }

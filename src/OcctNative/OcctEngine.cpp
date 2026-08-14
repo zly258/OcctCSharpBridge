@@ -1,4 +1,5 @@
 ﻿#include "OcctInternal.hxx"
+#include "OcctNativeSurface.h"
 
 #include <Aspect_PolygonOffsetMode.hxx>
 #include <Aspect_TypeOfTriedronPosition.hxx>
@@ -14,117 +15,91 @@
 #include <Standard_Version.hxx>
 #include <TopAbs_ShapeEnum.hxx>
 #include <V3d_TypeOfOrientation.hxx>
+#include <cstring>
+
 
 namespace OcctBridge
 {
-    bool Engine::isInitialized() const { return !view.IsNull() && !context.IsNull(); }
-    void Engine::clearError() { lastError.clear(); }
-    void Engine::setError(const std::string& message) { lastError = message; }
+    bool Engine::isInitialized() const { return viewerContext.isInitialized(); }
+    void Engine::clearError()
+    {
+        errors.clear();
+    }
+    void Engine::setError(const std::string& message)
+    {
+        setError(OcctStatus_ErrorUnknown, message);
+    }
+    void Engine::setError(OcctStatus code, const std::string& message)
+    {
+        errors.set(code, message);
+    }
 
-    bool Engine::isUpdating() const { return updateDepth > 0; }
+    bool Engine::isUpdating() const { return viewerContext.isUpdating(); }
 
     void Engine::beginUpdate()
     {
-        ++updateDepth;
+        viewerContext.beginUpdate();
     }
 
     void Engine::requestRedraw()
     {
-        if (isUpdating())
-        {
-            redrawPending = true;
-            return;
-        }
-        view->Redraw();
+        viewerContext.requestRedraw();
     }
 
     void Engine::requestFitAll()
     {
-        if (isUpdating())
-        {
-            fitAllPending = true;
-            redrawPending = true;
-            return;
-        }
-        view->FitAll(0.01, Standard_False);
-        view->ZFitAll();
-        view->Redraw();
+        viewerContext.requestFitAll();
     }
 
     void Engine::endUpdate(bool fitAll)
     {
-        if (updateDepth <= 0) throw std::logic_error("No OCCT display batch is active.");
-        if (fitAll)
-        {
-            fitAllPending = true;
-            redrawPending = true;
-        }
-        --updateDepth;
-        if (updateDepth > 0) return;
-
-        if (fitAllPending)
-        {
-            view->FitAll(0.01, Standard_False);
-            view->ZFitAll();
-        }
-        if (fitAllPending || redrawPending) view->Redraw();
-        fitAllPending = false;
-        redrawPending = false;
+        viewerContext.endUpdate(fitAll);
     }
 
     void Engine::invalidatePristineStepDocument()
     {
-        pristineStepDocumentMatchesScene = false;
+        documents.invalidatePristine();
     }
 
     ObjectEntry* Engine::findObject(OcctObjectId id)
     {
-        const auto iterator = objects.find(id);
-        return iterator == objects.end() ? nullptr : &iterator->second;
+        return scene.findObject(id);
     }
 
     const ObjectEntry* Engine::findObject(OcctObjectId id) const
     {
-        const auto iterator = objects.find(id);
-        return iterator == objects.end() ? nullptr : &iterator->second;
+        return scene.findObject(id);
     }
 
     ObjectEntry* Engine::findShape(OcctObjectId id)
     {
-        ObjectEntry* entry = findObject(id);
-        return entry != nullptr && entry->kind == OcctObject_Shape && !entry->shape.IsNull() ? entry : nullptr;
+        return scene.findShape(id);
     }
 
     const ObjectEntry* Engine::findShape(OcctObjectId id) const
     {
-        const ObjectEntry* entry = findObject(id);
-        return entry != nullptr && entry->kind == OcctObject_Shape && !entry->shape.IsNull() ? entry : nullptr;
+        return scene.findShape(id);
     }
 
     OcctObjectId Engine::findPresentation(const Handle(AIS_InteractiveObject)& presentation) const
     {
-        if (presentation.IsNull()) return 0;
-        for (const auto& pair : objects)
-        {
-            if (pair.second.presentation == presentation) return pair.first;
-        }
-        return 0;
+        return scene.findPresentation(presentation);
     }
 
     void Engine::applySelectionMode(const Handle(AIS_InteractiveObject)& presentation)
     {
         if (presentation.IsNull()) return;
-        context->Deactivate(presentation);
+        viewerContext.context->Deactivate(presentation);
         const OcctObjectId objectId = findPresentation(presentation);
         const ObjectEntry* entry = findObject(objectId);
         if (entry != nullptr && !entry->selectable) return;
 
         int mode = 0;
         const Handle(AIS_Shape) aisShape = Handle(AIS_Shape)::DownCast(presentation);
-        if (!aisShape.IsNull() && selectionMode != OcctSelection_Object)
+        if (!aisShape.IsNull() && viewerContext.selectionMode != OcctSelection_Object)
         {
             TopAbs_ShapeEnum type = TopAbs_SHAPE;
-            switch (selectionMode)
+            switch (viewerContext.selectionMode)
             {
                 case OcctSelection_Vertex: type = TopAbs_VERTEX; break;
                 case OcctSelection_Edge: type = TopAbs_EDGE; break;
@@ -136,7 +111,7 @@ namespace OcctBridge
             }
             mode = AIS_Shape::SelectionMode(type);
         }
-        context->Activate(presentation, mode, Standard_False);
+        viewerContext.context->Activate(presentation, mode, Standard_False);
     }
 
     OcctObjectId Engine::addShapePresentation(
@@ -149,11 +124,11 @@ namespace OcctBridge
         if (presentation.IsNull()) throw std::runtime_error("OCCT returned a null shape presentation.");
         if (!isInitialized()) throw std::runtime_error("The OCCT viewer has not been initialized.");
 
-        const OcctObjectId id = nextId++;
+        const OcctObjectId id = scene.allocateId();
         const Handle(AIS_Shape) aisShape = Handle(AIS_Shape)::DownCast(presentation);
-        if (!aisShape.IsNull()) aisShape->SetDisplayMode(displayMode);
-        context->Display(presentation, Standard_False);
-        objects.emplace(id, ObjectEntry{OcctObject_Shape, shape, presentation, name});
+        if (!aisShape.IsNull()) aisShape->SetDisplayMode(viewerContext.displayMode);
+        viewerContext.context->Display(presentation, Standard_False);
+        scene.objects.emplace(id, ObjectEntry{OcctObject_Shape, shape, presentation, name});
         applySelectionMode(presentation);
         requestRedraw();
         return id;
@@ -169,9 +144,9 @@ namespace OcctBridge
     OcctObjectId Engine::addPresentation(const Handle(AIS_InteractiveObject)& presentation, int kind, const std::string& name)
     {
         if (presentation.IsNull()) throw std::runtime_error("OCCT returned a null presentation.");
-        const OcctObjectId id = nextId++;
-        context->Display(presentation, Standard_False);
-        objects.emplace(id, ObjectEntry{kind, TopoDS_Shape(), presentation, name});
+        const OcctObjectId id = scene.allocateId();
+        viewerContext.context->Display(presentation, Standard_False);
+        scene.objects.emplace(id, ObjectEntry{kind, TopoDS_Shape(), presentation, name});
         applySelectionMode(presentation);
         requestRedraw();
         return id;
@@ -181,19 +156,19 @@ namespace OcctBridge
     {
         ObjectEntry* entry = findObject(id);
         if (entry != nullptr && !entry->presentation.IsNull())
-            context->Erase(entry->presentation, Standard_False);
+            viewerContext.context->Erase(entry->presentation, Standard_False);
     }
 
     void Engine::erase(OcctObjectId id)
     {
-        auto iterator = objects.find(id);
-        if (iterator == objects.end()) return;
+        auto iterator = scene.objects.find(id);
+        if (iterator == scene.objects.end()) return;
         if (iterator->second.kind == OcctObject_Shape) invalidatePristineStepDocument();
         if (!iterator->second.presentation.IsNull())
-            context->Remove(iterator->second.presentation, Standard_False);
+            viewerContext.context->Remove(iterator->second.presentation, Standard_False);
         if (!iterator->second.applicationTag.empty())
-            objectIdByApplicationTag.erase(iterator->second.applicationTag);
-        objects.erase(iterator);
+            scene.objectIdByApplicationTag.erase(iterator->second.applicationTag);
+        scene.objects.erase(iterator);
     }
 
     Engine* engineOf(OcctHandle handle) { return static_cast<Engine*>(handle); }
@@ -204,7 +179,7 @@ namespace OcctBridge
         engine->clearError();
         if (!engine->isInitialized())
         {
-            engine->setError("The OCCT viewer has not been initialized.");
+            engine->setError(OcctStatus_ErrorNotInitialized, "The OCCT viewer has not been initialized.");
             return false;
         }
         return true;
@@ -340,86 +315,105 @@ using namespace OcctBridge;
 
 extern "C"
 {
-    OcctHandle occt_create()
+    OcctEngineHandle occt_engine_create()
     {
-        try { return new Engine(); }
+        try { return reinterpret_cast<OcctEngineHandle>(new Engine()); }
         catch (...) { return nullptr; }
     }
 
-    void occt_destroy(OcctHandle handle) { delete engineOf(handle); }
+    void occt_engine_destroy(OcctEngineHandle handle)
+    {
+        delete reinterpret_cast<Engine*>(handle);
+    }
+
+    OcctHandle occt_create()
+    {
+        return reinterpret_cast<OcctHandle>(occt_engine_create());
+    }
+
+    void occt_destroy(OcctHandle handle)
+    {
+        occt_engine_destroy(reinterpret_cast<OcctEngineHandle>(handle));
+    }
 
     const char* occt_last_error(OcctHandle handle)
     {
         Engine* engine = engineOf(handle);
-        return engine == nullptr ? "Invalid OCCT engine handle." : engine->lastError.c_str();
+        return engine == nullptr ? "Invalid OCCT engine handle." : engine->errors.message.c_str();
     }
+
+    OcctStatus occt_engine_last_error_code(OcctEngineHandle handle)
+    {
+        const Engine* engine = reinterpret_cast<const Engine*>(handle);
+        return engine == nullptr ? OcctStatus_ErrorInvalidHandle : engine->errors.code;
+    }
+
+    OcctStatus occt_engine_last_error_message(
+        OcctEngineHandle handle,
+        char* buffer,
+        int capacity,
+        int* required)
+    {
+        const Engine* engine = reinterpret_cast<const Engine*>(handle);
+        if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (capacity < 0 || required == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        const int size = static_cast<int>(engine->errors.message.size()) + 1;
+        *required = size;
+        if (buffer == nullptr) return capacity == 0 ? OcctStatus_Ok : OcctStatus_ErrorInvalidArgument;
+        if (capacity < size) return OcctStatus_ErrorBufferTooSmall;
+        std::memcpy(buffer, engine->errors.message.c_str(), static_cast<std::size_t>(size));
+        return OcctStatus_Ok;
+    }
+
 
     const char* occt_version() { return OCC_VERSION_COMPLETE; }
     int occt_bridge_abi_version() { return 4; }
-    const char* occt_bridge_version() { return "2.7.0"; }
+    int occt_bridge_current_abi_version() { return 5; }
+    const char* occt_bridge_version() { return "3.0.0-preview.1"; }
 
     const char* occt_bridge_build_info()
     {
-        static const std::string info =
-            std::string("OcctCSharpBridge/2.7.0; ABI=4; OCCT=") + OCC_VERSION_COMPLETE +
-#if defined(_M_X64)
-            "; Arch=x64" +
+        static const std::string info = []
+        {
+            std::string value = std::string("OcctCSharpBridge/3.0.0-preview.1; ABI=5; OCCT=") + OCC_VERSION_COMPLETE;
+#if defined(_M_X64) || defined(__x86_64__)
+            value += "; Arch=x64";
+#elif defined(_M_ARM64) || defined(__aarch64__)
+            value += "; Arch=arm64";
 #else
-            "; Arch=unknown" +
+            value += "; Arch=unknown";
 #endif
 #if defined(_MSC_VER)
-            "; Compiler=MSVC " + std::to_string(_MSC_VER);
+            value += "; Compiler=MSVC " + std::to_string(_MSC_VER);
+#elif defined(__clang__)
+            value += "; Compiler=Clang " + std::string(__clang_version__);
+#elif defined(__GNUC__)
+            value += "; Compiler=GCC " + std::to_string(__GNUC__) + "." + std::to_string(__GNUC_MINOR__);
 #else
-            "; Compiler=unknown";
+            value += "; Compiler=unknown";
 #endif
+#if defined(_WIN32)
+            value += "; OS=Windows";
+#elif defined(__linux__)
+            value += "; OS=Linux";
+#else
+            value += "; OS=unknown";
+#endif
+            return value;
+        }();
         return info.c_str();
     }
 
     int occt_initialize(OcctHandle handle, void* windowHandle)
     {
-        Engine* engine = engineOf(handle);
-        return execute(engine, [&]()
-        {
-            if (windowHandle == nullptr) throw std::invalid_argument("The target HWND is null.");
-
-            engine->displayConnection = new Aspect_DisplayConnection();
-            engine->graphicDriver = new OpenGl_GraphicDriver(engine->displayConnection);
-            engine->viewer = new V3d_Viewer(engine->graphicDriver);
-            engine->viewer->SetDefaultLights();
-            engine->viewer->SetLightOn();
-            engine->viewer->SetDefaultTypeOfView(V3d_ORTHOGRAPHIC);
-            engine->context = new AIS_InteractiveContext(engine->viewer);
-            engine->view = engine->viewer->CreateView();
-            engine->view->SetAutoZFitMode(Standard_True, 1.0);
-
-            const Handle(Prs3d_Drawer)& defaultDrawer = engine->context->DefaultDrawer();
-            defaultDrawer->SetupOwnShadingAspect();
-            defaultDrawer->ShadingAspect()->Aspect()->SetPolygonOffsets(Aspect_POM_Fill, 1.0f, 1.0f);
-
-            engine->window = new WNT_Window(reinterpret_cast<Aspect_Handle>(windowHandle));
-            engine->view->SetWindow(engine->window);
-            if (!engine->window->IsMapped()) engine->window->Map();
-            engine->view->SetBackgroundColor(color(0.94, 0.96, 0.98));
-            engine->view->TriedronDisplay(Aspect_TOTP_RIGHT_LOWER, Quantity_NOC_GRAY40, 0.08, V3d_ZBUFFER);
-
-            engine->viewCube = new AIS_ViewCube();
-            engine->viewCube->SetSize(55.0);
-            engine->viewCube->SetBoxFacetExtension(6.0);
-            engine->viewCube->SetFontHeight(14.0);
-            engine->viewCube->SetAutoStartAnimation(true);
-            engine->viewCube->SetResetCamera(true);
-            engine->viewCube->SetFitSelected(false);
-            engine->viewCube->SetTransformPersistence(
-                new Graphic3d_TransformPers(
-                    Graphic3d_TMF_TriedronPers,
-                    Aspect_TOTP_RIGHT_UPPER,
-                    Graphic3d_Vec2i(85, 85)));
-            engine->context->Display(engine->viewCube, Standard_False);
-
-            engine->view->SetProj(V3d_XposYnegZpos);
-            engine->view->MustBeResized();
-            engine->view->Redraw();
-        });
+        const OcctNativeSurface surface{
+            static_cast<std::uint32_t>(sizeof(OcctNativeSurface)),
+            1,
+            OcctNativeSurface_Auto,
+            windowHandle,
+            nullptr};
+        return occt_engine_initialize_surface(reinterpret_cast<OcctEngineHandle>(handle), &surface) == OcctStatus_Ok ? 1 : 0;
     }
 
     int occt_resize(OcctHandle h)
@@ -428,8 +422,8 @@ extern "C"
         if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            e->view->MustBeResized();
-            e->view->Redraw();
+            e->viewerContext.view->MustBeResized();
+            e->viewerContext.view->Redraw();
         });
     }
 

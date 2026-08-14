@@ -4,10 +4,10 @@
 
 当前源码契约：
 
-- Bridge 2.7.0 / Native ABI 4
-- Native exports / P/Invoke：349 / 349
-- Public .NET types：113
-- Viewer / Modeling API：215 / 134
+- Bridge 3.0.0-preview.1 / 当前 Native ABI 5，兼容 ABI 4
+- Native exports / P/Invoke：431 / 431
+- Public .NET types：141
+- Viewer / Modeling API：292 / 139
 - Target Framework：`net10.0-windows`
 - 公开程序集：`OcctNet`、`OcctNet.WinForms`、`OcctNet.Wpf`
 
@@ -24,5 +24,6 @@ Avalonia 已从 `main` 独立出去。跨平台版本位于 [`avalonia` 分支](
 7. [运行时部署与诊断](07_运行时部署与诊断.md)
 8. [构建、测试与发布](08_构建测试与发布.md)
 9. [Generated API Reference](api/README.md)
+10. [Bridge 迁移](bridge-migration.md)
 
 `bridge-contract.json` 是源码契约事实源；`dist/win-x64/bridge-manifest.json` 描述 main 实际发布的 Windows SDK。

@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include "OcctErrorContext.hxx"
 #include "OcctModeling.h"
 #include "OcctModelingIntersection.h"
 
@@ -8,6 +9,7 @@
 #include <TopoDS_Shape.hxx>
 
 #include <stdexcept>
+#include <new>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -15,18 +17,26 @@
 
 namespace OcctModelingInternal
 {
+    struct HistoryLineage
+    {
+        std::vector<OcctObjectId> generated;
+        std::vector<OcctObjectId> modified;
+        bool removed = false;
+        bool materialized = false;
+    };
+
     struct OperationRecord
     {
         Handle(BRepTools_History) history;
         std::string report;
         bool hasWarnings = false;
         bool hasErrors = false;
+        std::unordered_map<OcctObjectId, HistoryLineage> lineageBySource;
     };
 
     struct ModelSession
     {
-        std::string lastError;
-        std::string scratchString;
+        OcctBridge::ErrorContext errors;
         std::unordered_map<OcctObjectId, TopoDS_Shape> shapes;
         std::unordered_map<OcctOperationId, OperationRecord> operations;
         std::vector<OcctModelRayHit> rayHits;
@@ -79,7 +89,7 @@ namespace OcctModelingInternal
     inline int execute(ModelSession* model, Function&& function)
     {
         if (model == nullptr) return 0;
-        model->lastError.clear();
+        model->errors.clear();
         try
         {
             function();
@@ -88,18 +98,40 @@ namespace OcctModelingInternal
         catch (const Standard_Failure& failure)
         {
             const char* message = failure.GetMessageString();
-            model->lastError = message == nullptr ? "Open CASCADE operation failed." : message;
+            model->errors.set(OcctStatus_ErrorOcct, message == nullptr ? "Open CASCADE operation failed." : message);
         }
+        catch (const std::invalid_argument& exception)
+        {
+            model->errors.set(OcctStatus_ErrorInvalidArgument, exception.what());
+        }
+        catch (const std::logic_error& exception)
+        {
+            model->errors.set(OcctStatus_ErrorInvalidState, exception.what());
+        }
+        catch (const std::bad_alloc&)
+        {
+            model->errors.set(OcctStatus_ErrorOutOfMemory, "Native memory allocation failed.");
+        }
+
         catch (const std::exception& exception)
         {
-            model->lastError = exception.what();
+            model->errors.set(OcctStatus_ErrorUnknown, exception.what());
         }
         catch (...)
         {
-            model->lastError = "Unknown native modeling error.";
+            model->errors.set(OcctStatus_ErrorUnknown, "Unknown native modeling error.");
         }
         return 0;
     }
+
+    template<typename Result, typename Function>
+    inline Result executeValue(ModelSession* model, Result fallback, Function&& function)
+    {
+        Result result = fallback;
+        execute(model, [&] { result = function(); });
+        return result;
+    }
+
 
     template<typename Function>
     inline OcctObjectId executeShape(ModelSession* model, Function&& function)
@@ -109,7 +141,15 @@ namespace OcctModelingInternal
         return result;
     }
 
-    inline const OperationRecord& requireOperation(ModelSession* model, OcctOperationId operationId)
+    inline OperationRecord& requireOperation(ModelSession* model, OcctOperationId operationId)
+    {
+        const auto iterator = model->operations.find(operationId);
+        if (iterator == model->operations.end())
+            throw std::invalid_argument("Operation ID does not exist.");
+        return iterator->second;
+    }
+
+    inline const OperationRecord& requireOperation(const ModelSession* model, OcctOperationId operationId)
     {
         const auto iterator = model->operations.find(operationId);
         if (iterator == model->operations.end())

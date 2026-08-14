@@ -50,7 +50,7 @@ public sealed partial class OcctEngine
             ascii ? 1 : 0));
     }
 
-    private delegate long ImportCall(IntPtr handle, string path);
+    private delegate long ImportCall(OcctEngineSafeHandle handle, string path);
 
     private OcctShape ImportSpecific(string filePath, ImportCall call)
     {
@@ -59,7 +59,7 @@ public sealed partial class OcctEngine
         return CheckShape(call(_handle, Path.GetFullPath(filePath)));
     }
 
-    private delegate int ExportCall(IntPtr handle, long shapeId, string path);
+    private delegate int ExportCall(OcctEngineSafeHandle handle, long shapeId, string path);
 
     private void ExportShape(OcctShape shape, string filePath, ExportCall call)
     {

@@ -34,7 +34,7 @@ try { $contract = Get-Content $contractPath -Raw -Encoding UTF8 | ConvertFrom-Js
 catch { throw "bridge-contract.json is not valid JSON: $($_.Exception.Message)" }
 
 $expectedVersion = [string]$contract.bridgeVersion
-$expectedAbiVersion = [int]$contract.nativeAbiVersion
+$expectedAbiVersion = [int]$contract.nativeAbi.current
 $expectedOcctVersion = [string]$contract.occtVersion
 $expectedCmakeVersion = [string]$contract.cmakeMinimumVersion
 $expectedAuthor = [string]$contract.author
@@ -46,6 +46,10 @@ $expectedManagedCount = [int]$contract.api.managedPInvokes
 $expectedPublicTypeCount = [int]$contract.api.publicNetTypes
 $expectedViewerCount = [int]$contract.api.viewer
 $expectedModelingCount = [int]$contract.api.modeling
+$expectedMinimumAbiVersion = [int]$contract.nativeAbi.minimumSupported
+$expectedCurrentAbiExports = [int]$contract.api.abi5Exports
+$expectedLegacyAbiExports = [int]$contract.api.legacyAbi4Exports
+$expectedCompatibilityExtensions = [int]$contract.api.compatibilityExtensions
 
 foreach ($entry in ([ordered]@{
     bridgeVersion = $expectedVersion
@@ -65,6 +69,10 @@ foreach ($entry in ([ordered]@{
     publicNetTypes = $expectedPublicTypeCount
     viewer = $expectedViewerCount
     modeling = $expectedModelingCount
+    minimumSupportedAbi = $expectedMinimumAbiVersion
+    abi5Exports = $expectedCurrentAbiExports
+    legacyAbi4Exports = $expectedLegacyAbiExports
+    compatibilityExtensions = $expectedCompatibilityExtensions
 }).GetEnumerator()) {
     if ([int]$entry.Value -le 0) { throw "Bridge contract numeric value must be positive: $($entry.Key)" }
 }
@@ -72,6 +80,16 @@ if (($expectedViewerCount + $expectedModelingCount) -ne $expectedNativeCount) { 
 if ($expectedNativeCount -ne $expectedManagedCount) { throw "Native export and managed P/Invoke counts must stay equal." }
 $contractSdk = Convert-ToSdkVersion $expectedSdkVersion "bridge-contract.json"
 
+if ([int]$contract.schemaVersion -ne 2) { throw "Bridge 3 contract must use schema version 2." }
+if ($expectedMinimumAbiVersion -ne 4 -or @($contract.nativeAbi.legacy) -notcontains 4) {
+    throw "ABI 4 must remain declared as the minimum supported legacy ABI."
+}
+if ([string]$contract.compatibility.abi4 -ne "deprecated" -or [string]$contract.compatibility.plannedRemoval -ne "4.0") {
+    throw "ABI 4 deprecation and planned removal metadata is incomplete."
+}
+if (($expectedCurrentAbiExports + $expectedLegacyAbiExports + $expectedCompatibilityExtensions) -ne $expectedNativeCount) {
+    throw "ABI export accounting must equal nativeExports."
+}
 $nativeEngine = Read-Text "src/OcctNative/OcctEngine.cpp"
 if (-not $nativeEngine.Contains("return `"$expectedVersion`";")) { throw "Native bridge version differs from bridge-contract.json." }
 if (-not $nativeEngine.Contains("return $expectedAbiVersion;")) { throw "Native ABI version differs from bridge-contract.json." }
@@ -84,7 +102,8 @@ $projectFiles = @(
     "src/OcctNet.WinForms/OcctNet.WinForms.csproj",
     "src/OcctNet.Wpf/OcctNet.Wpf.csproj",
     "tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj",
-    "tests/OcctNet.Smoke/OcctNet.Smoke.csproj"
+    "tests/OcctNet.Smoke/OcctNet.Smoke.csproj",
+    "tests/OcctNet.LegacyCompatibilityTests/OcctNet.LegacyCompatibilityTests.csproj"
 )
 foreach ($relativePath in $projectFiles) {
     [xml]$project = Read-Text $relativePath

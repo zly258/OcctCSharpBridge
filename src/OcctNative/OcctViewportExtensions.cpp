@@ -65,8 +65,8 @@ extern "C"
                 BRepBndLib::Add(shapeWithPresentationTransformation(*entry), bounds);
             }
             if (bounds.IsVoid()) throw std::runtime_error("Selected shapes have no finite bounds.");
-            e->view->FitAll(bounds, margin, Standard_False);
-            e->view->ZFitAll();
+            e->viewerContext.view->FitAll(bounds, margin, Standard_False);
+            e->viewerContext.view->ZFitAll();
             e->requestRedraw();
         });
     }
@@ -76,11 +76,11 @@ extern "C"
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            e->view->SetProj(zUpOrientation(orientation));
+            e->viewerContext.view->SetProj(zUpOrientation(orientation));
             if (fitAll != 0)
             {
-                e->view->FitAll(0.01, Standard_False);
-                e->view->ZFitAll();
+                e->viewerContext.view->FitAll(0.01, Standard_False);
+                e->viewerContext.view->ZFitAll();
             }
             e->requestRedraw();
         });
@@ -93,7 +93,7 @@ extern "C"
         {
             Standard_Real px = 0.0, py = 0.0, pz = 0.0;
             Standard_Real vx = 0.0, vy = 0.0, vz = 0.0;
-            e->view->ConvertWithProj(x, y, px, py, pz, vx, vy, vz);
+            e->viewerContext.view->ConvertWithProj(x, y, px, py, pz, vx, vy, vz);
             const gp_Dir rayDirection(gp_Vec(vx, vy, vz));
             result->origin = {px, py, pz};
             result->direction = {rayDirection.X(), rayDirection.Y(), rayDirection.Z()};
@@ -113,8 +113,8 @@ extern "C"
             if (zoomDelta == 0)
                 zoomDelta = delta > 0.0 ? 1 : -1;
 
-            e->view->StartZoomAtPoint(x, y);
-            e->view->ZoomAtPoint(0, 0, zoomDelta, 0);
+            e->viewerContext.view->StartZoomAtPoint(x, y);
+            e->viewerContext.view->ZoomAtPoint(0, 0, zoomDelta, 0);
         });
     }
 
@@ -123,15 +123,15 @@ extern "C"
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            e->context->ClearSelected(Standard_False);
-            for (const auto& pair : e->objects)
+            e->viewerContext.context->ClearSelected(Standard_False);
+            for (const auto& pair : e->scene.objects)
             {
                 if (!pair.second.presentation.IsNull()
                     && pair.second.selectable
-                    && e->context->IsDisplayed(pair.second.presentation))
-                    e->context->AddSelect(pair.second.presentation);
+                    && e->viewerContext.context->IsDisplayed(pair.second.presentation))
+                    e->viewerContext.context->AddSelect(pair.second.presentation);
             }
-            e->context->HilightSelected(Standard_False);
+            e->viewerContext.context->HilightSelected(Standard_False);
             e->requestRedraw();
         });
     }
@@ -141,14 +141,14 @@ extern "C"
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            for (const auto& pair : e->objects)
+            for (const auto& pair : e->scene.objects)
             {
                 if (!pair.second.presentation.IsNull()
                     && pair.second.selectable
-                    && e->context->IsDisplayed(pair.second.presentation))
-                    e->context->AddOrRemoveSelected(pair.second.presentation, Standard_False);
+                    && e->viewerContext.context->IsDisplayed(pair.second.presentation))
+                    e->viewerContext.context->AddOrRemoveSelected(pair.second.presentation, Standard_False);
             }
-            e->context->HilightSelected(Standard_False);
+            e->viewerContext.context->HilightSelected(Standard_False);
             e->requestRedraw();
         });
     }
@@ -159,13 +159,13 @@ extern "C"
         return execute(e, [&]
         {
             std::vector<Handle(AIS_InteractiveObject)> selected;
-            for (e->context->InitSelected(); e->context->MoreSelected(); e->context->NextSelected())
+            for (e->viewerContext.context->InitSelected(); e->viewerContext.context->MoreSelected(); e->viewerContext.context->NextSelected())
             {
-                const Handle(AIS_InteractiveObject) value = e->context->SelectedInteractive();
+                const Handle(AIS_InteractiveObject) value = e->viewerContext.context->SelectedInteractive();
                 if (!value.IsNull()) selected.push_back(value);
             }
-            for (const auto& value : selected) e->context->Erase(value, Standard_False);
-            e->context->ClearSelected(Standard_False);
+            for (const auto& value : selected) e->viewerContext.context->Erase(value, Standard_False);
+            e->viewerContext.context->ClearSelected(Standard_False);
             e->requestRedraw();
         });
     }
@@ -173,7 +173,7 @@ extern "C"
     int occt_set_automatic_highlight(OcctHandle h, int enabled)
     {
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { e->context->SetAutomaticHilight(enabled != 0); });
+        return execute(e, [&] { e->viewerContext.context->SetAutomaticHilight(enabled != 0); });
     }
 
     int occt_set_msaa_samples(OcctHandle h, int samples)
@@ -183,7 +183,7 @@ extern "C"
         {
             if (samples < 0 || samples > 16)
                 throw std::invalid_argument("MSAA sample count must be between 0 and 16.");
-            e->view->ChangeRenderingParams().NbMsaaSamples = samples;
+            e->viewerContext.view->ChangeRenderingParams().NbMsaaSamples = samples;
             e->requestRedraw();
         });
     }
@@ -195,7 +195,7 @@ extern "C"
         {
             if (!std::isfinite(scale) || scale < 0.25 || scale > 4.0)
                 throw std::invalid_argument("Render resolution scale must be between 0.25 and 4.0.");
-            e->view->ChangeRenderingParams().RenderResolutionScale = static_cast<Standard_ShortReal>(scale);
+            e->viewerContext.view->ChangeRenderingParams().RenderResolutionScale = static_cast<Standard_ShortReal>(scale);
             e->requestRedraw();
         });
     }
@@ -207,7 +207,7 @@ extern "C"
         {
             if (!std::isfinite(dpi) || dpi < 36.0 || dpi > 600.0)
                 throw std::invalid_argument("Render resolution must be between 36 and 600 DPI.");
-            e->view->ChangeRenderingParams().Resolution = static_cast<unsigned int>(std::lround(dpi));
+            e->viewerContext.view->ChangeRenderingParams().Resolution = static_cast<unsigned int>(std::lround(dpi));
             e->requestRedraw();
         });
     }
@@ -219,7 +219,7 @@ extern "C"
         {
             if (method != OcctRendering_Rasterization && method != OcctRendering_RayTracing)
                 throw std::invalid_argument("Rendering method is out of range.");
-            e->view->ChangeRenderingParams().Method = method == OcctRendering_RayTracing
+            e->viewerContext.view->ChangeRenderingParams().Method = method == OcctRendering_RayTracing
                 ? Graphic3d_RM_RAYTRACING
                 : Graphic3d_RM_RASTERIZATION;
             e->requestRedraw();
@@ -231,7 +231,7 @@ extern "C"
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            e->view->ChangeRenderingParams().IsShadowEnabled = enabled != 0;
+            e->viewerContext.view->ChangeRenderingParams().IsShadowEnabled = enabled != 0;
             e->requestRedraw();
         });
     }
@@ -239,7 +239,7 @@ extern "C"
     int occt_set_immediate_update(OcctHandle h, int enabled)
     {
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { e->view->SetImmediateUpdate(enabled != 0); });
+        return execute(e, [&] { e->viewerContext.view->SetImmediateUpdate(enabled != 0); });
     }
 
     int occt_set_frustum_culling(OcctHandle h, int enabled)
@@ -247,7 +247,7 @@ extern "C"
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            e->view->SetFrustumCulling(enabled != 0);
+            e->viewerContext.view->SetFrustumCulling(enabled != 0);
             e->requestRedraw();
         });
     }
@@ -257,14 +257,14 @@ extern "C"
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            e->context->DefaultDrawer()->SetFaceBoundaryDraw(visible != 0);
+            e->viewerContext.context->DefaultDrawer()->SetFaceBoundaryDraw(visible != 0);
             if (applyExisting != 0)
             {
-                for (auto& pair : e->objects)
+                for (auto& pair : e->scene.objects)
                 {
                     if (pair.second.kind != OcctObject_Shape || pair.second.presentation.IsNull()) continue;
                     pair.second.presentation->Attributes()->SetFaceBoundaryDraw(visible != 0);
-                    e->context->Redisplay(pair.second.presentation, Standard_False, Standard_True);
+                    e->viewerContext.context->Redisplay(pair.second.presentation, Standard_False, Standard_True);
                 }
             }
             e->requestRedraw();

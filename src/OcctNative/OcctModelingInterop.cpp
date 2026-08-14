@@ -9,24 +9,16 @@ extern "C"
     {
         OcctBridge::Engine* engine = OcctBridge::engineOf(engineHandle);
         ModelSession* model = modelOf(modelHandle);
-        if (engine == nullptr || model == nullptr) return 0;
-        try
+        if (model == nullptr) return 0;
+        if (engine == nullptr)
+        {
+            model->errors.set(OcctStatus_ErrorInvalidHandle, "Invalid OCCT engine handle.");
+            return 0;
+        }
+
+        return executeValue(model, OcctObjectId{0}, [&]
         {
             return engine->addShape(model->requireShape(shapeId), fit != 0, "ModelShape");
-        }
-        catch (const Standard_Failure& failure)
-        {
-            const char* message = failure.GetMessageString();
-            model->lastError = message == nullptr ? "Displaying model shape failed." : message;
-        }
-        catch (const std::exception& exception)
-        {
-            model->lastError = exception.what();
-        }
-        catch (...)
-        {
-            model->lastError = "Displaying model shape failed.";
-        }
-        return 0;
+        });
     }
 }

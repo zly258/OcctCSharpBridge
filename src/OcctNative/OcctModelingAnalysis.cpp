@@ -122,24 +122,12 @@ extern "C"
     int occt_model_classify_point(OcctModelHandle handle, OcctObjectId solidId, OcctPoint3d pointValue, double tolerance)
     {
         ModelSession* model = modelOf(handle);
-        if (model == nullptr) return OcctModelState_Unknown;
-        try
+        return executeValue(model, static_cast<int>(OcctModelState_Unknown), [&]
         {
             const TopoDS_Shape& shape = model->requireShape(solidId);
             if (shape.ShapeType() != TopAbs_SOLID) throw std::invalid_argument("Input must be a solid.");
             BRepClass3d_SolidClassifier classifier(TopoDS::Solid(shape), toPoint(pointValue), tolerance);
             return toModelState(classifier.State());
-        }
-        catch (const Standard_Failure& failure)
-        {
-            const char* message = failure.GetMessageString();
-            model->lastError = message == nullptr ? "Open CASCADE classification failed." : message;
-            return OcctModelState_Unknown;
-        }
-        catch (const std::exception& exception)
-        {
-            model->lastError = exception.what();
-            return OcctModelState_Unknown;
-        }
+        });
     }
 }

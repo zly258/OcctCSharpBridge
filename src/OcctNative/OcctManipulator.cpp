@@ -57,8 +57,8 @@ namespace
 
     void redisplayManipulator(Engine* engine, const Handle(AIS_Manipulator)& manipulator)
     {
-        if (!manipulator.IsNull() && engine->context->IsDisplayed(manipulator))
-            engine->context->Redisplay(manipulator, Standard_False, Standard_True);
+        if (!manipulator.IsNull() && engine->viewerContext.context->IsDisplayed(manipulator))
+            engine->viewerContext.context->Redisplay(manipulator, Standard_False, Standard_True);
         engine->requestRedraw();
     }
 
@@ -77,11 +77,11 @@ extern "C"
         return executeObject(e, [&]() -> OcctObjectId
         {
             Handle(AIS_Manipulator) manipulator = new AIS_Manipulator();
-            const OcctObjectId id = e->nextId++;
+            const OcctObjectId id = e->scene.allocateId();
             ObjectEntry entry{OcctManipulatorObjectKind, TopoDS_Shape(), manipulator, "Manipulator"};
             entry.selectable = true;
             entry.presentationSubtype = 0;
-            e->objects.emplace(id, std::move(entry));
+            e->scene.objects.emplace(id, std::move(entry));
             return id;
         });
     }
@@ -137,7 +137,7 @@ extern "C"
             manipulator->Attach(targets, nativeOptions);
             manipulatorEntry.presentationSubtype =
                 (options == nullptr || options->enableModes != 0) ? AllManipulatorModesMask : 0;
-            if (!manipulatorEntry.selectable) e->context->Deactivate(manipulator);
+            if (!manipulatorEntry.selectable) e->viewerContext.context->Deactivate(manipulator);
             e->requestRedraw();
         });
     }
@@ -204,7 +204,7 @@ extern "C"
                 if (manipulator->HasActiveMode() && manipulator->ActiveMode() == nativeMode)
                     cancelActiveTransformation(manipulator);
                 entry.presentationSubtype &= ~modeBit;
-                e->context->Deactivate(manipulator, mode);
+                e->viewerContext.context->Deactivate(manipulator, mode);
             }
             e->requestRedraw();
         });
@@ -352,7 +352,7 @@ extern "C"
             Handle(AIS_Manipulator) manipulator = requiredManipulator(e, manipulatorId);
             if (!manipulator->IsAttached()) throw std::logic_error("Manipulator is not attached.");
             if (!manipulator->HasActiveMode()) throw std::logic_error("Manipulator has no active mode.");
-            manipulator->StartTransform(x, y, e->view);
+            manipulator->StartTransform(x, y, e->viewerContext.view);
         });
     }
 
@@ -364,7 +364,7 @@ extern "C"
             Handle(AIS_Manipulator) manipulator = requiredManipulator(e, manipulatorId);
             if (!manipulator->IsAttached()) throw std::logic_error("Manipulator is not attached.");
             if (!manipulator->HasActiveMode()) throw std::logic_error("Manipulator has no active mode.");
-            manipulator->Transform(x, y, e->view);
+            manipulator->Transform(x, y, e->viewerContext.view);
             e->requestRedraw();
         });
     }

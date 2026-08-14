@@ -69,43 +69,43 @@ extern "C"
     int occt_set_text(OcctHandle h, OcctObjectId textId, const char* text)
     {
         Engine* e=engineOf(h);if(!validateInitialized(e))return 0;
-        return execute(e,[&]{ObjectEntry* entry=e->findObject(textId);if(!entry||entry->kind!=OcctObject_Text)throw std::invalid_argument("Text ID does not exist.");Handle(AIS_TextLabel) label=Handle(AIS_TextLabel)::DownCast(entry->presentation);label->SetText(extended(text));e->context->Redisplay(label,Standard_True);});
+        return execute(e,[&]{ObjectEntry* entry=e->findObject(textId);if(!entry||entry->kind!=OcctObject_Text)throw std::invalid_argument("Text ID does not exist.");Handle(AIS_TextLabel) label=Handle(AIS_TextLabel)::DownCast(entry->presentation);label->SetText(extended(text));e->viewerContext.context->Redisplay(label,Standard_True);});
     }
 
     int occt_set_text_position(OcctHandle h, OcctObjectId textId, OcctPoint3d position)
     {
         Engine* e=engineOf(h);if(!validateInitialized(e))return 0;
-        return execute(e,[&]{ObjectEntry* entry=e->findObject(textId);if(!entry||entry->kind!=OcctObject_Text)throw std::invalid_argument("Text ID does not exist.");Handle(AIS_TextLabel) label=Handle(AIS_TextLabel)::DownCast(entry->presentation);label->SetPosition(point(position));e->context->Redisplay(label,Standard_True);});
+        return execute(e,[&]{ObjectEntry* entry=e->findObject(textId);if(!entry||entry->kind!=OcctObject_Text)throw std::invalid_argument("Text ID does not exist.");Handle(AIS_TextLabel) label=Handle(AIS_TextLabel)::DownCast(entry->presentation);label->SetPosition(point(position));e->viewerContext.context->Redisplay(label,Standard_True);});
     }
 
     int occt_set_text_height(OcctHandle h, OcctObjectId textId, double height)
     {
         Engine* e=engineOf(h);if(!validateInitialized(e))return 0;
-        return execute(e,[&]{requirePositive(height,"Text height");ObjectEntry* entry=e->findObject(textId);if(!entry||entry->kind!=OcctObject_Text)throw std::invalid_argument("Text ID does not exist.");Handle(AIS_TextLabel) label=Handle(AIS_TextLabel)::DownCast(entry->presentation);label->SetHeight(height);e->context->Redisplay(label,Standard_True);});
+        return execute(e,[&]{requirePositive(height,"Text height");ObjectEntry* entry=e->findObject(textId);if(!entry||entry->kind!=OcctObject_Text)throw std::invalid_argument("Text ID does not exist.");Handle(AIS_TextLabel) label=Handle(AIS_TextLabel)::DownCast(entry->presentation);label->SetHeight(height);e->viewerContext.context->Redisplay(label,Standard_True);});
     }
 
     int occt_set_text_font(OcctHandle h, OcctObjectId textId, const char* fontName)
     {
         Engine* e=engineOf(h);if(!validateInitialized(e))return 0;
-        return execute(e,[&]{ObjectEntry* entry=e->findObject(textId);if(!entry||entry->kind!=OcctObject_Text)throw std::invalid_argument("Text ID does not exist.");Handle(AIS_TextLabel) label=Handle(AIS_TextLabel)::DownCast(entry->presentation);label->SetFont(fontName==nullptr?"":fontName);e->context->Redisplay(label,Standard_True);});
+        return execute(e,[&]{ObjectEntry* entry=e->findObject(textId);if(!entry||entry->kind!=OcctObject_Text)throw std::invalid_argument("Text ID does not exist.");Handle(AIS_TextLabel) label=Handle(AIS_TextLabel)::DownCast(entry->presentation);label->SetFont(fontName==nullptr?"":fontName);e->viewerContext.context->Redisplay(label,Standard_True);});
     }
 
     int occt_set_text_angle(OcctHandle h, OcctObjectId textId, double angleDegrees)
     {
         Engine* e=engineOf(h);if(!validateInitialized(e))return 0;
-        return execute(e,[&]{ObjectEntry* entry=e->findObject(textId);if(!entry||entry->kind!=OcctObject_Text)throw std::invalid_argument("Text ID does not exist.");Handle(AIS_TextLabel) label=Handle(AIS_TextLabel)::DownCast(entry->presentation);label->SetAngle(angleDegrees*3.14159265358979323846/180.0);e->context->Redisplay(label,Standard_True);});
+        return execute(e,[&]{ObjectEntry* entry=e->findObject(textId);if(!entry||entry->kind!=OcctObject_Text)throw std::invalid_argument("Text ID does not exist.");Handle(AIS_TextLabel) label=Handle(AIS_TextLabel)::DownCast(entry->presentation);label->SetAngle(angleDegrees*3.14159265358979323846/180.0);e->viewerContext.context->Redisplay(label,Standard_True);});
     }
 
     int occt_set_text_zoomable(OcctHandle h, OcctObjectId textId, int zoomable)
     {
         Engine* e=engineOf(h);if(!validateInitialized(e))return 0;
-        return execute(e,[&]{ObjectEntry* entry=e->findObject(textId);if(!entry||entry->kind!=OcctObject_Text)throw std::invalid_argument("Text ID does not exist.");Handle(AIS_TextLabel) label=Handle(AIS_TextLabel)::DownCast(entry->presentation);label->SetZoomable(zoomable!=0);e->context->Redisplay(label,Standard_True);});
+        return execute(e,[&]{ObjectEntry* entry=e->findObject(textId);if(!entry||entry->kind!=OcctObject_Text)throw std::invalid_argument("Text ID does not exist.");Handle(AIS_TextLabel) label=Handle(AIS_TextLabel)::DownCast(entry->presentation);label->SetZoomable(zoomable!=0);e->viewerContext.context->Redisplay(label,Standard_True);});
     }
 
     int occt_set_dimension_flyout(OcctHandle h, OcctObjectId dimensionId, double flyout)
     {
         Engine* e=engineOf(h);if(!validateInitialized(e))return 0;
-        return execute(e,[&]{ObjectEntry* entry=e->findObject(dimensionId);if(!entry||entry->kind!=OcctObject_Dimension)throw std::invalid_argument("Dimension ID does not exist.");Handle(PrsDim_Dimension) dimension=Handle(PrsDim_Dimension)::DownCast(entry->presentation);if(dimension.IsNull())throw std::runtime_error("Dimension presentation type is invalid.");dimension->SetFlyout(flyout);e->context->Redisplay(dimension,Standard_True);});
+        return execute(e,[&]{ObjectEntry* entry=e->findObject(dimensionId);if(!entry||entry->kind!=OcctObject_Dimension)throw std::invalid_argument("Dimension ID does not exist.");Handle(PrsDim_Dimension) dimension=Handle(PrsDim_Dimension)::DownCast(entry->presentation);if(dimension.IsNull())throw std::runtime_error("Dimension presentation type is invalid.");dimension->SetFlyout(flyout);e->viewerContext.context->Redisplay(dimension,Standard_True);});
     }
 
     OcctObjectId occt_add_length_dimension(OcctHandle h, OcctObjectId edgeId, double flyout, double r, double g, double b)

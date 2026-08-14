@@ -2,11 +2,11 @@
 
 此目录由 `tools/OcctApiDocsGenerator` 根据当前分支实际存在的公开程序集自动生成。
 
-- **Bridge:** `2.7.0`
-- **Native ABI:** `4`
+- **Bridge:** `3.0.0-preview.1`
+- **Native ABI:** `5`
 - **公开程序集:** `OcctNet`, `OcctNet.WinForms`, `OcctNet.Wpf`
-- **公开类型:** 139
-- **Native exports:** 419
+- **公开类型:** 141
+- **Native exports:** 431
 
 - [Native C ABI 完整参考](native-abi.md)
 
@@ -124,8 +124,10 @@
 - [`OcctShapeType`](reference/OcctNet.OcctShapeType.md)
 - [`OcctShapeUpdateOptions`](reference/OcctNet.OcctShapeUpdateOptions.md)
 - [`OcctSphereGeometry`](reference/OcctNet.OcctSphereGeometry.md)
+- [`OcctStatus`](reference/OcctNet.OcctStatus.md)
 - [`OcctSurfaceType`](reference/OcctNet.OcctSurfaceType.md)
 - [`OcctText`](reference/OcctNet.OcctText.md)
+- [`OcctTopologyHistorySummary`](reference/OcctNet.OcctTopologyHistorySummary.md)
 - [`OcctTopologyReference`](reference/OcctNet.OcctTopologyReference.md)
 - [`OcctTopologyReferenceResult`](reference/OcctNet.OcctTopologyReferenceResult.md)
 - [`OcctTopologyReferenceStatus`](reference/OcctNet.OcctTopologyReferenceStatus.md)

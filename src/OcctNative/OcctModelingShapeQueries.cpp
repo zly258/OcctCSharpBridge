@@ -53,56 +53,55 @@ extern "C"
     std::int64_t occt_model_shape_hash(OcctModelHandle handle, OcctObjectId shapeId)
     {
         ModelSession* model = modelOf(handle);
-        if (model == nullptr) return 0;
-        try
+        return executeValue(model, std::int64_t{0}, [&]
         {
             return static_cast<std::int64_t>(TopTools_ShapeMapHasher{}(model->requireShape(shapeId)));
-        }
-        catch (const std::exception& exception)
-        {
-            model->lastError = exception.what();
-            return 0;
-        }
+        });
     }
 
     int occt_model_shape_type(OcctModelHandle handle, OcctObjectId shapeId)
     {
         ModelSession* model = modelOf(handle);
-        if (model == nullptr) return OcctShape_Shape;
-        try { return toOcctShapeType(model->requireShape(shapeId).ShapeType()); }
-        catch (...) { return OcctShape_Shape; }
+        return executeValue(model, static_cast<int>(OcctShape_Shape), [&]
+        {
+            return toOcctShapeType(model->requireShape(shapeId).ShapeType());
+        });
     }
 
     int occt_model_shape_orientation(OcctModelHandle handle, OcctObjectId shapeId)
     {
         ModelSession* model = modelOf(handle);
-        if (model == nullptr) return OcctModelOrientation_Forward;
-        try { return toModelOrientation(model->requireShape(shapeId).Orientation()); }
-        catch (...) { return OcctModelOrientation_Forward; }
+        return executeValue(model, static_cast<int>(OcctModelOrientation_Forward), [&]
+        {
+            return toModelOrientation(model->requireShape(shapeId).Orientation());
+        });
     }
 
     int occt_model_shape_is_closed(OcctModelHandle handle, OcctObjectId shapeId)
     {
         ModelSession* model = modelOf(handle);
-        if (model == nullptr) return 0;
-        try { return isTopologicallyClosed(model->requireShape(shapeId)) ? 1 : 0; }
-        catch (...) { return 0; }
+        return executeValue(model, 0, [&]
+        {
+            return isTopologicallyClosed(model->requireShape(shapeId)) ? 1 : 0;
+        });
     }
 
     int occt_model_shape_is_valid(OcctModelHandle handle, OcctObjectId shapeId)
     {
         ModelSession* model = modelOf(handle);
-        if (model == nullptr) return 0;
-        try { return BRepCheck_Analyzer(model->requireShape(shapeId), Standard_True).IsValid() ? 1 : 0; }
-        catch (...) { return 0; }
+        return executeValue(model, 0, [&]
+        {
+            return BRepCheck_Analyzer(model->requireShape(shapeId), Standard_True).IsValid() ? 1 : 0;
+        });
     }
 
     double occt_model_shape_tolerance(OcctModelHandle handle, OcctObjectId shapeId)
     {
         ModelSession* model = modelOf(handle);
-        if (model == nullptr) return 0.0;
-        try { return maximumTolerance(model->requireShape(shapeId)); }
-        catch (...) { return 0.0; }
+        return executeValue(model, 0.0, [&]
+        {
+            return maximumTolerance(model->requireShape(shapeId));
+        });
     }
 
     int occt_model_shape_bounds(OcctModelHandle handle, OcctObjectId shapeId, OcctBounds* result)
@@ -172,7 +171,7 @@ extern "C"
     {
         ModelSession* model = modelOf(handle);
         if (model == nullptr) return "{\"valid\":false,\"error\":\"invalid handle\"}";
-        model->scratchString.clear();
+        model->errors.scratch.clear();
         execute(model, [&]
         {
             const TopoDS_Shape& shape = model->requireShape(shapeId);
@@ -195,9 +194,9 @@ extern "C"
                 }
             }
             stream << "]}";
-            model->scratchString = stream.str();
+            model->errors.scratch = stream.str();
         });
-        return model->scratchString.c_str();
+        return model->errors.scratch.c_str();
     }
 
     int occt_model_get_location(OcctModelHandle handle, OcctObjectId shapeId, OcctModelLocation* result)

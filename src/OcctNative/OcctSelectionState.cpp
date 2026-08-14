@@ -104,17 +104,17 @@ namespace
         result.subshapeIndex = identity.subshapeIndex;
         result.point = {pickedPoint.X(), pickedPoint.Y(), pickedPoint.Z()};
         result.depth = depth;
-        result.distanceToEye = engine->view->Camera()->Eye().Distance(pickedPoint);
+        result.distanceToEye = engine->viewerContext.view->Camera()->Eye().Distance(pickedPoint);
         return true;
     }
 
     std::vector<OcctSelectionHit> collectSelectedHits(Engine* engine)
     {
         std::vector<OcctSelectionHit> hits;
-        for (engine->context->InitSelected(); engine->context->MoreSelected(); engine->context->NextSelected())
+        for (engine->viewerContext.context->InitSelected(); engine->viewerContext.context->MoreSelected(); engine->viewerContext.context->NextSelected())
         {
             OcctSelectionHit hit{};
-            if (tryCreateSelectionHit(engine, engine->context->SelectedOwner(), hit))
+            if (tryCreateSelectionHit(engine, engine->viewerContext.context->SelectedOwner(), hit))
                 hits.push_back(hit);
         }
         return hits;
@@ -125,7 +125,7 @@ namespace
         const Handle(SelectMgr_EntityOwner)& targetOwner,
         OcctSelectionHitDetail& result)
     {
-        const Handle(StdSelect_ViewerSelector3d)& selector = engine->context->MainSelector();
+        const Handle(StdSelect_ViewerSelector3d)& selector = engine->viewerContext.context->MainSelector();
         for (int rank = 1; rank <= selector->NbPicked(); ++rank)
         {
             const Handle(SelectMgr_EntityOwner) owner = selector->Picked(rank);
@@ -154,35 +154,35 @@ extern "C"
 
             if (operation == OcctSelection_Clear)
             {
-                engine->context->ClearSelected(Standard_False);
+                engine->viewerContext.context->ClearSelected(Standard_False);
                 engine->requestRedraw();
                 return;
             }
 
             const auto entries = requireSelectableObjects(engine, objectIds, count);
             if (operation == OcctSelection_Replace)
-                engine->context->ClearSelected(Standard_False);
+                engine->viewerContext.context->ClearSelected(Standard_False);
 
             for (ObjectEntry* entry : entries)
             {
-                const bool isSelected = engine->context->IsSelected(entry->presentation);
+                const bool isSelected = engine->viewerContext.context->IsSelected(entry->presentation);
                 switch (operation)
                 {
                     case OcctSelection_Replace:
                     case OcctSelection_Add:
-                        if (!isSelected) engine->context->SetSelected(entry->presentation, Standard_False);
+                        if (!isSelected) engine->viewerContext.context->SetSelected(entry->presentation, Standard_False);
                         break;
                     case OcctSelection_Remove:
-                        if (isSelected) engine->context->AddOrRemoveSelected(entry->presentation, Standard_False);
+                        if (isSelected) engine->viewerContext.context->AddOrRemoveSelected(entry->presentation, Standard_False);
                         break;
                     case OcctSelection_Toggle:
-                        engine->context->AddOrRemoveSelected(entry->presentation, Standard_False);
+                        engine->viewerContext.context->AddOrRemoveSelected(entry->presentation, Standard_False);
                         break;
                     default:
                         break;
                 }
             }
-            engine->context->HilightSelected(Standard_False);
+            engine->viewerContext.context->HilightSelected(Standard_False);
             engine->requestRedraw();
         });
     }
@@ -229,8 +229,8 @@ extern "C"
             result->subshapeIndex = -1;
             *hasHit = 0;
 
-            if (!engine->context->HasDetected()) return;
-            if (tryCreateSelectionHit(engine, engine->context->DetectedOwner(), *result))
+            if (!engine->viewerContext.context->HasDetected()) return;
+            if (tryCreateSelectionHit(engine, engine->viewerContext.context->DetectedOwner(), *result))
                 *hasHit = 1;
         });
     }
@@ -249,8 +249,8 @@ extern "C"
             result->subshapeIndex = -1;
             *hasHit = 0;
 
-            if (!engine->context->HasDetected()) return;
-            const Handle(SelectMgr_EntityOwner) owner = engine->context->DetectedOwner();
+            if (!engine->viewerContext.context->HasDetected()) return;
+            const Handle(SelectMgr_EntityOwner) owner = engine->viewerContext.context->DetectedOwner();
             if (tryFindPickedDetail(engine, owner, *result))
                 *hasHit = 1;
         });
@@ -276,8 +276,8 @@ extern "C"
             if (items == nullptr)
                 throw std::invalid_argument("Detection output buffer is null.");
 
-            const Handle(StdSelect_ViewerSelector3d)& selector = engine->context->MainSelector();
-            selector->Pick(x, y, engine->view);
+            const Handle(StdSelect_ViewerSelector3d)& selector = engine->viewerContext.context->MainSelector();
+            selector->Pick(x, y, engine->viewerContext.view);
 
             int filled = 0;
             for (int rank = 1; rank <= selector->NbPicked() && filled < maxHits; ++rank)

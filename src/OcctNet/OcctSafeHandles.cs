@@ -4,17 +4,16 @@ namespace OcctNet;
 
 internal sealed class OcctEngineSafeHandle : SafeHandleZeroOrMinusOneIsInvalid
 {
-    internal OcctEngineSafeHandle(IntPtr nativeHandle)
+    private OcctEngineSafeHandle()
         : base(ownsHandle: true)
     {
-        SetHandle(nativeHandle);
     }
 
     protected override bool ReleaseHandle()
     {
         try
         {
-            NativeMethods.occt_destroy(handle);
+            NativeMethods.occt_engine_destroy(handle);
             return true;
         }
         catch
@@ -26,17 +25,16 @@ internal sealed class OcctEngineSafeHandle : SafeHandleZeroOrMinusOneIsInvalid
 
 internal sealed class OcctModelingSafeHandle : SafeHandleZeroOrMinusOneIsInvalid
 {
-    internal OcctModelingSafeHandle(IntPtr nativeHandle)
+    private OcctModelingSafeHandle()
         : base(ownsHandle: true)
     {
-        SetHandle(nativeHandle);
     }
 
     protected override bool ReleaseHandle()
     {
         try
         {
-            ModelNativeMethods.occt_model_destroy(handle);
+            ModelNativeMethods.occt_model_session_destroy(handle);
             return true;
         }
         catch

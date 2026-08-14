@@ -8,7 +8,7 @@ internal static class SelectionOverlayNativeMethods
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_show_selection_rectangle(
-        IntPtr handle,
+        OcctEngineSafeHandle handle,
         int x1,
         int y1,
         int x2,
@@ -23,5 +23,5 @@ internal static class SelectionOverlayNativeMethods
         double lineWidth);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_hide_selection_rectangle(IntPtr handle);
+    internal static extern int occt_hide_selection_rectangle(OcctEngineSafeHandle handle);
 }

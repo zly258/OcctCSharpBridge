@@ -575,6 +575,12 @@ public int GetTopologyCount(OcctModelShape shape, OcctShapeType type)
 public IReadOnlyDictionary<OcctShapeType, int> GetTopologyCounts(OcctModelShape shape)
 ```
 
+### `GetTopologyHistorySummary`
+
+```csharp
+public OcctTopologyHistorySummary GetTopologyHistorySummary(long operationId, OcctModelShape source)
+```
+
 ### `GetTorusGeometry`
 
 ```csharp

@@ -8,12 +8,12 @@ namespace OcctNet;
 /// </summary>
 public static class OcctBridgeInfo
 {
-    public const int ExpectedAbiVersion = 4;
-    public const string ManagedVersion = "2.7.0";
+    public const int ExpectedAbiVersion = 5;
+    public const string ManagedVersion = "3.0.0-preview.1";
 
     private static int _validated;
 
-    public static int NativeAbiVersion => NativeMethods.occt_bridge_abi_version();
+    public static int NativeAbiVersion => NativeMethods.occt_bridge_current_abi_version();
     public static string NativeVersion => ReadUtf8(NativeMethods.occt_bridge_version());
     public static string BuildInfo => ReadUtf8(NativeMethods.occt_bridge_build_info());
     public static string OcctVersion => ReadUtf8(NativeMethods.occt_version());
@@ -45,9 +45,16 @@ public static class OcctBridgeInfo
 
     internal static bool IsNativeVersionCompatible(string nativeVersion, string managedVersion)
     {
-        if (!Version.TryParse(nativeVersion, out var native)) return false;
-        if (!Version.TryParse(managedVersion, out var managed)) return false;
+        if (!TryParseCoreVersion(nativeVersion, out var native)) return false;
+        if (!TryParseCoreVersion(managedVersion, out var managed)) return false;
         return native >= managed;
+    }
+
+    private static bool TryParseCoreVersion(string value, out Version version)
+    {
+        var separator = value.IndexOf('-');
+        var core = separator < 0 ? value : value[..separator];
+        return Version.TryParse(core, out version!);
     }
 
     private static string ReadUtf8(IntPtr pointer) =>

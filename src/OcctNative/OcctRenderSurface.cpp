@@ -12,6 +12,6 @@ extern "C" OCCTBRIDGE_API int occt_resize_surface(OcctHandle h)
         // Keep native-window sizing independent from presentation. UI hosts such
         // as WPF can receive many WM_SIZE messages during one layout/drag cycle;
         // rendering is deliberately scheduled by the host once per UI frame.
-        e->view->MustBeResized();
+        e->viewerContext.view->MustBeResized();
     });
 }

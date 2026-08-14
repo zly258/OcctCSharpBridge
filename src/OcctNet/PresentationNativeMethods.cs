@@ -8,49 +8,49 @@ internal static class PresentationNativeMethods
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_set_object_clip_planes(
-        IntPtr handle,
+        OcctEngineSafeHandle handle,
         long objectId,
         [In] NativeOcctViewClipPlane[] planes,
         int count);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_set_global_highlight_style(
-        IntPtr handle,
+        OcctEngineSafeHandle handle,
         int kind,
         in NativeOcctHighlightStyleSettings settings);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_set_object_highlight_style(
-        IntPtr handle,
+        OcctEngineSafeHandle handle,
         long objectId,
         int dynamic,
         in NativeOcctHighlightStyleSettings settings);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_clear_object_highlight_style(
-        IntPtr handle,
+        OcctEngineSafeHandle handle,
         long objectId,
         int dynamic);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_reset_object_display_mode(IntPtr handle, long objectId);
+    internal static extern int occt_reset_object_display_mode(OcctEngineSafeHandle handle, long objectId);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_get_object_display_mode(
-        IntPtr handle,
+        OcctEngineSafeHandle handle,
         long objectId,
         out int hasOverride,
         out int displayMode);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_set_object_auto_highlight(IntPtr handle, long objectId, int enabled);
+    internal static extern int occt_set_object_auto_highlight(OcctEngineSafeHandle handle, long objectId, int enabled);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_get_object_auto_highlight(IntPtr handle, long objectId, out int enabled);
+    internal static extern int occt_get_object_auto_highlight(OcctEngineSafeHandle handle, long objectId, out int enabled);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_set_object_infinite_state(IntPtr handle, long objectId, int infinite);
+    internal static extern int occt_set_object_infinite_state(OcctEngineSafeHandle handle, long objectId, int infinite);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_get_object_infinite_state(IntPtr handle, long objectId, out int infinite);
+    internal static extern int occt_get_object_infinite_state(OcctEngineSafeHandle handle, long objectId, out int infinite);
 }

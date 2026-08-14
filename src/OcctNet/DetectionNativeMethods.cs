@@ -8,7 +8,7 @@ internal static class DetectionNativeMethods
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_detect_at_filtered(
-        IntPtr handle,
+        OcctEngineSafeHandle handle,
         int x,
         int y,
         int maxHits,

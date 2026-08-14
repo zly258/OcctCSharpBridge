@@ -17,6 +17,21 @@ var cut = model.Cut(box, cylinder);
 if (!cut.Succeeded || !model.IsShapeValid(cut.Shape))
     throw new InvalidOperationException("Boolean result is invalid.");
 
+var cutHistory = model.GetTopologyHistorySummary(cut.OperationId, box);
+if (cutHistory.GeneratedCount < 0 || cutHistory.ModifiedCount < 0)
+    throw new InvalidOperationException("Topology-history summary contains invalid counts.");
+
+var lineageShapeCount = model.ShapeCount;
+var generatedLineage = model.GetGeneratedShapes(cut.OperationId, box);
+var modifiedLineage = model.GetModifiedShapes(cut.OperationId, box);
+var generatedLineageAgain = model.GetGeneratedShapes(cut.OperationId, box);
+var modifiedLineageAgain = model.GetModifiedShapes(cut.OperationId, box);
+if (!generatedLineage.SequenceEqual(generatedLineageAgain) ||
+    !modifiedLineage.SequenceEqual(modifiedLineageAgain) ||
+    model.ShapeCount != lineageShapeCount)
+{
+    throw new InvalidOperationException("Topology-history lineage IDs are not stable across repeated queries.");
+}
 // P0: full volume inertia properties.
 var inertia = model.GetVolumeInertiaProperties(cut.Shape);
 if (!double.IsFinite(inertia.Mass) || inertia.Mass <= 0 || !inertia.CenterOfMass.IsFinite)

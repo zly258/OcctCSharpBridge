@@ -8,6 +8,12 @@
 ### `OcctException`
 
 ```csharp
+public OcctException(string message, OcctStatus status, string operation, string nativeMessage, Exception innerException)
+```
+
+### `OcctException`
+
+```csharp
 public OcctException(string message, string operation, string nativeMessage, Exception innerException)
 ```
 
@@ -33,6 +39,14 @@ Gets the managed bridge operation that reported the failure when available.
 
 ```csharp
 public string Operation { get; }
+```
+
+### `Status`
+
+Gets the stable native bridge status associated with the failure.
+
+```csharp
+public OcctStatus Status { get; }
 ```
 
 ## Events

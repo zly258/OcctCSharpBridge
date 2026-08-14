@@ -1,27 +1,63 @@
 ﻿#include "OcctModelingSessionInternal.hxx"
 
 #include <BRepBuilderAPI_Copy.hxx>
+#include <cstring>
 
 using namespace OcctModelingInternal;
 
 extern "C"
 {
+    OcctModelingSessionHandle occt_model_session_create()
+    {
+        try { return reinterpret_cast<OcctModelingSessionHandle>(new ModelSession()); }
+        catch (...) { return nullptr; }
+    }
+
+    void occt_model_session_destroy(OcctModelingSessionHandle handle)
+    {
+        delete reinterpret_cast<ModelSession*>(handle);
+    }
+
     OcctModelHandle occt_model_create()
     {
-        try { return new ModelSession(); }
-        catch (...) { return nullptr; }
+        return reinterpret_cast<OcctModelHandle>(occt_model_session_create());
     }
 
     void occt_model_destroy(OcctModelHandle handle)
     {
-        delete modelOf(handle);
+        occt_model_session_destroy(reinterpret_cast<OcctModelingSessionHandle>(handle));
     }
 
     const char* occt_model_last_error(OcctModelHandle handle)
     {
         ModelSession* model = modelOf(handle);
-        return model == nullptr ? "Invalid OCCT modeling handle." : model->lastError.c_str();
+        return model == nullptr ? "Invalid OCCT modeling handle." : model->errors.message.c_str();
     }
+
+    OcctStatus occt_model_session_last_error_code(OcctModelingSessionHandle handle)
+    {
+        const ModelSession* model = reinterpret_cast<const ModelSession*>(handle);
+        return model == nullptr ? OcctStatus_ErrorInvalidHandle : model->errors.code;
+    }
+
+    OcctStatus occt_model_session_last_error_message(
+        OcctModelingSessionHandle handle,
+        char* buffer,
+        int capacity,
+        int* required)
+    {
+        const ModelSession* model = reinterpret_cast<const ModelSession*>(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (capacity < 0 || required == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        const int size = static_cast<int>(model->errors.message.size()) + 1;
+        *required = size;
+        if (buffer == nullptr) return capacity == 0 ? OcctStatus_Ok : OcctStatus_ErrorInvalidArgument;
+        if (capacity < size) return OcctStatus_ErrorBufferTooSmall;
+        std::memcpy(buffer, model->errors.message.c_str(), static_cast<std::size_t>(size));
+        return OcctStatus_Ok;
+    }
+
 
     const char* occt_model_capabilities()
     {
@@ -86,9 +122,9 @@ extern "C"
     {
         ModelSession* model = modelOf(handle);
         if (model == nullptr) return "Invalid OCCT modeling handle.";
-        model->scratchString.clear();
-        execute(model, [&] { model->scratchString = requireOperation(model, operationId).report; });
-        return model->scratchString.c_str();
+        model->errors.scratch.clear();
+        execute(model, [&] { model->errors.scratch = requireOperation(model, operationId).report; });
+        return model->errors.scratch.c_str();
     }
 
     OcctObjectId occt_model_copy_shape(OcctModelHandle handle, OcctObjectId shapeId)

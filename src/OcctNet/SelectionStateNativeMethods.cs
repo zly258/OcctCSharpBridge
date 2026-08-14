@@ -8,14 +8,14 @@ internal static class SelectionStateNativeMethods
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_selected_hits(
-        IntPtr handle,
+        OcctEngineSafeHandle handle,
         [Out] NativeOcctSelectionHit[]? items,
         int capacity,
         out int count);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_detected_hit(
-        IntPtr handle,
+        OcctEngineSafeHandle handle,
         out NativeOcctSelectionHit result,
         out int hasHit);
 }

@@ -186,8 +186,8 @@ namespace
         // Re-apply the merged occurrence color afterwards so instance inheritance wins.
         Quantity_Color mergedColor;
         if (tryStyleColor(style, mergedColor))
-            engine->context->SetColor(entry->presentation, mergedColor, Standard_False);
-        if (!style.IsVisible()) engine->context->Erase(entry->presentation, Standard_False);
+            engine->viewerContext.context->SetColor(entry->presentation, mergedColor, Standard_False);
+        if (!style.IsVisible()) engine->viewerContext.context->Erase(entry->presentation, Standard_False);
     }
 
     OcctObjectId addStructuredLeaf(Engine* engine, const StepImportLeaf& leaf)
@@ -210,7 +210,7 @@ namespace
 
     OcctObjectId readStepXde(Engine* engine, const std::filesystem::path& path)
     {
-        const bool sceneWasEmpty = engine->objects.empty();
+        const bool sceneWasEmpty = engine->scene.objects.empty();
         auto stream = inputStream(path);
         const Handle(TDocStd_Document) document = newXdeDocument();
         STEPCAFControl_Reader reader;
@@ -269,16 +269,16 @@ namespace
             throw;
         }
 
-        engine->stepDocuments.push_back(document);
-        engine->lastStepImportObjectIds = std::move(leafObjectIds);
+        engine->documents.stepDocuments.push_back(document);
+        engine->documents.lastStepImportObjectIds = std::move(leafObjectIds);
         if (sceneWasEmpty)
         {
-            engine->pristineStepDocument = document;
-            engine->pristineStepDocumentMatchesScene = true;
+            engine->documents.pristineStepDocument = document;
+            engine->documents.pristineStepDocumentMatchesScene = true;
         }
         else
         {
-            engine->pristineStepDocumentMatchesScene = false;
+            engine->documents.pristineStepDocumentMatchesScene = false;
         }
         engine->requestRedraw();
         return firstImportedId;
@@ -290,7 +290,7 @@ namespace
         TopoDS_Compound compound;
         builder.MakeCompound(compound);
         int count = 0;
-        for (const auto& pair : engine->objects)
+        for (const auto& pair : engine->scene.objects)
         {
             if (pair.second.kind == OcctObject_Shape && !pair.second.shape.IsNull())
             {
@@ -395,8 +395,8 @@ namespace
         const Handle(XCAFDoc_ColorTool) colorTool = XCAFDoc_DocumentTool::ColorTool(document->Main());
 
         std::vector<std::pair<OcctObjectId, const ObjectEntry*>> shapes;
-        shapes.reserve(engine->objects.size());
-        for (const auto& pair : engine->objects)
+        shapes.reserve(engine->scene.objects.size());
+        for (const auto& pair : engine->scene.objects)
         {
             if (pair.second.kind == OcctObject_Shape && !pair.second.shape.IsNull())
                 shapes.emplace_back(pair.first, &pair.second);
@@ -470,9 +470,9 @@ namespace
 
     void writeStepAll(Engine* engine, const std::filesystem::path& path)
     {
-        if (engine->pristineStepDocumentMatchesScene && !engine->pristineStepDocument.IsNull())
+        if (engine->documents.pristineStepDocumentMatchesScene && !engine->documents.pristineStepDocument.IsNull())
         {
-            writeStepDocument(engine->pristineStepDocument, path);
+            writeStepDocument(engine->documents.pristineStepDocument, path);
             return;
         }
 

@@ -57,7 +57,7 @@ internal static partial class Program
             var targetFramework = contractRoot.GetProperty("dotnet").GetProperty("targetFramework").GetString()
                 ?? throw new InvalidOperationException("dotnet.targetFramework is missing from bridge-contract.json.");
             var bridgeVersion = contractRoot.GetProperty("bridgeVersion").GetString() ?? string.Empty;
-            var abiVersion = contractRoot.GetProperty("nativeAbiVersion").GetInt32();
+            var abiVersion = contractRoot.GetProperty("nativeAbi").GetProperty("current").GetInt32();
             var expectedPublicTypes = api.GetProperty("publicNetTypes").GetInt32();
             var expectedNativeExports = api.GetProperty("nativeExports").GetInt32();
             var expectedViewerExports = api.GetProperty("viewer").GetInt32();

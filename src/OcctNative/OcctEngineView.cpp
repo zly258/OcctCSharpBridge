@@ -44,8 +44,8 @@ extern "C"
             if (entry == nullptr) throw std::invalid_argument("Shape ID does not exist.");
             Bnd_Box box;
             BRepBndLib::Add(shapeWithPresentationTransformation(*entry), box);
-            e->view->FitAll(box, 0.05, Standard_False);
-            e->view->ZFitAll();
+            e->viewerContext.view->FitAll(box, 0.05, Standard_False);
+            e->viewerContext.view->ZFitAll();
             e->requestRedraw();
         });
     }
@@ -54,7 +54,7 @@ extern "C"
     {
         Engine* e = engineOf(h);
         if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { e->view->WindowFit(x1, y1, x2, y2); });
+        return execute(e, [&] { e->viewerContext.view->WindowFit(x1, y1, x2, y2); });
     }
 
     int occt_set_view(OcctHandle h, int orientation)
@@ -74,9 +74,9 @@ extern "C"
                 case OcctView_Bottom: value = V3d_Zneg; break;
                 default: break;
             }
-            e->view->SetProj(value);
-            e->view->FitAll(0.01, Standard_False);
-            e->view->ZFitAll();
+            e->viewerContext.view->SetProj(value);
+            e->viewerContext.view->FitAll(0.01, Standard_False);
+            e->viewerContext.view->ZFitAll();
             e->requestRedraw();
         });
     }
@@ -87,7 +87,7 @@ extern "C"
         if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            e->view->Camera()->SetProjectionType(
+            e->viewerContext.view->Camera()->SetProjectionType(
                 type == OcctProjection_Perspective
                     ? Graphic3d_Camera::Projection_Perspective
                     : Graphic3d_Camera::Projection_Orthographic);
@@ -103,7 +103,7 @@ extern "C"
         {
             if (degrees <= 1.0 || degrees >= 179.0)
                 throw std::invalid_argument("FOV must be between 1 and 179 degrees.");
-            e->view->Camera()->SetFOVy(degrees);
+            e->viewerContext.view->Camera()->SetFOVy(degrees);
             e->requestRedraw();
         });
     }
@@ -114,8 +114,8 @@ extern "C"
         if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            e->view->SetBgGradientStyle(Aspect_GradientFillMethod_None, Standard_False);
-            e->view->SetBackgroundColor(color(r, g, b));
+            e->viewerContext.view->SetBgGradientStyle(Aspect_GradientFillMethod_None, Standard_False);
+            e->viewerContext.view->SetBackgroundColor(color(r, g, b));
             e->requestRedraw();
         });
     }
@@ -126,13 +126,13 @@ extern "C"
         if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            e->displayMode = mode == OcctDisplay_Wireframe ? AIS_WireFrame : AIS_Shaded;
-            for (auto& pair : e->objects)
+            e->viewerContext.displayMode = mode == OcctDisplay_Wireframe ? AIS_WireFrame : AIS_Shaded;
+            for (auto& pair : e->scene.objects)
             {
                 if (pair.second.kind == OcctObject_Shape)
-                    e->context->SetDisplayMode(
+                    e->viewerContext.context->SetDisplayMode(
                         pair.second.presentation,
-                        e->displayMode,
+                        e->viewerContext.displayMode,
                         Standard_False);
             }
             e->requestRedraw();
@@ -146,13 +146,13 @@ extern "C"
         return execute(e, [&]
         {
             if (visible)
-                e->view->TriedronDisplay(
+                e->viewerContext.view->TriedronDisplay(
                     Aspect_TOTP_RIGHT_LOWER,
                     Quantity_NOC_GRAY40,
                     0.08,
                     V3d_ZBUFFER);
             else
-                e->view->TriedronErase();
+                e->viewerContext.view->TriedronErase();
             e->requestRedraw();
         });
     }
@@ -163,11 +163,11 @@ extern "C"
         if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            if (e->viewCube.IsNull()) throw std::runtime_error("The view cube has not been initialized.");
+            if (e->viewerContext.viewCube.IsNull()) throw std::runtime_error("The view cube has not been initialized.");
             if (visible != 0)
-                e->context->Display(e->viewCube, Standard_False);
+                e->viewerContext.context->Display(e->viewerContext.viewCube, Standard_False);
             else
-                e->context->Erase(e->viewCube, Standard_False);
+                e->viewerContext.context->Erase(e->viewerContext.viewCube, Standard_False);
             e->requestRedraw();
         });
     }
@@ -178,7 +178,7 @@ extern "C"
         if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            e->view->SetComputedMode(enabled != 0);
+            e->viewerContext.view->SetComputedMode(enabled != 0);
             e->requestRedraw();
         });
     }
@@ -199,23 +199,23 @@ extern "C"
 
             const double angleRadians =
                 deviationAngleDegrees * 3.14159265358979323846 / 180.0;
-            const Handle(Prs3d_Drawer)& drawer = e->context->DefaultDrawer();
+            const Handle(Prs3d_Drawer)& drawer = e->viewerContext.context->DefaultDrawer();
             drawer->SetDeviationCoefficient(deviationCoefficient);
             drawer->SetDeviationAngle(angleRadians);
             if (applyExisting != 0)
             {
-                for (auto& pair : e->objects)
+                for (auto& pair : e->scene.objects)
                 {
                     if (pair.second.kind != OcctObject_Shape || pair.second.presentation.IsNull()) continue;
-                    e->context->SetDeviationCoefficient(
+                    e->viewerContext.context->SetDeviationCoefficient(
                         pair.second.presentation,
                         deviationCoefficient,
                         Standard_False);
-                    e->context->SetDeviationAngle(
+                    e->viewerContext.context->SetDeviationAngle(
                         pair.second.presentation,
                         angleRadians,
                         Standard_False);
-                    e->context->Redisplay(
+                    e->viewerContext.context->Redisplay(
                         pair.second.presentation,
                         Standard_False,
                         Standard_True);
@@ -232,15 +232,15 @@ extern "C"
         return execute(e, [&]
         {
             const Graphic3d_MaterialAspect aspect(materialName(material));
-            const Handle(Prs3d_Drawer)& drawer = e->context->DefaultDrawer();
+            const Handle(Prs3d_Drawer)& drawer = e->viewerContext.context->DefaultDrawer();
             drawer->SetupOwnShadingAspect();
             drawer->ShadingAspect()->SetMaterial(aspect);
             if (applyExisting != 0)
             {
-                for (auto& pair : e->objects)
+                for (auto& pair : e->scene.objects)
                 {
                     if (pair.second.kind != OcctObject_Shape || pair.second.presentation.IsNull()) continue;
-                    e->context->SetMaterial(pair.second.presentation, aspect, Standard_False);
+                    e->viewerContext.context->SetMaterial(pair.second.presentation, aspect, Standard_False);
                 }
             }
             e->requestRedraw();
@@ -253,14 +253,14 @@ extern "C"
         if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            removeAllLights(e->viewer);
-            e->customAmbientLight.Nullify();
-            e->customDirectionalLight.Nullify();
-            e->customSunLight.Nullify();
-            e->customFillLight.Nullify();
-            e->viewer->SetDefaultLights();
-            e->viewer->SetLightOn();
-            e->viewer->UpdateLights();
+            removeAllLights(e->viewerContext.viewer);
+            e->viewerContext.customAmbientLight.Nullify();
+            e->viewerContext.customDirectionalLight.Nullify();
+            e->viewerContext.customSunLight.Nullify();
+            e->viewerContext.customFillLight.Nullify();
+            e->viewerContext.viewer->SetDefaultLights();
+            e->viewerContext.viewer->SetLightOn();
+            e->viewerContext.viewer->UpdateLights();
             e->requestRedraw();
         });
     }
@@ -273,7 +273,7 @@ extern "C"
         {
             const auto p = pathFromUtf8(path);
             if (p.empty()) throw std::invalid_argument("Path is empty.");
-            if (!e->view->Dump(p.string().c_str()))
+            if (!e->viewerContext.view->Dump(p.string().c_str()))
                 throw std::runtime_error("View image export failed.");
         });
     }
@@ -284,7 +284,7 @@ extern "C"
         if (!validateInitialized(e) || result == nullptr) return 0;
         return execute(e, [&]
         {
-            e->view->Convert(x, y, result->x, result->y, result->z);
+            e->viewerContext.view->Convert(x, y, result->x, result->y, result->z);
         });
     }
 
@@ -292,28 +292,28 @@ extern "C"
     {
         Engine* e = engineOf(h);
         if (!validateInitialized(e) || x == nullptr || y == nullptr) return 0;
-        return execute(e, [&] { e->view->Convert(p.x, p.y, p.z, *x, *y); });
+        return execute(e, [&] { e->viewerContext.view->Convert(p.x, p.y, p.z, *x, *y); });
     }
 
     int occt_start_rotation(OcctHandle h, int x, int y)
     {
         Engine* e = engineOf(h);
         if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { e->view->StartRotation(x, y, 0.4); });
+        return execute(e, [&] { e->viewerContext.view->StartRotation(x, y, 0.4); });
     }
 
     int occt_rotation(OcctHandle h, int x, int y)
     {
         Engine* e = engineOf(h);
         if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { e->view->Rotation(x, y); });
+        return execute(e, [&] { e->viewerContext.view->Rotation(x, y); });
     }
 
     int occt_pan(OcctHandle h, int dx, int dy)
     {
         Engine* e = engineOf(h);
         if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { e->view->Pan(dx, dy); });
+        return execute(e, [&] { e->viewerContext.view->Pan(dx, dy); });
     }
 
     int occt_zoom(OcctHandle h, double factor)
@@ -323,7 +323,7 @@ extern "C"
         return execute(e, [&]
         {
             requirePositive(factor, "Zoom factor");
-            e->view->SetZoom(factor, Standard_True);
+            e->viewerContext.view->SetZoom(factor, Standard_True);
         });
     }
 }

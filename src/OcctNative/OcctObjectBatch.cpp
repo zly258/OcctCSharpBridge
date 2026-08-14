@@ -49,7 +49,7 @@ extern "C"
             const auto entries = requireObjects(engine, objectIds, count);
             const Quantity_Color value = color(r, g, b);
             for (ObjectEntry* entry : entries)
-                engine->context->SetColor(entry->presentation, value, Standard_False);
+                engine->viewerContext.context->SetColor(entry->presentation, value, Standard_False);
             if (!entries.empty()) engine->requestRedraw();
         });
     }
@@ -66,7 +66,7 @@ extern "C"
             const auto entries = requireObjects(engine, objectIds, count);
             const double value = std::clamp(transparency, 0.0, 1.0);
             for (ObjectEntry* entry : entries)
-                engine->context->SetTransparency(entry->presentation, value, Standard_False);
+                engine->viewerContext.context->SetTransparency(entry->presentation, value, Standard_False);
             if (!entries.empty()) engine->requestRedraw();
         });
     }
@@ -83,8 +83,8 @@ extern "C"
             const auto entries = requireObjects(engine, objectIds, count);
             for (ObjectEntry* entry : entries)
             {
-                if (visible != 0) engine->context->Display(entry->presentation, Standard_False);
-                else engine->context->Erase(entry->presentation, Standard_False);
+                if (visible != 0) engine->viewerContext.context->Display(entry->presentation, Standard_False);
+                else engine->viewerContext.context->Erase(entry->presentation, Standard_False);
             }
             if (!entries.empty()) engine->requestRedraw();
         });
@@ -102,7 +102,7 @@ extern "C"
             const auto entries = requireObjects(engine, objectIds, count);
             const int mode = displayMode == OcctDisplay_Wireframe ? AIS_WireFrame : AIS_Shaded;
             for (ObjectEntry* entry : entries)
-                engine->context->SetDisplayMode(entry->presentation, mode, Standard_False);
+                engine->viewerContext.context->SetDisplayMode(entry->presentation, mode, Standard_False);
             if (!entries.empty()) engine->requestRedraw();
         });
     }
@@ -119,7 +119,7 @@ extern "C"
             requirePositive(width, "Line width");
             const auto entries = requireObjects(engine, objectIds, count);
             for (ObjectEntry* entry : entries)
-                engine->context->SetWidth(entry->presentation, width, Standard_False);
+                engine->viewerContext.context->SetWidth(entry->presentation, width, Standard_False);
             if (!entries.empty()) engine->requestRedraw();
         });
     }
@@ -136,7 +136,7 @@ extern "C"
             const auto entries = requireObjects(engine, objectIds, count);
             const Graphic3d_MaterialAspect value(materialName(material));
             for (ObjectEntry* entry : entries)
-                engine->context->SetMaterial(entry->presentation, value, Standard_False);
+                engine->viewerContext.context->SetMaterial(entry->presentation, value, Standard_False);
             if (!entries.empty()) engine->requestRedraw();
         });
     }
@@ -151,7 +151,7 @@ extern "C"
         {
             const auto entries = requireObjects(engine, objectIds, count);
             for (ObjectEntry* entry : entries)
-                engine->context->Redisplay(entry->presentation, Standard_False, Standard_True);
+                engine->viewerContext.context->Redisplay(entry->presentation, Standard_False, Standard_True);
             if (!entries.empty()) engine->requestRedraw();
         });
     }
@@ -166,10 +166,10 @@ extern "C"
         return execute(engine, [&]
         {
             const auto entries = requireObjects(engine, objectIds, count);
-            if (appendSelection == 0) engine->context->ClearSelected(Standard_False);
+            if (appendSelection == 0) engine->viewerContext.context->ClearSelected(Standard_False);
             for (ObjectEntry* entry : entries)
-                engine->context->SetSelected(entry->presentation, Standard_False);
-            engine->context->HilightSelected(Standard_False);
+                engine->viewerContext.context->SetSelected(entry->presentation, Standard_False);
+            engine->viewerContext.context->HilightSelected(Standard_False);
             engine->requestRedraw();
         });
     }
@@ -182,7 +182,7 @@ extern "C"
             && engine->isInitialized()
             && entry != nullptr
             && !entry->presentation.IsNull()
-            && engine->context->IsDisplayed(entry->presentation)
+            && engine->viewerContext.context->IsDisplayed(entry->presentation)
             ? 1
             : 0;
     }
@@ -195,7 +195,7 @@ extern "C"
             && engine->isInitialized()
             && entry != nullptr
             && !entry->presentation.IsNull()
-            && engine->context->IsSelected(entry->presentation)
+            && engine->viewerContext.context->IsSelected(entry->presentation)
             ? 1
             : 0;
     }

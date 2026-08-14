@@ -49,7 +49,7 @@ namespace
         result.subshapeIndex = -1;
         result.point = {pickedPoint.X(), pickedPoint.Y(), pickedPoint.Z()};
         result.depth = depth;
-        result.distanceToEye = engine->view->Camera()->Eye().Distance(pickedPoint);
+        result.distanceToEye = engine->viewerContext.view->Camera()->Eye().Distance(pickedPoint);
 
         const ObjectEntry* entry = engine->findObject(objectId);
         if (entry == nullptr || entry->kind != OcctObject_Shape || entry->shape.IsNull()) return true;
@@ -114,8 +114,8 @@ extern "C"
             owners.reserve(static_cast<std::size_t>(ownerCount));
             for (int index = 0; index < ownerCount; ++index) owners.insert(ownerIds[index]);
 
-            const Handle(StdSelect_ViewerSelector3d)& selector = e->context->MainSelector();
-            selector->Pick(x, y, e->view);
+            const Handle(StdSelect_ViewerSelector3d)& selector = e->viewerContext.context->MainSelector();
+            selector->Pick(x, y, e->viewerContext.view);
 
             int filled = 0;
             for (int rank = 1; rank <= selector->NbPicked() && filled < maxHits; ++rank)

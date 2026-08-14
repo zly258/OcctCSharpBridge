@@ -155,7 +155,7 @@ extern "C"
             else
                 component->SetPnt(point(position));
 
-            engine->context->Redisplay(presentation, Standard_False);
+            engine->viewerContext.context->Redisplay(presentation, Standard_False);
             engine->requestRedraw();
         });
     }
@@ -176,7 +176,7 @@ extern "C"
         {
             Handle(AIS_Point) presentation = requiredPoint(engine, pointId);
             applyPointStyle(presentation, marker, scale, r, g, b);
-            engine->context->Redisplay(presentation, Standard_False);
+            engine->viewerContext.context->Redisplay(presentation, Standard_False);
             engine->requestRedraw();
         });
     }
@@ -218,7 +218,7 @@ extern "C"
         {
             Handle(AIS_Point) presentation = requiredPoint(engine, pointId);
             applyPixmapStyle(presentation, width, height, pixels, pixelCount, pixelFormat);
-            engine->context->Redisplay(presentation, Standard_False);
+            engine->viewerContext.context->Redisplay(presentation, Standard_False);
             engine->requestRedraw();
         });
     }

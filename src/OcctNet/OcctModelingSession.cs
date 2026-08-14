@@ -12,27 +12,27 @@ public sealed partial class OcctModelingSession : IDisposable
     private static long s_nextOwnerId;
 
     private readonly long _ownerId = Interlocked.Increment(ref s_nextOwnerId);
-    private readonly OcctModelingSafeHandle _safeHandle;
-    private IntPtr _handle;
+    private readonly OcctModelingSafeHandle _handle;
 
     public OcctModelingSession()
     {
         OcctRuntime.Configure();
         OcctBridgeInfo.EnsureCompatible();
 
-        var nativeHandle = ModelNativeMethods.occt_model_create();
-        if (nativeHandle == IntPtr.Zero)
-            throw new OcctException("Unable to create the native OCCT modeling session.", nameof(OcctModelingSession));
-
-        _safeHandle = new OcctModelingSafeHandle(nativeHandle);
-        _handle = nativeHandle;
+        var safeHandle = ModelNativeMethods.occt_model_session_create();
+        if (safeHandle is null || safeHandle.IsInvalid)
+        {
+            safeHandle?.Dispose();
+            throw new OcctException("Unable to create the native OCCT modeling session.", OcctStatus.ErrorUnknown, nameof(OcctModelingSession));
+        }
+        _handle = safeHandle;
     }
 
     internal long OwnerId => _ownerId;
 
-    public bool IsDisposed => Volatile.Read(ref _handle) == IntPtr.Zero || _safeHandle.IsClosed;
+    public bool IsDisposed => _handle.IsClosed || _handle.IsInvalid;
 
-    internal IntPtr NativeHandle
+    internal OcctModelingSafeHandle NativeHandle
     {
         get
         {
@@ -119,7 +119,7 @@ public sealed partial class OcctModelingSession : IDisposable
         return CheckShape(ModelNativeMethods.occt_model_copy_shape(_handle, shape.Id));
     }
 
-    private delegate int PropertyCall(IntPtr handle, long id, out OcctMassProperties result);
+    private delegate int PropertyCall(OcctModelingSafeHandle handle, long id, out OcctMassProperties result);
 
     private OcctMassProperties GetProperties(OcctModelShape shape, PropertyCall call)
     {
@@ -172,21 +172,17 @@ public sealed partial class OcctModelingSession : IDisposable
 
     private OcctException CreateException(string? operation = null)
     {
-        var pointer = _handle == IntPtr.Zero
-            ? IntPtr.Zero
-            : ModelNativeMethods.occt_model_last_error(_handle);
-        var nativeMessage = pointer == IntPtr.Zero ? null : Marshal.PtrToStringUTF8(pointer);
+        var (status, nativeMessage) = NativeError.ReadModelingSession(_handle);
         var message = string.IsNullOrWhiteSpace(nativeMessage)
             ? "The native OCCT modeling operation failed."
             : nativeMessage;
-        return new OcctException(message, operation, nativeMessage);
+        return new OcctException(message, status, operation, nativeMessage);
     }
 
     private void EnsureNotDisposed() => ObjectDisposedException.ThrowIf(IsDisposed, this);
 
     public void Dispose()
     {
-        if (Interlocked.Exchange(ref _handle, IntPtr.Zero) == IntPtr.Zero) return;
-        _safeHandle.Dispose();
+        _handle.Dispose();
     }
 }

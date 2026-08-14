@@ -40,7 +40,7 @@ namespace
         Standard_ShortReal& factor,
         Standard_ShortReal& units)
     {
-        const Handle(Prs3d_Drawer)& drawer = engine->context->DefaultDrawer();
+        const Handle(Prs3d_Drawer)& drawer = engine->viewerContext.context->DefaultDrawer();
         if (drawer.IsNull() || drawer->ShadingAspect().IsNull()
             || drawer->ShadingAspect()->Aspect().IsNull())
         {
@@ -66,7 +66,7 @@ namespace
 
     void redisplayObject(Engine* engine, const Handle(AIS_InteractiveObject)& presentation)
     {
-        engine->context->Redisplay(presentation, Standard_False, Standard_True);
+        engine->viewerContext.context->Redisplay(presentation, Standard_False, Standard_True);
     }
 }
 
@@ -80,8 +80,8 @@ extern "C"
         {
             if (!std::isfinite(scaleFactor) || scaleFactor <= 0.0)
                 throw std::invalid_argument("Auto Z-fit scale factor must be finite and greater than zero.");
-            e->view->SetAutoZFitMode(enabled != 0, scaleFactor);
-            if (enabled != 0) e->view->AutoZFit();
+            e->viewerContext.view->SetAutoZFitMode(enabled != 0, scaleFactor);
+            if (enabled != 0) e->viewerContext.view->AutoZFit();
             e->requestRedraw();
         });
     }
@@ -92,8 +92,8 @@ extern "C"
         if (!validateInitialized(e) || result == nullptr) return 0;
         return execute(e, [&]
         {
-            result->enabled = e->view->AutoZFitMode() ? 1 : 0;
-            result->scaleFactor = e->view->AutoZFitScaleFactor();
+            result->enabled = e->viewerContext.view->AutoZFitMode() ? 1 : 0;
+            result->scaleFactor = e->viewerContext.view->AutoZFitScaleFactor();
         });
     }
 
@@ -103,7 +103,7 @@ extern "C"
         if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            e->view->AutoZFit();
+            e->viewerContext.view->AutoZFit();
             e->requestRedraw();
         });
     }
@@ -122,17 +122,17 @@ extern "C"
             validatePolygonOffset(mode, factor, units);
             const Standard_ShortReal nativeFactor = static_cast<Standard_ShortReal>(factor);
             const Standard_ShortReal nativeUnits = static_cast<Standard_ShortReal>(units);
-            const Handle(Prs3d_Drawer)& drawer = e->context->DefaultDrawer();
+            const Handle(Prs3d_Drawer)& drawer = e->viewerContext.context->DefaultDrawer();
             drawer->SetupOwnShadingAspect();
             drawer->SetFaceBoundaryDraw(Standard_True);
             drawer->ShadingAspect()->Aspect()->SetPolygonOffsets(mode, nativeFactor, nativeUnits);
 
             if (applyExisting != 0)
             {
-                for (auto& pair : e->objects)
+                for (auto& pair : e->scene.objects)
                 {
                     if (pair.second.kind != OcctObject_Shape || pair.second.presentation.IsNull()) continue;
-                    e->context->SetPolygonOffsets(
+                    e->viewerContext.context->SetPolygonOffsets(
                         pair.second.presentation,
                         mode,
                         nativeFactor,
@@ -172,7 +172,7 @@ extern "C"
         {
             validatePolygonOffset(mode, factor, units);
             ObjectEntry& entry = requiredObject(e, id);
-            e->context->SetPolygonOffsets(
+            e->viewerContext.context->SetPolygonOffsets(
                 entry.presentation,
                 mode,
                 static_cast<Standard_ShortReal>(factor),
@@ -196,8 +196,8 @@ extern "C"
             Standard_Integer mode = Aspect_POM_Fill;
             Standard_ShortReal factor = 1.0f;
             Standard_ShortReal units = 1.0f;
-            if (e->context->HasPolygonOffsets(entry.presentation))
-                e->context->PolygonOffsets(entry.presentation, mode, factor, units);
+            if (e->viewerContext.context->HasPolygonOffsets(entry.presentation))
+                e->viewerContext.context->PolygonOffsets(entry.presentation, mode, factor, units);
             else
                 readDefaultPolygonOffset(e, mode, factor, units);
             writePolygonOffset(result, mode, factor, units);
@@ -215,7 +215,7 @@ extern "C"
             Standard_ShortReal factor = 1.0f;
             Standard_ShortReal units = 1.0f;
             readDefaultPolygonOffset(e, mode, factor, units);
-            e->context->SetPolygonOffsets(entry.presentation, mode, factor, units, Standard_False);
+            e->viewerContext.context->SetPolygonOffsets(entry.presentation, mode, factor, units, Standard_False);
             redisplayObject(e, entry.presentation);
             e->requestRedraw();
         });

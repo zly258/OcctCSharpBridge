@@ -97,6 +97,45 @@ namespace OcctModelingInternal
         return {shapeId, operationId, 1, 0, 0};
     }
 
+    inline HistoryLineage& materializeHistoryLineage(
+        ModelSession* model,
+        OcctOperationId operationId,
+        OcctObjectId sourceId)
+    {
+        OperationRecord& operation = requireOperation(model, operationId);
+        HistoryLineage& lineage = operation.lineageBySource[sourceId];
+        const auto idsAreAlive = [&](const std::vector<OcctObjectId>& ids)
+        {
+            for (const OcctObjectId id : ids)
+            {
+                const auto iterator = model->shapes.find(id);
+                if (iterator == model->shapes.end() || iterator->second.IsNull()) return false;
+            }
+            return true;
+        };
+        if (lineage.materialized && idsAreAlive(lineage.generated) && idsAreAlive(lineage.modified))
+            return lineage;
+
+        lineage.generated.clear();
+        lineage.modified.clear();
+        lineage.removed = false;
+        const TopoDS_Shape& source = model->requireShape(sourceId);
+        if (!operation.history.IsNull())
+        {
+            const auto append = [&](const TopTools_ListOfShape& shapes, std::vector<OcctObjectId>& ids)
+            {
+                ids.reserve(static_cast<std::size_t>(shapes.Size()));
+                for (TopTools_ListIteratorOfListOfShape iterator(shapes); iterator.More(); iterator.Next())
+                    ids.push_back(model->addShape(iterator.Value()));
+            };
+            append(operation.history->Generated(source), lineage.generated);
+            append(operation.history->Modified(source), lineage.modified);
+            lineage.removed = operation.history->IsRemoved(source);
+        }
+        lineage.materialized = true;
+        return lineage;
+    }
+
     inline int historyCopy(
         ModelSession* model,
         OcctOperationId operationId,
@@ -106,24 +145,15 @@ namespace OcctModelingInternal
         int capacity)
     {
         if (capacity < 0) throw std::invalid_argument("History buffer capacity must not be negative.");
-        const OperationRecord& operation = requireOperation(model, operationId);
-        if (operation.history.IsNull()) return 0;
-
-        const TopoDS_Shape& source = model->requireShape(sourceId);
-        const auto& list = generated
-            ? operation.history->Generated(source)
-            : operation.history->Modified(source);
-        const int count = list.Size();
+        HistoryLineage& lineage = materializeHistoryLineage(model, operationId, sourceId);
+        const std::vector<OcctObjectId>& ids = generated ? lineage.generated : lineage.modified;
+        const int count = static_cast<int>(ids.size());
         if (results == nullptr)
         {
             if (capacity != 0) throw std::invalid_argument("Null history buffer requires zero capacity.");
             return count;
         }
         if (capacity < count) throw std::invalid_argument("History buffer capacity is smaller than the result count.");
-
-        int index = 0;
-        for (TopTools_ListIteratorOfListOfShape iterator(list); iterator.More(); iterator.Next(), ++index)
-            results[index] = model->addShape(iterator.Value());
+        std::copy(ids.begin(), ids.end(), results);
         return count;
-    }
-}
+    }}

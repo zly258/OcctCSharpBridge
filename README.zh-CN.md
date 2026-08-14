@@ -14,11 +14,11 @@ Avalonia 不再放在 `main`。独立的 [`avalonia`](https://github.com/zly258/
 
 | 项目 | 当前源码 |
 | --- | --- |
-| Bridge | **2.7.0** |
-| Native ABI | **4** |
-| Native exports / P/Invoke | **419 / 419** |
-| Public .NET types | **139** |
-| Viewer / Modeling API | **285 / 134** |
+| Bridge | **3.0.0-preview.1** |
+| Native ABI | **5 当前 / 4 兼容** |
+| Native exports / P/Invoke | **431 / 431** |
+| Public .NET types | **141** |
+| Viewer / Modeling API | **292 / 139** |
 | OCCT | **7.9.0** |
 | .NET SDK | **10.0.302** |
 | Target Framework | **`net10.0-windows`** |

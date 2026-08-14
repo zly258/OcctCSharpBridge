@@ -92,9 +92,9 @@ namespace
     int availableObjectClipPlanes(Engine* engine)
     {
         int viewPlaneCount = 0;
-        const Handle(Graphic3d_SequenceOfHClipPlane)& viewPlanes = engine->view->ClipPlanes();
+        const Handle(Graphic3d_SequenceOfHClipPlane)& viewPlanes = engine->viewerContext.view->ClipPlanes();
         if (!viewPlanes.IsNull()) viewPlaneCount = viewPlanes->Size();
-        return std::max(0, engine->view->PlaneLimit() - viewPlaneCount);
+        return std::max(0, engine->viewerContext.view->PlaneLimit() - viewPlaneCount);
     }
 }
 
@@ -113,7 +113,7 @@ extern "C"
                 throw std::invalid_argument("Object clip plane count exceeds the remaining view plane limit.");
             ObjectEntry& entry = requiredObject(e, objectId);
             entry.presentation->SetClipPlanes(clipPlanes(planes, count));
-            e->context->Redisplay(entry.presentation, Standard_False);
+            e->viewerContext.context->Redisplay(entry.presentation, Standard_False);
             e->requestRedraw();
         });
     }
@@ -127,9 +127,9 @@ extern "C"
         return execute(e, [&]
         {
             const Prs3d_TypeOfHighlight type = highlightKind(kind);
-            applyHighlightStyle(e->context->HighlightStyle(type), *settings);
+            applyHighlightStyle(e->viewerContext.context->HighlightStyle(type), *settings);
             if (type == Prs3d_TypeOfHighlight_Selected || type == Prs3d_TypeOfHighlight_LocalSelected)
-                e->context->UpdateSelected(Standard_False);
+                e->viewerContext.context->UpdateSelected(Standard_False);
             e->requestRedraw();
         });
     }
@@ -145,7 +145,7 @@ extern "C"
         {
             ObjectEntry& entry = requiredObject(e, objectId);
             Handle(Prs3d_Drawer) drawer = new Prs3d_Drawer();
-            drawer->SetLink(e->context->DefaultDrawer());
+            drawer->SetLink(e->viewerContext.context->DefaultDrawer());
             applyHighlightStyle(drawer, *settings);
             if (dynamic != 0) entry.presentation->SetDynamicHilightAttributes(drawer);
             else entry.presentation->SetHilightAttributes(drawer);
@@ -175,7 +175,7 @@ extern "C"
         return execute(e, [&]
         {
             ObjectEntry& entry = requiredObject(e, objectId);
-            e->context->UnsetDisplayMode(entry.presentation, Standard_False);
+            e->viewerContext.context->UnsetDisplayMode(entry.presentation, Standard_False);
             e->requestRedraw();
         });
     }
@@ -235,7 +235,7 @@ extern "C"
         {
             ObjectEntry& entry = requiredObject(e, objectId);
             entry.presentation->SetInfiniteState(infinite != 0);
-            e->context->Redisplay(entry.presentation, Standard_False, Standard_True);
+            e->viewerContext.context->Redisplay(entry.presentation, Standard_False, Standard_True);
             e->requestRedraw();
         });
     }

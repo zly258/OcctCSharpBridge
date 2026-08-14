@@ -36,26 +36,26 @@ extern "C"
             const Standard_Real transparency = std::clamp(fillTransparency, 0.0, 1.0);
             const Standard_Real width = std::max(lineWidth, 0.5);
 
-            if (engine->selectionRubberBand.IsNull())
+            if (engine->viewerContext.selectionRubberBand.IsNull())
             {
-                engine->selectionRubberBand = new AIS_RubberBand(
+                engine->viewerContext.selectionRubberBand = new AIS_RubberBand(
                     lineColor,
                     Aspect_TOL_SOLID,
                     fillColor,
                     transparency,
                     width);
-                engine->selectionRubberBand->SetZLayer(Graphic3d_ZLayerId_TopOSD);
-                engine->selectionRubberBand->SetTransformPersistence(
+                engine->viewerContext.selectionRubberBand->SetZLayer(Graphic3d_ZLayerId_TopOSD);
+                engine->viewerContext.selectionRubberBand->SetTransformPersistence(
                     new Graphic3d_TransformPers(Graphic3d_TMF_2d, Aspect_TOTP_LEFT_LOWER));
-                engine->selectionRubberBand->SetDisplayMode(0);
-                engine->selectionRubberBand->SetMutable(Standard_True);
+                engine->viewerContext.selectionRubberBand->SetDisplayMode(0);
+                engine->viewerContext.selectionRubberBand->SetMutable(Standard_True);
             }
             else
             {
-                engine->selectionRubberBand->SetLineColor(lineColor);
-                engine->selectionRubberBand->SetLineType(Aspect_TOL_SOLID);
-                engine->selectionRubberBand->SetLineWidth(width);
-                engine->selectionRubberBand->SetFilling(fillColor, transparency);
+                engine->viewerContext.selectionRubberBand->SetLineColor(lineColor);
+                engine->viewerContext.selectionRubberBand->SetLineType(Aspect_TOL_SOLID);
+                engine->viewerContext.selectionRubberBand->SetLineWidth(width);
+                engine->viewerContext.selectionRubberBand->SetFilling(fillColor, transparency);
             }
 
             const int minX = std::min(x1, x2);
@@ -64,23 +64,23 @@ extern "C"
             const int maxClientY = std::max(y1, y2);
             Standard_Integer windowWidth = 0;
             Standard_Integer windowHeight = 0;
-            engine->window->Size(windowWidth, windowHeight);
+            engine->viewerContext.window->Size(windowWidth, windowHeight);
             if (windowHeight <= 0) throw std::runtime_error("The OCCT window height is invalid.");
 
             // AIS_RubberBand with LEFT_LOWER persistence uses a bottom-left Y origin,
             // while WinForms/WPF mouse coordinates use a top-left Y origin.
             const int minY = windowHeight - maxClientY;
             const int maxY = windowHeight - minClientY;
-            engine->selectionRubberBand->SetRectangle(minX, minY, maxX, maxY);
+            engine->viewerContext.selectionRubberBand->SetRectangle(minX, minY, maxX, maxY);
 
-            if (engine->context->IsDisplayed(engine->selectionRubberBand))
+            if (engine->viewerContext.context->IsDisplayed(engine->viewerContext.selectionRubberBand))
             {
-                engine->context->Redisplay(engine->selectionRubberBand, Standard_False);
+                engine->viewerContext.context->Redisplay(engine->viewerContext.selectionRubberBand, Standard_False);
             }
             else
             {
-                engine->context->Display(
-                    engine->selectionRubberBand,
+                engine->viewerContext.context->Display(
+                    engine->viewerContext.selectionRubberBand,
                     0,
                     -1,
                     Standard_False,
@@ -98,13 +98,13 @@ extern "C"
 
         return execute(engine, [&]
         {
-            if (engine->selectionRubberBand.IsNull()) return;
+            if (engine->viewerContext.selectionRubberBand.IsNull()) return;
 
-            if (engine->context->IsDisplayed(engine->selectionRubberBand))
+            if (engine->viewerContext.context->IsDisplayed(engine->viewerContext.selectionRubberBand))
             {
-                engine->context->Remove(engine->selectionRubberBand, Standard_False);
+                engine->viewerContext.context->Remove(engine->viewerContext.selectionRubberBand, Standard_False);
             }
-            engine->selectionRubberBand->ClearPoints();
+            engine->viewerContext.selectionRubberBand->ClearPoints();
             engine->requestRedraw();
         });
     }

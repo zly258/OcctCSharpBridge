@@ -61,6 +61,13 @@ extern "C"
         int hasErrors;
     };
 
+    struct OcctModelTopologyHistorySummary
+    {
+        int generatedCount;
+        int modifiedCount;
+        OcctBool removed;
+    };
+
     struct OcctModelProjectionResult
     {
         OcctPoint3d point;
@@ -260,6 +267,14 @@ extern "C"
     OCCTBRIDGE_API OcctModelHandle occt_model_create();
     OCCTBRIDGE_API void occt_model_destroy(OcctModelHandle handle);
     OCCTBRIDGE_API const char* occt_model_last_error(OcctModelHandle handle);
+    OCCTBRIDGE_API OcctModelingSessionHandle occt_model_session_create();
+    OCCTBRIDGE_API void occt_model_session_destroy(OcctModelingSessionHandle handle);
+    OCCTBRIDGE_API OcctStatus occt_model_session_last_error_code(OcctModelingSessionHandle handle);
+    OCCTBRIDGE_API OcctStatus occt_model_session_last_error_message(
+        OcctModelingSessionHandle handle,
+        char* buffer,
+        int capacity,
+        int* required);
     OCCTBRIDGE_API const char* occt_model_capabilities();
     OCCTBRIDGE_API int occt_model_shape_ids_copy(OcctModelHandle handle, OcctObjectId* results, int capacity);
     OCCTBRIDGE_API int occt_model_shape_exists(OcctModelHandle handle, OcctObjectId shapeId);
@@ -377,6 +392,11 @@ extern "C"
     OCCTBRIDGE_API int occt_model_history_modified_copy(OcctModelHandle handle, OcctOperationId operationId, OcctObjectId sourceShapeId, OcctObjectId* results, int capacity);
     OCCTBRIDGE_API int occt_model_history_is_removed(OcctModelHandle handle, OcctOperationId operationId, OcctObjectId sourceShapeId);
 
+    OCCTBRIDGE_API OcctStatus occt_model_history_summary(
+        OcctModelHandle handle,
+        OcctOperationId operationId,
+        OcctObjectId sourceShapeId,
+        OcctModelTopologyHistorySummary* result);
     OCCTBRIDGE_API OcctObjectId occt_model_display_in_engine(OcctHandle engineHandle, OcctModelHandle modelHandle, OcctObjectId shapeId, int fit);
     OCCTBRIDGE_API int occt_update_object_shape_from_model(OcctHandle engineHandle, OcctModelHandle modelHandle, OcctObjectId viewerObjectId, OcctObjectId modelShapeId, unsigned int options);
 }

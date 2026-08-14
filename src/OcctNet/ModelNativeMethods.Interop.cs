@@ -6,8 +6,8 @@ internal static partial class ModelNativeMethods
 {
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern long occt_model_display_in_engine(
-        IntPtr engineHandle,
-        IntPtr modelHandle,
+        OcctEngineSafeHandle engineHandle,
+        OcctModelingSafeHandle modelHandle,
         long shapeId,
         int fit);
 }

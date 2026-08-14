@@ -16,6 +16,14 @@ public sealed partial class OcctModelingSession
         return ModelNativeMethods.occt_model_history_is_removed(_handle, operationId, source.Id) != 0;
     }
 
+    public OcctTopologyHistorySummary GetTopologyHistorySummary(long operationId, OcctModelShape source)
+    {
+        EnsureShape(source);
+        var status = ModelNativeMethods.occt_model_history_summary(_handle, operationId, source.Id, out var result);
+        if (status != OcctStatus.Ok) throw CreateException();
+        return result.ToManaged();
+    }
+
     public string GetOperationReport(long operationId)
     {
         EnsureNotDisposed();

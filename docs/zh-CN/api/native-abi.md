@@ -1,8 +1,8 @@
 # OcctNative C ABI 完整参考
 
-- **Bridge:** `2.7.0`
-- **Native ABI:** `4`
-- **Exports:** `419`
+- **Bridge:** `3.0.0-preview.1`
+- **Native ABI:** `5`
+- **Exports:** `431`
 
 ## `OcctNative.h`
 
@@ -30,6 +30,38 @@ OCCTBRIDGE_API void occt_destroy(OcctHandle handle);
 OCCTBRIDGE_API const char* occt_last_error(OcctHandle handle);
 ```
 
+### `occt_engine_create`
+
+- **返回:** `OcctEngineHandle`
+
+```cpp
+OCCTBRIDGE_API OcctEngineHandle occt_engine_create();
+```
+
+### `occt_engine_destroy`
+
+- **返回:** `void`
+
+```cpp
+OCCTBRIDGE_API void occt_engine_destroy(OcctEngineHandle handle);
+```
+
+### `occt_engine_last_error_code`
+
+- **返回:** `OcctStatus`
+
+```cpp
+OCCTBRIDGE_API OcctStatus occt_engine_last_error_code(OcctEngineHandle handle);
+```
+
+### `occt_engine_last_error_message`
+
+- **返回:** `OcctStatus`
+
+```cpp
+OCCTBRIDGE_API OcctStatus occt_engine_last_error_message( OcctEngineHandle handle, char* buffer, int capacity, int* required);
+```
+
 ### `occt_version`
 
 - **返回:** `const char*`
@@ -44,6 +76,14 @@ OCCTBRIDGE_API const char* occt_version();
 
 ```cpp
 OCCTBRIDGE_API int occt_bridge_abi_version();
+```
+
+### `occt_bridge_current_abi_version`
+
+- **返回:** `int`
+
+```cpp
+OCCTBRIDGE_API int occt_bridge_current_abi_version();
 ```
 
 ### `occt_bridge_version`
@@ -1666,6 +1706,24 @@ OCCTBRIDGE_API int occt_resize_surface(OcctHandle handle);
 OCCTBRIDGE_API const char* occt_get_last_step_document_json(OcctHandle handle);
 ```
 
+## `OcctNativeSurface.h`
+
+### `occt_engine_initialize_surface`
+
+- **返回:** `OcctStatus`
+
+```cpp
+OCCTBRIDGE_API OcctStatus occt_engine_initialize_surface( OcctEngineHandle handle, const OcctNativeSurface* surface);
+```
+
+### `occt_initialize_surface`
+
+- **返回:** `int`
+
+```cpp
+OCCTBRIDGE_API int occt_initialize_surface(OcctHandle handle, const void* legacySurface);
+```
+
 ## `OcctPoints.h`
 
 ### `occt_add_point`
@@ -2324,6 +2382,38 @@ OCCTBRIDGE_API void occt_model_destroy(OcctModelHandle handle);
 
 ```cpp
 OCCTBRIDGE_API const char* occt_model_last_error(OcctModelHandle handle);
+```
+
+### `occt_model_session_create`
+
+- **返回:** `OcctModelingSessionHandle`
+
+```cpp
+OCCTBRIDGE_API OcctModelingSessionHandle occt_model_session_create();
+```
+
+### `occt_model_session_destroy`
+
+- **返回:** `void`
+
+```cpp
+OCCTBRIDGE_API void occt_model_session_destroy(OcctModelingSessionHandle handle);
+```
+
+### `occt_model_session_last_error_code`
+
+- **返回:** `OcctStatus`
+
+```cpp
+OCCTBRIDGE_API OcctStatus occt_model_session_last_error_code(OcctModelingSessionHandle handle);
+```
+
+### `occt_model_session_last_error_message`
+
+- **返回:** `OcctStatus`
+
+```cpp
+OCCTBRIDGE_API OcctStatus occt_model_session_last_error_message( OcctModelingSessionHandle handle, char* buffer, int capacity, int* required);
 ```
 
 ### `occt_model_capabilities`
@@ -3172,6 +3262,14 @@ OCCTBRIDGE_API int occt_model_history_modified_copy(OcctModelHandle handle, Occt
 
 ```cpp
 OCCTBRIDGE_API int occt_model_history_is_removed(OcctModelHandle handle, OcctOperationId operationId, OcctObjectId sourceShapeId);
+```
+
+### `occt_model_history_summary`
+
+- **返回:** `OcctStatus`
+
+```cpp
+OCCTBRIDGE_API OcctStatus occt_model_history_summary( OcctModelHandle handle, OcctOperationId operationId, OcctObjectId sourceShapeId, OcctModelTopologyHistorySummary* result);
 ```
 
 ### `occt_model_display_in_engine`

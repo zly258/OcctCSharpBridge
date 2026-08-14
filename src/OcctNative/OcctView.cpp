@@ -23,7 +23,7 @@ extern "C"
         Engine* e = engineOf(h); if (!validateInitialized(e) || result == nullptr) return 0;
         return execute(e, [&]
         {
-            const Handle(Graphic3d_Camera)& camera = e->view->Camera();
+            const Handle(Graphic3d_Camera)& camera = e->viewerContext.view->Camera();
             const gp_Pnt eye = camera->Eye();
             const gp_Pnt center = camera->Center();
             const gp_Dir up = camera->Up();
@@ -42,7 +42,7 @@ extern "C"
         return execute(e, [&]
         {
             requirePositive(state->scale, "Camera scale");
-            const Handle(Graphic3d_Camera)& camera = e->view->Camera();
+            const Handle(Graphic3d_Camera)& camera = e->viewerContext.view->Camera();
             camera->SetEyeAndCenter(point(state->eye), point(state->center));
             camera->SetUp(direction(state->up));
             camera->OrthogonalizeUp();
@@ -54,7 +54,7 @@ extern "C"
     double occt_get_view_scale(OcctHandle h)
     {
         Engine* e = engineOf(h);
-        return e != nullptr && e->isInitialized() ? e->view->Camera()->Scale() : 0.0;
+        return e != nullptr && e->isInitialized() ? e->viewerContext.view->Camera()->Scale() : 0.0;
     }
 
     int occt_set_view_scale(OcctHandle h, double scale)
@@ -63,7 +63,7 @@ extern "C"
         return execute(e, [&]
         {
             requirePositive(scale, "View scale");
-            e->view->Camera()->SetScale(scale);
+            e->viewerContext.view->Camera()->SetScale(scale);
             e->requestRedraw();
         });
     }
@@ -73,7 +73,7 @@ extern "C"
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            e->view->ChangeRenderingParams().IsAntialiasingEnabled = enabled != 0;
+            e->viewerContext.view->ChangeRenderingParams().IsAntialiasingEnabled = enabled != 0;
             e->requestRedraw();
         });
     }
@@ -94,7 +94,7 @@ extern "C"
             if (fillMethod < static_cast<int>(Aspect_GradientFillMethod_None)
                 || fillMethod > static_cast<int>(Aspect_GradientFillMethod_Elliptical))
                 throw std::invalid_argument("Gradient fill method is out of range.");
-            e->view->SetBgGradientColors(
+            e->viewerContext.view->SetBgGradientColors(
                 color(r1, g1, b1),
                 color(r2, g2, b2),
                 static_cast<Aspect_GradientFillMethod>(fillMethod),
@@ -108,9 +108,9 @@ extern "C"
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            for (auto& pair : e->objects)
+            for (auto& pair : e->scene.objects)
                 if (!pair.second.presentation.IsNull())
-                    e->context->Display(pair.second.presentation, Standard_False);
+                    e->viewerContext.context->Display(pair.second.presentation, Standard_False);
             e->requestRedraw();
         });
     }
@@ -120,9 +120,9 @@ extern "C"
         Engine* e = engineOf(h); if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            for (auto& pair : e->objects)
+            for (auto& pair : e->scene.objects)
                 if (!pair.second.presentation.IsNull())
-                    e->context->Erase(pair.second.presentation, Standard_False);
+                    e->viewerContext.context->Erase(pair.second.presentation, Standard_False);
             e->requestRedraw();
         });
     }
@@ -133,7 +133,7 @@ extern "C"
         return execute(e, [&]
         {
             ObjectEntry& entry = requiredObject(e, id);
-            e->context->Redisplay(entry.presentation, Standard_False, Standard_True);
+            e->viewerContext.context->Redisplay(entry.presentation, Standard_False, Standard_True);
             e->requestRedraw();
         });
     }
@@ -144,9 +144,9 @@ extern "C"
         return execute(e, [&]
         {
             ObjectEntry& entry = requiredObject(e, id);
-            e->context->HilightWithColor(
+            e->viewerContext.context->HilightWithColor(
                 entry.presentation,
-                e->context->HighlightStyle(),
+                e->viewerContext.context->HighlightStyle(),
                 Standard_False);
             e->requestRedraw();
         });
@@ -158,7 +158,7 @@ extern "C"
         return execute(e, [&]
         {
             ObjectEntry& entry = requiredObject(e, id);
-            e->context->Unhilight(entry.presentation, Standard_False);
+            e->viewerContext.context->Unhilight(entry.presentation, Standard_False);
             e->requestRedraw();
         });
     }
@@ -169,14 +169,14 @@ extern "C"
         return executeObject(e, [&]() -> OcctObjectId
         {
             int current = 0;
-            for (e->context->InitSelected();
-                 e->context->MoreSelected();
-                 e->context->NextSelected(), ++current)
+            for (e->viewerContext.context->InitSelected();
+                 e->viewerContext.context->MoreSelected();
+                 e->viewerContext.context->NextSelected(), ++current)
             {
                 if (current != index) continue;
-                if (!e->context->HasSelectedShape())
+                if (!e->viewerContext.context->HasSelectedShape())
                     throw std::runtime_error("The selected item has no topological shape.");
-                const TopoDS_Shape selected = e->context->SelectedShape();
+                const TopoDS_Shape selected = e->viewerContext.context->SelectedShape();
                 if (selected.IsNull())
                     throw std::runtime_error("The selected topological subshape is null.");
                 return e->addShape(selected, false, "SelectedSubshape");

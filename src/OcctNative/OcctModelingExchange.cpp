@@ -62,13 +62,14 @@ extern "C"
     {
         ModelSession* model = modelOf(handle);
         if (model == nullptr) return 0;
+        model->errors.clear();
         const auto path = OcctBridge::pathFromUtf8(utf8Path);
         const std::string extension = OcctBridge::lowerExtension(path);
         if (extension == ".step" || extension == ".stp") return occt_model_import_step(handle, utf8Path);
         if (extension == ".iges" || extension == ".igs") return occt_model_import_iges(handle, utf8Path);
         if (extension == ".brep" || extension == ".rle") return occt_model_import_brep(handle, utf8Path);
         if (extension == ".stl") return occt_model_import_stl(handle, utf8Path);
-        model->lastError = "Unsupported file extension. Supported: STEP, IGES, BREP and STL.";
+        model->errors.set(OcctStatus_ErrorFormat, "Unsupported file extension. Supported: STEP, IGES, BREP and STL.");
         return 0;
     }
 

@@ -30,7 +30,7 @@ extern "C"
             if (presentation.IsNull()) throw std::invalid_argument("Viewer object is not an AIS_Shape.");
 
             const TopoDS_Shape newShape = model->requireShape(modelShapeId);
-            const bool wasSelected = engine->context->IsSelected(entry->presentation);
+            const bool wasSelected = engine->viewerContext.context->IsSelected(entry->presentation);
             const bool wasSelectable = entry->selectable;
             const bool hadTransform = entry->presentation->HasTransformation();
             const gp_Trsf transform = entry->presentation->LocalTransformation();
@@ -49,18 +49,18 @@ extern "C"
                 entry->selectable = wasSelectable;
 
             if ((options & OcctShapeUpdate_RecomputePresentation) != 0)
-                engine->context->Redisplay(entry->presentation, Standard_False, Standard_True);
+                engine->viewerContext.context->Redisplay(entry->presentation, Standard_False, Standard_True);
             else
                 entry->presentation->SetToUpdate();
 
             if ((options & OcctShapeUpdate_RecomputeSelection) != 0)
-                engine->context->RecomputeSelectionOnly(entry->presentation);
+                engine->viewerContext.context->RecomputeSelectionOnly(entry->presentation);
 
             engine->applySelectionMode(entry->presentation);
             if ((options & OcctShapeUpdate_PreserveSelection) != 0 && wasSelected && entry->selectable)
-                engine->context->SetSelected(entry->presentation, Standard_False);
-            else if (engine->context->IsSelected(entry->presentation))
-                engine->context->AddOrRemoveSelected(entry->presentation, Standard_False);
+                engine->viewerContext.context->SetSelected(entry->presentation, Standard_False);
+            else if (engine->viewerContext.context->IsSelected(entry->presentation))
+                engine->viewerContext.context->AddOrRemoveSelected(entry->presentation, Standard_False);
 
             engine->requestRedraw();
         });

@@ -22,17 +22,17 @@ internal static class DepthNativeMethods
     }
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_set_auto_z_fit_mode(IntPtr handle, int enabled, double scaleFactor);
+    internal static extern int occt_set_auto_z_fit_mode(OcctEngineSafeHandle handle, int enabled, double scaleFactor);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_get_auto_z_fit_mode(IntPtr handle, out NativeAutoZFitSettings result);
+    internal static extern int occt_get_auto_z_fit_mode(OcctEngineSafeHandle handle, out NativeAutoZFitSettings result);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_auto_z_fit(IntPtr handle);
+    internal static extern int occt_auto_z_fit(OcctEngineSafeHandle handle);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_set_default_polygon_offsets(
-        IntPtr handle,
+        OcctEngineSafeHandle handle,
         int mode,
         double factor,
         double units,
@@ -40,12 +40,12 @@ internal static class DepthNativeMethods
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_get_default_polygon_offsets(
-        IntPtr handle,
+        OcctEngineSafeHandle handle,
         out NativePolygonOffsetSettings result);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_set_object_polygon_offsets(
-        IntPtr handle,
+        OcctEngineSafeHandle handle,
         long objectId,
         int mode,
         double factor,
@@ -53,10 +53,10 @@ internal static class DepthNativeMethods
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_get_object_polygon_offsets(
-        IntPtr handle,
+        OcctEngineSafeHandle handle,
         long objectId,
         out NativePolygonOffsetSettings result);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_reset_object_polygon_offsets(IntPtr handle, long objectId);
+    internal static extern int occt_reset_object_polygon_offsets(OcctEngineSafeHandle handle, long objectId);
 }

@@ -21,16 +21,16 @@ namespace
 
     void removeAllLights(Engine* engine)
     {
-        V3d_ListOfLight lights = engine->viewer->DefinedLights();
+        V3d_ListOfLight lights = engine->viewerContext.viewer->DefinedLights();
         for (V3d_ListOfLight::Iterator iterator(lights); iterator.More(); iterator.Next())
         {
-            engine->viewer->DelLight(iterator.Value());
+            engine->viewerContext.viewer->DelLight(iterator.Value());
         }
 
-        engine->customAmbientLight.Nullify();
-        engine->customDirectionalLight.Nullify();
-        engine->customSunLight.Nullify();
-        engine->customFillLight.Nullify();
+        engine->viewerContext.customAmbientLight.Nullify();
+        engine->viewerContext.customDirectionalLight.Nullify();
+        engine->viewerContext.customSunLight.Nullify();
+        engine->viewerContext.customFillLight.Nullify();
     }
 }
 
@@ -42,9 +42,9 @@ extern "C"
         return execute(e, [&]
         {
             const Quantity_Color value = color(r, g, b);
-            e->context->HighlightStyle(Prs3d_TypeOfHighlight_Selected)->SetColor(value);
-            e->context->HighlightStyle(Prs3d_TypeOfHighlight_LocalSelected)->SetColor(value);
-            e->context->UpdateSelected(Standard_False);
+            e->viewerContext.context->HighlightStyle(Prs3d_TypeOfHighlight_Selected)->SetColor(value);
+            e->viewerContext.context->HighlightStyle(Prs3d_TypeOfHighlight_LocalSelected)->SetColor(value);
+            e->viewerContext.context->UpdateSelected(Standard_False);
             e->requestRedraw();
         });
     }
@@ -55,8 +55,8 @@ extern "C"
         return execute(e, [&]
         {
             const Quantity_Color value = color(r, g, b);
-            e->context->HighlightStyle(Prs3d_TypeOfHighlight_Dynamic)->SetColor(value);
-            e->context->HighlightStyle(Prs3d_TypeOfHighlight_LocalDynamic)->SetColor(value);
+            e->viewerContext.context->HighlightStyle(Prs3d_TypeOfHighlight_Dynamic)->SetColor(value);
+            e->viewerContext.context->HighlightStyle(Prs3d_TypeOfHighlight_LocalDynamic)->SetColor(value);
             e->requestRedraw();
         });
     }
@@ -77,50 +77,50 @@ extern "C"
 
             if (settings->ambientIntensity > 0.0)
             {
-                e->customAmbientLight = new V3d_AmbientLight(lightColor(settings->ambientColor));
-                e->customAmbientLight->SetIntensity(
+                e->viewerContext.customAmbientLight = new V3d_AmbientLight(lightColor(settings->ambientColor));
+                e->viewerContext.customAmbientLight->SetIntensity(
                     static_cast<Standard_ShortReal>(settings->ambientIntensity));
-                e->viewer->AddLight(e->customAmbientLight);
-                e->viewer->SetLightOn(e->customAmbientLight);
+                e->viewerContext.viewer->AddLight(e->viewerContext.customAmbientLight);
+                e->viewerContext.viewer->SetLightOn(e->viewerContext.customAmbientLight);
             }
 
             if (settings->cameraLightEnabled != 0 && settings->cameraLightIntensity > 0.0)
             {
-                e->customDirectionalLight = new V3d_DirectionalLight(
+                e->viewerContext.customDirectionalLight = new V3d_DirectionalLight(
                     direction(settings->cameraLightDirection),
                     lightColor(settings->cameraLightColor),
                     Standard_True);
-                e->customDirectionalLight->SetIntensity(
+                e->viewerContext.customDirectionalLight->SetIntensity(
                     static_cast<Standard_ShortReal>(settings->cameraLightIntensity));
-                e->viewer->AddLight(e->customDirectionalLight);
-                e->viewer->SetLightOn(e->customDirectionalLight);
+                e->viewerContext.viewer->AddLight(e->viewerContext.customDirectionalLight);
+                e->viewerContext.viewer->SetLightOn(e->viewerContext.customDirectionalLight);
             }
 
             if (settings->sunLightEnabled != 0 && settings->sunLightIntensity > 0.0)
             {
-                e->customSunLight = new V3d_DirectionalLight(
+                e->viewerContext.customSunLight = new V3d_DirectionalLight(
                     direction(settings->sunLightDirection),
                     lightColor(settings->sunLightColor),
                     Standard_False);
-                e->customSunLight->SetIntensity(
+                e->viewerContext.customSunLight->SetIntensity(
                     static_cast<Standard_ShortReal>(settings->sunLightIntensity));
-                e->viewer->AddLight(e->customSunLight);
-                e->viewer->SetLightOn(e->customSunLight);
+                e->viewerContext.viewer->AddLight(e->viewerContext.customSunLight);
+                e->viewerContext.viewer->SetLightOn(e->viewerContext.customSunLight);
             }
 
             if (settings->fillLightEnabled != 0 && settings->fillLightIntensity > 0.0)
             {
-                e->customFillLight = new V3d_DirectionalLight(
+                e->viewerContext.customFillLight = new V3d_DirectionalLight(
                     direction(settings->fillLightDirection),
                     lightColor(settings->fillLightColor),
                     Standard_False);
-                e->customFillLight->SetIntensity(
+                e->viewerContext.customFillLight->SetIntensity(
                     static_cast<Standard_ShortReal>(settings->fillLightIntensity));
-                e->viewer->AddLight(e->customFillLight);
-                e->viewer->SetLightOn(e->customFillLight);
+                e->viewerContext.viewer->AddLight(e->viewerContext.customFillLight);
+                e->viewerContext.viewer->SetLightOn(e->viewerContext.customFillLight);
             }
 
-            e->viewer->UpdateLights();
+            e->viewerContext.viewer->UpdateLights();
             e->requestRedraw();
         });
     }

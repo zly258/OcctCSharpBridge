@@ -2,8 +2,8 @@
 
 public sealed partial class OcctModelingSession
 {
-    private delegate long ImportCall(IntPtr handle, string path);
-    private delegate int ExportCall(IntPtr handle, long shapeId, string path);
+    private delegate long ImportCall(OcctModelingSafeHandle handle, string path);
+    private delegate int ExportCall(OcctModelingSafeHandle handle, long shapeId, string path);
 
     public OcctModelShape Import(string filePath)
     {

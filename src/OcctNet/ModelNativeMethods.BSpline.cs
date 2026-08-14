@@ -6,13 +6,13 @@ internal static partial class ModelNativeMethods
 {
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_model_edge_bspline_info(
-        IntPtr handle,
+        OcctModelingSafeHandle handle,
         long edgeId,
         out OcctModelBSplineCurveInfoNative result);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_model_edge_bspline_pole_at(
-        IntPtr handle,
+        OcctModelingSafeHandle handle,
         long edgeId,
         int index,
         out OcctPoint3d pole,
@@ -20,7 +20,7 @@ internal static partial class ModelNativeMethods
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_model_edge_bspline_knot_at(
-        IntPtr handle,
+        OcctModelingSafeHandle handle,
         long edgeId,
         int index,
         out double knot,
@@ -28,13 +28,13 @@ internal static partial class ModelNativeMethods
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_model_face_bspline_info(
-        IntPtr handle,
+        OcctModelingSafeHandle handle,
         long faceId,
         out OcctModelBSplineSurfaceInfoNative result);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_model_face_bspline_pole_at(
-        IntPtr handle,
+        OcctModelingSafeHandle handle,
         long faceId,
         int uIndex,
         int vIndex,
@@ -43,7 +43,7 @@ internal static partial class ModelNativeMethods
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_model_face_bspline_u_knot_at(
-        IntPtr handle,
+        OcctModelingSafeHandle handle,
         long faceId,
         int index,
         out double knot,
@@ -51,7 +51,7 @@ internal static partial class ModelNativeMethods
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_model_face_bspline_v_knot_at(
-        IntPtr handle,
+        OcctModelingSafeHandle handle,
         long faceId,
         int index,
         out double knot,

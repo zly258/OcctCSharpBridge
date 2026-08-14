@@ -1,7 +1,15 @@
 ﻿{
-  "schemaVersion": 1,
-  "bridgeVersion": "2.7.0",
-  "nativeAbiVersion": 4,
+  "schemaVersion": 2,
+  "bridgeVersion": "3.0.0-preview.1",
+  "nativeAbi": {
+    "current": 5,
+    "minimumSupported": 4,
+    "legacy": [4]
+  },
+  "compatibility": {
+    "abi4": "deprecated",
+    "plannedRemoval": "4.0"
+  },
   "occtVersion": "7.9.0",
   "platform": "windows-x64",
   "cmakeMinimumVersion": "3.21",
@@ -13,15 +21,19 @@
     "languageVersion": "14.0"
   },
   "api": {
-    "nativeExports": 419,
-    "managedPInvokes": 419,
-    "publicNetTypes": 139,
-    "viewer": 285,
-    "modeling": 134,
+    "nativeExports": 431,
+    "managedPInvokes": 431,
+    "abi5Exports": 11,
+    "legacyAbi4Exports": 419,
+    "compatibilityExtensions": 1,
+    "publicNetTypes": 141,
+    "viewer": 292,
+    "modeling": 139,
     "nativeHeaders": [
       "OcctNative.h",
       "OcctRenderSurface.h",
       "OcctStepDocument.h",
+      "OcctNativeSurface.h",
       "OcctPoints.h",
       "OcctSelectionOverlay.h",
       "OcctSelectionState.h",

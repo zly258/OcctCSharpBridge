@@ -180,7 +180,7 @@ namespace
     OcctObjectId objectIdOfEntry(Engine* engine, const ObjectEntry& entry)
     {
         if (engine == nullptr) return 0;
-        for (const auto& pair : engine->objects)
+        for (const auto& pair : engine->scene.objects)
         {
             if (&pair.second == &entry) return pair.first;
         }
@@ -194,9 +194,9 @@ namespace
         if (entry.stepDocumentIndex >= 0 && !entry.stepNodeId.empty())
         {
             const std::size_t documentIndex = static_cast<std::size_t>(entry.stepDocumentIndex);
-            if (documentIndex < engine->stepDocuments.size())
+            if (documentIndex < engine->documents.stepDocuments.size())
             {
-                const Handle(TDocStd_Document)& document = engine->stepDocuments[documentIndex];
+                const Handle(TDocStd_Document)& document = engine->documents.stepDocuments[documentIndex];
                 if (!document.IsNull())
                 {
                     TopLoc_Location location;
@@ -209,23 +209,23 @@ namespace
             }
         }
 
-        if (engine->stepDocuments.empty() || engine->lastStepImportObjectIds.empty()) return TDF_Label();
+        if (engine->documents.stepDocuments.empty() || engine->documents.lastStepImportObjectIds.empty()) return TDF_Label();
         const OcctObjectId objectId = objectIdOfEntry(engine, entry);
         if (objectId == 0) return TDF_Label();
 
-        std::size_t targetLeaf = engine->lastStepImportObjectIds.size();
-        for (std::size_t index = 0; index < engine->lastStepImportObjectIds.size(); ++index)
+        std::size_t targetLeaf = engine->documents.lastStepImportObjectIds.size();
+        for (std::size_t index = 0; index < engine->documents.lastStepImportObjectIds.size(); ++index)
         {
-            if (engine->lastStepImportObjectIds[index] == objectId)
+            if (engine->documents.lastStepImportObjectIds[index] == objectId)
             {
                 targetLeaf = index;
                 break;
             }
         }
-        if (targetLeaf >= engine->lastStepImportObjectIds.size()) return TDF_Label();
+        if (targetLeaf >= engine->documents.lastStepImportObjectIds.size()) return TDF_Label();
 
-        const std::size_t documentIndex = engine->stepDocuments.size() - 1U;
-        const Handle(TDocStd_Document)& document = engine->stepDocuments[documentIndex];
+        const std::size_t documentIndex = engine->documents.stepDocuments.size() - 1U;
+        const Handle(TDocStd_Document)& document = engine->documents.stepDocuments[documentIndex];
         if (document.IsNull()) return TDF_Label();
 
         std::size_t leafIndex = 0;
@@ -316,10 +316,10 @@ namespace
 
     std::string buildLastStepDocumentJson(Engine* engine)
     {
-        if (engine->stepDocuments.empty() || engine->stepDocuments.back().IsNull())
+        if (engine->documents.stepDocuments.empty() || engine->documents.stepDocuments.back().IsNull())
             throw std::runtime_error("No imported STEP/XDE document is available.");
 
-        const Handle(TDocStd_Document)& document = engine->stepDocuments.back();
+        const Handle(TDocStd_Document)& document = engine->documents.stepDocuments.back();
         std::vector<StepNodeSnapshot> nodes;
         std::vector<int> nodeAtDepth;
         std::size_t leafIndex = 0;
@@ -347,9 +347,9 @@ namespace
 
             if (!node.IsAssembly)
             {
-                if (leafIndex >= engine->lastStepImportObjectIds.size())
+                if (leafIndex >= engine->documents.lastStepImportObjectIds.size())
                     throw std::runtime_error("STEP/XDE leaf-to-object mapping is incomplete.");
-                snapshot.objectId = engine->lastStepImportObjectIds[leafIndex++];
+                snapshot.objectId = engine->documents.lastStepImportObjectIds[leafIndex++];
                 snapshot.subshapeStyles = captureSubshapeStyles(node);
             }
 
@@ -359,7 +359,7 @@ namespace
             nodeAtDepth.resize(static_cast<std::size_t>(depth) + 1U);
         }
 
-        if (leafIndex != engine->lastStepImportObjectIds.size())
+        if (leafIndex != engine->documents.lastStepImportObjectIds.size())
             throw std::runtime_error("STEP/XDE leaf-to-object mapping does not match the imported document.");
 
         std::ostringstream stream;
@@ -417,7 +417,7 @@ namespace OcctBridge
         if (!entry.hasStoredColor)
         {
             Quantity_Color current;
-            if (!entry.presentation.IsNull()) engine->context->Color(entry.presentation, current);
+            if (!entry.presentation.IsNull()) engine->viewerContext.context->Color(entry.presentation, current);
             entry.hasStoredColor = true;
             entry.storedColorR = current.Red();
             entry.storedColorG = current.Green();
@@ -430,7 +430,7 @@ namespace OcctBridge
         }
 
         const std::size_t documentIndex = static_cast<std::size_t>(entry.stepDocumentIndex);
-        const Handle(TDocStd_Document)& document = engine->stepDocuments[documentIndex];
+        const Handle(TDocStd_Document)& document = engine->documents.stepDocuments[documentIndex];
         const Handle(XCAFDoc_ColorTool) colorTool = XCAFDoc_DocumentTool::ColorTool(document->Main());
         if (colorTool.IsNull()) return false;
 
@@ -449,7 +449,7 @@ namespace OcctBridge
         entry.storedVisible = requestedVisibility;
         entry.hasStoredVisibility = true;
         const std::size_t documentIndex = static_cast<std::size_t>(entry.stepDocumentIndex);
-        const Handle(TDocStd_Document)& document = engine->stepDocuments[documentIndex];
+        const Handle(TDocStd_Document)& document = engine->documents.stepDocuments[documentIndex];
         const Handle(XCAFDoc_ColorTool) colorTool = XCAFDoc_DocumentTool::ColorTool(document->Main());
         if (colorTool.IsNull()) return false;
         colorTool->SetVisibility(label, requestedVisibility ? Standard_True : Standard_False);
@@ -464,22 +464,22 @@ extern "C" OCCTBRIDGE_API const char* occt_get_last_step_document_json(OcctHandl
     engine->clearError();
     try
     {
-        engine->scratchString = buildLastStepDocumentJson(engine);
+        engine->errors.scratch = buildLastStepDocumentJson(engine);
     }
     catch (const Standard_Failure& failure)
     {
-        engine->setError(failureMessage(failure));
-        engine->scratchString.clear();
+        engine->setError(OcctStatus_ErrorOcct, failureMessage(failure));
+        engine->errors.scratch.clear();
     }
     catch (const std::exception& exception)
     {
         engine->setError(exception.what());
-        engine->scratchString.clear();
+        engine->errors.scratch.clear();
     }
     catch (...)
     {
         engine->setError("Unknown native error while reading the STEP assembly document.");
-        engine->scratchString.clear();
+        engine->errors.scratch.clear();
     }
-    return engine->scratchString.c_str();
+    return engine->errors.scratch.c_str();
 }

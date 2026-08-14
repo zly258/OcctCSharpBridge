@@ -49,17 +49,19 @@ extern "C"
     int occt_model_shape_is_same(OcctModelHandle handle, OcctObjectId firstId, OcctObjectId secondId)
     {
         ModelSession* model = modelOf(handle);
-        if (model == nullptr) return 0;
-        try { return model->requireShape(firstId).IsSame(model->requireShape(secondId)) ? 1 : 0; }
-        catch (const std::exception& exception) { model->lastError = exception.what(); return 0; }
+        return executeValue(model, 0, [&]
+        {
+            return model->requireShape(firstId).IsSame(model->requireShape(secondId)) ? 1 : 0;
+        });
     }
 
     int occt_model_shape_is_partner(OcctModelHandle handle, OcctObjectId firstId, OcctObjectId secondId)
     {
         ModelSession* model = modelOf(handle);
-        if (model == nullptr) return 0;
-        try { return model->requireShape(firstId).IsPartner(model->requireShape(secondId)) ? 1 : 0; }
-        catch (const std::exception& exception) { model->lastError = exception.what(); return 0; }
+        return executeValue(model, 0, [&]
+        {
+            return model->requireShape(firstId).IsPartner(model->requireShape(secondId)) ? 1 : 0;
+        });
     }
 
     int occt_model_shape_oriented_bounds(OcctModelHandle handle, OcctObjectId shapeId, int optimal, OcctOrientedBounds* result)

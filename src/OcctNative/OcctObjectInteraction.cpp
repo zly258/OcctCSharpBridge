@@ -51,8 +51,8 @@ namespace
         entry.selectable = selectable;
         if (!selectable)
         {
-            if (engine->context->IsSelected(entry.presentation))
-                engine->context->AddOrRemoveSelected(entry.presentation, Standard_False);
+            if (engine->viewerContext.context->IsSelected(entry.presentation))
+                engine->viewerContext.context->AddOrRemoveSelected(entry.presentation, Standard_False);
             if (entry.kind == OcctManipulatorObjectKind)
             {
                 Handle(AIS_Manipulator) manipulator = Handle(AIS_Manipulator)::DownCast(entry.presentation);
@@ -62,7 +62,7 @@ namespace
                     if (manipulator->HasActiveMode()) manipulator->DeactivateCurrentMode();
                 }
             }
-            engine->context->Deactivate(entry.presentation);
+            engine->viewerContext.context->Deactivate(entry.presentation);
         }
         else if (entry.kind == OcctManipulatorObjectKind)
         {
@@ -76,32 +76,32 @@ namespace
 
     void setViewCubeLabels(Engine* engine, int language)
     {
-        if (engine->viewCube.IsNull()) throw std::runtime_error("The view cube has not been initialized.");
+        if (engine->viewerContext.viewCube.IsNull()) throw std::runtime_error("The view cube has not been initialized.");
         if (language == OcctViewCubeLanguage_English)
         {
-            engine->viewCube->SetFont("Arial");
-            engine->viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Front, "FRONT");
-            engine->viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Back, "BACK");
-            engine->viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Left, "LEFT");
-            engine->viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Right, "RIGHT");
-            engine->viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Top, "TOP");
-            engine->viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Bottom, "BOTTOM");
+            engine->viewerContext.viewCube->SetFont("Arial");
+            engine->viewerContext.viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Front, "FRONT");
+            engine->viewerContext.viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Back, "BACK");
+            engine->viewerContext.viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Left, "LEFT");
+            engine->viewerContext.viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Right, "RIGHT");
+            engine->viewerContext.viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Top, "TOP");
+            engine->viewerContext.viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Bottom, "BOTTOM");
         }
         else if (language == OcctViewCubeLanguage_ChineseSimplified)
         {
-            engine->viewCube->SetFont("Microsoft YaHei UI");
-            engine->viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Front, TCollection_AsciiString(u8"前"));
-            engine->viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Back, TCollection_AsciiString(u8"后"));
-            engine->viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Left, TCollection_AsciiString(u8"左"));
-            engine->viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Right, TCollection_AsciiString(u8"右"));
-            engine->viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Top, TCollection_AsciiString(u8"上"));
-            engine->viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Bottom, TCollection_AsciiString(u8"下"));
+            engine->viewerContext.viewCube->SetFont("Microsoft YaHei UI");
+            engine->viewerContext.viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Front, TCollection_AsciiString(u8"前"));
+            engine->viewerContext.viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Back, TCollection_AsciiString(u8"后"));
+            engine->viewerContext.viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Left, TCollection_AsciiString(u8"左"));
+            engine->viewerContext.viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Right, TCollection_AsciiString(u8"右"));
+            engine->viewerContext.viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Top, TCollection_AsciiString(u8"上"));
+            engine->viewerContext.viewCube->SetBoxSideLabel(V3d_TypeOfOrientation_Zup_Bottom, TCollection_AsciiString(u8"下"));
         }
         else
         {
             throw std::invalid_argument("View cube language is out of range.");
         }
-        engine->context->Redisplay(engine->viewCube, Standard_False, Standard_True);
+        engine->viewerContext.context->Redisplay(engine->viewerContext.viewCube, Standard_False, Standard_True);
         engine->requestRedraw();
     }
 }

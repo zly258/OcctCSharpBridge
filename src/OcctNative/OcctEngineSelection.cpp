@@ -16,7 +16,7 @@ extern "C"
         {
             if (pixelTolerance < 0 || pixelTolerance > 100)
                 throw std::invalid_argument("Selection tolerance must be between 0 and 100 pixels.");
-            e->context->SetPixelTolerance(pixelTolerance);
+            e->viewerContext.context->SetPixelTolerance(pixelTolerance);
         });
     }
 
@@ -26,7 +26,7 @@ extern "C"
         if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            e->context->MoveTo(x, y, e->view, Standard_False);
+            e->viewerContext.context->MoveTo(x, y, e->viewerContext.view, Standard_False);
             e->requestRedraw();
         });
     }
@@ -37,17 +37,17 @@ extern "C"
         if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            e->context->MoveTo(x, y, e->view, Standard_False);
-            if (e->context->HasDetected())
+            e->viewerContext.context->MoveTo(x, y, e->viewerContext.view, Standard_False);
+            if (e->viewerContext.context->HasDetected())
             {
-                e->context->SelectDetected(
+                e->viewerContext.context->SelectDetected(
                     append ? AIS_SelectionScheme_Add : AIS_SelectionScheme_Replace);
             }
             else if (!append)
             {
-                e->context->ClearSelected(Standard_False);
+                e->viewerContext.context->ClearSelected(Standard_False);
             }
-            e->context->HilightSelected(Standard_False);
+            e->viewerContext.context->HilightSelected(Standard_False);
             e->requestRedraw();
         });
     }
@@ -65,17 +65,17 @@ extern "C"
         if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            const Handle(StdSelect_ViewerSelector3d)& selector = e->context->MainSelector();
+            const Handle(StdSelect_ViewerSelector3d)& selector = e->viewerContext.context->MainSelector();
             selector->AllowOverlapDetection(allowOverlap != 0);
             const Graphic3d_Vec2i minPoint(std::min(x1, x2), std::min(y1, y2));
             const Graphic3d_Vec2i maxPoint(std::max(x1, x2), std::max(y1, y2));
-            e->context->SelectRectangle(
+            e->viewerContext.context->SelectRectangle(
                 minPoint,
                 maxPoint,
-                e->view,
+                e->viewerContext.view,
                 append ? AIS_SelectionScheme_Add : AIS_SelectionScheme_Replace);
             selector->AllowOverlapDetection(Standard_False);
-            e->context->HilightSelected(Standard_False);
+            e->viewerContext.context->HilightSelected(Standard_False);
             e->requestRedraw();
         });
     }
@@ -91,9 +91,9 @@ extern "C"
                 throw std::invalid_argument("Object ID does not exist.");
             if (!entry->selectable)
                 throw std::invalid_argument("Object is not selectable.");
-            if (!append) e->context->ClearSelected(Standard_False);
-            e->context->SetSelected(entry->presentation, Standard_False);
-            e->context->HilightSelected(Standard_False);
+            if (!append) e->viewerContext.context->ClearSelected(Standard_False);
+            e->viewerContext.context->SetSelected(entry->presentation, Standard_False);
+            e->viewerContext.context->HilightSelected(Standard_False);
             e->requestRedraw();
         });
     }
@@ -104,8 +104,8 @@ extern "C"
         if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            e->selectionMode = mode;
-            for (auto& pair : e->objects) e->applySelectionMode(pair.second.presentation);
+            e->viewerContext.selectionMode = mode;
+            for (auto& pair : e->scene.objects) e->applySelectionMode(pair.second.presentation);
             e->requestRedraw();
         });
     }
@@ -116,7 +116,7 @@ extern "C"
         if (!validateInitialized(e)) return 0;
         return execute(e, [&]
         {
-            e->context->ClearSelected(Standard_False);
+            e->viewerContext.context->ClearSelected(Standard_False);
             e->requestRedraw();
         });
     }

@@ -20,8 +20,8 @@ extern "C"
 
             if (!tag.empty())
             {
-                const auto existing = engine->objectIdByApplicationTag.find(tag);
-                if (existing != engine->objectIdByApplicationTag.end()
+                const auto existing = engine->scene.objectIdByApplicationTag.find(tag);
+                if (existing != engine->scene.objectIdByApplicationTag.end()
                     && existing->second != objectId
                     && engine->findObject(existing->second) != nullptr)
                 {
@@ -30,9 +30,9 @@ extern "C"
             }
 
             if (!entry->applicationTag.empty())
-                engine->objectIdByApplicationTag.erase(entry->applicationTag);
+                engine->scene.objectIdByApplicationTag.erase(entry->applicationTag);
             entry->applicationTag = tag;
-            if (!tag.empty()) engine->objectIdByApplicationTag[tag] = objectId;
+            if (!tag.empty()) engine->scene.objectIdByApplicationTag[tag] = objectId;
         });
     }
 
@@ -41,19 +41,19 @@ extern "C"
         Engine* engine = engineOf(handle);
         if (engine == nullptr) return "";
         const ObjectEntry* entry = engine->findObject(objectId);
-        engine->scratchString = entry == nullptr ? std::string() : entry->applicationTag;
-        return engine->scratchString.c_str();
+        engine->errors.scratch = entry == nullptr ? std::string() : entry->applicationTag;
+        return engine->errors.scratch.c_str();
     }
 
     OcctObjectId occt_find_object_by_application_tag(OcctHandle handle, const char* utf8Tag)
     {
         Engine* engine = engineOf(handle);
         if (engine == nullptr || utf8Tag == nullptr || *utf8Tag == '\0') return 0;
-        const auto iterator = engine->objectIdByApplicationTag.find(utf8Tag);
-        if (iterator == engine->objectIdByApplicationTag.end()) return 0;
+        const auto iterator = engine->scene.objectIdByApplicationTag.find(utf8Tag);
+        if (iterator == engine->scene.objectIdByApplicationTag.end()) return 0;
         if (engine->findObject(iterator->second) == nullptr)
         {
-            engine->objectIdByApplicationTag.erase(iterator);
+            engine->scene.objectIdByApplicationTag.erase(iterator);
             return 0;
         }
         return iterator->second;

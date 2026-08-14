@@ -24,7 +24,7 @@ namespace
     {
         if (objectIds.empty()) return;
 
-        for (auto& pair : engine->objects)
+        for (auto& pair : engine->scene.objects)
         {
             ObjectEntry& entry = pair.second;
             if (entry.kind != OcctManipulatorObjectKind || entry.presentation.IsNull()) continue;
@@ -61,7 +61,7 @@ extern "C"
     int occt_object_count(OcctHandle h)
     {
         Engine* e = engineOf(h);
-        return e == nullptr ? 0 : static_cast<int>(e->objects.size());
+        return e == nullptr ? 0 : static_cast<int>(e->scene.objects.size());
     }
 
     int occt_object_descriptors(
@@ -78,9 +78,9 @@ extern "C"
             if (capacity < 0)
                 throw std::invalid_argument("Object descriptor capacity must not be negative.");
 
-            *objectCount = static_cast<int>(e->objects.size());
+            *objectCount = static_cast<int>(e->scene.objects.size());
             *shapeCount = 0;
-            for (const auto& pair : e->objects)
+            for (const auto& pair : e->scene.objects)
             {
                 if (pair.second.kind == OcctObject_Shape) ++(*shapeCount);
             }
@@ -95,8 +95,8 @@ extern "C"
                 throw std::out_of_range("Object descriptor output capacity is too small.");
 
             std::vector<OcctObjectDescriptor> descriptors;
-            descriptors.reserve(e->objects.size());
-            for (const auto& pair : e->objects)
+            descriptors.reserve(e->scene.objects.size());
+            for (const auto& pair : e->scene.objects)
                 descriptors.push_back(OcctObjectDescriptor{pair.first, pair.second.kind});
 
             std::sort(descriptors.begin(), descriptors.end(), [](const OcctObjectDescriptor& left, const OcctObjectDescriptor& right)
@@ -139,8 +139,8 @@ extern "C"
         Engine* e = engineOf(h);
         if (e == nullptr) return "";
         const ObjectEntry* entry = e->findObject(id);
-        e->scratchString = entry == nullptr ? "" : entry->name;
-        return e->scratchString.c_str();
+        e->errors.scratch = entry == nullptr ? "" : entry->name;
+        return e->errors.scratch.c_str();
     }
 
     int occt_set_object_color(OcctHandle h, OcctObjectId id, double r, double g, double b)
@@ -158,7 +158,7 @@ extern "C"
             entry->storedColorB = value.Blue();
             if (entry->kind == OcctObject_Shape && !syncStepObjectColor(e, *entry))
                 e->invalidatePristineStepDocument();
-            e->context->SetColor(entry->presentation, value, Standard_False);
+            e->viewerContext.context->SetColor(entry->presentation, value, Standard_False);
             e->requestRedraw();
         });
     }
@@ -176,7 +176,7 @@ extern "C"
             entry->hasStoredAlpha = true;
             if (entry->kind == OcctObject_Shape && !syncStepObjectColor(e, *entry))
                 e->invalidatePristineStepDocument();
-            e->context->SetTransparency(entry->presentation, transparency, Standard_False);
+            e->viewerContext.context->SetTransparency(entry->presentation, transparency, Standard_False);
             e->requestRedraw();
         });
     }
@@ -193,9 +193,9 @@ extern "C"
             if (entry->kind == OcctObject_Shape && !syncStepObjectVisibility(e, *entry))
                 e->invalidatePristineStepDocument();
             if (visible)
-                e->context->Display(entry->presentation, Standard_False);
+                e->viewerContext.context->Display(entry->presentation, Standard_False);
             else
-                e->context->Erase(entry->presentation, Standard_False);
+                e->viewerContext.context->Erase(entry->presentation, Standard_False);
             e->requestRedraw();
         });
     }
@@ -208,7 +208,7 @@ extern "C"
         {
             ObjectEntry* entry = e->findObject(id);
             if (entry == nullptr) throw std::invalid_argument("Object ID does not exist.");
-            e->context->SetDisplayMode(
+            e->viewerContext.context->SetDisplayMode(
                 entry->presentation,
                 mode == OcctDisplay_Wireframe ? AIS_WireFrame : AIS_Shaded,
                 Standard_False);
@@ -225,7 +225,7 @@ extern "C"
             requirePositive(width, "Line width");
             ObjectEntry* entry = e->findObject(id);
             if (entry == nullptr) throw std::invalid_argument("Object ID does not exist.");
-            e->context->SetWidth(entry->presentation, width, Standard_False);
+            e->viewerContext.context->SetWidth(entry->presentation, width, Standard_False);
             e->requestRedraw();
         });
     }
@@ -240,7 +240,7 @@ extern "C"
             if (entry == nullptr || entry->presentation.IsNull())
                 throw std::invalid_argument("Object ID does not exist.");
             if (entry->kind == OcctObject_Shape) e->invalidatePristineStepDocument();
-            e->context->SetMaterial(
+            e->viewerContext.context->SetMaterial(
                 entry->presentation,
                 Graphic3d_MaterialAspect(materialName(material)),
                 Standard_False);
@@ -281,23 +281,18 @@ extern "C"
         return execute(e, [&]
         {
             std::unordered_set<OcctObjectId> allIds;
-            allIds.reserve(e->objects.size());
-            for (const auto& pair : e->objects) allIds.insert(pair.first);
+            allIds.reserve(e->scene.objects.size());
+            for (const auto& pair : e->scene.objects) allIds.insert(pair.first);
             detachManipulatorsReferencing(e, allIds);
 
-            for (auto& pair : e->objects)
+            for (auto& pair : e->scene.objects)
             {
                 if (!pair.second.presentation.IsNull())
-                    e->context->Remove(pair.second.presentation, Standard_False);
+                    e->viewerContext.context->Remove(pair.second.presentation, Standard_False);
             }
-            e->objects.clear();
-            e->objectIdByApplicationTag.clear();
-            e->stepDocuments.clear();
-            e->lastStepImportObjectIds.clear();
-            e->pristineStepDocument.Nullify();
-            e->pristineStepDocumentMatchesScene = false;
-            e->nextId = 1;
-            e->context->ClearSelected(Standard_False);
+            e->scene.clear();
+            e->documents.clear();
+            e->viewerContext.context->ClearSelected(Standard_False);
             e->requestRedraw();
         });
     }

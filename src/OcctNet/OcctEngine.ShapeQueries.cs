@@ -119,7 +119,7 @@ public sealed partial class OcctEngine
         return new(point, normal);
     }
 
-    private delegate int PropertyCall(IntPtr handle, long id, out OcctMassProperties result);
+    private delegate int PropertyCall(OcctEngineSafeHandle handle, long id, out OcctMassProperties result);
 
     private OcctMassProperties GetProperties(OcctShape shape, PropertyCall call)
     {

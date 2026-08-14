@@ -11,6 +11,7 @@ public sealed class BridgeCompatibilityTests
     {
         Assert.IsTrue(OcctBridgeInfo.IsNativeVersionCompatible("2.7.0", "2.7.0"));
         Assert.IsTrue(OcctBridgeInfo.IsNativeVersionCompatible("2.8.0", "2.7.0"));
+        Assert.IsTrue(OcctBridgeInfo.IsNativeVersionCompatible("3.0.0-preview.2", "3.0.0-preview.1"));
     }
 
     [TestMethod]

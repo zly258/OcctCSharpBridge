@@ -37,13 +37,31 @@ extern "C"
     int occt_model_history_is_removed(OcctModelHandle handle, OcctOperationId operationId, OcctObjectId sourceShapeId)
     {
         ModelSession* model = modelOf(handle);
-        if (model == nullptr) return 0;
-        try
+        return executeValue(model, 0, [&]
         {
-            const OperationRecord& operation = requireOperation(model, operationId);
-            if (operation.history.IsNull()) return 0;
-            return operation.history->IsRemoved(model->requireShape(sourceShapeId)) ? 1 : 0;
-        }
-        catch (...) { return 0; }
+            HistoryLineage& lineage = materializeHistoryLineage(model, operationId, sourceShapeId);
+            return lineage.removed ? 1 : 0;
+        });
     }
+    OcctStatus occt_model_history_summary(
+        OcctModelHandle handle,
+        OcctOperationId operationId,
+        OcctObjectId sourceShapeId,
+        OcctModelTopologyHistorySummary* result)
+    {
+        ModelSession* model = modelOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+
+        const int succeeded = execute(model, [&]
+        {
+            if (result == nullptr) throw std::invalid_argument("Topology-history summary result is null.");
+            HistoryLineage& lineage = materializeHistoryLineage(model, operationId, sourceShapeId);
+            result->generatedCount = static_cast<int>(lineage.generated.size());
+            result->modifiedCount = static_cast<int>(lineage.modified.size());
+            result->removed = lineage.removed ? 1 : 0;
+        });
+        return succeeded != 0 ? OcctStatus_Ok : model->errors.code;
+    }
+
+
 }

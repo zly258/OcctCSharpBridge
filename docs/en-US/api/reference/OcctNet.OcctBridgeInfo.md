@@ -45,6 +45,6 @@ None.
 
 ## Fields / Enum Values
 
-- `ExpectedAbiVersion` — `int` = 4
-- `ManagedVersion` — `string` = 2.7.0
+- `ExpectedAbiVersion` — `int` = 5
+- `ManagedVersion` — `string` = 3.0.0-preview.1
 

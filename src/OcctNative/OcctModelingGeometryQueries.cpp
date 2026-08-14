@@ -63,35 +63,23 @@ extern "C"
     int occt_model_edge_curve_type(OcctModelHandle handle, OcctObjectId edgeId)
     {
         ModelSession* model = modelOf(handle);
-        if (model == nullptr) return OcctCurve_Other;
-        try
+        return executeValue(model, static_cast<int>(OcctCurve_Other), [&]
         {
             const TopoDS_Shape& shape = model->requireShape(edgeId);
             if (shape.ShapeType() != TopAbs_EDGE) throw std::invalid_argument("Input must be an edge.");
             return static_cast<int>(BRepAdaptor_Curve(TopoDS::Edge(shape)).GetType());
-        }
-        catch (const std::exception& exception)
-        {
-            model->lastError = exception.what();
-            return OcctCurve_Other;
-        }
+        });
     }
 
     int occt_model_face_surface_type(OcctModelHandle handle, OcctObjectId faceId)
     {
         ModelSession* model = modelOf(handle);
-        if (model == nullptr) return OcctSurface_Other;
-        try
+        return executeValue(model, static_cast<int>(OcctSurface_Other), [&]
         {
             const TopoDS_Shape& shape = model->requireShape(faceId);
             if (shape.ShapeType() != TopAbs_FACE) throw std::invalid_argument("Input must be a face.");
             return static_cast<int>(BRepAdaptor_Surface(TopoDS::Face(shape), Standard_True).GetType());
-        }
-        catch (const std::exception& exception)
-        {
-            model->lastError = exception.what();
-            return OcctSurface_Other;
-        }
+        });
     }
 
     int occt_model_face_uv_bounds(OcctModelHandle handle, OcctObjectId faceId, OcctUvBounds* result)

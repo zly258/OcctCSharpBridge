@@ -51,7 +51,7 @@ public sealed partial class OcctEngine
 
     internal void EndDisplayBatch(bool fitAll)
     {
-        if (_handle == IntPtr.Zero || !_initialized) return;
+        if (IsDisposed || !_initialized) return;
         Check(BatchNativeMethods.occt_end_update(_handle, fitAll ? 1 : 0));
     }
 

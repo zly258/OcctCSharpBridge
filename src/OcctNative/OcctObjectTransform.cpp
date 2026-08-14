@@ -64,7 +64,7 @@ extern "C"
             if (entry->kind == OcctObject_Shape) engine->invalidatePristineStepDocument();
             entry->presentation->SetLocalTransformation(transformFromMatrix(matrix3x4));
             entry->presentation->UpdateTransformation();
-            engine->context->RecomputeSelectionOnly(entry->presentation);
+            engine->viewerContext.context->RecomputeSelectionOnly(entry->presentation);
             engine->requestRedraw();
         });
     }
@@ -98,7 +98,7 @@ extern "C"
             if (entry->kind == OcctObject_Shape) engine->invalidatePristineStepDocument();
             entry->presentation->ResetTransformation();
             entry->presentation->UpdateTransformation();
-            engine->context->RecomputeSelectionOnly(entry->presentation);
+            engine->viewerContext.context->RecomputeSelectionOnly(entry->presentation);
             engine->requestRedraw();
         });
     }
@@ -138,7 +138,7 @@ extern "C"
             {
                 update.entry->presentation->SetLocalTransformation(update.transformation);
                 update.entry->presentation->UpdateTransformation();
-                engine->context->RecomputeSelectionOnly(update.entry->presentation);
+                engine->viewerContext.context->RecomputeSelectionOnly(update.entry->presentation);
             }
             if (!prepared.empty()) engine->requestRedraw();
         });

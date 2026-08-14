@@ -80,7 +80,7 @@ namespace
         drawer->SetFaceBoundaryDraw(visible != 0);
         drawer->SetFaceBoundaryAspect(
             new Prs3d_LineAspect(color(r, g, b), Aspect_TOL_SOLID, width));
-        engine->context->Redisplay(entry.presentation, Standard_False, Standard_True);
+        engine->viewerContext.context->Redisplay(entry.presentation, Standard_False, Standard_True);
     }
 }
 
@@ -92,7 +92,7 @@ extern "C"
         return execute(e, [&]
         {
             ObjectEntry& entry = requiredObject(e, objectId);
-            e->context->SetZLayer(entry.presentation, zLayerId(layer));
+            e->viewerContext.context->SetZLayer(entry.presentation, zLayerId(layer));
             e->requestRedraw();
         });
     }
@@ -116,7 +116,7 @@ extern "C"
                 entries.push_back(&requiredObject(e, objectIds[index]));
 
             for (ObjectEntry* entry : entries)
-                e->context->SetZLayer(entry->presentation, nativeLayer);
+                e->viewerContext.context->SetZLayer(entry->presentation, nativeLayer);
             if (!entries.empty()) e->requestRedraw();
         });
     }
@@ -127,7 +127,7 @@ extern "C"
         return execute(e, [&]
         {
             ObjectEntry& entry = requiredObject(e, objectId);
-            *layer = zLayerValue(e->context->GetZLayer(entry.presentation));
+            *layer = zLayerValue(e->viewerContext.context->GetZLayer(entry.presentation));
         });
     }
 
@@ -140,7 +140,7 @@ extern "C"
             const Aspect_TypeOfTriedronPosition position = cornerPosition(options->position);
             if (options->visible != 0)
             {
-                e->view->TriedronDisplay(
+                e->viewerContext.view->TriedronDisplay(
                     position,
                     color(options->r, options->g, options->b),
                     options->scale,
@@ -148,7 +148,7 @@ extern "C"
             }
             else
             {
-                e->view->TriedronErase();
+                e->viewerContext.view->TriedronErase();
             }
             e->requestRedraw();
         });
@@ -159,32 +159,32 @@ extern "C"
         Engine* e = engineOf(h); if (!validateInitialized(e) || options == nullptr) return 0;
         return execute(e, [&]
         {
-            if (e->viewCube.IsNull()) throw std::runtime_error("The view cube has not been initialized.");
+            if (e->viewerContext.viewCube.IsNull()) throw std::runtime_error("The view cube has not been initialized.");
             if (options->sizePixels <= 0 || options->sizePixels > 4096)
                 throw std::invalid_argument("View cube size must be between 1 and 4096 pixels.");
             if (options->offsetX < 0 || options->offsetY < 0)
                 throw std::invalid_argument("View cube offsets must not be negative.");
 
             const Aspect_TypeOfTriedronPosition position = cornerPosition(options->position);
-            e->viewCube->SetSize(static_cast<double>(options->sizePixels));
+            e->viewerContext.viewCube->SetSize(static_cast<double>(options->sizePixels));
             const int halfSize = options->sizePixels / 2;
-            e->viewCube->SetTransformPersistence(
+            e->viewerContext.viewCube->SetTransformPersistence(
                 new Graphic3d_TransformPers(
                     Graphic3d_TMF_TriedronPers,
                     position,
                     Graphic3d_Vec2i(
                         halfSize + options->offsetX,
                         halfSize + options->offsetY)));
-            e->viewCube->SetToUpdate();
+            e->viewerContext.viewCube->SetToUpdate();
 
             if (options->visible != 0)
             {
-                e->context->Display(e->viewCube, Standard_False);
-                e->context->Redisplay(e->viewCube, Standard_False);
+                e->viewerContext.context->Display(e->viewerContext.viewCube, Standard_False);
+                e->viewerContext.context->Redisplay(e->viewerContext.viewCube, Standard_False);
             }
             else
             {
-                e->context->Erase(e->viewCube, Standard_False);
+                e->viewerContext.context->Erase(e->viewerContext.viewCube, Standard_False);
             }
             e->requestRedraw();
         });
@@ -249,14 +249,14 @@ extern "C"
         return execute(e, [&]
         {
             requirePositive(width, "Face boundary width");
-            const Handle(Prs3d_Drawer)& drawer = e->context->DefaultDrawer();
+            const Handle(Prs3d_Drawer)& drawer = e->viewerContext.context->DefaultDrawer();
             drawer->SetFaceBoundaryDraw(visible != 0);
             drawer->SetFaceBoundaryAspect(
                 new Prs3d_LineAspect(color(r, g, b), Aspect_TOL_SOLID, width));
 
             if (applyExisting != 0)
             {
-                for (auto& pair : e->objects)
+                for (auto& pair : e->scene.objects)
                 {
                     if (pair.second.kind != OcctObject_Shape || pair.second.presentation.IsNull()) continue;
                     applyFaceBoundaryStyle(e, pair.second, visible, r, g, b, width);

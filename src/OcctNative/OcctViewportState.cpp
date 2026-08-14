@@ -27,26 +27,26 @@ extern "C"
         {
             Standard_Integer width = 0;
             Standard_Integer height = 0;
-            engine->window->Size(width, height);
+            engine->viewerContext.window->Size(width, height);
 
-            const Handle(Graphic3d_Camera)& camera = engine->view->Camera();
-            const Graphic3d_RenderingParams& rendering = engine->view->RenderingParams();
+            const Handle(Graphic3d_Camera)& camera = engine->viewerContext.view->Camera();
+            const Graphic3d_RenderingParams& rendering = engine->viewerContext.view->RenderingParams();
             result->width = width;
             result->height = height;
             result->projectionType = camera->ProjectionType() == Graphic3d_Camera::Projection_Perspective
                 ? OcctProjection_Perspective
                 : OcctProjection_Orthographic;
-            result->computedMode = engine->view->ComputedMode() ? 1 : 0;
+            result->computedMode = engine->viewerContext.view->ComputedMode() ? 1 : 0;
             result->antialiasingEnabled = rendering.IsAntialiasingEnabled ? 1 : 0;
             result->msaaSamples = rendering.NbMsaaSamples;
             result->renderingMethod = rendering.Method == Graphic3d_RM_RAYTRACING
                 ? OcctRendering_RayTracing
                 : OcctRendering_Rasterization;
             result->shadowsEnabled = rendering.IsShadowEnabled ? 1 : 0;
-            result->frustumCullingEnabled = engine->view->IsCullingEnabled() ? 1 : 0;
-            result->faceBoundariesVisible = engine->context->DefaultDrawer()->FaceBoundaryDraw() ? 1 : 0;
-            result->selectionTolerance = engine->context->PixelTolerance();
-            result->automaticHighlight = engine->context->AutomaticHilight() ? 1 : 0;
+            result->frustumCullingEnabled = engine->viewerContext.view->IsCullingEnabled() ? 1 : 0;
+            result->faceBoundariesVisible = engine->viewerContext.context->DefaultDrawer()->FaceBoundaryDraw() ? 1 : 0;
+            result->selectionTolerance = engine->viewerContext.context->PixelTolerance();
+            result->automaticHighlight = engine->viewerContext.context->AutomaticHilight() ? 1 : 0;
             result->perspectiveFov = camera->FOVy();
             result->renderResolutionScale = rendering.RenderResolutionScale;
             result->renderResolutionDpi = rendering.Resolution;
@@ -56,7 +56,7 @@ extern "C"
     int occt_reset_view(OcctHandle handle)
     {
         Engine* engine = engineOf(handle); if (!validateInitialized(engine)) return 0;
-        return execute(engine, [&] { engine->view->Reset(Standard_True); });
+        return execute(engine, [&] { engine->viewerContext.view->Reset(Standard_True); });
     }
 
     int occt_reset_view_orientation(OcctHandle handle)
@@ -64,8 +64,8 @@ extern "C"
         Engine* engine = engineOf(handle); if (!validateInitialized(engine)) return 0;
         return execute(engine, [&]
         {
-            engine->view->ResetViewOrientation();
-            engine->view->Redraw();
+            engine->viewerContext.view->ResetViewOrientation();
+            engine->viewerContext.view->Redraw();
         });
     }
 
@@ -74,8 +74,8 @@ extern "C"
         Engine* engine = engineOf(handle); if (!validateInitialized(engine)) return 0;
         return execute(engine, [&]
         {
-            engine->view->ResetViewMapping();
-            engine->view->Redraw();
+            engine->viewerContext.view->ResetViewMapping();
+            engine->viewerContext.view->Redraw();
         });
     }
 
@@ -87,9 +87,9 @@ extern "C"
             validateMargin(margin);
             Bnd_Box bounds;
             int shapeCount = 0;
-            for (engine->context->InitSelected(); engine->context->MoreSelected(); engine->context->NextSelected())
+            for (engine->viewerContext.context->InitSelected(); engine->viewerContext.context->MoreSelected(); engine->viewerContext.context->NextSelected())
             {
-                const OcctObjectId id = engine->findPresentation(engine->context->SelectedInteractive());
+                const OcctObjectId id = engine->findPresentation(engine->viewerContext.context->SelectedInteractive());
                 const ObjectEntry* entry = engine->findShape(id);
                 if (entry == nullptr) continue;
                 BRepBndLib::Add(shapeWithPresentationTransformation(*entry), bounds);
@@ -97,9 +97,9 @@ extern "C"
             }
             if (shapeCount == 0 || bounds.IsVoid())
                 throw std::runtime_error("The current selection has no finite shape bounds.");
-            engine->view->FitAll(bounds, margin, Standard_False);
-            engine->view->ZFitAll();
-            engine->view->Redraw();
+            engine->viewerContext.view->FitAll(bounds, margin, Standard_False);
+            engine->viewerContext.view->ZFitAll();
+            engine->viewerContext.view->Redraw();
         });
     }
 
@@ -110,12 +110,12 @@ extern "C"
         return execute(engine, [&]
         {
             Bnd_Box bounds;
-            for (const auto& pair : engine->objects)
+            for (const auto& pair : engine->scene.objects)
             {
                 const ObjectEntry& entry = pair.second;
                 if (entry.kind != OcctObject_Shape
                     || entry.presentation.IsNull()
-                    || !engine->context->IsDisplayed(entry.presentation)) continue;
+                    || !engine->viewerContext.context->IsDisplayed(entry.presentation)) continue;
                 BRepBndLib::Add(shapeWithPresentationTransformation(entry), bounds);
             }
             if (bounds.IsVoid()) throw std::runtime_error("The scene has no finite shape bounds.");

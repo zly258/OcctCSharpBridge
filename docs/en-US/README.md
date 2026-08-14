@@ -4,10 +4,10 @@ This documentation describes the **`main` branch**: the Windows x64 Bridge based
 
 Current source contract:
 
-- Bridge 2.7.0 / Native ABI 4
-- 349 Native exports / 349 P/Invoke mappings
-- 113 public .NET types
-- Viewer / Modeling API: 215 / 134
+- Bridge 3.0.0-preview.1 / Native ABI 5 current, ABI 4 compatible
+- 431 Native exports / 431 P/Invoke mappings
+- 141 public .NET types
+- Viewer / Modeling API: 292 / 139
 - Target framework: `net10.0-windows`
 - Public assemblies: `OcctNet`, `OcctNet.WinForms`, `OcctNet.Wpf`
 
@@ -24,5 +24,6 @@ Avalonia is intentionally not part of `main`. The standalone [`avalonia` branch]
 7. [Runtime Deployment and Diagnostics](07_Runtime-Deployment-and-Diagnostics.md)
 8. [Build, Test and Publish](08_Build-Test-and-Publish.md)
 9. [Generated API Reference](api/README.md)
+10. [Bridge Migration](bridge-migration.md)
 
 `bridge-contract.json` is the machine-readable source contract. `dist/win-x64/bridge-manifest.json` describes the concrete SDK that was actually published from `main`.

@@ -77,16 +77,16 @@ namespace
         if (presentation.IsNull()) throw std::runtime_error("Overlay presentation is null.");
         presentation->SetZLayer(Graphic3d_ZLayerId_Topmost);
         presentation->SetInfiniteState(Standard_True);
-        const OcctObjectId id = engine->nextId++;
-        engine->context->Display(presentation, Standard_False);
+        const OcctObjectId id = engine->scene.allocateId();
+        engine->viewerContext.context->Display(presentation, Standard_False);
         ObjectEntry entry;
         entry.kind = OcctOverlayObjectKind;
         entry.presentation = presentation;
         entry.name = name == nullptr ? "Overlay" : name;
         entry.selectable = false;
         entry.presentationSubtype = subtype;
-        engine->objects.emplace(id, std::move(entry));
-        engine->context->Deactivate(presentation);
+        engine->scene.objects.emplace(id, std::move(entry));
+        engine->viewerContext.context->Deactivate(presentation);
         engine->requestRedraw();
         return id;
     }
@@ -183,7 +183,7 @@ extern "C"
             Handle(AIS_Shape) presentation = Handle(AIS_Shape)::DownCast(entry.presentation);
             if (presentation.IsNull()) throw std::runtime_error("Overlay line presentation type is invalid.");
             presentation->SetShape(lineShape(start, end));
-            e->context->Redisplay(presentation, Standard_False);
+            e->viewerContext.context->Redisplay(presentation, Standard_False);
             e->requestRedraw();
         });
     }
@@ -197,7 +197,7 @@ extern "C"
             Handle(AIS_Shape) presentation = Handle(AIS_Shape)::DownCast(entry.presentation);
             if (presentation.IsNull()) throw std::runtime_error("Overlay polyline presentation type is invalid.");
             presentation->SetShape(polylineShape(points, count));
-            e->context->Redisplay(presentation, Standard_False);
+            e->viewerContext.context->Redisplay(presentation, Standard_False);
             e->requestRedraw();
         });
     }
@@ -213,7 +213,7 @@ extern "C"
             Handle(Geom_CartesianPoint) component = Handle(Geom_CartesianPoint)::DownCast(presentation->Component());
             if (component.IsNull()) presentation->SetComponent(new Geom_CartesianPoint(point(position)));
             else component->SetPnt(point(position));
-            e->context->Redisplay(presentation, Standard_False);
+            e->viewerContext.context->Redisplay(presentation, Standard_False);
             e->requestRedraw();
         });
     }
@@ -228,7 +228,7 @@ extern "C"
             if (presentation.IsNull()) throw std::runtime_error("Overlay text presentation type is invalid.");
             presentation->SetText(extended(text));
             presentation->SetPosition(point(position));
-            e->context->Redisplay(presentation, Standard_False);
+            e->viewerContext.context->Redisplay(presentation, Standard_False);
             e->requestRedraw();
         });
     }
@@ -244,7 +244,7 @@ extern "C"
             Handle(AIS_Shape) presentation = Handle(AIS_Shape)::DownCast(entry.presentation);
             if (presentation.IsNull()) throw std::runtime_error("Overlay line presentation type is invalid.");
             applyLineStyle(presentation, pattern, width, r, g, b);
-            e->context->Redisplay(presentation, Standard_False);
+            e->viewerContext.context->Redisplay(presentation, Standard_False);
             e->requestRedraw();
         });
     }
@@ -258,7 +258,7 @@ extern "C"
             Handle(AIS_Point) presentation = Handle(AIS_Point)::DownCast(entry.presentation);
             if (presentation.IsNull()) throw std::runtime_error("Overlay marker presentation type is invalid.");
             applyMarkerStyle(presentation, marker, scale, r, g, b);
-            e->context->Redisplay(presentation, Standard_False);
+            e->viewerContext.context->Redisplay(presentation, Standard_False);
             e->requestRedraw();
         });
     }
@@ -272,7 +272,7 @@ extern "C"
             Handle(AIS_TextLabel) presentation = Handle(AIS_TextLabel)::DownCast(entry.presentation);
             if (presentation.IsNull()) throw std::runtime_error("Overlay text presentation type is invalid.");
             applyTextStyle(presentation, height, r, g, b, zoomable, fontName);
-            e->context->Redisplay(presentation, Standard_False);
+            e->viewerContext.context->Redisplay(presentation, Standard_False);
             e->requestRedraw();
         });
     }

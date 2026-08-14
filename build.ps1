@@ -56,11 +56,13 @@ $Projects = [ordered]@{
     Wpf = "src\OcctNet.Wpf\OcctNet.Wpf.csproj"
     ManagedTests = "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj"
     Smoke = "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
+    LegacyCompatibility = "tests\OcctNet.LegacyCompatibilityTests\OcctNet.LegacyCompatibilityTests.csproj"
 }
 
 $Checks = [ordered]@{
     Version = "tests\check-version-contract.ps1"
     Architecture = "tests\check-architecture-boundaries.ps1"
+    AbiCompatibility = "tests\check-abi-compatibility.ps1"
     BulkAbi = "tests\check-bulk-abi.ps1"
     NativeBuild = "tests\check-native-build-structure.ps1"
     ApiSurface = "tests\check-api-surface.ps1"
@@ -205,16 +207,32 @@ function Build-Ci {
     Build-Project "ManagedTests"
     Run-ManagedTests
     Build-Project "Smoke"
+    Build-Project "LegacyCompatibility"
 }
 
 function Run-Smoke {
     Assert-Path $NativeDll
     Resolve-OcctConfiguration
     Build-Project "Smoke"
+    Build-Project "LegacyCompatibility"
 
     $smokeProject = Join-Path $RepoRoot $Projects.Smoke
     $smokeOutput = Join-Path (Split-Path -Parent $smokeProject) "bin\x64\$Configuration\$TargetFramework"
     Copy-Item $NativeDll (Join-Path $smokeOutput "OcctNative.dll") -Force
+
+    $legacyProject = Join-Path $RepoRoot $Projects.LegacyCompatibility
+    $legacyOutput = Join-Path (Split-Path -Parent $legacyProject) "bin\x64\$Configuration\$TargetFramework"
+    Copy-Item $NativeDll (Join-Path $legacyOutput "OcctNative.dll") -Force
+
+    Write-Host "[compatibility] Running fixed ABI 4 consumer..." -ForegroundColor Cyan
+    Invoke-Checked "dotnet" @(
+        "run",
+        "--project", $legacyProject,
+        "-c", $Configuration,
+        "-p:Platform=x64",
+        "-p:Version=$BridgeVersion",
+        "--no-build"
+    ) "ABI 4 compatibility smoke failed."
 
     $previousNativeDirectory = $env:OCCT_BRIDGE_NATIVE_DIR
     $previousOcctRoot = $env:OCCT_ROOT
@@ -308,7 +326,7 @@ function Build-BinaryDistribution {
             schemaVersion = 1
             author = $Author
             bridgeVersion = $BridgeVersion
-            nativeAbiVersion = [int]$Contract.nativeAbiVersion
+            nativeAbiVersion = [int]$Contract.nativeAbi.current
             occtVersion = $RequiredOcctVersion
             platform = [string]$Contract.platform
             targetFramework = $TargetFramework

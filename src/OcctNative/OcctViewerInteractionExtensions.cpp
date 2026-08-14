@@ -170,7 +170,7 @@ extern "C"
             if (active != 0 && !entry.selectable)
                 throw std::invalid_argument("A non-selectable object cannot activate a selection mode.");
 
-            e->context->SetSelectionModeActive(
+            e->viewerContext.context->SetSelectionModeActive(
                 entry.presentation,
                 selectionModeValue(entry, mode),
                 active != 0,
@@ -192,7 +192,7 @@ extern "C"
             if (sensitivity <= 0)
                 throw std::invalid_argument("Selection sensitivity must be greater than zero.");
             ObjectEntry& entry = requiredObject(e, objectId);
-            e->context->SetSelectionSensitivity(
+            e->viewerContext.context->SetSelectionSensitivity(
                 entry.presentation,
                 selectionModeValue(entry, mode),
                 sensitivity);
@@ -227,7 +227,7 @@ extern "C"
                 entries.push_back(&requiredObject(e, objectIds[index]));
 
             for (ObjectEntry* entry : entries)
-                e->context->SetDisplayPriority(entry->presentation, nativePriority);
+                e->viewerContext.context->SetDisplayPriority(entry->presentation, nativePriority);
             if (!entries.empty()) e->requestRedraw();
         });
     }
@@ -241,7 +241,7 @@ extern "C"
         return execute(e, [&]
         {
             ObjectEntry& entry = requiredObject(e, objectId);
-            *priority = static_cast<int>(e->context->DisplayPriority(entry.presentation));
+            *priority = static_cast<int>(e->viewerContext.context->DisplayPriority(entry.presentation));
         });
     }
 
@@ -257,7 +257,7 @@ extern "C"
             ObjectEntry& entry = requiredObject(e, objectId);
             const Handle(Graphic3d_TransformPers) persistence =
                 new Graphic3d_TransformPers(persistenceMode3d(mode), point(anchor));
-            e->context->SetTransformPersistence(entry.presentation, persistence);
+            e->viewerContext.context->SetTransformPersistence(entry.presentation, persistence);
             e->requestRedraw();
         });
     }
@@ -281,7 +281,7 @@ extern "C"
                     persistenceMode2d(mode),
                     cornerPosition(position),
                     Graphic3d_Vec2i(offsetX, offsetY));
-            e->context->SetTransformPersistence(entry.presentation, persistence);
+            e->viewerContext.context->SetTransformPersistence(entry.presentation, persistence);
             e->requestRedraw();
         });
     }
@@ -295,7 +295,7 @@ extern "C"
         {
             ObjectEntry& entry = requiredObject(e, objectId);
             Handle(Graphic3d_TransformPers) persistence;
-            e->context->SetTransformPersistence(entry.presentation, persistence);
+            e->viewerContext.context->SetTransformPersistence(entry.presentation, persistence);
             e->requestRedraw();
         });
     }
@@ -344,7 +344,7 @@ extern "C"
             if (count < 0) throw std::invalid_argument("Clip plane count must not be negative.");
             if (count > 0 && planes == nullptr)
                 throw std::invalid_argument("Clip plane array is null.");
-            if (count > e->view->PlaneLimit())
+            if (count > e->viewerContext.view->PlaneLimit())
                 throw std::invalid_argument("Clip plane count exceeds the view plane limit.");
 
             Handle(Graphic3d_SequenceOfHClipPlane) sequence =
@@ -359,7 +359,7 @@ extern "C"
                 plane->SetCappingColor(color(source.cappingR, source.cappingG, source.cappingB));
                 sequence->Append(plane);
             }
-            e->view->SetClipPlanes(sequence);
+            e->viewerContext.view->SetClipPlanes(sequence);
             e->requestRedraw();
         });
     }
@@ -369,7 +369,7 @@ extern "C"
         int* limit)
     {
         Engine* e = engineOf(h); if (!validateInitialized(e) || limit == nullptr) return 0;
-        return execute(e, [&] { *limit = e->view->PlaneLimit(); });
+        return execute(e, [&] { *limit = e->viewerContext.view->PlaneLimit(); });
     }
 
     int occt_update_points(
@@ -399,14 +399,14 @@ extern "C"
                 else
                     component->SetPnt(point(target.update->position));
 
-                e->context->Redisplay(target.presentation, Standard_False);
-                e->context->RecomputeSelectionOnly(target.presentation);
+                e->viewerContext.context->Redisplay(target.presentation, Standard_False);
+                e->viewerContext.context->RecomputeSelectionOnly(target.presentation);
                 target.entry->storedVisible = target.update->visible != 0;
                 target.entry->hasStoredVisibility = true;
                 if (target.update->visible != 0)
-                    e->context->Display(target.presentation, Standard_False);
+                    e->viewerContext.context->Display(target.presentation, Standard_False);
                 else
-                    e->context->Erase(target.presentation, Standard_False);
+                    e->viewerContext.context->Erase(target.presentation, Standard_False);
             }
             if (!targets.empty()) e->requestRedraw();
         });

@@ -1,9 +1,12 @@
 #pragma once
 
 #include <cstdint>
+#include "OcctStatus.h"
 
 #if defined(_WIN32)
 #define OCCTBRIDGE_API __declspec(dllexport)
+#elif defined(__GNUC__) || defined(__clang__)
+#define OCCTBRIDGE_API __attribute__((visibility("default")))
 #else
 #define OCCTBRIDGE_API
 #endif
@@ -132,8 +135,17 @@ extern "C"
     OCCTBRIDGE_API OcctHandle occt_create();
     OCCTBRIDGE_API void occt_destroy(OcctHandle handle);
     OCCTBRIDGE_API const char* occt_last_error(OcctHandle handle);
+    OCCTBRIDGE_API OcctEngineHandle occt_engine_create();
+    OCCTBRIDGE_API void occt_engine_destroy(OcctEngineHandle handle);
+    OCCTBRIDGE_API OcctStatus occt_engine_last_error_code(OcctEngineHandle handle);
+    OCCTBRIDGE_API OcctStatus occt_engine_last_error_message(
+        OcctEngineHandle handle,
+        char* buffer,
+        int capacity,
+        int* required);
     OCCTBRIDGE_API const char* occt_version();
     OCCTBRIDGE_API int occt_bridge_abi_version();
+    OCCTBRIDGE_API int occt_bridge_current_abi_version();
     OCCTBRIDGE_API const char* occt_bridge_version();
     OCCTBRIDGE_API const char* occt_bridge_build_info();
 
