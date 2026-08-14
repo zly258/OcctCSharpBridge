@@ -193,7 +193,8 @@ foreach ($legacyFile in @(
     "src/OcctNet/OcctObject.Legacy.cs",
     "src/OcctNet/OcctGeometryExtensions.Compatibility.cs",
     "src/OcctNet/OcctEngine.ApiAliases.cs",
-    "src/OcctNet/NativeMethods.Modeling.cs"
+    "src/OcctNet/NativeMethods.Modeling.cs",
+    "src/OcctNet/OcctEngine.AnnotationShapes.cs"
 )) {
     if (Test-TrackedPath $legacyFile) {
         throw "Legacy/compatibility source must not be reintroduced: $legacyFile"
@@ -217,5 +218,56 @@ if ($surfaceSource.Contains("return occt_initialize_surface(reinterpret_cast<Occ
     throw "Current native-surface API must not delegate back into the legacy ABI."
 }
 
+# BRep annotation construction has one headless implementation. The frozen viewer ABI may
+# adapt registry objects into it, but must never grow its own font, text, arrow or dimension geometry.
+$vectorAnnotationSource = Read-SourceText "src/OcctNative/OcctVectorAnnotations.cpp"
+foreach ($sharedBuilder in @(
+    "buildBRepText(",
+    "buildLengthAnnotation(",
+    "buildAngleAnnotation(",
+    "buildRadiusAnnotation(",
+    "buildDiameterAnnotation("
+)) {
+    if (-not $vectorAnnotationSource.Contains($sharedBuilder)) {
+        throw "Legacy vector annotation adapter must delegate to shared headless builder: $sharedBuilder"
+    }
+}
+foreach ($forbiddenImplementation in @(
+    "StdPrs_BRepFont",
+    "StdPrs_BRepTextBuilder",
+    "BRepBuilderAPI_MakePolygon",
+    "BRepBuilderAPI_MakeFace"
+)) {
+    if ($vectorAnnotationSource.Contains($forbiddenImplementation)) {
+        throw "Legacy vector annotation adapter must not own geometry implementation: $forbiddenImplementation"
+    }
+}
+
+$viewerAnnotationSource = Read-SourceText "src/OcctNative/OcctAnnotations.cpp"
+foreach ($currentEntryPoint in @(
+    "occt_engine_text_create(",
+    "occt_engine_text_update(",
+    "occt_engine_dimension_create(",
+    "occt_engine_dimension_update("
+)) {
+    if (-not $viewerAnnotationSource.Contains($currentEntryPoint)) {
+        throw "Viewer annotation ABI 4 shell must route through current entry point: $currentEntryPoint"
+    }
+}
+
+# Production managed APIs must not call frozen BRep annotation exports. They are retained only
+# as ABI declarations until the dedicated compatibility assembly owns every ABI 4 declaration.
+foreach ($legacyManagedCall in @(
+    "NativeMethods.occt_make_text_shape(",
+    "NativeMethods.occt_make_length_annotation_shape(",
+    "NativeMethods.occt_make_angle_annotation_shape(",
+    "NativeMethods.occt_make_radius_annotation_shape(",
+    "NativeMethods.occt_make_diameter_annotation_shape("
+)) {
+    if ($managedText.Contains($legacyManagedCall)) {
+        throw "Managed production API must not call frozen BRep annotation export: $legacyManagedCall"
+    }
+}
+
 $layoutName = if ($isDemoBranchLayout) { "demo" } else { "main" }
-Write-Host "[architecture] Core/UI dependency direction, WinForms/WPF/Avalonia hosts, $layoutName branch layout, current-over-legacy adapter direction, and no-compatibility boundary validated." -ForegroundColor Green
+Write-Host "[architecture] Core/UI dependency direction, WinForms/WPF/Avalonia hosts, $layoutName branch layout, current-over-legacy adapter direction, shared annotation implementation, and no-compatibility boundary validated." -ForegroundColor Green
