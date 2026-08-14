@@ -1,6 +1,6 @@
 # Tests and Validation
 
-`tests` 只保留三类验证：**少量仓库级静态契约、Managed 回归测试、真实 Native Smoke**。仓库不依赖 GitHub Actions；验证由本地 `build.ps1`、`.NET 10.0.302`、MSVC 和真实 OCCT 7.9.0 环境完成。
+`tests` 保留四类验证：**少量仓库级静态契约、Managed 回归测试、真实 Native Smoke、固定旧消费者兼容性测试**。仓库不依赖 GitHub Actions；验证由本地 `build.ps1`、`.NET 10.0.302`、MSVC 和真实 OCCT 7.9.0 环境完成。
 
 ## 1. 静态契约
 
@@ -85,7 +85,15 @@ dotnet test .\tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj -c Release 
 
 如果仍出现 Win32 126，应检查 `OCCT_ROOT`、`TKernel.dll` 和第三方 Runtime 目录结构，定位实际缺失依赖。
 
-## 4. 构建缓存与清理
+## 4. 固定旧消费者兼容性
+
+固定 ABI 4 消费者位于 `tests/compatibility`。它只声明冻结的旧 ABI，不引用 `OcctNet`，并使用当前 `OcctNative.dll` 验证 create、initialize、model、render 和 dispose 完整生命周期：
+
+```powershell
+.\build.ps1 compatibility Release
+```
+
+## 5. 构建缓存与清理
 
 默认构建保留 `bin/obj`，交给 MSBuild/CMake 做增量判断。只有确实需要全量重建时执行：
 
@@ -95,7 +103,7 @@ dotnet test .\tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj -c Release 
 
 不要在日常构建前手工删除每个项目的 `bin/obj`。
 
-## 5. 推荐验证顺序
+## 6. 推荐验证顺序
 
 日常 Managed 修改：
 
@@ -112,7 +120,7 @@ dotnet test .\tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj -c Release 
 .\build.ps1 smoke Release
 ```
 
-## 6. 新增检查原则
+## 7. 新增检查原则
 
 新增 PowerShell Contract Check 前，先确认：
 

@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("validate", "native", "managed", "test", "smoke", "docs", "dist", "ci", "clean", "all")]
+    [ValidateSet("validate", "native", "managed", "test", "compatibility", "smoke", "docs", "dist", "ci", "clean", "all")]
     [string]$Target = "all",
 
     [Parameter(Position = 1)]
@@ -58,7 +58,7 @@ $Projects = [ordered]@{
     Avalonia = "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj"
     ManagedTests = "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj"
     Smoke = "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
-    LegacyCompatibility = "tests\OcctNet.LegacyCompatibilityTests\OcctNet.LegacyCompatibilityTests.csproj"
+    LegacyCompatibility = "tests\compatibility\OcctNet.LegacyCompatibilityTests.csproj"
     AvaloniaSmoke = "tests\OcctNet.AvaloniaSmoke\OcctNet.AvaloniaSmoke.csproj"
 }
 
@@ -215,29 +215,58 @@ function Build-Ci {
     Build-Project "AvaloniaSmoke"
 }
 
-function Run-Smoke {
+function Invoke-LegacyCompatibility {
     Assert-Path $NativeDll
     Resolve-OcctConfiguration
-    Build-Project "Smoke"
     Build-Project "LegacyCompatibility"
-
-    $smokeProject = Join-Path $RepoRoot $Projects.Smoke
-    $smokeOutput = Join-Path (Split-Path -Parent $smokeProject) "bin\x64\$Configuration\$DesktopTargetFramework"
-    Copy-Item $NativeDll (Join-Path $smokeOutput "OcctNative.dll") -Force
 
     $legacyProject = Join-Path $RepoRoot $Projects.LegacyCompatibility
     $legacyOutput = Join-Path (Split-Path -Parent $legacyProject) "bin\x64\$Configuration\$DesktopTargetFramework"
     Copy-Item $NativeDll (Join-Path $legacyOutput "OcctNative.dll") -Force
 
-    Write-Host "[compatibility] Running fixed ABI 4 consumer..." -ForegroundColor Cyan
-    Invoke-Checked "dotnet" @(
-        "run",
-        "--project", $legacyProject,
-        "-c", $Configuration,
-        "-p:Platform=x64",
-        "-p:Version=$BridgeVersion",
-        "--no-build"
-    ) "ABI 4 compatibility smoke failed."
+    $runtimeDirectories = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    [void]$runtimeDirectories.Add($script:OcctBinDir)
+    $thirdPartyRoot = Join-Path $script:OcctRoot "3rdparty-vc14-64"
+    if (Test-Path $thirdPartyRoot -PathType Container) {
+        foreach ($dll in @(Get-ChildItem -LiteralPath $thirdPartyRoot -Filter "*.dll" -File -Recurse -ErrorAction SilentlyContinue)) {
+            [void]$runtimeDirectories.Add($dll.DirectoryName)
+        }
+    }
+
+    $previousPath = $env:PATH
+    $previousOcctRoot = $env:OCCT_ROOT
+    $previousCasRoot = $env:CASROOT
+    try {
+        $env:PATH = (@($legacyOutput) + @($runtimeDirectories) + @($previousPath)) -join [System.IO.Path]::PathSeparator
+        $env:OCCT_ROOT = $script:OcctRoot
+        $env:CASROOT = $script:OcctRoot
+        Write-Host "[compatibility] Running fixed ABI 4 create/initialize/model/render/dispose consumer..." -ForegroundColor Cyan
+        Invoke-Checked "dotnet" @(
+            "run",
+            "--project", $legacyProject,
+            "-c", $Configuration,
+            "-p:Platform=x64",
+            "-p:Version=$BridgeVersion",
+            "--no-build"
+        ) "ABI 4 compatibility smoke failed."
+    }
+    finally {
+        $env:PATH = $previousPath
+        $env:OCCT_ROOT = $previousOcctRoot
+        $env:CASROOT = $previousCasRoot
+    }
+}
+
+function Run-Smoke {
+    Assert-Path $NativeDll
+    Resolve-OcctConfiguration
+    Build-Project "Smoke"
+    Invoke-LegacyCompatibility
+
+    $smokeProject = Join-Path $RepoRoot $Projects.Smoke
+    $smokeOutput = Join-Path (Split-Path -Parent $smokeProject) "bin\x64\$Configuration\$DesktopTargetFramework"
+    Copy-Item $NativeDll (Join-Path $smokeOutput "OcctNative.dll") -Force
+
 
     $previousNativeDirectory = $env:OCCT_BRIDGE_NATIVE_DIR
     $previousOcctRoot = $env:OCCT_ROOT
@@ -392,6 +421,10 @@ switch ($Target) {
         Run-ManagedTests
     }
     "docs" { Generate-ApiDocumentation }
+    "compatibility" {
+        Build-Native
+        Invoke-LegacyCompatibility
+    }
     "dist" { Build-BinaryDistribution }
     "ci" { Build-Ci }
     "smoke" {
