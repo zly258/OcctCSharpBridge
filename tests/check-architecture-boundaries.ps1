@@ -16,6 +16,16 @@ function Read-Project {
     return [xml](Get-Content $path -Raw -Encoding UTF8)
 }
 
+function Read-SourceText {
+    param([Parameter(Mandatory = $true)][string]$RelativePath)
+
+    $path = Join-Path $RepositoryRoot $RelativePath
+    if (-not (Test-Path $path -PathType Leaf)) {
+        throw "Source file was not found: $RelativePath"
+    }
+    return [System.IO.File]::ReadAllText($path)
+}
+
 function Get-ProjectReferences {
     param([Parameter(Mandatory = $true)][xml]$Project)
 
@@ -190,5 +200,22 @@ foreach ($legacyFile in @(
     }
 }
 
+# ABI 4 stays as a compatibility shell. Current ABI owns the implementation path.
+$engineSource = Read-SourceText "src/OcctNative/core/OcctEngine.cpp"
+if (-not $engineSource.Contains("return reinterpret_cast<OcctHandle>(occt_engine_create());")) {
+    throw "Legacy occt_create must delegate to occt_engine_create."
+}
+if (-not $engineSource.Contains("occt_engine_destroy(reinterpret_cast<OcctEngineHandle>(handle));")) {
+    throw "Legacy occt_destroy must delegate to occt_engine_destroy."
+}
+
+$surfaceSource = Read-SourceText "src/OcctNative/platform/OcctNativeSurface.cpp"
+if (-not $surfaceSource.Contains("return occt_engine_initialize_surface(")) {
+    throw "Legacy native-surface initialization must delegate to the current surface API."
+}
+if ($surfaceSource.Contains("return occt_initialize_surface(reinterpret_cast<OcctHandle>(handle)")) {
+    throw "Current native-surface API must not delegate back into the legacy ABI."
+}
+
 $layoutName = if ($isDemoBranchLayout) { "demo" } else { "main" }
-Write-Host "[architecture] Core/UI dependency direction, WinForms/WPF/Avalonia hosts, $layoutName branch layout, and no-compatibility boundary validated." -ForegroundColor Green
+Write-Host "[architecture] Core/UI dependency direction, WinForms/WPF/Avalonia hosts, $layoutName branch layout, current-over-legacy adapter direction, and no-compatibility boundary validated." -ForegroundColor Green
