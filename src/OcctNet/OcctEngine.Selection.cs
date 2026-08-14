@@ -1,12 +1,24 @@
-﻿namespace OcctNet;
+using System.Runtime.InteropServices;
+
+namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
-    public void MoveTo(int x, int y) =>
-        CheckInitialized(() => NativeMethods.occt_move_to(_handle, x, y));
+    public void MoveTo(int x, int y)
+    {
+        EnsureInitialized();
+        CheckSelectionStatus(SelectionNativeMethods.occt_engine_selection_move_to(_handle, x, y));
+    }
 
-    public void Select(int x, int y, bool appendSelection = false) =>
-        CheckInitialized(() => NativeMethods.occt_select(_handle, x, y, appendSelection ? 1 : 0));
+    public void Select(int x, int y, bool appendSelection = false)
+    {
+        EnsureInitialized();
+        CheckSelectionStatus(SelectionNativeMethods.occt_engine_selection_point_select(
+            _handle,
+            x,
+            y,
+            appendSelection ? 1 : 0));
+    }
 
     public void SelectRectangle(
         int x1,
@@ -14,27 +26,46 @@ public sealed partial class OcctEngine
         int x2,
         int y2,
         bool appendSelection = false,
-        bool allowOverlap = false) =>
-        CheckInitialized(() => NativeMethods.occt_select_rectangle_ex(
+        bool allowOverlap = false)
+    {
+        var options = new NativeViewerRectangleSelectionOptions
+        {
+            StructSize = (uint)Marshal.SizeOf<NativeViewerRectangleSelectionOptions>(),
+            ApiVersion = 1,
+            X1 = x1,
+            Y1 = y1,
+            X2 = x2,
+            Y2 = y2,
+            Append = appendSelection ? 1 : 0,
+            AllowOverlap = allowOverlap ? 1 : 0
+        };
+        EnsureInitialized();
+        CheckSelectionStatus(SelectionNativeMethods.occt_engine_selection_rectangle_select(
             _handle,
-            x1,
-            y1,
-            x2,
-            y2,
-            appendSelection ? 1 : 0,
-            allowOverlap ? 1 : 0));
+            in options));
+    }
 
     public void SelectObject(IOcctObject value, bool appendSelection = false)
     {
         ArgumentNullException.ThrowIfNull(value);
         EnsureObject(value);
-        CheckInitialized(() => NativeMethods.occt_select_object(_handle, value.Id, appendSelection ? 1 : 0));
+        EnsureInitialized();
+        CheckSelectionStatus(SelectionNativeMethods.occt_engine_selection_object_select(
+            _handle,
+            value.Id,
+            appendSelection ? 1 : 0));
     }
 
     public void SetSelectionMode(OcctSelectionMode mode)
     {
         if (!Enum.IsDefined(mode)) throw new ArgumentOutOfRangeException(nameof(mode));
-        CheckInitialized(() => NativeMethods.occt_set_selection_mode(_handle, (int)mode));
+        UpdateSelectionSettings(new NativeViewerSelectionSettingsOptions
+        {
+            StructSize = (uint)Marshal.SizeOf<NativeViewerSelectionSettingsOptions>(),
+            ApiVersion = 1,
+            UpdateMask = NativeViewerSelectionSettingsUpdateMask.Mode,
+            SelectionMode = (int)mode
+        });
     }
 
     public IReadOnlyList<IOcctObject> SelectedObjects
@@ -49,8 +80,7 @@ public sealed partial class OcctEngine
             var seen = new HashSet<long>();
             foreach (var hit in hits)
             {
-                if (seen.Add(hit.Owner.Id))
-                    result.Add(hit.Owner);
+                if (seen.Add(hit.Owner.Id)) result.Add(hit.Owner);
             }
             return result;
         }
@@ -68,8 +98,11 @@ public sealed partial class OcctEngine
     public OcctShape? FirstSelected =>
         FirstSelectedObject is OcctShape shape ? shape : null;
 
-    public void ClearSelection() =>
-        CheckInitialized(() => NativeMethods.occt_clear_selection(_handle));
+    public void ClearSelection()
+    {
+        EnsureInitialized();
+        CheckSelectionStatus(SelectionNativeMethods.occt_engine_selection_clear(_handle));
+    }
 
     public OcctShape CopySelectedSubshape() => CopySelectedSubshape(0);
 
@@ -77,6 +110,22 @@ public sealed partial class OcctEngine
     {
         EnsureInitialized();
         OcctGuard.PositiveIndex(index, nameof(index));
-        return CheckShape(NativeMethods.occt_copy_selected_subshape_at(_handle, index));
+        CheckSelectionStatus(SelectionNativeMethods.occt_engine_selection_subshape_copy(
+            _handle,
+            index,
+            out var shapeId));
+        if (shapeId <= 0) throw new OcctException("Native selection copy returned an invalid shape ID.");
+        return new OcctShape(shapeId, _ownerId);
+    }
+
+    private void UpdateSelectionSettings(NativeViewerSelectionSettingsOptions options)
+    {
+        EnsureInitialized();
+        CheckSelectionStatus(SelectionNativeMethods.occt_engine_selection_settings_update(_handle, in options));
+    }
+
+    private void CheckSelectionStatus(OcctStatus status)
+    {
+        if (status != OcctStatus.Ok) throw CreateException();
     }
 }
