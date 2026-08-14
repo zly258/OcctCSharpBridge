@@ -114,9 +114,9 @@ add_library(OcctNative SHARED
     exchange/OcctIO.cpp
     exchange/OcctStepDocument.cpp
     OcctModelingCore.cpp
-    OcctModelingShapeQueries.cpp
+    topology/OcctModelingShapeQueries.cpp
     geometry/OcctModelingGeometryQueries.cpp
-    OcctModelingTopology.cpp
+    topology/OcctModelingTopology.cpp
     OcctModelingInterop.cpp
     geometry/OcctModelingGeometry.Curves.cpp
     geometry/OcctModelingGeometry.Planar.cpp
@@ -126,7 +126,7 @@ add_library(OcctNative SHARED
     OcctModelingBoolean.cpp
     OcctModelingFeatures.cpp
     OcctModelingHealing.cpp
-    OcctModelingHistory.cpp
+    topology/OcctModelingHistory.cpp
     OcctModelingAnalysis.cpp
     mesh/OcctModelingMesh.cpp
     exchange/OcctModelingExchange.cpp
@@ -134,11 +134,11 @@ add_library(OcctNative SHARED
     geometry/OcctModelingDifferentialGeometry.cpp
     OcctModelingExtensions.cpp
     geometry/OcctModelingBSpline.cpp
-    OcctModelingTopologyAnalysis.cpp
-    OcctModelingFaceAnalysis.cpp
+    topology/OcctModelingTopologyAnalysis.cpp
+    topology/OcctModelingFaceAnalysis.cpp
     OcctModelingInertia.cpp
     OcctModelingIntersection.cpp
-    OcctModelingTopologyReference.cpp
+    topology/OcctModelingTopologyReference.cpp
     core/OcctInternal.hxx
     core/OcctErrorContext.hxx
     viewer/OcctViewerContext.hxx
@@ -164,11 +164,11 @@ add_library(OcctNative SHARED
     OcctModeling.h
     OcctModelingExtensions.h
     geometry/OcctModelingBSpline.h
-    OcctModelingTopologyAnalysis.h
-    OcctModelingFaceAnalysis.h
+    topology/OcctModelingTopologyAnalysis.h
+    topology/OcctModelingFaceAnalysis.h
     OcctModelingInertia.h
     OcctModelingIntersection.h
-    OcctModelingTopologyReference.h
+    topology/OcctModelingTopologyReference.h
     OcctStatus.h
     include/occt_bridge/api.h
     include/occt_bridge/status.h

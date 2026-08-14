@@ -48,11 +48,11 @@
       "OcctModeling.h",
       "OcctModelingExtensions.h",
       "geometry/OcctModelingBSpline.h",
-      "OcctModelingTopologyAnalysis.h",
-      "OcctModelingFaceAnalysis.h",
+      "topology/OcctModelingTopologyAnalysis.h",
+      "topology/OcctModelingFaceAnalysis.h",
       "OcctModelingInertia.h",
       "OcctModelingIntersection.h",
-      "OcctModelingTopologyReference.h"
+      "topology/OcctModelingTopologyReference.h"
     ]
   }
 }

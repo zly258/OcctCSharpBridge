@@ -35,3 +35,5 @@ Selection state, detection, selection overlays, and manipulators belong to `src/
 Engine coordination and structured native error state belong to `src/OcctNative/core`. Core composes ViewerContext, SceneRegistry, DocumentStore, and rendering state; it does not own UI-framework adapters or application-level document and command models.
 
 Shared geometric queries, point collections, analytic and differential geometry, planar construction, transforms, and B-Spline implementation belong to `src/OcctNative/geometry`. Viewer-facing entry points may use Engine coordination, while headless entry points use only ModelingSession state.
+
+Shape traversal, topology queries, topology history, face analysis, and persistent topology references belong to `src/OcctNative/topology`. They operate on ModelingSession-owned shapes and remain independent of Viewer and AIS state.
