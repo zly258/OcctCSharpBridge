@@ -23,15 +23,15 @@
     "languageVersion": "14.0"
   },
   "api": {
-    "nativeExports": 443,
-    "managedPInvokes": 443,
-    "abi5Exports": 23,
+    "nativeExports": 448,
+    "managedPInvokes": 448,
+    "abi5Exports": 28,
     "legacyAbi4Exports": 419,
     "compatibilityExtensions": 1,
     "compatibilityExtensionNames": ["occt_initialize_surface"],
-    "publicNetTypes": 148,
+    "publicNetTypes": 152,
     "viewer": 292,
-    "modeling": 151,
+    "modeling": 156,
     "nativeHeaders": [
       "OcctNative.h",
       "OcctRenderSurface.h",
@@ -48,6 +48,7 @@
       "selection/OcctDetection.h",
       "modeling/OcctModeling.h",
       "modeling/OcctModelingExtensions.h",
+      "modeling/OcctModelingAnnotations.h",
       "modeling/OcctAlgorithmResource.h",
       "geometry/OcctModelingBSpline.h",
       "topology/OcctModelingTopologyAnalysis.h",
