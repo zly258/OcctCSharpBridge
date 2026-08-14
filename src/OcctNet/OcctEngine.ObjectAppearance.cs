@@ -28,12 +28,8 @@ public sealed partial class OcctEngine
         CheckInitialized(() => NativeMethods.occt_set_object_visible(_handle, value.Id, visible ? 1 : 0));
     }
 
-    public void SetDisplayMode(IOcctObject value, OcctDisplayMode displayMode)
-    {
-        EnsureObject(value);
-        if (!Enum.IsDefined(displayMode)) throw new ArgumentOutOfRangeException(nameof(displayMode));
-        CheckInitialized(() => NativeMethods.occt_set_object_display_mode(_handle, value.Id, (int)displayMode));
-    }
+    public void SetDisplayMode(IOcctObject value, OcctDisplayMode displayMode) =>
+        SetDisplayModeOverride(value, displayMode);
 
     public void SetLineWidth(IOcctObject value, double width)
     {
