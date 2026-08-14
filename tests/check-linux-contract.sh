@@ -42,7 +42,9 @@ forbid_text "${MANAGED_TESTS}" 'OcctNet.Wpf' "Managed core tests must not refere
 
 require_text "${BUILD_SH}" 'validate_common()' "Linux build must keep common validation independent from native validation."
 require_text "${BUILD_SH}" 'validate_native()' "Linux build must keep an explicit native validation layer."
-require_text "${BUILD_SH}" 'sed '\''s/\"platform\": \"cross-platform-x64\"/\"platform\": \"linux-x64\"/'\''' "Linux distribution must specialize the source contract to linux-x64."
+require_text "${BUILD_SH}" 's/"platform": "cross-platform-x64"/"platform": "linux-x64"/' "Linux distribution must specialize the source contract to linux-x64."
 require_text "${BUILD_SH}" '"platform": "linux-x64"' "Linux distribution manifest must identify linux-x64."
+require_text "${BUILD_SH}" 'avalonia-smoke)' "Linux build must expose an explicit Avalonia viewer smoke target."
+require_text "${BUILD_SH}" 'DISPLAY' "Avalonia viewer smoke must require an X11/XWayland display."
 
 printf '[linux-contract] Cross-platform source/test/distribution boundaries validated.\n'
