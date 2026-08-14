@@ -36,13 +36,14 @@ The authoritative platform Binary SDKs are the tracked `main/dist/win-x64` and `
 
 `publish.ps1` and `publish.sh` replace those files only after validated platform Release builds. Documentation deliberately does not hard-code a second “published version” value that can become stale immediately after a release.
 
-## Highlights in 2.7 source
+## Bridge 3 preview highlights
 
 - first-class `OcctAssemblyDocument` / `OcctAssemblyNode` STEP-XDE occurrence model;
 - stable assembly item IDs, Assembly/Instance/Part roles, local/global transforms, visibility, surface RGBA, curve colors and subshape styles;
 - valid multi-solid STEP Parts remain one Part instead of being flattened into artificial `Part_###` objects;
 - non-geometric STEP edits can round-trip through the pristine imported XDE document while geometry is unchanged;
 - first-class `OcctPoint` / `OcctPointMarker` backed by `AIS_Point`;
+- owned Shape/Mesh/Algorithm resources provide explicit native lifetime boundaries for headless workflows;
 - WPF uses a no-redraw native surface resize path and coalesces presentation at render priority instead of redrawing from `WM_PAINT`.
 
 ## Windows demo previews
@@ -88,8 +89,11 @@ Linux x64 uses the same source tree. Managed validation/tests do not require a l
 ./build.sh managed Release
 ./build.sh test Release
 ./build.sh all Release
+./build.sh avalonia-smoke Release   # requires X11/XWayland DISPLAY
 ./build.sh dist Release
 ```
+
+The normal Linux `all` target stays headless. `avalonia-smoke` is an explicit viewer test because the OCCT 7.9 Linux viewer backend currently uses X11/XWayland rather than a native Wayland surface.
 
 ## Publish tracked Binary SDKs
 
@@ -119,7 +123,7 @@ var cut = model.Cut(plate, hole);
 model.ExportStep(cut.Shape, "plate.step");
 ```
 
-Assembly-aware STEP import in the 2.7 source:
+Assembly-aware STEP import in the current Bridge 3 preview source:
 
 ```csharp
 using var engine = new OcctEngine();
