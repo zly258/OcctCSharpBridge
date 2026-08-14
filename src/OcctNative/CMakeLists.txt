@@ -160,6 +160,7 @@ add_library(OcctNative SHARED
     mesh/OcctModelingMeshInternal.hxx
     mesh/OcctMeshResource.h
     exchange/OcctModelingExchangeInternal.hxx
+    exchange/OcctModelingExchange.h
     exchange/OcctExchangePath.hxx
     OcctNative.h
     platform/OcctNativeSurface.h
