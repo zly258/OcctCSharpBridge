@@ -1,24 +1,49 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
-internal static partial class NativeMethods
+[Flags]
+internal enum NativeViewportResetMask : uint
 {
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_get_viewport_state(OcctEngineSafeHandle handle, out OcctViewportState result);
+    All = 1u << 0,
+    Orientation = 1u << 1,
+    Mapping = 1u << 2
+}
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_reset_view(OcctEngineSafeHandle handle);
+internal static partial class ViewportStateNativeMethods
+{
+    private const string LibraryName = "OcctNative";
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_reset_view_orientation(OcctEngineSafeHandle handle);
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct NativeViewportStateResult
+    {
+        internal uint StructSize;
+        internal uint ApiVersion;
+        internal OcctViewportState State;
+    }
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_reset_view_mapping(OcctEngineSafeHandle handle);
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_viewport_state_get(
+        OcctEngineSafeHandle handle,
+        out NativeViewportStateResult result);
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_fit_selected(OcctEngineSafeHandle handle, double margin);
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_viewport_reset(
+        OcctEngineSafeHandle handle,
+        NativeViewportResetMask resetMask);
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_get_scene_gravity_point(OcctEngineSafeHandle handle, out OcctPoint3d result);
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_viewport_fit_selected(
+        OcctEngineSafeHandle handle,
+        double margin);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_viewport_gravity_point_get(
+        OcctEngineSafeHandle handle,
+        out OcctPoint3d result);
 }
