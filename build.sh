@@ -25,6 +25,7 @@ OCCT_VERSION="$(contract_string occtVersion)"
 SDK_VERSION="$(contract_string sdkVersion)"
 LANGUAGE_VERSION="$(contract_string languageVersion)"
 AUTHOR="$(contract_string author)"
+SOURCE_PLATFORM="$(contract_string platform)"
 CURRENT_ABI="$(contract_number current)"
 SDK_MAJOR="${SDK_VERSION%%.*}"
 TFM="net10.0"
@@ -36,6 +37,7 @@ validate() {
     require_command cmake
     require_command c++
     require_command dotnet
+    [[ "${SOURCE_PLATFORM}" == "cross-platform-x64" ]] || fail "Source contract platform must be cross-platform-x64; found ${SOURCE_PLATFORM}."
     [[ -f "${OCCT_INCLUDE_DIR}/Standard.hxx" ]] || fail "OCCT headers were not found under ${OCCT_INCLUDE_DIR}."
     compgen -G "${OCCT_LIB_DIR}/libTKernel.so*" >/dev/null || fail "OCCT TKernel was not found under ${OCCT_LIB_DIR}."
     local detected_sdk="$(dotnet --version)"
@@ -91,7 +93,8 @@ dist() {
     mkdir -p "${DIST_STAGING}"
     cp -f "${NATIVE_DIR}/libOcctNative.so" "${DIST_STAGING}/"
     cp -f "${core}" "${avalonia}" "${DIST_STAGING}/"
-    sed 's/"platform": "windows-x64"/"platform": "linux-x64"/' "${CONTRACT}" > "${DIST_STAGING}/bridge-contract.json"
+    sed 's/"platform": "cross-platform-x64"/"platform": "linux-x64"/' "${CONTRACT}" > "${DIST_STAGING}/bridge-contract.json"
+    grep -q '"platform": "linux-x64"' "${DIST_STAGING}/bridge-contract.json" || fail "Linux distribution contract was not specialized to linux-x64."
 
     local names=(libOcctNative.so OcctNet.dll OcctNet.Avalonia.dll bridge-contract.json)
     {
