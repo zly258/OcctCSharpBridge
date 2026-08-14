@@ -16,23 +16,25 @@ OcctCSharpBridge `main` 是 **Open CASCADE Technology 7.9.0 → .NET 10 / C# 14*
 | --- | --- |
 | Bridge | **3.0.0-preview.1** |
 | Native ABI | **5 当前 / 4 兼容** |
-| Native exports / P/Invoke | **431 / 431** |
-| Public .NET types | **145** |
-| Viewer / Modeling API | **292 / 139** |
+| Native exports / P/Invoke | **443 / 443** |
+| ABI 5 / Legacy ABI 4 / Compatibility Extension | **23 / 419 / 1** |
+| Public .NET types | **148** |
+| Viewer / Modeling API | **292 / 151** |
 | OCCT | **7.9.0** |
 | .NET SDK | **10.0.302** |
-| Target Framework | **`net10.0` Core / `net10.0-windows` Desktop** |
+| Target Framework | **`net10.0` Core/Tests/Smoke / `net10.0-windows` Desktop Adapter** |
 | C# / Native | **14.0 / C++17** |
 | UI Adapter | **WinForms / WPF / Avalonia** |
-| Platform | **Windows x64** |
+| 源码平台契约 | **cross-platform x64** |
+| Binary SDK RID | **windows-x64 / linux-x64** |
 
-`bridge-contract.json` 是 `main` **源码契约**的机器可读事实源。
+`bridge-contract.json` 是 `main` **源码契约**的机器可读事实源。源码契约保持跨平台；每个平台打包时再将 `dist/<rid>/bridge-contract.json` 专门化为对应 RID。
 
-### 当前已发布 Windows Binary SDK
+### 当前 Binary SDK 发布状态
 
-正式发布状态以仓库中实际跟踪的 `main/dist/win-x64` 为准。请读取 [`dist/win-x64/bridge-contract.json`](dist/win-x64/bridge-contract.json) 获取已发布 Bridge/ABI/API 契约，读取 [`dist/win-x64/bridge-manifest.json`](dist/win-x64/bridge-manifest.json) 获取对应源码 Commit 与文件哈希。
+正式发布状态以仓库中实际跟踪的 `main/dist/win-x64` 与 `main/dist/linux-x64` 为准。每个平台包中的 `bridge-contract.json` 表示实际 Bridge/ABI/API 契约，`bridge-manifest.json` 记录对应源码 Commit 与文件哈希。
 
-`publish.ps1` 只有在 Windows/MSVC + OCCT 7.9 的 Release 构建和校验成功后才会替换这些文件。文档不再额外硬编码一份“当前已发布版本”，避免每次发布后立即产生过期信息。
+`publish.ps1` 与 `publish.sh` 只有在各自平台 Release 构建和校验通过后才会替换对应 Binary SDK。文档不再额外硬编码一份“当前已发布版本”，避免发布后立即产生过期信息。
 
 ## 2.7 源码重点能力
 
@@ -60,10 +62,11 @@ OcctCSharpBridge `main` 是 **Open CASCADE Technology 7.9.0 → .NET 10 / C# 14*
                  │
                  ▼
 OcctNet.WinForms ─┐
-OcctNet.Wpf      ─┴─> OcctNet -> stable C ABI -> OcctNative -> OCCT 7.9.0
+OcctNet.Wpf      ─┼─> OcctNet -> stable C ABI -> OcctNative -> OCCT 7.9.0
+OcctNet.Avalonia ─┘
 ```
 
-`OcctModelingSession` 负责 Headless 建模/拓扑；`OcctEngine` 负责 AIS/Viewer 展示与交互场景。Windows UI Adapter 都直接依赖 `OcctNet`，互不引用。
+`OcctModelingSession` 负责 Headless 建模/拓扑；`OcctEngine` 负责 AIS/Viewer 展示与交互场景。各 UI Adapter 都直接依赖 `OcctNet`，互不引用。
 
 跨平台 Avalonia 示例与应用打包位于 `avalonia` 分支；正式 `OcctNet.Avalonia` Host 和两个 Native 平台后端仍统一由 `main` 维护。
 
@@ -78,40 +81,32 @@ OcctNet.Wpf      ─┴─> OcctNet -> stable C ABI -> OcctNative -> OCCT 7.9.0
 .\build.ps1 docs Release
 .\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
-Linux x64 使用同一源码树，并在 `dist/linux-x64` 生成消费者 SDK：
+
+Linux x64 使用同一源码树。`managed/test` 不再要求本机安装 OCCT；只有 `native/smoke/dist` 需要 OCCT Native SDK。消费者 SDK 输出到 `dist/linux-x64`：
 
 ```bash
 ./build.sh validate Release
+./build.sh managed Release
+./build.sh test Release
 ./build.sh all Release
 ./build.sh dist Release
 ```
 
+## 正式发布 Binary SDK
 
-## 正式发布 Windows Binary SDK
+Windows：
 
 ```powershell
 .\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-Windows Binary SDK 发布方向保持单向：
-
-```text
-main 必须干净且基于最新 origin/main
-→ 生成中英文 API Reference
-→ 构建并验证 Release Binary SDK
-→ commit/push main 的 dist/win-x64
-→ demo 用户在 demo 分支本地运行 sync.ps1
-```
-
-`demo/dist` 已加入 `.gitignore`，Demo 是 SDK 消费者，不再作为第二份 Binary SDK 仓库。
-在 Linux x64 发布主机上，从干净且已同步的 `main` 分支发布经过验证的 Linux SDK：
+Linux x64：
 
 ```bash
 ./publish.sh
 ```
 
-该流程只更新 `dist/linux-x64`；Avalonia 应用打包仍由消费者分支负责。
-
+两个发布流程都会在更新对应 `dist/<rid>` 之前校验包级 contract、manifest、源码 Commit 与文件哈希。Consumer 分支只同步这些 SDK，不再携带第二份 Core/Native 源码。
 
 ## 使用示例
 
