@@ -122,9 +122,9 @@ $projectFiles = [ordered]@{
     "src/OcctNet.Avalonia/OcctNet.Avalonia.csproj" = $expectedTargetFramework
     "tests/OcctNet.AvaloniaSmoke/OcctNet.AvaloniaSmoke.csproj" = $expectedTargetFramework
     "tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj" = $expectedTargetFramework
+    "tests/OcctNet.Smoke/OcctNet.Smoke.csproj" = $expectedTargetFramework
     "src/OcctNet.WinForms/OcctNet.WinForms.csproj" = $expectedDesktopTargetFramework
     "src/OcctNet.Wpf/OcctNet.Wpf.csproj" = $expectedDesktopTargetFramework
-    "tests/OcctNet.Smoke/OcctNet.Smoke.csproj" = $expectedDesktopTargetFramework
     "tests/compatibility/OcctNet.LegacyCompatibilityTests.csproj" = $expectedDesktopTargetFramework
 }
 foreach ($entry in $projectFiles.GetEnumerator()) {
