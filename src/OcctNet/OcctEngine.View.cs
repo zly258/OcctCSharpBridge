@@ -5,25 +5,30 @@ namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
-    public void Initialize(IntPtr windowHandle)
-    {
-        EnsureNotDisposed();
-        if (windowHandle == IntPtr.Zero)
-            throw new ArgumentException("Window handle must not be zero.", nameof(windowHandle));
-        if (Volatile.Read(ref _initialized)) return;
-        Check(NativeMethods.occt_initialize(_handle, windowHandle));
-        Volatile.Write(ref _initialized, true);
-    }
+    public void Initialize(IntPtr windowHandle) =>
+        InitializeNativeSurface(OcctNativeSurfaceKind.Auto, windowHandle);
 
-    public void Resize() => CheckInitialized(() => NativeMethods.occt_resize(_handle));
+    public void Resize()
+    {
+        EnsureInitialized();
+        CheckViewStatus(NativeMethods.occt_engine_surface_resize(_handle, 1));
+    }
 
     /// <summary>
     /// Synchronizes the OCCT render surface with the native window size without drawing a frame.
     /// UI adapters can coalesce repeated resize notifications and call <see cref="Redraw"/> once.
     /// </summary>
-    public void ResizeSurface() => CheckInitialized(() => NativeMethods.occt_resize_surface(_handle));
+    public void ResizeSurface()
+    {
+        EnsureInitialized();
+        CheckViewStatus(NativeMethods.occt_engine_surface_resize(_handle, 0));
+    }
 
-    public void Redraw() => CheckInitialized(() => NativeMethods.occt_redraw(_handle));
+    public void Redraw()
+    {
+        EnsureInitialized();
+        CheckViewStatus(NativeMethods.occt_engine_surface_redraw(_handle));
+    }
 
     public void FitAll()
     {
