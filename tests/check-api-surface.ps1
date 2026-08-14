@@ -9,6 +9,11 @@ $contractPath = Join-Path $RepositoryRoot "bridge-contract.json"
 if (-not (Test-Path $contractPath -PathType Leaf)) {
     throw "Bridge contract file was not found: bridge-contract.json"
 }
+$abi4BaselinePath = Join-Path $RepositoryRoot "tests\contracts\abi4-exports.txt"
+if (-not (Test-Path $abi4BaselinePath -PathType Leaf)) {
+    throw "ABI 4 export baseline was not found: tests/contracts/abi4-exports.txt"
+}
+$abi4Exports = @(Get-Content $abi4BaselinePath | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
 
 $contract = Get-Content $contractPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $expectedNativeCount = [int]$contract.api.nativeExports
@@ -16,6 +21,11 @@ $expectedManagedCount = [int]$contract.api.managedPInvokes
 $expectedPublicTypeCount = [int]$contract.api.publicNetTypes
 $expectedViewerCount = [int]$contract.api.viewer
 $expectedModelingCount = [int]$contract.api.modeling
+$compatibilityExtensionNames = @($contract.api.compatibilityExtensionNames | ForEach-Object { [string]$_ })
+if ($compatibilityExtensionNames.Count -ne [int]$contract.api.compatibilityExtensions) {
+    throw "Compatibility extension names differ from bridge-contract.json count."
+}
+
 
 $nativeRoot = Join-Path $RepositoryRoot "src\OcctNative"
 $managedRoot = Join-Path $RepositoryRoot "src\OcctNet"
@@ -114,9 +124,10 @@ $pinvokeText = Read-AllText $pinvokeFiles
 
 $declarationRaw = Get-RawMatches $headerText '\b(occt_[a-z0-9_]+)\s*\([^{};]*\)\s*;'
 $definitionRaw = Get-RawMatches $cppText '\b(occt_[a-z0-9_]+)\s*\([^;{}]*\)\s*\{'
-$pinvokeRaw = Get-RawMatches $pinvokeText '\bextern\s+[A-Za-z0-9_<>,\[\]?]+\s+(occt_[a-z0-9_]+)\s*\('
+$pinvokeRaw = Get-RawMatches $pinvokeText '\b(?:extern|partial)\s+[A-Za-z0-9_<>,\[\]?]+\s+(occt_[a-z0-9_]+)\s*\('
 $cdeclPInvokes = Get-Matches $pinvokeText '(?s)\[DllImport\([^\]]*CallingConvention\s*=\s*CallingConvention\.Cdecl[^\]]*\)\]\s*internal\s+static\s+extern\s+[A-Za-z0-9_<>,\[\]?]+\s+(occt_[a-z0-9_]+)\s*\('
 $exactPInvokes = Get-Matches $pinvokeText '(?s)\[DllImport\([^\]]*ExactSpelling\s*=\s*true[^\]]*\)\]\s*internal\s+static\s+extern\s+[A-Za-z0-9_<>,\[\]?]+\s+(occt_[a-z0-9_]+)\s*\('
+$libraryImports = Get-Matches $pinvokeText '(?s)\[LibraryImport\([^\)]*\)\]\s*\[UnmanagedCallConv\([^\r\n]*CallConvCdecl[^\r\n]*\)\]\s*internal\s+static\s+partial\s+[A-Za-z0-9_<>,\[\]?]+\s+(occt_[a-z0-9_]+)\s*\('
 
 $publicTypePatterns = @(
     '(?m)^[ \t]*public[ \t]+(?:(?:abstract|sealed|static|partial|readonly|ref|unsafe|new)[ \t]+)*(?:class|struct|interface|enum)[ \t]+([A-Za-z_][A-Za-z0-9_]*)',
@@ -137,11 +148,19 @@ Assert-NoDuplicates "C# P/Invoke declarations" $pinvokeRaw
 $declarations = @($declarationRaw | Sort-Object -Unique)
 $definitions = @($definitionRaw | Sort-Object -Unique)
 $pinvokes = @($pinvokeRaw | Sort-Object -Unique)
+$cdeclPInvokes = @($cdeclPInvokes + $libraryImports | Sort-Object -Unique)
+$exactPInvokes = @($exactPInvokes + $libraryImports | Sort-Object -Unique)
+$currentOnlyExports = @($declarations | Where-Object { $_ -notin $abi4Exports -and $_ -notin $compatibilityExtensionNames })
+$unexpectedCompatibilityImports = @($libraryImports | Where-Object { $_ -in $compatibilityExtensionNames })
 
 Assert-SetEqual "native definitions" $declarations $definitions
 Assert-SetEqual "C# P/Invoke declarations" $declarations $pinvokes
 Assert-SetEqual "Cdecl P/Invoke declarations" $pinvokes $cdeclPInvokes
 Assert-SetEqual "exact-name P/Invoke declarations" $pinvokes $exactPInvokes
+Assert-SetEqual "current ABI LibraryImport declarations" $currentOnlyExports $libraryImports
+if ($unexpectedCompatibilityImports.Count -gt 0) {
+    throw "Compatibility extensions must not be used as current SDK LibraryImport declarations: $($unexpectedCompatibilityImports -join ', ')"
+}
 
 if ($declarations.Count -ne $expectedNativeCount) {
     throw "Native export count differs from bridge-contract.json: actual=$($declarations.Count), expected=$expectedNativeCount."

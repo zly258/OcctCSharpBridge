@@ -33,7 +33,8 @@ internal static partial class NativeMethods
 {
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_initialize_surface(OcctEngineSafeHandle engine, in LegacyNativeSurface surface);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern OcctStatus occt_engine_initialize_surface(OcctEngineSafeHandle engine, in NativeOcctSurface surface);
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_initialize_surface(OcctEngineSafeHandle engine, in NativeOcctSurface surface);
 
 }

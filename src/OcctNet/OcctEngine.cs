@@ -17,10 +17,10 @@ public sealed partial class OcctEngine : IDisposable
         OcctRuntime.Configure();
         OcctBridgeInfo.EnsureCompatible();
 
-        var safeHandle = NativeMethods.occt_engine_create();
-        if (safeHandle is null || safeHandle.IsInvalid)
+        var safeHandle = OcctEngineSafeHandle.AdoptOwned(NativeMethods.occt_engine_create());
+        if (safeHandle.IsInvalid)
         {
-            safeHandle?.Dispose();
+            safeHandle.Dispose();
             throw new OcctException("Unable to create the native OCCT engine.", OcctStatus.ErrorUnknown, nameof(OcctEngine));
         }
         _handle = safeHandle;

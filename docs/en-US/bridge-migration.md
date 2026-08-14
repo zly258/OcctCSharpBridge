@@ -19,6 +19,7 @@ Public APIs and filenames use semantic names. Version selection belongs in `stru
 The preview introduces typed Engine and Modeling Session handles, `SafeHandle` ownership, `OcctStatus`, caller-owned error buffers, Viewer/Scene/Document contexts, platform-window isolation, topology history and persistent topology references.
 
 The formal managed SDK uses the typed lifecycle and semantic native-surface API. Legacy lifecycle and surface entries remain compatibility adapters and are covered by a fixed old-consumer executable.
+Current-only managed declarations use source-generated `LibraryImport` with explicit C calling convention. Frozen ABI 4 declarations and compatibility extensions remain isolated on `DllImport`; contract checks prevent either set from crossing that boundary.
 
 ## Compatibility gates
 
@@ -26,8 +27,9 @@ Every standard build validates:
 
 - all 419 frozen ABI 4 symbols remain exported;
 - native declarations, implementations and P/Invokes are identical sets;
+- all 11 formal current-ABI declarations use `LibraryImport`, while the compatibility extension remains isolated;
 - new exports and tracked filenames follow semantic naming;
 - WinForms and WPF consume the platform-neutral managed Engine API;
 - the fixed ABI 4 consumer and current ABI 5 native smoke both run successfully.
 
-`demo-dev` and `avalonia-dev` migration starts only after these `main-dev` gates are stable.
+`demo-dev` and `avalonia-dev` remain external SDK consumers; continued core evolution and ABI ownership stay on `main-dev`.

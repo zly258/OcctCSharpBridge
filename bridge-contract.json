@@ -27,6 +27,7 @@
     "abi5Exports": 11,
     "legacyAbi4Exports": 419,
     "compatibilityExtensions": 1,
+    "compatibilityExtensionNames": ["occt_initialize_surface"],
     "publicNetTypes": 145,
     "viewer": 292,
     "modeling": 139,

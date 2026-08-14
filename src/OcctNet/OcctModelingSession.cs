@@ -19,10 +19,10 @@ public sealed partial class OcctModelingSession : IDisposable
         OcctRuntime.Configure();
         OcctBridgeInfo.EnsureCompatible();
 
-        var safeHandle = ModelNativeMethods.occt_model_session_create();
-        if (safeHandle is null || safeHandle.IsInvalid)
+        var safeHandle = OcctModelingSafeHandle.AdoptOwned(ModelNativeMethods.occt_model_session_create());
+        if (safeHandle.IsInvalid)
         {
-            safeHandle?.Dispose();
+            safeHandle.Dispose();
             throw new OcctException("Unable to create the native OCCT modeling session.", OcctStatus.ErrorUnknown, nameof(OcctModelingSession));
         }
         _handle = safeHandle;
