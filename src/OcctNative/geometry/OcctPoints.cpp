@@ -1,5 +1,5 @@
-﻿#include "core/OcctInternal.hxx"
-#include "OcctPoints.h"
+#include "geometry/OcctPoints.h"
+#include "core/OcctInternal.hxx"
 
 #include <AIS_Point.hxx>
 #include <Aspect_TypeOfMarker.hxx>
@@ -13,6 +13,8 @@
 #include <cmath>
 #include <cstring>
 #include <limits>
+#include <stdexcept>
+#include <utility>
 
 using namespace OcctBridge;
 
@@ -51,44 +53,7 @@ namespace
             throw std::invalid_argument("Point position must be finite.");
     }
 
-    void applyPointStyle(
-        const Handle(AIS_Point)& presentation,
-        int marker,
-        double scale,
-        double r,
-        double g,
-        double b)
-    {
-        requirePositive(scale, "Point marker scale");
-        const Aspect_TypeOfMarker markerType = pointMarker(marker);
-        const Quantity_Color markerColor = color(r, g, b);
-        presentation->Attributes()->SetPointAspect(
-            new Prs3d_PointAspect(markerType, markerColor, scale));
-        presentation->SetMarker(markerType);
-        presentation->SetColor(markerColor);
-    }
-
-    void validatePointOptions(const OcctViewerPointOptions* options, bool isUpdate)
-    {
-        if (options == nullptr) throw std::invalid_argument("Viewer point options are null.");
-        if (options->structSize < sizeof(OcctViewerPointOptions) || options->apiVersion != PointOptionsApiVersion)
-            throw std::invalid_argument("Unsupported viewer point options size or version.");
-        if ((options->updateMask & ~AllPointUpdateBits) != 0)
-            throw std::invalid_argument("Viewer point update mask contains unsupported bits.");
-        if (isUpdate && options->updateMask == 0)
-            throw std::invalid_argument("Viewer point update mask is empty.");
-
-        if (!isUpdate || (options->updateMask & OcctViewerPointUpdate_Position) != 0)
-            requireFinitePoint(options->position);
-        if (!isUpdate || (options->updateMask & OcctViewerPointUpdate_Style) != 0)
-        {
-            requirePositive(options->scale, "Point marker scale");
-            (void)pointMarker(options->marker);
-            (void)color(options->red, options->green, options->blue);
-        }
-    }
-
-    Handle(Image_AlienPixMap) markerPixmap(
+    void validatePixmapData(
         int width,
         int height,
         const unsigned char* pixels,
@@ -108,7 +73,14 @@ namespace
             static_cast<std::int64_t>(width) * static_cast<std::int64_t>(height) * 4;
         if (required > std::numeric_limits<int>::max() || pixelCount != static_cast<int>(required))
             throw std::invalid_argument("Pixmap marker pixel buffer size does not match its dimensions.");
+    }
 
+    Handle(Image_AlienPixMap) createMarkerPixmap(
+        int width,
+        int height,
+        const unsigned char* pixels,
+        int pixelFormat)
+    {
         const Image_Format format =
             pixelFormat == OcctPixelFormat_Bgra32 ? Image_Format_BGRA : Image_Format_RGBA;
         Handle(Image_AlienPixMap) pixmap = new Image_AlienPixMap();
@@ -133,20 +105,59 @@ namespace
         return pixmap;
     }
 
+    void applyPointStyle(
+        const Handle(AIS_Point)& presentation,
+        int marker,
+        double scale,
+        double r,
+        double g,
+        double b)
+    {
+        requirePositive(scale, "Point marker scale");
+        const Aspect_TypeOfMarker markerType = pointMarker(marker);
+        const Quantity_Color markerColor = color(r, g, b);
+        presentation->Attributes()->SetPointAspect(
+            new Prs3d_PointAspect(markerType, markerColor, scale));
+        presentation->SetMarker(markerType);
+        presentation->SetColor(markerColor);
+    }
+
     void applyPixmapStyle(
         const Handle(AIS_Point)& presentation,
         int width,
         int height,
         const unsigned char* pixels,
-        int pixelCount,
         int pixelFormat)
     {
-        Handle(Image_AlienPixMap) pixmap =
-            markerPixmap(width, height, pixels, pixelCount, pixelFormat);
-        Handle(Graphic3d_AspectMarker3d) markerAspect =
-            new Graphic3d_AspectMarker3d(pixmap);
-        presentation->Attributes()->SetPointAspect(
-            new Prs3d_PointAspect(markerAspect));
+        Handle(Image_AlienPixMap) pixmap = createMarkerPixmap(width, height, pixels, pixelFormat);
+        Handle(Graphic3d_AspectMarker3d) markerAspect = new Graphic3d_AspectMarker3d(pixmap);
+        presentation->Attributes()->SetPointAspect(new Prs3d_PointAspect(markerAspect));
+    }
+
+    void validatePointOptions(const OcctViewerPointOptions* options, bool isUpdate)
+    {
+        if (options == nullptr) throw std::invalid_argument("Viewer point options are null.");
+        if (options->structSize < sizeof(OcctViewerPointOptions) ||
+            options->apiVersion != PointOptionsApiVersion)
+        {
+            throw std::invalid_argument("Unsupported viewer point options size or version.");
+        }
+        if ((options->updateMask & ~AllPointUpdateBits) != 0 ||
+            (isUpdate && options->updateMask == 0))
+        {
+            throw std::invalid_argument("Viewer point update mask is invalid.");
+        }
+        if (!isUpdate && options->updateMask != AllPointUpdateBits)
+            throw std::invalid_argument("Point creation requires position and style.");
+
+        if (!isUpdate || (options->updateMask & OcctViewerPointUpdate_Position) != 0)
+            requireFinitePoint(options->position);
+        if (!isUpdate || (options->updateMask & OcctViewerPointUpdate_Style) != 0)
+        {
+            requirePositive(options->scale, "Point marker scale");
+            (void)pointMarker(options->marker);
+            (void)color(options->red, options->green, options->blue);
+        }
     }
 
     void validatePointPixmapOptions(const OcctViewerPointPixmapOptions* options, bool isUpdate)
@@ -157,17 +168,19 @@ namespace
         {
             throw std::invalid_argument("Unsupported viewer point pixmap options size or version.");
         }
-        if ((options->updateMask & ~AllPointPixmapUpdateBits) != 0)
-            throw std::invalid_argument("Viewer point pixmap update mask contains unsupported bits.");
-        if (isUpdate && options->updateMask == 0)
-            throw std::invalid_argument("Viewer point pixmap update mask is empty.");
+        if ((options->updateMask & ~AllPointPixmapUpdateBits) != 0 ||
+            (isUpdate && options->updateMask == 0))
+        {
+            throw std::invalid_argument("Viewer point pixmap update mask is invalid.");
+        }
+        if (!isUpdate && options->updateMask != AllPointPixmapUpdateBits)
+            throw std::invalid_argument("Pixmap point creation requires position and image.");
 
         if (!isUpdate || (options->updateMask & OcctViewerPointPixmapUpdate_Position) != 0)
             requireFinitePoint(options->position);
         if (!isUpdate || (options->updateMask & OcctViewerPointPixmapUpdate_Image) != 0)
         {
-            // Reuse the single image validator/allocator and immediately release the temporary map.
-            (void)markerPixmap(
+            validatePixmapData(
                 options->width,
                 options->height,
                 options->pixels,
@@ -183,17 +196,21 @@ namespace
         return OcctStatus_Ok;
     }
 
-    OcctStatus executePointStatus(Engine* engine, const std::function<void()>& function)
+    template<typename Function>
+    OcctStatus executePointStatus(Engine* engine, Function&& function)
     {
         const OcctStatus initialized = requireInitializedEngine(engine);
         if (initialized != OcctStatus_Ok) return initialized;
-        return execute(engine, function) != 0 ? OcctStatus_Ok : engine->errors.code;
+        return execute(engine, std::forward<Function>(function)) != 0
+            ? OcctStatus_Ok
+            : engine->errors.code;
     }
 
+    template<typename Function>
     OcctStatus executePointObjectStatus(
         Engine* engine,
         OcctObjectId* output,
-        const std::function<OcctObjectId()>& function)
+        Function&& function)
     {
         const OcctStatus initialized = requireInitializedEngine(engine);
         if (initialized != OcctStatus_Ok) return initialized;
@@ -204,52 +221,10 @@ namespace
         }
 
         *output = 0;
-        const OcctObjectId value = executeObject(engine, function);
+        const OcctObjectId value = executeObject(engine, std::forward<Function>(function));
         if (value == 0) return engine->errors.code;
         *output = value;
         return OcctStatus_Ok;
-    }
-
-    OcctViewerPointOptions pointOptions(
-        std::uint32_t updateMask,
-        OcctPoint3d position,
-        int marker,
-        double scale,
-        double red,
-        double green,
-        double blue)
-    {
-        return {
-            static_cast<std::uint32_t>(sizeof(OcctViewerPointOptions)),
-            PointOptionsApiVersion,
-            updateMask,
-            position,
-            marker,
-            scale,
-            red,
-            green,
-            blue };
-    }
-
-    OcctViewerPointPixmapOptions pointPixmapOptions(
-        std::uint32_t updateMask,
-        OcctPoint3d position,
-        int width,
-        int height,
-        const unsigned char* pixels,
-        int pixelCount,
-        int pixelFormat)
-    {
-        return {
-            static_cast<std::uint32_t>(sizeof(OcctViewerPointPixmapOptions)),
-            PointPixmapOptionsApiVersion,
-            updateMask,
-            position,
-            width,
-            height,
-            pixels,
-            pixelCount,
-            pixelFormat };
     }
 }
 
@@ -297,7 +272,6 @@ extern "C"
                 else
                     component->SetPnt(point(options->position));
             }
-
             if ((options->updateMask & OcctViewerPointUpdate_Style) != 0)
             {
                 applyPointStyle(
@@ -330,7 +304,6 @@ extern "C"
                 options->width,
                 options->height,
                 options->pixels,
-                options->pixelCount,
                 options->pixelFormat);
             return engine->addPresentation(presentation, OcctPointObjectKind, "Point");
         });
@@ -356,7 +329,6 @@ extern "C"
                 else
                     component->SetPnt(point(options->position));
             }
-
             if ((options->updateMask & OcctViewerPointPixmapUpdate_Image) != 0)
             {
                 applyPixmapStyle(
@@ -364,135 +336,11 @@ extern "C"
                     options->width,
                     options->height,
                     options->pixels,
-                    options->pixelCount,
                     options->pixelFormat);
             }
 
             engine->viewerContext.context->Redisplay(presentation, Standard_False);
             engine->requestRedraw();
         });
-    }
-
-    OcctObjectId occt_add_point(
-        OcctHandle h,
-        OcctPoint3d position,
-        int marker,
-        double scale,
-        double r,
-        double g,
-        double b)
-    {
-        const OcctViewerPointOptions options = pointOptions(
-            AllPointUpdateBits,
-            position,
-            marker,
-            scale,
-            r,
-            g,
-            b);
-        OcctObjectId pointId = 0;
-        return occt_engine_point_create(
-                   reinterpret_cast<OcctEngineHandle>(h),
-                   &options,
-                   &pointId) == OcctStatus_Ok
-            ? pointId
-            : 0;
-    }
-
-    int occt_set_point_position(
-        OcctHandle h,
-        OcctObjectId pointId,
-        OcctPoint3d position)
-    {
-        const OcctViewerPointOptions options = pointOptions(
-            OcctViewerPointUpdate_Position,
-            position,
-            OcctPointMarker_Point,
-            1.0,
-            0.0,
-            0.0,
-            0.0);
-        return occt_engine_point_update(
-                   reinterpret_cast<OcctEngineHandle>(h),
-                   pointId,
-                   &options) == OcctStatus_Ok
-            ? 1
-            : 0;
-    }
-
-    int occt_set_point_style(
-        OcctHandle h,
-        OcctObjectId pointId,
-        int marker,
-        double scale,
-        double r,
-        double g,
-        double b)
-    {
-        const OcctViewerPointOptions options = pointOptions(
-            OcctViewerPointUpdate_Style,
-            {},
-            marker,
-            scale,
-            r,
-            g,
-            b);
-        return occt_engine_point_update(
-                   reinterpret_cast<OcctEngineHandle>(h),
-                   pointId,
-                   &options) == OcctStatus_Ok
-            ? 1
-            : 0;
-    }
-
-    OcctObjectId occt_add_point_pixmap(
-        OcctHandle h,
-        OcctPoint3d position,
-        int width,
-        int height,
-        const unsigned char* pixels,
-        int pixelCount,
-        int pixelFormat)
-    {
-        const OcctViewerPointPixmapOptions options = pointPixmapOptions(
-            AllPointPixmapUpdateBits,
-            position,
-            width,
-            height,
-            pixels,
-            pixelCount,
-            pixelFormat);
-        OcctObjectId pointId = 0;
-        return occt_engine_point_pixmap_create(
-                   reinterpret_cast<OcctEngineHandle>(h),
-                   &options,
-                   &pointId) == OcctStatus_Ok
-            ? pointId
-            : 0;
-    }
-
-    int occt_set_point_pixmap_style(
-        OcctHandle h,
-        OcctObjectId pointId,
-        int width,
-        int height,
-        const unsigned char* pixels,
-        int pixelCount,
-        int pixelFormat)
-    {
-        const OcctViewerPointPixmapOptions options = pointPixmapOptions(
-            OcctViewerPointPixmapUpdate_Image,
-            {},
-            width,
-            height,
-            pixels,
-            pixelCount,
-            pixelFormat);
-        return occt_engine_point_pixmap_update(
-                   reinterpret_cast<OcctEngineHandle>(h),
-                   pointId,
-                   &options) == OcctStatus_Ok
-            ? 1
-            : 0;
     }
 }
