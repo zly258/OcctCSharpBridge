@@ -16,7 +16,8 @@
   "author": "zly258",
   "contactEmail": "zhangly1403@gmail.com",
   "dotnet": {
-    "targetFramework": "net10.0-windows",
+    "targetFramework": "net10.0",
+    "desktopTargetFramework": "net10.0-windows",
     "sdkVersion": "10.0.302",
     "languageVersion": "14.0"
   },
@@ -26,7 +27,7 @@
     "abi5Exports": 11,
     "legacyAbi4Exports": 419,
     "compatibilityExtensions": 1,
-    "publicNetTypes": 141,
+    "publicNetTypes": 145,
     "viewer": 292,
     "modeling": 139,
     "nativeHeaders": [

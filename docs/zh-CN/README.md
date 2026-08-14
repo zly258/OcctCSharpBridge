@@ -1,17 +1,17 @@
 # OcctCSharpBridge 文档
 
-本目录描述 **`main` 分支**：基于 OCCT 7.9.0、.NET 10、C# 14 的 Windows x64 Bridge。
+本目录描述 **`main` 分支**：基于 OCCT 7.9.0、.NET 10、C# 14 的唯一正式 SDK 源。
 
 当前源码契约：
 
 - Bridge 3.0.0-preview.1 / 当前 Native ABI 5，兼容 ABI 4
 - Native exports / P/Invoke：431 / 431
-- Public .NET types：141
+- Public .NET types：145
 - Viewer / Modeling API：292 / 139
-- Target Framework：`net10.0-windows`
-- 公开程序集：`OcctNet`、`OcctNet.WinForms`、`OcctNet.Wpf`
+- Target Framework：Core/Avalonia 为 `net10.0`，WinForms/WPF 为 `net10.0-windows`
+- 公开程序集：`OcctNet`、`OcctNet.WinForms`、`OcctNet.Wpf`、`OcctNet.Avalonia`
 
-Avalonia 已从 `main` 独立出去。跨平台版本位于 [`avalonia` 分支](https://github.com/zly258/OcctCSharpBridge/tree/avalonia)，只包含 `OcctNet + OcctNet.Avalonia`，Target 为 `net10.0`，面向 Windows x64 + Linux x64。
+`demo` 与 `avalonia` 分支只包含 Consumer 示例和打包流程；SDK 实现统一保留在 `main`。
 
 ## 文档目录
 

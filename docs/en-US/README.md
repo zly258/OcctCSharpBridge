@@ -1,17 +1,17 @@
 # OcctCSharpBridge Documentation
 
-This documentation describes the **`main` branch**: the Windows x64 Bridge based on OCCT 7.9.0, .NET 10 and C# 14.
+This documentation describes the **`main` branch**, the sole formal SDK source based on OCCT 7.9.0, .NET 10 and C# 14.
 
 Current source contract:
 
 - Bridge 3.0.0-preview.1 / Native ABI 5 current, ABI 4 compatible
 - 431 Native exports / 431 P/Invoke mappings
-- 141 public .NET types
+- 145 public .NET types
 - Viewer / Modeling API: 292 / 139
-- Target framework: `net10.0-windows`
-- Public assemblies: `OcctNet`, `OcctNet.WinForms`, `OcctNet.Wpf`
+- Target frameworks: `net10.0` core/Avalonia; `net10.0-windows` WinForms/WPF
+- Public assemblies: `OcctNet`, `OcctNet.WinForms`, `OcctNet.Wpf`, `OcctNet.Avalonia`
 
-Avalonia is intentionally not part of `main`. The standalone [`avalonia` branch](https://github.com/zly258/OcctCSharpBridge/tree/avalonia) contains `OcctNet + OcctNet.Avalonia`, targets `net10.0`, and is developed for Windows x64 + Linux x64.
+The `demo` and `avalonia` branches contain consumer examples and packaging; SDK implementations remain in `main`.
 
 ## Guide
 

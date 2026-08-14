@@ -2,11 +2,11 @@
 
 [English](README.md) · [中文文档](docs/zh-CN/README.md) · [English Docs](docs/en-US/README.md) · [API 参考](docs/zh-CN/api/README.md) · [Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo) · [跨平台 Avalonia](https://github.com/zly258/OcctCSharpBridge/tree/avalonia) · [Website](https://github.com/zly258/OcctCSharpBridge/tree/website)
 
-OcctCSharpBridge `main` 是面向 Windows x64 的 **Open CASCADE Technology 7.9.0 → .NET 10 / C# 14** 桥接库，为 C# 提供强类型的 Headless 建模、拓扑与几何分析、网格、工程数据交换、AIS/Viewer 交互、一等点对象，以及彼此独立的 WinForms/WPF 视口宿主。
+OcctCSharpBridge `main` 是 **Open CASCADE Technology 7.9.0 → .NET 10 / C# 14** 的唯一正式 SDK 源，为 C# 提供强类型的 Headless 建模、拓扑与几何分析、网格、工程数据交换、AIS/Viewer 交互、一等点对象，以及彼此独立的 WinForms/WPF/Avalonia 视口宿主。
 
-Avalonia 不再放在 `main`。独立的 [`avalonia`](https://github.com/zly258/OcctCSharpBridge/tree/avalonia) 分支是真正的跨平台版本，目标是在 Windows 与 Linux 上使用同一套 `OcctNet.Avalonia` API，平台相关的 Native Viewer 后端由内部自动处理。
+`demo` 与 `avalonia` 分支只负责 Consumer 示例和打包流程；正式的 `OcctNative`、`OcctNet` 与 UI Host 实现统一由 `main` 维护。
 
-`main` 是 Windows Bridge 源码与 Windows Binary SDK 生产分支。应用层的 Document、Feature Tree、Command/Tool、Undo/Redo、捕捉、夹点和项目持久化仍由上层 CAD/BIM 应用负责。
+`main` 使用同一套 Native Core 构建 Windows/Linux；当前受跟踪的二进制发行包仍是 Windows x64。应用层的 Document、Feature Tree、Command/Tool、Undo/Redo、捕捉、夹点和项目持久化仍由上层 CAD/BIM 应用负责。
 
 > STEP/XDE 边界：Bridge 会在 STEP 装配交换内部使用 XDE 保存真实产品结构、Occurrence Transform 与显示样式，但**不会把 OCAF/XDE 暴露成应用层 Document/持久化架构**。上层通过托管的 `OcctAssemblyDocument` 快照读取装配语义。
 
@@ -17,13 +17,13 @@ Avalonia 不再放在 `main`。独立的 [`avalonia`](https://github.com/zly258/
 | Bridge | **3.0.0-preview.1** |
 | Native ABI | **5 当前 / 4 兼容** |
 | Native exports / P/Invoke | **431 / 431** |
-| Public .NET types | **141** |
+| Public .NET types | **145** |
 | Viewer / Modeling API | **292 / 139** |
 | OCCT | **7.9.0** |
 | .NET SDK | **10.0.302** |
-| Target Framework | **`net10.0-windows`** |
+| Target Framework | **`net10.0` Core / `net10.0-windows` Desktop** |
 | C# / Native | **14.0 / C++17** |
-| UI Adapter | **WinForms / WPF** |
+| UI Adapter | **WinForms / WPF / Avalonia** |
 | Platform | **Windows x64** |
 
 `bridge-contract.json` 是 `main` **源码契约**的机器可读事实源。

@@ -57,18 +57,24 @@ internal static partial class Program
             var targetFramework = contractRoot.GetProperty("dotnet").GetProperty("targetFramework").GetString()
                 ?? throw new InvalidOperationException("dotnet.targetFramework is missing from bridge-contract.json.");
             var bridgeVersion = contractRoot.GetProperty("bridgeVersion").GetString() ?? string.Empty;
+            var desktopTargetFramework = contractRoot.GetProperty("dotnet").GetProperty("desktopTargetFramework").GetString()
+                ?? throw new InvalidOperationException("dotnet.desktopTargetFramework is missing from bridge-contract.json.");
             var abiVersion = contractRoot.GetProperty("nativeAbi").GetProperty("current").GetInt32();
             var expectedPublicTypes = api.GetProperty("publicNetTypes").GetInt32();
             var expectedNativeExports = api.GetProperty("nativeExports").GetInt32();
             var expectedViewerExports = api.GetProperty("viewer").GetInt32();
             var expectedModelingExports = api.GetProperty("modeling").GetInt32();
 
-            var inputs = DiscoverAssemblies(root, configuration, targetFramework);
+            var inputs = DiscoverAssemblies(root, configuration, targetFramework, desktopTargetFramework);
             if (inputs.Length == 0) throw new InvalidOperationException("No public managed Bridge assemblies were discovered.");
             foreach (var input in inputs)
                 if (!File.Exists(input.DllPath)) throw new FileNotFoundException($"Managed assembly was not found: {input.DllPath}");
 
-            var assemblyPaths = inputs.SelectMany(input => Directory.EnumerateFiles(input.OutputDirectory, "*.dll", SearchOption.TopDirectoryOnly))
+            var resolutionDirectories = inputs.Select(input => input.OutputDirectory).ToList();
+            var avaloniaSmokeOutput = Path.Combine(root, "tests", "OcctNet.AvaloniaSmoke", "bin", "x64", configuration, targetFramework);
+            if (Directory.Exists(avaloniaSmokeOutput)) resolutionDirectories.Add(avaloniaSmokeOutput);
+
+            var assemblyPaths = resolutionDirectories.SelectMany(directory => Directory.EnumerateFiles(directory, "*.dll", SearchOption.TopDirectoryOnly))
                 .GroupBy(path => Path.GetFileNameWithoutExtension(path), StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
             AssemblyLoadContext.Default.Resolving += (_, name) =>
@@ -100,20 +106,20 @@ internal static partial class Program
         catch (Exception exception) { Console.Error.WriteLine(exception); return 1; }
     }
 
-    private static AssemblyInput[] DiscoverAssemblies(string root, string configuration, string targetFramework)
+    private static AssemblyInput[] DiscoverAssemblies(string root, string configuration, string targetFramework, string desktopTargetFramework)
     {
         var candidates = new[]
         {
-            (Name: "OcctNet", Directory: "src/OcctNet"),
-            (Name: "OcctNet.WinForms", Directory: "src/OcctNet.WinForms"),
-            (Name: "OcctNet.Wpf", Directory: "src/OcctNet.Wpf"),
-            (Name: "OcctNet.Avalonia", Directory: "src/OcctNet.Avalonia")
+            (Name: "OcctNet", Directory: "src/OcctNet", Framework: targetFramework),
+            (Name: "OcctNet.WinForms", Directory: "src/OcctNet.WinForms", Framework: desktopTargetFramework),
+            (Name: "OcctNet.Wpf", Directory: "src/OcctNet.Wpf", Framework: desktopTargetFramework),
+            (Name: "OcctNet.Avalonia", Directory: "src/OcctNet.Avalonia", Framework: targetFramework)
         };
         return candidates.Where(candidate => File.Exists(Path.Combine(root, candidate.Directory.Replace('/', Path.DirectorySeparatorChar), candidate.Name + ".csproj")))
             .Select(candidate =>
             {
                 var projectDirectory = Path.Combine(root, candidate.Directory.Replace('/', Path.DirectorySeparatorChar));
-                var output = Path.Combine(projectDirectory, "bin", "x64", configuration, targetFramework);
+                var output = Path.Combine(projectDirectory, "bin", "x64", configuration, candidate.Framework);
                 return new AssemblyInput(candidate.Name, projectDirectory, Path.Combine(output, candidate.Name + ".dll"), Path.Combine(output, candidate.Name + ".xml"), output);
             }).ToArray();
     }
@@ -212,7 +218,7 @@ internal static partial class Program
         RenderEvents(builder, type, type.GetEvents(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly), docs, chinese);
         RenderMethods(builder, type, type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly).Where(method => !method.IsSpecialName).Cast<MethodBase>(), docs, chinese ? "方法" : "Methods", chinese);
         RenderFields(builder, type, type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly).Where(field => type.IsEnum ? field.IsLiteral : !field.IsSpecialName), docs, chinese);
-        return builder.ToString();
+        return builder.ToString().TrimEnd() + Environment.NewLine;
     }
 
     private static void RenderMethods(StringBuilder builder, Type type, IEnumerable<MethodBase> methods, XmlDocs docs, string title, bool chinese)

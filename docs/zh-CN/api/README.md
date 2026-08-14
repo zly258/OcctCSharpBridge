@@ -4,8 +4,8 @@
 
 - **Bridge:** `3.0.0-preview.1`
 - **Native ABI:** `5`
-- **公开程序集:** `OcctNet`, `OcctNet.WinForms`, `OcctNet.Wpf`
-- **公开类型:** 141
+- **公开程序集:** `OcctNet`, `OcctNet.WinForms`, `OcctNet.Wpf`, `OcctNet.Avalonia`
+- **公开类型:** 145
 - **Native exports:** 431
 
 - [Native C ABI 完整参考](native-abi.md)
@@ -159,4 +159,11 @@
 - [`OcctWpfSelectionEventArgs`](reference/OcctNet.OcctWpfSelectionEventArgs.md)
 - [`OcctWpfViewport`](reference/OcctNet.OcctWpfViewport.md)
 - [`OcctWpfWorldPointEventArgs`](reference/OcctNet.OcctWpfWorldPointEventArgs.md)
+
+## OcctNet.Avalonia
+
+- [`OcctAvaloniaErrorEventArgs`](reference/OcctNet.OcctAvaloniaErrorEventArgs.md)
+- [`OcctAvaloniaSelectionEventArgs`](reference/OcctNet.OcctAvaloniaSelectionEventArgs.md)
+- [`OcctAvaloniaViewport`](reference/OcctNet.OcctAvaloniaViewport.md)
+- [`OcctAvaloniaWorldPointEventArgs`](reference/OcctNet.OcctAvaloniaWorldPointEventArgs.md)
 

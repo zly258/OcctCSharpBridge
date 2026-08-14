@@ -2,11 +2,11 @@
 
 [简体中文](README.zh-CN.md) · [English Docs](docs/en-US/README.md) · [中文文档](docs/zh-CN/README.md) · [API Reference](docs/en-US/api/README.md) · [Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo) · [Cross-platform Avalonia](https://github.com/zly258/OcctCSharpBridge/tree/avalonia) · [Website](https://github.com/zly258/OcctCSharpBridge/tree/website)
 
-OcctCSharpBridge `main` is a Windows x64 bridge from **Open CASCADE Technology 7.9.0** to **.NET 10 / C# 14**. It exposes strongly typed C# APIs for headless modeling, topology and geometry analysis, meshing, engineering file exchange, AIS/viewer interaction, first-class point presentation, and independent WinForms/WPF viewport hosts.
+OcctCSharpBridge `main` is the formal SDK source from **Open CASCADE Technology 7.9.0** to **.NET 10 / C# 14**. It exposes strongly typed C# APIs for headless modeling, topology and geometry analysis, meshing, engineering file exchange, AIS/viewer interaction, first-class point presentation, and independent WinForms/WPF/Avalonia viewport hosts.
 
-Avalonia is intentionally not hosted on `main`. The dedicated [`avalonia`](https://github.com/zly258/OcctCSharpBridge/tree/avalonia) branch is the cross-platform variant and is designed to run the same `OcctNet.Avalonia` API on Windows and Linux through platform-specific native viewer backends hidden behind the Avalonia adapter.
+The [`demo`](https://github.com/zly258/OcctCSharpBridge/tree/demo) and [`avalonia`](https://github.com/zly258/OcctCSharpBridge/tree/avalonia) branches are consumer examples and packaging flows. Formal `OcctNative`, `OcctNet`, and UI-host implementations are owned by `main`.
 
-`main` is the Windows Bridge source and Windows Binary SDK producer. Product-level document models, feature trees, commands/tools, undo/redo, snapping, grips and project persistence remain application responsibilities.
+`main` builds the shared Windows/Linux Native Core; the current tracked binary distribution remains Windows x64. Product-level document models, feature trees, commands/tools, undo/redo, snapping, grips and project persistence remain application responsibilities.
 
 > STEP/XDE boundary: XDE is used internally for STEP assembly/product structure, occurrence transforms and presentation metadata. OcctCSharpBridge does **not** expose OCAF/XDE as the consuming application's document/persistence architecture. Assembly-aware consumers use the managed `OcctAssemblyDocument` snapshot instead.
 
@@ -17,13 +17,13 @@ Avalonia is intentionally not hosted on `main`. The dedicated [`avalonia`](https
 | Bridge | **3.0.0-preview.1** |
 | Native ABI | **5 current / 4 compatible** |
 | Native exports / P/Invoke | **431 / 431** |
-| Public .NET types | **141** |
+| Public .NET types | **145** |
 | Viewer / Modeling API | **292 / 139** |
 | OCCT | **7.9.0** |
 | .NET SDK | **10.0.302** |
-| Target Framework | **`net10.0-windows`** |
+| Target Framework | **`net10.0` core / `net10.0-windows` desktop** |
 | C# / Native | **14.0 / C++17** |
-| UI adapters | **WinForms / WPF** |
+| UI adapters | **WinForms / WPF / Avalonia** |
 | Platform | **Windows x64** |
 
 `bridge-contract.json` is the machine-readable source of truth for the **main source** contract.

@@ -39,6 +39,7 @@ $expectedOcctVersion = [string]$contract.occtVersion
 $expectedCmakeVersion = [string]$contract.cmakeMinimumVersion
 $expectedAuthor = [string]$contract.author
 $expectedTargetFramework = [string]$contract.dotnet.targetFramework
+$expectedDesktopTargetFramework = [string]$contract.dotnet.desktopTargetFramework
 $expectedSdkVersion = [string]$contract.dotnet.sdkVersion
 $expectedLanguageVersion = [string]$contract.dotnet.languageVersion
 $expectedNativeCount = [int]$contract.api.nativeExports
@@ -58,6 +59,7 @@ foreach ($entry in ([ordered]@{
     author = $expectedAuthor
     targetFramework = $expectedTargetFramework
     sdkVersion = $expectedSdkVersion
+    desktopTargetFramework = $expectedDesktopTargetFramework
     languageVersion = $expectedLanguageVersion
 }).GetEnumerator()) {
     if ([string]::IsNullOrWhiteSpace([string]$entry.Value)) { throw "Bridge contract value is missing: $($entry.Key)" }
@@ -97,19 +99,23 @@ $bridgeInfo = Read-Text "src/OcctNet/OcctBridgeInfo.cs"
 if (-not $bridgeInfo.Contains("ExpectedAbiVersion = $expectedAbiVersion")) { throw "Managed ABI expectation differs from bridge-contract.json." }
 if (-not $bridgeInfo.Contains("ManagedVersion = `"$expectedVersion`"")) { throw "Managed bridge version differs from bridge-contract.json." }
 
-$projectFiles = @(
-    "src/OcctNet/OcctNet.csproj",
-    "src/OcctNet.WinForms/OcctNet.WinForms.csproj",
-    "src/OcctNet.Wpf/OcctNet.Wpf.csproj",
-    "tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj",
-    "tests/OcctNet.Smoke/OcctNet.Smoke.csproj",
-    "tests/OcctNet.LegacyCompatibilityTests/OcctNet.LegacyCompatibilityTests.csproj"
-)
-foreach ($relativePath in $projectFiles) {
+$projectFiles = [ordered]@{
+    "src/OcctNet/OcctNet.csproj" = $expectedTargetFramework
+    "src/OcctNet.Avalonia/OcctNet.Avalonia.csproj" = $expectedTargetFramework
+    "tests/OcctNet.AvaloniaSmoke/OcctNet.AvaloniaSmoke.csproj" = $expectedTargetFramework
+    "src/OcctNet.WinForms/OcctNet.WinForms.csproj" = $expectedDesktopTargetFramework
+    "src/OcctNet.Wpf/OcctNet.Wpf.csproj" = $expectedDesktopTargetFramework
+    "tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj" = $expectedDesktopTargetFramework
+    "tests/OcctNet.Smoke/OcctNet.Smoke.csproj" = $expectedDesktopTargetFramework
+    "tests/OcctNet.LegacyCompatibilityTests/OcctNet.LegacyCompatibilityTests.csproj" = $expectedDesktopTargetFramework
+}
+foreach ($entry in $projectFiles.GetEnumerator()) {
+    $relativePath = [string]$entry.Key
+    $expectedProjectFramework = [string]$entry.Value
     [xml]$project = Read-Text $relativePath
     $targetFramework = Get-ProjectProperty $project "TargetFramework"
     $platformTarget = Get-ProjectProperty $project "PlatformTarget"
-    if ($targetFramework -ne $expectedTargetFramework) { throw "$relativePath target framework is '$targetFramework'; expected '$expectedTargetFramework'." }
+    if ($targetFramework -ne $expectedProjectFramework) { throw "$relativePath target framework is '$targetFramework'; expected '$expectedProjectFramework'." }
     if ($platformTarget -ne "x64") { throw "$relativePath PlatformTarget is '$platformTarget'; expected 'x64'." }
 }
 

@@ -48,15 +48,18 @@ $BridgeVersion = [string]$Contract.bridgeVersion
 $Author = [string]$Contract.author
 $RequiredOcctVersion = [string]$Contract.occtVersion
 $TargetFramework = [string]$Contract.dotnet.targetFramework
+$DesktopTargetFramework = [string]$Contract.dotnet.desktopTargetFramework
 $SdkVersion = [string]$Contract.dotnet.sdkVersion
 
 $Projects = [ordered]@{
     Core = "src\OcctNet\OcctNet.csproj"
     WinForms = "src\OcctNet.WinForms\OcctNet.WinForms.csproj"
     Wpf = "src\OcctNet.Wpf\OcctNet.Wpf.csproj"
+    Avalonia = "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj"
     ManagedTests = "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj"
     Smoke = "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
     LegacyCompatibility = "tests\OcctNet.LegacyCompatibilityTests\OcctNet.LegacyCompatibilityTests.csproj"
+    AvaloniaSmoke = "tests\OcctNet.AvaloniaSmoke\OcctNet.AvaloniaSmoke.csproj"
 }
 
 $Checks = [ordered]@{
@@ -178,6 +181,7 @@ function Build-Managed {
     Build-Project "Core"
     Build-Project "WinForms"
     Build-Project "Wpf"
+    Build-Project "Avalonia"
 }
 
 function Clean-Outputs {
@@ -208,6 +212,7 @@ function Build-Ci {
     Run-ManagedTests
     Build-Project "Smoke"
     Build-Project "LegacyCompatibility"
+    Build-Project "AvaloniaSmoke"
 }
 
 function Run-Smoke {
@@ -217,11 +222,11 @@ function Run-Smoke {
     Build-Project "LegacyCompatibility"
 
     $smokeProject = Join-Path $RepoRoot $Projects.Smoke
-    $smokeOutput = Join-Path (Split-Path -Parent $smokeProject) "bin\x64\$Configuration\$TargetFramework"
+    $smokeOutput = Join-Path (Split-Path -Parent $smokeProject) "bin\x64\$Configuration\$DesktopTargetFramework"
     Copy-Item $NativeDll (Join-Path $smokeOutput "OcctNative.dll") -Force
 
     $legacyProject = Join-Path $RepoRoot $Projects.LegacyCompatibility
-    $legacyOutput = Join-Path (Split-Path -Parent $legacyProject) "bin\x64\$Configuration\$TargetFramework"
+    $legacyOutput = Join-Path (Split-Path -Parent $legacyProject) "bin\x64\$Configuration\$DesktopTargetFramework"
     Copy-Item $NativeDll (Join-Path $legacyOutput "OcctNative.dll") -Force
 
     Write-Host "[compatibility] Running fixed ABI 4 consumer..." -ForegroundColor Cyan
@@ -259,6 +264,7 @@ function Generate-ApiDocumentation {
     Assert-Command "dotnet"
     Assert-Path $ApiDocsGenerator
     Build-Managed
+    Build-Project "AvaloniaSmoke"
 
     Write-Host "[docs] Generating bilingual public API reference..." -ForegroundColor Cyan
     Invoke-Checked "dotnet" @(
@@ -298,8 +304,9 @@ function Build-BinaryDistribution {
     $files = [ordered]@{
         "OcctNative.dll" = Join-Path $RepoRoot "build\native\bin\Release\OcctNative.dll"
         "OcctNet.dll" = Join-Path $RepoRoot "src\OcctNet\bin\x64\Release\$TargetFramework\OcctNet.dll"
-        "OcctNet.WinForms.dll" = Join-Path $RepoRoot "src\OcctNet.WinForms\bin\x64\Release\$TargetFramework\OcctNet.WinForms.dll"
-        "OcctNet.Wpf.dll" = Join-Path $RepoRoot "src\OcctNet.Wpf\bin\x64\Release\$TargetFramework\OcctNet.Wpf.dll"
+        "OcctNet.WinForms.dll" = Join-Path $RepoRoot "src\OcctNet.WinForms\bin\x64\Release\$DesktopTargetFramework\OcctNet.WinForms.dll"
+        "OcctNet.Wpf.dll" = Join-Path $RepoRoot "src\OcctNet.Wpf\bin\x64\Release\$DesktopTargetFramework\OcctNet.Wpf.dll"
+        "OcctNet.Avalonia.dll" = Join-Path $RepoRoot "src\OcctNet.Avalonia\bin\x64\Release\$TargetFramework\OcctNet.Avalonia.dll"
     }
     foreach ($source in $files.Values) { Assert-Path $source }
 

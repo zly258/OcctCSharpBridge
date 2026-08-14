@@ -22,7 +22,8 @@ $managedRoot = Join-Path $RepositoryRoot "src\OcctNet"
 $publicManagedRoots = @(
     $managedRoot,
     (Join-Path $RepositoryRoot "src\OcctNet.WinForms"),
-    (Join-Path $RepositoryRoot "src\OcctNet.Wpf")
+    (Join-Path $RepositoryRoot "src\OcctNet.Wpf"),
+    (Join-Path $RepositoryRoot "src\OcctNet.Avalonia")
 )
 
 $nativeHeaderNames = @($contract.api.nativeHeaders | ForEach-Object { [string]$_ })
