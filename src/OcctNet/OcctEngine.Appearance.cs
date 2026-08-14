@@ -1,23 +1,29 @@
-﻿using System.ComponentModel;
-using System.Drawing;
+﻿using System.Drawing;
+using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
-    public void SetSelectionHighlightColor(Color color) => CheckInitialized(() =>
-        AppearanceNativeMethods.occt_set_selection_highlight_color(
-            _handle,
-            color.R / 255.0,
-            color.G / 255.0,
-            color.B / 255.0));
+    public void SetSelectionHighlightColor(Color color)
+    {
+        EnsureInitialized();
+        var options = HighlightOptions(
+            NativeViewerHighlightUpdateMask.Selection,
+            selectionColor: color);
+        CheckAppearanceStatus(
+            AppearanceNativeMethods.occt_engine_highlight_colors_set(_handle, in options));
+    }
 
-    public void SetHoverHighlightColor(Color color) => CheckInitialized(() =>
-        AppearanceNativeMethods.occt_set_hover_highlight_color(
-            _handle,
-            color.R / 255.0,
-            color.G / 255.0,
-            color.B / 255.0));
+    public void SetHoverHighlightColor(Color color)
+    {
+        EnsureInitialized();
+        var options = HighlightOptions(
+            NativeViewerHighlightUpdateMask.Hover,
+            hoverColor: color);
+        CheckAppearanceStatus(
+            AppearanceNativeMethods.occt_engine_highlight_colors_set(_handle, in options));
+    }
 
     public void SetSceneLighting(OcctSceneLightingSettings settings)
     {
@@ -26,7 +32,7 @@ public sealed partial class OcctEngine
         ValidateDirectionalLight(settings.SunLight, nameof(settings.SunLight));
         ValidateDirectionalLight(settings.FillLight, nameof(settings.FillLight));
 
-        var native = new AppearanceNativeMethods.NativeSceneLightingSettings
+        var nativeSettings = new AppearanceNativeMethods.NativeSceneLightingSettings
         {
             AmbientColor = ToNativeColor(settings.AmbientColor),
             AmbientIntensity = settings.AmbientIntensity,
@@ -43,42 +49,32 @@ public sealed partial class OcctEngine
             FillLightIntensity = settings.FillLight.Intensity,
             FillLightDirection = settings.FillLight.Direction
         };
+        var options = new AppearanceNativeMethods.NativeViewerLightingOptions
+        {
+            StructSize = (uint)Marshal.SizeOf<AppearanceNativeMethods.NativeViewerLightingOptions>(),
+            ApiVersion = 1,
+            Settings = nativeSettings
+        };
 
-        CheckInitialized(() => AppearanceNativeMethods.occt_set_scene_lighting_ex(_handle, in native));
-    }
-
-    /// <summary>
-    /// Bridge 2.5 source-compatibility entry point. New code should construct
-    /// <see cref="OcctSceneLightingSettings"/> explicitly.
-    /// </summary>
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public void SetSceneLighting(
-        double ambientIntensity,
-        double directionalIntensity,
-        OcctVector3d direction,
-        bool headlight)
-    {
-        var directional = new OcctDirectionalLightSettings(
-            directionalIntensity > 0,
-            Color.White,
-            directionalIntensity,
-            direction);
-        var disabled = new OcctDirectionalLightSettings(
-            false,
-            Color.White,
-            0,
-            new OcctVector3d(0, 0, -1));
-
-        SetSceneLighting(new OcctSceneLightingSettings(
-            Color.White,
-            ambientIntensity,
-            headlight ? directional : disabled,
-            headlight ? disabled : directional,
-            disabled));
+        EnsureInitialized();
+        CheckAppearanceStatus(
+            AppearanceNativeMethods.occt_engine_scene_lighting_set(_handle, in options));
     }
 
     public void ApplyLightingPreset(OcctLightingPreset preset) =>
         SetSceneLighting(OcctLightingPresets.Create(preset));
+
+    private static AppearanceNativeMethods.NativeViewerHighlightOptions HighlightOptions(
+        NativeViewerHighlightUpdateMask updateMask,
+        Color? selectionColor = null,
+        Color? hoverColor = null) => new()
+    {
+        StructSize = (uint)Marshal.SizeOf<AppearanceNativeMethods.NativeViewerHighlightOptions>(),
+        ApiVersion = 1,
+        UpdateMask = updateMask,
+        SelectionColor = ToNativeColor(selectionColor ?? Color.Black),
+        HoverColor = ToNativeColor(hoverColor ?? Color.Black)
+    };
 
     private static AppearanceNativeMethods.NativeColorRgb ToNativeColor(Color color) => new()
     {
@@ -86,6 +82,11 @@ public sealed partial class OcctEngine
         G = color.G / 255.0,
         B = color.B / 255.0
     };
+
+    private void CheckAppearanceStatus(OcctStatus status)
+    {
+        if (status != OcctStatus.Ok) throw CreateException();
+    }
 
     private static void ValidateDirectionalLight(OcctDirectionalLightSettings light, string name)
     {
