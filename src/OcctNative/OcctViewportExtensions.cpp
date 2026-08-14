@@ -12,7 +12,6 @@
 #include <cmath>
 #include <stdexcept>
 #include <utility>
-#include <vector>
 
 using namespace OcctBridge;
 
@@ -143,7 +142,6 @@ namespace
                 }
             }
         }
-
         engine->requestRedraw();
     }
 }
@@ -237,79 +235,6 @@ extern "C"
 
             engine->viewerContext.view->StartZoomAtPoint(x, y);
             engine->viewerContext.view->ZoomAtPoint(0, 0, zoomDelta, 0);
-        });
-    }
-
-    OcctStatus occt_engine_selection_all_visible(OcctEngineHandle handle)
-    {
-        Engine* engine = reinterpret_cast<Engine*>(handle);
-        return executeViewportStatus(engine, [&]
-        {
-            engine->viewerContext.context->ClearSelected(Standard_False);
-            for (const auto& pair : engine->scene.objects)
-            {
-                if (!pair.second.presentation.IsNull() &&
-                    pair.second.selectable &&
-                    engine->viewerContext.context->IsDisplayed(pair.second.presentation))
-                {
-                    engine->viewerContext.context->AddSelect(pair.second.presentation);
-                }
-            }
-            engine->viewerContext.context->HilightSelected(Standard_False);
-            engine->requestRedraw();
-        });
-    }
-
-    OcctStatus occt_engine_selection_invert(OcctEngineHandle handle)
-    {
-        Engine* engine = reinterpret_cast<Engine*>(handle);
-        return executeViewportStatus(engine, [&]
-        {
-            for (const auto& pair : engine->scene.objects)
-            {
-                if (!pair.second.presentation.IsNull() &&
-                    pair.second.selectable &&
-                    engine->viewerContext.context->IsDisplayed(pair.second.presentation))
-                {
-                    engine->viewerContext.context->AddOrRemoveSelected(
-                        pair.second.presentation,
-                        Standard_False);
-                }
-            }
-            engine->viewerContext.context->HilightSelected(Standard_False);
-            engine->requestRedraw();
-        });
-    }
-
-    OcctStatus occt_engine_selection_hide_selected(OcctEngineHandle handle)
-    {
-        Engine* engine = reinterpret_cast<Engine*>(handle);
-        return executeViewportStatus(engine, [&]
-        {
-            std::vector<Handle(AIS_InteractiveObject)> selected;
-            for (engine->viewerContext.context->InitSelected();
-                 engine->viewerContext.context->MoreSelected();
-                 engine->viewerContext.context->NextSelected())
-            {
-                const Handle(AIS_InteractiveObject) value =
-                    engine->viewerContext.context->SelectedInteractive();
-                if (!value.IsNull()) selected.push_back(value);
-            }
-            for (const auto& value : selected)
-                engine->viewerContext.context->Erase(value, Standard_False);
-            engine->viewerContext.context->ClearSelected(Standard_False);
-            engine->requestRedraw();
-        });
-    }
-
-    OcctStatus occt_engine_selection_automatic_highlight_set(
-        OcctEngineHandle handle,
-        int enabled)
-    {
-        Engine* engine = reinterpret_cast<Engine*>(handle);
-        return executeViewportStatus(engine, [&]
-        {
-            engine->viewerContext.context->SetAutomaticHilight(enabled != 0);
         });
     }
 
