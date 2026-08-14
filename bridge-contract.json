@@ -23,20 +23,19 @@
     "languageVersion": "14.0"
   },
   "api": {
-    "nativeExports": 461,
-    "managedPInvokes": 461,
-    "abi5Exports": 41,
+    "nativeExports": 463,
+    "managedPInvokes": 463,
+    "abi5Exports": 43,
     "legacyAbi4Exports": 419,
     "compatibilityExtensions": 1,
     "compatibilityExtensionNames": ["occt_initialize_surface"],
     "publicNetTypes": 152,
-    "viewer": 296,
+    "viewer": 298,
     "modeling": 165,
     "nativeHeaders": [
       "OcctNative.h",
       "OcctRenderSurface.h",
       "exchange/OcctStepDocument.h",
-      "exchange/OcctModelingExchange.h",
       "platform/OcctNativeSurface.h",
       "geometry/OcctPoints.h",
       "selection/OcctSelectionOverlay.h",
@@ -59,7 +58,8 @@
       "modeling/OcctModelingIntersection.h",
       "topology/OcctModelingTopologyReference.h",
       "topology/OcctShapeResource.h",
-      "mesh/OcctMeshResource.h"
+      "mesh/OcctMeshResource.h",
+      "exchange/OcctModelingExchange.h"
     ]
   }
 }
