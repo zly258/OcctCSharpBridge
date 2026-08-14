@@ -41,7 +41,7 @@ internal static partial class ViewportNativeMethods
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_engine_viewport_fit_objects(
         OcctEngineSafeHandle handle,
-        long[] objectIds,
+        IntPtr objectIds,
         int count,
         double margin);
 
