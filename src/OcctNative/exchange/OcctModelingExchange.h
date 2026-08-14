@@ -2,6 +2,8 @@
 
 #include "OcctNative.h"
 
+#include <cstdint>
+
 extern "C"
 {
     struct OcctStlExportOptions
