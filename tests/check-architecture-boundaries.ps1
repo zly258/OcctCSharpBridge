@@ -255,19 +255,69 @@ foreach ($currentEntryPoint in @(
     }
 }
 
-# Production managed APIs must not call frozen BRep annotation exports. They are retained only
-# as ABI declarations until the dedicated compatibility assembly owns every ABI 4 declaration.
+# Point, appearance and presentation domains must also preserve legacy -> current direction.
+$pointSource = Read-SourceText "src/OcctNative/geometry/OcctPoints.cpp"
+foreach ($currentEntryPoint in @(
+    "occt_engine_point_create(",
+    "occt_engine_point_update(",
+    "occt_engine_point_pixmap_create(",
+    "occt_engine_point_pixmap_update("
+)) {
+    if (-not $pointSource.Contains($currentEntryPoint)) {
+        throw "Point ABI 4 shell must route through current entry point: $currentEntryPoint"
+    }
+}
+
+$appearanceSource = Read-SourceText "src/OcctNative/presentation/OcctAppearance.cpp"
+foreach ($currentEntryPoint in @(
+    "occt_engine_scene_lighting_set(",
+    "occt_engine_scene_lighting_reset(",
+    "occt_engine_highlight_colors_set("
+)) {
+    if (-not $appearanceSource.Contains($currentEntryPoint)) {
+        throw "Appearance ABI 4 shell must route through current entry point: $currentEntryPoint"
+    }
+}
+
+$presentationSource = Read-SourceText "src/OcctNative/presentation/OcctPresentation.cpp"
+foreach ($currentEntryPoint in @(
+    "occt_engine_presentation_state_update(",
+    "occt_engine_presentation_state_get("
+)) {
+    if (-not $presentationSource.Contains($currentEntryPoint)) {
+        throw "Presentation ABI 4 shell must route through current entry point: $currentEntryPoint"
+    }
+}
+$objectSource = Read-SourceText "src/OcctNative/OcctEngineObjects.cpp"
+if (-not $objectSource.Contains("occt_engine_presentation_state_update(")) {
+    throw "Legacy object display-mode setter must delegate to current presentation state API."
+}
+
+# Production managed APIs must not call frozen exports after a domain has a current ABI.
 foreach ($legacyManagedCall in @(
     "NativeMethods.occt_make_text_shape(",
     "NativeMethods.occt_make_length_annotation_shape(",
     "NativeMethods.occt_make_angle_annotation_shape(",
     "NativeMethods.occt_make_radius_annotation_shape(",
-    "NativeMethods.occt_make_diameter_annotation_shape("
+    "NativeMethods.occt_make_diameter_annotation_shape(",
+    "NativeMethods.occt_add_point(",
+    "NativeMethods.occt_set_point_position(",
+    "NativeMethods.occt_set_point_style(",
+    "NativeMethods.occt_add_point_pixmap(",
+    "NativeMethods.occt_set_point_pixmap_style(",
+    "NativeMethods.occt_reset_scene_lighting(",
+    "NativeMethods.occt_set_object_display_mode(",
+    "PresentationNativeMethods.occt_reset_object_display_mode(",
+    "PresentationNativeMethods.occt_get_object_display_mode(",
+    "PresentationNativeMethods.occt_set_object_auto_highlight(",
+    "PresentationNativeMethods.occt_get_object_auto_highlight(",
+    "PresentationNativeMethods.occt_set_object_infinite_state(",
+    "PresentationNativeMethods.occt_get_object_infinite_state("
 )) {
     if ($managedText.Contains($legacyManagedCall)) {
-        throw "Managed production API must not call frozen BRep annotation export: $legacyManagedCall"
+        throw "Managed production API must not call frozen export: $legacyManagedCall"
     }
 }
 
 $layoutName = if ($isDemoBranchLayout) { "demo" } else { "main" }
-Write-Host "[architecture] Core/UI dependency direction, WinForms/WPF/Avalonia hosts, $layoutName branch layout, current-over-legacy adapter direction, shared annotation implementation, and no-compatibility boundary validated." -ForegroundColor Green
+Write-Host "[architecture] Core/UI dependency direction, WinForms/WPF/Avalonia hosts, $layoutName branch layout, current-over-legacy adapter direction, shared annotation implementation, current point/appearance/presentation domains, and no-compatibility boundary validated." -ForegroundColor Green
