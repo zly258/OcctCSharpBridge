@@ -9,21 +9,8 @@ internal struct OcctObjectDescriptorNative
 
 internal static partial class NativeMethods
 {
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_object_count(OcctEngineSafeHandle handle);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_object_descriptors(OcctEngineSafeHandle handle, [Out] OcctObjectDescriptorNative[]? items, int capacity, out int objectCount, out int shapeCount);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_object_exists(OcctEngineSafeHandle handle, long objectId);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_object_kind(OcctEngineSafeHandle handle, long objectId);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_object_name(OcctEngineSafeHandle handle, long objectId, [MarshalAs(UnmanagedType.LPUTF8Str)] string name);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern IntPtr occt_get_object_name(OcctEngineSafeHandle handle, long objectId);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_object_color(OcctEngineSafeHandle handle, long objectId, double r, double g, double b);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_object_transparency(OcctEngineSafeHandle handle, long objectId, double transparency);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_object_visible(OcctEngineSafeHandle handle, long objectId, int visible);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_object_display_mode(OcctEngineSafeHandle handle, long objectId, int displayMode);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_object_line_width(OcctEngineSafeHandle handle, long objectId, double width);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_object_material(OcctEngineSafeHandle handle, long objectId, int material);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_delete_objects(OcctEngineSafeHandle handle, [In] long[] objectIds, int count);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_clear(OcctEngineSafeHandle handle);
-
+    // Shape inspection/transformation remains temporarily on the legacy surface and
+    // is migrated in the Modeling/Shape ABI5 pass. Object registry APIs have moved.
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_shape_type(OcctEngineSafeHandle handle, long shapeId);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_shape_is_valid(OcctEngineSafeHandle handle, long shapeId);
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_shape_bounds(OcctEngineSafeHandle handle, long shapeId, out OcctBounds result);
