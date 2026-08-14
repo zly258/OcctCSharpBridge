@@ -267,7 +267,6 @@ function Run-Smoke {
     $smokeOutput = Join-Path (Split-Path -Parent $smokeProject) "bin\x64\$Configuration\$DesktopTargetFramework"
     Copy-Item $NativeDll (Join-Path $smokeOutput "OcctNative.dll") -Force
 
-
     $previousNativeDirectory = $env:OCCT_BRIDGE_NATIVE_DIR
     $previousOcctRoot = $env:OCCT_ROOT
     try {
@@ -347,7 +346,14 @@ function Build-BinaryDistribution {
         foreach ($entry in $files.GetEnumerator()) {
             Copy-Item $entry.Value (Join-Path $DistStaging $entry.Key) -Force
         }
-        Copy-Item $ContractPath (Join-Path $DistStaging "bridge-contract.json") -Force
+
+        $distributionContract = Get-Content $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $distributionContract.platform = "win-x64"
+        $distributionContractJson = $distributionContract | ConvertTo-Json -Depth 16
+        [System.IO.File]::WriteAllText(
+            (Join-Path $DistStaging "bridge-contract.json"),
+            $distributionContractJson + [Environment]::NewLine,
+            $utf8)
 
         $manifestFiles = @()
         foreach ($name in @($files.Keys) + @("bridge-contract.json")) {
@@ -364,7 +370,7 @@ function Build-BinaryDistribution {
             bridgeVersion = $BridgeVersion
             nativeAbiVersion = [int]$Contract.nativeAbi.current
             occtVersion = $RequiredOcctVersion
-            platform = [string]$Contract.platform
+            platform = "win-x64"
             targetFramework = $TargetFramework
             sdkVersion = $SdkVersion
             languageVersion = [string]$Contract.dotnet.languageVersion
