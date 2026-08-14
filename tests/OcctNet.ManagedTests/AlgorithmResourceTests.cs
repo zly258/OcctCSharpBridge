@@ -15,7 +15,7 @@ public sealed class AlgorithmResourceTests
         using (var session = new OcctModelingSession())
         {
             var left = session.MakeBox(20, 20, 20);
-            var right = session.MakeBox(new OcctPoint3d(10, 0, 0), 20, 20, 20);
+            var right = session.MakeBox(20, 20, 20, 10, 0, 0);
             var result = session.Fuse(left, right);
             Assert.IsTrue(result.Succeeded);
             Assert.IsFalse(result.HasErrors);
