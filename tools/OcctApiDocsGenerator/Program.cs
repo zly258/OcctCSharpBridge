@@ -93,7 +93,7 @@ internal static partial class Program
             var functions = headers.SelectMany(ParseNativeFunctions).ToArray();
             if (functions.Length != expectedNativeExports)
                 throw new InvalidOperationException($"Native API docs found {functions.Length} exports; expected {expectedNativeExports}.");
-            var modeling = functions.Count(function => function.Name.StartsWith("occt_model_", StringComparison.Ordinal));
+            var modeling = functions.Count(function => IsModelingExport(function.Name));
             var viewer = functions.Length - modeling;
             if (viewer != expectedViewerExports || modeling != expectedModelingExports)
                 throw new InvalidOperationException($"Native API groups differ from bridge-contract.json: Viewer={viewer}/{expectedViewerExports}, Modeling={modeling}/{expectedModelingExports}.");
@@ -105,6 +105,12 @@ internal static partial class Program
         }
         catch (Exception exception) { Console.Error.WriteLine(exception); return 1; }
     }
+
+    private static bool IsModelingExport(string name) =>
+        name.StartsWith("occt_model_", StringComparison.Ordinal) ||
+        name.StartsWith("occt_shape_", StringComparison.Ordinal) ||
+        name.StartsWith("occt_mesh_", StringComparison.Ordinal) ||
+        name.StartsWith("occt_algorithm_", StringComparison.Ordinal);
 
     private static AssemblyInput[] DiscoverAssemblies(string root, string configuration, string targetFramework, string desktopTargetFramework)
     {
