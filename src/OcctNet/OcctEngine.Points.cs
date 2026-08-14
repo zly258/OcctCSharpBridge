@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
@@ -16,21 +17,23 @@ public sealed partial class OcctEngine
 
         var value = color ?? Color.FromArgb(255, 190, 0);
         EnsureInitialized();
-        return CheckPoint(NativeMethods.occt_add_point(
-            _handle,
+        var options = PointOptions(
+            NativeViewerPointUpdateMask.Position | NativeViewerPointUpdateMask.Style,
             position,
-            (int)marker,
+            marker,
             scale,
-            value.R / 255.0,
-            value.G / 255.0,
-            value.B / 255.0));
+            value);
+        var status = NativeMethods.occt_engine_point_create(_handle, in options, out var pointId);
+        if (status != OcctStatus.Ok) throw CreateException(nameof(AddPoint));
+        return CheckPoint(pointId);
     }
 
     public void SetPointPosition(OcctPoint point, OcctPoint3d position)
     {
         EnsurePoint(point);
         OcctGuard.Finite(position, nameof(position));
-        CheckInitialized(() => NativeMethods.occt_set_point_position(_handle, point.Id, position));
+        var options = PointOptions(NativeViewerPointUpdateMask.Position, position);
+        CheckPointStatus(NativeMethods.occt_engine_point_update(_handle, point.Id, in options));
     }
 
     public void SetPointStyle(
@@ -42,14 +45,40 @@ public sealed partial class OcctEngine
         EnsurePoint(point);
         if (!Enum.IsDefined(marker)) throw new ArgumentOutOfRangeException(nameof(marker));
         OcctGuard.Positive(scale, nameof(scale));
-        CheckInitialized(() => NativeMethods.occt_set_point_style(
-            _handle,
-            point.Id,
-            (int)marker,
+        var options = PointOptions(
+            NativeViewerPointUpdateMask.Style,
+            default,
+            marker,
             scale,
-            color.R / 255.0,
-            color.G / 255.0,
-            color.B / 255.0));
+            color);
+        CheckPointStatus(NativeMethods.occt_engine_point_update(_handle, point.Id, in options));
+    }
+
+    private static NativeViewerPointOptions PointOptions(
+        NativeViewerPointUpdateMask updateMask,
+        OcctPoint3d position = default,
+        OcctPointMarker marker = OcctPointMarker.Point,
+        double scale = 1.0,
+        Color? color = null)
+    {
+        var actualColor = color ?? Color.Black;
+        return new NativeViewerPointOptions
+        {
+            StructSize = (uint)Marshal.SizeOf<NativeViewerPointOptions>(),
+            ApiVersion = 1,
+            UpdateMask = updateMask,
+            Position = position,
+            Marker = (int)marker,
+            Scale = scale,
+            Red = actualColor.R / 255.0,
+            Green = actualColor.G / 255.0,
+            Blue = actualColor.B / 255.0
+        };
+    }
+
+    private void CheckPointStatus(OcctStatus status)
+    {
+        if (status != OcctStatus.Ok) throw CreateException();
     }
 
     private OcctPoint CheckPoint(long id, string? operation = null)
