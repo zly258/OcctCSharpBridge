@@ -121,9 +121,9 @@ $projectFiles = [ordered]@{
     "src/OcctNet/OcctNet.csproj" = $expectedTargetFramework
     "src/OcctNet.Avalonia/OcctNet.Avalonia.csproj" = $expectedTargetFramework
     "tests/OcctNet.AvaloniaSmoke/OcctNet.AvaloniaSmoke.csproj" = $expectedTargetFramework
+    "tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj" = $expectedTargetFramework
     "src/OcctNet.WinForms/OcctNet.WinForms.csproj" = $expectedDesktopTargetFramework
     "src/OcctNet.Wpf/OcctNet.Wpf.csproj" = $expectedDesktopTargetFramework
-    "tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj" = $expectedDesktopTargetFramework
     "tests/OcctNet.Smoke/OcctNet.Smoke.csproj" = $expectedDesktopTargetFramework
     "tests/compatibility/OcctNet.LegacyCompatibilityTests.csproj" = $expectedDesktopTargetFramework
 }
