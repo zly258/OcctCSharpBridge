@@ -1,8 +1,16 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
-internal static class AppearanceNativeMethods
+[Flags]
+internal enum NativeViewerHighlightUpdateMask : uint
+{
+    Selection = 1u << 0,
+    Hover = 1u << 1
+}
+
+internal static partial class AppearanceNativeMethods
 {
     private const string LibraryName = "OcctNative";
 
@@ -33,6 +41,37 @@ internal static class AppearanceNativeMethods
         internal OcctVector3d FillLightDirection;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct NativeViewerLightingOptions
+    {
+        internal uint StructSize;
+        internal uint ApiVersion;
+        internal NativeSceneLightingSettings Settings;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct NativeViewerHighlightOptions
+    {
+        internal uint StructSize;
+        internal uint ApiVersion;
+        internal NativeViewerHighlightUpdateMask UpdateMask;
+        internal NativeColorRgb SelectionColor;
+        internal NativeColorRgb HoverColor;
+    }
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_scene_lighting_set(
+        OcctEngineSafeHandle handle,
+        in NativeViewerLightingOptions options);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_highlight_colors_set(
+        OcctEngineSafeHandle handle,
+        in NativeViewerHighlightOptions options);
+
+    // Frozen ABI 4 declarations retained only for compatibility-surface verification.
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_set_scene_lighting_ex(
         OcctEngineSafeHandle handle,
