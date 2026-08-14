@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace OcctNet;
@@ -75,24 +75,4 @@ internal static partial class AppearanceNativeMethods
     internal static partial OcctStatus occt_engine_highlight_colors_set(
         OcctEngineSafeHandle handle,
         in NativeViewerHighlightOptions options);
-
-    // Frozen ABI 4 declarations retained only for compatibility-surface verification.
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_set_scene_lighting_ex(
-        OcctEngineSafeHandle handle,
-        in NativeSceneLightingSettings settings);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_set_selection_highlight_color(
-        OcctEngineSafeHandle handle,
-        double r,
-        double g,
-        double b);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_set_hover_highlight_color(
-        OcctEngineSafeHandle handle,
-        double r,
-        double g,
-        double b);
 }
