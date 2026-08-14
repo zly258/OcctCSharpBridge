@@ -1,17 +1,24 @@
-﻿namespace OcctNet;
+namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
     public IReadOnlyList<OcctSelectionHit> GetSelectedHits()
     {
         EnsureInitialized();
-        Check(SelectionStateNativeMethods.occt_selected_hits(_handle, null, 0, out var count));
+        CheckSelectionStatus(SelectionStateNativeMethods.occt_engine_selection_hits_get(
+            _handle,
+            null,
+            0,
+            out var count));
         if (count == 0) return Array.Empty<OcctSelectionHit>();
-        if (count < 0)
-            throw new InvalidOperationException("Native selection hit count is invalid.");
+        if (count < 0) throw new InvalidOperationException("Native selection hit count is invalid.");
 
         var nativeHits = new NativeOcctSelectionHit[count];
-        Check(SelectionStateNativeMethods.occt_selected_hits(_handle, nativeHits, nativeHits.Length, out var filledCount));
+        CheckSelectionStatus(SelectionStateNativeMethods.occt_engine_selection_hits_get(
+            _handle,
+            nativeHits,
+            nativeHits.Length,
+            out var filledCount));
         if (filledCount < 0 || filledCount > nativeHits.Length)
             throw new InvalidOperationException("Native selection hit result count is invalid.");
 
@@ -24,7 +31,10 @@ public sealed partial class OcctEngine
     public bool TryGetDetectedHit(out OcctSelectionHit hit)
     {
         EnsureInitialized();
-        Check(SelectionStateNativeMethods.occt_detected_hit(_handle, out var native, out var hasHit));
+        CheckSelectionStatus(SelectionStateNativeMethods.occt_engine_selection_detected_hit_get(
+            _handle,
+            out var native,
+            out var hasHit));
         if (hasHit == 0)
         {
             hit = default;
