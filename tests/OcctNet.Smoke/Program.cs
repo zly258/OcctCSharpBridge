@@ -39,6 +39,15 @@ var cut = model.Cut(box, cylinder);
 if (!cut.Succeeded || !model.IsShapeValid(cut.Shape))
     throw new InvalidOperationException("Boolean result is invalid.");
 
+using var cutAlgorithm = model.AcquireAlgorithm(cut);
+if (cutAlgorithm.OperationId != cut.OperationId ||
+    cutAlgorithm.HasWarnings != cut.HasWarnings ||
+    cutAlgorithm.HasErrors != cut.HasErrors ||
+    !string.Equals(cutAlgorithm.Report, cut.Report, StringComparison.Ordinal))
+{
+    throw new InvalidOperationException("Owned algorithm diagnostics differ from the source operation result.");
+}
+
 var cutHistory = model.GetTopologyHistorySummary(cut.OperationId, box);
 if (cutHistory.GeneratedCount < 0 || cutHistory.ModifiedCount < 0)
     throw new InvalidOperationException("Topology-history summary contains invalid counts.");
@@ -208,5 +217,6 @@ Console.WriteLine($"Ray hits: {rayHits.Count}");
 Console.WriteLine($"Edge intersections: {edgeIntersections.Count}");
 Console.WriteLine($"Topology reference score: {topologyResolution.Score:G4}");
 Console.WriteLine($"OBB: {bounds.SizeX:G4} x {bounds.SizeY:G4} x {bounds.SizeZ:G4}");
+Console.WriteLine($"Cut operation resource: {cutAlgorithm.OperationId}");
 Console.WriteLine($"Loft operation: {loft.OperationId}");
 Console.WriteLine($"Bridge {OcctBridgeInfo.ManagedVersion} native smoke tests passed.");
