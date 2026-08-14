@@ -1,11 +1,58 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
-internal static class PresentationNativeMethods
+[Flags]
+internal enum NativeViewerPresentationStateUpdateMask : uint
+{
+    DisplayMode = 1u << 0,
+    ResetDisplayMode = 1u << 1,
+    AutoHighlight = 1u << 2,
+    Infinite = 1u << 3
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeViewerPresentationStateOptions
+{
+    internal uint StructSize;
+    internal uint ApiVersion;
+    internal NativeViewerPresentationStateUpdateMask UpdateMask;
+    internal int DisplayMode;
+    internal int AutoHighlight;
+    internal int Infinite;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeViewerPresentationState
+{
+    internal uint StructSize;
+    internal uint ApiVersion;
+    internal int HasDisplayModeOverride;
+    internal int DisplayMode;
+    internal int AutoHighlight;
+    internal int Infinite;
+}
+
+internal static partial class PresentationNativeMethods
 {
     private const string LibraryName = "OcctNative";
 
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_presentation_state_update(
+        OcctEngineSafeHandle handle,
+        long objectId,
+        in NativeViewerPresentationStateOptions options);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_presentation_state_get(
+        OcctEngineSafeHandle handle,
+        long objectId,
+        out NativeViewerPresentationState result);
+
+    // Frozen ABI 4 declarations retained only for compatibility-surface verification.
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int occt_set_object_clip_planes(
         OcctEngineSafeHandle handle,
