@@ -61,6 +61,12 @@ public sealed partial class OcctEngine
             AppearanceNativeMethods.occt_engine_scene_lighting_set(_handle, in options));
     }
 
+    public void ResetSceneLighting()
+    {
+        EnsureInitialized();
+        CheckAppearanceStatus(AppearanceNativeMethods.occt_engine_scene_lighting_reset(_handle));
+    }
+
     public void ApplyLightingPreset(OcctLightingPreset preset) =>
         SetSceneLighting(OcctLightingPresets.Create(preset));
 
