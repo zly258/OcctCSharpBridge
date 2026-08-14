@@ -118,7 +118,7 @@ Assert-Reference $demoAvaloniaReferences "..\OcctNet\OcctNet.csproj" "OcctDemo.A
 Assert-Reference $demoAvaloniaReferences "..\OcctNet.Avalonia\OcctNet.Avalonia.csproj" "OcctDemo.Avalonia"
 if ($demoAvaloniaReferences.Count -ne 3) { throw "OcctDemo.Avalonia must depend only on Demo.Common, OcctNet, and OcctNet.Avalonia." }
 $demoAvaloniaPackages = @(Get-PackageReferences $demoAvalonia)
-foreach ($requiredPackage in @("Avalonia.Desktop", "Avalonia.Themes.Fluent", "Avalonia.Fonts.Inter", "Avalonia.Controls.ColorPicker")) {
+foreach ($requiredPackage in @("Avalonia.Desktop", "Avalonia.Themes.Fluent", "Avalonia.Fonts.Inter")) {
     if ($requiredPackage -notin $demoAvaloniaPackages) { throw "OcctDemo.Avalonia must reference $requiredPackage." }
 }
 
@@ -129,7 +129,7 @@ foreach ($forbiddenText in @("System.Windows.Forms", "user32.dll", "MessageBoxW"
     }
 }
 
-foreach ($requiredPath in @("run.ps1", "run.sh")) {
+foreach ($requiredPath in @("run.ps1", "run.sh", "publish.ps1", "publish.sh")) {
     if (-not (Test-TrackedPath $requiredPath)) { throw "Avalonia demo workflow must track: $requiredPath" }
 }
 
@@ -140,8 +140,6 @@ foreach ($forbiddenPath in @(
     "src/OcctDemo.Wpf",
     "tests/OcctNet.X11Smoke",
     "dist",
-    "publish.ps1",
-    "publish.sh",
     "sync.ps1",
     "sync-dist.ps1"
 )) {

@@ -1,6 +1,5 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Platform;
 using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
@@ -14,10 +13,6 @@ public sealed class App : Application
     {
         Program.Trace("App.Initialize entered.");
         Styles.Add(new FluentTheme());
-        Styles.Add(new StyleInclude(new Uri("avares://OcctDemo.Avalonia/"))
-        {
-            Source = new Uri("avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml")
-        });
         RequestedThemeVariant = ThemeVariant.Light;
         Program.Trace("App.Initialize completed.");
     }

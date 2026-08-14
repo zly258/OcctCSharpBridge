@@ -25,35 +25,8 @@ internal static class DialogService
     public static Task<DemoDialogChoice> ShowQuestionAsync(Window owner, string title, string message, bool includeCancel) =>
         ShowDialogAsync(owner, title, message, includeNo: true, includeCancel: includeCancel);
 
-    public static async Task<DrawingColor?> PickColorAsync(Window owner, string title, DrawingColor initialColor)
-    {
-        var picker = new ColorPicker
-        {
-            Color = ToAvaloniaColor(initialColor),
-            IsAlphaEnabled = false,
-            IsAlphaVisible = false,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Margin = new Thickness(0, 4, 0, 12)
-        };
-        var ok = CreateButton(Local("OK", "确定"));
-        ok.IsDefault = true;
-        var cancel = CreateButton(Local("Cancel", "取消"));
-        cancel.IsCancel = true;
-        var buttons = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            Spacing = 8,
-            Children = { cancel, ok }
-        };
-        var root = new StackPanel { Margin = new Thickness(16), Children = { picker, buttons } };
-        var dialog = CreateDialogWindow(title, 520, root);
-        ok.Click += (_, _) => dialog.Close(true);
-        cancel.Click += (_, _) => dialog.Close(false);
-
-        var accepted = await dialog.ShowDialog<bool>(owner);
-        return accepted ? DrawingColor.FromArgb(picker.Color.A, picker.Color.R, picker.Color.G, picker.Color.B) : null;
-    }
+    public static Task<DrawingColor?> PickColorAsync(Window owner, string title, DrawingColor initialColor) =>
+        ClassicColorDialog.ShowAsync(owner, title, initialColor);
 
     private static async Task<DemoDialogChoice> ShowDialogAsync(Window owner, string title, string message, bool includeNo, bool includeCancel)
     {
@@ -125,9 +98,6 @@ internal static class DialogService
         HorizontalContentAlignment = HorizontalAlignment.Center,
         VerticalContentAlignment = VerticalAlignment.Center
     };
-
-    private static global::Avalonia.Media.Color ToAvaloniaColor(DrawingColor color) =>
-        global::Avalonia.Media.Color.FromArgb(color.A, color.R, color.G, color.B);
 
     private static string Local(string english, string chinese) =>
         DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified ? chinese : english;
