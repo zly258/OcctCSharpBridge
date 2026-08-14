@@ -28,6 +28,33 @@ public sealed partial class OcctEngine
         return CheckPoint(pointId);
     }
 
+    public unsafe OcctPoint AddPointPixmap(
+        OcctPoint3d position,
+        int width,
+        int height,
+        ReadOnlySpan<byte> pixels,
+        OcctPixelFormat pixelFormat = OcctPixelFormat.Bgra32)
+    {
+        OcctGuard.Finite(position, nameof(position));
+        ValidatePointPixmap(width, height, pixels, pixelFormat);
+        EnsureInitialized();
+
+        fixed (byte* pixelPointer = pixels)
+        {
+            var options = PointPixmapOptions(
+                NativeViewerPointPixmapUpdateMask.Position | NativeViewerPointPixmapUpdateMask.Image,
+                position,
+                width,
+                height,
+                (IntPtr)pixelPointer,
+                pixels.Length,
+                pixelFormat);
+            var status = NativeMethods.occt_engine_point_pixmap_create(_handle, in options, out var pointId);
+            if (status != OcctStatus.Ok) throw CreateException(nameof(AddPointPixmap));
+            return CheckPoint(pointId, nameof(AddPointPixmap));
+        }
+    }
+
     public void SetPointPosition(OcctPoint point, OcctPoint3d position)
     {
         EnsurePoint(point);
@@ -54,6 +81,30 @@ public sealed partial class OcctEngine
         CheckPointStatus(NativeMethods.occt_engine_point_update(_handle, point.Id, in options));
     }
 
+    public unsafe void SetPointPixmapStyle(
+        OcctPoint point,
+        int width,
+        int height,
+        ReadOnlySpan<byte> pixels,
+        OcctPixelFormat pixelFormat = OcctPixelFormat.Bgra32)
+    {
+        EnsurePoint(point);
+        ValidatePointPixmap(width, height, pixels, pixelFormat);
+
+        fixed (byte* pixelPointer = pixels)
+        {
+            var options = PointPixmapOptions(
+                NativeViewerPointPixmapUpdateMask.Image,
+                default,
+                width,
+                height,
+                (IntPtr)pixelPointer,
+                pixels.Length,
+                pixelFormat);
+            CheckPointStatus(NativeMethods.occt_engine_point_pixmap_update(_handle, point.Id, in options));
+        }
+    }
+
     private static NativeViewerPointOptions PointOptions(
         NativeViewerPointUpdateMask updateMask,
         OcctPoint3d position = default,
@@ -74,6 +125,47 @@ public sealed partial class OcctEngine
             Green = actualColor.G / 255.0,
             Blue = actualColor.B / 255.0
         };
+    }
+
+    private static NativeViewerPointPixmapOptions PointPixmapOptions(
+        NativeViewerPointPixmapUpdateMask updateMask,
+        OcctPoint3d position,
+        int width,
+        int height,
+        IntPtr pixels,
+        int pixelCount,
+        OcctPixelFormat pixelFormat) => new()
+    {
+        StructSize = (uint)Marshal.SizeOf<NativeViewerPointPixmapOptions>(),
+        ApiVersion = 1,
+        UpdateMask = updateMask,
+        Position = position,
+        Width = width,
+        Height = height,
+        Pixels = pixels,
+        PixelCount = pixelCount,
+        PixelFormat = (int)pixelFormat
+    };
+
+    private static void ValidatePointPixmap(
+        int width,
+        int height,
+        ReadOnlySpan<byte> pixels,
+        OcctPixelFormat pixelFormat)
+    {
+        if (width <= 0 || width > 4096) throw new ArgumentOutOfRangeException(nameof(width));
+        if (height <= 0 || height > 4096) throw new ArgumentOutOfRangeException(nameof(height));
+        if (!Enum.IsDefined(pixelFormat)) throw new ArgumentOutOfRangeException(nameof(pixelFormat));
+
+        int required;
+        try { required = checked(width * height * 4); }
+        catch (OverflowException) { throw new ArgumentOutOfRangeException(nameof(width), "Pixmap dimensions are too large."); }
+        if (pixels.Length != required)
+        {
+            throw new ArgumentException(
+                $"Pixmap buffer must contain exactly {required} bytes for a {width}x{height} 32-bit image.",
+                nameof(pixels));
+        }
     }
 
     private void CheckPointStatus(OcctStatus status)
