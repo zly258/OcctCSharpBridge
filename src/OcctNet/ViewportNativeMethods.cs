@@ -1,23 +1,97 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
-internal static partial class NativeMethods
+[Flags]
+internal enum NativeViewportRenderingUpdateMask : uint
 {
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_fit_objects(OcctEngineSafeHandle handle, [In] long[] objectIds, int count, double margin);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_zup_view(OcctEngineSafeHandle handle, int orientation, int fitAll);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_screen_to_ray(OcctEngineSafeHandle handle, int x, int y, out OcctProjectionRay result);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_zoom_at_point(OcctEngineSafeHandle handle, int x, int y, double delta);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_select_all_visible(OcctEngineSafeHandle handle);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_invert_selection(OcctEngineSafeHandle handle);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_hide_selected(OcctEngineSafeHandle handle);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_automatic_highlight(OcctEngineSafeHandle handle, int enabled);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_msaa_samples(OcctEngineSafeHandle handle, int samples);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_render_resolution_scale(OcctEngineSafeHandle handle, double scale);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_render_resolution(OcctEngineSafeHandle handle, double dpi);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_rendering_method(OcctEngineSafeHandle handle, int method);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_shadows_enabled(OcctEngineSafeHandle handle, int enabled);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_immediate_update(OcctEngineSafeHandle handle, int enabled);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_frustum_culling(OcctEngineSafeHandle handle, int enabled);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_set_face_boundaries_visible(OcctEngineSafeHandle handle, int visible, int applyExisting);
+    MsaaSamples = 1u << 0,
+    ResolutionScale = 1u << 1,
+    ResolutionDpi = 1u << 2,
+    Method = 1u << 3,
+    Shadows = 1u << 4,
+    ImmediateUpdate = 1u << 5,
+    FrustumCulling = 1u << 6,
+    FaceBoundaries = 1u << 7
+}
+
+internal static partial class ViewportNativeMethods
+{
+    private const string LibraryName = "OcctNative";
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct NativeViewportRenderingOptions
+    {
+        internal uint StructSize;
+        internal uint ApiVersion;
+        internal NativeViewportRenderingUpdateMask UpdateMask;
+        internal int MsaaSamples;
+        internal double ResolutionScale;
+        internal double ResolutionDpi;
+        internal int RenderingMethod;
+        internal int ShadowsEnabled;
+        internal int ImmediateUpdate;
+        internal int FrustumCullingEnabled;
+        internal int FaceBoundariesVisible;
+        internal int ApplyFaceBoundariesToExisting;
+    }
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_viewport_fit_objects(
+        OcctEngineSafeHandle handle,
+        long[] objectIds,
+        int count,
+        double margin);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_viewport_zup_set(
+        OcctEngineSafeHandle handle,
+        int orientation,
+        int fitAll);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_viewport_screen_to_ray(
+        OcctEngineSafeHandle handle,
+        int x,
+        int y,
+        out OcctProjectionRay result);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_viewport_zoom_at_point(
+        OcctEngineSafeHandle handle,
+        int x,
+        int y,
+        double delta);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_selection_all_visible(
+        OcctEngineSafeHandle handle);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_selection_invert(
+        OcctEngineSafeHandle handle);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_selection_hide_selected(
+        OcctEngineSafeHandle handle);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_selection_automatic_highlight_set(
+        OcctEngineSafeHandle handle,
+        int enabled);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_viewport_rendering_update(
+        OcctEngineSafeHandle handle,
+        in NativeViewportRenderingOptions options);
 }
