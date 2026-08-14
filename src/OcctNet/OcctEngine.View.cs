@@ -147,8 +147,15 @@ public sealed partial class OcctEngine
 
     public void SetSelectionTolerance(int pixelTolerance)
     {
-        if (pixelTolerance < 0) throw new ArgumentOutOfRangeException(nameof(pixelTolerance));
-        CheckInitialized(() => NativeMethods.occt_set_selection_tolerance(_handle, pixelTolerance));
+        if (pixelTolerance < 0 || pixelTolerance > 100)
+            throw new ArgumentOutOfRangeException(nameof(pixelTolerance));
+        UpdateSelectionSettings(new NativeViewerSelectionSettingsOptions
+        {
+            StructSize = (uint)Marshal.SizeOf<NativeViewerSelectionSettingsOptions>(),
+            ApiVersion = 1,
+            UpdateMask = NativeViewerSelectionSettingsUpdateMask.Tolerance,
+            PixelTolerance = pixelTolerance
+        });
     }
 
     public void DumpView(string filePath)
