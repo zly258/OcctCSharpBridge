@@ -1,6 +1,6 @@
 ﻿<Project Sdk="MSTest.Sdk/4.1.0">
   <PropertyGroup>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Platforms>x64</Platforms>
@@ -8,7 +8,5 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\OcctNet\OcctNet.csproj" />
-    <ProjectReference Include="..\..\src\OcctNet.WinForms\OcctNet.WinForms.csproj" />
-    <ProjectReference Include="..\..\src\OcctNet.Wpf\OcctNet.Wpf.csproj" />
   </ItemGroup>
 </Project>
