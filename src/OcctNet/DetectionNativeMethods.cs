@@ -1,22 +1,32 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
-internal static class DetectionNativeMethods
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeViewerDetectionOptions
+{
+    internal uint StructSize;
+    internal uint ApiVersion;
+    internal int X;
+    internal int Y;
+    internal int MaxHits;
+    internal IntPtr OwnerIds;
+    internal int OwnerCount;
+    internal ulong ObjectKindMask;
+    internal ulong ShapeTypeMask;
+    internal int IncludeWholeObjects;
+}
+
+internal static partial class DetectionNativeMethods
 {
     private const string LibraryName = "OcctNative";
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_detect_at_filtered(
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_selection_detect_filtered(
         OcctEngineSafeHandle handle,
-        int x,
-        int y,
-        int maxHits,
-        [In] long[] ownerIds,
-        int ownerCount,
-        ulong objectKindMask,
-        ulong shapeTypeMask,
-        int includeWholeObjects,
+        in NativeViewerDetectionOptions options,
         [Out] NativeOcctSelectionHitDetail[] items,
         int capacity,
         out int count);
