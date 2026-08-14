@@ -1,10 +1,28 @@
-﻿#pragma once
+#pragma once
 
 #include "OcctNative.h"
-#include "OcctViewerInteractionExtensions.h"
 
 extern "C"
 {
+    enum OcctPresentationZLayer
+    {
+        OcctPresentationZLayer_Bottom = 0,
+        OcctPresentationZLayer_Default = 1,
+        OcctPresentationZLayer_Top = 2,
+        OcctPresentationZLayer_Topmost = 3
+    };
+
+    struct OcctPresentationClipPlane
+    {
+        OcctPoint3d point;
+        OcctVector3d normal;
+        int enabled;
+        int capping;
+        double cappingR;
+        double cappingG;
+        double cappingB;
+    };
+
     struct OcctHighlightStyleSettings
     {
         double r;
@@ -44,6 +62,23 @@ extern "C"
         int infinite;
     };
 
+    struct OcctViewerClipPlanesOptions
+    {
+        std::uint32_t structSize;
+        std::uint32_t apiVersion;
+        const OcctPresentationClipPlane* planes;
+        int count;
+    };
+
+    struct OcctViewerHighlightStyleOptions
+    {
+        std::uint32_t structSize;
+        std::uint32_t apiVersion;
+        int kind;
+        int dynamic;
+        OcctHighlightStyleSettings settings;
+    };
+
     OCCTBRIDGE_API OcctStatus occt_engine_presentation_state_update(
         OcctEngineHandle handle,
         OcctObjectId objectId,
@@ -54,55 +89,22 @@ extern "C"
         OcctObjectId objectId,
         OcctViewerPresentationState* result);
 
-    OCCTBRIDGE_API int occt_set_object_clip_planes(
-        OcctHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_engine_presentation_clip_planes_set(
+        OcctEngineHandle handle,
         OcctObjectId objectId,
-        const OcctViewClipPlane* planes,
-        int count);
+        const OcctViewerClipPlanesOptions* options);
 
-    OCCTBRIDGE_API int occt_set_global_highlight_style(
-        OcctHandle handle,
-        int kind,
-        const OcctHighlightStyleSettings* settings);
+    OCCTBRIDGE_API OcctStatus occt_engine_highlight_style_global_set(
+        OcctEngineHandle handle,
+        const OcctViewerHighlightStyleOptions* options);
 
-    OCCTBRIDGE_API int occt_set_object_highlight_style(
-        OcctHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_engine_highlight_style_object_set(
+        OcctEngineHandle handle,
         OcctObjectId objectId,
-        int dynamic,
-        const OcctHighlightStyleSettings* settings);
+        const OcctViewerHighlightStyleOptions* options);
 
-    OCCTBRIDGE_API int occt_clear_object_highlight_style(
-        OcctHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_engine_highlight_style_object_clear(
+        OcctEngineHandle handle,
         OcctObjectId objectId,
         int dynamic);
-
-    OCCTBRIDGE_API int occt_reset_object_display_mode(
-        OcctHandle handle,
-        OcctObjectId objectId);
-
-    OCCTBRIDGE_API int occt_get_object_display_mode(
-        OcctHandle handle,
-        OcctObjectId objectId,
-        int* hasOverride,
-        int* displayMode);
-
-    OCCTBRIDGE_API int occt_set_object_auto_highlight(
-        OcctHandle handle,
-        OcctObjectId objectId,
-        int enabled);
-
-    OCCTBRIDGE_API int occt_get_object_auto_highlight(
-        OcctHandle handle,
-        OcctObjectId objectId,
-        int* enabled);
-
-    OCCTBRIDGE_API int occt_set_object_infinite_state(
-        OcctHandle handle,
-        OcctObjectId objectId,
-        int infinite);
-
-    OCCTBRIDGE_API int occt_get_object_infinite_state(
-        OcctHandle handle,
-        OcctObjectId objectId,
-        int* infinite);
 }
