@@ -1,4 +1,4 @@
-﻿#include "exchange/OcctModelingExchange.h"
+#include "exchange/OcctModelingExchange.h"
 #include "exchange/OcctModelingExchangeInternal.hxx"
 #include "exchange/OcctExchangePath.hxx"
 #include "modeling/OcctModelingSessionInternal.hxx"
@@ -59,8 +59,8 @@ namespace
     void validateStlOptions(const OcctStlExportOptions* options)
     {
         if (options == nullptr) throw std::invalid_argument("STL export options are null.");
-        if (options->structSize < sizeof(OcctStlExportOptions)
-            || options->apiVersion != StlExportOptionsApiVersion)
+        if (options->structSize < sizeof(OcctStlExportOptions) ||
+            options->apiVersion != StlExportOptionsApiVersion)
         {
             throw std::invalid_argument("Unsupported STL export options size or version.");
         }
@@ -225,77 +225,5 @@ extern "C"
                     "STL file could not be written. Use an ASCII-only file path if the OCCT package lacks wide-path support.");
             }
         });
-    }
-
-    // ABI 4 compatibility shell. Frozen symbols delegate to the current status-based ABI.
-    OcctObjectId occt_model_import_step(OcctModelHandle handle, const char* utf8Path)
-    {
-        OcctObjectId result = 0;
-        return occt_model_step_import(reinterpret_cast<OcctModelingSessionHandle>(handle), utf8Path, &result) == OcctStatus_Ok
-            ? result : 0;
-    }
-
-    OcctObjectId occt_model_import_iges(OcctModelHandle handle, const char* utf8Path)
-    {
-        OcctObjectId result = 0;
-        return occt_model_iges_import(reinterpret_cast<OcctModelingSessionHandle>(handle), utf8Path, &result) == OcctStatus_Ok
-            ? result : 0;
-    }
-
-    OcctObjectId occt_model_import_brep(OcctModelHandle handle, const char* utf8Path)
-    {
-        OcctObjectId result = 0;
-        return occt_model_brep_import(reinterpret_cast<OcctModelingSessionHandle>(handle), utf8Path, &result) == OcctStatus_Ok
-            ? result : 0;
-    }
-
-    OcctObjectId occt_model_import_stl(OcctModelHandle handle, const char* utf8Path)
-    {
-        OcctObjectId result = 0;
-        return occt_model_stl_import(reinterpret_cast<OcctModelingSessionHandle>(handle), utf8Path, &result) == OcctStatus_Ok
-            ? result : 0;
-    }
-
-    OcctObjectId occt_model_import_file(OcctModelHandle handle, const char* utf8Path)
-    {
-        OcctObjectId result = 0;
-        return occt_model_file_import(reinterpret_cast<OcctModelingSessionHandle>(handle), utf8Path, &result) == OcctStatus_Ok
-            ? result : 0;
-    }
-
-    int occt_model_export_step(OcctModelHandle handle, OcctObjectId shapeId, const char* utf8Path)
-    {
-        return occt_model_step_export(reinterpret_cast<OcctModelingSessionHandle>(handle), shapeId, utf8Path) == OcctStatus_Ok ? 1 : 0;
-    }
-
-    int occt_model_export_iges(OcctModelHandle handle, OcctObjectId shapeId, const char* utf8Path)
-    {
-        return occt_model_iges_export(reinterpret_cast<OcctModelingSessionHandle>(handle), shapeId, utf8Path) == OcctStatus_Ok ? 1 : 0;
-    }
-
-    int occt_model_export_brep(OcctModelHandle handle, OcctObjectId shapeId, const char* utf8Path)
-    {
-        return occt_model_brep_export(reinterpret_cast<OcctModelingSessionHandle>(handle), shapeId, utf8Path) == OcctStatus_Ok ? 1 : 0;
-    }
-
-    int occt_model_export_stl(
-        OcctModelHandle handle,
-        OcctObjectId shapeId,
-        const char* utf8Path,
-        double linearDeflection,
-        double angularDeflection,
-        int asciiMode)
-    {
-        const OcctStlExportOptions options{
-            static_cast<std::uint32_t>(sizeof(OcctStlExportOptions)),
-            StlExportOptionsApiVersion,
-            linearDeflection,
-            angularDeflection,
-            asciiMode != 0 ? 1 : 0 };
-        return occt_model_stl_export(
-            reinterpret_cast<OcctModelingSessionHandle>(handle),
-            shapeId,
-            utf8Path,
-            &options) == OcctStatus_Ok ? 1 : 0;
     }
 }
