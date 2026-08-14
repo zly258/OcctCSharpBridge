@@ -21,12 +21,13 @@ extern "C"
         void* display;
     };
 
-
     OCCTBRIDGE_API OcctStatus occt_engine_initialize_surface(
         OcctEngineHandle handle,
         const OcctNativeSurface* surface);
 
-    // ABI 4 compatibility entry point. The descriptor layout is intentionally
-    // opaque here so the current SDK does not expose the retired struct model.
-    OCCTBRIDGE_API int occt_initialize_surface(OcctHandle handle, const void* legacySurface);
+    OCCTBRIDGE_API OcctStatus occt_engine_surface_resize(
+        OcctEngineHandle handle,
+        int redraw);
+
+    OCCTBRIDGE_API OcctStatus occt_engine_surface_redraw(OcctEngineHandle handle);
 }
