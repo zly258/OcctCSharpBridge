@@ -29,7 +29,7 @@
     "compatibilityExtensions": 1,
     "compatibilityExtensionNames": ["occt_initialize_surface"],
     "publicNetTypes": 148,
-    "viewer": 298,
+    "viewer": 301,
     "modeling": 142,
     "nativeHeaders": [
       "OcctNative.h",
