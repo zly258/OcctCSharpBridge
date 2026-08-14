@@ -23,14 +23,14 @@
     "languageVersion": "14.0"
   },
   "api": {
-    "nativeExports": 448,
-    "managedPInvokes": 448,
-    "abi5Exports": 28,
+    "nativeExports": 452,
+    "managedPInvokes": 452,
+    "abi5Exports": 32,
     "legacyAbi4Exports": 419,
     "compatibilityExtensions": 1,
     "compatibilityExtensionNames": ["occt_initialize_surface"],
     "publicNetTypes": 152,
-    "viewer": 292,
+    "viewer": 296,
     "modeling": 156,
     "nativeHeaders": [
       "OcctNative.h",
@@ -44,6 +44,7 @@
       "OcctViewerInteractionExtensions.h",
       "presentation/OcctOverlay.h",
       "presentation/OcctPresentation.h",
+      "presentation/OcctAnnotations.h",
       "selection/OcctManipulator.h",
       "selection/OcctDetection.h",
       "modeling/OcctModeling.h",
