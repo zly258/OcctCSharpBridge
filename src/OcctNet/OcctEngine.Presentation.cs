@@ -1,4 +1,6 @@
-﻿namespace OcctNet;
+﻿using System.Runtime.InteropServices;
+
+namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
@@ -67,53 +69,94 @@ public sealed partial class OcctEngine
     public void ResetDisplayMode(IOcctObject value)
     {
         EnsureObject(value);
-        Check(PresentationNativeMethods.occt_reset_object_display_mode(_handle, value.Id));
+        var options = PresentationStateOptions(NativeViewerPresentationStateUpdateMask.ResetDisplayMode);
+        CheckPresentationStatus(PresentationNativeMethods.occt_engine_presentation_state_update(
+            _handle,
+            value.Id,
+            in options));
     }
 
     public OcctDisplayMode? GetDisplayModeOverride(IOcctObject value)
     {
-        EnsureObject(value);
-        Check(PresentationNativeMethods.occt_get_object_display_mode(
-            _handle,
-            value.Id,
-            out var hasOverride,
-            out var displayMode));
-        if (hasOverride == 0) return null;
-        if (!Enum.IsDefined(typeof(OcctDisplayMode), displayMode))
-            throw new InvalidOperationException($"Native object display mode {displayMode} is not supported by the managed bridge.");
-        return (OcctDisplayMode)displayMode;
+        var state = GetPresentationState(value);
+        if (state.HasDisplayModeOverride == 0) return null;
+        if (!Enum.IsDefined(typeof(OcctDisplayMode), state.DisplayMode))
+            throw new InvalidOperationException($"Native object display mode {state.DisplayMode} is not supported by the managed bridge.");
+        return (OcctDisplayMode)state.DisplayMode;
     }
 
     public void SetAutoHighlight(IOcctObject value, bool enabled)
     {
         EnsureObject(value);
-        Check(PresentationNativeMethods.occt_set_object_auto_highlight(
+        var options = PresentationStateOptions(
+            NativeViewerPresentationStateUpdateMask.AutoHighlight,
+            autoHighlight: enabled);
+        CheckPresentationStatus(PresentationNativeMethods.occt_engine_presentation_state_update(
             _handle,
             value.Id,
-            enabled ? 1 : 0));
+            in options));
     }
 
-    public bool GetAutoHighlight(IOcctObject value)
-    {
-        EnsureObject(value);
-        Check(PresentationNativeMethods.occt_get_object_auto_highlight(_handle, value.Id, out var enabled));
-        return enabled != 0;
-    }
+    public bool GetAutoHighlight(IOcctObject value) => GetPresentationState(value).AutoHighlight != 0;
 
     public void SetInfiniteState(IOcctObject value, bool infinite)
     {
         EnsureObject(value);
-        Check(PresentationNativeMethods.occt_set_object_infinite_state(
+        var options = PresentationStateOptions(
+            NativeViewerPresentationStateUpdateMask.Infinite,
+            infinite: infinite);
+        CheckPresentationStatus(PresentationNativeMethods.occt_engine_presentation_state_update(
             _handle,
             value.Id,
-            infinite ? 1 : 0));
+            in options));
     }
 
-    public bool GetInfiniteState(IOcctObject value)
+    public bool GetInfiniteState(IOcctObject value) => GetPresentationState(value).Infinite != 0;
+
+    private void SetDisplayModeOverride(IOcctObject value, OcctDisplayMode displayMode)
     {
         EnsureObject(value);
-        Check(PresentationNativeMethods.occt_get_object_infinite_state(_handle, value.Id, out var infinite));
-        return infinite != 0;
+        if (!Enum.IsDefined(displayMode)) throw new ArgumentOutOfRangeException(nameof(displayMode));
+        var options = PresentationStateOptions(
+            NativeViewerPresentationStateUpdateMask.DisplayMode,
+            displayMode: displayMode);
+        CheckPresentationStatus(PresentationNativeMethods.occt_engine_presentation_state_update(
+            _handle,
+            value.Id,
+            in options));
+    }
+
+    private NativeViewerPresentationState GetPresentationState(IOcctObject value)
+    {
+        EnsureObject(value);
+        EnsureInitialized();
+        var status = PresentationNativeMethods.occt_engine_presentation_state_get(
+            _handle,
+            value.Id,
+            out var state);
+        CheckPresentationStatus(status);
+        if (state.ApiVersion != 1 || state.StructSize < (uint)Marshal.SizeOf<NativeViewerPresentationState>())
+            throw new InvalidOperationException("Native presentation state version is not supported by this bridge.");
+        return state;
+    }
+
+    private static NativeViewerPresentationStateOptions PresentationStateOptions(
+        NativeViewerPresentationStateUpdateMask updateMask,
+        OcctDisplayMode displayMode = OcctDisplayMode.Shaded,
+        bool autoHighlight = false,
+        bool infinite = false) => new()
+    {
+        StructSize = (uint)Marshal.SizeOf<NativeViewerPresentationStateOptions>(),
+        ApiVersion = 1,
+        UpdateMask = updateMask,
+        DisplayMode = (int)displayMode,
+        AutoHighlight = autoHighlight ? 1 : 0,
+        Infinite = infinite ? 1 : 0
+    };
+
+    private void CheckPresentationStatus(OcctStatus status)
+    {
+        if (status != OcctStatus.Ok) throw CreateException();
     }
 
     private static NativeOcctHighlightStyleSettings ToNativeHighlightStyle(OcctHighlightStyle style)
