@@ -6,6 +6,8 @@
 #include <Graphic3d_VerticalTextAlignment.hxx>
 #include <TopoDS_Shape.hxx>
 
+#include <functional>
+
 namespace OcctModelingInternal
 {
     TopoDS_Shape buildBRepText(
