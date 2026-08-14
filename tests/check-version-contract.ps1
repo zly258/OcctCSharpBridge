@@ -36,6 +36,8 @@ catch { throw "bridge-contract.json is not valid JSON: $($_.Exception.Message)" 
 $expectedVersion = [string]$contract.bridgeVersion
 $expectedAbiVersion = [int]$contract.nativeAbi.current
 $expectedOcctVersion = [string]$contract.occtVersion
+$expectedPlatform = [string]$contract.platform
+$supportedPlatforms = @($contract.supportedPlatforms | ForEach-Object { [string]$_ })
 $expectedCmakeVersion = [string]$contract.cmakeMinimumVersion
 $expectedAuthor = [string]$contract.author
 $expectedTargetFramework = [string]$contract.dotnet.targetFramework
@@ -55,6 +57,7 @@ $expectedCompatibilityExtensions = [int]$contract.api.compatibilityExtensions
 foreach ($entry in ([ordered]@{
     bridgeVersion = $expectedVersion
     occtVersion = $expectedOcctVersion
+    platform = $expectedPlatform
     cmakeMinimumVersion = $expectedCmakeVersion
     author = $expectedAuthor
     targetFramework = $expectedTargetFramework
@@ -83,6 +86,21 @@ if ($expectedNativeCount -ne $expectedManagedCount) { throw "Native export and m
 $contractSdk = Convert-ToSdkVersion $expectedSdkVersion "bridge-contract.json"
 
 if ([int]$contract.schemaVersion -ne 2) { throw "Bridge 3 contract must use schema version 2." }
+if ($expectedPlatform -ne "cross-platform-x64") {
+    throw "Source bridge contract platform must be cross-platform-x64; found '$expectedPlatform'."
+}
+$requiredPlatforms = @("windows-x64", "linux-x64")
+if ($supportedPlatforms.Count -ne $requiredPlatforms.Count) {
+    throw "Bridge contract supportedPlatforms must contain exactly windows-x64 and linux-x64."
+}
+foreach ($platform in $requiredPlatforms) {
+    if ($platform -notin $supportedPlatforms) {
+        throw "Bridge contract supportedPlatforms is missing '$platform'."
+    }
+}
+if (@($supportedPlatforms | Group-Object | Where-Object Count -gt 1).Count -ne 0) {
+    throw "Bridge contract supportedPlatforms must not contain duplicates."
+}
 if ($expectedMinimumAbiVersion -ne 4 -or @($contract.nativeAbi.legacy) -notcontains 4) {
     throw "ABI 4 must remain declared as the minimum supported legacy ABI."
 }
@@ -155,10 +173,11 @@ foreach ($token in @(
 $contractText = [System.IO.File]::ReadAllText($contractPath)
 if ($contractText.Contains("compatibilityPublicNetTypes")) { throw "Compatibility API accounting must not be reintroduced into the new library contract." }
 
-Write-Host ("[version] Bridge {0}, ABI {1}, OCCT {2}, author {3}, SDK major {4} (reference {5}), target {6}, C# {7}, API {8}/{9}, public types {10}, viewer/modeling {11}/{12}." -f
+Write-Host ("[version] Bridge {0}, ABI {1}, OCCT {2}, platform {3}, author {4}, SDK major {5} (reference {6}), target {7}, C# {8}, API {9}/{10}, public types {11}, viewer/modeling {12}/{13}." -f
     $expectedVersion,
     $expectedAbiVersion,
     $expectedOcctVersion,
+    $expectedPlatform,
     $expectedAuthor,
     $contractSdk.Major,
     $expectedSdkVersion,
