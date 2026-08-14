@@ -77,8 +77,8 @@ endif()
 
 add_library(OcctNative SHARED
     OcctEngine.cpp
-    OcctViewerContext.cpp
-    OcctSceneRegistry.cpp
+    viewer/OcctViewerContext.cpp
+    scene/OcctSceneRegistry.cpp
     platform/OcctPlatformWindow.cpp
     platform/OcctNativeSurface.cpp
     OcctEngineView.cpp
@@ -141,8 +141,8 @@ add_library(OcctNative SHARED
     OcctModelingTopologyReference.cpp
     OcctInternal.hxx
     OcctErrorContext.hxx
-    OcctViewerContext.hxx
-    OcctSceneRegistry.hxx
+    viewer/OcctViewerContext.hxx
+    scene/OcctSceneRegistry.hxx
     platform/OcctPlatformWindow.hxx
     OcctModelingSessionInternal.hxx
     OcctDocumentStore.hxx

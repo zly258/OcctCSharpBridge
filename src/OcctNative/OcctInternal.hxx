@@ -1,8 +1,8 @@
 ﻿#pragma once
 
-#include "OcctViewerContext.hxx"
+#include "viewer/OcctViewerContext.hxx"
 #include "OcctErrorContext.hxx"
-#include "OcctSceneRegistry.hxx"
+#include "scene/OcctSceneRegistry.hxx"
 #include "OcctDocumentStore.hxx"
 #include "OcctNative.h"
 

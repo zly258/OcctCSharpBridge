@@ -59,10 +59,13 @@ foreach ($requiredToolkit in @("TKDESTEP", "TKDEIGES", "TKDESTL", "TKLCAF", "TKC
 $nativeFiles = @(Get-ChildItem $nativeRoot -File -Recurse | Where-Object {
     $_.Extension -in @('.h', '.hpp', '.hxx', '.cpp')
 })
-$platformRoot = Join-Path $nativeRoot "platform"
-if (-not (Test-Path $platformRoot -PathType Container)) {
-    throw "Native platform adapter directory is missing: platform"
+foreach ($requiredDomain in @("platform", "viewer", "scene")) {
+    $domainRoot = Join-Path $nativeRoot $requiredDomain
+    if (-not (Test-Path $domainRoot -PathType Container)) {
+        throw "Native domain directory is missing: $requiredDomain"
+    }
 }
+$platformRoot = Join-Path $nativeRoot "platform"
 $platformPrefix = [System.IO.Path]::GetFullPath($platformRoot).TrimEnd(
     [System.IO.Path]::DirectorySeparatorChar,
     [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
