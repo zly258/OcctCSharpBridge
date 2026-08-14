@@ -107,6 +107,7 @@ add_library(OcctNative SHARED
     geometry/OcctGeometry.cpp
     geometry/OcctPlanarGeometry.cpp
     geometry/OcctBRepTextBuilder.cpp
+    geometry/OcctBRepAnnotationBuilder.cpp
     OcctFeatures.cpp
     OcctAnnotations.cpp
     geometry/OcctPoints.cpp
@@ -150,6 +151,7 @@ add_library(OcctNative SHARED
     platform/OcctPlatformWindow.hxx
     modeling/OcctModelingSessionInternal.hxx
     geometry/OcctBRepTextBuilder.hxx
+    geometry/OcctBRepAnnotationBuilder.hxx
     exchange/OcctDocumentStore.hxx
     modeling/OcctModelingShapeInternal.hxx
     modeling/OcctModelingAlgorithmInternal.hxx
