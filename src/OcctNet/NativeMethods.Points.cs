@@ -24,6 +24,27 @@ internal struct NativeViewerPointOptions
     internal double Blue;
 }
 
+[Flags]
+internal enum NativeViewerPointPixmapUpdateMask : uint
+{
+    Position = 1u << 0,
+    Image = 1u << 1
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeViewerPointPixmapOptions
+{
+    internal uint StructSize;
+    internal uint ApiVersion;
+    internal NativeViewerPointPixmapUpdateMask UpdateMask;
+    internal OcctPoint3d Position;
+    internal int Width;
+    internal int Height;
+    internal IntPtr Pixels;
+    internal int PixelCount;
+    internal int PixelFormat;
+}
+
 internal static partial class NativeMethods
 {
     [LibraryImport(LibraryName)]
@@ -39,6 +60,20 @@ internal static partial class NativeMethods
         OcctEngineSafeHandle handle,
         long pointId,
         in NativeViewerPointOptions options);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_point_pixmap_create(
+        OcctEngineSafeHandle handle,
+        in NativeViewerPointPixmapOptions options,
+        out long resultPointId);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_point_pixmap_update(
+        OcctEngineSafeHandle handle,
+        long pointId,
+        in NativeViewerPointPixmapOptions options);
 
     // Frozen ABI 4 declarations retained only for compatibility-surface verification.
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
@@ -66,4 +101,24 @@ internal static partial class NativeMethods
         double r,
         double g,
         double b);
+
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern long occt_add_point_pixmap(
+        OcctEngineSafeHandle handle,
+        OcctPoint3d position,
+        int width,
+        int height,
+        IntPtr pixels,
+        int pixelCount,
+        int pixelFormat);
+
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern int occt_set_point_pixmap_style(
+        OcctEngineSafeHandle handle,
+        long pointId,
+        int width,
+        int height,
+        IntPtr pixels,
+        int pixelCount,
+        int pixelFormat);
 }
