@@ -83,11 +83,11 @@ add_library(OcctNative SHARED
     platform/OcctNativeSurface.cpp
     OcctEngineView.cpp
     OcctRenderSurface.cpp
-    OcctEngineSelection.cpp
+    selection/OcctEngineSelection.cpp
     OcctEngineObjects.cpp
     OcctEngineShapes.cpp
-    OcctAppearance.cpp
-    OcctSelectionOverlay.cpp
+    presentation/OcctAppearance.cpp
+    selection/OcctSelectionOverlay.cpp
     OcctView.cpp
     OcctViewportExtensions.cpp
     OcctViewportState.cpp
@@ -98,11 +98,11 @@ add_library(OcctNative SHARED
     OcctObjectTransform.cpp
     OcctViewerInteraction.cpp
     OcctViewerInteractionExtensions.cpp
-    OcctOverlay.cpp
-    OcctPresentation.cpp
-    OcctDetection.cpp
-    OcctManipulator.cpp
-    OcctSelectionState.cpp
+    presentation/OcctOverlay.cpp
+    presentation/OcctPresentation.cpp
+    selection/OcctDetection.cpp
+    selection/OcctManipulator.cpp
+    selection/OcctSelectionState.cpp
     OcctDepth.cpp
     OcctQueries.cpp
     OcctGeometry.cpp
@@ -153,14 +153,14 @@ add_library(OcctNative SHARED
     OcctNative.h
     platform/OcctNativeSurface.h
     OcctPoints.h
-    OcctSelectionOverlay.h
-    OcctSelectionState.h
+    selection/OcctSelectionOverlay.h
+    selection/OcctSelectionState.h
     OcctViewerInteraction.h
     OcctViewerInteractionExtensions.h
-    OcctOverlay.h
-    OcctPresentation.h
-    OcctDetection.h
-    OcctManipulator.h
+    presentation/OcctOverlay.h
+    presentation/OcctPresentation.h
+    selection/OcctDetection.h
+    selection/OcctManipulator.h
     OcctModeling.h
     OcctModelingExtensions.h
     OcctModelingBSpline.h

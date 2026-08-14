@@ -1,5 +1,5 @@
 ﻿#include "OcctInternal.hxx"
-#include "OcctManipulator.h"
+#include "selection/OcctManipulator.h"
 
 #include <AIS_Manipulator.hxx>
 #include <AIS_ManipulatorMode.hxx>

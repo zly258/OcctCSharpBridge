@@ -29,3 +29,5 @@ XDE may be used internally for STEP assembly/product structure and presentation 
 Native operating-system integration is confined to `src/OcctNative/platform`. Window-system types and calls (Win32 or X11) must not enter the public ABI or other native domains. Contract checks scan native sources recursively and enforce this boundary as the remaining sources are moved into their domain directories.
 
 Exchange implementation, STEP/XCAF document state, and import source metadata belong to `src/OcctNative/exchange`. Triangulation extraction belongs to `src/OcctNative/mesh`. Neither domain owns Viewer state; headless Modeling reaches them through the shared Modeling Session.
+
+Selection state, detection, selection overlays, and manipulators belong to `src/OcctNative/selection`. Visual appearance, overlays, and custom presentations belong to `src/OcctNative/presentation`; both use Viewer services without taking ownership of the Viewer context.
