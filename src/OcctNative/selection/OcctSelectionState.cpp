@@ -1,5 +1,5 @@
-﻿#include "core/OcctInternal.hxx"
-#include "OcctSelectionState.h"
+#include "selection/OcctSelectionState.h"
+#include "core/OcctInternal.hxx"
 
 #include <Graphic3d_Camera.hxx>
 #include <SelectMgr_SortCriterion.hxx>
@@ -7,36 +7,30 @@
 #include <StdSelect_ViewerSelector3d.hxx>
 #include <TopExp_Explorer.hxx>
 
-#include <unordered_set>
+#include <algorithm>
+#include <stdexcept>
+#include <utility>
+#include <vector>
 
 using namespace OcctBridge;
 
 namespace
 {
-    std::vector<ObjectEntry*> requireSelectableObjects(
-        Engine* engine,
-        const OcctObjectId* objectIds,
-        int count)
+    OcctStatus requireInitializedEngine(Engine* engine)
     {
-        if (count < 0) throw std::invalid_argument("Object count must not be negative.");
-        if (count > 0 && objectIds == nullptr) throw std::invalid_argument("Object ID array is null.");
+        if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (!validateInitialized(engine)) return engine->errors.code;
+        return OcctStatus_Ok;
+    }
 
-        std::vector<ObjectEntry*> result;
-        std::unordered_set<OcctObjectId> uniqueIds;
-        result.reserve(static_cast<std::size_t>(count));
-        uniqueIds.reserve(static_cast<std::size_t>(count));
-        for (int index = 0; index < count; ++index)
-        {
-            const OcctObjectId id = objectIds[index];
-            if (!uniqueIds.insert(id).second) continue;
-            ObjectEntry* entry = engine->findObject(id);
-            if (entry == nullptr || entry->presentation.IsNull())
-                throw std::invalid_argument("Object ID does not exist.");
-            if (!entry->selectable)
-                throw std::invalid_argument("A non-selectable object cannot be added to the selection.");
-            result.push_back(entry);
-        }
-        return result;
+    template<typename Function>
+    OcctStatus executeSelectionStatus(Engine* engine, Function&& function)
+    {
+        const OcctStatus initialized = requireInitializedEngine(engine);
+        if (initialized != OcctStatus_Ok) return initialized;
+        return execute(engine, std::forward<Function>(function)) != 0
+            ? OcctStatus_Ok
+            : engine->errors.code;
     }
 
     TopoDS_Shape ownerShape(const Handle(SelectMgr_EntityOwner)& owner)
@@ -111,7 +105,9 @@ namespace
     std::vector<OcctSelectionHit> collectSelectedHits(Engine* engine)
     {
         std::vector<OcctSelectionHit> hits;
-        for (engine->viewerContext.context->InitSelected(); engine->viewerContext.context->MoreSelected(); engine->viewerContext.context->NextSelected())
+        for (engine->viewerContext.context->InitSelected();
+             engine->viewerContext.context->MoreSelected();
+             engine->viewerContext.context->NextSelected())
         {
             OcctSelectionHit hit{};
             if (tryCreateSelectionHit(engine, engine->viewerContext.context->SelectedOwner(), hit))
@@ -125,7 +121,8 @@ namespace
         const Handle(SelectMgr_EntityOwner)& targetOwner,
         OcctSelectionHitDetail& result)
     {
-        const Handle(StdSelect_ViewerSelector3d)& selector = engine->viewerContext.context->MainSelector();
+        const Handle(StdSelect_ViewerSelector3d)& selector =
+            engine->viewerContext.context->MainSelector();
         for (int rank = 1; rank <= selector->NbPicked(); ++rank)
         {
             const Handle(SelectMgr_EntityOwner) owner = selector->Picked(rank);
@@ -140,68 +137,26 @@ namespace
 
 extern "C"
 {
-    int occt_set_selected_objects_ex(
-        OcctHandle handle,
-        const OcctObjectId* objectIds,
-        int count,
-        int operation)
-    {
-        Engine* engine = engineOf(handle); if (!validateInitialized(engine)) return 0;
-        return execute(engine, [&]
-        {
-            if (operation < OcctSelection_Replace || operation > OcctSelection_Clear)
-                throw std::invalid_argument("Selection operation is out of range.");
-
-            if (operation == OcctSelection_Clear)
-            {
-                engine->viewerContext.context->ClearSelected(Standard_False);
-                engine->requestRedraw();
-                return;
-            }
-
-            const auto entries = requireSelectableObjects(engine, objectIds, count);
-            if (operation == OcctSelection_Replace)
-                engine->viewerContext.context->ClearSelected(Standard_False);
-
-            for (ObjectEntry* entry : entries)
-            {
-                const bool isSelected = engine->viewerContext.context->IsSelected(entry->presentation);
-                switch (operation)
-                {
-                    case OcctSelection_Replace:
-                    case OcctSelection_Add:
-                        if (!isSelected) engine->viewerContext.context->SetSelected(entry->presentation, Standard_False);
-                        break;
-                    case OcctSelection_Remove:
-                        if (isSelected) engine->viewerContext.context->AddOrRemoveSelected(entry->presentation, Standard_False);
-                        break;
-                    case OcctSelection_Toggle:
-                        engine->viewerContext.context->AddOrRemoveSelected(entry->presentation, Standard_False);
-                        break;
-                    default:
-                        break;
-                }
-            }
-            engine->viewerContext.context->HilightSelected(Standard_False);
-            engine->requestRedraw();
-        });
-    }
-
-    int occt_selected_hits(
-        OcctHandle handle,
+    OcctStatus occt_engine_selection_hits_get(
+        OcctEngineHandle handle,
         OcctSelectionHit* items,
         int capacity,
         int* count)
     {
-        Engine* engine = engineOf(handle); if (!validateInitialized(engine) || count == nullptr) return 0;
-        return execute(engine, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (count == nullptr)
+        {
+            if (engine != nullptr)
+                engine->setError(OcctStatus_ErrorInvalidArgument, "Selection hit count output is null.");
+            return engine == nullptr ? OcctStatus_ErrorInvalidHandle : OcctStatus_ErrorInvalidArgument;
+        }
+        return executeSelectionStatus(engine, [&]
         {
             if (capacity < 0)
                 throw std::invalid_argument("Selection hit capacity must not be negative.");
 
             const auto hits = collectSelectedHits(engine);
             *count = static_cast<int>(hits.size());
-
             if (items == nullptr)
             {
                 if (capacity != 0)
@@ -210,19 +165,23 @@ extern "C"
             }
             if (capacity < *count)
                 throw std::out_of_range("Selection hit output capacity is too small.");
-
             std::copy(hits.begin(), hits.end(), items);
         });
     }
 
-    int occt_detected_hit(
-        OcctHandle handle,
+    OcctStatus occt_engine_selection_detected_hit_get(
+        OcctEngineHandle handle,
         OcctSelectionHit* result,
         int* hasHit)
     {
-        Engine* engine = engineOf(handle);
-        if (!validateInitialized(engine) || result == nullptr || hasHit == nullptr) return 0;
-        return execute(engine, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (result == nullptr || hasHit == nullptr)
+        {
+            if (engine != nullptr)
+                engine->setError(OcctStatus_ErrorInvalidArgument, "Detected hit output is null.");
+            return engine == nullptr ? OcctStatus_ErrorInvalidHandle : OcctStatus_ErrorInvalidArgument;
+        }
+        return executeSelectionStatus(engine, [&]
         {
             *result = {};
             result->subshapeType = OcctShape_Shape;
@@ -235,14 +194,19 @@ extern "C"
         });
     }
 
-    int occt_detected_hit_detail(
-        OcctHandle handle,
+    OcctStatus occt_engine_selection_detected_hit_detail_get(
+        OcctEngineHandle handle,
         OcctSelectionHitDetail* result,
         int* hasHit)
     {
-        Engine* engine = engineOf(handle);
-        if (!validateInitialized(engine) || result == nullptr || hasHit == nullptr) return 0;
-        return execute(engine, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (result == nullptr || hasHit == nullptr)
+        {
+            if (engine != nullptr)
+                engine->setError(OcctStatus_ErrorInvalidArgument, "Detected hit detail output is null.");
+            return engine == nullptr ? OcctStatus_ErrorInvalidHandle : OcctStatus_ErrorInvalidArgument;
+        }
+        return executeSelectionStatus(engine, [&]
         {
             *result = {};
             result->subshapeType = OcctShape_Shape;
@@ -251,13 +215,12 @@ extern "C"
 
             if (!engine->viewerContext.context->HasDetected()) return;
             const Handle(SelectMgr_EntityOwner) owner = engine->viewerContext.context->DetectedOwner();
-            if (tryFindPickedDetail(engine, owner, *result))
-                *hasHit = 1;
+            if (tryFindPickedDetail(engine, owner, *result)) *hasHit = 1;
         });
     }
 
-    int occt_detect_at(
-        OcctHandle handle,
+    OcctStatus occt_engine_selection_detect_at(
+        OcctEngineHandle handle,
         int x,
         int y,
         int maxHits,
@@ -265,9 +228,14 @@ extern "C"
         int capacity,
         int* count)
     {
-        Engine* engine = engineOf(handle);
-        if (!validateInitialized(engine) || count == nullptr) return 0;
-        return execute(engine, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (count == nullptr)
+        {
+            if (engine != nullptr)
+                engine->setError(OcctStatus_ErrorInvalidArgument, "Detection count output is null.");
+            return engine == nullptr ? OcctStatus_ErrorInvalidHandle : OcctStatus_ErrorInvalidArgument;
+        }
+        return executeSelectionStatus(engine, [&]
         {
             if (maxHits <= 0 || maxHits > 1024)
                 throw std::invalid_argument("Maximum hit count must be between 1 and 1024.");
@@ -276,7 +244,8 @@ extern "C"
             if (items == nullptr)
                 throw std::invalid_argument("Detection output buffer is null.");
 
-            const Handle(StdSelect_ViewerSelector3d)& selector = engine->viewerContext.context->MainSelector();
+            const Handle(StdSelect_ViewerSelector3d)& selector =
+                engine->viewerContext.context->MainSelector();
             selector->Pick(x, y, engine->viewerContext.view);
 
             int filled = 0;
