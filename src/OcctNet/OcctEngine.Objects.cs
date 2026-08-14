@@ -1,123 +1,89 @@
-﻿namespace OcctNet;
+using System.Runtime.InteropServices;
+
+namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
-    public int ObjectCount
-    {
-        get
-        {
-            EnsureNotDisposed();
-            return NativeMethods.occt_object_count(_handle);
-        }
-    }
-
     public int ShapeCount
     {
         get
         {
-            EnsureNotDisposed();
-            Check(NativeMethods.occt_object_descriptors(_handle, null, 0, out _, out var shapeCount));
+            GetObjectCounts(out _, out var shapeCount);
             return shapeCount;
         }
     }
 
-    public IReadOnlyList<IOcctObject> Objects
+    public int ObjectCount
     {
         get
         {
-            var descriptors = GetObjectDescriptors();
-            return descriptors
-                .Select(item => CreateBoundObject(item.ObjectId, (OcctObjectKind)item.Kind))
-                .ToArray();
+            GetObjectCounts(out var objectCount, out _);
+            return objectCount;
         }
     }
 
-    public IReadOnlyList<OcctShape> Shapes
+    public bool ContainsObject(long objectId)
     {
-        get
+        EnsureNotDisposed();
+        if (objectId <= 0) return false;
+        CheckObjectStatus(ObjectNativeMethods.occt_engine_object_exists(_handle, objectId, out var exists));
+        return exists != 0;
+    }
+
+    public OcctObjectKind GetObjectKind(long objectId)
+    {
+        EnsureNotDisposed();
+        if (objectId <= 0) throw new ArgumentOutOfRangeException(nameof(objectId));
+        CheckObjectStatus(ObjectNativeMethods.occt_engine_object_kind_get(_handle, objectId, out var rawKind));
+        if (!Enum.IsDefined(typeof(OcctObjectKind), rawKind))
+            throw new OcctException($"Native object kind {rawKind} is not supported by this SDK.");
+        return (OcctObjectKind)rawKind;
+    }
+
+    public IOcctObject GetObject(long objectId)
+    {
+        if (!ContainsObject(objectId)) throw new ArgumentException("Object ID does not exist.", nameof(objectId));
+        return CreateObject(objectId, GetObjectKind(objectId));
+    }
+
+    public IReadOnlyList<OcctObjectDescriptor> GetObjectDescriptors()
+    {
+        EnsureNotDisposed();
+        GetObjectCounts(out var objectCount, out _);
+        if (objectCount == 0) return Array.Empty<OcctObjectDescriptor>();
+
+        var elementSize = Marshal.SizeOf<OcctObjectDescriptorNative>();
+        var buffer = Marshal.AllocHGlobal(checked(elementSize * objectCount));
+        try
         {
-            var descriptors = GetObjectDescriptors();
-            return descriptors
-                .Where(item => item.Kind == (int)OcctObjectKind.Shape)
-                .Select(item => new OcctShape(item.ObjectId, _ownerId))
-                .ToArray();
+            CheckObjectStatus(ObjectNativeMethods.occt_engine_objects_snapshot_get(
+                _handle,
+                buffer,
+                objectCount,
+                out var filledCount,
+                out _));
+            if (filledCount < 0 || filledCount > objectCount)
+                throw new OcctException("Native object descriptor count is invalid.");
+
+            var result = new OcctObjectDescriptor[filledCount];
+            for (var index = 0; index < filledCount; index++)
+            {
+                var native = Marshal.PtrToStructure<OcctObjectDescriptorNative>(
+                    IntPtr.Add(buffer, checked(index * elementSize)));
+                if (native.ObjectId <= 0 || !Enum.IsDefined(typeof(OcctObjectKind), native.Kind))
+                    throw new OcctException("Native object descriptor is invalid.");
+                result[index] = new OcctObjectDescriptor(native.ObjectId, (OcctObjectKind)native.Kind);
+            }
+            return result;
         }
-    }
-
-    public bool Exists(IOcctObject value)
-    {
-        ArgumentNullException.ThrowIfNull(value);
-        EnsureNotDisposed();
-        return value.Id > 0 &&
-               GetOwnerId(value) == _ownerId &&
-               NativeMethods.occt_object_exists(_handle, value.Id) != 0;
-    }
-
-    public bool Owns(IOcctObject value)
-    {
-        ArgumentNullException.ThrowIfNull(value);
-        EnsureNotDisposed();
-        return GetOwnerId(value) == _ownerId;
-    }
-
-    public IOcctObject GetObject(long id)
-    {
-        EnsureNotDisposed();
-        if (id <= 0 || NativeMethods.occt_object_exists(_handle, id) == 0)
-            throw new ArgumentOutOfRangeException(nameof(id), id, "The object ID does not exist in this OCCT engine.");
-        return CreateBoundObject(id, GetObjectKind(id));
-    }
-
-    public bool TryGetObject(long id, out IOcctObject? value)
-    {
-        EnsureNotDisposed();
-        if (id > 0 && NativeMethods.occt_object_exists(_handle, id) != 0)
+        finally
         {
-            value = CreateBoundObject(id, GetObjectKind(id));
-            return true;
+            Marshal.FreeHGlobal(buffer);
         }
-
-        value = null;
-        return false;
     }
 
-    public OcctShape GetShape(long id)
-    {
-        EnsureNotDisposed();
-        if (id <= 0 ||
-            NativeMethods.occt_object_exists(_handle, id) == 0 ||
-            NativeMethods.occt_object_kind(_handle, id) != (int)OcctObjectKind.Shape)
-        {
-            throw new ArgumentOutOfRangeException(nameof(id), id, "The shape ID does not exist in this OCCT engine.");
-        }
-
-        return new OcctShape(id, _ownerId);
-    }
-
-    public bool TryGetShape(long id, out OcctShape shape)
-    {
-        EnsureNotDisposed();
-        if (id > 0 &&
-            NativeMethods.occt_object_exists(_handle, id) != 0 &&
-            NativeMethods.occt_object_kind(_handle, id) == (int)OcctObjectKind.Shape)
-        {
-            shape = new OcctShape(id, _ownerId);
-            return true;
-        }
-
-        shape = default;
-        return false;
-    }
-
-    public OcctObjectKind GetObjectKind(long id)
-    {
-        EnsureNotDisposed();
-        if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
-        var value = NativeMethods.occt_object_kind(_handle, id);
-        if (!Enum.IsDefined(typeof(OcctObjectKind), value))
-            throw new InvalidOperationException($"Native object kind {value} is not supported by the managed bridge.");
-        return (OcctObjectKind)value;
-    }
+    public IReadOnlyList<IOcctObject> GetObjects() =>
+        GetObjectDescriptors().Select(descriptor => CreateObject(descriptor.Id, descriptor.Kind)).ToArray();
 
     public void Delete(IOcctObject value)
     {
@@ -129,50 +95,59 @@ public sealed partial class OcctEngine
     {
         ArgumentNullException.ThrowIfNull(values);
         EnsureInitialized();
+        var ids = GetObjectIds(values, nameof(values));
+        if (ids.Length == 0) return;
 
-        var ids = new HashSet<long>();
-        foreach (var value in values)
+        var buffer = Marshal.AllocHGlobal(sizeof(long) * ids.Length);
+        try
         {
-            ArgumentNullException.ThrowIfNull(value);
-            EnsureObject(value);
-            ids.Add(value.Id);
+            Marshal.Copy(ids, 0, buffer, ids.Length);
+            CheckObjectStatus(ObjectNativeMethods.occt_engine_objects_delete(_handle, buffer, ids.Length));
         }
-
-        if (ids.Count == 0) return;
-        var objectIds = ids.ToArray();
-        Check(NativeMethods.occt_delete_objects(_handle, objectIds, objectIds.Length));
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
     }
 
-    public void Clear() => CheckInitialized(() => NativeMethods.occt_clear(_handle));
+    public void Clear()
+    {
+        EnsureInitialized();
+        CheckObjectStatus(ObjectNativeMethods.occt_engine_objects_clear(_handle));
+    }
 
-    private OcctObjectDescriptorNative[] GetObjectDescriptors()
+    internal IOcctObject CreateObject(long objectId, OcctObjectKind kind) => kind switch
+    {
+        OcctObjectKind.Shape => new OcctShape(objectId, _ownerId),
+        OcctObjectKind.Text => new OcctText(objectId, _ownerId),
+        OcctObjectKind.Dimension => new OcctDimension(objectId, _ownerId),
+        OcctObjectKind.Point => new OcctPoint(objectId, _ownerId),
+        OcctObjectKind.Overlay => new OcctOverlay(objectId, _ownerId),
+        OcctObjectKind.Manipulator => new OcctManipulator(objectId, _ownerId),
+        _ => throw new NotSupportedException($"Object kind {kind} is not supported by the managed bridge.")
+    };
+
+    private void GetObjectCounts(out int objectCount, out int shapeCount)
     {
         EnsureNotDisposed();
-        Check(NativeMethods.occt_object_descriptors(_handle, null, 0, out var count, out _));
-        if (count == 0) return [];
-
-        var descriptors = new OcctObjectDescriptorNative[count];
-        Check(NativeMethods.occt_object_descriptors(
+        CheckObjectStatus(ObjectNativeMethods.occt_engine_objects_snapshot_get(
             _handle,
-            descriptors,
-            descriptors.Length,
-            out var copiedCount,
-            out _));
-
-        if (copiedCount != descriptors.Length)
-            throw new InvalidOperationException("OCCT object registry changed while reading the object snapshot.");
-
-        return descriptors;
+            IntPtr.Zero,
+            0,
+            out objectCount,
+            out shapeCount));
+        if (objectCount < 0 || shapeCount < 0 || shapeCount > objectCount)
+            throw new OcctException("Native object registry counts are invalid.");
     }
 
-    private IOcctObject CreateBoundObject(long id, OcctObjectKind kind) => kind switch
+    private void UpdateObject(long objectId, NativeViewerObjectUpdateOptions options)
     {
-        OcctObjectKind.Shape => new OcctShape(id, _ownerId),
-        OcctObjectKind.Text => new OcctText(id, _ownerId),
-        OcctObjectKind.Dimension => new OcctDimension(id, _ownerId),
-        OcctObjectKind.Point => new OcctPoint(id, _ownerId),
-        OcctObjectKind.Overlay => new OcctOverlay(id, _ownerId, GetOverlayPrimitiveType(id)),
-        OcctObjectKind.Manipulator => new OcctManipulator(id, _ownerId),
-        _ => throw new InvalidOperationException($"Unsupported OCCT object kind: {kind}.")
-    };
+        EnsureInitialized();
+        CheckObjectStatus(ObjectNativeMethods.occt_engine_object_update(_handle, objectId, in options));
+    }
+
+    private void CheckObjectStatus(OcctStatus status)
+    {
+        if (status != OcctStatus.Ok) throw CreateException();
+    }
 }
