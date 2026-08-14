@@ -34,7 +34,7 @@
       "OcctNative.h",
       "OcctRenderSurface.h",
       "OcctStepDocument.h",
-      "OcctNativeSurface.h",
+      "platform/OcctNativeSurface.h",
       "OcctPoints.h",
       "OcctSelectionOverlay.h",
       "OcctSelectionState.h",

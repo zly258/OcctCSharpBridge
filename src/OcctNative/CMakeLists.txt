@@ -79,8 +79,8 @@ add_library(OcctNative SHARED
     OcctEngine.cpp
     OcctViewerContext.cpp
     OcctSceneRegistry.cpp
-    OcctPlatformWindow.cpp
-    OcctNativeSurface.cpp
+    platform/OcctPlatformWindow.cpp
+    platform/OcctNativeSurface.cpp
     OcctEngineView.cpp
     OcctRenderSurface.cpp
     OcctEngineSelection.cpp
@@ -143,7 +143,7 @@ add_library(OcctNative SHARED
     OcctErrorContext.hxx
     OcctViewerContext.hxx
     OcctSceneRegistry.hxx
-    OcctPlatformWindow.hxx
+    platform/OcctPlatformWindow.hxx
     OcctModelingSessionInternal.hxx
     OcctDocumentStore.hxx
     OcctModelingShapeInternal.hxx
@@ -151,7 +151,7 @@ add_library(OcctNative SHARED
     OcctModelingMeshInternal.hxx
     OcctModelingExchangeInternal.hxx
     OcctNative.h
-    OcctNativeSurface.h
+    platform/OcctNativeSurface.h
     OcctPoints.h
     OcctSelectionOverlay.h
     OcctSelectionState.h

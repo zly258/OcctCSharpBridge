@@ -1,5 +1,5 @@
 ﻿#include "OcctInternal.hxx"
-#include "OcctNativeSurface.h"
+#include "platform/OcctNativeSurface.h"
 
 #include <Aspect_PolygonOffsetMode.hxx>
 #include <Aspect_TypeOfTriedronPosition.hxx>

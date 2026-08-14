@@ -36,7 +36,9 @@ foreach ($source in $sourceTokens) {
     }
 }
 
-$cppFiles = @(Get-ChildItem $nativeRoot -Filter '*.cpp' -File | Select-Object -ExpandProperty Name)
+$cppFiles = @(Get-ChildItem $nativeRoot -Filter '*.cpp' -File -Recurse | ForEach-Object {
+    [System.IO.Path]::GetRelativePath($nativeRoot, $_.FullName).Replace('\', '/')
+})
 $unlistedCpp = @($cppFiles | Where-Object { $_ -notin $sourceTokens })
 if ($unlistedCpp.Count -gt 0) {
     throw "Native C++ files are not listed in add_library: $($unlistedCpp -join ', ')"
@@ -57,6 +59,25 @@ foreach ($requiredToolkit in @("TKDESTEP", "TKDEIGES", "TKDESTL", "TKLCAF", "TKC
 $nativeFiles = @(Get-ChildItem $nativeRoot -File -Recurse | Where-Object {
     $_.Extension -in @('.h', '.hpp', '.hxx', '.cpp')
 })
+$platformRoot = Join-Path $nativeRoot "platform"
+if (-not (Test-Path $platformRoot -PathType Container)) {
+    throw "Native platform adapter directory is missing: platform"
+}
+$platformPrefix = [System.IO.Path]::GetFullPath($platformRoot).TrimEnd(
+    [System.IO.Path]::DirectorySeparatorChar,
+    [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+$platformTypePattern = '\b(?:WNT_Window|Xw_Window|HWND|XOpenDisplay|XCreateSimpleWindow)\b|<X11/'
+$platformBoundaryViolations = @()
+foreach ($file in $nativeFiles) {
+    $fullPath = [System.IO.Path]::GetFullPath($file.FullName)
+    if ($fullPath.StartsWith($platformPrefix, [System.StringComparison]::OrdinalIgnoreCase)) { continue }
+    if ([System.IO.File]::ReadAllText($fullPath) -match $platformTypePattern) {
+        $platformBoundaryViolations += [System.IO.Path]::GetRelativePath($nativeRoot, $fullPath)
+    }
+}
+if ($platformBoundaryViolations.Count -gt 0) {
+    throw "OS window-system types escaped the native platform adapter: $($platformBoundaryViolations -join ', ')"
+}
 $nativeText = ($nativeFiles | ForEach-Object { [System.IO.File]::ReadAllText($_.FullName) }) -join "`n"
 
 if ($nativeText -match '\bSTEPCAFControl_(?:Reader|Writer)\b') {
@@ -89,7 +110,7 @@ foreach ($requiredCmakeToken in @("CXX_VISIBILITY_PRESET hidden", "VISIBILITY_IN
 
 $viewerHeader = [System.IO.File]::ReadAllText((Join-Path $nativeRoot "OcctNative.h"))
 $modelingHeader = [System.IO.File]::ReadAllText((Join-Path $nativeRoot "OcctModeling.h"))
-$surfaceHeader = [System.IO.File]::ReadAllText((Join-Path $nativeRoot "OcctNativeSurface.h"))
+$surfaceHeader = [System.IO.File]::ReadAllText((Join-Path $nativeRoot "platform/OcctNativeSurface.h"))
 foreach ($requiredApi in @("occt_create", "occt_engine_create", "occt_engine_last_error_code")) {
     if (-not $viewerHeader.Contains($requiredApi, [System.StringComparison]::Ordinal)) {
         throw "Viewer compatibility/typed-handle contract is missing: $requiredApi"

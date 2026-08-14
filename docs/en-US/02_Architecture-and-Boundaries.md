@@ -6,7 +6,8 @@
 Application
    │
    ├─ OcctNet.WinForms ─┐
-   └─ OcctNet.Wpf ──────┤
+   ├─ OcctNet.Wpf ──────┤
+   └─ OcctNet.Avalonia ─┤
                          ▼
                       OcctNet
                          │
@@ -23,4 +24,6 @@ Application documents, feature trees, commands/tools, undo/redo, snapping, grips
 
 XDE may be used internally for STEP assembly/product structure and presentation metadata, but OCAF/XDE is not the consuming application's document architecture.
 
-Avalonia is isolated on the `avalonia` branch so the Windows-only `net10.0-windows` main contract does not constrain the cross-platform `net10.0` host.
+`main` owns the formal Avalonia host and the shared Windows/Linux Native Core. The `demo` and `avalonia` branches consume published SDK artifacts and do not carry private Bridge implementations.
+
+Native operating-system integration is confined to `src/OcctNative/platform`. Window-system types and calls (Win32 or X11) must not enter the public ABI or other native domains. Contract checks scan native sources recursively and enforce this boundary as the remaining sources are moved into their domain directories.

@@ -36,7 +36,7 @@ if ($duplicateHeaderNames.Count -gt 0) {
 }
 $headerFiles = @($nativeHeaderNames | ForEach-Object { Join-Path $nativeRoot $_ })
 
-$cppFiles = Get-ChildItem $nativeRoot -Filter "*.cpp" -File | Select-Object -ExpandProperty FullName
+$cppFiles = Get-ChildItem $nativeRoot -Filter "*.cpp" -File -Recurse | Select-Object -ExpandProperty FullName
 $managedSourceFiles = @($publicManagedRoots | ForEach-Object {
     if (-not (Test-Path $_ -PathType Container)) {
         throw "Public managed API root is missing: $_"
