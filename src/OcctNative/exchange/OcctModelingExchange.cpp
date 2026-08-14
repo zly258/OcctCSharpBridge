@@ -1,5 +1,6 @@
-﻿#include "OcctModelingExchangeInternal.hxx"
-#include "OcctExchangePath.hxx"
+﻿#include "exchange/OcctModelingExchange.h"
+#include "exchange/OcctModelingExchangeInternal.hxx"
+#include "exchange/OcctExchangePath.hxx"
 #include "modeling/OcctModelingSessionInternal.hxx"
 #include "modeling/OcctModelingShapeInternal.hxx"
 
@@ -8,118 +9,310 @@
 #include <StlAPI_Writer.hxx>
 
 #include <filesystem>
+#include <stdexcept>
 #include <string>
+#include <utility>
 
 using namespace OcctModelingInternal;
 
+namespace
+{
+    constexpr std::uint32_t StlExportOptionsApiVersion = 1;
+
+    ModelSession* sessionOf(OcctModelingSessionHandle handle)
+    {
+        return reinterpret_cast<ModelSession*>(handle);
+    }
+
+    template<typename Factory>
+    OcctStatus importStatus(ModelSession* model, OcctObjectId* output, Factory&& factory)
+    {
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        model->errors.clear();
+        if (output == nullptr)
+        {
+            model->errors.set(OcctStatus_ErrorInvalidArgument, "Result shape ID output is null.");
+            return OcctStatus_ErrorInvalidArgument;
+        }
+
+        *output = 0;
+        if (!execute(model, [&] { *output = model->addShape(factory()); }))
+            return model->errors.code;
+        return OcctStatus_Ok;
+    }
+
+    template<typename Action>
+    OcctStatus exportStatus(ModelSession* model, Action&& action)
+    {
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        model->errors.clear();
+        if (!execute(model, std::forward<Action>(action)))
+            return model->errors.code;
+        return OcctStatus_Ok;
+    }
+
+    std::filesystem::path requiredPath(const char* utf8Path)
+    {
+        const auto path = OcctBridge::pathFromUtf8(utf8Path);
+        if (path.empty()) throw std::invalid_argument("Path is empty.");
+        return path;
+    }
+
+    void validateStlOptions(const OcctStlExportOptions* options)
+    {
+        if (options == nullptr) throw std::invalid_argument("STL export options are null.");
+        if (options->structSize < sizeof(OcctStlExportOptions) || options->apiVersion != StlExportOptionsApiVersion)
+            throw std::invalid_argument("Unsupported STL export options size or version.");
+        requirePositive(options->linearDeflection, "Linear deflection");
+        requirePositive(options->angularDeflection, "Angular deflection");
+    }
+}
+
 extern "C"
 {
-    OcctObjectId occt_model_import_step(OcctModelHandle handle, const char* utf8Path)
+    OcctStatus occt_model_step_import(
+        OcctModelingSessionHandle session,
+        const char* utf8Path,
+        OcctObjectId* resultShapeId)
     {
-        ModelSession* model = modelOf(handle);
-        return executeShape(model, [&]
+        ModelSession* model = sessionOf(session);
+        return importStatus(model, resultShapeId, [&]
         {
-            const auto path = OcctBridge::pathFromUtf8(utf8Path);
-            if (path.empty()) throw std::invalid_argument("Path is empty.");
-            return readModelStep(path);
+            return readModelStep(requiredPath(utf8Path));
         });
     }
 
-    OcctObjectId occt_model_import_iges(OcctModelHandle handle, const char* utf8Path)
+    OcctStatus occt_model_iges_import(
+        OcctModelingSessionHandle session,
+        const char* utf8Path,
+        OcctObjectId* resultShapeId)
     {
-        ModelSession* model = modelOf(handle);
-        return executeShape(model, [&]
+        ModelSession* model = sessionOf(session);
+        return importStatus(model, resultShapeId, [&]
         {
-            const auto path = OcctBridge::pathFromUtf8(utf8Path);
-            if (path.empty()) throw std::invalid_argument("Path is empty.");
-            return readModelIges(path);
+            return readModelIges(requiredPath(utf8Path));
         });
     }
 
-    OcctObjectId occt_model_import_brep(OcctModelHandle handle, const char* utf8Path)
+    OcctStatus occt_model_brep_import(
+        OcctModelingSessionHandle session,
+        const char* utf8Path,
+        OcctObjectId* resultShapeId)
     {
-        ModelSession* model = modelOf(handle);
-        return executeShape(model, [&]
+        ModelSession* model = sessionOf(session);
+        return importStatus(model, resultShapeId, [&]
         {
-            const auto path = OcctBridge::pathFromUtf8(utf8Path);
-            if (path.empty()) throw std::invalid_argument("Path is empty.");
-            return readModelBrep(path);
+            return readModelBrep(requiredPath(utf8Path));
         });
     }
 
-    OcctObjectId occt_model_import_stl(OcctModelHandle handle, const char* utf8Path)
+    OcctStatus occt_model_stl_import(
+        OcctModelingSessionHandle session,
+        const char* utf8Path,
+        OcctObjectId* resultShapeId)
     {
-        ModelSession* model = modelOf(handle);
-        return executeShape(model, [&]
+        ModelSession* model = sessionOf(session);
+        return importStatus(model, resultShapeId, [&]
         {
-            const auto path = OcctBridge::pathFromUtf8(utf8Path);
-            if (path.empty()) throw std::invalid_argument("Path is empty.");
-            return readModelStl(path);
+            return readModelStl(requiredPath(utf8Path));
         });
     }
 
-    OcctObjectId occt_model_import_file(OcctModelHandle handle, const char* utf8Path)
+    OcctStatus occt_model_file_import(
+        OcctModelingSessionHandle session,
+        const char* utf8Path,
+        OcctObjectId* resultShapeId)
     {
-        ModelSession* model = modelOf(handle);
-        if (model == nullptr) return 0;
+        ModelSession* model = sessionOf(session);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
         model->errors.clear();
-        const auto path = OcctBridge::pathFromUtf8(utf8Path);
-        const std::string extension = OcctBridge::lowerExtension(path);
-        if (extension == ".step" || extension == ".stp") return occt_model_import_step(handle, utf8Path);
-        if (extension == ".iges" || extension == ".igs") return occt_model_import_iges(handle, utf8Path);
-        if (extension == ".brep" || extension == ".rle") return occt_model_import_brep(handle, utf8Path);
-        if (extension == ".stl") return occt_model_import_stl(handle, utf8Path);
-        model->errors.set(OcctStatus_ErrorFormat, "Unsupported file extension. Supported: STEP, IGES, BREP and STL.");
-        return 0;
+        if (resultShapeId == nullptr)
+        {
+            model->errors.set(OcctStatus_ErrorInvalidArgument, "Result shape ID output is null.");
+            return OcctStatus_ErrorInvalidArgument;
+        }
+        *resultShapeId = 0;
+
+        try
+        {
+            const auto path = requiredPath(utf8Path);
+            const std::string extension = OcctBridge::lowerExtension(path);
+            if (extension == ".step" || extension == ".stp")
+                return occt_model_step_import(session, utf8Path, resultShapeId);
+            if (extension == ".iges" || extension == ".igs")
+                return occt_model_iges_import(session, utf8Path, resultShapeId);
+            if (extension == ".brep" || extension == ".rle")
+                return occt_model_brep_import(session, utf8Path, resultShapeId);
+            if (extension == ".stl")
+                return occt_model_stl_import(session, utf8Path, resultShapeId);
+            model->errors.set(
+                OcctStatus_ErrorFormat,
+                "Unsupported file extension. Supported: STEP, IGES, BREP and STL.");
+            return OcctStatus_ErrorFormat;
+        }
+        catch (...)
+        {
+            execute(model, [] { throw; });
+            return model->errors.code;
+        }
     }
 
-    int occt_model_export_step(OcctModelHandle handle, OcctObjectId shapeId, const char* utf8Path)
+    OcctStatus occt_model_step_export(
+        OcctModelingSessionHandle session,
+        OcctObjectId shapeId,
+        const char* utf8Path)
     {
-        ModelSession* model = modelOf(handle);
-        return execute(model, [&]
+        ModelSession* model = sessionOf(session);
+        return exportStatus(model, [&]
         {
-            writeModelStep(model->requireShape(shapeId), OcctBridge::pathFromUtf8(utf8Path));
+            writeModelStep(model->requireShape(shapeId), requiredPath(utf8Path));
         });
     }
 
-    int occt_model_export_iges(OcctModelHandle handle, OcctObjectId shapeId, const char* utf8Path)
+    OcctStatus occt_model_iges_export(
+        OcctModelingSessionHandle session,
+        OcctObjectId shapeId,
+        const char* utf8Path)
     {
-        ModelSession* model = modelOf(handle);
-        return execute(model, [&]
+        ModelSession* model = sessionOf(session);
+        return exportStatus(model, [&]
         {
-            writeModelIges(model->requireShape(shapeId), OcctBridge::pathFromUtf8(utf8Path));
+            writeModelIges(model->requireShape(shapeId), requiredPath(utf8Path));
         });
     }
 
-    int occt_model_export_brep(OcctModelHandle handle, OcctObjectId shapeId, const char* utf8Path)
+    OcctStatus occt_model_brep_export(
+        OcctModelingSessionHandle session,
+        OcctObjectId shapeId,
+        const char* utf8Path)
     {
-        ModelSession* model = modelOf(handle);
-        return execute(model, [&]
+        ModelSession* model = sessionOf(session);
+        return exportStatus(model, [&]
         {
-            auto stream = modelOutputStream(OcctBridge::pathFromUtf8(utf8Path));
+            auto stream = modelOutputStream(requiredPath(utf8Path));
             BRepTools::Write(model->requireShape(shapeId), stream);
             if (!stream) throw std::runtime_error("BREP file could not be written.");
         });
     }
 
-    int occt_model_export_stl(OcctModelHandle handle, OcctObjectId shapeId, const char* utf8Path, double linearDeflection, double angularDeflection, int asciiMode)
+    OcctStatus occt_model_stl_export(
+        OcctModelingSessionHandle session,
+        OcctObjectId shapeId,
+        const char* utf8Path,
+        const OcctStlExportOptions* options)
     {
-        ModelSession* model = modelOf(handle);
-        return execute(model, [&]
+        ModelSession* model = sessionOf(session);
+        return exportStatus(model, [&]
         {
-            requirePositive(linearDeflection, "Linear deflection");
-            requirePositive(angularDeflection, "Angular deflection");
+            validateStlOptions(options);
             const TopoDS_Shape& shape = model->requireShape(shapeId);
-            BRepMesh_IncrementalMesh mesh(shape, linearDeflection, Standard_False, angularDeflection, Standard_True);
+            BRepMesh_IncrementalMesh mesh(
+                shape,
+                options->linearDeflection,
+                Standard_False,
+                options->angularDeflection,
+                Standard_True);
             mesh.Perform();
             if (!mesh.IsDone()) throw std::runtime_error("STL meshing failed.");
-            const auto path = OcctBridge::pathFromUtf8(utf8Path);
-            if (path.empty()) throw std::invalid_argument("Path is empty.");
+
+            const auto path = requiredPath(utf8Path);
             if (path.has_parent_path()) std::filesystem::create_directories(path.parent_path());
             StlAPI_Writer writer;
-            writer.ASCIIMode() = asciiMode != 0;
+            writer.ASCIIMode() = options->ascii != 0;
             if (!writer.Write(shape, path.string().c_str()))
-                throw std::runtime_error("STL file could not be written. Use an ASCII-only file path if the OCCT package lacks wide-path support.");
+                throw std::runtime_error(
+                    "STL file could not be written. Use an ASCII-only file path if the OCCT package lacks wide-path support.");
         });
+    }
+
+    // ABI 4 compatibility shell. Frozen legacy symbols delegate to the current API.
+    OcctObjectId occt_model_import_step(OcctModelHandle handle, const char* utf8Path)
+    {
+        OcctObjectId result = 0;
+        return occt_model_step_import(
+            reinterpret_cast<OcctModelingSessionHandle>(handle),
+            utf8Path,
+            &result) == OcctStatus_Ok ? result : 0;
+    }
+
+    OcctObjectId occt_model_import_iges(OcctModelHandle handle, const char* utf8Path)
+    {
+        OcctObjectId result = 0;
+        return occt_model_iges_import(
+            reinterpret_cast<OcctModelingSessionHandle>(handle),
+            utf8Path,
+            &result) == OcctStatus_Ok ? result : 0;
+    }
+
+    OcctObjectId occt_model_import_brep(OcctModelHandle handle, const char* utf8Path)
+    {
+        OcctObjectId result = 0;
+        return occt_model_brep_import(
+            reinterpret_cast<OcctModelingSessionHandle>(handle),
+            utf8Path,
+            &result) == OcctStatus_Ok ? result : 0;
+    }
+
+    OcctObjectId occt_model_import_stl(OcctModelHandle handle, const char* utf8Path)
+    {
+        OcctObjectId result = 0;
+        return occt_model_stl_import(
+            reinterpret_cast<OcctModelingSessionHandle>(handle),
+            utf8Path,
+            &result) == OcctStatus_Ok ? result : 0;
+    }
+
+    OcctObjectId occt_model_import_file(OcctModelHandle handle, const char* utf8Path)
+    {
+        OcctObjectId result = 0;
+        return occt_model_file_import(
+            reinterpret_cast<OcctModelingSessionHandle>(handle),
+            utf8Path,
+            &result) == OcctStatus_Ok ? result : 0;
+    }
+
+    int occt_model_export_step(OcctModelHandle handle, OcctObjectId shapeId, const char* utf8Path)
+    {
+        return occt_model_step_export(
+            reinterpret_cast<OcctModelingSessionHandle>(handle),
+            shapeId,
+            utf8Path) == OcctStatus_Ok ? 1 : 0;
+    }
+
+    int occt_model_export_iges(OcctModelHandle handle, OcctObjectId shapeId, const char* utf8Path)
+    {
+        return occt_model_iges_export(
+            reinterpret_cast<OcctModelingSessionHandle>(handle),
+            shapeId,
+            utf8Path) == OcctStatus_Ok ? 1 : 0;
+    }
+
+    int occt_model_export_brep(OcctModelHandle handle, OcctObjectId shapeId, const char* utf8Path)
+    {
+        return occt_model_brep_export(
+            reinterpret_cast<OcctModelingSessionHandle>(handle),
+            shapeId,
+            utf8Path) == OcctStatus_Ok ? 1 : 0;
+    }
+
+    int occt_model_export_stl(
+        OcctModelHandle handle,
+        OcctObjectId shapeId,
+        const char* utf8Path,
+        double linearDeflection,
+        double angularDeflection,
+        int asciiMode)
+    {
+        const OcctStlExportOptions options{
+            static_cast<std::uint32_t>(sizeof(OcctStlExportOptions)),
+            StlExportOptionsApiVersion,
+            linearDeflection,
+            angularDeflection,
+            asciiMode != 0 ? 1 : 0 };
+        return occt_model_stl_export(
+            reinterpret_cast<OcctModelingSessionHandle>(handle),
+            shapeId,
+            utf8Path,
+            &options) == OcctStatus_Ok ? 1 : 0;
     }
 }
