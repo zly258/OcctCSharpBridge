@@ -93,8 +93,6 @@ public sealed partial class OcctEngine
         CheckInitialized(() => NativeMethods.occt_set_default_material(_handle, (int)material, applyExisting ? 1 : 0));
     }
 
-    public void ResetSceneLighting() => CheckInitialized(() => NativeMethods.occt_reset_scene_lighting(_handle));
-
     public void SetSelectionTolerance(int pixelTolerance)
     {
         if (pixelTolerance < 0) throw new ArgumentOutOfRangeException(nameof(pixelTolerance));
