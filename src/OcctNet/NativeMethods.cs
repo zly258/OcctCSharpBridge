@@ -44,12 +44,17 @@ internal static partial class NativeMethods
             failures.Add(candidate);
         }
 
+        var nativeFileName = OperatingSystem.IsWindows()
+            ? "OcctNative.dll"
+            : OperatingSystem.IsLinux()
+                ? "libOcctNative.so"
+                : LibraryName;
         var details = failures.Count == 0
-            ? "OcctNative.dll was not found in the application directory."
+            ? $"{nativeFileName} was not found in the configured native search paths."
             : string.Join(Environment.NewLine, failures);
 
         throw new DllNotFoundException(
-            "Unable to load OcctNative.dll or one of its dependencies." +
+            $"Unable to load {nativeFileName} or one of its dependencies." +
             Environment.NewLine + details);
     }
 
