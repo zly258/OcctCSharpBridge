@@ -1,7 +1,12 @@
-﻿#include "presentation/OcctAppearance.h"
+#include "presentation/OcctAppearance.h"
 #include "core/OcctInternal.hxx"
 
 #include <Prs3d_TypeOfHighlight.hxx>
+
+#include <cmath>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 using namespace OcctBridge;
 
@@ -16,9 +21,7 @@ namespace
     void requireIntensity(double value, const char* name)
     {
         if (!std::isfinite(value) || value < 0.0 || value > 10.0)
-        {
             throw std::invalid_argument(std::string(name) + " must be between 0 and 10.");
-        }
     }
 
     Quantity_Color lightColor(OcctColorRgb value)
@@ -30,9 +33,7 @@ namespace
     {
         V3d_ListOfLight lights = engine->viewerContext.viewer->DefinedLights();
         for (V3d_ListOfLight::Iterator iterator(lights); iterator.More(); iterator.Next())
-        {
             engine->viewerContext.viewer->DelLight(iterator.Value());
-        }
 
         engine->viewerContext.customAmbientLight.Nullify();
         engine->viewerContext.customDirectionalLight.Nullify();
@@ -141,27 +142,6 @@ namespace
         engine->viewerContext.viewer->UpdateLights();
         engine->requestRedraw();
     }
-
-    OcctViewerLightingOptions lightingOptions(const OcctSceneLightingSettings& settings)
-    {
-        return {
-            static_cast<std::uint32_t>(sizeof(OcctViewerLightingOptions)),
-            LightingOptionsApiVersion,
-            settings };
-    }
-
-    OcctViewerHighlightOptions highlightOptions(
-        std::uint32_t updateMask,
-        OcctColorRgb selectionColor,
-        OcctColorRgb hoverColor)
-    {
-        return {
-            static_cast<std::uint32_t>(sizeof(OcctViewerHighlightOptions)),
-            HighlightOptionsApiVersion,
-            updateMask,
-            selectionColor,
-            hoverColor };
-    }
 }
 
 extern "C"
@@ -215,58 +195,5 @@ extern "C"
             }
             engine->requestRedraw();
         });
-    }
-
-    int occt_set_selection_highlight_color(OcctHandle h, double r, double g, double b)
-    {
-        const OcctViewerHighlightOptions options = highlightOptions(
-            OcctViewerHighlightUpdate_Selection,
-            { r, g, b },
-            {});
-        return occt_engine_highlight_colors_set(
-                   reinterpret_cast<OcctEngineHandle>(h),
-                   &options) == OcctStatus_Ok
-            ? 1
-            : 0;
-    }
-
-    int occt_set_hover_highlight_color(OcctHandle h, double r, double g, double b)
-    {
-        const OcctViewerHighlightOptions options = highlightOptions(
-            OcctViewerHighlightUpdate_Hover,
-            {},
-            { r, g, b });
-        return occt_engine_highlight_colors_set(
-                   reinterpret_cast<OcctEngineHandle>(h),
-                   &options) == OcctStatus_Ok
-            ? 1
-            : 0;
-    }
-
-    int occt_set_scene_lighting_ex(
-        OcctHandle h,
-        const OcctSceneLightingSettings* settings)
-    {
-        if (settings == nullptr)
-        {
-            Engine* engine = engineOf(h);
-            if (engine != nullptr)
-                engine->setError(OcctStatus_ErrorInvalidArgument, "Scene lighting settings are null.");
-            return 0;
-        }
-        const OcctViewerLightingOptions options = lightingOptions(*settings);
-        return occt_engine_scene_lighting_set(
-                   reinterpret_cast<OcctEngineHandle>(h),
-                   &options) == OcctStatus_Ok
-            ? 1
-            : 0;
-    }
-
-    int occt_reset_scene_lighting(OcctHandle h)
-    {
-        return occt_engine_scene_lighting_reset(
-                   reinterpret_cast<OcctEngineHandle>(h)) == OcctStatus_Ok
-            ? 1
-            : 0;
     }
 }
