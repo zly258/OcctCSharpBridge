@@ -19,6 +19,19 @@ if (snapshot.ShapeType != OcctShapeType.Solid)
         "Owned shape snapshot did not survive deletion of its source registry entry.");
 }
 
+var meshSource = model.MakeBox(6, 7, 8);
+using var ownedMesh = model.CreateMeshResource(meshSource);
+model.Delete(meshSource);
+var ownedMeshData = ownedMesh.GetMesh();
+if (ownedMesh.NodeCount <= 0 ||
+    ownedMesh.TriangleCount <= 0 ||
+    ownedMeshData.Nodes.Count != ownedMesh.NodeCount ||
+    ownedMeshData.Triangles.Count != ownedMesh.TriangleCount)
+{
+    throw new InvalidOperationException(
+        "Owned mesh snapshot did not survive deletion of its source registry entry.");
+}
+
 var box = model.MakeBox(100, 80, 60);
 var cylinder = model.MakeCylinder(new OcctPoint3d(50, 40, -10), OcctVector3d.UnitZ, 12, 80);
 var cut = model.Cut(box, cylinder);

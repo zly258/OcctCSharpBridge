@@ -152,6 +152,19 @@ public struct OcctModelMeshParameters
         InternalVertices = InternalVertices ? 1 : 0,
         ControlSurfaceDeflection = ControlSurfaceDeflection ? 1 : 0
     };
+
+    internal readonly NativeMeshBuildOptions ToResourceNative() => new()
+    {
+        StructSize = (uint)Marshal.SizeOf<NativeMeshBuildOptions>(),
+        ApiVersion = 1,
+        LinearDeflection = LinearDeflection,
+        AngularDeflection = AngularDeflection,
+        MinSize = MinimumSize,
+        Relative = Relative ? 1 : 0,
+        Parallel = Parallel ? 1 : 0,
+        InternalVertices = InternalVertices ? 1 : 0,
+        ControlSurfaceDeflection = ControlSurfaceDeflection ? 1 : 0
+    };
 }
 
 [StructLayout(LayoutKind.Sequential)]

@@ -83,3 +83,31 @@ internal sealed class OcctShapeSafeHandle : SafeHandleZeroOrMinusOneIsInvalid
         }
     }
 }
+
+internal sealed class OcctMeshSafeHandle : SafeHandleZeroOrMinusOneIsInvalid
+{
+    private OcctMeshSafeHandle()
+        : base(ownsHandle: true)
+    {
+    }
+
+    internal static OcctMeshSafeHandle AdoptOwned(IntPtr nativeHandle)
+    {
+        var result = new OcctMeshSafeHandle();
+        result.SetHandle(nativeHandle);
+        return result;
+    }
+
+    protected override bool ReleaseHandle()
+    {
+        try
+        {
+            ModelNativeMethods.occt_mesh_release(handle);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+}

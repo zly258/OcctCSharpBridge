@@ -20,7 +20,7 @@ The preview introduces typed Engine and Modeling Session handles, `SafeHandle` o
 
 The formal managed SDK uses the typed lifecycle and semantic native-surface API. Legacy lifecycle and surface entries remain compatibility adapters and are covered by a fixed old-consumer executable.
 Current-only managed declarations use source-generated `LibraryImport` with explicit C calling convention. Frozen ABI 4 declarations and compatibility extensions remain isolated on `DllImport`; contract checks prevent either set from crossing that boundary.
-The current ABI also provides an opaque `OcctShapeHandle`. `occt_model_shape_acquire` creates an owned immutable snapshot, `occt_shape_release` destroys it, and managed `OcctShapeResource` owns it through `SafeHandle`. The snapshot may outlive deletion of its source session registry entry; callers must not query it concurrently with disposal.
+The current ABI provides opaque `OcctShapeHandle` and `OcctMeshHandle` resources. Shape snapshots and independently allocated mesh buffers are owned through managed `SafeHandle` wrappers and may outlive deletion of their source session registry entries. Mesh creation uses an extensible `structSize`/`apiVersion` options structure, while node and triangle data is copied into caller-owned bulk buffers. Callers must not query a resource concurrently with disposal.
 
 
 ## Compatibility gates
@@ -29,7 +29,7 @@ Every standard build validates:
 
 - all 419 frozen ABI 4 symbols remain exported;
 - native declarations, implementations and P/Invokes are identical sets;
-- all 14 formal current-ABI declarations use `LibraryImport`, while the compatibility extension remains isolated;
+- all 19 formal current-ABI declarations use `LibraryImport`, while the compatibility extension remains isolated;
 - new exports and tracked filenames follow semantic naming;
 - WinForms and WPF consume the platform-neutral managed Engine API;
 - the fixed ABI 4 consumer and current ABI 5 native smoke both run successfully.

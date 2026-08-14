@@ -129,6 +129,7 @@ add_library(OcctNative SHARED
     topology/OcctModelingHistory.cpp
     modeling/OcctModelingAnalysis.cpp
     mesh/OcctModelingMesh.cpp
+    mesh/OcctMeshResource.cpp
     exchange/OcctModelingExchange.cpp
     geometry/OcctModelingAnalyticGeometry.cpp
     geometry/OcctModelingDifferentialGeometry.cpp
@@ -150,6 +151,7 @@ add_library(OcctNative SHARED
     modeling/OcctModelingShapeInternal.hxx
     modeling/OcctModelingAlgorithmInternal.hxx
     mesh/OcctModelingMeshInternal.hxx
+    mesh/OcctMeshResource.h
     exchange/OcctModelingExchangeInternal.hxx
     exchange/OcctExchangePath.hxx
     OcctNative.h
