@@ -63,7 +63,7 @@ if (!generatedLineage.SequenceEqual(generatedLineageAgain) ||
 {
     throw new InvalidOperationException("Topology-history lineage IDs are not stable across repeated queries.");
 }
-// P0: full volume inertia properties.
+
 var inertia = model.GetVolumeInertiaProperties(cut.Shape);
 if (!double.IsFinite(inertia.Mass) || inertia.Mass <= 0 || !inertia.CenterOfMass.IsFinite)
     throw new InvalidOperationException("Volume inertia properties are invalid.");
@@ -81,7 +81,6 @@ if (faceCount <= 0 || faces.Count != faceCount)
 
 var firstFace = faces[0];
 
-// P2: persistent topology fingerprint/reference resolves on the current root.
 var topologyReference = model.CreateTopologyReference(cut.Shape, firstFace);
 var topologyResolution = model.ResolveTopologyReference(cut.Shape, topologyReference);
 if (topologyResolution.Status != OcctTopologyReferenceStatus.Resolved ||
@@ -108,7 +107,6 @@ if (faceMesh.Nodes.Count == 0 || faceMesh.Triangles.Count == 0)
 if (shapeMesh.Nodes.Count == 0 || shapeMesh.Triangles.Count == 0)
     throw new InvalidOperationException("Whole-shape triangulation is empty.");
 
-// Keep the ray inside the box footprint but outside the through-hole centered at (50, 40).
 var rayHits = model.IntersectRay(
     cut.Shape,
     new OcctPoint3d(20, 20, 100),
@@ -116,7 +114,6 @@ var rayHits = model.IntersectRay(
 if (rayHits.Count == 0)
     throw new InvalidOperationException("Expected at least one ray hit.");
 
-// P1: structured edge/edge intersection with native curve parameters.
 var horizontal = model.MakeLine(
     new OcctPoint3d(0, 0, 0),
     new OcctPoint3d(100, 0, 0));
@@ -130,7 +127,43 @@ var crossing = edgeIntersections[0].StartPoint;
 if (crossing.DistanceTo(new OcctPoint3d(50, 0, 0)) > 1e-6)
     throw new InvalidOperationException("Structured edge intersection returned the wrong point.");
 
+var annotationX = model.MakeLine(OcctPoint3d.Origin, new OcctPoint3d(40, 0, 0));
+var annotationY = model.MakeLine(OcctPoint3d.Origin, new OcctPoint3d(0, 30, 0));
+var brepText = model.MakeBRepText(
+    "OCCT",
+    OcctBRepTextOptions.Default with
+    {
+        Position = new OcctPoint3d(0, 45, 0),
+        Height = 6,
+        ExtrusionDepth = 1
+    });
+var lengthAnnotation = model.MakeLengthAnnotation(
+    annotationX,
+    OcctBRepAnnotationOptions.Default with { Offset = 10, TextHeight = 4, ArrowSize = 2 });
+var angleAnnotation = model.MakeAngleAnnotation(
+    annotationX,
+    annotationY,
+    OcctBRepAnnotationOptions.Default with { Offset = 12, TextHeight = 4, ArrowSize = 2 });
+
+foreach (var generated in new[] { brepText, lengthAnnotation, angleAnnotation })
+{
+    if (!model.IsShapeValid(generated) || model.GetTopologyCount(generated, OcctShapeType.Edge) <= 0)
+        throw new InvalidOperationException("Headless BRep text/annotation generation produced invalid geometry.");
+}
+
 var lowerCircle = model.MakeCircle(new OcctPoint3d(0, 0, 0), OcctVector3d.UnitZ, 10);
+var radiusAnnotation = model.MakeRadiusAnnotation(
+    lowerCircle,
+    OcctBRepAnnotationOptions.Default with { Offset = 8, TextHeight = 4, ArrowSize = 2 });
+var diameterAnnotation = model.MakeDiameterAnnotation(
+    lowerCircle,
+    OcctBRepAnnotationOptions.Default with { Offset = 8, TextHeight = 4, ArrowSize = 2 });
+foreach (var generated in new[] { radiusAnnotation, diameterAnnotation })
+{
+    if (!model.IsShapeValid(generated) || model.GetTopologyCount(generated, OcctShapeType.Edge) <= 0)
+        throw new InvalidOperationException("Headless circular BRep annotation generation produced invalid geometry.");
+}
+
 var circleRange = model.GetEdgeParameterRange(lowerCircle);
 var circleParameter = (circleRange.FirstParameter + circleRange.LastParameter) * 0.5;
 var circleDifferential = model.EvaluateEdgeAtParameter(lowerCircle, circleParameter);
@@ -219,4 +252,5 @@ Console.WriteLine($"Topology reference score: {topologyResolution.Score:G4}");
 Console.WriteLine($"OBB: {bounds.SizeX:G4} x {bounds.SizeY:G4} x {bounds.SizeZ:G4}");
 Console.WriteLine($"Cut operation resource: {cutAlgorithm.OperationId}");
 Console.WriteLine($"Loft operation: {loft.OperationId}");
+Console.WriteLine("BRep text and four annotation kinds: validated");
 Console.WriteLine($"Bridge {OcctBridgeInfo.ManagedVersion} native smoke tests passed.");
