@@ -25,13 +25,14 @@ CORE_PROJECT="${ROOT_DIR}/src/OcctNet/OcctNet.csproj"
 AVALONIA_PROJECT="${ROOT_DIR}/src/OcctNet.Avalonia/OcctNet.Avalonia.csproj"
 MANAGED_TESTS="${ROOT_DIR}/tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj"
 SMOKE_PROJECT="${ROOT_DIR}/tests/OcctNet.Smoke/OcctNet.Smoke.csproj"
+AVALONIA_SMOKE_PROJECT="${ROOT_DIR}/tests/OcctNet.AvaloniaSmoke/OcctNet.AvaloniaSmoke.csproj"
 BUILD_SH="${ROOT_DIR}/build.sh"
 
-for file in "${CORE_PROJECT}" "${AVALONIA_PROJECT}" "${MANAGED_TESTS}" "${SMOKE_PROJECT}" "${BUILD_SH}"; do
+for file in "${CORE_PROJECT}" "${AVALONIA_PROJECT}" "${MANAGED_TESTS}" "${SMOKE_PROJECT}" "${AVALONIA_SMOKE_PROJECT}" "${BUILD_SH}"; do
     require_file "${file}"
 done
 
-for project in "${CORE_PROJECT}" "${AVALONIA_PROJECT}" "${MANAGED_TESTS}" "${SMOKE_PROJECT}"; do
+for project in "${CORE_PROJECT}" "${AVALONIA_PROJECT}" "${MANAGED_TESTS}" "${SMOKE_PROJECT}" "${AVALONIA_SMOKE_PROJECT}"; do
     require_text "${project}" '<TargetFramework>net10.0</TargetFramework>' "Cross-platform project must target net10.0: ${project#${ROOT_DIR}/}"
     forbid_text "${project}" 'net10.0-windows' "Windows-only TFM escaped into a Linux/core project: ${project#${ROOT_DIR}/}"
 done
@@ -39,6 +40,7 @@ done
 require_text "${MANAGED_TESTS}" '..\..\src\OcctNet\OcctNet.csproj' "Managed tests must reference OcctNet core."
 forbid_text "${MANAGED_TESTS}" 'OcctNet.WinForms' "Managed core tests must not reference WinForms."
 forbid_text "${MANAGED_TESTS}" 'OcctNet.Wpf' "Managed core tests must not reference WPF."
+require_text "${AVALONIA_SMOKE_PROJECT}" '..\..\src\OcctNet.Avalonia\OcctNet.Avalonia.csproj' "Avalonia smoke must reference the formal Avalonia adapter."
 
 require_text "${BUILD_SH}" 'validate_common()' "Linux build must keep common validation independent from native validation."
 require_text "${BUILD_SH}" 'validate_native()' "Linux build must keep an explicit native validation layer."
