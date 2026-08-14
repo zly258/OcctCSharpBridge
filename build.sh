@@ -73,19 +73,37 @@ test_managed() {
     dotnet test "${ROOT_DIR}/tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj" -c "${CONFIGURATION}" -p:Platform=x64 -p:Version="${BRIDGE_VERSION}" --nologo
 }
 
+prepare_native_runtime() {
+    export OCCT_BRIDGE_NATIVE_DIR="${NATIVE_DIR}"
+    export CASROOT="${CASROOT:-${OCCT_ROOT}}"
+    export LD_LIBRARY_PATH="${NATIVE_DIR}:${OCCT_LIB_DIR}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+}
+
 run_smoke() {
     validate_native
     [[ -f "${NATIVE_DIR}/libOcctNative.so" ]] || fail "Native bridge must be built before running smoke tests."
     dotnet build "${ROOT_DIR}/tests/OcctNet.Smoke/OcctNet.Smoke.csproj" -c "${CONFIGURATION}" -p:Platform=x64 -p:Version="${BRIDGE_VERSION}" --nologo
-    export OCCT_BRIDGE_NATIVE_DIR="${NATIVE_DIR}"
-    export CASROOT="${CASROOT:-${OCCT_ROOT}}"
-    export LD_LIBRARY_PATH="${NATIVE_DIR}:${OCCT_LIB_DIR}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+    prepare_native_runtime
     dotnet run --project "${ROOT_DIR}/tests/OcctNet.Smoke/OcctNet.Smoke.csproj" -c "${CONFIGURATION}" -p:Platform=x64 -p:Version="${BRIDGE_VERSION}" --no-build
 }
 
 smoke() {
     native
     run_smoke
+}
+
+run_avalonia_smoke() {
+    validate_native
+    [[ -n "${DISPLAY:-}" ]] || fail "Avalonia viewer smoke requires an X11/XWayland DISPLAY. Headless Linux can still run the regular modeling smoke."
+    [[ -f "${NATIVE_DIR}/libOcctNative.so" ]] || fail "Native bridge must be built before running Avalonia viewer smoke."
+    dotnet build "${ROOT_DIR}/tests/OcctNet.AvaloniaSmoke/OcctNet.AvaloniaSmoke.csproj" -c "${CONFIGURATION}" -p:Platform=x64 -p:Version="${BRIDGE_VERSION}" --nologo
+    prepare_native_runtime
+    dotnet run --project "${ROOT_DIR}/tests/OcctNet.AvaloniaSmoke/OcctNet.AvaloniaSmoke.csproj" -c "${CONFIGURATION}" -p:Platform=x64 -p:Version="${BRIDGE_VERSION}" --no-build
+}
+
+avalonia_smoke() {
+    native
+    run_avalonia_smoke
 }
 
 dist() {
@@ -147,8 +165,9 @@ case "${TARGET}" in
     managed) managed ;;
     test) test_managed ;;
     smoke) smoke ;;
+    avalonia-smoke) avalonia_smoke ;;
     dist) dist ;;
     clean) clean ;;
     all) native; managed; test_managed; run_smoke ;;
-    *) fail "Unknown target '${TARGET}'. Use validate, native, managed, test, smoke, dist, clean, or all." ;;
+    *) fail "Unknown target '${TARGET}'. Use validate, native, managed, test, smoke, avalonia-smoke, dist, clean, or all." ;;
 esac
