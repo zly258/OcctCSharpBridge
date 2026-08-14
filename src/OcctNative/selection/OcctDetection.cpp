@@ -1,5 +1,5 @@
-﻿#include "core/OcctInternal.hxx"
-#include "OcctDetection.h"
+#include "selection/OcctDetection.h"
+#include "core/OcctInternal.hxx"
 
 #include <Graphic3d_Camera.hxx>
 #include <SelectMgr_SortCriterion.hxx>
@@ -7,12 +7,33 @@
 #include <StdSelect_ViewerSelector3d.hxx>
 #include <TopExp_Explorer.hxx>
 
+#include <stdexcept>
 #include <unordered_set>
+#include <utility>
 
 using namespace OcctBridge;
 
 namespace
 {
+    constexpr std::uint32_t DetectionOptionsApiVersion = 1;
+
+    OcctStatus requireInitializedEngine(Engine* engine)
+    {
+        if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (!validateInitialized(engine)) return engine->errors.code;
+        return OcctStatus_Ok;
+    }
+
+    template<typename Function>
+    OcctStatus executeDetectionStatus(Engine* engine, Function&& function)
+    {
+        const OcctStatus initialized = requireInitializedEngine(engine);
+        if (initialized != OcctStatus_Ok) return initialized;
+        return execute(engine, std::forward<Function>(function)) != 0
+            ? OcctStatus_Ok
+            : engine->errors.code;
+    }
+
     TopoDS_Shape ownerShape(const Handle(SelectMgr_EntityOwner)& owner)
     {
         const Handle(StdSelect_BRepOwner) brepOwner = Handle(StdSelect_BRepOwner)::DownCast(owner);
@@ -81,48 +102,62 @@ namespace
         if (hit.subshapeType < 0 || hit.subshapeType >= 64) return false;
         return (shapeTypeMask & (std::uint64_t{1} << hit.subshapeType)) != 0;
     }
+
+    void validateOptions(const OcctViewerDetectionOptions* options)
+    {
+        if (options == nullptr) throw std::invalid_argument("Detection options are null.");
+        if (options->structSize < sizeof(OcctViewerDetectionOptions) ||
+            options->apiVersion != DetectionOptionsApiVersion)
+        {
+            throw std::invalid_argument("Unsupported detection options size or version.");
+        }
+        if (options->maxHits <= 0 || options->maxHits > 1024)
+            throw std::invalid_argument("Maximum hit count must be between 1 and 1024.");
+        if (options->ownerCount < 0)
+            throw std::invalid_argument("Owner count must not be negative.");
+        if (options->ownerCount > 0 && options->ownerIds == nullptr)
+            throw std::invalid_argument("Owner filter array is null.");
+    }
 }
 
 extern "C"
 {
-    int occt_detect_at_filtered(
-        OcctHandle h,
-        int x,
-        int y,
-        int maxHits,
-        const OcctObjectId* ownerIds,
-        int ownerCount,
-        std::uint64_t objectKindMask,
-        std::uint64_t shapeTypeMask,
-        int includeWholeObjects,
+    OcctStatus occt_engine_selection_detect_filtered(
+        OcctEngineHandle handle,
+        const OcctViewerDetectionOptions* options,
         OcctSelectionHitDetail* items,
         int capacity,
         int* count)
     {
-        Engine* e = engineOf(h); if (!validateInitialized(e) || count == nullptr) return 0;
-        return execute(e, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (count == nullptr)
         {
-            if (maxHits <= 0 || maxHits > 1024)
-                throw std::invalid_argument("Maximum hit count must be between 1 and 1024.");
-            if (capacity < maxHits)
+            if (engine != nullptr)
+                engine->setError(OcctStatus_ErrorInvalidArgument, "Detection count output is null.");
+            return engine == nullptr ? OcctStatus_ErrorInvalidHandle : OcctStatus_ErrorInvalidArgument;
+        }
+        return executeDetectionStatus(engine, [&]
+        {
+            validateOptions(options);
+            if (capacity < options->maxHits)
                 throw std::out_of_range("Detection output capacity is smaller than maxHits.");
             if (items == nullptr) throw std::invalid_argument("Detection output buffer is null.");
-            if (ownerCount < 0) throw std::invalid_argument("Owner count must not be negative.");
-            if (ownerCount > 0 && ownerIds == nullptr) throw std::invalid_argument("Owner filter array is null.");
 
             std::unordered_set<OcctObjectId> owners;
-            owners.reserve(static_cast<std::size_t>(ownerCount));
-            for (int index = 0; index < ownerCount; ++index) owners.insert(ownerIds[index]);
+            owners.reserve(static_cast<std::size_t>(options->ownerCount));
+            for (int index = 0; index < options->ownerCount; ++index)
+                owners.insert(options->ownerIds[index]);
 
-            const Handle(StdSelect_ViewerSelector3d)& selector = e->viewerContext.context->MainSelector();
-            selector->Pick(x, y, e->viewerContext.view);
+            const Handle(StdSelect_ViewerSelector3d)& selector =
+                engine->viewerContext.context->MainSelector();
+            selector->Pick(options->x, options->y, engine->viewerContext.view);
 
             int filled = 0;
-            for (int rank = 1; rank <= selector->NbPicked() && filled < maxHits; ++rank)
+            for (int rank = 1; rank <= selector->NbPicked() && filled < options->maxHits; ++rank)
             {
                 OcctSelectionHitDetail hit{};
                 if (!createHit(
-                    e,
+                    engine,
                     selector->Picked(rank),
                     selector->PickedPoint(rank),
                     selector->PickedData(rank).Depth,
@@ -131,12 +166,12 @@ extern "C"
                     continue;
                 }
                 if (!passesFilter(
-                    e,
+                    engine,
                     hit,
                     owners,
-                    objectKindMask,
-                    shapeTypeMask,
-                    includeWholeObjects != 0))
+                    options->objectKindMask,
+                    options->shapeTypeMask,
+                    options->includeWholeObjects != 0))
                 {
                     continue;
                 }
