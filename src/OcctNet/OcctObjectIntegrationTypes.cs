@@ -1,5 +1,3 @@
-﻿using System.Runtime.InteropServices;
-
 namespace OcctNet;
 
 [Flags]
@@ -35,7 +33,7 @@ public enum OcctViewCubeLanguage
     ChineseSimplified = 1
 }
 
-[StructLayout(LayoutKind.Sequential)]
+[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
 public readonly record struct OcctTransform3d(
     double M00, double M01, double M02, double M03,
     double M10, double M11, double M12, double M13,
@@ -55,22 +53,6 @@ public readonly record struct OcctTransform3d(
         double.IsFinite(M00) && double.IsFinite(M01) && double.IsFinite(M02) && double.IsFinite(M03) &&
         double.IsFinite(M10) && double.IsFinite(M11) && double.IsFinite(M12) && double.IsFinite(M13) &&
         double.IsFinite(M20) && double.IsFinite(M21) && double.IsFinite(M22) && double.IsFinite(M23);
-
-    internal double[] ToArray() =>
-    [
-        M00, M01, M02, M03,
-        M10, M11, M12, M13,
-        M20, M21, M22, M23
-    ];
-
-    internal static OcctTransform3d FromArray(IReadOnlyList<double> values)
-    {
-        if (values.Count != 12) throw new ArgumentException("A 3x4 transformation matrix requires 12 values.", nameof(values));
-        return new(
-            values[0], values[1], values[2], values[3],
-            values[4], values[5], values[6], values[7],
-            values[8], values[9], values[10], values[11]);
-    }
 }
 
 public readonly record struct OcctObjectTransformUpdate(
