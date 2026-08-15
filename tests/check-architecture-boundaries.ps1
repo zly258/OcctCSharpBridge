@@ -145,7 +145,12 @@ foreach ($retired in @(
     "src/OcctNative/OcctFeatures.cpp",
     "src/OcctNative/geometry/OcctQueries.cpp",
     "src/OcctNative/geometry/OcctGeometry.cpp",
-    "src/OcctNative/geometry/OcctPlanarGeometry.cpp"
+    "src/OcctNative/geometry/OcctPlanarGeometry.cpp",
+    "src/OcctNative/geometry/OcctModelingGeometry.Curves.cpp",
+    "src/OcctNative/geometry/OcctModelingGeometry.Planar.cpp",
+    "src/OcctNative/geometry/OcctModelingGeometry.Primitives.cpp",
+    "src/OcctNative/geometry/OcctModelingGeometry.Assembly.cpp",
+    "src/OcctNative/geometry/OcctModelingGeometry.Transform.cpp"
 )) {
     if (Test-TrackedPath $retired) { throw "Retired source or compatibility path must not be reintroduced: $retired" }
 }
