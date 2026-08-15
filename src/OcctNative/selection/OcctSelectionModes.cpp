@@ -6,6 +6,7 @@
 #include <TopAbs_ShapeEnum.hxx>
 
 #include <stdexcept>
+#include <utility>
 
 using namespace OcctBridge;
 
@@ -47,31 +48,43 @@ namespace
     {
         switch (value)
         {
-            case OcctSelectionConcurrency_Single:
-                return AIS_SelectionModesConcurrency_Single;
-            case OcctSelectionConcurrency_GlobalOrLocal:
-                return AIS_SelectionModesConcurrency_GlobalOrLocal;
-            case OcctSelectionConcurrency_Multiple:
-                return AIS_SelectionModesConcurrency_Multiple;
-            default:
-                throw std::invalid_argument("Selection mode concurrency is out of range.");
+            case OcctSelectionConcurrency_Single: return AIS_SelectionModesConcurrency_Single;
+            case OcctSelectionConcurrency_GlobalOrLocal: return AIS_SelectionModesConcurrency_GlobalOrLocal;
+            case OcctSelectionConcurrency_Multiple: return AIS_SelectionModesConcurrency_Multiple;
+            default: throw std::invalid_argument("Selection mode concurrency is out of range.");
         }
+    }
+
+    OcctStatus requireInitializedEngine(Engine* engine)
+    {
+        if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (!validateInitialized(engine)) return engine->errors.code;
+        return OcctStatus_Ok;
+    }
+
+    template<typename Function>
+    OcctStatus executeSelectionModeStatus(Engine* engine, Function&& function)
+    {
+        const OcctStatus initialized = requireInitializedEngine(engine);
+        if (initialized != OcctStatus_Ok) return initialized;
+        return execute(engine, std::forward<Function>(function)) != 0
+            ? OcctStatus_Ok
+            : engine->errors.code;
     }
 }
 
 extern "C"
 {
-    int occt_set_object_selection_mode_active(
-        OcctHandle handle,
+    OcctStatus occt_engine_selection_object_mode_set_active(
+        OcctEngineHandle handle,
         OcctObjectId objectId,
         int mode,
         int active,
         int concurrency,
         int force)
     {
-        Engine* engine = engineOf(handle);
-        if (!validateInitialized(engine)) return 0;
-        return execute(engine, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeSelectionModeStatus(engine, [&]
         {
             ObjectEntry& entry = requiredObject(engine, objectId);
             if (active != 0 && !entry.selectable)
@@ -87,15 +100,14 @@ extern "C"
         });
     }
 
-    int occt_set_object_selection_sensitivity(
-        OcctHandle handle,
+    OcctStatus occt_engine_selection_object_sensitivity_set(
+        OcctEngineHandle handle,
         OcctObjectId objectId,
         int mode,
         int sensitivity)
     {
-        Engine* engine = engineOf(handle);
-        if (!validateInitialized(engine)) return 0;
-        return execute(engine, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeSelectionModeStatus(engine, [&]
         {
             if (sensitivity <= 0)
                 throw std::invalid_argument("Selection sensitivity must be greater than zero.");
