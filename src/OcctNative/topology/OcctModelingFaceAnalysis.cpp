@@ -1,5 +1,5 @@
-﻿#include "modeling/OcctModelingShapeInternal.hxx"
-#include "OcctModelingFaceAnalysis.h"
+﻿#include "topology/OcctModelingFaceAnalysis.h"
+#include "modeling/OcctModelingShapeInternal.hxx"
 
 #include <BRepAdaptor_Surface.hxx>
 #include <BRepBndLib.hxx>
@@ -13,39 +13,39 @@ using namespace OcctModelingInternal;
 
 extern "C"
 {
-    int occt_model_shape_face_analysis(
-        OcctModelHandle handle,
+    OcctStatus occt_model_shape_face_analysis_snapshot_get(
+        OcctModelingSessionHandle handle,
         OcctObjectId shapeId,
         OcctModelFaceAnalysis* items,
         int capacity,
-        int* count)
+        int* required)
     {
-        ModelSession* model = modelOf(handle);
-        if (count == nullptr) return 0;
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (capacity < 0 || required == nullptr) return OcctStatus_ErrorInvalidArgument;
 
-        return execute(model, [&]
+        *required = 0;
+        return executeStatus(model, [&]
         {
-            if (capacity < 0)
-                throw std::invalid_argument("Face analysis capacity must not be negative.");
-
             const TopoDS_Shape& root = model->requireShape(shapeId);
             TopTools_IndexedMapOfShape faces;
             TopExp::MapShapes(root, TopAbs_FACE, faces);
-            *count = faces.Extent();
+            *required = faces.Extent();
 
             if (items == nullptr)
             {
                 if (capacity != 0)
-                    throw std::invalid_argument("Face analysis output is null but capacity is non-zero.");
+                    throw std::invalid_argument("Null face-analysis buffer requires zero capacity.");
                 return;
             }
-            if (capacity < *count)
-                throw std::out_of_range("Face analysis output capacity is too small.");
+            if (capacity < *required)
+                throw std::out_of_range("Face-analysis buffer capacity is too small.");
 
             for (int index = 1; index <= faces.Extent(); ++index)
             {
                 const TopoDS_Face face = TopoDS::Face(faces(index));
                 OcctModelFaceAnalysis& item = items[index - 1];
+                item = {};
                 item.faceId = model->addShape(face);
                 item.surfaceType = toOcctSurfaceType(BRepAdaptor_Surface(face, Standard_False).GetType());
                 item.orientation = toModelOrientation(face.Orientation());
