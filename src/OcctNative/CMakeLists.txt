@@ -176,6 +176,9 @@ add_library(OcctNative SHARED
     exchange/OcctDocumentStore.hxx
     modeling/OcctModelingShapeInternal.hxx
     modeling/OcctModelingAlgorithmInternal.hxx
+    modeling/OcctModelingBoolean.h
+    modeling/OcctModelingFeatures.h
+    modeling/OcctModelingHealing.h
     modeling/OcctAlgorithmResource.h
     modeling/OcctModelingAnnotations.h
     mesh/OcctModelingMeshInternal.hxx
