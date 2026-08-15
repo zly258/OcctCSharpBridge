@@ -4,35 +4,38 @@
 
 extern "C"
 {
-    OCCTBRIDGE_API int occt_model_project_point_on_edge(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_project_point_on_edge(
+        OcctModelingSessionHandle handle,
         OcctObjectId edgeId,
         OcctPoint3d pointValue,
         OcctModelProjectionResult* result);
 
-    OCCTBRIDGE_API int occt_model_project_point_on_face(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_project_point_on_face(
+        OcctModelingSessionHandle handle,
         OcctObjectId faceId,
         OcctPoint3d pointValue,
         OcctModelProjectionResult* result);
 
-    OCCTBRIDGE_API int occt_model_ray_intersections(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_ray_intersections(
+        OcctModelingSessionHandle handle,
         OcctObjectId shapeId,
         OcctPoint3d origin,
         OcctVector3d directionValue,
         double minimumParameter,
         double maximumParameter,
-        double tolerance);
+        double tolerance,
+        int* resultCount);
 
-    OCCTBRIDGE_API int occt_model_ray_hits_copy(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_ray_hits_snapshot_get(
+        OcctModelingSessionHandle handle,
         OcctModelRayHit* results,
-        int capacity);
+        int capacity,
+        int* required);
 
-    OCCTBRIDGE_API int occt_model_classify_point(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_classify_point(
+        OcctModelingSessionHandle handle,
         OcctObjectId solidId,
         OcctPoint3d pointValue,
-        double tolerance);
+        double tolerance,
+        OcctModelState* result);
 }
