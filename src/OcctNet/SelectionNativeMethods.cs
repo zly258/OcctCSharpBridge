@@ -55,18 +55,11 @@ internal static partial class SelectionNativeMethods
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
-    internal static partial OcctStatus occt_engine_selection_move_to(
-        OcctEngineSafeHandle handle,
-        int x,
-        int y);
+    internal static partial OcctStatus occt_engine_selection_move_to(OcctEngineSafeHandle handle, int x, int y);
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
-    internal static partial OcctStatus occt_engine_selection_point_select(
-        OcctEngineSafeHandle handle,
-        int x,
-        int y,
-        int append);
+    internal static partial OcctStatus occt_engine_selection_point_select(OcctEngineSafeHandle handle, int x, int y, int append);
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
@@ -76,10 +69,7 @@ internal static partial class SelectionNativeMethods
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
-    internal static partial OcctStatus occt_engine_selection_object_select(
-        OcctEngineSafeHandle handle,
-        long objectId,
-        int append);
+    internal static partial OcctStatus occt_engine_selection_object_select(OcctEngineSafeHandle handle, long objectId, int append);
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
@@ -89,8 +79,7 @@ internal static partial class SelectionNativeMethods
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
-    internal static partial OcctStatus occt_engine_selection_clear(
-        OcctEngineSafeHandle handle);
+    internal static partial OcctStatus occt_engine_selection_clear(OcctEngineSafeHandle handle);
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
@@ -98,4 +87,22 @@ internal static partial class SelectionNativeMethods
         OcctEngineSafeHandle handle,
         int index,
         out long resultShapeId);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_selection_object_mode_set_active(
+        OcctEngineSafeHandle handle,
+        long objectId,
+        int mode,
+        int active,
+        int concurrency,
+        int force);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_selection_object_sensitivity_set(
+        OcctEngineSafeHandle handle,
+        long objectId,
+        int mode,
+        int sensitivity);
 }
