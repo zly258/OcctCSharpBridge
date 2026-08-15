@@ -1,14 +1,9 @@
-﻿{
-  "schemaVersion": 2,
+{
+  "schemaVersion": 3,
   "bridgeVersion": "3.0.0-preview.1",
   "nativeAbi": {
     "current": 5,
-    "minimumSupported": 4,
-    "legacy": [4]
-  },
-  "compatibility": {
-    "abi4": "deprecated",
-    "plannedRemoval": "4.0"
+    "minimumSupported": 5
   },
   "occtVersion": "7.9.0",
   "platform": "cross-platform-x64",
@@ -23,15 +18,7 @@
     "languageVersion": "14.0"
   },
   "api": {
-    "nativeExports": 477,
-    "managedPInvokes": 477,
-    "abi5Exports": 57,
-    "legacyAbi4Exports": 419,
-    "compatibilityExtensions": 1,
-    "compatibilityExtensionNames": ["occt_initialize_surface"],
-    "publicNetTypes": 153,
-    "viewer": 312,
-    "modeling": 165,
+    "policy": "abi5-only",
     "nativeHeaders": [
       "OcctNative.h",
       "exchange/OcctStepDocument.h",
