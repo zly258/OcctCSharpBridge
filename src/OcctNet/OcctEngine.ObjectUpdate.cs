@@ -1,4 +1,4 @@
-﻿namespace OcctNet;
+namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
@@ -16,11 +16,12 @@ public sealed partial class OcctEngine
             throw new ArgumentOutOfRangeException(nameof(options));
 
         EnsureInitialized();
-        Check(NativeMethods.occt_update_object_shape_from_model(
+        var status = ViewerModelInteropNativeMethods.occt_engine_object_shape_update_from_model(
             _handle,
             sourceSession.NativeHandle,
             viewerShape.Id,
             sourceShape.Id,
-            (uint)options));
+            (uint)options);
+        if (status != OcctStatus.Ok) throw CreateException();
     }
 }
