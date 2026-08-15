@@ -1,4 +1,4 @@
-﻿namespace OcctNet;
+namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
@@ -19,8 +19,16 @@ public sealed partial class OcctEngine
         OcctGuard.NonZero(actualNormal, nameof(normal));
         OcctGuard.NonZero(actualXDirection, nameof(xDirection));
         EnsureInitialized();
-        return CheckShape(NativeMethods.occt_make_regular_polygon(
-            _handle, actualCenter, actualNormal, actualXDirection, radius, sideCount, makeFace ? 1 : 0));
+        var status = ViewerGeometryCreationNativeMethods.occt_engine_shape_regular_polygon_create(
+            _handle,
+            actualCenter,
+            actualNormal,
+            actualXDirection,
+            radius,
+            sideCount,
+            makeFace ? 1 : 0,
+            out var result);
+        return GeometryResult(status, result);
     }
 
     public OcctShape MakeRectangleWire(
@@ -39,15 +47,27 @@ public sealed partial class OcctEngine
         OcctGuard.NonZero(actualXDirection, nameof(xDirection));
         OcctGuard.NonZero(actualNormal, nameof(normal));
         EnsureInitialized();
-        return CheckShape(NativeMethods.occt_make_rectangle_wire(
-            _handle, actualOrigin, actualXDirection, actualNormal, width, height));
+        var status = ViewerGeometryCreationNativeMethods.occt_engine_shape_rectangle_wire_create(
+            _handle,
+            actualOrigin,
+            actualXDirection,
+            actualNormal,
+            width,
+            height,
+            out var result);
+        return GeometryResult(status, result);
     }
 
     public OcctShape MakeFace(OcctShape wire, bool onlyPlane = true)
     {
         EnsureShape(wire);
         EnsureInitialized();
-        return CheckShape(NativeMethods.occt_make_face_from_wire(_handle, wire.Id, onlyPlane ? 1 : 0));
+        var status = ViewerGeometryCreationNativeMethods.occt_engine_shape_face_from_wire_create(
+            _handle,
+            wire.Id,
+            onlyPlane ? 1 : 0,
+            out var result);
+        return GeometryResult(status, result);
     }
 
     public OcctShape MakePlaneFace(
@@ -66,7 +86,14 @@ public sealed partial class OcctEngine
         OcctGuard.NonZero(actualXDirection, nameof(xDirection));
         OcctGuard.NonZero(actualNormal, nameof(normal));
         EnsureInitialized();
-        return CheckShape(NativeMethods.occt_make_plane_face(
-            _handle, actualOrigin, actualXDirection, actualNormal, width, height));
+        var status = ViewerGeometryCreationNativeMethods.occt_engine_shape_plane_face_create(
+            _handle,
+            actualOrigin,
+            actualXDirection,
+            actualNormal,
+            width,
+            height,
+            out var result);
+        return GeometryResult(status, result);
     }
 }
