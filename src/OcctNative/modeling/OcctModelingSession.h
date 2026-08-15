@@ -1,7 +1,6 @@
 #pragma once
 
 #include "OcctNative.h"
-#include "modeling/OcctModeling.h"
 
 extern "C"
 {
@@ -25,7 +24,7 @@ extern "C"
         int capacity,
         int* required);
 
-    OCCTBRIDGE_API OcctStatus occt_model_shape_exists(
+    OCCTBRIDGE_API OcctStatus occt_model_shape_exists_get(
         OcctModelingSessionHandle handle,
         OcctObjectId shapeId,
         OcctBool* result);
@@ -34,12 +33,12 @@ extern "C"
         OcctModelingSessionHandle handle,
         OcctObjectId shapeId);
 
-    OCCTBRIDGE_API OcctStatus occt_model_clear(
+    OCCTBRIDGE_API OcctStatus occt_model_session_clear(
         OcctModelingSessionHandle handle);
 
     OCCTBRIDGE_API OcctStatus occt_model_operation_report_get(
         OcctModelingSessionHandle handle,
-        OcctOperationId operationId,
+        std::int64_t operationId,
         char* buffer,
         int capacity,
         int* required);
