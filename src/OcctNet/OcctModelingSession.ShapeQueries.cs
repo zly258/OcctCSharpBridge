@@ -1,56 +1,65 @@
-﻿using System.ComponentModel;
-using System.Runtime.InteropServices;
-
-namespace OcctNet;
+﻿namespace OcctNet;
 
 public sealed partial class OcctModelingSession
 {
     public long GetShapeHash(OcctModelShape shape)
     {
         EnsureShape(shape);
-        return ModelNativeMethods.occt_model_shape_hash(_handle, shape.Id);
+        CheckStatus(ModelNativeMethods.occt_model_shape_hash(_handle, shape.Id, out var result));
+        return result;
     }
 
     public OcctShapeType GetShapeType(OcctModelShape shape)
     {
         EnsureShape(shape);
-        return (OcctShapeType)ModelNativeMethods.occt_model_shape_type(_handle, shape.Id);
+        CheckStatus(ModelNativeMethods.occt_model_shape_type(_handle, shape.Id, out var result));
+        return result;
     }
 
     public OcctModelOrientation GetShapeOrientation(OcctModelShape shape)
     {
         EnsureShape(shape);
-        return (OcctModelOrientation)ModelNativeMethods.occt_model_shape_orientation(_handle, shape.Id);
+        CheckStatus(ModelNativeMethods.occt_model_shape_orientation(_handle, shape.Id, out var result));
+        return result;
     }
 
     public bool IsShapeClosed(OcctModelShape shape)
     {
         EnsureShape(shape);
-        return ModelNativeMethods.occt_model_shape_is_closed(_handle, shape.Id) != 0;
+        CheckStatus(ModelNativeMethods.occt_model_shape_is_closed(_handle, shape.Id, out var result));
+        return result != 0;
     }
 
     public bool IsShapeValid(OcctModelShape shape)
     {
         EnsureShape(shape);
-        return ModelNativeMethods.occt_model_shape_is_valid(_handle, shape.Id) != 0;
+        CheckStatus(ModelNativeMethods.occt_model_shape_is_valid(_handle, shape.Id, out var result));
+        return result != 0;
     }
 
     public double GetShapeMaximumTolerance(OcctModelShape shape)
     {
         EnsureShape(shape);
-        return ModelNativeMethods.occt_model_shape_tolerance(_handle, shape.Id);
+        CheckStatus(ModelNativeMethods.occt_model_shape_tolerance(_handle, shape.Id, out var result));
+        return result;
     }
 
     public string GetShapeCheckReport(OcctModelShape shape)
     {
         EnsureShape(shape);
-        return Marshal.PtrToStringUTF8(ModelNativeMethods.occt_model_check_report(_handle, shape.Id)) ?? string.Empty;
+        return ReadUtf8Buffer((byte[]? buffer, int capacity, out int required) =>
+            ModelNativeMethods.occt_model_shape_check_report_get(
+                _handle,
+                shape.Id,
+                buffer,
+                capacity,
+                out required));
     }
 
     public OcctBounds GetShapeBounds(OcctModelShape shape)
     {
         EnsureShape(shape);
-        Check(ModelNativeMethods.occt_model_shape_bounds(_handle, shape.Id, out var result));
+        CheckStatus(ModelNativeMethods.occt_model_shape_bounds(_handle, shape.Id, out var result));
         return result;
     }
 
@@ -67,14 +76,14 @@ public sealed partial class OcctModelingSession
     {
         EnsureShape(first);
         EnsureShape(second);
-        Check(ModelNativeMethods.occt_model_shape_distance(_handle, first.Id, second.Id, out var result));
+        CheckStatus(ModelNativeMethods.occt_model_shape_distance(_handle, first.Id, second.Id, out var result));
         return result;
     }
 
     public OcctModelLocation GetShapeLocation(OcctModelShape shape)
     {
         EnsureShape(shape);
-        Check(ModelNativeMethods.occt_model_get_location(_handle, shape.Id, out var result));
+        CheckStatus(ModelNativeMethods.occt_model_shape_location_get(_handle, shape.Id, out var result));
         return result;
     }
 
@@ -86,21 +95,13 @@ public sealed partial class OcctModelingSession
         EnsureShape(shape);
         if (!location.IsFinite)
             throw new ArgumentException("Location matrix must contain only finite values.", nameof(location));
-        return CheckShape(ModelNativeMethods.occt_model_set_location(
+
+        CheckStatus(ModelNativeMethods.occt_model_shape_location_set(
             _handle,
             shape.Id,
             in location,
-            copyShape ? 1 : 0));
+            copyShape ? 1 : 0,
+            out var result));
+        return CheckShape(result);
     }
-
-    /// <summary>
-    /// Bridge 2.5 source-compatibility entry point. New code should use
-    /// <see cref="SetShapeLocation(OcctModelShape, OcctModelLocation, bool)"/>.
-    /// </summary>
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public OcctModelShape SetLocation(
-        OcctModelShape shape,
-        OcctModelLocation location,
-        bool copyShape = true) =>
-        SetShapeLocation(shape, location, copyShape);
 }
