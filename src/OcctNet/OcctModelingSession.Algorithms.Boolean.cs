@@ -13,13 +13,15 @@ public sealed partial class OcctModelingSession
         if (!Enum.IsDefined(operation)) throw new ArgumentOutOfRangeException(nameof(operation));
         var actual = options ?? OcctModelBooleanOptions.Default;
         ValidateBooleanOptions(actual, nameof(options));
-        var native = actual.ToNative();
-        return CheckAlgorithm(ModelNativeMethods.occt_model_boolean(
+        var nativeOptions = actual.ToNative();
+        var status = ModelNativeMethods.occt_model_boolean_execute(
             _handle,
             (int)operation,
             left.Id,
             right.Id,
-            in native));
+            in nativeOptions,
+            out var result);
+        return CheckAlgorithm(status, result);
     }
 
     public OcctModelAlgorithmResult Fuse(
@@ -55,14 +57,16 @@ public sealed partial class OcctModelingSession
         var toolIds = ShapeIds(tools);
         var actual = options ?? OcctModelBooleanOptions.Default;
         ValidateBooleanOptions(actual, nameof(options));
-        var native = actual.ToNative();
-        return CheckAlgorithm(ModelNativeMethods.occt_model_split(
+        var nativeOptions = actual.ToNative();
+        var status = ModelNativeMethods.occt_model_boolean_split_execute(
             _handle,
             objectIds,
             objectIds.Length,
             toolIds,
             toolIds.Length,
-            in native));
+            in nativeOptions,
+            out var result);
+        return CheckAlgorithm(status, result);
     }
 
     private static void ValidateBooleanOptions(OcctModelBooleanOptions options, string parameterName)
