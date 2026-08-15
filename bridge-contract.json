@@ -24,6 +24,7 @@
       "exchange/OcctStepDocument.h",
       "exchange/OcctViewerExchange.h",
       "platform/OcctNativeSurface.h",
+      "viewer/OcctViewerUpdate.h",
       "geometry/OcctPoints.h",
       "geometry/OcctViewerGeometry.h",
       "geometry/OcctViewerShapeQueries.h",
