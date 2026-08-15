@@ -170,9 +170,9 @@ namespace OcctBridge
         scene.objects.erase(iterator);
     }
 
-    Engine* engineOf(OcctHandle handle)
+    Engine* engineOf(OcctEngineHandle handle)
     {
-        return static_cast<Engine*>(handle);
+        return reinterpret_cast<Engine*>(handle);
     }
 
     bool validateInitialized(Engine* engine)
