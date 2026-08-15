@@ -1,11 +1,13 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
 internal static partial class ModelNativeMethods
 {
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern long occt_model_display_in_engine(
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial long occt_model_display_in_engine(
         OcctEngineSafeHandle engineHandle,
         OcctModelingSafeHandle modelHandle,
         long shapeId,
