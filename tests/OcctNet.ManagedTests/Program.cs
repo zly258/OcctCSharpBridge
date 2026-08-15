@@ -166,6 +166,17 @@ public sealed class ManagedContractTests
             referenceResult.Shape.Value.OwnerId == 1001,
             "Topology-reference result owner regression.");
         Check(referenceResult.UsedOperationHistory && !referenceResult.RuntimeIndexMatched, "Topology-reference result flag regression.");
+        var topologyHistory = new NativeModelTopologyHistorySummary
+        {
+            GeneratedCount = 3,
+            ModifiedCount = 2,
+            Removed = 1
+        }.ToManaged();
+        Check(
+            topologyHistory == new OcctTopologyHistorySummary(3, 2, true),
+            "Topology-history summary mapping regression.");
+
+
 
         var orientedBounds = new OcctOrientedBounds
         {
@@ -208,6 +219,14 @@ public sealed class ManagedContractTests
         var exception = new OcctException("managed message", "Cut", "native message");
         Check(exception.Operation == "Cut", "OcctException operation metadata regression.");
         Check(exception.NativeMessage == "native message", "OcctException native message regression.");
+        var statusException = new OcctException(
+            "invalid argument",
+            OcctStatus.ErrorInvalidArgument,
+            "MakeBox",
+            "dx must be greater than zero");
+        Check(statusException.Status == OcctStatus.ErrorInvalidArgument, "OcctException status metadata regression.");
+
+
 
         var impossibleDirectory = Path.Combine(Path.GetTempPath(), $"occt-missing-{Guid.NewGuid():N}");
         Expect<DirectoryNotFoundException>(

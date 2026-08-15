@@ -1,0 +1,8 @@
+ABI 5 is the only supported native ABI for Bridge 3.
+
+Rules:
+- No ABI4 export baseline is retained.
+- No compatibility adapters or compatibility-only exports are retained.
+- Public native declarations, native definitions, and managed LibraryImport declarations must match exactly.
+- Managed OcctNative interop must use LibraryImport with Cdecl; DllImport is forbidden.
+- New native entry points use semantic names; version/Ex suffixes are forbidden.

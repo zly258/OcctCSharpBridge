@@ -1,43 +1,21 @@
-# Bridge Binary SDK
+﻿# Bridge Binary SDK
 
-`main/dist/win-x64` stores the **last validated Windows x64 Binary SDK actually published from `main`**. It is intentionally tracked and is not ordinary build output.
+`dist/<rid>` contains only validated Binary SDK payloads produced from the current **ABI5-only** source contract.
 
-## Current published payload
+Development branches must not retain ABI4 packages or compatibility payloads. If a development branch has no tracked platform package, generate one locally with the corresponding `build` target; formal package tracking happens only after Release validation.
 
-```text
-Bridge: 2.6.0
-Native ABI: 4
-Native exports / PInvoke: 347 / 347
-Public .NET types: 110
-Viewer / Modeling API: 213 / 134
-OCCT: 7.9.0
-.NET SDK: 10.0.302
-Target: net10.0-windows
-C#: 14.0
-Platform: Windows x64
-Source commit: 960b6b0b0b4cfcbc16af4fb91bf57b8ec146446f
-```
-
-The current **source** contract in `../bridge-contract.json` is already **Bridge 2.7.0 / ABI 4 / 349 / 349 / 117 / Viewer 215 / Modeling 134**. Those source changes have not yet been republished into the tracked DLL payload.
-
-Do not manually edit the Binary SDK JSON or replace individual DLLs. Publish the current source on the normal Windows/MSVC + OCCT 7.9 workstation:
+Windows x64:
 
 ```powershell
-.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
+.\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-`publish.ps1` generates the bilingual API reference, builds Release, validates contract/manifest/SHA-256, commits the new `dist/win-x64`, and pushes `main`.
+Linux x64:
 
-## Demo consumption
-
-`demo/dist` is ignored. Demo users copy whichever SDK is actually published on `main`:
-
-```powershell
-.\sync.ps1
+```bash
+./build.sh dist Release
 ```
 
-`sync.ps1` prints the synchronized contract so a version lag cannot be hidden.
+A valid package must contain a package `bridge-contract.json` that still declares ABI 5 only, plus a `bridge-manifest.json` whose source commit and SHA-256 entries match the produced files.
 
-## License
-
-Non-commercial use is free under the PolyForm Noncommercial License 1.0.0, subject to its terms. Commercial use requires separate authorization from the author; see `../COMMERCIAL.md`.
+Do not copy an older ABI payload forward and do not manually edit package metadata to make an old Binary SDK appear current.

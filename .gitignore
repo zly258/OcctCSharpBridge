@@ -50,11 +50,12 @@ Makefile
 *.so
 *.dylib
 
-# dist/win-x64 is a versioned, validated Bridge Binary SDK and is intentionally tracked.
+# Validated platform Binary SDK payloads under dist/<rid> may be tracked after Release validation.
 !dist/
 !dist/**
 /dist/.win-x64-staging/
 /dist/.win-x64-backup/
+/dist/.linux-x64-staging/
 
 # CAD test and generated files
 *.brep

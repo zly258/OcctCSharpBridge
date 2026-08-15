@@ -34,63 +34,92 @@ try { $contract = Get-Content $contractPath -Raw -Encoding UTF8 | ConvertFrom-Js
 catch { throw "bridge-contract.json is not valid JSON: $($_.Exception.Message)" }
 
 $expectedVersion = [string]$contract.bridgeVersion
-$expectedAbiVersion = [int]$contract.nativeAbiVersion
+$expectedAbiVersion = [int]$contract.nativeAbi.current
+$expectedMinimumAbiVersion = [int]$contract.nativeAbi.minimumSupported
 $expectedOcctVersion = [string]$contract.occtVersion
+$expectedPlatform = [string]$contract.platform
+$supportedPlatforms = @($contract.supportedPlatforms | ForEach-Object { [string]$_ })
 $expectedCmakeVersion = [string]$contract.cmakeMinimumVersion
 $expectedAuthor = [string]$contract.author
 $expectedTargetFramework = [string]$contract.dotnet.targetFramework
+$expectedDesktopTargetFramework = [string]$contract.dotnet.desktopTargetFramework
 $expectedSdkVersion = [string]$contract.dotnet.sdkVersion
 $expectedLanguageVersion = [string]$contract.dotnet.languageVersion
-$expectedNativeCount = [int]$contract.api.nativeExports
-$expectedManagedCount = [int]$contract.api.managedPInvokes
-$expectedPublicTypeCount = [int]$contract.api.publicNetTypes
-$expectedViewerCount = [int]$contract.api.viewer
-$expectedModelingCount = [int]$contract.api.modeling
 
 foreach ($entry in ([ordered]@{
     bridgeVersion = $expectedVersion
     occtVersion = $expectedOcctVersion
+    platform = $expectedPlatform
     cmakeMinimumVersion = $expectedCmakeVersion
     author = $expectedAuthor
     targetFramework = $expectedTargetFramework
+    desktopTargetFramework = $expectedDesktopTargetFramework
     sdkVersion = $expectedSdkVersion
     languageVersion = $expectedLanguageVersion
 }).GetEnumerator()) {
     if ([string]::IsNullOrWhiteSpace([string]$entry.Value)) { throw "Bridge contract value is missing: $($entry.Key)" }
 }
-foreach ($entry in ([ordered]@{
-    nativeAbiVersion = $expectedAbiVersion
-    nativeExports = $expectedNativeCount
-    managedPInvokes = $expectedManagedCount
-    publicNetTypes = $expectedPublicTypeCount
-    viewer = $expectedViewerCount
-    modeling = $expectedModelingCount
-}).GetEnumerator()) {
-    if ([int]$entry.Value -le 0) { throw "Bridge contract numeric value must be positive: $($entry.Key)" }
-}
-if (($expectedViewerCount + $expectedModelingCount) -ne $expectedNativeCount) { throw "Viewer + Modeling API counts must equal nativeExports." }
-if ($expectedNativeCount -ne $expectedManagedCount) { throw "Native export and managed P/Invoke counts must stay equal." }
-$contractSdk = Convert-ToSdkVersion $expectedSdkVersion "bridge-contract.json"
 
-$nativeEngine = Read-Text "src/OcctNative/OcctEngine.cpp"
+if ([int]$contract.schemaVersion -ne 3) { throw "ABI5-only Bridge 3 contract must use schemaVersion 3." }
+if ($expectedAbiVersion -ne 5 -or $expectedMinimumAbiVersion -ne 5) {
+    throw "Bridge 3 must declare ABI 5 as both current and minimum supported ABI."
+}
+if ([string]$contract.api.policy -ne "abi5-only") {
+    throw "bridge-contract.json api.policy must be 'abi5-only'."
+}
+
+$contractText = [System.IO.File]::ReadAllText($contractPath)
+foreach ($retired in @(
+    '"legacy"',
+    '"compatibility"',
+    'legacyAbi4Exports',
+    'compatibilityExtensions',
+    'compatibilityExtensionNames',
+    'plannedRemoval'
+)) {
+    if ($contractText.Contains($retired)) {
+        throw "Retired ABI compatibility metadata must not be present: $retired"
+    }
+}
+
+if ($expectedPlatform -ne "cross-platform-x64") {
+    throw "Source bridge contract platform must be cross-platform-x64; found '$expectedPlatform'."
+}
+$requiredPlatforms = @("windows-x64", "linux-x64")
+if ($supportedPlatforms.Count -ne $requiredPlatforms.Count) {
+    throw "Bridge contract supportedPlatforms must contain exactly windows-x64 and linux-x64."
+}
+foreach ($platform in $requiredPlatforms) {
+    if ($platform -notin $supportedPlatforms) { throw "Bridge contract supportedPlatforms is missing '$platform'." }
+}
+if (@($supportedPlatforms | Group-Object | Where-Object Count -gt 1).Count -gt 0) {
+    throw "Bridge contract supportedPlatforms must not contain duplicates."
+}
+
+[void](Convert-ToSdkVersion $expectedSdkVersion "bridge-contract.json")
+$nativeEngine = Read-Text "src/OcctNative/core/OcctEngine.cpp"
 if (-not $nativeEngine.Contains("return `"$expectedVersion`";")) { throw "Native bridge version differs from bridge-contract.json." }
 if (-not $nativeEngine.Contains("return $expectedAbiVersion;")) { throw "Native ABI version differs from bridge-contract.json." }
-$bridgeInfo = Read-Text "src/OcctNet/OcctBridgeInfo.cs"
+$bridgeInfo = Read-Text "src/OcctNet/Core/OcctBridgeInfo.cs"
 if (-not $bridgeInfo.Contains("ExpectedAbiVersion = $expectedAbiVersion")) { throw "Managed ABI expectation differs from bridge-contract.json." }
 if (-not $bridgeInfo.Contains("ManagedVersion = `"$expectedVersion`"")) { throw "Managed bridge version differs from bridge-contract.json." }
 
-$projectFiles = @(
-    "src/OcctNet/OcctNet.csproj",
-    "src/OcctNet.WinForms/OcctNet.WinForms.csproj",
-    "src/OcctNet.Wpf/OcctNet.Wpf.csproj",
-    "tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj",
-    "tests/OcctNet.Smoke/OcctNet.Smoke.csproj"
-)
-foreach ($relativePath in $projectFiles) {
+$projectFiles = [ordered]@{
+    "src/OcctNet/OcctNet.csproj" = $expectedTargetFramework
+    "src/OcctNet.Avalonia/OcctNet.Avalonia.csproj" = $expectedTargetFramework
+    "tests/OcctNet.AvaloniaSmoke/OcctNet.AvaloniaSmoke.csproj" = $expectedTargetFramework
+    "tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj" = $expectedTargetFramework
+    "tests/OcctNet.Smoke/OcctNet.Smoke.csproj" = $expectedTargetFramework
+    "src/OcctNet.WinForms/OcctNet.WinForms.csproj" = $expectedDesktopTargetFramework
+    "src/OcctNet.Wpf/OcctNet.Wpf.csproj" = $expectedDesktopTargetFramework
+}
+foreach ($entry in $projectFiles.GetEnumerator()) {
+    $relativePath = [string]$entry.Key
+    $expectedProjectFramework = [string]$entry.Value
     [xml]$project = Read-Text $relativePath
     $targetFramework = Get-ProjectProperty $project "TargetFramework"
     $platformTarget = Get-ProjectProperty $project "PlatformTarget"
-    if ($targetFramework -ne $expectedTargetFramework) { throw "$relativePath target framework is '$targetFramework'; expected '$expectedTargetFramework'." }
+    if ($targetFramework -ne $expectedProjectFramework) { throw "$relativePath target framework is '$targetFramework'; expected '$expectedProjectFramework'." }
     if ($platformTarget -ne "x64") { throw "$relativePath PlatformTarget is '$platformTarget'; expected 'x64'." }
 }
 
@@ -98,21 +127,23 @@ $globalJsonPath = Join-Path $RepositoryRoot "global.json"
 try { $globalJson = Get-Content $globalJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json }
 catch { throw "global.json is not valid JSON: $($_.Exception.Message)" }
 $globalSdkText = [string]$globalJson.sdk.version
-$globalSdk = Convert-ToSdkVersion $globalSdkText "global.json"
-if ($globalSdk.Major -ne $contractSdk.Major) {
-    throw "global.json must select .NET SDK major $($contractSdk.Major); found $globalSdkText."
+[void](Convert-ToSdkVersion $globalSdkText "global.json")
+if ($globalSdkText -ne $expectedSdkVersion) {
+    throw "global.json must select .NET SDK $expectedSdkVersion; found $globalSdkText."
 }
-if ([string]$globalJson.sdk.rollForward -ne "latestMinor") {
-    throw "global.json must use rollForward 'latestMinor' so any stable .NET $($contractSdk.Major).x SDK can be used without rolling to the next major."
+if ([string]$globalJson.sdk.rollForward -ne "disable") {
+    throw "global.json must disable SDK roll-forward so the contracted SDK is used exactly."
 }
 if ([bool]$globalJson.sdk.allowPrerelease) { throw "global.json must not allow prerelease SDKs." }
 if ([string]$globalJson.test.runner -ne "Microsoft.Testing.Platform") { throw "global.json must select Microsoft.Testing.Platform for .NET 10 tests." }
 
 [xml]$directoryProps = Read-Text "Directory.Build.props"
 $languageVersion = Get-ProjectProperty $directoryProps "LangVersion"
+$packageVersion = Get-ProjectProperty $directoryProps "Version"
 $author = Get-ProjectProperty $directoryProps "Authors"
 $company = Get-ProjectProperty $directoryProps "Company"
 if ($languageVersion -ne $expectedLanguageVersion) { throw "Directory.Build.props LangVersion differs from bridge-contract.json." }
+if ($packageVersion -ne $expectedVersion) { throw "Directory.Build.props Version differs from bridge-contract.json." }
 if ($author -ne $expectedAuthor -or $company -ne $expectedAuthor) { throw "Directory.Build.props Authors/Company must match bridge-contract.json author '$expectedAuthor'." }
 
 $nativeCmake = Read-Text "src/OcctNative/CMakeLists.txt"
@@ -127,20 +158,11 @@ foreach ($token in @(
     if (-not $nativeCmake.Contains($token)) { throw "Native CMake version contract is missing: $token" }
 }
 
-$contractText = [System.IO.File]::ReadAllText($contractPath)
-if ($contractText.Contains("compatibilityPublicNetTypes")) { throw "Compatibility API accounting must not be reintroduced into the new library contract." }
-
-Write-Host ("[version] Bridge {0}, ABI {1}, OCCT {2}, author {3}, SDK major {4} (reference {5}), target {6}, C# {7}, API {8}/{9}, public types {10}, viewer/modeling {11}/{12}." -f
+Write-Host ("[version] Bridge {0}, ABI {1} only, OCCT {2}, platform {3}, SDK {4}, target {5}, C# {6}." -f
     $expectedVersion,
     $expectedAbiVersion,
     $expectedOcctVersion,
-    $expectedAuthor,
-    $contractSdk.Major,
+    $expectedPlatform,
     $expectedSdkVersion,
     $expectedTargetFramework,
-    $expectedLanguageVersion,
-    $expectedNativeCount,
-    $expectedManagedCount,
-    $expectedPublicTypeCount,
-    $expectedViewerCount,
-    $expectedModelingCount) -ForegroundColor Green
+    $expectedLanguageVersion) -ForegroundColor Green

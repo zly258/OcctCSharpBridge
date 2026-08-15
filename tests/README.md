@@ -1,40 +1,40 @@
 # Tests and Validation
 
-`tests` 只保留三类验证：**少量仓库级静态契约、Managed 回归测试、真实 Native Smoke**。仓库不依赖 GitHub Actions；验证由本地 `build.ps1`、`.NET 10.0.302`、MSVC 和真实 OCCT 7.9.0 环境完成。
+`tests` 保留三类验证：**少量仓库级静态契约、Managed 回归测试、真实 Native Smoke**。Bridge 3 仅支持 ABI 5，不保留 ABI 4 Consumer、兼容测试或兼容入口。验证由本地 `build.ps1` / `build.sh`、精确的 .NET SDK 10.0.303 和真实 OCCT 7.9.0 环境完成。
 
 ## 1. 静态契约
 
-当前只保留 5 个脚本：
+当前保留 6 个 Windows/仓库级检查脚本，Linux 另有对应平台契约检查：
 
 | Script | Responsibility |
-|---|---|
-| `check-version-contract.ps1` | `bridge-contract.json` 与 Native/Managed/.NET/CMake 的版本、平台和数量契约，同时验证 .NET 10 MTP Runner |
-| `check-architecture-boundaries.ps1` | Core/UI 依赖方向、`main`/应用层边界、禁止兼容层和 CAD Framework 下沉 |
-| `check-bulk-abi.ps1` | 高数量 Modeling 集合与 Selection Hit 必须保持 Bulk ABI，禁止恢复 N+1 indexed ABI |
-| `check-native-build-structure.ps1` | CMake Native 源清单、OCCT 7.9 数据交换 Toolkit，以及 STEPCAF/XDE 结构化 STEP 依赖完整性 |
-| `check-api-surface.ps1` | Native declaration/definition/PInvoke 对等、CallingConvention/ExactSpelling、API 数量 |
+| --- | --- |
+| `check-version-contract.ps1` | 校验 `bridge-contract.json` 与 Native/Managed/.NET/CMake 的版本、ABI、平台和 SDK 契约 |
+| `check-architecture-boundaries.ps1` | 校验 Core/UI 依赖方向、Managed/Native 领域目录、Interop 归属，以及禁止应用层和兼容层回流 |
+| `check-abi5-contract.ps1` | 保证 ABI 5 是唯一受支持 Native ABI，拒绝 pre-ABI5 文件、元数据、Handle 与 Binary SDK Manifest 残留 |
+| `check-bulk-abi.ps1` | 高数量 Modeling 集合与 Selection Hit 必须保持 Snapshot/Buffer ABI，禁止恢复 N+1 indexed ABI |
+| `check-native-build-structure.ps1` | 校验 CMake Native 源清单、领域边界、平台隔离和 OCCT 7.9 数据交换 Toolkit |
+| `check-api-surface.ps1` | 校验 Native declaration/definition 与 Core `LibraryImport + Cdecl` 一一对应；UI Adapter 可调用 Win32/X11 等平台 API，但不得自行声明 `occt_*` Bridge ABI 入口 |
+| `check-linux-contract.sh` | Linux x64 的 ABI5、TFM、构建、发布与 Manifest 平台契约 |
 
-执行：
+Windows 静态验证：
 
 ```powershell
 .\build.ps1 validate Release
 ```
 
-静态脚本不检查具体方法必须位于哪个 partial 文件、某段实现源码必须逐字存在、README 固定文案或人为源文件大小限制。这些内容由编译、测试和代码评审覆盖。
+Linux：
+
+```bash
+./build.sh validate Release
+```
+
+静态脚本只维护长期仓库不变量。具体方法内部实现、文件长度、README 固定文案等不作为契约；这些由编译、Managed Test、Native Smoke 和代码评审覆盖。`OcctNet` Core 的 Bridge C ABI 绑定必须全部使用 source-generated `LibraryImport`；WPF/Avalonia 等宿主自身所需的操作系统 P/Invoke 不属于 Bridge ABI，但 UI Adapter 不能绕过 Core 直接绑定 `occt_*`。
 
 ## 2. Managed 回归
 
-`OcctNet.ManagedTests` 使用 `MSTest.Sdk`。由于仓库固定 .NET 10，根目录 `global.json` 明确设置：
+`OcctNet.ManagedTests` 使用 `MSTest.Sdk`，根目录 `global.json` 固定 .NET SDK 10.0.303 并选择 Microsoft Testing Platform。
 
-```json
-{
-  "test": {
-    "runner": "Microsoft.Testing.Platform"
-  }
-}
-```
-
-因此 `dotnet test` 走 .NET 10 的 Microsoft Testing Platform，而不是旧 VSTest Target。测试不加载 OCCT，覆盖：
+测试不加载 OCCT，主要覆盖：
 
 - Value Type 与 Guard；
 - Owner-aware Handle 语义；
@@ -49,48 +49,57 @@
 .\build.ps1 test Release
 ```
 
-或：
+或直接调用项目：
 
 ```powershell
 dotnet test .\tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj -c Release -p:Platform=x64
 ```
 
-每个 TestMethod 独立报告失败，不使用顶层 EXE Runner 或 `[ModuleInitializer]` 隐式执行。
+日常仓库验证优先使用 `build.ps1`，因为它会先锁定契约要求的 .NET SDK 并运行静态 Contract Checks。
 
 ## 3. Native Smoke
 
-`OcctNet.Smoke` 使用真实 `OcctNative.dll` 和 OCCT 7.9.0，验证只有 Native 执行才能确认的行为：
+`OcctNet.Smoke` 使用当前构建的 ABI5 `OcctNative.dll` / `libOcctNative.so` 和 OCCT 7.9.0，验证只有真实 Native 执行才能确认的行为：
 
-- DLL 加载与 ABI Compatibility；
-- Primitive/Boolean/Feature；
-- Geometry/Topology；
-- Selection/Viewer 关键路径；
+- Native Bridge 加载、ABI 5 与精确 BridgeVersion 配对；
+- Primitive / Boolean / Feature；
+- Geometry / Topology；
+- Selection / Viewer 关键路径；
 - Mesh；
-- STEP/IGES/BREP/STL；
-- Inertia、Structured Intersection、Topology Reference 等关键能力。
+- STEP / IGES / BREP / STL；
+- Inertia、Structured Intersection、Topology Reference 等关键能力；
+- Shape / Mesh / Algorithm owned resource 生命周期，包括源 Registry entry 或 Modeling Session 释放后的独立可用性。
 
-运行前，`build.ps1` 只把当前构建的 `OcctNative.dll` 放到 Smoke 输出目录，并给 Smoke 子进程显式设置解析后的 `OCCT_ROOT`。`OcctRuntime` 会在首次加载 Bridge 前把 OCCT `win64/vc14/bin` 与 `3rdparty-vc14-64` 下的运行时目录注册到 Windows DLL 搜索路径，因此测试不依赖机器 PATH 中偶然存在的 OCCT DLL，也不需要把整套 Runtime 平铺复制到测试目录。
-
-执行：
+Windows：
 
 ```powershell
 .\build.ps1 smoke Release
 ```
 
-其它 OCCT 路径：
+指定其它 OCCT 路径：
 
 ```powershell
 .\build.ps1 smoke Release -OcctRoot "E:\SDK\occt-7.9.0"
 ```
 
-如果仍出现 Win32 126，应检查 `OCCT_ROOT`、`TKernel.dll` 和第三方 Runtime 目录结构，定位实际缺失依赖。
+Linux：
+
+```bash
+./build.sh smoke Release
+```
+
+Avalonia Viewer 的 Linux Smoke 需要 X11/XWayland Display：
+
+```bash
+./build.sh avalonia-smoke Release
+```
 
 ## 4. 构建缓存与清理
 
 默认构建保留 `bin/obj`，交给 MSBuild/CMake 做增量判断。只有确实需要全量重建时执行：
 
 ```powershell
-.\build.ps1 clean Release
+.\build.ps1 clean
 ```
 
 不要在日常构建前手工删除每个项目的 `bin/obj`。
@@ -105,20 +114,26 @@ dotnet test .\tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj -c Release 
 .\build.ps1 test Release
 ```
 
-涉及 Native/ABI/OCCT：
+涉及 Native / ABI / OCCT：
 
 ```powershell
 .\build.ps1 all Release
-.\build.ps1 smoke Release
 ```
+
+Windows 与 Linux 的 `all` 都覆盖静态契约检查、Native 构建、Managed 构建、Managed Tests 和 Native Smoke。`dist` 保持独立，因为它会生成平台 Binary SDK；默认 `all` 不修改 `dist`。
+
+完整 target、环境要求、SDK 解析和发布说明见：
+
+- `docs/zh-CN/08_构建测试与发布.md`
+- `docs/en-US/08_Build-Test-and-Publish.md`
 
 ## 6. 新增检查原则
 
-新增 PowerShell Contract Check 前，先确认：
+新增静态 Contract Check 前，先确认：
 
-1. 它是仓库级长期不变量，不是当前实现写法；
+1. 它是仓库级长期不变量，而不是当前实现细节；
 2. 编译器、Managed Test 或 Native Smoke 无法更可靠地覆盖；
-3. 正常重命名、移动内部方法或文档整理不会触发误报；
+3. 正常重命名、移动内部实现或文档整理不会触发误报；
 4. 与已有脚本没有重复职责。
 
-不满足时，不新增静态脚本。
+不满足时，优先补充现有检查、测试或 Smoke，不新增重复脚本。
