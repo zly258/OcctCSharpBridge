@@ -45,11 +45,13 @@ public sealed partial class OcctModelingSession
         var holes = innerWires?.ToArray() ?? Array.Empty<OcctModelShape>();
         foreach (var hole in holes) EnsureShape(hole);
         var holeIds = holes.Select(hole => hole.Id).ToArray();
-        return CheckShape(ModelNativeMethods.occt_model_make_face_with_holes(
+        var status = ModelNativeMethods.occt_model_make_face_with_holes(
             _handle,
             outerWire.Id,
             holeIds,
-            holeIds.Length));
+            holeIds.Length,
+            out var result);
+        return CheckShape(status, result);
     }
 
     public OcctModelShape TrimEdge(
@@ -62,11 +64,14 @@ public sealed partial class OcctModelingSession
         OcctGuard.Finite(lastParameter, nameof(lastParameter));
         if (firstParameter >= lastParameter)
             throw new ArgumentException("firstParameter must be less than lastParameter.", nameof(firstParameter));
-        return CheckShape(ModelNativeMethods.occt_model_trim_edge(
+
+        var status = ModelNativeMethods.occt_model_trim_edge(
             _handle,
             edge.Id,
             firstParameter,
-            lastParameter));
+            lastParameter,
+            out var result);
+        return CheckShape(status, result);
     }
 
     public OcctModelShape OffsetWire(
@@ -82,12 +87,15 @@ public sealed partial class OcctModelingSession
             throw new ArgumentOutOfRangeException(nameof(offset), offset, "Offset must be non-zero.");
         OcctGuard.Finite(altitude, nameof(altitude));
         if (!Enum.IsDefined(joinType)) throw new ArgumentOutOfRangeException(nameof(joinType));
-        return CheckShape(ModelNativeMethods.occt_model_offset_wire(
+
+        var status = ModelNativeMethods.occt_model_offset_wire(
             _handle,
             wire.Id,
             offset,
             altitude,
             (int)joinType,
-            openResult ? 1 : 0));
+            openResult ? 1 : 0,
+            out var result);
+        return CheckShape(status, result);
     }
 }
