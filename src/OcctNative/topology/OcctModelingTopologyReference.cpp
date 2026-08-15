@@ -339,44 +339,51 @@ namespace
 
 extern "C"
 {
-    int occt_model_create_topology_reference(
-        OcctModelHandle handle,
+    OcctStatus occt_model_create_topology_reference(
+        OcctModelingSessionHandle handle,
         OcctObjectId rootShapeId,
         OcctObjectId subshapeId,
         OcctModelTopologyReference* result)
     {
-        ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = {};
+        return executeStatus(model, [&]
         {
             buildReference(model->requireShape(rootShapeId), model->requireShape(subshapeId), *result);
         });
     }
 
-    int occt_model_resolve_topology_reference(
-        OcctModelHandle handle,
+    OcctStatus occt_model_resolve_topology_reference(
+        OcctModelingSessionHandle handle,
         OcctObjectId rootShapeId,
         const OcctModelTopologyReference* reference,
         double matchingTolerance,
         OcctModelTopologyReferenceResult* result)
     {
-        ModelSession* model = modelOf(handle);
-        if (reference == nullptr || result == nullptr) return 0;
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (reference == nullptr || result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = {};
+        return executeStatus(model, [&]
         {
             if (!validateReference(*reference, matchingTolerance))
             {
                 *result = {OcctModelTopologyReference_Invalid, 0, 0.0, 0, 0, 0};
                 return;
             }
+
             const TopoDS_Shape& root = model->requireShape(rootShapeId);
             const auto candidates = rootCandidates(root, toShapeEnum(reference->shapeType));
             resolveCandidates(model, root, *reference, matchingTolerance, candidates, false, *result);
         });
     }
 
-    int occt_model_resolve_topology_reference_with_history(
-        OcctModelHandle handle,
+    OcctStatus occt_model_resolve_topology_reference_with_history(
+        OcctModelingSessionHandle handle,
         OcctObjectId rootShapeId,
         OcctOperationId operationId,
         OcctObjectId sourceShapeId,
@@ -384,9 +391,12 @@ extern "C"
         double matchingTolerance,
         OcctModelTopologyReferenceResult* result)
     {
-        ModelSession* model = modelOf(handle);
-        if (reference == nullptr || result == nullptr) return 0;
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (reference == nullptr || result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = {};
+        return executeStatus(model, [&]
         {
             if (!validateReference(*reference, matchingTolerance))
             {
