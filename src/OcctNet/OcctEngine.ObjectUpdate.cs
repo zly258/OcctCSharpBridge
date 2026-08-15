@@ -12,7 +12,7 @@ public sealed partial class OcctEngine
         EnsureShape(viewerShape);
         if (!sourceSession.Exists(sourceShape))
             throw new ArgumentException("Shape does not belong to the supplied modeling session.", nameof(sourceShape));
-        if (!Enum.IsDefined(options))
+        if ((options & ~OcctShapeUpdateOptions.PreserveAll) != 0)
             throw new ArgumentOutOfRangeException(nameof(options));
 
         EnsureInitialized();
