@@ -94,4 +94,17 @@ internal static partial class ViewportNativeMethods
     internal static partial OcctStatus occt_engine_viewport_rendering_update(
         OcctEngineSafeHandle handle,
         in NativeViewportRenderingOptions options);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_viewport_clip_planes_set(
+        OcctEngineSafeHandle handle,
+        IntPtr planes,
+        int count);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_viewport_clip_plane_limit_get(
+        OcctEngineSafeHandle handle,
+        out int limit);
 }
