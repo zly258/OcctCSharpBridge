@@ -56,6 +56,32 @@ public sealed partial class OcctEngine
             appendSelection ? 1 : 0));
     }
 
+    public void SelectAllVisible()
+    {
+        EnsureInitialized();
+        CheckSelectionStatus(SelectionNativeMethods.occt_engine_selection_all_visible(_handle));
+    }
+
+    public void InvertSelection()
+    {
+        EnsureInitialized();
+        CheckSelectionStatus(SelectionNativeMethods.occt_engine_selection_invert(_handle));
+    }
+
+    public void HideSelected()
+    {
+        EnsureInitialized();
+        CheckSelectionStatus(SelectionNativeMethods.occt_engine_selection_hide_selected(_handle));
+    }
+
+    public void SetAutomaticHighlight(bool enabled)
+    {
+        EnsureInitialized();
+        CheckSelectionStatus(SelectionNativeMethods.occt_engine_selection_automatic_highlight_set(
+            _handle,
+            enabled ? 1 : 0));
+    }
+
     public void SetSelectionMode(OcctSelectionMode mode)
     {
         if (!Enum.IsDefined(mode)) throw new ArgumentOutOfRangeException(nameof(mode));
