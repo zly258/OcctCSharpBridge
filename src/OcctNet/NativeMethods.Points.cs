@@ -74,4 +74,11 @@ internal static partial class NativeMethods
         OcctEngineSafeHandle handle,
         long pointId,
         in NativeViewerPointPixmapOptions options);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_points_update(
+        OcctEngineSafeHandle handle,
+        IntPtr updates,
+        int count);
 }
