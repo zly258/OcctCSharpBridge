@@ -44,7 +44,7 @@ internal static partial class ModelNativeMethods
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
-    internal static partial OcctStatus occt_model_shape_exists(
+    internal static partial OcctStatus occt_model_shape_exists_get(
         OcctModelingSafeHandle handle,
         long shapeId,
         out int result);
@@ -57,7 +57,7 @@ internal static partial class ModelNativeMethods
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
-    internal static partial OcctStatus occt_model_clear(OcctModelingSafeHandle handle);
+    internal static partial OcctStatus occt_model_session_clear(OcctModelingSafeHandle handle);
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
