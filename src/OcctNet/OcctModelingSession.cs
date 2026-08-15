@@ -194,6 +194,15 @@ public sealed partial class OcctModelingSession : IDisposable
         return new OcctModelAlgorithmResult(this, native);
     }
 
+    private OcctModelAlgorithmResult CheckAlgorithm(
+        OcctStatus status,
+        NativeModelAlgorithmResult native,
+        [CallerMemberName] string? operation = null)
+    {
+        CheckStatus(status, operation);
+        return CheckAlgorithm(native, operation);
+    }
+
     private void Check(int result, [CallerMemberName] string? operation = null)
     {
         if (result == 0) throw CreateException(operation);
