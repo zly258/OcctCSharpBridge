@@ -1,4 +1,4 @@
-﻿namespace OcctNet;
+namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
@@ -6,28 +6,75 @@ public sealed partial class OcctEngine
     {
         ValidatePath(filePath);
         EnsureInitialized();
-        return CheckShape(NativeMethods.occt_import_file(_handle, Path.GetFullPath(filePath)));
+        var status = ViewerExchangeNativeMethods.occt_engine_exchange_import_file(
+            _handle,
+            Path.GetFullPath(filePath),
+            out var result);
+        if (status != OcctStatus.Ok) throw CreateException();
+        return CheckShape(result);
     }
 
-    public OcctShape ImportStep(string filePath) => ImportSpecific(filePath, NativeMethods.occt_import_step);
-    public OcctShape ImportIges(string filePath) => ImportSpecific(filePath, NativeMethods.occt_import_iges);
-    public OcctShape ImportBrep(string filePath) => ImportSpecific(filePath, NativeMethods.occt_import_brep);
-    public OcctShape ImportStl(string filePath) => ImportSpecific(filePath, NativeMethods.occt_import_stl);
+    public OcctShape ImportStep(string filePath) =>
+        ImportSpecific(filePath, ViewerExchangeNativeMethods.occt_engine_exchange_import_step);
 
-    public void ExportStep(OcctShape shape, string filePath) => ExportShape(shape, filePath, NativeMethods.occt_export_step);
-    public void ExportIges(OcctShape shape, string filePath) => ExportShape(shape, filePath, NativeMethods.occt_export_iges);
-    public void ExportBrep(OcctShape shape, string filePath) => ExportShape(shape, filePath, NativeMethods.occt_export_brep);
+    public OcctShape ImportIges(string filePath) =>
+        ImportSpecific(filePath, ViewerExchangeNativeMethods.occt_engine_exchange_import_iges);
+
+    public OcctShape ImportBrep(string filePath) =>
+        ImportSpecific(filePath, ViewerExchangeNativeMethods.occt_engine_exchange_import_brep);
+
+    public OcctShape ImportStl(string filePath) =>
+        ImportSpecific(filePath, ViewerExchangeNativeMethods.occt_engine_exchange_import_stl);
+
+    public void ExportStep(OcctShape shape, string filePath)
+    {
+        EnsureShape(shape);
+        ValidatePath(filePath);
+        EnsureInitialized();
+        EnsureExchangeSuccess(ViewerExchangeNativeMethods.occt_engine_exchange_export_step(
+            _handle,
+            shape.Id,
+            Path.GetFullPath(filePath)));
+    }
 
     public void ExportAllStep(string filePath)
     {
         ValidatePath(filePath);
-        CheckInitialized(() => NativeMethods.occt_export_all_step(_handle, Path.GetFullPath(filePath)));
+        EnsureInitialized();
+        EnsureExchangeSuccess(ViewerExchangeNativeMethods.occt_engine_exchange_export_all_step(
+            _handle,
+            Path.GetFullPath(filePath)));
+    }
+
+    public void ExportIges(OcctShape shape, string filePath)
+    {
+        EnsureShape(shape);
+        ValidatePath(filePath);
+        EnsureInitialized();
+        EnsureExchangeSuccess(ViewerExchangeNativeMethods.occt_engine_exchange_export_iges(
+            _handle,
+            shape.Id,
+            Path.GetFullPath(filePath)));
     }
 
     public void ExportAllIges(string filePath)
     {
         ValidatePath(filePath);
-        CheckInitialized(() => NativeMethods.occt_export_all_iges(_handle, Path.GetFullPath(filePath)));
+        EnsureInitialized();
+        EnsureExchangeSuccess(ViewerExchangeNativeMethods.occt_engine_exchange_export_all_iges(
+            _handle,
+            Path.GetFullPath(filePath)));
+    }
+
+    public void ExportBrep(OcctShape shape, string filePath)
+    {
+        EnsureShape(shape);
+        ValidatePath(filePath);
+        EnsureInitialized();
+        EnsureExchangeSuccess(ViewerExchangeNativeMethods.occt_engine_exchange_export_brep(
+            _handle,
+            shape.Id,
+            Path.GetFullPath(filePath)));
     }
 
     public void ExportStl(
@@ -41,7 +88,8 @@ public sealed partial class OcctEngine
         ValidatePath(filePath);
         OcctGuard.Positive(linearDeflection, nameof(linearDeflection));
         OcctGuard.Positive(angularDeflection, nameof(angularDeflection));
-        CheckInitialized(() => NativeMethods.occt_export_stl(
+        EnsureInitialized();
+        EnsureExchangeSuccess(ViewerExchangeNativeMethods.occt_engine_exchange_export_stl(
             _handle,
             shape.Id,
             Path.GetFullPath(filePath),
@@ -50,21 +98,24 @@ public sealed partial class OcctEngine
             ascii ? 1 : 0));
     }
 
-    private delegate long ImportCall(OcctEngineSafeHandle handle, string path);
+    private delegate OcctStatus ImportCall(OcctEngineSafeHandle handle, string path, out long result);
 
     private OcctShape ImportSpecific(string filePath, ImportCall call)
     {
         ValidatePath(filePath);
         EnsureInitialized();
-        return CheckShape(call(_handle, Path.GetFullPath(filePath)));
+        var status = call(_handle, Path.GetFullPath(filePath), out var result);
+        if (status != OcctStatus.Ok) throw CreateException();
+        return CheckShape(result);
     }
 
-    private delegate int ExportCall(OcctEngineSafeHandle handle, long shapeId, string path);
-
-    private void ExportShape(OcctShape shape, string filePath, ExportCall call)
+    private void EnsureExchangeSuccess(OcctStatus status)
     {
-        EnsureShape(shape);
-        ValidatePath(filePath);
-        CheckInitialized(() => call(_handle, shape.Id, Path.GetFullPath(filePath)));
+        if (status != OcctStatus.Ok) throw CreateException();
+    }
+
+    private static void ValidatePath(string filePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
     }
 }
