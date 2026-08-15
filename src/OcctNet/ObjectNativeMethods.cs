@@ -46,6 +46,7 @@ internal struct NativeViewerObjectState
     internal uint ApiVersion;
     internal int Visible;
     internal int Selected;
+    internal int Highlighted;
     internal int Selectable;
 }
 
