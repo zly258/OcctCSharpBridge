@@ -25,6 +25,18 @@ Linux x64:
 ./build.sh dist Release
 ```
 
+For a complete non-generating validation, both platforms use `all`:
+
+```powershell
+.\build.ps1 all Release
+```
+
+```bash
+./build.sh all Release
+```
+
+`all` runs static contract checks, Native build, Managed build, Managed regression tests and Native smoke. `docs` and `dist` remain explicit because they generate repository artifacts.
+
 Static validation checks the exact Bridge/.NET/OCCT/ABI contract, architecture boundaries, bulk snapshot/buffer policy, Native source inventory and exact Native/managed API-surface parity. ABI 4 compatibility files, handles, exports, manifests and consumer tests are not part of Bridge 3.
 
 The Windows `managed` target builds:

@@ -1,6 +1,6 @@
 # Tests and Validation
 
-`tests` 保留三类验证：**少量仓库级静态契约、Managed 回归测试、真实 Native Smoke**。Bridge 3 仅支持 ABI 5，不保留 ABI 4 Consumer、兼容测试或兼容入口。验证由本地 `build.ps1` / `build.sh`、.NET 10.0.302 和真实 OCCT 7.9.0 环境完成。
+`tests` 保留三类验证：**少量仓库级静态契约、Managed 回归测试、真实 Native Smoke**。Bridge 3 仅支持 ABI 5，不保留 ABI 4 Consumer、兼容测试或兼容入口。验证由本地 `build.ps1` / `build.sh`、精确的 .NET SDK 10.0.302 和真实 OCCT 7.9.0 环境完成。
 
 ## 1. 静态契约
 
@@ -16,7 +16,7 @@
 | `check-api-surface.ps1` | 校验 Native declaration/definition 与 Managed `LibraryImport` 一一对应，并拒绝重复或遗漏入口 |
 | `check-linux-contract.sh` | Linux x64 的 ABI5、TFM、构建、发布与 Manifest 平台契约 |
 
-执行 Windows 静态验证：
+Windows 静态验证：
 
 ```powershell
 .\build.ps1 validate Release
@@ -32,7 +32,7 @@ Linux：
 
 ## 2. Managed 回归
 
-`OcctNet.ManagedTests` 使用 `MSTest.Sdk`。仓库固定 .NET 10，并由根目录 `global.json` 选择 Microsoft Testing Platform。
+`OcctNet.ManagedTests` 使用 `MSTest.Sdk`，根目录 `global.json` 固定 .NET SDK 10.0.302 并选择 Microsoft Testing Platform。
 
 测试不加载 OCCT，主要覆盖：
 
@@ -103,7 +103,7 @@ Avalonia Viewer 的 Linux Smoke 需要 X11/XWayland Display：
 
 ## 5. 推荐验证顺序
 
-日常 Managed 修改：
+日常纯 Managed 修改可以分步执行：
 
 ```powershell
 .\build.ps1 validate Release
@@ -111,16 +111,13 @@ Avalonia Viewer 的 Linux Smoke 需要 X11/XWayland Display：
 .\build.ps1 test Release
 ```
 
-涉及 Native / ABI / OCCT：
+涉及 Native / ABI / OCCT，推荐直接执行完整链：
 
 ```powershell
-.\build.ps1 validate Release
-.\build.ps1 native Release
-.\build.ps1 managed Release
-.\build.ps1 smoke Release
+.\build.ps1 all Release
 ```
 
-Linux 的 `./build.sh all Release` 会执行 Native、Managed、Managed Tests 和 Native Smoke。
+Windows 与 Linux 的 `all` 现在语义一致，均执行 Static Contract Checks、Native、Managed、Managed Tests 和 Native Smoke。`docs` 与 `dist` 会生成或修改仓库产物，因此保持独立 target，不包含在 `all` 中。
 
 ## 6. 新增检查原则
 
