@@ -11,6 +11,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
+#include <stdexcept>
 
 using namespace OcctModelingInternal;
 
@@ -68,17 +70,19 @@ namespace
 
 extern "C"
 {
-    int occt_model_intersect_edges(
-        OcctModelHandle handle,
+    OcctStatus occt_model_intersect_edges(
+        OcctModelingSessionHandle handle,
         OcctObjectId firstEdgeId,
         OcctObjectId secondEdgeId,
-        double tolerance)
+        double tolerance,
+        int* resultCount)
     {
-        ModelSession* model = modelOf(handle);
-        if (model == nullptr) return -1;
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (resultCount == nullptr) return OcctStatus_ErrorInvalidArgument;
 
-        int count = 0;
-        if (execute(model, [&]
+        *resultCount = 0;
+        return executeStatus(model, [&]
         {
             if (!std::isfinite(tolerance) || tolerance < 0.0)
                 throw std::invalid_argument("Intersection tolerance must be finite and non-negative.");
@@ -87,16 +91,13 @@ extern "C"
             const TopoDS_Edge secondEdge = requireEdge(model, secondEdgeId);
             const BRepAdaptor_Curve firstCurve(firstEdge);
 
+            model->edgeIntersections.clear();
+
             IntTools_EdgeEdge intersector(firstEdge, secondEdge);
             intersector.SetFuzzyValue(tolerance);
             intersector.Perform();
-
-            model->edgeIntersections.clear();
             if (!intersector.IsDone())
-            {
-                count = 0;
                 return;
-            }
 
             const auto& commonParts = intersector.CommonParts();
             for (int partIndex = 1; partIndex <= commonParts.Length(); ++partIndex)
@@ -129,44 +130,41 @@ extern "C"
                     return left.secondParameterStart < right.secondParameterStart;
                 });
 
-            count = static_cast<int>(model->edgeIntersections.size());
-        }) == 0)
-            return -1;
-
-        return count;
+            if (model->edgeIntersections.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+                throw std::length_error("Edge-intersection result exceeds the ABI buffer size limit.");
+            *resultCount = static_cast<int>(model->edgeIntersections.size());
+        });
     }
 
-    int occt_model_edge_intersections_copy(
-        OcctModelHandle handle,
+    OcctStatus occt_model_edge_intersections_snapshot_get(
+        OcctModelingSessionHandle handle,
         OcctModelEdgeIntersection* results,
-        int capacity)
+        int capacity,
+        int* required)
     {
-        ModelSession* model = modelOf(handle);
-        if (model == nullptr) return -1;
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (capacity < 0 || required == nullptr) return OcctStatus_ErrorInvalidArgument;
 
-        int copied = 0;
-        if (execute(model, [&]
+        *required = 0;
+        return executeStatus(model, [&]
         {
-            if (capacity < 0)
-                throw std::invalid_argument("Intersection buffer capacity must not be negative.");
+            if (model->edgeIntersections.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+                throw std::length_error("Edge-intersection result exceeds the ABI buffer size limit.");
 
             const int count = static_cast<int>(model->edgeIntersections.size());
-            if (results == nullptr && capacity == 0)
+            *required = count;
+            if (results == nullptr)
             {
-                copied = count;
+                if (capacity != 0)
+                    throw std::invalid_argument("Null intersection buffer requires zero capacity.");
                 return;
             }
             if (capacity < count)
                 throw std::invalid_argument("Intersection buffer capacity is smaller than the result count.");
-            if (count > 0 && results == nullptr)
-                throw std::invalid_argument("Intersection result buffer is null.");
 
             for (int index = 0; index < count; ++index)
                 results[index] = model->edgeIntersections[static_cast<std::size_t>(index)];
-            copied = count;
-        }) == 0)
-            return -1;
-
-        return copied;
+        });
     }
 }
