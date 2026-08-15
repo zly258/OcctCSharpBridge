@@ -71,9 +71,9 @@ for retired in \
     if tracked_path_exists "${retired}"; then fail "Retired ABI4 artifact must not be tracked: ${retired}"; fi
 done
 
-for token in 'OcctModelHandle' 'modelOf('; do
+for token in 'OcctHandle' 'OcctModelHandle' 'modelOf('; do
     if tracked_source_contains src/OcctNative "${token}"; then
-        fail "Retired pre-ABI5 modeling implementation token remains in tracked Native source: ${token}"
+        fail "Retired pre-ABI5 native implementation token remains in tracked Native source: ${token}"
     fi
 done
 
