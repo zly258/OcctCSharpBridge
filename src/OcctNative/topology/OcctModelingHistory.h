@@ -4,27 +4,30 @@
 
 extern "C"
 {
-    OCCTBRIDGE_API int occt_model_history_generated_copy(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_history_generated_snapshot_get(
+        OcctModelingSessionHandle handle,
         OcctOperationId operationId,
         OcctObjectId sourceShapeId,
         OcctObjectId* results,
-        int capacity);
+        int capacity,
+        int* required);
 
-    OCCTBRIDGE_API int occt_model_history_modified_copy(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_history_modified_snapshot_get(
+        OcctModelingSessionHandle handle,
         OcctOperationId operationId,
         OcctObjectId sourceShapeId,
         OcctObjectId* results,
-        int capacity);
+        int capacity,
+        int* required);
 
-    OCCTBRIDGE_API int occt_model_history_is_removed(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_history_is_removed_get(
+        OcctModelingSessionHandle handle,
         OcctOperationId operationId,
-        OcctObjectId sourceShapeId);
+        OcctObjectId sourceShapeId,
+        OcctBool* result);
 
     OCCTBRIDGE_API OcctStatus occt_model_history_summary(
-        OcctModelHandle handle,
+        OcctModelingSessionHandle handle,
         OcctOperationId operationId,
         OcctObjectId sourceShapeId,
         OcctModelTopologyHistorySummary* result);
