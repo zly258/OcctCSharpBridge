@@ -100,7 +100,7 @@ $contractSdk = Convert-ToSdkVersion $expectedSdkVersion "bridge-contract.json"
 $nativeEngine = Read-Text "src/OcctNative/core/OcctEngine.cpp"
 if (-not $nativeEngine.Contains("return `"$expectedVersion`";")) { throw "Native bridge version differs from bridge-contract.json." }
 if (-not $nativeEngine.Contains("return $expectedAbiVersion;")) { throw "Native ABI version differs from bridge-contract.json." }
-$bridgeInfo = Read-Text "src/OcctNet/OcctBridgeInfo.cs"
+$bridgeInfo = Read-Text "src/OcctNet/Core/OcctBridgeInfo.cs"
 if (-not $bridgeInfo.Contains("ExpectedAbiVersion = $expectedAbiVersion")) { throw "Managed ABI expectation differs from bridge-contract.json." }
 if (-not $bridgeInfo.Contains("ManagedVersion = `"$expectedVersion`"")) { throw "Managed bridge version differs from bridge-contract.json." }
 
