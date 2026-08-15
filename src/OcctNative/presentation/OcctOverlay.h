@@ -2,7 +2,7 @@
 
 #include "OcctNative.h"
 
-constexpr int OcctOverlayObjectKind = 5;
+constexpr int OcctOverlayObjectKind = OcctObject_Overlay;
 
 extern "C"
 {
