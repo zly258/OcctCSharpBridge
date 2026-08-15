@@ -1,5 +1,3 @@
-﻿using System.Runtime.InteropServices;
-
 namespace OcctNet;
 
 public enum OcctManipulatorMode
@@ -51,27 +49,3 @@ public readonly record struct OcctManipulatorState(
     OcctVector3d Normal,
     OcctVector3d XDirection,
     double Size);
-
-[StructLayout(LayoutKind.Sequential)]
-internal struct NativeOcctManipulatorAttachOptions
-{
-    internal int AdjustPosition;
-    internal int AdjustSize;
-    internal int EnableModes;
-}
-
-[StructLayout(LayoutKind.Sequential)]
-internal struct NativeOcctManipulatorState
-{
-    internal int Attached;
-    internal int ActiveMode;
-    internal int ActiveAxisIndex;
-    internal int HasActiveTransformation;
-    internal int ModeActivationOnDetection;
-    internal int ZoomPersistence;
-    internal int SkinMode;
-    internal OcctPoint3d Origin;
-    internal OcctVector3d Normal;
-    internal OcctVector3d XDirection;
-    internal double Size;
-}
