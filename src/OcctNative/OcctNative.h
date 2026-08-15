@@ -68,7 +68,10 @@ extern "C"
         OcctObject_Unknown = 0,
         OcctObject_Shape = 1,
         OcctObject_Text = 2,
-        OcctObject_Dimension = 3
+        OcctObject_Dimension = 3,
+        OcctObject_Point = 4,
+        OcctObject_Overlay = 5,
+        OcctObject_Manipulator = 6
     };
 
     enum OcctShapeType
