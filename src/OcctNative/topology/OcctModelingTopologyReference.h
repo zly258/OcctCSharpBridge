@@ -40,21 +40,21 @@ extern "C"
         int runtimeIndexMatched;
     };
 
-    OCCTBRIDGE_API int occt_model_create_topology_reference(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_create_topology_reference(
+        OcctModelingSessionHandle handle,
         OcctObjectId rootShapeId,
         OcctObjectId subshapeId,
         OcctModelTopologyReference* result);
 
-    OCCTBRIDGE_API int occt_model_resolve_topology_reference(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_resolve_topology_reference(
+        OcctModelingSessionHandle handle,
         OcctObjectId rootShapeId,
         const OcctModelTopologyReference* reference,
         double matchingTolerance,
         OcctModelTopologyReferenceResult* result);
 
-    OCCTBRIDGE_API int occt_model_resolve_topology_reference_with_history(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_resolve_topology_reference_with_history(
+        OcctModelingSessionHandle handle,
         OcctObjectId rootShapeId,
         OcctOperationId operationId,
         OcctObjectId sourceShapeId,
