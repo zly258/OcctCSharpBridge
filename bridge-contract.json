@@ -45,6 +45,7 @@
       "presentation/OcctViewerDecorations.h",
       "presentation/OcctOverlay.h",
       "presentation/OcctPresentation.h",
+      "scene/OcctViewerModelInterop.h",
       "modeling/OcctModelingSession.h",
       "modeling/OcctModelingAnalysis.h",
       "geometry/OcctModelingCurves.h",
