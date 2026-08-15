@@ -100,13 +100,12 @@ extern "C"
         OcctEngineHandle handle,
         const OcctViewportRenderingOptions* options);
 
-    // Frozen ABI4 compatibility. Implemented by the viewport domain.
-    OCCTBRIDGE_API int occt_set_view_clip_planes(
-        OcctHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_engine_viewport_clip_planes_set(
+        OcctEngineHandle handle,
         const OcctViewClipPlane* planes,
         int count);
 
-    OCCTBRIDGE_API int occt_get_view_clip_plane_limit(
-        OcctHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_engine_viewport_clip_plane_limit_get(
+        OcctEngineHandle handle,
         int* limit);
 }
