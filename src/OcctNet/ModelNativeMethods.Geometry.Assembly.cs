@@ -1,11 +1,39 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
 internal static partial class ModelNativeMethods
 {
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern long occt_model_make_compound(OcctModelingSafeHandle handle, [In] long[] shapeIds, int count);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern long occt_model_make_wire(OcctModelingSafeHandle handle, [In] long[] edgeIds, int count);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern long occt_model_sew(OcctModelingSafeHandle handle, [In] long[] shapeIds, int count, double tolerance);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern long occt_model_make_solid_from_shell(OcctModelingSafeHandle handle, long shellId);
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_assembly_compound_create(
+        OcctModelingSafeHandle handle,
+        [In] long[] shapeIds,
+        int count,
+        out long result);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_assembly_wire_create(
+        OcctModelingSafeHandle handle,
+        [In] long[] edgeIds,
+        int count,
+        out long result);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_assembly_sew(
+        OcctModelingSafeHandle handle,
+        [In] long[] shapeIds,
+        int count,
+        double tolerance,
+        out long result);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_assembly_solid_from_shell_create(
+        OcctModelingSafeHandle handle,
+        long shellId,
+        out long result);
 }
