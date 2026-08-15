@@ -1,27 +1,57 @@
-﻿#include "core/OcctInternal.hxx"
+#include "scene/OcctViewerModelInterop.h"
+#include "core/OcctInternal.hxx"
 #include "modeling/OcctModelingSessionInternal.hxx"
+
+#include <stdexcept>
+#include <utility>
 
 using namespace OcctBridge;
 using namespace OcctModelingInternal;
 
+namespace
+{
+    constexpr std::uint32_t AllShapeUpdateOptions =
+        OcctShapeUpdate_PreserveAppearance |
+        OcctShapeUpdate_PreserveTransformation |
+        OcctShapeUpdate_PreserveSelection |
+        OcctShapeUpdate_PreserveSelectability |
+        OcctShapeUpdate_RecomputePresentation |
+        OcctShapeUpdate_RecomputeSelection;
+
+    OcctStatus requireInitializedEngine(Engine* engine)
+    {
+        if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (!validateInitialized(engine)) return engine->errors.code;
+        return OcctStatus_Ok;
+    }
+}
+
 extern "C"
 {
-    int occt_update_object_shape_from_model(
-        OcctHandle engineHandle,
+    OcctStatus occt_engine_object_shape_update_from_model(
+        OcctEngineHandle engineHandle,
         OcctModelHandle modelHandle,
         OcctObjectId viewerObjectId,
         OcctObjectId modelShapeId,
-        unsigned int options)
+        std::uint32_t options)
     {
-        Engine* engine = engineOf(engineHandle); if (!validateInitialized(engine)) return 0;
+        Engine* engine = reinterpret_cast<Engine*>(engineHandle);
+        const OcctStatus initialized = requireInitializedEngine(engine);
+        if (initialized != OcctStatus_Ok) return initialized;
+
         ModelSession* model = modelOf(modelHandle);
         if (model == nullptr)
         {
-            engine->setError("The modeling session handle is invalid.");
-            return 0;
+            engine->setError(OcctStatus_ErrorInvalidHandle, "The modeling session handle is invalid.");
+            return OcctStatus_ErrorInvalidHandle;
+        }
+        if ((options & ~AllShapeUpdateOptions) != 0)
+        {
+            engine->setError(OcctStatus_ErrorInvalidArgument, "Shape update options contain unsupported flags.");
+            return OcctStatus_ErrorInvalidArgument;
         }
 
-        return execute(engine, [&]
+        const int succeeded = execute(engine, [&]
         {
             ObjectEntry* entry = engine->findShape(viewerObjectId);
             if (entry == nullptr || entry->presentation.IsNull())
@@ -35,6 +65,7 @@ extern "C"
             const bool hadTransform = entry->presentation->HasTransformation();
             const gp_Trsf transform = entry->presentation->LocalTransformation();
 
+            engine->invalidatePristineStepDocument();
             entry->shape = newShape;
             presentation->SetShape(newShape);
 
@@ -43,10 +74,9 @@ extern "C"
             else if ((options & OcctShapeUpdate_PreserveTransformation) == 0)
                 entry->presentation->ResetTransformation();
 
-            if ((options & OcctShapeUpdate_PreserveSelectability) == 0)
-                entry->selectable = true;
-            else
-                entry->selectable = wasSelectable;
+            entry->selectable = (options & OcctShapeUpdate_PreserveSelectability) != 0
+                ? wasSelectable
+                : true;
 
             if ((options & OcctShapeUpdate_RecomputePresentation) != 0)
                 engine->viewerContext.context->Redisplay(entry->presentation, Standard_False, Standard_True);
@@ -64,5 +94,6 @@ extern "C"
 
             engine->requestRedraw();
         });
+        return succeeded != 0 ? OcctStatus_Ok : engine->errors.code;
     }
 }
