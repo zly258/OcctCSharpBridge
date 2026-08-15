@@ -28,7 +28,6 @@ AUTHOR="$(contract_string author)"
 SOURCE_PLATFORM="$(contract_string platform)"
 CURRENT_ABI="$(contract_number current)"
 MINIMUM_ABI="$(contract_number minimumSupported)"
-SDK_MAJOR="${SDK_VERSION%%.*}"
 TFM="net10.0"
 
 validate_common() {
@@ -38,7 +37,7 @@ validate_common() {
     require_command dotnet
     [[ "${SOURCE_PLATFORM}" == "cross-platform-x64" ]] || fail "Source contract platform must be cross-platform-x64; found ${SOURCE_PLATFORM}."
     local detected_sdk="$(dotnet --version)"
-    [[ "${detected_sdk%%.*}" == "${SDK_MAJOR}" ]] || fail ".NET ${SDK_MAJOR}.x is required; detected ${detected_sdk}."
+    [[ "${detected_sdk}" == "${SDK_VERSION}" ]] || fail ".NET SDK ${SDK_VERSION} is required exactly; detected ${detected_sdk}."
     [[ -n "${BRIDGE_VERSION}" && "${CURRENT_ABI}" == "5" && "${MINIMUM_ABI}" == "5" ]] || fail "Bridge contract must be complete and ABI5-only."
     bash "${ROOT_DIR}/tests/check-linux-contract.sh" "${ROOT_DIR}"
 }

@@ -79,6 +79,8 @@ done
 
 require_text "${BUILD_SH}" 'validate_common()' "Linux build must keep common validation independent from native validation."
 require_text "${BUILD_SH}" 'validate_native()' "Linux build must keep an explicit native validation layer."
+require_text "${BUILD_SH}" '[[ "${detected_sdk}" == "${SDK_VERSION}" ]]' "Linux build must require the exact contracted .NET SDK."
+forbid_text "${BUILD_SH}" 'SDK_MAJOR=' "Linux build must not fall back to major-only SDK validation."
 require_text "${BUILD_SH}" 's/"platform": "cross-platform-x64"/"platform": "linux-x64"/' "Linux distribution must specialize the source contract to linux-x64."
 require_text "${BUILD_SH}" '"schemaVersion": 2' "Linux Binary SDK manifest must use schemaVersion 2."
 require_text "${BUILD_SH}" '"nativeAbi"' "Linux Binary SDK manifest must use nested nativeAbi metadata."
