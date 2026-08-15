@@ -83,7 +83,7 @@ namespace OcctBridge
         void invalidatePristineStepDocument();
     };
 
-    Engine* engineOf(OcctHandle handle);
+    Engine* engineOf(OcctEngineHandle handle);
     bool validateInitialized(Engine* engine);
     void initializeViewer(Engine* engine, void* windowHandle, void* displayHandle = nullptr);
     std::string failureMessage(const Standard_Failure& failure);
