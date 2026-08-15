@@ -83,12 +83,13 @@ foreach ($retiredPath in @(
 
 $nativeText = Get-TrackedSourceText "src/OcctNative" @('.h', '.hpp', '.hxx', '.cpp', '.cxx')
 foreach ($retiredToken in @(
+    "OcctHandle",
     "OcctModelHandle",
     "modelOf("
 )) {
     if ($nativeText.Contains($retiredToken)) {
-        throw "Retired pre-ABI5 modeling implementation token remains in tracked Native source: $retiredToken"
+        throw "Retired pre-ABI5 native implementation token remains in tracked Native source: $retiredToken"
     }
 }
 
-Write-Host "[abi5] ABI 5 is the only supported native ABI; no ABI4 compatibility artifacts or legacy modeling handles are tracked." -ForegroundColor Green
+Write-Host "[abi5] ABI 5 is the only supported native ABI; no ABI4 compatibility artifacts or generic legacy handles are tracked." -ForegroundColor Green
