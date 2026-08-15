@@ -113,8 +113,8 @@ public partial class MainWindow
             Session.ActiveObject = value;
             if (value is OcctShape shape) Session.Engine.Fit(shape);
         }));
-        menu.Items.Add(MenuItem(Local("Show", "显示"), (_, _) => Session.Engine.SetVisible(value, true)));
-        menu.Items.Add(MenuItem(Local("Hide", "隐藏"), (_, _) => Session.Engine.SetVisible(value, false)));
+        menu.Items.Add(MenuItem(Local("Show", "显示"), (_, _) => Session.Engine.SetObjectVisible(value, true)));
+        menu.Items.Add(MenuItem(Local("Hide", "隐藏"), (_, _) => Session.Engine.SetObjectVisible(value, false)));
         menu.Items.Add(MenuItem(Local("Color...", "颜色..."), (_, _) => SetObjectColor(value)));
         menu.Items.Add(MenuItem(Local("Material...", "材质..."), (_, _) => SetObjectMaterial(value)));
         menu.Items.Add(new Controls.Separator());
@@ -129,7 +129,7 @@ public partial class MainWindow
     private void ObjectVisibilityChanged(object sender, System.Windows.RoutedEventArgs e)
     {
         if (_refreshingTree || _session is null || sender is not Controls.CheckBox { Tag: IOcctObject value } checkBox) return;
-        ExecuteSafe(() => Session.Engine.SetVisible(value, checkBox.IsChecked == true));
+        ExecuteSafe(() => Session.Engine.SetObjectVisible(value, checkBox.IsChecked == true));
     }
 
     private void ObjectTreeSelectedItemChanged(object sender, System.Windows.RoutedPropertyChangedEventArgs<object> e)
