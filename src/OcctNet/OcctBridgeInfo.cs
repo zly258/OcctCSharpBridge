@@ -4,7 +4,7 @@ using System.Threading;
 namespace OcctNet;
 
 /// <summary>
-/// Identifies the managed wrapper and validates the compatibility of the loaded native bridge.
+/// Identifies the managed wrapper and validates the exact loaded native bridge contract.
 /// </summary>
 public static class OcctBridgeInfo
 {
@@ -32,29 +32,15 @@ public static class OcctBridgeInfo
         }
 
         var nativeVersionText = NativeVersion;
-        if (!IsNativeVersionCompatible(nativeVersionText, ManagedVersion))
+        if (!string.Equals(nativeVersionText, ManagedVersion, StringComparison.Ordinal))
         {
             throw new BadImageFormatException(
-                $"OcctNative version mismatch. Managed wrapper {ManagedVersion} requires native Bridge " +
-                $"{ManagedVersion} or newer within ABI {ExpectedAbiVersion}, but the loaded native bridge reports " +
-                $"'{nativeVersionText}'. Deploy OcctNet.dll and OcctNative.dll from the same build.");
+                $"OcctNative version mismatch. Managed wrapper requires native Bridge {ManagedVersion}, " +
+                $"but the loaded native bridge reports '{nativeVersionText}'. " +
+                "Deploy OcctNet.dll and OcctNative.dll from the same build.");
         }
 
         Volatile.Write(ref _validated, 1);
-    }
-
-    internal static bool IsNativeVersionCompatible(string nativeVersion, string managedVersion)
-    {
-        if (!TryParseCoreVersion(nativeVersion, out var native)) return false;
-        if (!TryParseCoreVersion(managedVersion, out var managed)) return false;
-        return native >= managed;
-    }
-
-    private static bool TryParseCoreVersion(string value, out Version version)
-    {
-        var separator = value.IndexOf('-');
-        var core = separator < 0 ? value : value[..separator];
-        return Version.TryParse(core, out version!);
     }
 
     private static string ReadUtf8(IntPtr pointer) =>
