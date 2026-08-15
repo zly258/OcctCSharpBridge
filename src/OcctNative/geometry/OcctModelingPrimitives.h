@@ -4,52 +4,10 @@
 
 extern "C"
 {
-    OCCTBRIDGE_API OcctStatus occt_model_make_box(
-        OcctModelingSessionHandle handle,
-        double x,
-        double y,
-        double z,
-        double dx,
-        double dy,
-        double dz,
-        OcctObjectId* result);
-
-    OCCTBRIDGE_API OcctStatus occt_model_make_cylinder(
-        OcctModelingSessionHandle handle,
-        OcctPoint3d origin,
-        OcctVector3d axis,
-        double radius,
-        double height,
-        OcctObjectId* result);
-
-    OCCTBRIDGE_API OcctStatus occt_model_make_cone(
-        OcctModelingSessionHandle handle,
-        OcctPoint3d origin,
-        OcctVector3d axis,
-        double radius1,
-        double radius2,
-        double height,
-        OcctObjectId* result);
-
-    OCCTBRIDGE_API OcctStatus occt_model_make_sphere(
-        OcctModelingSessionHandle handle,
-        OcctPoint3d center,
-        double radius,
-        OcctObjectId* result);
-
-    OCCTBRIDGE_API OcctStatus occt_model_make_torus(
-        OcctModelingSessionHandle handle,
-        OcctPoint3d center,
-        OcctVector3d axis,
-        double majorRadius,
-        double minorRadius,
-        OcctObjectId* result);
-
-    OCCTBRIDGE_API OcctStatus occt_model_make_wedge(
-        OcctModelingSessionHandle handle,
-        double dx,
-        double dy,
-        double dz,
-        double ltx,
-        OcctObjectId* result);
+    OCCTBRIDGE_API OcctStatus occt_model_primitive_box_create(OcctModelingSessionHandle, double, double, double, double, double, double, OcctObjectId*);
+    OCCTBRIDGE_API OcctStatus occt_model_primitive_cylinder_create(OcctModelingSessionHandle, OcctPoint3d, OcctVector3d, double, double, OcctObjectId*);
+    OCCTBRIDGE_API OcctStatus occt_model_primitive_cone_create(OcctModelingSessionHandle, OcctPoint3d, OcctVector3d, double, double, double, OcctObjectId*);
+    OCCTBRIDGE_API OcctStatus occt_model_primitive_sphere_create(OcctModelingSessionHandle, OcctPoint3d, double, OcctObjectId*);
+    OCCTBRIDGE_API OcctStatus occt_model_primitive_torus_create(OcctModelingSessionHandle, OcctPoint3d, OcctVector3d, double, double, OcctObjectId*);
+    OCCTBRIDGE_API OcctStatus occt_model_primitive_wedge_create(OcctModelingSessionHandle, double, double, double, double, OcctObjectId*);
 }
