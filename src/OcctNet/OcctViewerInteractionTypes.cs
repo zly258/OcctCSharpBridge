@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+using System.Drawing;
 using System.Runtime.InteropServices;
 
 namespace OcctNet;
@@ -60,27 +60,6 @@ public readonly record struct OcctSelectionHitDetail(
 }
 
 [StructLayout(LayoutKind.Sequential)]
-internal struct NativeOcctTriedronOptions
-{
-    internal int Visible;
-    internal int Position;
-    internal double Scale;
-    internal double R;
-    internal double G;
-    internal double B;
-}
-
-[StructLayout(LayoutKind.Sequential)]
-internal struct NativeOcctViewCubeOptions
-{
-    internal int Visible;
-    internal int Position;
-    internal int SizePixels;
-    internal int OffsetX;
-    internal int OffsetY;
-}
-
-[StructLayout(LayoutKind.Sequential)]
 internal struct NativeOcctSelectionHitDetail
 {
     internal long OwnerObjectId;
@@ -89,11 +68,4 @@ internal struct NativeOcctSelectionHitDetail
     internal OcctPoint3d Point;
     internal double Depth;
     internal double DistanceToEye;
-}
-
-[StructLayout(LayoutKind.Sequential)]
-internal struct NativeOcctObjectTransformUpdate
-{
-    internal long ObjectId;
-    internal OcctTransform3d Transformation;
 }
