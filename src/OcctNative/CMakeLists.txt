@@ -135,7 +135,6 @@ add_library(OcctNative SHARED
     topology/OcctModelingShapeQueries.cpp
     geometry/OcctModelingGeometryQueries.cpp
     topology/OcctModelingTopology.cpp
-    scene/OcctModelingInterop.cpp
     geometry/OcctModelingCurves.cpp
     geometry/OcctModelingPlanar.cpp
     geometry/OcctModelingPrimitives.cpp
@@ -186,6 +185,8 @@ add_library(OcctNative SHARED
     exchange/OcctModelingExchangeInternal.hxx
     exchange/OcctModelingExchange.h
     exchange/OcctExchangePath.hxx
+    exchange/OcctStepDocument.h
+    exchange/OcctViewerExchange.h
     OcctNative.h
     geometry/OcctPoints.h
     geometry/OcctViewerGeometry.h
