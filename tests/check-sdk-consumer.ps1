@@ -24,17 +24,20 @@ if ($forbiddenSdkSources.Count -gt 0) {
 $sourceFiles = @(
     $tracked | Where-Object { $_ -like "src/*.cs" -or $_ -like "src/*/*.cs" }
 )
-$legacyPattern = '\bocct_(?:create|destroy|last_error|initialize|initialize_surface|model_create|model_destroy|model_last_error)\b|\b(?:NativeOcctSurface|LegacyNativeSurface)\b'
+$legacyNativePattern = '\bocct_(?:create|destroy|last_error|initialize|initialize_surface|model_create|model_destroy|model_last_error)\b|\b(?:NativeOcctSurface|LegacyNativeSurface)\b'
+$retiredManagedPattern = '\bEngine\.(?:Objects|Shapes|ShapeCount|Exists|GetShape|GetName|SetName|GetObjectKind)\b'
 $violations = @()
 foreach ($relativePath in $sourceFiles) {
     $path = Join-Path $RepositoryRoot $relativePath
-    $matches = @(Select-String -LiteralPath $path -Pattern $legacyPattern -AllMatches)
-    foreach ($match in $matches) {
-        $violations += "${relativePath}:$($match.LineNumber)"
+    foreach ($pattern in @($legacyNativePattern, $retiredManagedPattern)) {
+        $matches = @(Select-String -LiteralPath $path -Pattern $pattern -AllMatches)
+        foreach ($match in $matches) {
+            $violations += "${relativePath}:$($match.LineNumber): $($match.Line.Trim())"
+        }
     }
 }
 if ($violations.Count -gt 0) {
-    throw "Demo implementation uses legacy Bridge APIs: $($violations -join ', ')"
+    throw "Demo implementation uses retired Bridge APIs:`n - $($violations -join "`n - ")"
 }
 
-Write-Host "[consumer] Demo contains no SDK implementation sources or legacy lifecycle/surface calls." -ForegroundColor Green
+Write-Host "[consumer] Demo contains no SDK implementation sources, legacy native lifecycle calls, or retired managed object APIs." -ForegroundColor Green
