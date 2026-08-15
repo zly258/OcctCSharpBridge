@@ -1,4 +1,5 @@
-﻿#include "modeling/OcctModelingShapeInternal.hxx"
+﻿#include "topology/OcctModelingShapeQueries.h"
+#include "modeling/OcctModelingShapeInternal.hxx"
 
 #include <BRepBndLib.hxx>
 #include <BRepCheck_Analyzer.hxx>
@@ -13,7 +14,11 @@
 #include <TopoDS_Shell.hxx>
 #include <gp_Trsf.hxx>
 
+#include <cstring>
+#include <limits>
 #include <sstream>
+#include <stdexcept>
+#include <string>
 
 using namespace OcctModelingInternal;
 
@@ -46,69 +51,137 @@ namespace
                 return false;
         }
     }
+
+    OcctStatus copyUtf8(
+        const std::string& value,
+        char* buffer,
+        int capacity,
+        int* required)
+    {
+        if (capacity < 0 || required == nullptr) return OcctStatus_ErrorInvalidArgument;
+        if (value.size() >= static_cast<std::size_t>(std::numeric_limits<int>::max()))
+            return OcctStatus_ErrorOutOfMemory;
+
+        const int size = static_cast<int>(value.size()) + 1;
+        *required = size;
+        if (buffer == nullptr)
+            return capacity == 0 ? OcctStatus_Ok : OcctStatus_ErrorInvalidArgument;
+        if (capacity < size) return OcctStatus_ErrorBufferTooSmall;
+
+        std::memcpy(buffer, value.c_str(), static_cast<std::size_t>(size));
+        return OcctStatus_Ok;
+    }
 }
 
 extern "C"
 {
-    std::int64_t occt_model_shape_hash(OcctModelHandle handle, OcctObjectId shapeId)
+    OcctStatus occt_model_shape_hash(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        std::int64_t* result)
     {
-        ModelSession* model = modelOf(handle);
-        return executeValue(model, std::int64_t{0}, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = 0;
+        return executeStatus(model, [&]
         {
-            return static_cast<std::int64_t>(TopTools_ShapeMapHasher{}(model->requireShape(shapeId)));
+            *result = static_cast<std::int64_t>(TopTools_ShapeMapHasher{}(model->requireShape(shapeId)));
         });
     }
 
-    int occt_model_shape_type(OcctModelHandle handle, OcctObjectId shapeId)
+    OcctStatus occt_model_shape_type(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        OcctShapeType* result)
     {
-        ModelSession* model = modelOf(handle);
-        return executeValue(model, static_cast<int>(OcctShape_Shape), [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = OcctShape_Shape;
+        return executeStatus(model, [&]
         {
-            return toOcctShapeType(model->requireShape(shapeId).ShapeType());
+            *result = static_cast<OcctShapeType>(toOcctShapeType(model->requireShape(shapeId).ShapeType()));
         });
     }
 
-    int occt_model_shape_orientation(OcctModelHandle handle, OcctObjectId shapeId)
+    OcctStatus occt_model_shape_orientation(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        OcctModelOrientation* result)
     {
-        ModelSession* model = modelOf(handle);
-        return executeValue(model, static_cast<int>(OcctModelOrientation_Forward), [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = OcctModelOrientation_Forward;
+        return executeStatus(model, [&]
         {
-            return toModelOrientation(model->requireShape(shapeId).Orientation());
+            *result = static_cast<OcctModelOrientation>(toModelOrientation(model->requireShape(shapeId).Orientation()));
         });
     }
 
-    int occt_model_shape_is_closed(OcctModelHandle handle, OcctObjectId shapeId)
+    OcctStatus occt_model_shape_is_closed(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        OcctBool* result)
     {
-        ModelSession* model = modelOf(handle);
-        return executeValue(model, 0, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = 0;
+        return executeStatus(model, [&]
         {
-            return isTopologicallyClosed(model->requireShape(shapeId)) ? 1 : 0;
+            *result = isTopologicallyClosed(model->requireShape(shapeId)) ? 1 : 0;
         });
     }
 
-    int occt_model_shape_is_valid(OcctModelHandle handle, OcctObjectId shapeId)
+    OcctStatus occt_model_shape_is_valid(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        OcctBool* result)
     {
-        ModelSession* model = modelOf(handle);
-        return executeValue(model, 0, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = 0;
+        return executeStatus(model, [&]
         {
-            return BRepCheck_Analyzer(model->requireShape(shapeId), Standard_True).IsValid() ? 1 : 0;
+            *result = BRepCheck_Analyzer(model->requireShape(shapeId), Standard_True).IsValid() ? 1 : 0;
         });
     }
 
-    double occt_model_shape_tolerance(OcctModelHandle handle, OcctObjectId shapeId)
+    OcctStatus occt_model_shape_tolerance(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        double* result)
     {
-        ModelSession* model = modelOf(handle);
-        return executeValue(model, 0.0, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = 0.0;
+        return executeStatus(model, [&]
         {
-            return maximumTolerance(model->requireShape(shapeId));
+            *result = maximumTolerance(model->requireShape(shapeId));
         });
     }
 
-    int occt_model_shape_bounds(OcctModelHandle handle, OcctObjectId shapeId, OcctBounds* result)
+    OcctStatus occt_model_shape_bounds(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        OcctBounds* result)
     {
-        ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = {};
+        return executeStatus(model, [&]
         {
             Bnd_Box box;
             BRepBndLib::Add(model->requireShape(shapeId), box, Standard_True);
@@ -117,10 +190,17 @@ extern "C"
         });
     }
 
-    int occt_model_shape_linear_properties(OcctModelHandle handle, OcctObjectId shapeId, OcctMassProperties* result)
+    OcctStatus occt_model_shape_linear_properties(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        OcctMassProperties* result)
     {
-        ModelSession* model = modelOf(handle);
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = {};
+        return executeStatus(model, [&]
         {
             GProp_GProps properties;
             BRepGProp::LinearProperties(model->requireShape(shapeId), properties);
@@ -128,10 +208,17 @@ extern "C"
         });
     }
 
-    int occt_model_shape_surface_properties(OcctModelHandle handle, OcctObjectId shapeId, OcctMassProperties* result)
+    OcctStatus occt_model_shape_surface_properties(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        OcctMassProperties* result)
     {
-        ModelSession* model = modelOf(handle);
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = {};
+        return executeStatus(model, [&]
         {
             GProp_GProps properties;
             BRepGProp::SurfaceProperties(model->requireShape(shapeId), properties);
@@ -139,10 +226,17 @@ extern "C"
         });
     }
 
-    int occt_model_shape_volume_properties(OcctModelHandle handle, OcctObjectId shapeId, OcctMassProperties* result)
+    OcctStatus occt_model_shape_volume_properties(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        OcctMassProperties* result)
     {
-        ModelSession* model = modelOf(handle);
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = {};
+        return executeStatus(model, [&]
         {
             GProp_GProps properties;
             BRepGProp::VolumeProperties(model->requireShape(shapeId), properties);
@@ -150,15 +244,24 @@ extern "C"
         });
     }
 
-    int occt_model_shape_distance(OcctModelHandle handle, OcctObjectId firstId, OcctObjectId secondId, OcctDistanceResult* result)
+    OcctStatus occt_model_shape_distance(
+        OcctModelingSessionHandle handle,
+        OcctObjectId firstId,
+        OcctObjectId secondId,
+        OcctDistanceResult* result)
     {
-        ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = {};
+        return executeStatus(model, [&]
         {
             BRepExtrema_DistShapeShape distance(model->requireShape(firstId), model->requireShape(secondId));
             distance.Perform();
-            if (!distance.IsDone() || distance.NbSolution() < 1) throw std::runtime_error("Distance calculation failed.");
+            if (!distance.IsDone() || distance.NbSolution() < 1)
+                throw std::runtime_error("Distance calculation failed.");
+
             const gp_Pnt first = distance.PointOnShape1(1);
             const gp_Pnt second = distance.PointOnShape2(1);
             result->distance = distance.Value();
@@ -167,12 +270,19 @@ extern "C"
         });
     }
 
-    const char* occt_model_check_report(OcctModelHandle handle, OcctObjectId shapeId)
+    OcctStatus occt_model_shape_check_report_get(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        char* buffer,
+        int capacity,
+        int* required)
     {
-        ModelSession* model = modelOf(handle);
-        if (model == nullptr) return "{\"valid\":false,\"error\":\"invalid handle\"}";
-        model->errors.scratch.clear();
-        execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (capacity < 0 || required == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        std::string report;
+        const OcctStatus status = executeStatus(model, [&]
         {
             const TopoDS_Shape& shape = model->requireShape(shapeId);
             BRepCheck_Analyzer analyzer(shape, Standard_True);
@@ -181,6 +291,7 @@ extern "C"
                    << ",\"shapeType\":" << toOcctShapeType(shape.ShapeType())
                    << ",\"maxTolerance\":" << maximumTolerance(shape)
                    << ",\"invalid\":[";
+
             bool firstItem = true;
             for (int type = static_cast<int>(TopAbs_VERTEX); type >= static_cast<int>(TopAbs_SOLID); --type)
             {
@@ -190,20 +301,28 @@ extern "C"
                     if (BRepCheck_Analyzer(explorer.Current(), Standard_True).IsValid()) continue;
                     if (!firstItem) stream << ',';
                     firstItem = false;
-                    stream << "{\"type\":" << toOcctShapeType(static_cast<TopAbs_ShapeEnum>(type)) << ",\"index\":" << index << '}';
+                    stream << "{\"type\":" << toOcctShapeType(static_cast<TopAbs_ShapeEnum>(type))
+                           << ",\"index\":" << index << '}';
                 }
             }
             stream << "]}";
-            model->errors.scratch = stream.str();
+            report = stream.str();
         });
-        return model->errors.scratch.c_str();
+        if (status != OcctStatus_Ok) return status;
+        return copyUtf8(report, buffer, capacity, required);
     }
 
-    int occt_model_get_location(OcctModelHandle handle, OcctObjectId shapeId, OcctModelLocation* result)
+    OcctStatus occt_model_shape_location_get(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        OcctModelLocation* result)
     {
-        ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = {};
+        return executeStatus(model, [&]
         {
             const gp_Trsf transform = model->requireShape(shapeId).Location().Transformation();
             result->m11 = transform.Value(1, 1); result->m12 = transform.Value(1, 2); result->m13 = transform.Value(1, 3); result->m14 = transform.Value(1, 4);
@@ -213,22 +332,34 @@ extern "C"
         });
     }
 
-    OcctObjectId occt_model_set_location(OcctModelHandle handle, OcctObjectId shapeId, const OcctModelLocation* location, int copyShape)
+    OcctStatus occt_model_shape_location_set(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        const OcctModelLocation* location,
+        OcctBool copyShape,
+        OcctObjectId* result)
     {
-        ModelSession* model = modelOf(handle);
-        if (location == nullptr) return 0;
-        OcctObjectId result = 0;
-        execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (location == nullptr || result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = 0;
+        return executeStatus(model, [&]
         {
             gp_Trsf transform;
             transform.SetValues(
                 location->m11, location->m12, location->m13, location->m14,
                 location->m21, location->m22, location->m23, location->m24,
                 location->m31, location->m32, location->m33, location->m34);
+
             TopoDS_Shape located = model->requireShape(shapeId).Located(TopLoc_Location(transform), Standard_False);
-            if (copyShape != 0) result = model->addShape(located);
-            else { model->shapes[shapeId] = located; result = shapeId; }
+            if (copyShape != 0)
+                *result = model->addShape(located);
+            else
+            {
+                model->shapes[shapeId] = located;
+                *result = shapeId;
+            }
         });
-        return result;
     }
 }
