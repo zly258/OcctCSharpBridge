@@ -1,4 +1,4 @@
-﻿namespace OcctNet;
+namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
@@ -6,7 +6,13 @@ public sealed partial class OcctEngine
     {
         EnsureShape(shape);
         EnsureInitialized();
-        return CheckShape(NativeMethods.occt_copy_shape(_handle, shape.Id, hideInput ? 1 : 0));
+        var status = ViewerShapeNativeMethods.occt_engine_shape_copy(
+            _handle,
+            shape.Id,
+            hideInput ? 1 : 0,
+            out var result);
+        if (status != OcctStatus.Ok) throw CreateException();
+        return CheckShape(result);
     }
 
     public OcctShape Translate(OcctShape shape, OcctVector3d vector, bool hideInput = false)
@@ -14,7 +20,14 @@ public sealed partial class OcctEngine
         EnsureShape(shape);
         OcctGuard.Finite(vector, nameof(vector));
         EnsureInitialized();
-        return CheckShape(NativeMethods.occt_translate(_handle, shape.Id, vector, hideInput ? 1 : 0));
+        var status = ViewerShapeNativeMethods.occt_engine_shape_translate_copy(
+            _handle,
+            shape.Id,
+            vector,
+            hideInput ? 1 : 0,
+            out var result);
+        if (status != OcctStatus.Ok) throw CreateException();
+        return CheckShape(result);
     }
 
     public OcctShape Rotate(
@@ -29,13 +42,16 @@ public sealed partial class OcctEngine
         OcctGuard.NonZero(axisDirection, nameof(axisDirection));
         OcctGuard.Finite(angleDegrees, nameof(angleDegrees));
         EnsureInitialized();
-        return CheckShape(NativeMethods.occt_rotate(
+        var status = ViewerShapeNativeMethods.occt_engine_shape_rotate_copy(
             _handle,
             shape.Id,
             axisPoint,
             axisDirection,
             angleDegrees,
-            hideInput ? 1 : 0));
+            hideInput ? 1 : 0,
+            out var result);
+        if (status != OcctStatus.Ok) throw CreateException();
+        return CheckShape(result);
     }
 
     public OcctShape Scale(OcctShape shape, OcctPoint3d center, double factor, bool hideInput = false)
@@ -44,7 +60,15 @@ public sealed partial class OcctEngine
         OcctGuard.Finite(center, nameof(center));
         OcctGuard.Positive(factor, nameof(factor));
         EnsureInitialized();
-        return CheckShape(NativeMethods.occt_scale(_handle, shape.Id, center, factor, hideInput ? 1 : 0));
+        var status = ViewerShapeNativeMethods.occt_engine_shape_scale_copy(
+            _handle,
+            shape.Id,
+            center,
+            factor,
+            hideInput ? 1 : 0,
+            out var result);
+        if (status != OcctStatus.Ok) throw CreateException();
+        return CheckShape(result);
     }
 
     public OcctShape MirrorPlane(
@@ -57,11 +81,14 @@ public sealed partial class OcctEngine
         OcctGuard.Finite(planePoint, nameof(planePoint));
         OcctGuard.NonZero(planeNormal, nameof(planeNormal));
         EnsureInitialized();
-        return CheckShape(NativeMethods.occt_mirror_plane(
+        var status = ViewerShapeNativeMethods.occt_engine_shape_mirror_plane_copy(
             _handle,
             shape.Id,
             planePoint,
             planeNormal,
-            hideInput ? 1 : 0));
+            hideInput ? 1 : 0,
+            out var result);
+        if (status != OcctStatus.Ok) throw CreateException();
+        return CheckShape(result);
     }
 }
