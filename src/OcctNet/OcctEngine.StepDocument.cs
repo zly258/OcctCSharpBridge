@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -8,7 +8,6 @@ public sealed partial class OcctEngine
 {
     /// <summary>
     /// Imports a STEP file through STEPCAFControl/XDE and returns its assembly occurrence tree.
-    /// The existing <see cref="ImportStep"/> API remains available for source compatibility.
     /// </summary>
     public OcctAssemblyDocument ImportStepDocument(string filePath)
     {
@@ -17,8 +16,7 @@ public sealed partial class OcctEngine
         var fullPath = Path.GetFullPath(filePath);
         var primaryShape = ImportStep(fullPath);
 
-        var pointer = NativeMethods.occt_get_last_step_document_json(_handle);
-        var json = pointer == IntPtr.Zero ? null : Marshal.PtrToStringUTF8(pointer);
+        var json = GetLastStepDocumentJson();
         if (string.IsNullOrWhiteSpace(json)) throw CreateException(nameof(ImportStepDocument));
 
         StepDocumentDto? document;
@@ -69,6 +67,30 @@ public sealed partial class OcctEngine
         }
 
         return new OcctAssemblyDocument(fullPath, primaryShape, nodes, roots);
+    }
+
+    private string GetLastStepDocumentJson()
+    {
+        var status = StepDocumentNativeMethods.occt_engine_step_document_json_get(
+            _handle,
+            null,
+            0,
+            out var requiredBytes);
+        if (status != OcctStatus.Ok) throw CreateException(nameof(ImportStepDocument));
+        if (requiredBytes <= 1)
+            throw new OcctException("The native STEP/XDE assembly snapshot is empty.", nameof(ImportStepDocument));
+
+        var buffer = new byte[requiredBytes];
+        status = StepDocumentNativeMethods.occt_engine_step_document_json_get(
+            _handle,
+            buffer,
+            buffer.Length,
+            out var writtenBytes);
+        if (status != OcctStatus.Ok) throw CreateException(nameof(ImportStepDocument));
+        if (writtenBytes <= 1 || writtenBytes > buffer.Length)
+            throw new OcctException("The native STEP/XDE assembly snapshot size is invalid.", nameof(ImportStepDocument));
+
+        return Encoding.UTF8.GetString(buffer, 0, writtenBytes - 1);
     }
 
     private static OcctAssemblyStyle ToStyle(bool visible, double[]? surfaceColor, double[]? curveColor) =>
