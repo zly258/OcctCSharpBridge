@@ -11,22 +11,27 @@ public sealed partial class OcctModelingSession
         EnsureShape(secondEdge);
         OcctGuard.NonNegative(tolerance, nameof(tolerance));
 
-        var count = ModelNativeMethods.occt_model_intersect_edges(
+        var status = ModelNativeMethods.occt_model_intersect_edges(
             _handle,
             firstEdge.Id,
             secondEdge.Id,
-            tolerance);
-        if (count < 0) throw CreateException();
+            tolerance,
+            out var count);
+        CheckStatus(status);
         if (count == 0) return Array.Empty<OcctEdgeIntersection>();
 
         var native = new NativeModelEdgeIntersection[count];
-        var copied = ModelNativeMethods.occt_model_edge_intersections_copy(_handle, native, native.Length);
-        if (copied < 0) throw CreateException();
-        if (copied != count)
-            throw new InvalidOperationException("Native edge-intersection count changed during bulk copy.");
+        status = ModelNativeMethods.occt_model_edge_intersections_snapshot_get(
+            _handle,
+            native,
+            native.Length,
+            out var required);
+        CheckStatus(status);
+        if (required != count)
+            throw new InvalidOperationException("Native edge-intersection count changed during snapshot copy.");
 
-        var result = new OcctEdgeIntersection[copied];
-        for (var index = 0; index < copied; index++)
+        var result = new OcctEdgeIntersection[count];
+        for (var index = 0; index < count; index++)
             result[index] = native[index].ToManaged();
         return result;
     }
