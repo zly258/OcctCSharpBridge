@@ -27,6 +27,7 @@ LANGUAGE_VERSION="$(contract_string languageVersion)"
 AUTHOR="$(contract_string author)"
 SOURCE_PLATFORM="$(contract_string platform)"
 CURRENT_ABI="$(contract_number current)"
+MINIMUM_ABI="$(contract_number minimumSupported)"
 SDK_MAJOR="${SDK_VERSION%%.*}"
 TFM="net10.0"
 
@@ -38,7 +39,7 @@ validate_common() {
     [[ "${SOURCE_PLATFORM}" == "cross-platform-x64" ]] || fail "Source contract platform must be cross-platform-x64; found ${SOURCE_PLATFORM}."
     local detected_sdk="$(dotnet --version)"
     [[ "${detected_sdk%%.*}" == "${SDK_MAJOR}" ]] || fail ".NET ${SDK_MAJOR}.x is required; detected ${detected_sdk}."
-    [[ -n "${BRIDGE_VERSION}" && -n "${CURRENT_ABI}" ]] || fail "Bridge contract metadata is incomplete."
+    [[ -n "${BRIDGE_VERSION}" && "${CURRENT_ABI}" == "5" && "${MINIMUM_ABI}" == "5" ]] || fail "Bridge contract must be complete and ABI5-only."
     bash "${ROOT_DIR}/tests/check-linux-contract.sh" "${ROOT_DIR}"
 }
 
@@ -127,10 +128,13 @@ dist() {
 
     local names=(libOcctNative.so OcctNet.dll OcctNet.Avalonia.dll bridge-contract.json)
     {
-        printf '{\n  "schemaVersion": 1,\n'
+        printf '{\n  "schemaVersion": 2,\n'
         printf '  "author": "%s",\n' "${AUTHOR}"
         printf '  "bridgeVersion": "%s",\n' "${BRIDGE_VERSION}"
-        printf '  "nativeAbiVersion": %s,\n' "${CURRENT_ABI}"
+        printf '  "nativeAbi": {\n'
+        printf '    "current": %s,\n' "${CURRENT_ABI}"
+        printf '    "minimumSupported": %s\n' "${MINIMUM_ABI}"
+        printf '  },\n'
         printf '  "occtVersion": "%s",\n' "${OCCT_VERSION}"
         printf '  "platform": "linux-x64",\n'
         printf '  "targetFramework": "%s",\n' "${TFM}"
