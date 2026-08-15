@@ -96,7 +96,7 @@ if (@($supportedPlatforms | Group-Object | Where-Object Count -gt 1).Count -gt 0
     throw "Bridge contract supportedPlatforms must not contain duplicates."
 }
 
-$contractSdk = Convert-ToSdkVersion $expectedSdkVersion "bridge-contract.json"
+[void](Convert-ToSdkVersion $expectedSdkVersion "bridge-contract.json")
 $nativeEngine = Read-Text "src/OcctNative/core/OcctEngine.cpp"
 if (-not $nativeEngine.Contains("return `"$expectedVersion`";")) { throw "Native bridge version differs from bridge-contract.json." }
 if (-not $nativeEngine.Contains("return $expectedAbiVersion;")) { throw "Native ABI version differs from bridge-contract.json." }
@@ -110,6 +110,7 @@ $projectFiles = [ordered]@{
     "tests/OcctNet.AvaloniaSmoke/OcctNet.AvaloniaSmoke.csproj" = $expectedTargetFramework
     "tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj" = $expectedTargetFramework
     "tests/OcctNet.Smoke/OcctNet.Smoke.csproj" = $expectedTargetFramework
+    "tools/OcctApiDocsGenerator/OcctApiDocsGenerator.csproj" = $expectedTargetFramework
     "src/OcctNet.WinForms/OcctNet.WinForms.csproj" = $expectedDesktopTargetFramework
     "src/OcctNet.Wpf/OcctNet.Wpf.csproj" = $expectedDesktopTargetFramework
 }
@@ -127,21 +128,23 @@ $globalJsonPath = Join-Path $RepositoryRoot "global.json"
 try { $globalJson = Get-Content $globalJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json }
 catch { throw "global.json is not valid JSON: $($_.Exception.Message)" }
 $globalSdkText = [string]$globalJson.sdk.version
-$globalSdk = Convert-ToSdkVersion $globalSdkText "global.json"
-if ($globalSdk.Major -ne $contractSdk.Major) {
-    throw "global.json must select .NET SDK major $($contractSdk.Major); found $globalSdkText."
+[void](Convert-ToSdkVersion $globalSdkText "global.json")
+if ($globalSdkText -ne $expectedSdkVersion) {
+    throw "global.json must select .NET SDK $expectedSdkVersion; found $globalSdkText."
 }
-if ([string]$globalJson.sdk.rollForward -ne "latestMinor") {
-    throw "global.json must use rollForward 'latestMinor'."
+if ([string]$globalJson.sdk.rollForward -ne "disable") {
+    throw "global.json must disable SDK roll-forward so the contracted SDK is used exactly."
 }
 if ([bool]$globalJson.sdk.allowPrerelease) { throw "global.json must not allow prerelease SDKs." }
 if ([string]$globalJson.test.runner -ne "Microsoft.Testing.Platform") { throw "global.json must select Microsoft.Testing.Platform for .NET 10 tests." }
 
 [xml]$directoryProps = Read-Text "Directory.Build.props"
 $languageVersion = Get-ProjectProperty $directoryProps "LangVersion"
+$packageVersion = Get-ProjectProperty $directoryProps "Version"
 $author = Get-ProjectProperty $directoryProps "Authors"
 $company = Get-ProjectProperty $directoryProps "Company"
 if ($languageVersion -ne $expectedLanguageVersion) { throw "Directory.Build.props LangVersion differs from bridge-contract.json." }
+if ($packageVersion -ne $expectedVersion) { throw "Directory.Build.props Version differs from bridge-contract.json." }
 if ($author -ne $expectedAuthor -or $company -ne $expectedAuthor) { throw "Directory.Build.props Authors/Company must match bridge-contract.json author '$expectedAuthor'." }
 
 $nativeCmake = Read-Text "src/OcctNative/CMakeLists.txt"
