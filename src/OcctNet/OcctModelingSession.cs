@@ -1,5 +1,5 @@
-﻿using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 
 namespace OcctNet;
@@ -23,7 +23,10 @@ public sealed partial class OcctModelingSession : IDisposable
         if (safeHandle.IsInvalid)
         {
             safeHandle.Dispose();
-            throw new OcctException("Unable to create the native OCCT modeling session.", OcctStatus.ErrorUnknown, nameof(OcctModelingSession));
+            throw new OcctException(
+                "Unable to create the native OCCT modeling session.",
+                OcctStatus.ErrorUnknown,
+                nameof(OcctModelingSession));
         }
         _handle = safeHandle;
     }
@@ -41,15 +44,17 @@ public sealed partial class OcctModelingSession : IDisposable
         }
     }
 
-    public static string Capabilities =>
-        Marshal.PtrToStringUTF8(ModelNativeMethods.occt_model_capabilities()) ?? string.Empty;
+    public static string Capabilities => ReadCapabilities();
 
     public int ShapeCount
     {
         get
         {
             EnsureNotDisposed();
-            return ModelNativeMethods.occt_model_shape_ids_copy(_handle, null, 0);
+            var status = ModelNativeMethods.occt_model_shapes_snapshot_get(_handle, null, 0, out var required);
+            if (status != OcctStatus.Ok)
+                throw new OcctException("Unable to query modeling shape count.", status, nameof(ShapeCount));
+            return required;
         }
     }
 
@@ -58,14 +63,15 @@ public sealed partial class OcctModelingSession : IDisposable
         get
         {
             EnsureNotDisposed();
-            var count = ModelNativeMethods.occt_model_shape_ids_copy(_handle, null, 0);
-            if (count < 0) throw CreateException();
+            var status = ModelNativeMethods.occt_model_shapes_snapshot_get(_handle, null, 0, out var count);
+            if (status != OcctStatus.Ok) throw CreateException();
             if (count == 0) return Array.Empty<OcctModelShape>();
 
             var ids = new long[count];
-            var copied = ModelNativeMethods.occt_model_shape_ids_copy(_handle, ids, ids.Length);
-            if (copied < 0) throw CreateException();
-            if (copied != count) throw new InvalidOperationException("Native shape count changed during bulk copy.");
+            status = ModelNativeMethods.occt_model_shapes_snapshot_get(_handle, ids, ids.Length, out var required);
+            if (status != OcctStatus.Ok) throw CreateException();
+            if (required != count)
+                throw new InvalidOperationException("Native shape count changed during bulk copy.");
 
             var result = new OcctModelShape[count];
             for (var index = 0; index < count; index++)
@@ -77,9 +83,10 @@ public sealed partial class OcctModelingSession : IDisposable
     public bool Exists(OcctModelShape shape)
     {
         EnsureNotDisposed();
-        return shape.IsValid &&
-               shape.OwnerId == _ownerId &&
-               ModelNativeMethods.occt_model_shape_exists(_handle, shape.Id) != 0;
+        if (!shape.IsValid || shape.OwnerId != _ownerId) return false;
+        var status = ModelNativeMethods.occt_model_shape_exists(_handle, shape.Id, out var exists);
+        if (status != OcctStatus.Ok) throw CreateException();
+        return exists != 0;
     }
 
     public bool Owns(OcctModelShape shape) => shape.IsValid && shape.OwnerId == _ownerId;
@@ -87,7 +94,10 @@ public sealed partial class OcctModelingSession : IDisposable
     public OcctModelShape GetShape(long id)
     {
         EnsureNotDisposed();
-        if (id <= 0 || ModelNativeMethods.occt_model_shape_exists(_handle, id) == 0)
+        if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
+        var status = ModelNativeMethods.occt_model_shape_exists(_handle, id, out var exists);
+        if (status != OcctStatus.Ok) throw CreateException();
+        if (exists == 0)
             throw new ArgumentOutOfRangeException(nameof(id), id, "The shape ID does not exist in this modeling session.");
         return new OcctModelShape(id, _ownerId);
     }
@@ -95,7 +105,15 @@ public sealed partial class OcctModelingSession : IDisposable
     public bool TryGetShape(long id, out OcctModelShape shape)
     {
         EnsureNotDisposed();
-        if (id > 0 && ModelNativeMethods.occt_model_shape_exists(_handle, id) != 0)
+        if (id <= 0)
+        {
+            shape = default;
+            return false;
+        }
+
+        var status = ModelNativeMethods.occt_model_shape_exists(_handle, id, out var exists);
+        if (status != OcctStatus.Ok) throw CreateException();
+        if (exists != 0)
         {
             shape = new OcctModelShape(id, _ownerId);
             return true;
@@ -108,15 +126,17 @@ public sealed partial class OcctModelingSession : IDisposable
     public void Delete(OcctModelShape shape)
     {
         EnsureShape(shape);
-        Check(ModelNativeMethods.occt_model_delete_shape(_handle, shape.Id));
+        CheckStatus(ModelNativeMethods.occt_model_shape_delete(_handle, shape.Id));
     }
 
-    public void Clear() => Check(ModelNativeMethods.occt_model_clear(NativeHandle));
+    public void Clear() => CheckStatus(ModelNativeMethods.occt_model_clear(NativeHandle));
 
     public OcctModelShape Copy(OcctModelShape shape)
     {
         EnsureShape(shape);
-        return CheckShape(ModelNativeMethods.occt_model_copy_shape(_handle, shape.Id));
+        var status = ModelNativeMethods.occt_model_shape_copy(_handle, shape.Id, out var result);
+        CheckStatus(status);
+        return CheckShape(result);
     }
 
     private delegate int PropertyCall(OcctModelingSafeHandle handle, long id, out OcctMassProperties result);
@@ -149,7 +169,10 @@ public sealed partial class OcctModelingSession : IDisposable
         EnsureNotDisposed();
         if (!shape.IsValid || shape.OwnerId != _ownerId)
             throw new ArgumentException("Shape does not belong to this modeling session.", nameof(shape));
-        if (ModelNativeMethods.occt_model_shape_exists(_handle, shape.Id) == 0)
+
+        var status = ModelNativeMethods.occt_model_shape_exists(_handle, shape.Id, out var exists);
+        if (status != OcctStatus.Ok) throw CreateException();
+        if (exists == 0)
             throw new ArgumentException("Shape no longer exists in this modeling session.", nameof(shape));
     }
 
@@ -157,6 +180,12 @@ public sealed partial class OcctModelingSession : IDisposable
     {
         if (id <= 0) throw CreateException(operation);
         return new OcctModelShape(id, _ownerId);
+    }
+
+    private OcctModelShape CheckShape(OcctStatus status, long id, [CallerMemberName] string? operation = null)
+    {
+        CheckStatus(status, operation);
+        return CheckShape(id, operation);
     }
 
     private OcctModelAlgorithmResult CheckAlgorithm(NativeModelAlgorithmResult native, [CallerMemberName] string? operation = null)
@@ -170,6 +199,18 @@ public sealed partial class OcctModelingSession : IDisposable
         if (result == 0) throw CreateException(operation);
     }
 
+    private void CheckStatus(OcctStatus status, [CallerMemberName] string? operation = null)
+    {
+        if (status != OcctStatus.Ok) throw CreateException(operation);
+    }
+
+    internal string ReadOperationReport(long operationId)
+    {
+        EnsureNotDisposed();
+        return ReadUtf8Buffer((byte[]? buffer, int capacity, out int required) =>
+            ModelNativeMethods.occt_model_operation_report_get(_handle, operationId, buffer, capacity, out required));
+    }
+
     private OcctException CreateException(string? operation = null)
     {
         var (status, nativeMessage) = NativeError.ReadModelingSession(_handle);
@@ -177,6 +218,27 @@ public sealed partial class OcctModelingSession : IDisposable
             ? "The native OCCT modeling operation failed."
             : nativeMessage;
         return new OcctException(message, status, operation, nativeMessage);
+    }
+
+    private static string ReadCapabilities() => ReadUtf8Buffer((byte[]? buffer, int capacity, out int required) =>
+        ModelNativeMethods.occt_model_capabilities_get(buffer, capacity, out required));
+
+    private delegate OcctStatus Utf8BufferCall(byte[]? buffer, int capacity, out int required);
+
+    private static string ReadUtf8Buffer(Utf8BufferCall call)
+    {
+        var status = call(null, 0, out var required);
+        if (status != OcctStatus.Ok)
+            throw new OcctException("Unable to query native UTF-8 buffer size.", status);
+        if (required <= 1) return string.Empty;
+
+        var buffer = new byte[required];
+        status = call(buffer, buffer.Length, out var copiedRequired);
+        if (status != OcctStatus.Ok)
+            throw new OcctException("Unable to read native UTF-8 buffer.", status);
+        if (copiedRequired <= 0 || copiedRequired > buffer.Length)
+            throw new InvalidOperationException("Native UTF-8 buffer size is invalid.");
+        return Encoding.UTF8.GetString(buffer, 0, copiedRequired - 1);
     }
 
     private void EnsureNotDisposed() => ObjectDisposedException.ThrowIf(IsDisposed, this);
