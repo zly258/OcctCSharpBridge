@@ -10,7 +10,8 @@ Set-StrictMode -Version Latest
 
 $RepoRoot = Split-Path -Parent $PSCommandPath
 $Destination = Join-Path $RepoRoot "dist\win-x64"
-$TempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("OcctCSharpBridge-main-sdk-" + [Guid]::NewGuid().ToString("N"))
+$WorkspaceRoot = Split-Path -Parent $RepoRoot
+$WorktreeRoot = Join-Path $WorkspaceRoot (".OcctCSharpBridge-main-sdk-" + [Guid]::NewGuid().ToString("N"))
 $WorktreeAdded = $false
 
 function Assert-File {
@@ -60,17 +61,40 @@ if (-not [string]::IsNullOrWhiteSpace($SdkRoot)) {
 
 if ($null -eq (Get-Command git -ErrorAction SilentlyContinue)) { throw "git was not found in PATH." }
 
-try {
-    Write-Host "[sync] Fetching $Remote/$SourceBranch..." -ForegroundColor Cyan
-    & git -C $RepoRoot fetch --quiet $Remote $SourceBranch
-    if ($LASTEXITCODE -ne 0) { throw "Unable to fetch $Remote/$SourceBranch." }
+Write-Host "[sync] Fetching $Remote/$SourceBranch..." -ForegroundColor Cyan
+& git -C $RepoRoot fetch --quiet $Remote $SourceBranch
+if ($LASTEXITCODE -ne 0) { throw "Unable to fetch $Remote/$SourceBranch." }
 
-    Write-Host "[sync] Creating temporary clean SDK worktree..." -ForegroundColor DarkGray
-    & git -C $RepoRoot worktree add --detach $TempRoot "$Remote/$SourceBranch"
+$sourceCommit = ([string](& git -C $RepoRoot rev-parse "$Remote/$SourceBranch")).Trim()
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($sourceCommit)) {
+    throw "Unable to resolve $Remote/$SourceBranch."
+}
+
+if (Test-Path -LiteralPath $Destination -PathType Container) {
+    try {
+        $contract = Test-SdkRoot $Destination
+        $manifest = Get-Content -LiteralPath (Join-Path $Destination "bridge-manifest.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ([string]$manifest.sourceCommit -eq $sourceCommit) {
+            Write-Host "Binary SDK is already synchronized; rebuild skipped." -ForegroundColor Green
+            Write-Host "Source: $Remote/$SourceBranch @ $($sourceCommit.Substring(0, 7))" -ForegroundColor DarkGray
+            Write-Host "Bridge: $($contract.bridgeVersion), ABI 5 only, OCCT $($contract.occtVersion), .NET SDK $($contract.dotnet.sdkVersion)" -ForegroundColor DarkGray
+            Write-Host "Path:   $Destination" -ForegroundColor DarkGray
+            exit 0
+        }
+        Write-Host "[sync] Existing SDK is from a different source commit; rebuilding." -ForegroundColor DarkGray
+    }
+    catch {
+        Write-Host "[sync] Existing SDK is incomplete or invalid; rebuilding." -ForegroundColor DarkGray
+    }
+}
+
+try {
+    Write-Host "[sync] Creating clean SDK worktree beside the repository..." -ForegroundColor DarkGray
+    & git -C $RepoRoot worktree add --detach $WorktreeRoot "$Remote/$SourceBranch"
     if ($LASTEXITCODE -ne 0) { throw "Unable to create worktree for $Remote/$SourceBranch." }
     $WorktreeAdded = $true
 
-    $buildScript = Join-Path $TempRoot "build.ps1"
+    $buildScript = Join-Path $WorktreeRoot "build.ps1"
     if (-not (Test-Path -LiteralPath $buildScript -PathType Leaf)) { throw "$Remote/$SourceBranch does not contain build.ps1." }
 
     Write-Host "[sync] Building validated win-x64 Binary SDK from $Remote/$SourceBranch..." -ForegroundColor Cyan
@@ -82,13 +106,13 @@ try {
     & $buildScript @buildParameters
     if ($LASTEXITCODE -ne 0) { throw "Binary SDK build failed on $Remote/$SourceBranch." }
 
-    Copy-Sdk (Join-Path $TempRoot "dist\win-x64")
+    Copy-Sdk (Join-Path $WorktreeRoot "dist\win-x64")
 }
 finally {
     if ($WorktreeAdded) {
-        & git -C $RepoRoot worktree remove --force $TempRoot *> $null
+        & git -C $RepoRoot worktree remove --force $WorktreeRoot *> $null
     }
-    elseif (Test-Path -LiteralPath $TempRoot) {
-        Remove-Item -LiteralPath $TempRoot -Recurse -Force -ErrorAction SilentlyContinue
+    elseif (Test-Path -LiteralPath $WorktreeRoot) {
+        Remove-Item -LiteralPath $WorktreeRoot -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
