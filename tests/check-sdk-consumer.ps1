@@ -8,13 +8,17 @@ Set-StrictMode -Version Latest
 $tracked = @(& git -C $RepositoryRoot ls-files)
 if ($LASTEXITCODE -ne 0) { throw "Unable to inspect tracked demo sources." }
 
+$forbiddenSdkRoots = @(
+    "src/OcctNative/",
+    "src/OcctNet/",
+    "src/OcctNet.WinForms/",
+    "src/OcctNet.Wpf/",
+    "src/OcctNet.Avalonia/"
+)
 $forbiddenSdkSources = @(
     $tracked | Where-Object {
-        $_ -like "src/OcctNative/*" -or
-        $_ -like "src/OcctNet/*" -or
-        $_ -like "src/OcctNet.WinForms/*" -or
-        $_ -like "src/OcctNet.Wpf/*" -or
-        $_ -like "src/OcctNet.Avalonia/*"
+        $path = [string]$_
+        @($forbiddenSdkRoots | Where-Object { $path.StartsWith($_, [StringComparison]::Ordinal) }).Count -gt 0
     }
 )
 if ($forbiddenSdkSources.Count -gt 0) {
@@ -22,11 +26,18 @@ if ($forbiddenSdkSources.Count -gt 0) {
 }
 
 $sourceFiles = @(
-    $tracked | Where-Object { $_ -like "src/*.cs" -or $_ -like "src/*/*.cs" }
+    $tracked | Where-Object {
+        $path = [string]$_
+        $path.StartsWith("src/", [StringComparison]::Ordinal) -and
+        [System.IO.Path]::GetExtension($path) -eq ".cs"
+    }
 )
 
 # A demo consumer must never cross the managed SDK boundary and call OcctNative directly.
 $nativeAbiPattern = '\bocct_[A-Za-z0-9_]+\b|\b(?:NativeOcctSurface|LegacyNativeSurface)\b|(?:LibraryImport|DllImport)\s*\(\s*"OcctNative"'
+
+# Pre-ABI5 handles and flat/compatibility metadata are retired by the Bridge 3 contract.
+$retiredAbiPattern = '\b(?:OcctHandle|OcctModelHandle|nativeAbiVersion|legacyAbi4Exports|compatibilityExtensions|plannedRemoval)\b|\bmodelOf\s*\('
 
 # Bridge 3 retired the old object snapshots/re-hydration helpers and per-object appearance aliases.
 $retiredObjectPattern = '\bEngine\.(?:Objects|Shapes|Exists|GetShape|GetName|SetName)\b'
@@ -37,6 +48,7 @@ $retiredInteropPattern = '\bEngine\.Display\b|\bEngine\.(?:MakeTextShape|MakeLen
 
 $guardPatterns = @(
     $nativeAbiPattern,
+    $retiredAbiPattern,
     $retiredObjectPattern,
     $retiredAppearancePattern,
     $retiredInteropPattern
@@ -56,4 +68,4 @@ if ($violations.Count -gt 0) {
     throw "Demo implementation crosses the Bridge 3 consumer boundary or uses retired APIs:`n - $($violations -join "`n - ")"
 }
 
-Write-Host "[consumer] Demo is a Bridge 3/ABI5 consumer only: no SDK implementation sources, direct native ABI calls, or retired managed APIs." -ForegroundColor Green
+Write-Host "[consumer] Demo is a Bridge 3/ABI5 consumer only: no SDK implementation sources, direct native ABI calls, pre-ABI5 handles/metadata, or retired managed APIs." -ForegroundColor Green
