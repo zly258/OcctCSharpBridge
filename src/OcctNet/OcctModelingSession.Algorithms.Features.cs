@@ -6,7 +6,9 @@ public sealed partial class OcctModelingSession
     {
         EnsureShape(profile);
         OcctGuard.NonZero(vector, nameof(vector));
-        return CheckAlgorithm(ModelNativeMethods.occt_model_extrude(_handle, profile.Id, vector));
+        var status = ModelNativeMethods.occt_model_feature_extrude_execute(
+            _handle, profile.Id, vector, out var result);
+        return CheckAlgorithm(status, result);
     }
 
     public OcctModelAlgorithmResult Revolve(
@@ -21,19 +23,23 @@ public sealed partial class OcctModelingSession
         OcctGuard.Finite(angleDegrees, nameof(angleDegrees));
         if (Math.Abs(angleDegrees) <= double.Epsilon)
             throw new ArgumentOutOfRangeException(nameof(angleDegrees), angleDegrees, "Revolve angle must be non-zero.");
-        return CheckAlgorithm(ModelNativeMethods.occt_model_revolve(
+        var status = ModelNativeMethods.occt_model_feature_revolve_execute(
             _handle,
             profile.Id,
             axisPoint,
             axisDirection,
-            angleDegrees));
+            angleDegrees,
+            out var result);
+        return CheckAlgorithm(status, result);
     }
 
     public OcctModelAlgorithmResult Sweep(OcctModelShape spineWire, OcctModelShape profile)
     {
         EnsureShape(spineWire);
         EnsureShape(profile);
-        return CheckAlgorithm(ModelNativeMethods.occt_model_sweep(_handle, spineWire.Id, profile.Id));
+        var status = ModelNativeMethods.occt_model_feature_sweep_execute(
+            _handle, spineWire.Id, profile.Id, out var result);
+        return CheckAlgorithm(status, result);
     }
 
     public OcctModelAlgorithmResult Loft(
@@ -46,13 +52,15 @@ public sealed partial class OcctModelingSession
         if (ids.Length < 2)
             throw new ArgumentException("Loft requires at least two section wires.", nameof(sectionWires));
         OcctGuard.Positive(tolerance, nameof(tolerance));
-        return CheckAlgorithm(ModelNativeMethods.occt_model_loft(
+        var status = ModelNativeMethods.occt_model_feature_loft_execute(
             _handle,
             ids,
             ids.Length,
             makeSolid ? 1 : 0,
             ruled ? 1 : 0,
-            tolerance));
+            tolerance,
+            out var result);
+        return CheckAlgorithm(status, result);
     }
 
     public OcctModelAlgorithmResult FilletEdges(
@@ -64,12 +72,14 @@ public sealed partial class OcctModelingSession
         OcctGuard.Positive(radius, nameof(radius));
         var indices = RequiredArray(edgeIndices, nameof(edgeIndices)).Distinct().ToArray();
         foreach (var index in indices) OcctGuard.PositiveIndex(index, nameof(edgeIndices));
-        return CheckAlgorithm(ModelNativeMethods.occt_model_fillet_edges(
+        var status = ModelNativeMethods.occt_model_feature_fillet_edges_execute(
             _handle,
             shape.Id,
             indices,
             indices.Length,
-            radius));
+            radius,
+            out var result);
+        return CheckAlgorithm(status, result);
     }
 
     public OcctModelAlgorithmResult ChamferEdges(
@@ -81,12 +91,14 @@ public sealed partial class OcctModelingSession
         OcctGuard.Positive(distance, nameof(distance));
         var indices = RequiredArray(edgeIndices, nameof(edgeIndices)).Distinct().ToArray();
         foreach (var index in indices) OcctGuard.PositiveIndex(index, nameof(edgeIndices));
-        return CheckAlgorithm(ModelNativeMethods.occt_model_chamfer_edges(
+        var status = ModelNativeMethods.occt_model_feature_chamfer_edges_execute(
             _handle,
             shape.Id,
             indices,
             indices.Length,
-            distance));
+            distance,
+            out var result);
+        return CheckAlgorithm(status, result);
     }
 
     public OcctModelAlgorithmResult OffsetShape(
@@ -99,11 +111,13 @@ public sealed partial class OcctModelingSession
         if (Math.Abs(offset) <= 1e-15)
             throw new ArgumentOutOfRangeException(nameof(offset), offset, "Offset must be non-zero.");
         OcctGuard.Positive(tolerance, nameof(tolerance));
-        return CheckAlgorithm(ModelNativeMethods.occt_model_offset(
+        var status = ModelNativeMethods.occt_model_feature_offset_execute(
             _handle,
             shape.Id,
             offset,
-            tolerance));
+            tolerance,
+            out var result);
+        return CheckAlgorithm(status, result);
     }
 
     public OcctModelAlgorithmResult MakeThickSolid(
@@ -119,12 +133,14 @@ public sealed partial class OcctModelingSession
         OcctGuard.Positive(tolerance, nameof(tolerance));
         var indices = RequiredArray(faceIndicesToRemove, nameof(faceIndicesToRemove)).Distinct().ToArray();
         foreach (var index in indices) OcctGuard.PositiveIndex(index, nameof(faceIndicesToRemove));
-        return CheckAlgorithm(ModelNativeMethods.occt_model_thick_solid(
+        var status = ModelNativeMethods.occt_model_feature_thick_solid_execute(
             _handle,
             solid.Id,
             indices,
             indices.Length,
             thickness,
-            tolerance));
+            tolerance,
+            out var result);
+        return CheckAlgorithm(status, result);
     }
 }
