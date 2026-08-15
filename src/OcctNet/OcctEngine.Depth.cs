@@ -1,35 +1,35 @@
-﻿namespace OcctNet;
+using System.Runtime.InteropServices;
+
+namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
-    /// <summary>
-    /// Enables or disables automatic adjustment of the camera Z range.
-    /// This improves depth precision and prevents clipping, but it does not separate two coplanar objects.
-    /// </summary>
     public void SetAutoZFitMode(bool enabled, double scaleFactor = 1.0)
     {
         OcctGuard.Positive(scaleFactor, nameof(scaleFactor));
-        CheckInitialized(() => DepthNativeMethods.occt_set_auto_z_fit_mode(
-            _handle,
-            enabled ? 1 : 0,
-            scaleFactor));
+        UpdateDepth(new NativeViewerDepthUpdateOptions
+        {
+            StructSize = (uint)Marshal.SizeOf<NativeViewerDepthUpdateOptions>(),
+            ApiVersion = 1,
+            UpdateMask = NativeViewerDepthUpdateMask.AutoZFitSettings,
+            AutoZFitEnabled = enabled ? 1 : 0,
+            AutoZFitScaleFactor = scaleFactor
+        });
     }
 
-    /// <summary>Returns the current automatic Z-range fitting settings.</summary>
     public OcctAutoZFitSettings GetAutoZFitSettings()
     {
-        EnsureInitialized();
-        Check(DepthNativeMethods.occt_get_auto_z_fit_mode(_handle, out var result));
-        return new OcctAutoZFitSettings(result.Enabled != 0, result.ScaleFactor);
+        var state = GetDepthState();
+        return new OcctAutoZFitSettings(state.AutoZFitEnabled != 0, state.AutoZFitScaleFactor);
     }
 
-    /// <summary>Recalculates the current camera Z range when automatic Z fitting is enabled.</summary>
-    public void AutoZFit() => CheckInitialized(() => DepthNativeMethods.occt_auto_z_fit(_handle));
+    public void AutoZFit() => UpdateDepth(new NativeViewerDepthUpdateOptions
+    {
+        StructSize = (uint)Marshal.SizeOf<NativeViewerDepthUpdateOptions>(),
+        ApiVersion = 1,
+        UpdateMask = NativeViewerDepthUpdateMask.AutoZFitNow
+    });
 
-    /// <summary>
-    /// Changes the default polygon offset inherited by future Viewer objects.
-    /// OCCT's recommended shaded-view baseline is Fill, factor 1, units 1.
-    /// </summary>
     public void SetDefaultPolygonOffsets(
         OcctPolygonOffsetMode mode,
         double factor = 1.0,
@@ -39,26 +39,27 @@ public sealed partial class OcctEngine
         if (!Enum.IsDefined(mode)) throw new ArgumentOutOfRangeException(nameof(mode));
         OcctGuard.Finite(factor, nameof(factor));
         OcctGuard.Finite(units, nameof(units));
-        CheckInitialized(() => DepthNativeMethods.occt_set_default_polygon_offsets(
-            _handle,
-            (int)mode,
-            factor,
-            units,
-            applyExisting ? 1 : 0));
+        UpdateDepth(new NativeViewerDepthUpdateOptions
+        {
+            StructSize = (uint)Marshal.SizeOf<NativeViewerDepthUpdateOptions>(),
+            ApiVersion = 1,
+            UpdateMask = NativeViewerDepthUpdateMask.DefaultPolygonOffsets,
+            PolygonOffsetMode = (int)mode,
+            PolygonOffsetFactor = factor,
+            PolygonOffsetUnits = units,
+            ApplyPolygonOffsetsToExisting = applyExisting ? 1 : 0
+        });
     }
 
-    /// <summary>Returns the polygon offset configured on the Viewer default drawer.</summary>
     public OcctPolygonOffsetSettings GetDefaultPolygonOffsets()
     {
-        EnsureInitialized();
-        Check(DepthNativeMethods.occt_get_default_polygon_offsets(_handle, out var result));
-        return ToManaged(result);
+        var state = GetDepthState();
+        return new OcctPolygonOffsetSettings(
+            (OcctPolygonOffsetMode)state.PolygonOffsetMode,
+            state.PolygonOffsetFactor,
+            state.PolygonOffsetUnits);
     }
 
-    /// <summary>
-    /// Sets a per-object polygon offset. Use a negative Fill offset to draw a coplanar overlay
-    /// in front of its reference object, or a larger positive value to push it behind.
-    /// </summary>
     public void SetPolygonOffsets(
         IOcctObject value,
         OcctPolygonOffsetMode mode,
@@ -69,31 +70,71 @@ public sealed partial class OcctEngine
         if (!Enum.IsDefined(mode)) throw new ArgumentOutOfRangeException(nameof(mode));
         OcctGuard.Finite(factor, nameof(factor));
         OcctGuard.Finite(units, nameof(units));
-        CheckInitialized(() => DepthNativeMethods.occt_set_object_polygon_offsets(
-            _handle,
-            value.Id,
-            (int)mode,
-            factor,
-            units));
+        UpdateObjectPolygonOffset(value, new NativeViewerObjectPolygonOffsetOptions
+        {
+            StructSize = (uint)Marshal.SizeOf<NativeViewerObjectPolygonOffsetOptions>(),
+            ApiVersion = 1,
+            Mode = (int)mode,
+            Factor = factor,
+            Units = units
+        });
     }
 
-    /// <summary>Returns the effective polygon offset for a Viewer object.</summary>
     public OcctPolygonOffsetSettings GetPolygonOffsets(IOcctObject value)
     {
         EnsureObject(value);
         EnsureInitialized();
-        Check(DepthNativeMethods.occt_get_object_polygon_offsets(_handle, value.Id, out var result));
-        return ToManaged(result);
+        CheckDepthStatus(DepthNativeMethods.occt_engine_object_polygon_offset_get(
+            _handle,
+            value.Id,
+            out var state));
+        if (state.ApiVersion != 1 ||
+            state.StructSize < (uint)Marshal.SizeOf<NativeViewerObjectPolygonOffsetState>())
+        {
+            throw new OcctException("Native object polygon offset state ABI is incompatible with this SDK.");
+        }
+        return new OcctPolygonOffsetSettings((OcctPolygonOffsetMode)state.Mode, state.Factor, state.Units);
     }
 
-    /// <summary>Restores a Viewer object's polygon offset to the current default drawer values.</summary>
     public void ResetPolygonOffsets(IOcctObject value)
     {
         EnsureObject(value);
-        CheckInitialized(() => DepthNativeMethods.occt_reset_object_polygon_offsets(_handle, value.Id));
+        UpdateObjectPolygonOffset(value, new NativeViewerObjectPolygonOffsetOptions
+        {
+            StructSize = (uint)Marshal.SizeOf<NativeViewerObjectPolygonOffsetOptions>(),
+            ApiVersion = 1,
+            ResetToDefault = 1
+        });
     }
 
-    private static OcctPolygonOffsetSettings ToManaged(
-        DepthNativeMethods.NativePolygonOffsetSettings value) =>
-        new((OcctPolygonOffsetMode)value.Mode, value.Factor, value.Units);
+    private void UpdateDepth(NativeViewerDepthUpdateOptions options)
+    {
+        EnsureInitialized();
+        CheckDepthStatus(DepthNativeMethods.occt_engine_depth_update(_handle, in options));
+    }
+
+    private NativeViewerDepthState GetDepthState()
+    {
+        EnsureInitialized();
+        CheckDepthStatus(DepthNativeMethods.occt_engine_depth_state_get(_handle, out var state));
+        if (state.ApiVersion != 1 || state.StructSize < (uint)Marshal.SizeOf<NativeViewerDepthState>())
+            throw new OcctException("Native depth state ABI is incompatible with this SDK.");
+        return state;
+    }
+
+    private void UpdateObjectPolygonOffset(
+        IOcctObject value,
+        NativeViewerObjectPolygonOffsetOptions options)
+    {
+        EnsureInitialized();
+        CheckDepthStatus(DepthNativeMethods.occt_engine_object_polygon_offset_update(
+            _handle,
+            value.Id,
+            in options));
+    }
+
+    private void CheckDepthStatus(OcctStatus status)
+    {
+        if (status != OcctStatus.Ok) throw CreateException();
+    }
 }
