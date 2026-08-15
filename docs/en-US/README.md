@@ -1,17 +1,19 @@
 # OcctCSharpBridge Documentation
 
-This documentation describes the **`main` branch**, the sole formal SDK source based on OCCT 7.9.0, .NET 10 and C# 14.
+This directory documents the architecture, usage, build, deployment, and migration conventions for the Bridge 3 ABI5-only SDK. `bridge-contract.json` is the source-contract source of truth.
 
 Current source contract:
 
-- Bridge 3.0.0-preview.1 / Native ABI 5 current, ABI 4 compatible
-- 431 Native exports / 431 P/Invoke mappings
-- 145 public .NET types
-- Viewer / Modeling API: 292 / 139
-- Target frameworks: `net10.0` core/Avalonia; `net10.0-windows` WinForms/WPF
-- Public assemblies: `OcctNet`, `OcctNet.WinForms`, `OcctNet.Wpf`, `OcctNet.Avalonia`
+- Bridge: `3.0.0-preview.1`;
+- Native ABI: **ABI 5 only**, with `current = 5` and `minimumSupported = 5`;
+- API policy: `abi5-only`;
+- OCCT: `7.9.0`;
+- .NET SDK: **`10.0.302` exactly**, with roll-forward disabled;
+- target frameworks: `net10.0` for Core/Avalonia and `net10.0-windows` for WinForms/WPF;
+- public managed assemblies: `OcctNet`, `OcctNet.WinForms`, `OcctNet.Wpf`, `OcctNet.Avalonia`;
+- source platforms: Windows x64 / Linux x64.
 
-The `demo` and `avalonia` branches contain consumer examples and packaging; SDK implementations remain in `main`.
+The formal `demo` and `avalonia` branches are SDK consumers and packaging examples; Bridge SDK implementation is maintained by `main`.
 
 ## Guide
 
@@ -23,7 +25,6 @@ The `demo` and `avalonia` branches contain consumer examples and packaging; SDK 
 6. [Mesh and Data Exchange](06_Mesh-and-Data-Exchange.md)
 7. [Runtime Deployment and Diagnostics](07_Runtime-Deployment-and-Diagnostics.md)
 8. [Build, Test and Publish](08_Build-Test-and-Publish.md)
-9. [Generated API Reference](api/README.md)
-10. [Bridge Migration](bridge-migration.md)
+9. [Bridge 3 ABI5 Migration](bridge-migration.md)
 
-`bridge-contract.json` is the machine-readable source contract. `dist/win-x64/bridge-manifest.json` describes the concrete SDK that was actually published from `main`.
+This directory no longer tracks generated per-type/per-function API reference pages. Native/managed API-surface integrity is validated directly from current source by `tests/check-api-surface.ps1`; hard-coded API counts are intentionally not maintained.

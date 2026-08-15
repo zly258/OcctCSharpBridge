@@ -1,6 +1,6 @@
-﻿# OcctCSharpBridge
+# OcctCSharpBridge
 
-[English](README.md) · [中文文档](docs/zh-CN/README.md) · [English Docs](docs/en-US/README.md) · [API 参考](docs/zh-CN/api/README.md) · [Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo) · [跨平台 Avalonia](https://github.com/zly258/OcctCSharpBridge/tree/avalonia)
+[English](README.md) · [中文文档](docs/zh-CN/README.md) · [English Docs](docs/en-US/README.md) · [构建/测试说明](docs/zh-CN/08_构建测试与发布.md) · [Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo) · [跨平台 Avalonia](https://github.com/zly258/OcctCSharpBridge/tree/avalonia)
 
 OcctCSharpBridge 是可复用的 **Open CASCADE Technology 7.9.0 → .NET 10 / C# 14** Bridge。`main` 统一维护正式 Native Core、Managed API、WinForms/WPF/Avalonia 视口宿主、测试、文档和各平台 Binary SDK 生产流程。
 
@@ -22,7 +22,7 @@ Bridge 3 **仅支持 ABI 5**。ABI 4 导出、兼容 Shim、旧 Handle、兼容�
 | UI Adapter | **WinForms / WPF / Avalonia** |
 | 源码平台 | **Windows x64 / Linux x64** |
 
-`bridge-contract.json` 是机器可读的唯一契约事实源。当前 Public .NET 与 Native C ABI 数量以生成的 API Reference 为准，README 不再重复维护容易失真的硬编码统计值。
+`bridge-contract.json` 是机器可读的唯一契约事实源。Native Declaration、Definition 与 Managed `LibraryImport` 的 API Surface 由 `tests/check-api-surface.ps1` 直接从当前源码校验；README 和 docs 不维护容易失真的硬编码接口数量或生成式 API Reference。
 
 ## 架构
 
@@ -42,16 +42,22 @@ Document、Feature Tree、Command/Tool、Undo/Redo、捕捉、夹点和项目持
 
 ## 构建与校验
 
-Windows：
+Windows 推荐完整验证：
+
+```powershell
+.\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
+```
+
+其它常用 target：
 
 ```powershell
 .\build.ps1 validate Release
+.\build.ps1 native Release
 .\build.ps1 managed Release
 .\build.ps1 test Release
-.\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 .\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
-.\build.ps1 docs Release
 .\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
+.\build.ps1 clean
 ```
 
 Linux x64：
@@ -64,6 +70,8 @@ Linux x64：
 ./build.sh avalonia-smoke Release
 ./build.sh dist Release
 ```
+
+完整 target、6 个静态 Contract Checks、Managed Tests、Native Smoke、SDK 10.0.302 排障和发布说明见 [构建、测试与发布](docs/zh-CN/08_构建测试与发布.md)。
 
 ABI5 契约检查会保证 Native 声明、实现和 Managed `LibraryImport` 一致，拒绝 pre-ABI5 Handle 与兼容遗留，并在仓库存在平台 Binary SDK 时检查其契约是否仍为 ABI5-only。
 

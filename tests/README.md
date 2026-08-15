@@ -49,11 +49,13 @@ Linux：
 .\build.ps1 test Release
 ```
 
-或：
+或直接调用项目：
 
 ```powershell
 dotnet test .\tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj -c Release -p:Platform=x64
 ```
+
+日常仓库验证优先使用 `build.ps1`，因为它会先锁定契约要求的 .NET SDK 并运行静态 Contract Checks。
 
 ## 3. Native Smoke
 
@@ -96,7 +98,7 @@ Avalonia Viewer 的 Linux Smoke 需要 X11/XWayland Display：
 默认构建保留 `bin/obj`，交给 MSBuild/CMake 做增量判断。只有确实需要全量重建时执行：
 
 ```powershell
-.\build.ps1 clean Release
+.\build.ps1 clean
 ```
 
 不要在日常构建前手工删除每个项目的 `bin/obj`。
@@ -117,7 +119,12 @@ Avalonia Viewer 的 Linux Smoke 需要 X11/XWayland Display：
 .\build.ps1 all Release
 ```
 
-Windows 与 Linux 的 `all` 都执行：静态契约检查、Native 构建、Managed 构建、Managed Tests 和 Native Smoke。`docs` 与 `dist` 保持独立，不会在默认 `all` 中修改生成文档或 Binary SDK。
+Windows 与 Linux 的 `all` 都覆盖静态契约检查、Native 构建、Managed 构建、Managed Tests 和 Native Smoke。`dist` 保持独立，因为它会生成平台 Binary SDK；默认 `all` 不修改 `dist`。
+
+完整 target、环境要求、SDK 解析和发布说明见：
+
+- `docs/zh-CN/08_构建测试与发布.md`
+- `docs/en-US/08_Build-Test-and-Publish.md`
 
 ## 6. 新增检查原则
 

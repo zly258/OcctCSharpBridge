@@ -1,17 +1,19 @@
 # OcctCSharpBridge 文档
 
-本目录描述 **`main` 分支**：基于 OCCT 7.9.0、.NET 10、C# 14 的唯一正式 SDK 源。
+本目录描述 Bridge 3 ABI5-only SDK 的架构、使用、构建、部署和迁移约定。`bridge-contract.json` 是源码契约事实源。
 
 当前源码契约：
 
-- Bridge 3.0.0-preview.1 / 当前 Native ABI 5，兼容 ABI 4
-- Native exports / P/Invoke：431 / 431
-- Public .NET types：145
-- Viewer / Modeling API：292 / 139
-- Target Framework：Core/Avalonia 为 `net10.0`，WinForms/WPF 为 `net10.0-windows`
-- 公开程序集：`OcctNet`、`OcctNet.WinForms`、`OcctNet.Wpf`、`OcctNet.Avalonia`
+- Bridge：`3.0.0-preview.1`；
+- Native ABI：**仅 ABI 5**，`current = 5`、`minimumSupported = 5`；
+- API Policy：`abi5-only`；
+- OCCT：`7.9.0`；
+- .NET SDK：**精确 `10.0.302`**，禁止 roll-forward；
+- Target Framework：Core/Avalonia 为 `net10.0`，WinForms/WPF 为 `net10.0-windows`；
+- 公开 Managed 程序集：`OcctNet`、`OcctNet.WinForms`、`OcctNet.Wpf`、`OcctNet.Avalonia`；
+- 源码平台：Windows x64 / Linux x64。
 
-`demo` 与 `avalonia` 分支只包含 Consumer 示例和打包流程；SDK 实现统一保留在 `main`。
+`demo` 与 `avalonia` 正式分支只作为 SDK Consumer 和打包示例；Bridge SDK 实现统一由 `main` 维护。
 
 ## 文档目录
 
@@ -23,7 +25,6 @@
 6. [网格与数据交换](06_网格与数据交换.md)
 7. [运行时部署与诊断](07_运行时部署与诊断.md)
 8. [构建、测试与发布](08_构建测试与发布.md)
-9. [Generated API Reference](api/README.md)
-10. [Bridge 迁移](bridge-migration.md)
+9. [Bridge 3 ABI5 迁移](bridge-migration.md)
 
-`bridge-contract.json` 是源码契约事实源；`dist/win-x64/bridge-manifest.json` 描述 main 实际发布的 Windows SDK。
+本目录不再跟踪生成式逐类型/逐函数 API Reference。Native/Managed API Surface 的完整性由 `tests/check-api-surface.ps1` 直接从当前源码验证，不维护容易失真的硬编码接口数量。

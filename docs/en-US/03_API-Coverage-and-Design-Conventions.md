@@ -1,26 +1,40 @@
 # API Coverage and Design Conventions
 
-The `main` source contract is:
+Bridge 3 treats the **current source tree** as the source of truth for the public API. The repository no longer maintains hand-written or generated API-count statistics and no longer generates per-type/per-function API reference pages.
+
+Current public managed assemblies:
 
 ```text
-Native exports:     349
-P/Invoke mappings:  349
-Public .NET types:  113
-Viewer API:         215
-Modeling API:       134
+OcctNet
+OcctNet.WinForms
+OcctNet.Wpf
+OcctNet.Avalonia
 ```
 
-The exact values are stored in `bridge-contract.json` and validated by repository checks.
+Native C ABI and managed interop parity is checked directly from source by `tests/check-api-surface.ps1`:
 
-Public managed assemblies on `main` are `OcctNet`, `OcctNet.WinForms`, and `OcctNet.Wpf`. Avalonia public types are deliberately excluded from this branch and are counted independently by the `avalonia` contract.
+- tracked Native Header declarations must match Native definitions one-to-one;
+- `occt_*` bindings in `OcctNet` Core must match the Native ABI one-to-one;
+- Core Bridge P/Invoke uses source-generated `LibraryImport` + Cdecl;
+- `DllImport` is forbidden in Core;
+- WinForms/WPF/Avalonia adapters may use host-platform interop such as Win32/X11, but must not bypass `OcctNet` by declaring `occt_*` Bridge ABI entries themselves;
+- high-cardinality data uses Snapshot/Buffer/Bulk ABI instead of N+1 indexed interop;
+- exported functions use semantic names rather than migration-version suffixes;
+- Bridge 3 supports ABI 5 only and retains no ABI4 shim, retired handle, or compatibility entry point.
 
-Design rules:
+Design boundaries:
 
-- keep Native declarations, definitions and P/Invoke names one-to-one;
-- use Cdecl + ExactSpelling for Native exports;
-- use bulk transfer for high-cardinality collections instead of N+1 interop loops;
-- keep UI frameworks out of `OcctNet`;
-- keep ownership and object identity explicit;
-- do not reintroduce application-layer Document/Command/Tool abstractions into the Bridge.
+- `OcctModelingSession` owns headless modeling/topology resources;
+- `OcctEngine` owns AIS/viewer presentation and interactive scene state;
+- `OcctNet` Core does not depend on UI frameworks;
+- WinForms, WPF, and Avalonia adapters do not reference each other;
+- ownership and identity remain explicit; objects from different sessions/engines must not be mixed;
+- application documents, feature trees, commands/tools, undo/redo, snapping, grips, and project persistence remain application responsibilities rather than Bridge public architecture.
 
-`tools/OcctApiDocsGenerator` discovers the public assemblies that actually exist on the current branch instead of hard-coding a shared UI-host list.
+To verify whether the public API changed, inspect the current source and run:
+
+```powershell
+.\build.ps1 validate Release
+```
+
+instead of relying on a generated reference that may have drifted from source.

@@ -1,6 +1,6 @@
-﻿# OcctCSharpBridge
+# OcctCSharpBridge
 
-[简体中文](README.zh-CN.md) · [English Docs](docs/en-US/README.md) · [中文文档](docs/zh-CN/README.md) · [API Reference](docs/en-US/api/README.md) · [Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo) · [Cross-platform Avalonia](https://github.com/zly258/OcctCSharpBridge/tree/avalonia)
+[简体中文](README.zh-CN.md) · [English Docs](docs/en-US/README.md) · [中文文档](docs/zh-CN/README.md) · [Build/Test Guide](docs/en-US/08_Build-Test-and-Publish.md) · [Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo) · [Cross-platform Avalonia](https://github.com/zly258/OcctCSharpBridge/tree/avalonia)
 
 OcctCSharpBridge is the reusable **Open CASCADE Technology 7.9.0 → .NET 10 / C# 14** bridge. `main` owns the formal Native Core, managed API, WinForms/WPF/Avalonia viewport hosts, tests, documentation and platform Binary SDK production.
 
@@ -22,7 +22,7 @@ Bridge 3 is **ABI 5 only**. ABI 4 exports, compatibility shims, legacy handles, 
 | UI adapters | **WinForms / WPF / Avalonia** |
 | Source platform contract | **Windows x64 / Linux x64** |
 
-`bridge-contract.json` is the machine-readable source of truth. The generated API reference reports the current public .NET and Native C ABI surfaces; duplicated hard-coded API counts are intentionally avoided here.
+`bridge-contract.json` is the machine-readable source of truth. Native declarations, definitions and managed `LibraryImport` bindings are validated directly from current source by `tests/check-api-surface.ps1`; README/docs intentionally do not maintain hard-coded API counts or a generated API reference.
 
 ## Architecture
 
@@ -42,16 +42,22 @@ Application documents, feature trees, commands/tools, undo/redo, snapping, grips
 
 ## Build and validation
 
-Windows:
+Recommended full Windows validation:
+
+```powershell
+.\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
+```
+
+Other common targets:
 
 ```powershell
 .\build.ps1 validate Release
+.\build.ps1 native Release
 .\build.ps1 managed Release
 .\build.ps1 test Release
-.\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 .\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
-.\build.ps1 docs Release
 .\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
+.\build.ps1 clean
 ```
 
 Linux x64:
@@ -65,7 +71,9 @@ Linux x64:
 ./build.sh dist Release
 ```
 
-The ABI5 contract checks require Native declarations, definitions and managed `LibraryImport` bindings to remain aligned, reject retired pre-ABI5 handles and compatibility artifacts, and validate tracked platform Binary SDK contracts when such payloads exist.
+See [Build, Test and Publish](docs/en-US/08_Build-Test-and-Publish.md) for every target, the six static contract checks, managed tests, Native Smoke, .NET SDK 10.0.302 diagnostics and publication rules.
+
+The ABI5 contract checks keep Native declarations, definitions and managed `LibraryImport` bindings aligned, reject retired pre-ABI5 handles and compatibility artifacts, and validate tracked platform Binary SDK contracts when such payloads exist.
 
 ## Binary SDKs
 
