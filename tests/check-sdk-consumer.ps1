@@ -58,7 +58,7 @@ $violations = @()
 foreach ($relativePath in $sourceFiles) {
     $path = Join-Path $RepositoryRoot $relativePath
     foreach ($pattern in $guardPatterns) {
-        $matches = @(Select-String -LiteralPath $path -Pattern $pattern -AllMatches)
+        $matches = @(Select-String -LiteralPath $path -Pattern $pattern -AllMatches -CaseSensitive)
         foreach ($match in $matches) {
             $violations += "${relativePath}:$($match.LineNumber): $($match.Line.Trim())"
         }
