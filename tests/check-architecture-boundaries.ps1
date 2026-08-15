@@ -64,6 +64,32 @@ function Test-TrackedPath {
     return $tracked.Count -gt 0
 }
 
+function Get-TrackedFiles {
+    param(
+        [Parameter(Mandatory = $true)][string]$RelativeRoot,
+        [string[]]$Extensions = @()
+    )
+
+    $normalizedRoot = $RelativeRoot.Replace('\', '/').TrimEnd('/')
+    $tracked = @(& git -C $RepositoryRoot ls-files -- "$normalizedRoot/**" 2>$null)
+    if ($LASTEXITCODE -ne 0) { throw "Unable to inspect tracked repository files with git ls-files: $RelativeRoot" }
+
+    $files = @()
+    foreach ($relativePath in $tracked) {
+        if ($Extensions.Count -gt 0) {
+            $extension = [System.IO.Path]::GetExtension($relativePath)
+            if ($extension -notin $Extensions) { continue }
+        }
+
+        $fullPath = Join-Path $RepositoryRoot $relativePath
+        if (-not (Test-Path $fullPath -PathType Leaf)) {
+            throw "Tracked source file is missing from the working tree: $relativePath"
+        }
+        $files += Get-Item $fullPath
+    }
+    return @($files)
+}
+
 $core = Read-Project "src/OcctNet/OcctNet.csproj"
 $winForms = Read-Project "src/OcctNet.WinForms/OcctNet.WinForms.csproj"
 $wpf = Read-Project "src/OcctNet.Wpf/OcctNet.Wpf.csproj"
@@ -103,9 +129,10 @@ if ("Avalonia" -notin @(Get-PackageReferences $avalonia)) {
     throw "OcctNet.Avalonia must reference the Avalonia package."
 }
 
-# Reusable core must not absorb application architecture.
-$managedRoot = Join-Path $RepositoryRoot "src\OcctNet"
-$managedFiles = @(Get-ChildItem $managedRoot -Filter '*.cs' -File -Recurse)
+# Reusable core must not absorb application architecture. Only tracked production source
+# participates in architecture validation so stale/untracked local files cannot masquerade
+# as shipped SDK surface.
+$managedFiles = @(Get-TrackedFiles "src/OcctNet" @('.cs'))
 $managedText = ($managedFiles | ForEach-Object { [System.IO.File]::ReadAllText($_.FullName) }) -join "`n"
 foreach ($forbidden in @("DocumentManager", "CommandBus", "CommandRegistry", "ToolManager")) {
     if ($managedText -match "\b$([regex]::Escape($forbidden))\b") {
@@ -157,9 +184,9 @@ foreach ($retired in @(
 
 # Native module filenames must express ownership. Extension/Helper/Utils/Misc modules are
 # intentionally forbidden at the native ABI boundary; internal .hxx names may use specific
-# implementation nouns but not generic dumping-ground names.
-$nativeRoot = Join-Path $RepositoryRoot "src\OcctNative"
-$nativeFiles = @(Get-ChildItem $nativeRoot -File -Recurse)
+# implementation nouns but not generic dumping-ground names. Scan the tracked SDK tree only;
+# CMake/build outputs and stale untracked migration files are not repository architecture.
+$nativeFiles = @(Get-TrackedFiles "src/OcctNative")
 $badNativeNames = @($nativeFiles | Where-Object {
     $_.Name -match '(?i)(Extension|Extensions|Helper|Helpers|Utils|Utilities|Misc)\.(cpp|cxx|h|hpp|hxx)$'
 })
