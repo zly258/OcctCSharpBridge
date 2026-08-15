@@ -22,6 +22,7 @@
     "nativeHeaders": [
       "OcctNative.h",
       "exchange/OcctStepDocument.h",
+      "exchange/OcctViewerExchange.h",
       "platform/OcctNativeSurface.h",
       "geometry/OcctPoints.h",
       "geometry/OcctViewerGeometry.h",
