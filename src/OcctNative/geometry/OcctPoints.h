@@ -67,6 +67,13 @@ extern "C"
         int pixelFormat;
     };
 
+    struct OcctPointStateUpdate
+    {
+        OcctObjectId pointId;
+        OcctPoint3d position;
+        int visible;
+    };
+
     OCCTBRIDGE_API OcctStatus occt_engine_point_create(
         OcctEngineHandle handle,
         const OcctViewerPointOptions* options,
@@ -86,4 +93,10 @@ extern "C"
         OcctEngineHandle handle,
         OcctObjectId pointId,
         const OcctViewerPointPixmapOptions* options);
+
+    // Frozen ABI4 compatibility. Implemented by the points domain.
+    OCCTBRIDGE_API int occt_update_points(
+        OcctHandle handle,
+        const OcctPointStateUpdate* updates,
+        int count);
 }
