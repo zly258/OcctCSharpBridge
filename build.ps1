@@ -313,10 +313,13 @@ function Build-BinaryDistribution {
         }
 
         $manifest = [ordered]@{
-            schemaVersion = 1
+            schemaVersion = 2
             author = $Author
             bridgeVersion = $BridgeVersion
-            nativeAbiVersion = [int]$Contract.nativeAbi.current
+            nativeAbi = [ordered]@{
+                current = [int]$Contract.nativeAbi.current
+                minimumSupported = [int]$Contract.nativeAbi.minimumSupported
+            }
             occtVersion = $RequiredOcctVersion
             platform = "win-x64"
             targetFramework = $TargetFramework
