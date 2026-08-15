@@ -1,18 +1,35 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace OcctNet;
 
 internal static partial class ModelNativeMethods
 {
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_model_mesh(OcctModelingSafeHandle handle, long shapeId, in NativeModelMeshParameters parameters);
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial int occt_model_mesh(
+        OcctModelingSafeHandle handle,
+        long shapeId,
+        in NativeModelMeshParameters parameters);
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_model_clear_mesh(OcctModelingSafeHandle handle, long shapeId);
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial int occt_model_clear_mesh(OcctModelingSafeHandle handle, long shapeId);
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_model_face_mesh_nodes_copy(OcctModelingSafeHandle handle, long faceId, [Out] NativeModelMeshNode[]? results, int capacity);
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial int occt_model_face_mesh_nodes_copy(
+        OcctModelingSafeHandle handle,
+        long faceId,
+        [Out, MarshalUsing(CountElementName = nameof(capacity))] NativeModelMeshNode[]? results,
+        int capacity);
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_model_face_mesh_triangles_copy(OcctModelingSafeHandle handle, long faceId, [Out] OcctModelMeshTriangle[]? results, int capacity);
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial int occt_model_face_mesh_triangles_copy(
+        OcctModelingSafeHandle handle,
+        long faceId,
+        [Out, MarshalUsing(CountElementName = nameof(capacity))] OcctModelMeshTriangle[]? results,
+        int capacity);
 }
