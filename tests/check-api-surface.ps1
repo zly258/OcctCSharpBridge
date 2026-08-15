@@ -83,14 +83,12 @@ if ([int]$contract.nativeAbi.current -ne 5 -or [int]$contract.nativeAbi.minimumS
 if ([string]$contract.api.policy -ne "abi5-only") { throw "bridge-contract.json api.policy must be 'abi5-only'." }
 
 $nativeRoot = Join-Path $RepositoryRoot "src\OcctNative"
-$managedRoot = Join-Path $RepositoryRoot "src\OcctNet"
 $coreManagedRelativeRoot = "src/OcctNet"
 $adapterManagedRelativeRoots = @(
     "src/OcctNet.WinForms",
     "src/OcctNet.Wpf",
     "src/OcctNet.Avalonia"
 )
-$publicManagedRelativeRoots = @($coreManagedRelativeRoot) + $adapterManagedRelativeRoots
 
 $nativeHeaderNames = @($contract.api.nativeHeaders | ForEach-Object { [string]$_ })
 if ($nativeHeaderNames.Count -eq 0) { throw "bridge-contract.json does not declare api.nativeHeaders." }

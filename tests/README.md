@@ -13,7 +13,7 @@
 | `check-abi5-contract.ps1` | 保证 ABI 5 是唯一受支持 Native ABI，拒绝 pre-ABI5 文件、元数据、Handle 与 Binary SDK Manifest 残留 |
 | `check-bulk-abi.ps1` | 高数量 Modeling 集合与 Selection Hit 必须保持 Snapshot/Buffer ABI，禁止恢复 N+1 indexed ABI |
 | `check-native-build-structure.ps1` | 校验 CMake Native 源清单、领域边界、平台隔离和 OCCT 7.9 数据交换 Toolkit |
-| `check-api-surface.ps1` | 校验 Native declaration/definition 与 Managed `LibraryImport` 一一对应，并拒绝重复或遗漏入口 |
+| `check-api-surface.ps1` | 校验 Native declaration/definition 与 Core `LibraryImport + Cdecl` 一一对应；UI Adapter 可调用 Win32/X11 等平台 API，但不得自行声明 `occt_*` Bridge ABI 入口 |
 | `check-linux-contract.sh` | Linux x64 的 ABI5、TFM、构建、发布与 Manifest 平台契约 |
 
 Windows 静态验证：
@@ -28,7 +28,7 @@ Linux：
 ./build.sh validate Release
 ```
 
-静态脚本只维护长期仓库不变量。具体方法内部实现、文件长度、README 固定文案等不作为契约；这些由编译、Managed Test、Native Smoke 和代码评审覆盖。
+静态脚本只维护长期仓库不变量。具体方法内部实现、文件长度、README 固定文案等不作为契约；这些由编译、Managed Test、Native Smoke 和代码评审覆盖。`OcctNet` Core 的 Bridge C ABI 绑定必须全部使用 source-generated `LibraryImport`；WPF/Avalonia 等宿主自身所需的操作系统 P/Invoke 不属于 Bridge ABI，但 UI Adapter 不能绕过 Core 直接绑定 `occt_*`。
 
 ## 2. Managed 回归
 
@@ -103,7 +103,7 @@ Avalonia Viewer 的 Linux Smoke 需要 X11/XWayland Display：
 
 ## 5. 推荐验证顺序
 
-日常纯 Managed 修改可以分步执行：
+日常 Managed 修改：
 
 ```powershell
 .\build.ps1 validate Release
@@ -111,13 +111,13 @@ Avalonia Viewer 的 Linux Smoke 需要 X11/XWayland Display：
 .\build.ps1 test Release
 ```
 
-涉及 Native / ABI / OCCT，推荐直接执行完整链：
+涉及 Native / ABI / OCCT：
 
 ```powershell
 .\build.ps1 all Release
 ```
 
-Windows 与 Linux 的 `all` 现在语义一致，均执行 Static Contract Checks、Native、Managed、Managed Tests 和 Native Smoke。`docs` 与 `dist` 会生成或修改仓库产物，因此保持独立 target，不包含在 `all` 中。
+Windows 与 Linux 的 `all` 都执行：静态契约检查、Native 构建、Managed 构建、Managed Tests 和 Native Smoke。`docs` 与 `dist` 保持独立，不会在默认 `all` 中修改生成文档或 Binary SDK。
 
 ## 6. 新增检查原则
 
