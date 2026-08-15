@@ -4,6 +4,8 @@
 #include <BRepBndLib.hxx>
 #include <Bnd_OBB.hxx>
 
+#include <stdexcept>
+
 using namespace OcctModelingInternal;
 
 extern "C"
