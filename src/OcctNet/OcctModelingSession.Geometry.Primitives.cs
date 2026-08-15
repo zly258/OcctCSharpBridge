@@ -10,7 +10,8 @@ public sealed partial class OcctModelingSession
         OcctGuard.Finite(x, nameof(x));
         OcctGuard.Finite(y, nameof(y));
         OcctGuard.Finite(z, nameof(z));
-        var status = ModelNativeMethods.occt_model_make_box(NativeHandle, x, y, z, dx, dy, dz, out var result);
+        var status = ModelNativeMethods.occt_model_primitive_box_create(
+            NativeHandle, x, y, z, dx, dy, dz, out var result);
         return CheckShape(status, result);
     }
 
@@ -20,7 +21,8 @@ public sealed partial class OcctModelingSession
         OcctGuard.NonZero(axis, nameof(axis));
         OcctGuard.Positive(radius, nameof(radius));
         OcctGuard.Positive(height, nameof(height));
-        var status = ModelNativeMethods.occt_model_make_cylinder(NativeHandle, origin, axis, radius, height, out var result);
+        var status = ModelNativeMethods.occt_model_primitive_cylinder_create(
+            NativeHandle, origin, axis, radius, height, out var result);
         return CheckShape(status, result);
     }
 
@@ -33,7 +35,8 @@ public sealed partial class OcctModelingSession
         if (radius1 == 0 && radius2 == 0)
             throw new ArgumentException("At least one cone radius must be greater than zero.", nameof(radius1));
         OcctGuard.Positive(height, nameof(height));
-        var status = ModelNativeMethods.occt_model_make_cone(NativeHandle, origin, axis, radius1, radius2, height, out var result);
+        var status = ModelNativeMethods.occt_model_primitive_cone_create(
+            NativeHandle, origin, axis, radius1, radius2, height, out var result);
         return CheckShape(status, result);
     }
 
@@ -41,7 +44,8 @@ public sealed partial class OcctModelingSession
     {
         OcctGuard.Finite(center, nameof(center));
         OcctGuard.Positive(radius, nameof(radius));
-        var status = ModelNativeMethods.occt_model_make_sphere(NativeHandle, center, radius, out var result);
+        var status = ModelNativeMethods.occt_model_primitive_sphere_create(
+            NativeHandle, center, radius, out var result);
         return CheckShape(status, result);
     }
 
@@ -53,7 +57,8 @@ public sealed partial class OcctModelingSession
         OcctGuard.Positive(minorRadius, nameof(minorRadius));
         if (minorRadius >= majorRadius)
             throw new ArgumentException("minorRadius must be less than majorRadius.", nameof(minorRadius));
-        var status = ModelNativeMethods.occt_model_make_torus(NativeHandle, center, axis, majorRadius, minorRadius, out var result);
+        var status = ModelNativeMethods.occt_model_primitive_torus_create(
+            NativeHandle, center, axis, majorRadius, minorRadius, out var result);
         return CheckShape(status, result);
     }
 
@@ -63,7 +68,8 @@ public sealed partial class OcctModelingSession
         OcctGuard.Positive(dy, nameof(dy));
         OcctGuard.Positive(dz, nameof(dz));
         OcctGuard.Finite(ltx, nameof(ltx));
-        var status = ModelNativeMethods.occt_model_make_wedge(NativeHandle, dx, dy, dz, ltx, out var result);
+        var status = ModelNativeMethods.occt_model_primitive_wedge_create(
+            NativeHandle, dx, dy, dz, ltx, out var result);
         return CheckShape(status, result);
     }
 }
