@@ -1,17 +1,23 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
-internal static class BatchNativeMethods
+internal static partial class BatchNativeMethods
 {
     private const string LibraryName = "OcctNative";
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_begin_update(OcctEngineSafeHandle handle);
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_update_begin(OcctEngineSafeHandle handle);
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_end_update(OcctEngineSafeHandle handle, int fitAll);
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_update_end(OcctEngineSafeHandle handle, int fitAll);
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_is_updating(OcctEngineSafeHandle handle);
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_update_state_get(
+        OcctEngineSafeHandle handle,
+        out int isUpdating);
 }
