@@ -117,6 +117,7 @@ function Test-BinarySdk {
         "OcctNet.dll",
         "OcctNet.WinForms.dll",
         "OcctNet.Wpf.dll",
+        "OcctNet.Avalonia.dll",
         "bridge-contract.json",
         "bridge-manifest.json"
     )
@@ -130,6 +131,13 @@ function Test-BinarySdk {
     $manifestPath = Join-Path $Path "bridge-manifest.json"
     $contract = Get-Content $contractPath -Raw -Encoding UTF8 | ConvertFrom-Json
     $manifest = Get-Content $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+
+    if ([int]$contract.schemaVersion -ne 3 -or
+        [int]$contract.nativeAbi.current -ne 5 -or
+        [int]$contract.nativeAbi.minimumSupported -ne 5 -or
+        [string]$contract.api.policy -ne "abi5-only") {
+        throw "Binary SDK contract must remain Bridge 3 ABI5-only."
+    }
 
     if ([int]$manifest.schemaVersion -ne 1 -or
         [string]$manifest.author -ne [string]$contract.author -or
@@ -157,6 +165,7 @@ function Test-BinarySdk {
         "OcctNet.dll",
         "OcctNet.WinForms.dll",
         "OcctNet.Wpf.dll",
+        "OcctNet.Avalonia.dll",
         "bridge-contract.json"
     )
     $entries = @($manifest.files)
