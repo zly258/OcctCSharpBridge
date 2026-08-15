@@ -70,27 +70,6 @@ internal static partial class ViewportNativeMethods
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
-    internal static partial OcctStatus occt_engine_selection_all_visible(
-        OcctEngineSafeHandle handle);
-
-    [LibraryImport(LibraryName)]
-    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
-    internal static partial OcctStatus occt_engine_selection_invert(
-        OcctEngineSafeHandle handle);
-
-    [LibraryImport(LibraryName)]
-    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
-    internal static partial OcctStatus occt_engine_selection_hide_selected(
-        OcctEngineSafeHandle handle);
-
-    [LibraryImport(LibraryName)]
-    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
-    internal static partial OcctStatus occt_engine_selection_automatic_highlight_set(
-        OcctEngineSafeHandle handle,
-        int enabled);
-
-    [LibraryImport(LibraryName)]
-    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_engine_viewport_rendering_update(
         OcctEngineSafeHandle handle,
         in NativeViewportRenderingOptions options);

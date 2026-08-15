@@ -130,32 +130,6 @@ public sealed partial class OcctEngine
         CheckViewportStatus(ViewportNativeMethods.occt_engine_viewport_zoom_at_point(_handle, x, y, delta));
     }
 
-    public void SelectAllVisible()
-    {
-        EnsureInitialized();
-        CheckViewportStatus(ViewportNativeMethods.occt_engine_selection_all_visible(_handle));
-    }
-
-    public void InvertSelection()
-    {
-        EnsureInitialized();
-        CheckViewportStatus(ViewportNativeMethods.occt_engine_selection_invert(_handle));
-    }
-
-    public void HideSelected()
-    {
-        EnsureInitialized();
-        CheckViewportStatus(ViewportNativeMethods.occt_engine_selection_hide_selected(_handle));
-    }
-
-    public void SetAutomaticHighlight(bool enabled)
-    {
-        EnsureInitialized();
-        CheckViewportStatus(ViewportNativeMethods.occt_engine_selection_automatic_highlight_set(
-            _handle,
-            enabled ? 1 : 0));
-    }
-
     public void SetMsaaSamples(int samples)
     {
         if (samples < 0 || samples > 16) throw new ArgumentOutOfRangeException(nameof(samples));
