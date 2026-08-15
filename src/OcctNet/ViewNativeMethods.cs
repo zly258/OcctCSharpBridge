@@ -163,4 +163,10 @@ internal static partial class ViewNativeMethods
     internal static partial OcctStatus occt_engine_view_dump(
         OcctEngineSafeHandle handle,
         string path);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_view_cube_language_set(
+        OcctEngineSafeHandle handle,
+        int language);
 }
