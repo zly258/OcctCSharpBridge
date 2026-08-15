@@ -100,8 +100,10 @@ add_library(OcctNative SHARED
     platform/OcctNativeSurface.cpp
     OcctEngineView.cpp
     selection/OcctEngineSelection.cpp
+    selection/OcctSelectionConvenience.cpp
     selection/OcctSelectionModes.cpp
     OcctEngineObjects.cpp
+    presentation/OcctObjectState.cpp
     presentation/OcctAppearance.cpp
     presentation/OcctViewCube.cpp
     presentation/OcctViewerDecorations.cpp
