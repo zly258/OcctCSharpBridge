@@ -27,7 +27,18 @@ extern "C"
         int hasSymmetryPoint;
     };
 
-    OCCTBRIDGE_API int occt_model_shape_linear_inertia(OcctModelHandle handle, OcctObjectId shapeId, OcctModelInertiaProperties* result);
-    OCCTBRIDGE_API int occt_model_shape_surface_inertia(OcctModelHandle handle, OcctObjectId shapeId, OcctModelInertiaProperties* result);
-    OCCTBRIDGE_API int occt_model_shape_volume_inertia(OcctModelHandle handle, OcctObjectId shapeId, OcctModelInertiaProperties* result);
+    OCCTBRIDGE_API OcctStatus occt_model_shape_linear_inertia(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        OcctModelInertiaProperties* result);
+
+    OCCTBRIDGE_API OcctStatus occt_model_shape_surface_inertia(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        OcctModelInertiaProperties* result);
+
+    OCCTBRIDGE_API OcctStatus occt_model_shape_volume_inertia(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        OcctModelInertiaProperties* result);
 }
