@@ -2,7 +2,8 @@ param(
     [string]$Remote = "origin",
     [string]$SourceBranch = "main",
     [string]$OcctRoot = $env:OCCT_ROOT,
-    [string]$SdkRoot = ""
+    [string]$SdkRoot = "",
+    [switch]$ForceRebuild
 )
 
 $ErrorActionPreference = "Stop"
@@ -19,8 +20,9 @@ function Assert-File {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "Required SDK file was not found: $Path" }
 }
 
-function Test-SdkRoot {
+function Read-ValidatedSdk {
     param([Parameter(Mandatory = $true)][string]$Root)
+
     foreach ($name in @(
         "OcctNative.dll",
         "OcctNet.dll",
@@ -31,6 +33,7 @@ function Test-SdkRoot {
         "bridge-manifest.json")) {
         Assert-File (Join-Path $Root $name)
     }
+
     $contract = Get-Content -LiteralPath (Join-Path $Root "bridge-contract.json") -Raw -Encoding UTF8 | ConvertFrom-Json
     if ([int]$contract.schemaVersion -ne 3 -or
         [int]$contract.nativeAbi.current -ne 5 -or
@@ -40,21 +43,41 @@ function Test-SdkRoot {
         [string]$contract.dotnet.sdkVersion -ne "10.0.303") {
         throw "The source SDK is not the expected Bridge 3 ABI5-only win-x64 SDK."
     }
-    return $contract
+
+    $manifest = Get-Content -LiteralPath (Join-Path $Root "bridge-manifest.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ([int]$manifest.schemaVersion -ne 2 -or
+        [int]$manifest.nativeAbi.current -ne 5 -or
+        [int]$manifest.nativeAbi.minimumSupported -ne 5 -or
+        [string]$manifest.runtimeIdentifier -ne "win-x64" -or
+        [string]$manifest.dotnetSdkVersion -ne "10.0.303") {
+        throw "The source SDK manifest is not the expected Bridge 3 ABI5-only win-x64 manifest."
+    }
+
+    if ([string]$manifest.bridgeVersion -ne [string]$contract.bridgeVersion -or
+        [string]$manifest.occtVersion -ne [string]$contract.occtVersion) {
+        throw "The SDK contract and manifest version metadata do not agree."
+    }
+
+    return [pscustomobject]@{
+        Contract = $contract
+        Manifest = $manifest
+    }
 }
 
 function Copy-Sdk {
     param([Parameter(Mandatory = $true)][string]$Source)
-    $contract = Test-SdkRoot $Source
+
+    $sdk = Read-ValidatedSdk $Source
     if (Test-Path -LiteralPath $Destination -PathType Container) { Remove-Item -LiteralPath $Destination -Recurse -Force }
     New-Item -ItemType Directory -Path $Destination -Force | Out-Null
     Copy-Item -Path (Join-Path $Source "*") -Destination $Destination -Recurse -Force
     Write-Host "Binary SDK synchronized." -ForegroundColor Green
-    Write-Host "Bridge: $($contract.bridgeVersion), ABI 5 only, OCCT $($contract.occtVersion), .NET SDK $($contract.dotnet.sdkVersion)" -ForegroundColor DarkGray
+    Write-Host "Bridge: $($sdk.Contract.bridgeVersion), ABI 5 only, OCCT $($sdk.Contract.occtVersion), .NET SDK $($sdk.Contract.dotnet.sdkVersion)" -ForegroundColor DarkGray
     Write-Host "Path:   $Destination" -ForegroundColor DarkGray
 }
 
 if (-not [string]::IsNullOrWhiteSpace($SdkRoot)) {
+    if ($ForceRebuild) { throw "-ForceRebuild cannot be combined with -SdkRoot; the supplied SDK is copied as-is after validation." }
     Copy-Sdk ([System.IO.Path]::GetFullPath($SdkRoot))
     exit 0
 }
@@ -70,14 +93,13 @@ if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($sourceCommit)) {
     throw "Unable to resolve $Remote/$SourceBranch."
 }
 
-if (Test-Path -LiteralPath $Destination -PathType Container) {
+if (-not $ForceRebuild -and (Test-Path -LiteralPath $Destination -PathType Container)) {
     try {
-        $contract = Test-SdkRoot $Destination
-        $manifest = Get-Content -LiteralPath (Join-Path $Destination "bridge-manifest.json") -Raw -Encoding UTF8 | ConvertFrom-Json
-        if ([string]$manifest.sourceCommit -eq $sourceCommit) {
+        $sdk = Read-ValidatedSdk $Destination
+        if ([string]$sdk.Manifest.sourceCommit -eq $sourceCommit) {
             Write-Host "Binary SDK is already synchronized; rebuild skipped." -ForegroundColor Green
             Write-Host "Source: $Remote/$SourceBranch @ $($sourceCommit.Substring(0, 7))" -ForegroundColor DarkGray
-            Write-Host "Bridge: $($contract.bridgeVersion), ABI 5 only, OCCT $($contract.occtVersion), .NET SDK $($contract.dotnet.sdkVersion)" -ForegroundColor DarkGray
+            Write-Host "Bridge: $($sdk.Contract.bridgeVersion), ABI 5 only, OCCT $($sdk.Contract.occtVersion), .NET SDK $($sdk.Contract.dotnet.sdkVersion)" -ForegroundColor DarkGray
             Write-Host "Path:   $Destination" -ForegroundColor DarkGray
             exit 0
         }
@@ -87,9 +109,15 @@ if (Test-Path -LiteralPath $Destination -PathType Container) {
         Write-Host "[sync] Existing SDK is incomplete or invalid; rebuilding." -ForegroundColor DarkGray
     }
 }
+elseif ($ForceRebuild) {
+    Write-Host "[sync] Forced Binary SDK rebuild requested." -ForegroundColor DarkGray
+}
 
 try {
     Write-Host "[sync] Creating clean SDK worktree beside the repository..." -ForegroundColor DarkGray
+    & git -C $RepoRoot worktree prune
+    if ($LASTEXITCODE -ne 0) { throw "Unable to prune stale git worktrees." }
+
     & git -C $RepoRoot worktree add --detach $WorktreeRoot "$Remote/$SourceBranch"
     if ($LASTEXITCODE -ne 0) { throw "Unable to create worktree for $Remote/$SourceBranch." }
     $WorktreeAdded = $true
@@ -105,6 +133,11 @@ try {
     if (-not [string]::IsNullOrWhiteSpace($OcctRoot)) { $buildParameters.OcctRoot = $OcctRoot }
     & $buildScript @buildParameters
     if ($LASTEXITCODE -ne 0) { throw "Binary SDK build failed on $Remote/$SourceBranch." }
+
+    $builtSdk = Read-ValidatedSdk (Join-Path $WorktreeRoot "dist\win-x64")
+    if ([string]$builtSdk.Manifest.sourceCommit -ne $sourceCommit) {
+        throw "Built SDK sourceCommit '$($builtSdk.Manifest.sourceCommit)' does not match $Remote/$SourceBranch '$sourceCommit'."
+    }
 
     Copy-Sdk (Join-Path $WorktreeRoot "dist\win-x64")
 }
