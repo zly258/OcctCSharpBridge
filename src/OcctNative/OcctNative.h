@@ -13,9 +13,6 @@
 
 extern "C"
 {
-    // OcctHandle is retained as an internal source alias while legacy implementation files
-    // are migrated. It is not part of the ABI5 exported function surface.
-    using OcctHandle = void*;
     using OcctObjectId = std::int64_t;
 
     struct OcctPoint3d { double x; double y; double z; };
