@@ -140,7 +140,7 @@ public sealed partial class OcctEngine
         EnsureInitialized();
         return IndexedFeature(
             indices,
-            (buffer, count, out long result) => ViewerFeatureNativeMethods.occt_engine_shape_fillet_edges(
+            (IntPtr buffer, int count, out long result) => ViewerFeatureNativeMethods.occt_engine_shape_fillet_edges(
                 _handle,
                 shape.Id,
                 buffer,
@@ -158,7 +158,7 @@ public sealed partial class OcctEngine
         EnsureInitialized();
         return IndexedFeature(
             indices,
-            (buffer, count, out long result) => ViewerFeatureNativeMethods.occt_engine_shape_chamfer_edges(
+            (IntPtr buffer, int count, out long result) => ViewerFeatureNativeMethods.occt_engine_shape_chamfer_edges(
                 _handle,
                 shape.Id,
                 buffer,
