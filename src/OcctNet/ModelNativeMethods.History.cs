@@ -8,28 +8,31 @@ internal static partial class ModelNativeMethods
 {
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
-    internal static partial int occt_model_history_generated_copy(
+    internal static partial OcctStatus occt_model_history_generated_snapshot_get(
         OcctModelingSafeHandle handle,
         long operationId,
         long sourceShapeId,
         [Out, MarshalUsing(CountElementName = nameof(capacity))] long[]? results,
-        int capacity);
+        int capacity,
+        out int required);
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
-    internal static partial int occt_model_history_modified_copy(
+    internal static partial OcctStatus occt_model_history_modified_snapshot_get(
         OcctModelingSafeHandle handle,
         long operationId,
         long sourceShapeId,
         [Out, MarshalUsing(CountElementName = nameof(capacity))] long[]? results,
-        int capacity);
+        int capacity,
+        out int required);
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
-    internal static partial int occt_model_history_is_removed(
+    internal static partial OcctStatus occt_model_history_is_removed_get(
         OcctModelingSafeHandle handle,
         long operationId,
-        long sourceShapeId);
+        long sourceShapeId,
+        out int result);
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
