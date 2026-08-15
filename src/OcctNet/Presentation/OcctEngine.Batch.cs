@@ -167,16 +167,6 @@ public sealed partial class OcctEngine
 
     public bool IsSelected(IOcctObject value) => GetObjectState(value).Selected != 0;
 
-    private NativeViewerObjectState GetObjectState(IOcctObject value)
-    {
-        EnsureObject(value);
-        EnsureInitialized();
-        CheckBatchStatus(ObjectNativeMethods.occt_engine_object_state_get(_handle, value.Id, out var state));
-        if (state.ApiVersion != 1 || state.StructSize < (uint)Marshal.SizeOf<NativeViewerObjectState>())
-            throw new OcctException("Native object state ABI is incompatible with this SDK.");
-        return state;
-    }
-
     private void UpdateObjects(long[] ids, NativeViewerObjectUpdateOptions options)
     {
         EnsureInitialized();

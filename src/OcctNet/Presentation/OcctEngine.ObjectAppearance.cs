@@ -8,6 +8,17 @@ public sealed partial class OcctEngine
     public void SetObjectAppearance(IOcctObject value, OcctObjectAppearance appearance)
     {
         ArgumentNullException.ThrowIfNull(appearance);
+        if (!double.IsFinite(appearance.Transparency) ||
+            appearance.Transparency < 0.0 ||
+            appearance.Transparency > 1.0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(appearance), "Transparency must be finite and in the range [0, 1].");
+        }
+        OcctGuard.Positive(appearance.LineWidth, nameof(appearance));
+        if (!Enum.IsDefined(appearance.DisplayMode))
+            throw new ArgumentOutOfRangeException(nameof(appearance), "DisplayMode is not supported by this SDK.");
+        if (!Enum.IsDefined(appearance.Material))
+            throw new ArgumentOutOfRangeException(nameof(appearance), "Material is not supported by this SDK.");
         EnsureObject(value);
 
         var mask = NativeViewerObjectUpdateMask.Color |

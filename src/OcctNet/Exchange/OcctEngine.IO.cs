@@ -113,9 +113,4 @@ public sealed partial class OcctEngine
     {
         if (status != OcctStatus.Ok) throw CreateException();
     }
-
-    private static void ValidatePath(string filePath)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
-    }
 }
