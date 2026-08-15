@@ -1,15 +1,84 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
 internal static partial class ModelNativeMethods
 {
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern NativeModelAlgorithmResult occt_model_extrude(OcctModelingSafeHandle handle, long profileId, OcctVector3d vector);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern NativeModelAlgorithmResult occt_model_revolve(OcctModelingSafeHandle handle, long profileId, OcctPoint3d axisPoint, OcctVector3d axisDirection, double angleDegrees);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern NativeModelAlgorithmResult occt_model_sweep(OcctModelingSafeHandle handle, long spineWireId, long profileId);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern NativeModelAlgorithmResult occt_model_loft(OcctModelingSafeHandle handle, [In] long[] wireIds, int count, int makeSolid, int ruled, double tolerance);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern NativeModelAlgorithmResult occt_model_fillet_edges(OcctModelingSafeHandle handle, long shapeId, [In] int[] edgeIndices, int count, double radius);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern NativeModelAlgorithmResult occt_model_chamfer_edges(OcctModelingSafeHandle handle, long shapeId, [In] int[] edgeIndices, int count, double distance);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern NativeModelAlgorithmResult occt_model_offset(OcctModelingSafeHandle handle, long shapeId, double offset, double tolerance);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern NativeModelAlgorithmResult occt_model_thick_solid(OcctModelingSafeHandle handle, long solidId, [In] int[] faceIndices, int count, double thickness, double tolerance);
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_feature_extrude_execute(
+        OcctModelingSafeHandle handle,
+        long profileId,
+        OcctVector3d vector,
+        out NativeModelAlgorithmResult result);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_feature_revolve_execute(
+        OcctModelingSafeHandle handle,
+        long profileId,
+        OcctPoint3d axisPoint,
+        OcctVector3d axisDirection,
+        double angleDegrees,
+        out NativeModelAlgorithmResult result);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_feature_sweep_execute(
+        OcctModelingSafeHandle handle,
+        long spineWireId,
+        long profileId,
+        out NativeModelAlgorithmResult result);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_feature_loft_execute(
+        OcctModelingSafeHandle handle,
+        [In] long[] wireIds,
+        int count,
+        int makeSolid,
+        int ruled,
+        double tolerance,
+        out NativeModelAlgorithmResult result);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_feature_fillet_edges_execute(
+        OcctModelingSafeHandle handle,
+        long shapeId,
+        [In] int[] edgeIndices,
+        int count,
+        double radius,
+        out NativeModelAlgorithmResult result);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_feature_chamfer_edges_execute(
+        OcctModelingSafeHandle handle,
+        long shapeId,
+        [In] int[] edgeIndices,
+        int count,
+        double distance,
+        out NativeModelAlgorithmResult result);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_feature_offset_execute(
+        OcctModelingSafeHandle handle,
+        long shapeId,
+        double offset,
+        double tolerance,
+        out NativeModelAlgorithmResult result);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_feature_thick_solid_execute(
+        OcctModelingSafeHandle handle,
+        long solidId,
+        [In] int[] faceIndices,
+        int count,
+        double thickness,
+        double tolerance,
+        out NativeModelAlgorithmResult result);
 }
