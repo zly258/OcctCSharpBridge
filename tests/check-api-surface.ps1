@@ -5,41 +5,30 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$contractPath = Join-Path $RepositoryRoot "bridge-contract.json"
-if (-not (Test-Path $contractPath -PathType Leaf)) { throw "Bridge contract file was not found: bridge-contract.json" }
-$contract = Get-Content $contractPath -Raw -Encoding UTF8 | ConvertFrom-Json
-if ([int]$contract.nativeAbi.current -ne 5 -or [int]$contract.nativeAbi.minimumSupported -ne 5) {
-    throw "API surface validation requires an ABI5-only bridge contract."
-}
-if ([string]$contract.api.policy -ne "abi5-only") { throw "bridge-contract.json api.policy must be 'abi5-only'." }
+function Get-TrackedFiles {
+    param(
+        [Parameter(Mandatory = $true)][string]$RelativeRoot,
+        [string[]]$Extensions = @()
+    )
 
-$nativeRoot = Join-Path $RepositoryRoot "src\OcctNative"
-$managedRoot = Join-Path $RepositoryRoot "src\OcctNet"
-$publicManagedRoots = @(
-    $managedRoot,
-    (Join-Path $RepositoryRoot "src\OcctNet.WinForms"),
-    (Join-Path $RepositoryRoot "src\OcctNet.Wpf"),
-    (Join-Path $RepositoryRoot "src\OcctNet.Avalonia")
-)
+    $normalizedRoot = $RelativeRoot.Replace('\', '/').TrimEnd('/')
+    $tracked = @(& git -C $RepositoryRoot ls-files -- "$normalizedRoot/**" 2>$null)
+    if ($LASTEXITCODE -ne 0) { throw "Unable to inspect tracked repository files with git ls-files: $RelativeRoot" }
 
-$nativeHeaderNames = @($contract.api.nativeHeaders | ForEach-Object { [string]$_ })
-if ($nativeHeaderNames.Count -eq 0) { throw "bridge-contract.json does not declare api.nativeHeaders." }
-if (@($nativeHeaderNames | Group-Object | Where-Object Count -gt 1).Count -gt 0) {
-    throw "bridge-contract.json contains duplicate api.nativeHeaders entries."
-}
-$headerFiles = @($nativeHeaderNames | ForEach-Object { Join-Path $nativeRoot $_ })
-$cppFiles = @(Get-ChildItem $nativeRoot -Filter "*.cpp" -File -Recurse | Select-Object -ExpandProperty FullName)
-$managedSourceFiles = @($publicManagedRoots | ForEach-Object {
-    if (-not (Test-Path $_ -PathType Container)) { throw "Public managed API root is missing: $_" }
-    Get-ChildItem $_ -Filter "*.cs" -File -Recurse | Select-Object -ExpandProperty FullName
-})
-$interopFiles = @(Get-ChildItem $managedRoot -Filter "*.cs" -File -Recurse | Where-Object {
-    $text = [System.IO.File]::ReadAllText($_.FullName)
-    $text.Contains("[LibraryImport(") -or $text.Contains("[DllImport(")
-} | Select-Object -ExpandProperty FullName)
+    $files = @()
+    foreach ($relativePath in $tracked) {
+        if ($Extensions.Count -gt 0) {
+            $extension = [System.IO.Path]::GetExtension($relativePath)
+            if ($extension -notin $Extensions) { continue }
+        }
 
-foreach ($path in @($headerFiles + $cppFiles + $managedSourceFiles + $interopFiles)) {
-    if (-not (Test-Path $path -PathType Leaf)) { throw "API validation input was not found: $path" }
+        $fullPath = Join-Path $RepositoryRoot $relativePath
+        if (-not (Test-Path $fullPath -PathType Leaf)) {
+            throw "Tracked source file is missing from the working tree: $relativePath"
+        }
+        $files += Get-Item $fullPath
+    }
+    return @($files)
 }
 
 function Read-AllText {
@@ -85,26 +74,85 @@ function Assert-SetEqual {
     throw "API surface validation failed for $Name."
 }
 
+$contractPath = Join-Path $RepositoryRoot "bridge-contract.json"
+if (-not (Test-Path $contractPath -PathType Leaf)) { throw "Bridge contract file was not found: bridge-contract.json" }
+$contract = Get-Content $contractPath -Raw -Encoding UTF8 | ConvertFrom-Json
+if ([int]$contract.nativeAbi.current -ne 5 -or [int]$contract.nativeAbi.minimumSupported -ne 5) {
+    throw "API surface validation requires an ABI5-only bridge contract."
+}
+if ([string]$contract.api.policy -ne "abi5-only") { throw "bridge-contract.json api.policy must be 'abi5-only'." }
+
+$nativeRoot = Join-Path $RepositoryRoot "src\OcctNative"
+$managedRoot = Join-Path $RepositoryRoot "src\OcctNet"
+$publicManagedRelativeRoots = @(
+    "src/OcctNet",
+    "src/OcctNet.WinForms",
+    "src/OcctNet.Wpf",
+    "src/OcctNet.Avalonia"
+)
+
+$nativeHeaderNames = @($contract.api.nativeHeaders | ForEach-Object { [string]$_ })
+if ($nativeHeaderNames.Count -eq 0) { throw "bridge-contract.json does not declare api.nativeHeaders." }
+if (@($nativeHeaderNames | Group-Object | Where-Object Count -gt 1).Count -gt 0) {
+    throw "bridge-contract.json contains duplicate api.nativeHeaders entries."
+}
+
+$trackedNativeFiles = @(Get-TrackedFiles "src/OcctNative")
+$trackedNativeRelativePaths = @($trackedNativeFiles | ForEach-Object {
+    [System.IO.Path]::GetRelativePath($nativeRoot, $_.FullName).Replace('\', '/')
+})
+$headerFiles = @($nativeHeaderNames | ForEach-Object {
+    if ($_ -notin $trackedNativeRelativePaths) {
+        throw "ABI5 contract header is not tracked under src/OcctNative: $_"
+    }
+    Join-Path $nativeRoot $_
+})
+$cppFiles = @($trackedNativeFiles | Where-Object { $_.Extension -in @('.cpp', '.cxx') } | Select-Object -ExpandProperty FullName)
+$allNativeHeaderFiles = @($trackedNativeFiles | Where-Object { $_.Extension -in @('.h', '.hpp') } | Select-Object -ExpandProperty FullName)
+
+$managedSourceFiles = @(
+    foreach ($relativeRoot in $publicManagedRelativeRoots) {
+        $rootPath = Join-Path $RepositoryRoot $relativeRoot
+        if (-not (Test-Path $rootPath -PathType Container)) { throw "Public managed API root is missing: $rootPath" }
+        Get-TrackedFiles $relativeRoot @('.cs') | Select-Object -ExpandProperty FullName
+    }
+)
+$interopFiles = @($managedSourceFiles | Where-Object {
+    $text = [System.IO.File]::ReadAllText($_)
+    $text.Contains("[LibraryImport(") -or $text.Contains("[DllImport(")
+})
+
+foreach ($path in @($headerFiles + $cppFiles + $allNativeHeaderFiles + $managedSourceFiles + $interopFiles)) {
+    if (-not (Test-Path $path -PathType Leaf)) { throw "API validation input was not found: $path" }
+}
+
 $headerText = Read-AllText $headerFiles
+$allNativeHeaderText = Read-AllText $allNativeHeaderFiles
 $cppText = Read-AllText $cppFiles
 $managedText = Read-AllText $managedSourceFiles
 $interopText = Read-AllText $interopFiles
 
-$declarationRaw = Get-RawMatches $headerText '\b(occt_[a-z0-9_]+)\s*\([^{};]*\)\s*;'
-$definitionRaw = Get-RawMatches $cppText '\b(occt_[a-z0-9_]+)\s*\([^;{}]*\)\s*\{'
+$declarationPattern = '\b(occt_[a-z0-9_]+)\s*\([^{};]*\)\s*;'
+$definitionPattern = '\b(occt_[a-z0-9_]+)\s*\([^;{}]*\)\s*\{'
+$declarationRaw = Get-RawMatches $headerText $declarationPattern
+$allNativeDeclarationRaw = Get-RawMatches $allNativeHeaderText $declarationPattern
+$definitionRaw = Get-RawMatches $cppText $definitionPattern
 $interopRaw = Get-RawMatches $interopText '\b(?:extern|(?:unsafe\s+)?partial)\s+[A-Za-z0-9_\.<>\[\],\?\*]+\s+(occt_[a-z0-9_]+)\s*\('
 $libraryImportRaw = Get-RawMatches $interopText '(?s)\[LibraryImport\([^\]]+\)\]\s*\[UnmanagedCallConv\(CallConvs\s*=\s*\[typeof\((?:System\.Runtime\.CompilerServices\.)?CallConvCdecl\)\]\)\]\s*internal\s+static\s+(?:unsafe\s+)?partial\s+[A-Za-z0-9_\.<>\[\],\?\*]+\s+(occt_[a-z0-9_]+)\s*\('
 
-Assert-NoDuplicates "native declarations" $declarationRaw
+Assert-NoDuplicates "canonical native declarations" $declarationRaw
+Assert-NoDuplicates "native declarations across tracked headers" $allNativeDeclarationRaw
 Assert-NoDuplicates "native definitions" $definitionRaw
 Assert-NoDuplicates "managed interop declarations" $interopRaw
 Assert-NoDuplicates "LibraryImport declarations" $libraryImportRaw
 
 $declarations = @($declarationRaw | Sort-Object -Unique)
+$allNativeDeclarations = @($allNativeDeclarationRaw | Sort-Object -Unique)
 $definitions = @($definitionRaw | Sort-Object -Unique)
 $interopDeclarations = @($interopRaw | Sort-Object -Unique)
 $libraryImports = @($libraryImportRaw | Sort-Object -Unique)
 
+Assert-SetEqual "tracked native header surface" $declarations $allNativeDeclarations
 Assert-SetEqual "native definitions" $declarations $definitions
 Assert-SetEqual "managed ABI5 interop" $declarations $interopDeclarations
 Assert-SetEqual "LibraryImport + Cdecl bindings" $declarations $libraryImports
