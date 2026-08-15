@@ -96,6 +96,34 @@ function Test-TrackedPath {
     return $tracked.Count -gt 0
 }
 
+function Assert-SourceDoesNotContain {
+    param(
+        [Parameter(Mandatory = $true)][string]$RelativePath,
+        [Parameter(Mandatory = $true)][string[]]$Forbidden
+    )
+
+    $text = Read-SourceText $RelativePath
+    foreach ($value in $Forbidden) {
+        if ($text.Contains($value)) {
+            throw "$RelativePath must not contain retired ABI symbol or implementation: $value"
+        }
+    }
+}
+
+function Assert-SourceContains {
+    param(
+        [Parameter(Mandatory = $true)][string]$RelativePath,
+        [Parameter(Mandatory = $true)][string[]]$Required
+    )
+
+    $text = Read-SourceText $RelativePath
+    foreach ($value in $Required) {
+        if (-not $text.Contains($value)) {
+            throw "$RelativePath is missing current ABI entry point: $value"
+        }
+    }
+}
+
 $core = Read-Project "src/OcctNet/OcctNet.csproj"
 $winForms = Read-Project "src/OcctNet.WinForms/OcctNet.WinForms.csproj"
 $wpf = Read-Project "src/OcctNet.Wpf/OcctNet.Wpf.csproj"
@@ -131,7 +159,6 @@ if ((Get-ProjectProperty $wpf "UseWPF") -ne "true") {
 if (-not [string]::IsNullOrWhiteSpace((Get-ProjectProperty $wpf "UseWindowsForms"))) {
     throw "OcctNet.Wpf must remain independent from Windows Forms."
 }
-
 if ("Avalonia" -notin @(Get-PackageReferences $avalonia)) {
     throw "OcctNet.Avalonia must reference the Avalonia package."
 }
@@ -194,106 +221,112 @@ foreach ($legacyFile in @(
     "src/OcctNet/OcctGeometryExtensions.Compatibility.cs",
     "src/OcctNet/OcctEngine.ApiAliases.cs",
     "src/OcctNet/NativeMethods.Modeling.cs",
-    "src/OcctNet/OcctEngine.AnnotationShapes.cs"
+    "src/OcctNet/OcctEngine.AnnotationShapes.cs",
+    "src/OcctNet/NativeMethods.View.cs",
+    "src/OcctNet/ObjectBatchNativeMethods.cs",
+    "src/OcctNative/OcctRenderSurface.cpp",
+    "src/OcctNative/OcctRenderSurface.h",
+    "src/OcctNative/OcctVectorAnnotations.cpp",
+    "src/OcctNative/OcctView.cpp",
+    "src/OcctNative/OcctObjectIdentity.cpp",
+    "src/OcctNative/OcctObjectInteraction.cpp"
 )) {
     if (Test-TrackedPath $legacyFile) {
-        throw "Legacy/compatibility source must not be reintroduced: $legacyFile"
+        throw "Retired compatibility source must not be reintroduced: $legacyFile"
     }
 }
 
-# ABI 4 stays as a compatibility shell. Current ABI owns the implementation path.
-$engineSource = Read-SourceText "src/OcctNative/core/OcctEngine.cpp"
-if (-not $engineSource.Contains("return reinterpret_cast<OcctHandle>(occt_engine_create());")) {
-    throw "Legacy occt_create must delegate to occt_engine_create."
-}
-if (-not $engineSource.Contains("occt_engine_destroy(reinterpret_cast<OcctEngineHandle>(handle));")) {
-    throw "Legacy occt_destroy must delegate to occt_engine_destroy."
-}
-
-$surfaceSource = Read-SourceText "src/OcctNative/platform/OcctNativeSurface.cpp"
-if (-not $surfaceSource.Contains("return occt_engine_initialize_surface(")) {
-    throw "Legacy native-surface initialization must delegate to the current surface API."
-}
-if ($surfaceSource.Contains("return occt_initialize_surface(reinterpret_cast<OcctHandle>(handle)")) {
-    throw "Current native-surface API must not delegate back into the legacy ABI."
-}
-
-# BRep annotation construction has one headless implementation. The frozen viewer ABI may
-# adapt registry objects into it, but must never grow its own font, text, arrow or dimension geometry.
-$vectorAnnotationSource = Read-SourceText "src/OcctNative/OcctVectorAnnotations.cpp"
-foreach ($sharedBuilder in @(
-    "buildBRepText(",
-    "buildLengthAnnotation(",
-    "buildAngleAnnotation(",
-    "buildRadiusAnnotation(",
-    "buildDiameterAnnotation("
-)) {
-    if (-not $vectorAnnotationSource.Contains($sharedBuilder)) {
-        throw "Legacy vector annotation adapter must delegate to shared headless builder: $sharedBuilder"
-    }
-}
-foreach ($forbiddenImplementation in @(
-    "StdPrs_BRepFont",
-    "StdPrs_BRepTextBuilder",
-    "BRepBuilderAPI_MakePolygon",
-    "BRepBuilderAPI_MakeFace"
-)) {
-    if ($vectorAnnotationSource.Contains($forbiddenImplementation)) {
-        throw "Legacy vector annotation adapter must not own geometry implementation: $forbiddenImplementation"
-    }
-}
-
-$viewerAnnotationSource = Read-SourceText "src/OcctNative/OcctAnnotations.cpp"
-foreach ($currentEntryPoint in @(
-    "occt_engine_text_create(",
-    "occt_engine_text_update(",
-    "occt_engine_dimension_create(",
-    "occt_engine_dimension_update("
-)) {
-    if (-not $viewerAnnotationSource.Contains($currentEntryPoint)) {
-        throw "Viewer annotation ABI 4 shell must route through current entry point: $currentEntryPoint"
-    }
-}
-
-# Point, appearance and presentation domains must also preserve legacy -> current direction.
-$pointSource = Read-SourceText "src/OcctNative/geometry/OcctPoints.cpp"
-foreach ($currentEntryPoint in @(
+# Currentized domains are ABI5-only: native implementation owns current symbols and must not
+# reintroduce retired ABI4 entry points.
+Assert-SourceContains "src/OcctNative/geometry/OcctPoints.cpp" @(
     "occt_engine_point_create(",
     "occt_engine_point_update(",
     "occt_engine_point_pixmap_create(",
     "occt_engine_point_pixmap_update("
-)) {
-    if (-not $pointSource.Contains($currentEntryPoint)) {
-        throw "Point ABI 4 shell must route through current entry point: $currentEntryPoint"
-    }
-}
-
-$appearanceSource = Read-SourceText "src/OcctNative/presentation/OcctAppearance.cpp"
-foreach ($currentEntryPoint in @(
+)
+Assert-SourceContains "src/OcctNative/presentation/OcctAppearance.cpp" @(
     "occt_engine_scene_lighting_set(",
     "occt_engine_scene_lighting_reset(",
     "occt_engine_highlight_colors_set("
-)) {
-    if (-not $appearanceSource.Contains($currentEntryPoint)) {
-        throw "Appearance ABI 4 shell must route through current entry point: $currentEntryPoint"
-    }
-}
-
-$presentationSource = Read-SourceText "src/OcctNative/presentation/OcctPresentation.cpp"
-foreach ($currentEntryPoint in @(
+)
+Assert-SourceContains "src/OcctNative/presentation/OcctPresentation.cpp" @(
     "occt_engine_presentation_state_update(",
     "occt_engine_presentation_state_get("
+)
+Assert-SourceContains "src/OcctNative/OcctObjectTransform.cpp" @(
+    "occt_engine_object_transform_set(",
+    "occt_engine_object_transform_get(",
+    "occt_engine_object_transform_reset(",
+    "occt_engine_object_transforms_set("
+)
+Assert-SourceContains "src/OcctNative/OcctObjectBatch.cpp" @(
+    "occt_engine_objects_update(",
+    "occt_engine_object_state_get(",
+    "occt_engine_objects_presentation_action("
+)
+Assert-SourceContains "src/OcctNative/OcctObjectUpdate.cpp" @(
+    "occt_engine_object_shape_update_from_model("
+)
+Assert-SourceContains "src/OcctNative/selection/OcctManipulator.cpp" @(
+    "occt_engine_manipulator_create(",
+    "occt_engine_manipulator_attach(",
+    "occt_engine_manipulator_update(",
+    "occt_engine_manipulator_transform("
+)
+Assert-SourceContains "src/OcctNative/viewer/OcctViewerUpdate.cpp" @(
+    "occt_engine_update_begin(",
+    "occt_engine_update_end(",
+    "occt_engine_update_state_get("
+)
+
+Assert-SourceDoesNotContain "src/OcctNative/OcctObjectTransform.cpp" @(
+    "occt_set_object_transform(",
+    "occt_get_object_transform(",
+    "occt_reset_object_transform(",
+    "occt_set_object_transforms("
+)
+Assert-SourceDoesNotContain "src/OcctNative/OcctObjectBatch.cpp" @(
+    "occt_set_objects_color(",
+    "occt_set_objects_transparency(",
+    "occt_set_objects_visible(",
+    "occt_set_objects_display_mode(",
+    "occt_set_objects_line_width(",
+    "occt_set_objects_material(",
+    "occt_redisplay_objects(",
+    "occt_select_objects(",
+    "occt_object_is_visible(",
+    "occt_object_is_selected("
+)
+Assert-SourceDoesNotContain "src/OcctNative/OcctObjectUpdate.cpp" @(
+    "occt_update_object_shape_from_model("
+)
+Assert-SourceDoesNotContain "src/OcctNative/selection/OcctManipulator.cpp" @(
+    "occt_add_manipulator(",
+    "occt_attach_manipulator(",
+    "occt_detach_manipulator(",
+    "occt_set_manipulator_",
+    "occt_get_manipulator_",
+    "occt_start_manipulator_transform(",
+    "occt_update_manipulator_transform(",
+    "occt_stop_manipulator_transform(",
+    "occt_deactivate_manipulator_mode("
+)
+
+# Managed bindings for completed domains must use source-generated LibraryImport only.
+foreach ($currentInterop in @(
+    "src/OcctNet/ObjectNativeMethods.cs",
+    "src/OcctNet/ObjectTransformNativeMethods.cs",
+    "src/OcctNet/ViewerModelInteropNativeMethods.cs",
+    "src/OcctNet/BatchNativeMethods.cs",
+    "src/OcctNet/ManipulatorNativeMethods.cs",
+    "src/OcctNet/ViewNativeMethods.cs"
 )) {
-    if (-not $presentationSource.Contains($currentEntryPoint)) {
-        throw "Presentation ABI 4 shell must route through current entry point: $currentEntryPoint"
+    $text = Read-SourceText $currentInterop
+    if ($text.Contains("[DllImport(")) {
+        throw "$currentInterop must use LibraryImport only."
     }
 }
-$objectSource = Read-SourceText "src/OcctNative/OcctEngineObjects.cpp"
-if (-not $objectSource.Contains("occt_engine_presentation_state_update(")) {
-    throw "Legacy object display-mode setter must delegate to current presentation state API."
-}
 
-# Production managed APIs must not call frozen exports after a domain has a current ABI.
 foreach ($legacyManagedCall in @(
     "NativeMethods.occt_make_text_shape(",
     "NativeMethods.occt_make_length_annotation_shape(",
@@ -305,19 +338,25 @@ foreach ($legacyManagedCall in @(
     "NativeMethods.occt_set_point_style(",
     "NativeMethods.occt_add_point_pixmap(",
     "NativeMethods.occt_set_point_pixmap_style(",
-    "NativeMethods.occt_reset_scene_lighting(",
-    "NativeMethods.occt_set_object_display_mode(",
-    "PresentationNativeMethods.occt_reset_object_display_mode(",
-    "PresentationNativeMethods.occt_get_object_display_mode(",
-    "PresentationNativeMethods.occt_set_object_auto_highlight(",
-    "PresentationNativeMethods.occt_get_object_auto_highlight(",
-    "PresentationNativeMethods.occt_set_object_infinite_state(",
-    "PresentationNativeMethods.occt_get_object_infinite_state("
+    "NativeMethods.occt_update_object_shape_from_model(",
+    "NativeMethods.occt_set_object_transform(",
+    "NativeMethods.occt_get_object_transform(",
+    "NativeMethods.occt_reset_object_transform(",
+    "NativeMethods.occt_set_objects_color(",
+    "NativeMethods.occt_set_objects_transparency(",
+    "NativeMethods.occt_set_objects_visible(",
+    "NativeMethods.occt_set_objects_display_mode(",
+    "NativeMethods.occt_set_objects_line_width(",
+    "NativeMethods.occt_set_objects_material(",
+    "NativeMethods.occt_redisplay_objects(",
+    "NativeMethods.occt_select_objects(",
+    "NativeMethods.occt_object_is_visible(",
+    "NativeMethods.occt_object_is_selected("
 )) {
     if ($managedText.Contains($legacyManagedCall)) {
-        throw "Managed production API must not call frozen export: $legacyManagedCall"
+        throw "Managed production API must not call retired export: $legacyManagedCall"
     }
 }
 
 $layoutName = if ($isDemoBranchLayout) { "demo" } else { "main" }
-Write-Host "[architecture] Core/UI dependency direction, WinForms/WPF/Avalonia hosts, $layoutName branch layout, current-over-legacy adapter direction, shared annotation implementation, current point/appearance/presentation domains, and no-compatibility boundary validated." -ForegroundColor Green
+Write-Host "[architecture] Core/UI boundaries, $layoutName branch layout, and ABI5-only currentized domains validated." -ForegroundColor Green
