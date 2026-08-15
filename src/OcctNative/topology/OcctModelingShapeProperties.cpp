@@ -10,39 +10,52 @@ using namespace OcctModelingInternal;
 
 extern "C"
 {
-    int occt_model_shape_is_same(
-        OcctModelHandle handle,
+    OcctStatus occt_model_shape_is_same(
+        OcctModelingSessionHandle handle,
         OcctObjectId firstId,
-        OcctObjectId secondId)
+        OcctObjectId secondId,
+        OcctBool* result)
     {
-        ModelSession* model = modelOf(handle);
-        return executeValue(model, 0, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = 0;
+        return executeStatus(model, [&]
         {
-            return model->requireShape(firstId).IsSame(model->requireShape(secondId)) ? 1 : 0;
+            *result = model->requireShape(firstId).IsSame(model->requireShape(secondId)) ? 1 : 0;
         });
     }
 
-    int occt_model_shape_is_partner(
-        OcctModelHandle handle,
+    OcctStatus occt_model_shape_is_partner(
+        OcctModelingSessionHandle handle,
         OcctObjectId firstId,
-        OcctObjectId secondId)
+        OcctObjectId secondId,
+        OcctBool* result)
     {
-        ModelSession* model = modelOf(handle);
-        return executeValue(model, 0, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = 0;
+        return executeStatus(model, [&]
         {
-            return model->requireShape(firstId).IsPartner(model->requireShape(secondId)) ? 1 : 0;
+            *result = model->requireShape(firstId).IsPartner(model->requireShape(secondId)) ? 1 : 0;
         });
     }
 
-    int occt_model_shape_oriented_bounds(
-        OcctModelHandle handle,
+    OcctStatus occt_model_shape_oriented_bounds(
+        OcctModelingSessionHandle handle,
         OcctObjectId shapeId,
-        int optimal,
+        OcctBool optimal,
         OcctOrientedBounds* result)
     {
-        ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = {};
+        return executeStatus(model, [&]
         {
             Bnd_OBB box;
             BRepBndLib::AddOBB(
