@@ -79,11 +79,10 @@ public sealed partial class DemoSession
         var data = model.GetBSplineSurfaceData(bsplineFace);
         ValidateBSplineSurfaceData(data);
 
-        var surface = Engine.MakeBox(1, 1, 1);
-        Engine.UpdateShape(surface, model, bsplineFace);
+        var surface = DisplayModelShape(model, bsplineFace);
         SetGeneratedName(surface, Local("B-Spline Surface", "B 样条曲面"));
-        Engine.SetColor(surface, Color.SteelBlue);
-        Engine.SetTransparency(surface, 0.28);
+        Engine.SetObjectColor(surface, Color.SteelBlue);
+        Engine.SetObjectTransparency(surface, 0.28);
 
         var controlCurves = new List<OcctShape>(data.UPoleCount + data.VPoleCount);
         for (var uIndex = 0; uIndex < data.UPoleCount; uIndex++)
@@ -103,8 +102,8 @@ public sealed partial class DemoSession
 
         var controlNet = Engine.MakeCompound(controlCurves, hideInputs: true);
         SetGeneratedName(controlNet, Local("B-Spline Control Net", "B 样条控制网"));
-        Engine.SetColor(controlNet, Color.DarkOrange);
-        Engine.SetLineWidth(controlNet, 1.8);
+        Engine.SetObjectColor(controlNet, Color.DarkOrange);
+        Engine.SetObjectLineWidth(controlNet, 1.8);
 
         ActiveObject = surface;
 
@@ -153,8 +152,8 @@ public sealed partial class DemoSession
 
         var meshWireframe = Engine.MakeCompound(triangleEdges, hideInputs: true);
         SetGeneratedName(meshWireframe, Local("Triangulated Box Mesh", "盒体三角网格"));
-        Engine.SetColor(meshWireframe, Color.DarkSlateGray);
-        Engine.SetLineWidth(meshWireframe, 1.4);
+        Engine.SetObjectColor(meshWireframe, Color.DarkSlateGray);
+        Engine.SetObjectLineWidth(meshWireframe, 1.4);
         ActiveObject = meshWireframe;
 
         var details = Local(
