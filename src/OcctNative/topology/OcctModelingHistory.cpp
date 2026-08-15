@@ -1,67 +1,83 @@
-﻿#include "modeling/OcctModelingAlgorithmInternal.hxx"
+﻿#include "topology/OcctModelingHistory.h"
+#include "modeling/OcctModelingAlgorithmInternal.hxx"
 
 using namespace OcctModelingInternal;
 
 extern "C"
 {
-    int occt_model_history_generated_copy(
-        OcctModelHandle handle,
+    OcctStatus occt_model_history_generated_snapshot_get(
+        OcctModelingSessionHandle handle,
         OcctOperationId operationId,
         OcctObjectId sourceShapeId,
         OcctObjectId* results,
-        int capacity)
+        int capacity,
+        int* required)
     {
-        ModelSession* model = modelOf(handle);
-        if (model == nullptr) return -1;
-        int copied = 0;
-        if (execute(model, [&] { copied = historyCopy(model, operationId, sourceShapeId, true, results, capacity); }) == 0)
-            return -1;
-        return copied;
-    }
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (capacity < 0 || required == nullptr) return OcctStatus_ErrorInvalidArgument;
 
-    int occt_model_history_modified_copy(
-        OcctModelHandle handle,
-        OcctOperationId operationId,
-        OcctObjectId sourceShapeId,
-        OcctObjectId* results,
-        int capacity)
-    {
-        ModelSession* model = modelOf(handle);
-        if (model == nullptr) return -1;
-        int copied = 0;
-        if (execute(model, [&] { copied = historyCopy(model, operationId, sourceShapeId, false, results, capacity); }) == 0)
-            return -1;
-        return copied;
-    }
-
-    int occt_model_history_is_removed(OcctModelHandle handle, OcctOperationId operationId, OcctObjectId sourceShapeId)
-    {
-        ModelSession* model = modelOf(handle);
-        return executeValue(model, 0, [&]
+        *required = 0;
+        return executeStatus(model, [&]
         {
-            HistoryLineage& lineage = materializeHistoryLineage(model, operationId, sourceShapeId);
-            return lineage.removed ? 1 : 0;
+            *required = historyCopy(model, operationId, sourceShapeId, true, results, capacity);
         });
     }
+
+    OcctStatus occt_model_history_modified_snapshot_get(
+        OcctModelingSessionHandle handle,
+        OcctOperationId operationId,
+        OcctObjectId sourceShapeId,
+        OcctObjectId* results,
+        int capacity,
+        int* required)
+    {
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (capacity < 0 || required == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *required = 0;
+        return executeStatus(model, [&]
+        {
+            *required = historyCopy(model, operationId, sourceShapeId, false, results, capacity);
+        });
+    }
+
+    OcctStatus occt_model_history_is_removed_get(
+        OcctModelingSessionHandle handle,
+        OcctOperationId operationId,
+        OcctObjectId sourceShapeId,
+        OcctBool* result)
+    {
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = 0;
+        return executeStatus(model, [&]
+        {
+            HistoryLineage& lineage = materializeHistoryLineage(model, operationId, sourceShapeId);
+            *result = lineage.removed ? 1 : 0;
+        });
+    }
+
     OcctStatus occt_model_history_summary(
-        OcctModelHandle handle,
+        OcctModelingSessionHandle handle,
         OcctOperationId operationId,
         OcctObjectId sourceShapeId,
         OcctModelTopologyHistorySummary* result)
     {
-        ModelSession* model = modelOf(handle);
+        ModelSession* model = sessionOf(handle);
         if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
 
-        const int succeeded = execute(model, [&]
+        *result = {};
+        return executeStatus(model, [&]
         {
-            if (result == nullptr) throw std::invalid_argument("Topology-history summary result is null.");
             HistoryLineage& lineage = materializeHistoryLineage(model, operationId, sourceShapeId);
             result->generatedCount = static_cast<int>(lineage.generated.size());
             result->modifiedCount = static_cast<int>(lineage.modified.size());
             result->removed = lineage.removed ? 1 : 0;
         });
-        return succeeded != 0 ? OcctStatus_Ok : model->errors.code;
     }
-
-
 }
