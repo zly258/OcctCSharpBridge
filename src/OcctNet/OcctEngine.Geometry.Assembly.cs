@@ -1,4 +1,4 @@
-﻿namespace OcctNet;
+namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
@@ -6,14 +6,28 @@ public sealed partial class OcctEngine
     {
         var ids = ShapeIds(shapes);
         EnsureInitialized();
-        return CheckShape(NativeMethods.occt_make_compound(_handle, ids, ids.Length, hideInputs ? 1 : 0));
+        return CreateGeometryFromIds(
+            ids,
+            (IntPtr buffer, int count, out long result) => ViewerGeometryCreationNativeMethods.occt_engine_shape_compound_create(
+                _handle,
+                buffer,
+                count,
+                hideInputs ? 1 : 0,
+                out result));
     }
 
     public OcctShape MakeWire(IEnumerable<OcctShape> edges, bool hideInputs = false)
     {
         var ids = ShapeIds(edges);
         EnsureInitialized();
-        return CheckShape(NativeMethods.occt_make_wire(_handle, ids, ids.Length, hideInputs ? 1 : 0));
+        return CreateGeometryFromIds(
+            ids,
+            (IntPtr buffer, int count, out long result) => ViewerGeometryCreationNativeMethods.occt_engine_shape_wire_create(
+                _handle,
+                buffer,
+                count,
+                hideInputs ? 1 : 0,
+                out result));
     }
 
     public OcctShape Sew(IEnumerable<OcctShape> shapes, double tolerance = 1e-6, bool hideInputs = false)
@@ -21,14 +35,27 @@ public sealed partial class OcctEngine
         var ids = ShapeIds(shapes);
         OcctGuard.Positive(tolerance, nameof(tolerance));
         EnsureInitialized();
-        return CheckShape(NativeMethods.occt_sew_shapes(_handle, ids, ids.Length, tolerance, hideInputs ? 1 : 0));
+        return CreateGeometryFromIds(
+            ids,
+            (IntPtr buffer, int count, out long result) => ViewerGeometryCreationNativeMethods.occt_engine_shape_sew(
+                _handle,
+                buffer,
+                count,
+                tolerance,
+                hideInputs ? 1 : 0,
+                out result));
     }
 
     public OcctShape MakeSolidFromShell(OcctShape shell, bool hideInput = false)
     {
         EnsureShape(shell);
         EnsureInitialized();
-        return CheckShape(NativeMethods.occt_make_solid_from_shell(_handle, shell.Id, hideInput ? 1 : 0));
+        var status = ViewerGeometryCreationNativeMethods.occt_engine_shape_solid_from_shell_create(
+            _handle,
+            shell.Id,
+            hideInput ? 1 : 0,
+            out var result);
+        return GeometryResult(status, result);
     }
 
     private long[] ShapeIds(IEnumerable<OcctShape> shapes)
