@@ -46,6 +46,17 @@ extern "C"
         OcctViewportState state;
     };
 
+    struct OcctViewClipPlane
+    {
+        OcctPoint3d point;
+        OcctVector3d normal;
+        int enabled;
+        int capping;
+        double cappingR;
+        double cappingG;
+        double cappingB;
+    };
+
     OCCTBRIDGE_API OcctStatus occt_engine_viewport_fit_objects(
         OcctEngineHandle handle,
         const OcctObjectId* objectIds,
@@ -88,4 +99,14 @@ extern "C"
     OCCTBRIDGE_API OcctStatus occt_engine_viewport_rendering_update(
         OcctEngineHandle handle,
         const OcctViewportRenderingOptions* options);
+
+    // Frozen ABI4 compatibility. Implemented by the viewport domain.
+    OCCTBRIDGE_API int occt_set_view_clip_planes(
+        OcctHandle handle,
+        const OcctViewClipPlane* planes,
+        int count);
+
+    OCCTBRIDGE_API int occt_get_view_clip_plane_limit(
+        OcctHandle handle,
+        int* limit);
 }
