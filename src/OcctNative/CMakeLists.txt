@@ -102,7 +102,6 @@ add_library(OcctNative SHARED
     selection/OcctEngineSelection.cpp
     selection/OcctSelectionModes.cpp
     OcctEngineObjects.cpp
-    OcctEngineShapes.cpp
     presentation/OcctAppearance.cpp
     presentation/OcctViewCube.cpp
     presentation/OcctViewerDecorations.cpp
@@ -121,12 +120,11 @@ add_library(OcctNative SHARED
     selection/OcctSelectionState.cpp
     OcctDepth.cpp
     geometry/OcctViewerGeometry.cpp
-    geometry/OcctQueries.cpp
-    geometry/OcctGeometry.cpp
-    geometry/OcctPlanarGeometry.cpp
+    geometry/OcctViewerShapeQueries.cpp
+    geometry/OcctViewerFeatures.cpp
+    geometry/OcctViewerGeometryCreation.cpp
     geometry/OcctBRepTextBuilder.cpp
     geometry/OcctBRepAnnotationBuilder.cpp
-    OcctFeatures.cpp
     OcctAnnotations.cpp
     geometry/OcctPoints.cpp
     geometry/OcctPointBatch.cpp
@@ -187,6 +185,9 @@ add_library(OcctNative SHARED
     OcctNative.h
     geometry/OcctPoints.h
     geometry/OcctViewerGeometry.h
+    geometry/OcctViewerShapeQueries.h
+    geometry/OcctViewerFeatures.h
+    geometry/OcctViewerGeometryCreation.h
     selection/OcctSelection.h
     selection/OcctSelectionOverlay.h
     selection/OcctSelectionState.h
