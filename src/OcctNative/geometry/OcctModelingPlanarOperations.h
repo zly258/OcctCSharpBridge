@@ -11,23 +11,26 @@ extern "C"
         OcctModelJoin_Intersection = 2
     };
 
-    OCCTBRIDGE_API OcctObjectId occt_model_make_face_with_holes(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_make_face_with_holes(
+        OcctModelingSessionHandle handle,
         OcctObjectId outerWireId,
         const OcctObjectId* innerWireIds,
-        int innerWireCount);
+        int innerWireCount,
+        OcctObjectId* result);
 
-    OCCTBRIDGE_API OcctObjectId occt_model_trim_edge(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_trim_edge(
+        OcctModelingSessionHandle handle,
         OcctObjectId edgeId,
         double firstParameter,
-        double lastParameter);
+        double lastParameter,
+        OcctObjectId* result);
 
-    OCCTBRIDGE_API OcctObjectId occt_model_offset_wire(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_offset_wire(
+        OcctModelingSessionHandle handle,
         OcctObjectId wireId,
         double offset,
         double altitude,
         int joinType,
-        int openResult);
+        OcctBool openResult,
+        OcctObjectId* result);
 }
