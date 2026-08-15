@@ -1,13 +1,70 @@
 #pragma once
+
 #include "OcctNative.h"
-extern "C" {
-OCCTBRIDGE_API OcctStatus occt_model_make_vertex(OcctModelingSessionHandle, OcctPoint3d, OcctObjectId*);
-OCCTBRIDGE_API OcctStatus occt_model_make_line(OcctModelingSessionHandle, OcctPoint3d, OcctPoint3d, OcctObjectId*);
-OCCTBRIDGE_API OcctStatus occt_model_make_polyline(OcctModelingSessionHandle, const OcctPoint3d*, int, OcctBool, OcctObjectId*);
-OCCTBRIDGE_API OcctStatus occt_model_make_circle(OcctModelingSessionHandle, OcctPoint3d, OcctVector3d, double, OcctObjectId*);
-OCCTBRIDGE_API OcctStatus occt_model_make_arc_three_points(OcctModelingSessionHandle, OcctPoint3d, OcctPoint3d, OcctPoint3d, OcctObjectId*);
-OCCTBRIDGE_API OcctStatus occt_model_make_arc_center(OcctModelingSessionHandle, OcctPoint3d, OcctVector3d, OcctVector3d, double, double, double, OcctObjectId*);
-OCCTBRIDGE_API OcctStatus occt_model_make_ellipse(OcctModelingSessionHandle, OcctPoint3d, OcctVector3d, double, double, OcctObjectId*);
-OCCTBRIDGE_API OcctStatus occt_model_make_bezier(OcctModelingSessionHandle, const OcctPoint3d*, int, OcctObjectId*);
-OCCTBRIDGE_API OcctStatus occt_model_make_bspline_interpolated(OcctModelingSessionHandle, const OcctPoint3d*, int, OcctBool, double, OcctObjectId*);
+
+extern "C"
+{
+    OCCTBRIDGE_API OcctStatus occt_model_curve_vertex_create(
+        OcctModelingSessionHandle handle,
+        OcctPoint3d point,
+        OcctObjectId* result);
+
+    OCCTBRIDGE_API OcctStatus occt_model_curve_line_create(
+        OcctModelingSessionHandle handle,
+        OcctPoint3d start,
+        OcctPoint3d end,
+        OcctObjectId* result);
+
+    OCCTBRIDGE_API OcctStatus occt_model_curve_polyline_create(
+        OcctModelingSessionHandle handle,
+        const OcctPoint3d* points,
+        int count,
+        OcctBool closed,
+        OcctObjectId* result);
+
+    OCCTBRIDGE_API OcctStatus occt_model_curve_circle_create(
+        OcctModelingSessionHandle handle,
+        OcctPoint3d center,
+        OcctVector3d normal,
+        double radius,
+        OcctObjectId* result);
+
+    OCCTBRIDGE_API OcctStatus occt_model_curve_arc_three_points_create(
+        OcctModelingSessionHandle handle,
+        OcctPoint3d start,
+        OcctPoint3d middle,
+        OcctPoint3d end,
+        OcctObjectId* result);
+
+    OCCTBRIDGE_API OcctStatus occt_model_curve_arc_center_create(
+        OcctModelingSessionHandle handle,
+        OcctPoint3d center,
+        OcctVector3d normal,
+        OcctVector3d xDirection,
+        double radius,
+        double startAngleDegrees,
+        double endAngleDegrees,
+        OcctObjectId* result);
+
+    OCCTBRIDGE_API OcctStatus occt_model_curve_ellipse_create(
+        OcctModelingSessionHandle handle,
+        OcctPoint3d center,
+        OcctVector3d normal,
+        double majorRadius,
+        double minorRadius,
+        OcctObjectId* result);
+
+    OCCTBRIDGE_API OcctStatus occt_model_curve_bezier_create(
+        OcctModelingSessionHandle handle,
+        const OcctPoint3d* poles,
+        int count,
+        OcctObjectId* result);
+
+    OCCTBRIDGE_API OcctStatus occt_model_curve_bspline_interpolated_create(
+        OcctModelingSessionHandle handle,
+        const OcctPoint3d* points,
+        int count,
+        OcctBool periodic,
+        double tolerance,
+        OcctObjectId* result);
 }
