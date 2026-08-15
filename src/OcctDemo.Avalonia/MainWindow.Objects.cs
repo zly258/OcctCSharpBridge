@@ -42,7 +42,7 @@ public sealed partial class MainWindow
                 visible.IsCheckedChanged += (_, _) =>
                 {
                     if (_refreshingTree || _session is null) return;
-                    ExecuteSafe(() => Session.Engine.SetVisible(value, visible.IsChecked == true));
+                    ExecuteSafe(() => Session.Engine.SetObjectVisible(value, visible.IsChecked == true));
                 };
 
                 var item = new TreeViewItem
@@ -138,8 +138,8 @@ public sealed partial class MainWindow
                     Session.ActiveObject = value;
                     if (value is OcctShape shape) Session.Engine.Fit(shape);
                 }),
-                MenuItem(Local("Show", "显示"), () => Session.Engine.SetVisible(value, true)),
-                MenuItem(Local("Hide", "隐藏"), () => Session.Engine.SetVisible(value, false)),
+                MenuItem(Local("Show", "显示"), () => Session.Engine.SetObjectVisible(value, true)),
+                MenuItem(Local("Hide", "隐藏"), () => Session.Engine.SetObjectVisible(value, false)),
                 AsyncMenuItem(Local("Color...", "颜色..."), () => SetObjectColorAsync(value)),
                 AsyncMenuItem(Local("Material...", "材质..."), () => SetObjectMaterialAsync(value)),
                 new Separator(),
