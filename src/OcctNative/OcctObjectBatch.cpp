@@ -1,4 +1,4 @@
-#include "presentation/OcctObjects.h"
+﻿#include "presentation/OcctObjects.h"
 #include "core/OcctInternal.hxx"
 
 #include <Graphic3d_MaterialAspect.hxx>
@@ -191,27 +191,6 @@ extern "C"
             for (ObjectEntry* entry : entries)
                 applyBatchUpdate(engine, *entry, *options);
             if (!entries.empty()) engine->requestRedraw();
-        });
-    }
-
-    OcctStatus occt_engine_object_state_get(
-        OcctEngineHandle handle,
-        OcctObjectId objectId,
-        OcctViewerObjectState* state)
-    {
-        Engine* engine = reinterpret_cast<Engine*>(handle);
-        return executeBatchStatus(engine, [&]
-        {
-            if (state == nullptr) throw std::invalid_argument("Object state output is null.");
-            ObjectEntry* entry = engine->findObject(objectId);
-            if (entry == nullptr || entry->presentation.IsNull())
-                throw std::invalid_argument("Object ID does not exist.");
-
-            state->structSize = static_cast<std::uint32_t>(sizeof(OcctViewerObjectState));
-            state->apiVersion = ObjectUpdateApiVersion;
-            state->visible = engine->viewerContext.context->IsDisplayed(entry->presentation) ? 1 : 0;
-            state->selected = engine->viewerContext.context->IsSelected(entry->presentation) ? 1 : 0;
-            state->selectable = entry->selectable ? 1 : 0;
         });
     }
 
