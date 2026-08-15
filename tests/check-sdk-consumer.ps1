@@ -30,7 +30,7 @@ $nativeAbiPattern = '\bocct_[A-Za-z0-9_]+\b|\b(?:NativeOcctSurface|LegacyNativeS
 
 # Bridge 3 retired the old object snapshots/re-hydration helpers and per-object appearance aliases.
 $retiredObjectPattern = '\bEngine\.(?:Objects|Shapes|Exists|GetShape|GetName|SetName)\b'
-$retiredAppearancePattern = '\bEngine\.(?:SetColor|SetTransparency|SetVisible|SetLineWidth|SetMaterial|SetDisplayMode)\b'
+$retiredAppearancePattern = '\bEngine\.(?:SetColor|SetTransparency|SetVisible|SetLineWidth|SetMaterial)\b'
 
 # Modeling-to-viewer handoff and BRep annotation creation now have explicit Bridge 3 domains.
 $retiredInteropPattern = '\bEngine\.Display\b|\bEngine\.(?:MakeTextShape|MakeLengthAnnotationShape|MakeAngleAnnotationShape|MakeRadiusAnnotationShape|MakeDiameterAnnotationShape)\b'

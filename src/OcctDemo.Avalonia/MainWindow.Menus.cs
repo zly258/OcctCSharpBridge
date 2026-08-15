@@ -107,10 +107,10 @@ public sealed partial class MainWindow
     private MenuItem BuildViewMenu()
     {
         var display = Menu(MenuHeader("Menu.Display"),
-            MenuItem(DemoLocalization.Text("Menu.Shaded"), () => Session.SetSceneDisplayMode(OcctDisplayMode.Shaded)),
+            MenuItem(DemoLocalization.Text("Menu.Shaded"), () => Session.Engine.SetDisplayMode(OcctDisplayMode.Shaded)),
             CheckMenuItem(DemoLocalization.Text("Menu.ShadedEdges"), true,
                 item => ExecuteSafe(() => Session.Engine.SetFaceBoundariesVisible(item.IsChecked))),
-            MenuItem(DemoLocalization.Text("Menu.Wireframe"), () => Session.SetSceneDisplayMode(OcctDisplayMode.Wireframe)),
+            MenuItem(DemoLocalization.Text("Menu.Wireframe"), () => Session.Engine.SetDisplayMode(OcctDisplayMode.Wireframe)),
             CheckMenuItem(DemoLocalization.Text("Menu.Hlr"), false,
                 item => ExecuteSafe(() => Session.Engine.SetComputedHlr(item.IsChecked))),
             CheckMenuItem(DemoLocalization.Text("Menu.Antialiasing"), true,
@@ -256,8 +256,8 @@ public sealed partial class MainWindow
         _toolbar.Children.Add(CommandButton(DemoLocalization.Text("Toolbar.Box"), DemoCommandId.Box));
         _toolbar.Children.Add(CommandButton(DemoLocalization.Text("Toolbar.Cylinder"), DemoCommandId.Cylinder));
         _toolbar.Children.Add(ToolSeparator());
-        _toolbar.Children.Add(ToolButton(DemoLocalization.Text("Toolbar.Shaded"), () => Session.SetSceneDisplayMode(OcctDisplayMode.Shaded)));
-        _toolbar.Children.Add(ToolButton(DemoLocalization.Text("Toolbar.Wireframe"), () => Session.SetSceneDisplayMode(OcctDisplayMode.Wireframe)));
+        _toolbar.Children.Add(ToolButton(DemoLocalization.Text("Toolbar.Shaded"), () => Session.Engine.SetDisplayMode(OcctDisplayMode.Shaded)));
+        _toolbar.Children.Add(ToolButton(DemoLocalization.Text("Toolbar.Wireframe"), () => Session.Engine.SetDisplayMode(OcctDisplayMode.Wireframe)));
         _toolbar.Children.Add(ToolButton(DemoLocalization.Text("Toolbar.Extents"), () => Session.Engine.FitAll()));
         _toolbar.Children.Add(ToolButton(DemoLocalization.Text("Toolbar.Isometric"), () => Session.Engine.SetView(OcctViewOrientation.Isometric)));
         _toolbar.Children.Add(ToolSeparator());
