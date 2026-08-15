@@ -12,10 +12,20 @@
 #include <TopoDS_Solid.hxx>
 #include <gp_Lin.hxx>
 
+#include <cmath>
 #include <limits>
 #include <stdexcept>
 
 using namespace OcctModelingInternal;
+
+namespace
+{
+    void requireNonNegativeTolerance(double tolerance)
+    {
+        if (!std::isfinite(tolerance) || tolerance < 0.0)
+            throw std::invalid_argument("Tolerance must be finite and non-negative.");
+    }
+}
 
 extern "C"
 {
@@ -119,7 +129,7 @@ extern "C"
         {
             if (maximumParameter < minimumParameter)
                 throw std::invalid_argument("Ray parameter range is invalid.");
-            requirePositive(tolerance, "Tolerance");
+            requireNonNegativeTolerance(tolerance);
 
             model->rayHits.clear();
 
@@ -200,7 +210,7 @@ extern "C"
         *result = OcctModelState_Unknown;
         return executeStatus(model, [&]
         {
-            requirePositive(tolerance, "Tolerance");
+            requireNonNegativeTolerance(tolerance);
             const TopoDS_Shape& shape = model->requireShape(solidId);
             if (shape.ShapeType() != TopAbs_SOLID)
                 throw std::invalid_argument("Input must be a solid.");
