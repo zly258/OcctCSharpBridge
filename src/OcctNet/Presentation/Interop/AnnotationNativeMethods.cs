@@ -58,8 +58,10 @@ internal struct NativeViewerDimensionOptions
     public double Blue;
 }
 
-internal static partial class NativeMethods
+internal static partial class AnnotationNativeMethods
 {
+    private const string LibraryName = "OcctNative";
+
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
     internal static partial OcctStatus occt_engine_text_create(

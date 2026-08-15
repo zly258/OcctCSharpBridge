@@ -23,7 +23,7 @@ public sealed partial class OcctEngine
             marker,
             scale,
             value);
-        var status = NativeMethods.occt_engine_point_create(_handle, in options, out var pointId);
+        var status = PointNativeMethods.occt_engine_point_create(_handle, in options, out var pointId);
         if (status != OcctStatus.Ok) throw CreateException(nameof(AddPoint));
         return CheckPoint(pointId);
     }
@@ -55,7 +55,7 @@ public sealed partial class OcctEngine
                 (IntPtr)pixelPointer,
                 pixels.Length,
                 pixelFormat);
-            var status = NativeMethods.occt_engine_point_pixmap_create(_handle, in options, out var pointId);
+            var status = PointNativeMethods.occt_engine_point_pixmap_create(_handle, in options, out var pointId);
             if (status != OcctStatus.Ok) throw CreateException(nameof(AddPointPixmap));
             return CheckPoint(pointId, nameof(AddPointPixmap));
         }
@@ -66,7 +66,7 @@ public sealed partial class OcctEngine
         EnsurePoint(point);
         OcctGuard.Finite(position, nameof(position));
         var options = PointOptions(NativeViewerPointUpdateMask.Position, position);
-        CheckPointStatus(NativeMethods.occt_engine_point_update(_handle, point.Id, in options));
+        CheckPointStatus(PointNativeMethods.occt_engine_point_update(_handle, point.Id, in options));
     }
 
     public void SetPointStyle(
@@ -84,7 +84,7 @@ public sealed partial class OcctEngine
             marker,
             scale,
             color);
-        CheckPointStatus(NativeMethods.occt_engine_point_update(_handle, point.Id, in options));
+        CheckPointStatus(PointNativeMethods.occt_engine_point_update(_handle, point.Id, in options));
     }
 
     public void SetPointStyle(OcctPoint point, OcctMarkerPixmap marker)
@@ -113,7 +113,7 @@ public sealed partial class OcctEngine
                 (IntPtr)pixelPointer,
                 pixels.Length,
                 pixelFormat);
-            CheckPointStatus(NativeMethods.occt_engine_point_pixmap_update(_handle, point.Id, in options));
+            CheckPointStatus(PointNativeMethods.occt_engine_point_pixmap_update(_handle, point.Id, in options));
         }
     }
 

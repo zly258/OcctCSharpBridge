@@ -11,7 +11,7 @@ public sealed partial class OcctEngine
     public void Resize()
     {
         EnsureInitialized();
-        CheckViewStatus(NativeMethods.occt_engine_surface_resize(_handle, 1));
+        CheckViewStatus(SurfaceNativeMethods.occt_engine_surface_resize(_handle, 1));
     }
 
     /// <summary>
@@ -21,13 +21,13 @@ public sealed partial class OcctEngine
     public void ResizeSurface()
     {
         EnsureInitialized();
-        CheckViewStatus(NativeMethods.occt_engine_surface_resize(_handle, 0));
+        CheckViewStatus(SurfaceNativeMethods.occt_engine_surface_resize(_handle, 0));
     }
 
     public void Redraw()
     {
         EnsureInitialized();
-        CheckViewStatus(NativeMethods.occt_engine_surface_redraw(_handle));
+        CheckViewStatus(SurfaceNativeMethods.occt_engine_surface_redraw(_handle));
     }
 
     public void FitAll()

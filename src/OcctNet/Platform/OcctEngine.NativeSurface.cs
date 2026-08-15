@@ -18,7 +18,7 @@ public sealed partial class OcctEngine
             Display = display
         };
 
-        var status = NativeMethods.occt_engine_initialize_surface(_handle, in surface);
+        var status = SurfaceNativeMethods.occt_engine_initialize_surface(_handle, in surface);
         if (status != OcctStatus.Ok) throw CreateException();
         Volatile.Write(ref _initialized, true);
     }

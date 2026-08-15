@@ -21,8 +21,10 @@ internal struct NativeOcctSurface
     public IntPtr Display;
 }
 
-internal static partial class NativeMethods
+internal static partial class SurfaceNativeMethods
 {
+    private const string LibraryName = "OcctNative";
+
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_engine_initialize_surface(

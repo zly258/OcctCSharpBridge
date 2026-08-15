@@ -28,7 +28,7 @@ public sealed partial class OcctEngine
         try
         {
             pinned = GCHandle.Alloc(native, GCHandleType.Pinned);
-            var status = NativeMethods.occt_engine_points_update(
+            var status = PointNativeMethods.occt_engine_points_update(
                 _handle,
                 pinned.AddrOfPinnedObject(),
                 native.Length);

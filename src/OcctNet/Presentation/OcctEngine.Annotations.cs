@@ -22,7 +22,7 @@ public sealed partial class OcctEngine
             0,
             actualColor,
             zoomable);
-        var status = NativeMethods.occt_engine_text_create(
+        var status = AnnotationNativeMethods.occt_engine_text_create(
             _handle,
             text ?? string.Empty,
             string.Empty,
@@ -36,7 +36,7 @@ public sealed partial class OcctEngine
     {
         EnsureText(textObject);
         var options = TextOptions(NativeViewerTextUpdateMask.Content);
-        CheckAnnotationStatus(NativeMethods.occt_engine_text_update(
+        CheckAnnotationStatus(AnnotationNativeMethods.occt_engine_text_update(
             _handle, textObject.Id, text ?? string.Empty, string.Empty, in options));
     }
 
@@ -45,7 +45,7 @@ public sealed partial class OcctEngine
         EnsureText(textObject);
         OcctGuard.Finite(position, nameof(position));
         var options = TextOptions(NativeViewerTextUpdateMask.Position, position: position);
-        CheckAnnotationStatus(NativeMethods.occt_engine_text_update(
+        CheckAnnotationStatus(AnnotationNativeMethods.occt_engine_text_update(
             _handle, textObject.Id, string.Empty, string.Empty, in options));
     }
 
@@ -54,7 +54,7 @@ public sealed partial class OcctEngine
         EnsureText(textObject);
         OcctGuard.Positive(height, nameof(height));
         var options = TextOptions(NativeViewerTextUpdateMask.Height, height: height);
-        CheckAnnotationStatus(NativeMethods.occt_engine_text_update(
+        CheckAnnotationStatus(AnnotationNativeMethods.occt_engine_text_update(
             _handle, textObject.Id, string.Empty, string.Empty, in options));
     }
 
@@ -62,7 +62,7 @@ public sealed partial class OcctEngine
     {
         EnsureText(textObject);
         var options = TextOptions(NativeViewerTextUpdateMask.Font);
-        CheckAnnotationStatus(NativeMethods.occt_engine_text_update(
+        CheckAnnotationStatus(AnnotationNativeMethods.occt_engine_text_update(
             _handle, textObject.Id, string.Empty, fontName ?? string.Empty, in options));
     }
 
@@ -71,7 +71,7 @@ public sealed partial class OcctEngine
         EnsureText(textObject);
         OcctGuard.Finite(angleDegrees, nameof(angleDegrees));
         var options = TextOptions(NativeViewerTextUpdateMask.Angle, angleDegrees: angleDegrees);
-        CheckAnnotationStatus(NativeMethods.occt_engine_text_update(
+        CheckAnnotationStatus(AnnotationNativeMethods.occt_engine_text_update(
             _handle, textObject.Id, string.Empty, string.Empty, in options));
     }
 
@@ -79,7 +79,7 @@ public sealed partial class OcctEngine
     {
         EnsureText(textObject);
         var options = TextOptions(NativeViewerTextUpdateMask.Zoomable, zoomable: zoomable);
-        CheckAnnotationStatus(NativeMethods.occt_engine_text_update(
+        CheckAnnotationStatus(AnnotationNativeMethods.occt_engine_text_update(
             _handle, textObject.Id, string.Empty, string.Empty, in options));
     }
 
@@ -88,7 +88,7 @@ public sealed partial class OcctEngine
         EnsureDimension(dimension);
         OcctGuard.Finite(flyout, nameof(flyout));
         var options = DimensionOptions(NativeViewerDimensionUpdateMask.Flyout, flyout);
-        CheckAnnotationStatus(NativeMethods.occt_engine_dimension_update(_handle, dimension.Id, in options));
+        CheckAnnotationStatus(AnnotationNativeMethods.occt_engine_dimension_update(_handle, dimension.Id, in options));
     }
 
     public OcctDimension AddLengthDimension(OcctShape edge, double flyout = 20, System.Drawing.Color? color = null)
@@ -130,7 +130,7 @@ public sealed partial class OcctEngine
             NativeViewerDimensionUpdateMask.Flyout | NativeViewerDimensionUpdateMask.Color,
             flyout,
             actualColor);
-        var status = NativeMethods.occt_engine_dimension_create(
+        var status = AnnotationNativeMethods.occt_engine_dimension_create(
             _handle,
             kind,
             firstShapeId,
