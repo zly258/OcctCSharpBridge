@@ -45,15 +45,7 @@ namespace
 
 extern "C"
 {
-    OcctStatus occt_model_make_box(
-        OcctModelingSessionHandle handle,
-        double x,
-        double y,
-        double z,
-        double dx,
-        double dy,
-        double dz,
-        OcctObjectId* result)
+    OcctStatus occt_model_primitive_box_create(OcctModelingSessionHandle handle, double x, double y, double z, double dx, double dy, double dz, OcctObjectId* result)
     {
         ModelSession* model = sessionOf(handle);
         return executeShapeStatus(model, result, [&]
@@ -61,20 +53,13 @@ extern "C"
             requirePositive(dx, "Box X size");
             requirePositive(dy, "Box Y size");
             requirePositive(dz, "Box Z size");
-            const gp_Pnt origin = point({x, y, z});
-            BRepPrimAPI_MakeBox maker(origin, dx, dy, dz);
+            BRepPrimAPI_MakeBox maker(point({x, y, z}), dx, dy, dz);
             if (!maker.IsDone()) throw std::runtime_error("Box creation failed.");
             return maker.Shape();
         });
     }
 
-    OcctStatus occt_model_make_cylinder(
-        OcctModelingSessionHandle handle,
-        OcctPoint3d origin,
-        OcctVector3d axis,
-        double radius,
-        double height,
-        OcctObjectId* result)
+    OcctStatus occt_model_primitive_cylinder_create(OcctModelingSessionHandle handle, OcctPoint3d origin, OcctVector3d axis, double radius, double height, OcctObjectId* result)
     {
         ModelSession* model = sessionOf(handle);
         return executeShapeStatus(model, result, [&]
@@ -87,14 +72,7 @@ extern "C"
         });
     }
 
-    OcctStatus occt_model_make_cone(
-        OcctModelingSessionHandle handle,
-        OcctPoint3d origin,
-        OcctVector3d axis,
-        double radius1,
-        double radius2,
-        double height,
-        OcctObjectId* result)
+    OcctStatus occt_model_primitive_cone_create(OcctModelingSessionHandle handle, OcctPoint3d origin, OcctVector3d axis, double radius1, double radius2, double height, OcctObjectId* result)
     {
         ModelSession* model = sessionOf(handle);
         return executeShapeStatus(model, result, [&]
@@ -110,11 +88,7 @@ extern "C"
         });
     }
 
-    OcctStatus occt_model_make_sphere(
-        OcctModelingSessionHandle handle,
-        OcctPoint3d center,
-        double radius,
-        OcctObjectId* result)
+    OcctStatus occt_model_primitive_sphere_create(OcctModelingSessionHandle handle, OcctPoint3d center, double radius, OcctObjectId* result)
     {
         ModelSession* model = sessionOf(handle);
         return executeShapeStatus(model, result, [&]
@@ -126,13 +100,7 @@ extern "C"
         });
     }
 
-    OcctStatus occt_model_make_torus(
-        OcctModelingSessionHandle handle,
-        OcctPoint3d center,
-        OcctVector3d axis,
-        double majorRadius,
-        double minorRadius,
-        OcctObjectId* result)
+    OcctStatus occt_model_primitive_torus_create(OcctModelingSessionHandle handle, OcctPoint3d center, OcctVector3d axis, double majorRadius, double minorRadius, OcctObjectId* result)
     {
         ModelSession* model = sessionOf(handle);
         return executeShapeStatus(model, result, [&]
@@ -147,13 +115,7 @@ extern "C"
         });
     }
 
-    OcctStatus occt_model_make_wedge(
-        OcctModelingSessionHandle handle,
-        double dx,
-        double dy,
-        double dz,
-        double ltx,
-        OcctObjectId* result)
+    OcctStatus occt_model_primitive_wedge_create(OcctModelingSessionHandle handle, double dx, double dy, double dz, double ltx, OcctObjectId* result)
     {
         ModelSession* model = sessionOf(handle);
         return executeShapeStatus(model, result, [&]
