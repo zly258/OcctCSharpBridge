@@ -12,6 +12,25 @@ extern "C"
         OcctPresentationZLayer_Topmost = 3
     };
 
+    enum OcctTransformPersistenceMode
+    {
+        OcctTransformPersistence_None = 0,
+        OcctTransformPersistence_Zoom = 1,
+        OcctTransformPersistence_Rotate = 2,
+        OcctTransformPersistence_ZoomRotate = 3,
+        OcctTransformPersistence_Screen2d = 4,
+        OcctTransformPersistence_Triedron = 5
+    };
+
+    struct OcctTransformPersistenceState
+    {
+        int mode;
+        OcctPoint3d anchor;
+        int position;
+        int offsetX;
+        int offsetY;
+    };
+
     struct OcctPresentationClipPlane
     {
         OcctPoint3d point;
@@ -107,4 +126,44 @@ extern "C"
         OcctEngineHandle handle,
         OcctObjectId objectId,
         int dynamic);
+
+    // Frozen ABI4 compatibility. Implemented by the presentation domain.
+    OCCTBRIDGE_API int occt_set_object_display_priority(
+        OcctHandle handle,
+        OcctObjectId objectId,
+        int priority);
+
+    OCCTBRIDGE_API int occt_set_objects_display_priority(
+        OcctHandle handle,
+        const OcctObjectId* objectIds,
+        int count,
+        int priority);
+
+    OCCTBRIDGE_API int occt_get_object_display_priority(
+        OcctHandle handle,
+        OcctObjectId objectId,
+        int* priority);
+
+    OCCTBRIDGE_API int occt_set_object_transform_persistence_3d(
+        OcctHandle handle,
+        OcctObjectId objectId,
+        int mode,
+        OcctPoint3d anchor);
+
+    OCCTBRIDGE_API int occt_set_object_transform_persistence_2d(
+        OcctHandle handle,
+        OcctObjectId objectId,
+        int mode,
+        int position,
+        int offsetX,
+        int offsetY);
+
+    OCCTBRIDGE_API int occt_clear_object_transform_persistence(
+        OcctHandle handle,
+        OcctObjectId objectId);
+
+    OCCTBRIDGE_API int occt_get_object_transform_persistence(
+        OcctHandle handle,
+        OcctObjectId objectId,
+        OcctTransformPersistenceState* result);
 }
