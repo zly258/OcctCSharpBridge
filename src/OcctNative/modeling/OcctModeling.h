@@ -6,7 +6,6 @@
 
 extern "C"
 {
-    using OcctModelHandle = void*;
     using OcctOperationId = std::int64_t;
 
     enum OcctModelState
