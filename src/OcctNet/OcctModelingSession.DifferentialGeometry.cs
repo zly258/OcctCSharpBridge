@@ -5,7 +5,7 @@ public sealed partial class OcctModelingSession
     public OcctModelParameterRange GetEdgeParameterRange(OcctModelShape edge)
     {
         EnsureShape(edge);
-        Check(ModelNativeMethods.occt_model_edge_parameter_range(_handle, edge.Id, out var native));
+        CheckStatus(ModelNativeMethods.occt_model_edge_parameter_range(_handle, edge.Id, out var native));
         return native.ToManaged();
     }
 
@@ -13,7 +13,7 @@ public sealed partial class OcctModelingSession
     {
         EnsureShape(edge);
         OcctGuard.Finite(parameter, nameof(parameter));
-        Check(ModelNativeMethods.occt_model_edge_differential(_handle, edge.Id, parameter, out var native));
+        CheckStatus(ModelNativeMethods.occt_model_edge_differential(_handle, edge.Id, parameter, out var native));
         return native.ToManaged();
     }
 
@@ -25,7 +25,7 @@ public sealed partial class OcctModelingSession
         EnsureShape(edge);
         OcctGuard.Finite(parameter, nameof(parameter));
         OcctGuard.Positive(resolution, nameof(resolution));
-        Check(ModelNativeMethods.occt_model_edge_curvature(
+        CheckStatus(ModelNativeMethods.occt_model_edge_curvature(
             _handle,
             edge.Id,
             parameter,
@@ -37,7 +37,7 @@ public sealed partial class OcctModelingSession
     public OcctModelSurfacePeriodicity GetFacePeriodicity(OcctModelShape face)
     {
         EnsureShape(face);
-        Check(ModelNativeMethods.occt_model_face_periodicity(_handle, face.Id, out var native));
+        CheckStatus(ModelNativeMethods.occt_model_face_periodicity(_handle, face.Id, out var native));
         return native.ToManaged();
     }
 
@@ -51,7 +51,7 @@ public sealed partial class OcctModelingSession
         OcctGuard.Finite(u, nameof(u));
         OcctGuard.Finite(v, nameof(v));
         OcctGuard.Positive(resolution, nameof(resolution));
-        Check(ModelNativeMethods.occt_model_face_differential(
+        CheckStatus(ModelNativeMethods.occt_model_face_differential(
             _handle,
             face.Id,
             u,
@@ -71,7 +71,7 @@ public sealed partial class OcctModelingSession
         OcctGuard.Finite(u, nameof(u));
         OcctGuard.Finite(v, nameof(v));
         OcctGuard.Positive(resolution, nameof(resolution));
-        Check(ModelNativeMethods.occt_model_face_curvature(
+        CheckStatus(ModelNativeMethods.occt_model_face_curvature(
             _handle,
             face.Id,
             u,
