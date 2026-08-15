@@ -1,26 +1,30 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
 internal static partial class ModelNativeMethods
 {
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_model_create_topology_reference(
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial int occt_model_create_topology_reference(
         OcctModelingSafeHandle handle,
         long rootShapeId,
         long subshapeId,
         out NativeModelTopologyReference result);
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_model_resolve_topology_reference(
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial int occt_model_resolve_topology_reference(
         OcctModelingSafeHandle handle,
         long rootShapeId,
         in NativeModelTopologyReference reference,
         double matchingTolerance,
         out NativeModelTopologyReferenceResult result);
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_model_resolve_topology_reference_with_history(
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial int occt_model_resolve_topology_reference_with_history(
         OcctModelingSafeHandle handle,
         long rootShapeId,
         long operationId,
