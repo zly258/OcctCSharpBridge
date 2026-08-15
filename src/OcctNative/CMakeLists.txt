@@ -96,13 +96,14 @@ add_library(OcctNative SHARED
     viewer/OcctViewerContext.cpp
     viewer/OcctViewerUpdate.cpp
     scene/OcctSceneRegistry.cpp
+    scene/OcctObjectUpdate.cpp
     platform/OcctPlatformWindow.cpp
     platform/OcctNativeSurface.cpp
-    OcctEngineView.cpp
+    presentation/OcctView.cpp
     selection/OcctEngineSelection.cpp
     selection/OcctSelectionConvenience.cpp
     selection/OcctSelectionModes.cpp
-    OcctEngineObjects.cpp
+    presentation/OcctObjects.cpp
     presentation/OcctObjectState.cpp
     presentation/OcctAppearance.cpp
     presentation/OcctViewCube.cpp
@@ -110,24 +111,23 @@ add_library(OcctNative SHARED
     selection/OcctSelectionOverlay.cpp
     presentation/OcctViewport.cpp
     presentation/OcctClipPlanes.cpp
-    OcctViewportState.cpp
-    OcctObjectBatch.cpp
-    OcctObjectUpdate.cpp
-    OcctObjectTransform.cpp
+    presentation/OcctViewportState.cpp
+    presentation/OcctObjectBatch.cpp
+    presentation/OcctObjectTransform.cpp
     presentation/OcctObjectPresentation.cpp
     presentation/OcctOverlay.cpp
     presentation/OcctPresentation.cpp
     selection/OcctDetection.cpp
     selection/OcctManipulator.cpp
     selection/OcctSelectionState.cpp
-    OcctDepth.cpp
+    presentation/OcctDepth.cpp
     geometry/OcctViewerGeometry.cpp
     geometry/OcctViewerShapeQueries.cpp
     geometry/OcctViewerFeatures.cpp
     geometry/OcctViewerGeometryCreation.cpp
     geometry/OcctBRepTextBuilder.cpp
     geometry/OcctBRepAnnotationBuilder.cpp
-    OcctAnnotations.cpp
+    presentation/OcctAnnotations.cpp
     geometry/OcctPoints.cpp
     geometry/OcctPointBatch.cpp
     exchange/OcctIO.cpp
