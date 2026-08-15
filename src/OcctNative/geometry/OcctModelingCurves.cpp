@@ -17,7 +17,7 @@ using namespace OcctModelingInternal;
 
 extern "C"
 {
-    OcctStatus occt_model_make_vertex(OcctModelingSessionHandle handle, OcctPoint3d pointValue, OcctObjectId* result)
+    OcctStatus occt_model_curve_vertex_create(OcctModelingSessionHandle handle, OcctPoint3d pointValue, OcctObjectId* result)
     {
         ModelSession* model = sessionOf(handle);
         return executeShapeStatus(model, result, [&]
@@ -28,7 +28,7 @@ extern "C"
         });
     }
 
-    OcctStatus occt_model_make_line(OcctModelingSessionHandle handle, OcctPoint3d start, OcctPoint3d end, OcctObjectId* result)
+    OcctStatus occt_model_curve_line_create(OcctModelingSessionHandle handle, OcctPoint3d start, OcctPoint3d end, OcctObjectId* result)
     {
         ModelSession* model = sessionOf(handle);
         return executeShapeStatus(model, result, [&]
@@ -41,7 +41,7 @@ extern "C"
         });
     }
 
-    OcctStatus occt_model_make_polyline(OcctModelingSessionHandle handle, const OcctPoint3d* points, int count, OcctBool closed, OcctObjectId* result)
+    OcctStatus occt_model_curve_polyline_create(OcctModelingSessionHandle handle, const OcctPoint3d* points, int count, OcctBool closed, OcctObjectId* result)
     {
         ModelSession* model = sessionOf(handle);
         return executeShapeStatus(model, result, [&]
@@ -56,7 +56,7 @@ extern "C"
         });
     }
 
-    OcctStatus occt_model_make_circle(OcctModelingSessionHandle handle, OcctPoint3d center, OcctVector3d normal, double radius, OcctObjectId* result)
+    OcctStatus occt_model_curve_circle_create(OcctModelingSessionHandle handle, OcctPoint3d center, OcctVector3d normal, double radius, OcctObjectId* result)
     {
         ModelSession* model = sessionOf(handle);
         return executeShapeStatus(model, result, [&]
@@ -69,7 +69,7 @@ extern "C"
         });
     }
 
-    OcctStatus occt_model_make_arc_three_points(OcctModelingSessionHandle handle, OcctPoint3d start, OcctPoint3d middle, OcctPoint3d end, OcctObjectId* result)
+    OcctStatus occt_model_curve_arc_three_points_create(OcctModelingSessionHandle handle, OcctPoint3d start, OcctPoint3d middle, OcctPoint3d end, OcctObjectId* result)
     {
         ModelSession* model = sessionOf(handle);
         return executeShapeStatus(model, result, [&]
@@ -82,7 +82,7 @@ extern "C"
         });
     }
 
-    OcctStatus occt_model_make_arc_center(
+    OcctStatus occt_model_curve_arc_center_create(
         OcctModelingSessionHandle handle,
         OcctPoint3d center,
         OcctVector3d normal,
@@ -107,7 +107,7 @@ extern "C"
         });
     }
 
-    OcctStatus occt_model_make_ellipse(OcctModelingSessionHandle handle, OcctPoint3d center, OcctVector3d normal, double majorRadius, double minorRadius, OcctObjectId* result)
+    OcctStatus occt_model_curve_ellipse_create(OcctModelingSessionHandle handle, OcctPoint3d center, OcctVector3d normal, double majorRadius, double minorRadius, OcctObjectId* result)
     {
         ModelSession* model = sessionOf(handle);
         return executeShapeStatus(model, result, [&]
@@ -122,7 +122,7 @@ extern "C"
         });
     }
 
-    OcctStatus occt_model_make_bezier(OcctModelingSessionHandle handle, const OcctPoint3d* poles, int count, OcctObjectId* result)
+    OcctStatus occt_model_curve_bezier_create(OcctModelingSessionHandle handle, const OcctPoint3d* poles, int count, OcctObjectId* result)
     {
         ModelSession* model = sessionOf(handle);
         return executeShapeStatus(model, result, [&]
@@ -138,7 +138,7 @@ extern "C"
         });
     }
 
-    OcctStatus occt_model_make_bspline_interpolated(OcctModelingSessionHandle handle, const OcctPoint3d* points, int count, OcctBool periodic, double tolerance, OcctObjectId* result)
+    OcctStatus occt_model_curve_bspline_interpolated_create(OcctModelingSessionHandle handle, const OcctPoint3d* points, int count, OcctBool periodic, double tolerance, OcctObjectId* result)
     {
         ModelSession* model = sessionOf(handle);
         return executeShapeStatus(model, result, [&]
