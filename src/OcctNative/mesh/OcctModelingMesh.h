@@ -4,22 +4,26 @@
 
 extern "C"
 {
-    OCCTBRIDGE_API int occt_model_mesh(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_mesh(
+        OcctModelingSessionHandle handle,
         OcctObjectId shapeId,
         const OcctModelMeshParameters* parameters);
 
-    OCCTBRIDGE_API int occt_model_clear_mesh(OcctModelHandle handle, OcctObjectId shapeId);
+    OCCTBRIDGE_API OcctStatus occt_model_clear_mesh(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId);
 
-    OCCTBRIDGE_API int occt_model_face_mesh_nodes_copy(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_face_mesh_nodes_snapshot_get(
+        OcctModelingSessionHandle handle,
         OcctObjectId faceId,
         OcctModelMeshNode* results,
-        int capacity);
+        int capacity,
+        int* required);
 
-    OCCTBRIDGE_API int occt_model_face_mesh_triangles_copy(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_face_mesh_triangles_snapshot_get(
+        OcctModelingSessionHandle handle,
         OcctObjectId faceId,
         OcctModelMeshTriangle* results,
-        int capacity);
+        int capacity,
+        int* required);
 }
