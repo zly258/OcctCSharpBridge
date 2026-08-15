@@ -16,6 +16,21 @@ namespace OcctModelingInternal
         return {0, 0, 0, 0, 1};
     }
 
+    template<typename Function>
+    inline OcctStatus executeAlgorithmStatus(
+        ModelSession* model,
+        OcctModelAlgorithmResult* result,
+        Function&& function)
+    {
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+        *result = failedAlgorithmResult();
+        return executeStatus(model, [&]
+        {
+            *result = function();
+        });
+    }
+
     inline BOPAlgo_GlueEnum glueValue(int value)
     {
         switch (value)
@@ -156,4 +171,5 @@ namespace OcctModelingInternal
         if (capacity < count) throw std::invalid_argument("History buffer capacity is smaller than the result count.");
         std::copy(ids.begin(), ids.end(), results);
         return count;
-    }}
+    }
+}
