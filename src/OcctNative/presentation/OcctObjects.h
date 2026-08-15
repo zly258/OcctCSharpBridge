@@ -44,6 +44,7 @@ extern "C"
         std::uint32_t apiVersion;
         int visible;
         int selected;
+        int highlighted;
         int selectable;
     };
 
