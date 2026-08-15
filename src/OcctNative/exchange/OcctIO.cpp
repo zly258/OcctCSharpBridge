@@ -1,4 +1,5 @@
-﻿#include "core/OcctInternal.hxx"
+#include "OcctViewerExchange.h"
+#include "core/OcctInternal.hxx"
 #include "OcctExchangePath.hxx"
 
 #include <BRep_Builder.hxx>
@@ -23,8 +24,13 @@
 #include <XCAFPrs_AISObject.hxx>
 #include <XCAFPrs_DocumentExplorer.hxx>
 
+#include <algorithm>
 #include <fstream>
 #include <map>
+#include <memory>
+#include <stdexcept>
+#include <utility>
+#include <vector>
 
 using namespace OcctBridge;
 
@@ -177,14 +183,11 @@ namespace
         ObjectEntry* entry = engine->findShape(id);
         if (entry == nullptr) throw std::runtime_error("Imported STEP shape could not be registered.");
 
-        // Compatibility projection for older consumers. The first-class assembly API
-        // reads XDE node IDs directly and does not reconstruct structure from this tag.
+        // Retain structured hierarchy metadata for object identity and STEP round-trip.
         entry->stepHierarchyPath = path;
         entry->applicationTag = hierarchyTag(path);
         rememberStyleColor(*entry, style);
 
-        // XCAFPrs_AISObject resolves definition/sub-shape styles during Display/Compute.
-        // Re-apply the merged occurrence color afterwards so instance inheritance wins.
         Quantity_Color mergedColor;
         if (tryStyleColor(style, mergedColor))
             engine->viewerContext.context->SetColor(entry->presentation, mergedColor, Standard_False);
@@ -200,8 +203,7 @@ namespace
         const TDF_Label presentationLabel = leaf.refLabel.IsNull() ? leaf.label : leaf.refLabel;
         Handle(XCAFPrs_AISObject) presentation = new XCAFPrs_AISObject(presentationLabel);
         applyBaseStyle(presentation, leaf.style);
-        if (!leaf.location.IsIdentity())
-            presentation->SetLocalTransformation(leaf.location.Transformation());
+        if (!leaf.location.IsIdentity()) presentation->SetLocalTransformation(leaf.location.Transformation());
 
         const std::string name = leaf.path.empty() ? std::string("Part") : leaf.path.back();
         const OcctObjectId id = engine->addShapePresentation(localShape, presentation, false, name);
@@ -248,8 +250,6 @@ namespace
         engine->beginUpdate();
         try
         {
-            // XDE defines product/assembly semantics. Never infer Parts from the number
-            // of contained SOLIDs: one legitimate Part may own many solids.
             for (const StepImportLeaf& leaf : leaves)
             {
                 const OcctObjectId id = addStructuredLeaf(engine, leaf);
@@ -490,124 +490,193 @@ namespace
         auto stream = outputStream(path);
         if (!writer.Write(stream)) throw std::runtime_error("IGES file could not be written.");
     }
+
+    OcctStatus requireInitializedEngine(Engine* engine)
+    {
+        if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (!validateInitialized(engine)) return engine->errors.code;
+        return OcctStatus_Ok;
+    }
+
+    template<typename Function>
+    OcctStatus executeExchange(Engine* engine, Function&& function)
+    {
+        const OcctStatus initialized = requireInitializedEngine(engine);
+        if (initialized != OcctStatus_Ok) return initialized;
+        return execute(engine, std::forward<Function>(function)) != 0
+            ? OcctStatus_Ok
+            : engine->errors.code;
+    }
+
+    template<typename Function>
+    OcctStatus importExchange(Engine* engine, OcctObjectId* result, Function&& function)
+    {
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+        *result = 0;
+        return executeExchange(engine, [&]
+        {
+            *result = function();
+            if (*result <= 0) throw std::runtime_error("Import did not create a viewer shape.");
+        });
+    }
+
+    std::filesystem::path requiredPath(const char* utf8Path)
+    {
+        const auto path = pathFromUtf8(utf8Path);
+        if (path.empty()) throw std::invalid_argument("Path is empty.");
+        return path;
+    }
 }
 
 extern "C"
 {
-    OcctObjectId occt_import_step(OcctHandle h, const char* utf8Path)
+    OcctStatus occt_engine_exchange_import_step(
+        OcctEngineHandle handle,
+        const char* utf8Path,
+        OcctObjectId* result)
     {
-        Engine* e = engineOf(h);
-        if (!validateInitialized(e)) return 0;
-        return executeObject(e, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return importExchange(engine, result, [&]
         {
-            const auto path = pathFromUtf8(utf8Path);
-            if (path.empty()) throw std::invalid_argument("Path is empty.");
-            return readStepXde(e, path);
+            return readStepXde(engine, requiredPath(utf8Path));
         });
     }
 
-    OcctObjectId occt_import_iges(OcctHandle h, const char* utf8Path)
+    OcctStatus occt_engine_exchange_import_iges(
+        OcctEngineHandle handle,
+        const char* utf8Path,
+        OcctObjectId* result)
     {
-        Engine* e = engineOf(h);
-        if (!validateInitialized(e)) return 0;
-        return executeObject(e, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return importExchange(engine, result, [&]
         {
-            const auto path = pathFromUtf8(utf8Path);
-            if (path.empty()) throw std::invalid_argument("Path is empty.");
-            return e->addShape(readIges(path), true, path.stem().u8string());
+            const auto path = requiredPath(utf8Path);
+            return engine->addShape(readIges(path), true, path.stem().u8string());
         });
     }
 
-    OcctObjectId occt_import_brep(OcctHandle h, const char* utf8Path)
+    OcctStatus occt_engine_exchange_import_brep(
+        OcctEngineHandle handle,
+        const char* utf8Path,
+        OcctObjectId* result)
     {
-        Engine* e = engineOf(h);
-        if (!validateInitialized(e)) return 0;
-        return executeObject(e, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return importExchange(engine, result, [&]
         {
-            const auto path = pathFromUtf8(utf8Path);
-            if (path.empty()) throw std::invalid_argument("Path is empty.");
-            return e->addShape(readBrep(path), true, path.stem().u8string());
+            const auto path = requiredPath(utf8Path);
+            return engine->addShape(readBrep(path), true, path.stem().u8string());
         });
     }
 
-    OcctObjectId occt_import_stl(OcctHandle h, const char* utf8Path)
+    OcctStatus occt_engine_exchange_import_stl(
+        OcctEngineHandle handle,
+        const char* utf8Path,
+        OcctObjectId* result)
     {
-        Engine* e = engineOf(h);
-        if (!validateInitialized(e)) return 0;
-        return executeObject(e, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return importExchange(engine, result, [&]
         {
-            const auto path = pathFromUtf8(utf8Path);
-            if (path.empty()) throw std::invalid_argument("Path is empty.");
-            return e->addShape(readStl(path), true, path.stem().u8string());
+            const auto path = requiredPath(utf8Path);
+            return engine->addShape(readStl(path), true, path.stem().u8string());
         });
     }
 
-    OcctObjectId occt_import_file(OcctHandle h, const char* utf8Path)
+    OcctStatus occt_engine_exchange_import_file(
+        OcctEngineHandle handle,
+        const char* utf8Path,
+        OcctObjectId* result)
     {
-        const auto path = pathFromUtf8(utf8Path);
-        const std::string extension = lowerExtension(path);
-        if (extension == ".step" || extension == ".stp") return occt_import_step(h, utf8Path);
-        if (extension == ".iges" || extension == ".igs") return occt_import_iges(h, utf8Path);
-        if (extension == ".brep" || extension == ".rle") return occt_import_brep(h, utf8Path);
-        if (extension == ".stl") return occt_import_stl(h, utf8Path);
-        Engine* e = engineOf(h);
-        if (e) e->setError("Unsupported file extension. Supported: STEP, IGES, BREP and STL.");
-        return 0;
-    }
-
-    int occt_export_step(OcctHandle h, OcctObjectId id, const char* utf8Path)
-    {
-        Engine* e = engineOf(h);
-        if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { writeStepObject(requiredShape(e, id), pathFromUtf8(utf8Path)); });
-    }
-
-    int occt_export_all_step(OcctHandle h, const char* utf8Path)
-    {
-        Engine* e = engineOf(h);
-        if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { writeStepAll(e, pathFromUtf8(utf8Path)); });
-    }
-
-    int occt_export_iges(OcctHandle h, OcctObjectId id, const char* utf8Path)
-    {
-        Engine* e = engineOf(h);
-        if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { writeIges(shapeWithPresentationTransformation(requiredShape(e, id)), pathFromUtf8(utf8Path)); });
-    }
-
-    int occt_export_all_iges(OcctHandle h, const char* utf8Path)
-    {
-        Engine* e = engineOf(h);
-        if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { writeIges(allShapes(e), pathFromUtf8(utf8Path)); });
-    }
-
-    int occt_export_brep(OcctHandle h, OcctObjectId id, const char* utf8Path)
-    {
-        Engine* e = engineOf(h);
-        if (!validateInitialized(e)) return 0;
-        return execute(e, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return importExchange(engine, result, [&]
         {
-            auto stream = outputStream(pathFromUtf8(utf8Path));
-            BRepTools::Write(shapeWithPresentationTransformation(requiredShape(e, id)), stream);
+            const auto path = requiredPath(utf8Path);
+            const std::string extension = lowerExtension(path);
+            if (extension == ".step" || extension == ".stp") return readStepXde(engine, path);
+            if (extension == ".iges" || extension == ".igs") return engine->addShape(readIges(path), true, path.stem().u8string());
+            if (extension == ".brep" || extension == ".rle") return engine->addShape(readBrep(path), true, path.stem().u8string());
+            if (extension == ".stl") return engine->addShape(readStl(path), true, path.stem().u8string());
+            throw std::invalid_argument("Unsupported file extension. Supported: STEP, IGES, BREP and STL.");
+        });
+    }
+
+    OcctStatus occt_engine_exchange_export_step(
+        OcctEngineHandle handle,
+        OcctObjectId objectId,
+        const char* utf8Path)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeExchange(engine, [&]
+        {
+            writeStepObject(requiredShape(engine, objectId), requiredPath(utf8Path));
+        });
+    }
+
+    OcctStatus occt_engine_exchange_export_all_step(
+        OcctEngineHandle handle,
+        const char* utf8Path)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeExchange(engine, [&]
+        {
+            writeStepAll(engine, requiredPath(utf8Path));
+        });
+    }
+
+    OcctStatus occt_engine_exchange_export_iges(
+        OcctEngineHandle handle,
+        OcctObjectId objectId,
+        const char* utf8Path)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeExchange(engine, [&]
+        {
+            writeIges(shapeWithPresentationTransformation(requiredShape(engine, objectId)), requiredPath(utf8Path));
+        });
+    }
+
+    OcctStatus occt_engine_exchange_export_all_iges(
+        OcctEngineHandle handle,
+        const char* utf8Path)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeExchange(engine, [&]
+        {
+            writeIges(allShapes(engine), requiredPath(utf8Path));
+        });
+    }
+
+    OcctStatus occt_engine_exchange_export_brep(
+        OcctEngineHandle handle,
+        OcctObjectId objectId,
+        const char* utf8Path)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeExchange(engine, [&]
+        {
+            auto stream = outputStream(requiredPath(utf8Path));
+            BRepTools::Write(shapeWithPresentationTransformation(requiredShape(engine, objectId)), stream);
             if (!stream) throw std::runtime_error("BREP file could not be written.");
         });
     }
 
-    int occt_export_stl(OcctHandle h, OcctObjectId id, const char* utf8Path, double linearDeflection, double angularDeflection, int asciiMode)
+    OcctStatus occt_engine_exchange_export_stl(
+        OcctEngineHandle handle,
+        OcctObjectId objectId,
+        const char* utf8Path,
+        double linearDeflection,
+        double angularDeflection,
+        OcctBool asciiMode)
     {
-        Engine* e = engineOf(h);
-        if (!validateInitialized(e)) return 0;
-        return execute(e, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeExchange(engine, [&]
         {
             requirePositive(linearDeflection, "Linear deflection");
             requirePositive(angularDeflection, "Angular deflection");
-            const TopoDS_Shape shape = shapeWithPresentationTransformation(requiredShape(e, id));
+            const TopoDS_Shape shape = shapeWithPresentationTransformation(requiredShape(engine, objectId));
             BRepMesh_IncrementalMesh mesh(shape, linearDeflection, Standard_False, angularDeflection, Standard_True);
             mesh.Perform();
             if (!mesh.IsDone()) throw std::runtime_error("STL meshing failed.");
-            const auto path = pathFromUtf8(utf8Path);
+            const auto path = requiredPath(utf8Path);
             if (path.has_parent_path()) std::filesystem::create_directories(path.parent_path());
             StlAPI_Writer writer;
             writer.ASCIIMode() = asciiMode != 0;
