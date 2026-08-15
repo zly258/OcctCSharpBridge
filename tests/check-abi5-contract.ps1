@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$RepositoryRoot = (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
 )
 
@@ -74,10 +74,30 @@ foreach ($retiredPath in @(
     "tests/check-abi-compatibility.ps1",
     "tests/compatibility",
     "tests/compatibility/OcctNet.LegacyCompatibilityTests.csproj",
-    "tests/compatibility/Program.cs"
+    "tests/compatibility/Program.cs",
+    "docs/en-US/api/2.7-additions.md",
+    "docs/zh-CN/api/2.7-additions.md"
 )) {
     if (Test-TrackedPath $retiredPath) {
-        throw "Retired ABI4 compatibility artifact must not be tracked: $retiredPath"
+        throw "Retired pre-ABI5 artifact must not be tracked: $retiredPath"
+    }
+}
+
+$trackedDistContracts = @(& git -C $RepositoryRoot ls-files -- "dist/*/bridge-contract.json" 2>$null)
+if ($LASTEXITCODE -ne 0) {
+    throw "Unable to inspect tracked Binary SDK contracts."
+}
+foreach ($relativePath in $trackedDistContracts) {
+    $distContractPath = Join-Path $RepositoryRoot $relativePath
+    $distContract = Get-Content $distContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ([int]$distContract.schemaVersion -ne 3 -or
+        [int]$distContract.nativeAbi.current -ne 5 -or
+        [int]$distContract.nativeAbi.minimumSupported -ne 5 -or
+        [string]$distContract.api.policy -ne "abi5-only") {
+        throw "Tracked Binary SDK contract is not ABI5-only: $relativePath"
+    }
+    if ($null -ne $distContract.PSObject.Properties["nativeAbiVersion"]) {
+        throw "Retired flat nativeAbiVersion metadata remains in Binary SDK contract: $relativePath"
     }
 }
 
@@ -92,4 +112,4 @@ foreach ($retiredToken in @(
     }
 }
 
-Write-Host "[abi5] ABI 5 is the only supported native ABI; no ABI4 compatibility artifacts or generic legacy handles are tracked." -ForegroundColor Green
+Write-Host "[abi5] ABI 5 is the only supported native ABI; no pre-ABI5 compatibility files, stale Binary SDK contracts or generic legacy handles are tracked." -ForegroundColor Green

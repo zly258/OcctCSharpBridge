@@ -1,36 +1,38 @@
-﻿# Bridge Migration
+﻿# Bridge 3 ABI5 Migration
 
-Bridge 3 makes `main` the only formal SDK source. The repository migration order is:
+Bridge 3 makes `main` the only formal SDK source. The migration order is:
 
-1. Stabilize Native Core, `OcctNet`, WinForms and WPF on `main-dev`.
-2. Move the Windows examples on `demo-dev` to consume the formal SDK.
+1. Stabilize and validate the ABI5-only Native Core, `OcctNet`, WinForms, WPF and Avalonia host on `main-dev`.
+2. Move the Windows examples on `demo-dev` to consume the resulting SDK.
 3. Move Avalonia examples and packaging on `avalonia-dev` to consume the same SDK.
+4. Submit `main-dev -> main`, `demo-dev -> demo`, and `avalonia-dev -> avalonia` as independent PRs.
 
 ## ABI policy
 
-ABI 5 is the current contract. ABI 4 remains binary compatible and is frozen at 419 exports until its planned removal in Bridge 4.0. New functionality may only extend the current ABI.
+ABI 5 is the only supported native ABI. Pre-ABI5 exports, generic handles, compatibility shims, fixed old-consumer tests and compatibility metadata are removed rather than frozen or forwarded.
 
-The original `occt_bridge_abi_version` entry preserves its ABI 4 behavior for fixed 2.7 consumers. Current SDK code queries `occt_bridge_current_abi_version`.
+Public native entry points use semantic names. Extensible data structures use `structSize` and `apiVersion` where versioned layout is required; exported function names do not use migration suffixes such as `V1`, `V2` or `Ex`.
 
-Public APIs and filenames use semantic names. Version selection belongs in `structSize` and `apiVersion`; names ending in `V1`, `V2`, `Ex` or similar suffixes are not used for new APIs.
+Managed production interop uses source-generated `LibraryImport` with C calling convention and maps one-to-one to the canonical ABI5 declarations and definitions.
 
-## Current preview scope
+## Current architecture
 
-The preview introduces typed Engine and Modeling Session handles, `SafeHandle` ownership, `OcctStatus`, caller-owned error buffers, Viewer/Scene/Document contexts, platform-window isolation, topology history and persistent topology references.
+- typed Engine, Shape, Mesh and Algorithm resource ownership;
+- `OcctStatus` and structured native error state;
+- caller-owned snapshot/buffer APIs for bulk Viewer and Modeling data;
+- Viewer/Scene/Document contexts separated from headless Modeling state;
+- OS window-system integration isolated under `src/OcctNative/platform`;
+- topology history and persistent topology references owned by the Modeling Session;
+- `demo-dev` and `avalonia-dev` remain SDK consumers rather than carrying private Native/Core implementations.
 
-The formal managed SDK uses the typed lifecycle and semantic native-surface API. Legacy lifecycle and surface entries remain compatibility adapters and are covered by a fixed old-consumer executable.
-Current-only managed declarations use source-generated `LibraryImport` with explicit C calling convention. Frozen ABI 4 declarations and compatibility extensions remain isolated on `DllImport`; contract checks prevent either set from crossing that boundary.
-The current ABI provides opaque `OcctShapeHandle`, `OcctMeshHandle`, and `OcctAlgorithmHandle` resources. Shape snapshots, independent mesh buffers, and algorithm diagnostic snapshots are owned through managed `SafeHandle` wrappers. Algorithm resources copy the operation ID, warning/error flags, and report so diagnostics remain available after the source Modeling Session is disposed; topology lineage remains owned by the session history API. Mesh creation uses an extensible `structSize`/`apiVersion` options structure, while node and triangle data is copied into caller-owned bulk buffers. Callers must not query a resource concurrently with disposal.
+## Validation gates
 
-## Compatibility gates
+Every standard validation run checks that:
 
-Every standard build validates:
-
-- all 419 frozen ABI 4 symbols remain exported;
-- native declarations, implementations and P/Invokes are identical sets;
-- all 23 formal current-ABI declarations use `LibraryImport`, while the compatibility extension remains isolated;
-- new exports and tracked filenames follow semantic naming;
-- WinForms and WPF consume the platform-neutral managed Engine API;
-- the fixed ABI 4 consumer and current ABI 5 native smoke both run successfully.
-
-`demo-dev` and `avalonia-dev` remain external SDK consumers; continued core evolution and ABI ownership stay on `main-dev`.
+- `bridge-contract.json` declares ABI 5 as both current and minimum supported ABI with `api.policy = abi5-only`;
+- retired compatibility files and old version-specific documentation are not tracked;
+- tracked platform Binary SDK contracts, when present, are ABI5-only;
+- Native declarations, implementations and managed `LibraryImport` bindings are identical sets;
+- `DllImport` is not used by production managed ABI5 interop;
+- Native C++ inventory, module boundaries and platform isolation remain valid;
+- bulk collections use snapshot/buffer APIs rather than borrowed legacy handles.
