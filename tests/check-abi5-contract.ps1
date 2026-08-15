@@ -101,6 +101,32 @@ foreach ($relativePath in $trackedDistContracts) {
     }
 }
 
+$trackedDistManifests = @(& git -C $RepositoryRoot ls-files -- "dist/*/bridge-manifest.json" 2>$null)
+if ($LASTEXITCODE -ne 0) {
+    throw "Unable to inspect tracked Binary SDK manifests."
+}
+foreach ($relativePath in $trackedDistManifests) {
+    $manifestPath = Join-Path $RepositoryRoot $relativePath
+    $manifest = Get-Content $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($null -ne $manifest.PSObject.Properties["nativeAbiVersion"]) {
+        throw "Retired flat nativeAbiVersion metadata remains in Binary SDK manifest: $relativePath"
+    }
+    if ([int]$manifest.schemaVersion -ne 2 -or
+        [int]$manifest.nativeAbi.current -ne 5 -or
+        [int]$manifest.nativeAbi.minimumSupported -ne 5) {
+        throw "Tracked Binary SDK manifest is not schema 2 ABI5-only: $relativePath"
+    }
+}
+
+foreach ($generatorPath in @("build.ps1", "build.sh")) {
+    $generator = Join-Path $RepositoryRoot $generatorPath
+    if (-not (Test-Path $generator -PathType Leaf)) { throw "Binary SDK generator was not found: $generatorPath" }
+    $generatorText = [System.IO.File]::ReadAllText($generator)
+    if ($generatorText.Contains("nativeAbiVersion")) {
+        throw "Binary SDK generator still emits retired flat nativeAbiVersion metadata: $generatorPath"
+    }
+}
+
 $nativeText = Get-TrackedSourceText "src/OcctNative" @('.h', '.hpp', '.hxx', '.cpp', '.cxx')
 foreach ($retiredToken in @(
     "OcctHandle",
@@ -112,4 +138,4 @@ foreach ($retiredToken in @(
     }
 }
 
-Write-Host "[abi5] ABI 5 is the only supported native ABI; no pre-ABI5 compatibility files, stale Binary SDK contracts or generic legacy handles are tracked." -ForegroundColor Green
+Write-Host "[abi5] ABI 5 is the only supported native ABI; pre-ABI5 compatibility files, flat manifest metadata and generic legacy handles are not tracked or emitted." -ForegroundColor Green
