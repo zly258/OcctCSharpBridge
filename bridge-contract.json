@@ -54,7 +54,6 @@
       "modeling/OcctModelingBoolean.h",
       "modeling/OcctModelingFeatures.h",
       "modeling/OcctModelingHealing.h",
-      "modeling/OcctModeling.h",
       "topology/OcctModelingShapeProperties.h",
       "geometry/OcctModelingPlanarOperations.h",
       "modeling/OcctModelingAnnotations.h",
