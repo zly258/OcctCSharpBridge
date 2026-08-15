@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("validate", "native", "managed", "test", "smoke", "docs", "dist", "ci", "clean", "all")]
+    [ValidateSet("validate", "native", "managed", "test", "smoke", "docs", "dist", "clean", "all")]
     [string]$Target = "all",
 
     [Parameter(Position = 1)]
@@ -100,7 +100,7 @@ function Invoke-ContractChecks {
 function Resolve-OcctConfiguration {
     $script:OcctRoot = [System.IO.Path]::GetFullPath($OcctRoot)
     if (-not (Test-Path $script:OcctRoot -PathType Container)) {
-        throw "OCCT SDK root was not found: $script:OcctRoot. Set OCCT_ROOT, pass -OcctRoot <path>, or install OCCT at $DefaultOcctRoot. validate/managed/test/docs/ci do not require OCCT."
+        throw "OCCT SDK root was not found: $script:OcctRoot. Set OCCT_ROOT, pass -OcctRoot <path>, or install OCCT at $DefaultOcctRoot. validate/managed/test/docs do not require OCCT."
     }
     $script:OcctIncludeDir = Join-Path $script:OcctRoot "inc"
     $script:OcctLibDir = Join-Path $script:OcctRoot "win64\vc14\lib"
@@ -174,14 +174,6 @@ function Build-Managed {
     Build-Project "WinForms"
     Build-Project "Wpf"
     Build-Project "Avalonia"
-}
-
-function Build-Ci {
-    Build-Managed
-    Build-Project "ManagedTests"
-    Run-ManagedTests
-    Build-Project "Smoke"
-    Build-Project "AvaloniaSmoke"
 }
 
 function Run-Smoke {
@@ -378,7 +370,6 @@ switch ($Target) {
     }
     "docs" { Generate-ApiDocumentation }
     "dist" { Build-BinaryDistribution }
-    "ci" { Build-Ci }
     "smoke" {
         Build-Native
         Build-Managed
@@ -387,6 +378,9 @@ switch ($Target) {
     "all" {
         Build-Native
         Build-Managed
+        Build-Project "ManagedTests"
+        Run-ManagedTests
+        Run-Smoke
     }
 }
 
