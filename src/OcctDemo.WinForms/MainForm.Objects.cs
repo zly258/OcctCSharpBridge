@@ -123,7 +123,7 @@ public sealed partial class MainForm
         var node = e.Node;
         if (_refreshingTree || _session is null || node is null || node.Tag is not IOcctObject value) return;
 
-        ExecuteSafe(() => Session.Engine.SetVisible(value, node.Checked));
+        ExecuteSafe(() => Session.Engine.SetObjectVisible(value, node.Checked));
     }
 
     private void ShowObjectProperties(IOcctObject? value)
