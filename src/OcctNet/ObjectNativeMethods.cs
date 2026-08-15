@@ -39,6 +39,16 @@ internal struct NativeViewerObjectUpdateOptions
     internal int Selectable;
 }
 
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeViewerObjectState
+{
+    internal uint StructSize;
+    internal uint ApiVersion;
+    internal int Visible;
+    internal int Selected;
+    internal int Selectable;
+}
+
 internal static partial class ObjectNativeMethods
 {
     private const string LibraryName = "OcctNative";
@@ -72,6 +82,21 @@ internal static partial class ObjectNativeMethods
         OcctEngineSafeHandle handle,
         long objectId,
         in NativeViewerObjectUpdateOptions options);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_objects_update(
+        OcctEngineSafeHandle handle,
+        IntPtr objectIds,
+        int count,
+        in NativeViewerObjectUpdateOptions options);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_object_state_get(
+        OcctEngineSafeHandle handle,
+        long objectId,
+        out NativeViewerObjectState state);
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
@@ -121,5 +146,13 @@ internal static partial class ObjectNativeMethods
     internal static partial OcctStatus occt_engine_object_presentation_action(
         OcctEngineSafeHandle handle,
         long objectId,
+        NativeViewerObjectPresentationAction action);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_objects_presentation_action(
+        OcctEngineSafeHandle handle,
+        IntPtr objectIds,
+        int count,
         NativeViewerObjectPresentationAction action);
 }
