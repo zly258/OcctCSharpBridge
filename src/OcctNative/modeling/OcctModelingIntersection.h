@@ -21,14 +21,16 @@ extern "C"
         double secondParameterEnd;
     };
 
-    OCCTBRIDGE_API int occt_model_intersect_edges(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_intersect_edges(
+        OcctModelingSessionHandle handle,
         OcctObjectId firstEdgeId,
         OcctObjectId secondEdgeId,
-        double tolerance);
+        double tolerance,
+        int* resultCount);
 
-    OCCTBRIDGE_API int occt_model_edge_intersections_copy(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_edge_intersections_snapshot_get(
+        OcctModelingSessionHandle handle,
         OcctModelEdgeIntersection* results,
-        int capacity);
+        int capacity,
+        int* required);
 }
