@@ -6,19 +6,39 @@
 #include <gp_Pln.hxx>
 
 #include <stdexcept>
+#include <utility>
 
 using namespace OcctBridge;
 
+namespace
+{
+    OcctStatus requireInitializedEngine(Engine* engine)
+    {
+        if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (!validateInitialized(engine)) return engine->errors.code;
+        return OcctStatus_Ok;
+    }
+
+    template<typename Function>
+    OcctStatus executeViewportClipStatus(Engine* engine, Function&& function)
+    {
+        const OcctStatus initialized = requireInitializedEngine(engine);
+        if (initialized != OcctStatus_Ok) return initialized;
+        return execute(engine, std::forward<Function>(function)) != 0
+            ? OcctStatus_Ok
+            : engine->errors.code;
+    }
+}
+
 extern "C"
 {
-    int occt_set_view_clip_planes(
-        OcctHandle handle,
+    OcctStatus occt_engine_viewport_clip_planes_set(
+        OcctEngineHandle handle,
         const OcctViewClipPlane* planes,
         int count)
     {
-        Engine* engine = engineOf(handle);
-        if (!validateInitialized(engine)) return 0;
-        return execute(engine, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeViewportClipStatus(engine, [&]
         {
             if (count < 0) throw std::invalid_argument("Clip plane count must not be negative.");
             if (count > 0 && planes == nullptr)
@@ -42,12 +62,15 @@ extern "C"
         });
     }
 
-    int occt_get_view_clip_plane_limit(
-        OcctHandle handle,
+    OcctStatus occt_engine_viewport_clip_plane_limit_get(
+        OcctEngineHandle handle,
         int* limit)
     {
-        Engine* engine = engineOf(handle);
-        if (!validateInitialized(engine) || limit == nullptr) return 0;
-        return execute(engine, [&] { *limit = engine->viewerContext.view->PlaneLimit(); });
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeViewportClipStatus(engine, [&]
+        {
+            if (limit == nullptr) throw std::invalid_argument("Clip plane limit result is null.");
+            *limit = engine->viewerContext.view->PlaneLimit();
+        });
     }
 }
