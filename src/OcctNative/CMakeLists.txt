@@ -136,11 +136,11 @@ add_library(OcctNative SHARED
     geometry/OcctModelingGeometryQueries.cpp
     topology/OcctModelingTopology.cpp
     scene/OcctModelingInterop.cpp
-    geometry/OcctModelingGeometry.Curves.cpp
-    geometry/OcctModelingGeometry.Planar.cpp
-    geometry/OcctModelingGeometry.Primitives.cpp
-    geometry/OcctModelingGeometry.Assembly.cpp
-    geometry/OcctModelingGeometry.Transform.cpp
+    geometry/OcctModelingCurves.cpp
+    geometry/OcctModelingPlanar.cpp
+    geometry/OcctModelingPrimitives.cpp
+    geometry/OcctModelingAssembly.cpp
+    geometry/OcctModelingTransform.cpp
     modeling/OcctModelingBoolean.cpp
     modeling/OcctModelingFeatures.cpp
     modeling/OcctModelingHealing.cpp
@@ -170,6 +170,7 @@ add_library(OcctNative SHARED
     platform/OcctPlatformWindow.hxx
     platform/OcctNativeSurface.h
     modeling/OcctModelingSessionInternal.hxx
+    modeling/OcctModelingSession.h
     geometry/OcctBRepTextBuilder.hxx
     geometry/OcctBRepAnnotationBuilder.hxx
     exchange/OcctDocumentStore.hxx
@@ -188,6 +189,11 @@ add_library(OcctNative SHARED
     geometry/OcctViewerShapeQueries.h
     geometry/OcctViewerFeatures.h
     geometry/OcctViewerGeometryCreation.h
+    geometry/OcctModelingCurves.h
+    geometry/OcctModelingPlanar.h
+    geometry/OcctModelingPrimitives.h
+    geometry/OcctModelingAssembly.h
+    geometry/OcctModelingTransform.h
     selection/OcctSelection.h
     selection/OcctSelectionOverlay.h
     selection/OcctSelectionState.h
