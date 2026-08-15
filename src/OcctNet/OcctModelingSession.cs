@@ -203,11 +203,6 @@ public sealed partial class OcctModelingSession : IDisposable
         return CheckAlgorithm(native, operation);
     }
 
-    private void Check(int result, [CallerMemberName] string? operation = null)
-    {
-        if (result == 0) throw CreateException(operation);
-    }
-
     private void CheckStatus(OcctStatus status, [CallerMemberName] string? operation = null)
     {
         if (status != OcctStatus.Ok) throw CreateException(operation);
