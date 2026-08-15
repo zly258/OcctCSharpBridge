@@ -1,14 +1,17 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace OcctNet;
 
 internal static partial class ModelNativeMethods
 {
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_model_shape_face_analysis(
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial int occt_model_shape_face_analysis(
         OcctModelingSafeHandle handle,
         long shapeId,
-        [Out] NativeModelFaceAnalysis[]? items,
+        [Out, MarshalUsing(CountElementName = nameof(capacity))] NativeModelFaceAnalysis[]? items,
         int capacity,
         out int count);
 }
