@@ -16,18 +16,19 @@ extern "C"
         int adjacentFaceCount;
     };
 
-    OCCTBRIDGE_API OcctObjectId occt_model_shape_free_bounds(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_shape_free_bounds(
+        OcctModelingSessionHandle handle,
         OcctObjectId shapeId,
         double tolerance,
         int boundaryKind,
-        int splitClosed,
-        int splitOpen);
+        OcctBool splitClosed,
+        OcctBool splitOpen,
+        OcctObjectId* result);
 
-    OCCTBRIDGE_API int occt_model_shape_edge_adjacency(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_shape_edge_adjacency_snapshot_get(
+        OcctModelingSessionHandle handle,
         OcctObjectId shapeId,
         OcctModelEdgeAdjacency* items,
         int capacity,
-        int* count);
+        int* required);
 }
