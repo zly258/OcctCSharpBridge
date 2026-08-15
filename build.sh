@@ -157,7 +157,7 @@ dist() {
 
 clean() {
     rm -rf "${ROOT_DIR}/build" "${ROOT_DIR}/artifacts"
-    for path in src/OcctNet src/OcctNet.Avalonia tests/OcctNet.ManagedTests tests/OcctNet.Smoke tests/OcctNet.AvaloniaSmoke tools/OcctApiDocsGenerator; do
+    for path in src/OcctNet src/OcctNet.Avalonia tests/OcctNet.ManagedTests tests/OcctNet.Smoke tests/OcctNet.AvaloniaSmoke; do
         rm -rf "${ROOT_DIR}/${path}/bin" "${ROOT_DIR}/${path}/obj"
     done
 }

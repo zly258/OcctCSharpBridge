@@ -1,7 +1,6 @@
 param(
     [string]$OcctRoot = $env:OCCT_ROOT,
-    [string]$Remote = "origin",
-    [switch]$Fast
+    [string]$Remote = "origin"
 )
 
 $ErrorActionPreference = "Stop"
@@ -190,15 +189,6 @@ if ($currentBranch -ne "main") {
 Assert-CleanWorktree "before publishing"
 Assert-RemoteMainAncestor
 Write-Host "[publish] Formal main ancestry validated." -ForegroundColor DarkGray
-
-if ($Fast) {
-    Write-Host "[publish] Fast mode: skipping generated API documentation freshness check." -ForegroundColor Yellow
-}
-else {
-    Write-Host "[publish] Verifying generated bilingual API documentation..." -ForegroundColor Cyan
-    Invoke-Build "docs"
-    Assert-CleanWorktree "after API documentation generation; generated docs are stale if this check fails"
-}
 
 $sourceCommit = (& git -C $RepoRoot rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($sourceCommit)) {

@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("validate", "native", "managed", "test", "smoke", "docs", "dist", "clean", "all")]
+    [ValidateSet("validate", "native", "managed", "test", "smoke", "dist", "clean", "all")]
     [string]$Target = "all",
 
     [Parameter(Position = 1)]
@@ -37,7 +37,6 @@ $DistParent = Join-Path $RepoRoot "dist"
 $DistRoot = Join-Path $DistParent "win-x64"
 $DistStaging = Join-Path $DistParent ".win-x64-staging"
 $DistBackup = Join-Path $DistParent ".win-x64-backup"
-$ApiDocsGenerator = Join-Path $RepoRoot "tools\OcctApiDocsGenerator\OcctApiDocsGenerator.csproj"
 
 if (-not (Test-Path $ContractPath -PathType Leaf)) { throw "Bridge contract file was not found: $ContractPath" }
 $Contract = Get-Content $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -67,6 +66,9 @@ $Checks = [ordered]@{
     ApiSurface = "tests\check-api-surface.ps1"
 }
 
+$script:DotNetCommand = $null
+$script:ResolvedSdkVersion = $null
+
 function Assert-Path {
     param([Parameter(Mandatory = $true)][string]$Path)
     if (-not (Test-Path $Path)) { throw "Required path was not found: $Path" }
@@ -87,6 +89,92 @@ function Invoke-Checked {
     if ($LASTEXITCODE -ne 0) { throw $ErrorMessage }
 }
 
+function Get-DotNetCandidates {
+    $result = [System.Collections.Generic.List[string]]::new()
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+
+    foreach ($root in @($env:DOTNET_ROOT, $env:ProgramW6432, $env:ProgramFiles)) {
+        if ([string]::IsNullOrWhiteSpace($root)) { continue }
+        $candidate = if ((Split-Path -Leaf $root) -ieq "dotnet") {
+            Join-Path $root "dotnet.exe"
+        }
+        else {
+            Join-Path $root "dotnet\dotnet.exe"
+        }
+        if ($seen.Add($candidate)) { $result.Add($candidate) }
+    }
+
+    $command = Get-Command dotnet -ErrorAction SilentlyContinue
+    if ($null -ne $command -and -not [string]::IsNullOrWhiteSpace([string]$command.Source)) {
+        $candidate = [string]$command.Source
+        if ($seen.Add($candidate)) { $result.Add($candidate) }
+    }
+
+    return $result
+}
+
+function Resolve-DotNetSdk {
+    if (-not [string]::IsNullOrWhiteSpace($script:DotNetCommand)) { return }
+
+    $diagnostics = [System.Collections.Generic.List[string]]::new()
+    foreach ($candidate in @(Get-DotNetCandidates)) {
+        if (-not (Test-Path $candidate -PathType Leaf)) {
+            $diagnostics.Add("$candidate => not found")
+            continue
+        }
+
+        $sdkLines = @(& $candidate --list-sdks 2>&1)
+        $listExitCode = $LASTEXITCODE
+        if ($listExitCode -ne 0) {
+            $diagnostics.Add("$candidate => --list-sdks failed with exit code $listExitCode")
+            continue
+        }
+
+        $installed = @($sdkLines | ForEach-Object {
+            $line = [string]$_
+            if ($line -match '^\s*([^\s]+)\s+\[') { $Matches[1] }
+        })
+        $installedText = if ($installed.Count -eq 0) { "no SDKs" } else { $installed -join ", " }
+        $diagnostics.Add("$candidate => $installedText")
+        if ($SdkVersion -notin $installed) { continue }
+
+        Push-Location $RepoRoot
+        try {
+            $resolvedOutput = @(& $candidate --version 2>&1)
+            $resolvedExitCode = $LASTEXITCODE
+        }
+        finally {
+            Pop-Location
+        }
+
+        if ($resolvedExitCode -ne 0 -or $resolvedOutput.Count -ne 1) { continue }
+        $resolvedVersion = ([string]$resolvedOutput[0]).Trim()
+        if ($resolvedVersion -ne $SdkVersion) { continue }
+
+        $script:DotNetCommand = [System.IO.Path]::GetFullPath($candidate)
+        $script:ResolvedSdkVersion = $resolvedVersion
+        return
+    }
+
+    $detail = if ($diagnostics.Count -eq 0) { "No dotnet host candidates were found." } else { $diagnostics -join [Environment]::NewLine }
+    throw "OcctCSharpBridge requires .NET SDK $SdkVersion exactly, but no usable dotnet host could resolve it from this repository.`nChecked dotnet hosts:`n$detail`nInstall .NET SDK $SdkVersion for x64 or fix DOTNET_ROOT/PATH so C:\Program Files\dotnet\dotnet.exe can see that SDK. SDK roll-forward remains disabled by contract."
+}
+
+function Invoke-DotNetChecked {
+    param(
+        [Parameter(Mandatory = $true)][object[]]$Arguments,
+        [Parameter(Mandatory = $true)][string]$ErrorMessage
+    )
+    Resolve-DotNetSdk
+    Push-Location $RepoRoot
+    try {
+        Invoke-Checked $script:DotNetCommand $Arguments $ErrorMessage
+    }
+    finally {
+        Pop-Location
+    }
+}
+
 function Invoke-ContractChecks {
     foreach ($check in $Checks.GetEnumerator()) {
         $path = Join-Path $RepoRoot $check.Value
@@ -100,7 +188,7 @@ function Invoke-ContractChecks {
 function Resolve-OcctConfiguration {
     $script:OcctRoot = [System.IO.Path]::GetFullPath($OcctRoot)
     if (-not (Test-Path $script:OcctRoot -PathType Container)) {
-        throw "OCCT SDK root was not found: $script:OcctRoot. Set OCCT_ROOT, pass -OcctRoot <path>, or install OCCT at $DefaultOcctRoot. validate/managed/test/docs do not require OCCT."
+        throw "OCCT SDK root was not found: $script:OcctRoot. Set OCCT_ROOT, pass -OcctRoot <path>, or install OCCT at $DefaultOcctRoot. validate/managed/test do not require OCCT."
     }
     $script:OcctIncludeDir = Join-Path $script:OcctRoot "inc"
     $script:OcctLibDir = Join-Path $script:OcctRoot "win64\vc14\lib"
@@ -139,14 +227,13 @@ function Build-Native {
 
 function Build-Project {
     param([Parameter(Mandatory = $true)][string]$Name)
-    Assert-Command "dotnet"
     $relativePath = $Projects[$Name]
     if ([string]::IsNullOrWhiteSpace($relativePath)) { throw "Unknown project key: $Name" }
     $project = Join-Path $RepoRoot $relativePath
     Assert-Path $project
 
     Write-Host "[$($Name.ToLowerInvariant())] Building $Configuration / $BridgeVersion..." -ForegroundColor Cyan
-    Invoke-Checked "dotnet" @(
+    Invoke-DotNetChecked @(
         "build", $project,
         "-c", $Configuration,
         "-p:Platform=x64",
@@ -156,11 +243,10 @@ function Build-Project {
 }
 
 function Run-ManagedTests {
-    Assert-Command "dotnet"
     $project = Join-Path $RepoRoot $Projects.ManagedTests
     Assert-Path $project
     Write-Host "[managed-tests] Running managed-only ABI5 regression tests..." -ForegroundColor Cyan
-    Invoke-Checked "dotnet" @(
+    Invoke-DotNetChecked @(
         "test", $project,
         "-c", $Configuration,
         "-p:Platform=x64",
@@ -204,7 +290,7 @@ function Run-Smoke {
         $env:OCCT_ROOT = $script:OcctRoot
         $env:CASROOT = $script:OcctRoot
         Write-Host "[smoke] Running ABI5 native modeling scenarios..." -ForegroundColor Cyan
-        Invoke-Checked "dotnet" @(
+        Invoke-DotNetChecked @(
             "run",
             "--project", $smokeProject,
             "-c", $Configuration,
@@ -221,22 +307,6 @@ function Run-Smoke {
     }
 }
 
-function Generate-ApiDocumentation {
-    Assert-Command "dotnet"
-    Assert-Path $ApiDocsGenerator
-    Build-Managed
-    Build-Project "AvaloniaSmoke"
-    Write-Host "[docs] Generating bilingual public API reference..." -ForegroundColor Cyan
-    Invoke-Checked "dotnet" @(
-        "run",
-        "--project", $ApiDocsGenerator,
-        "-c", "Release",
-        "--",
-        "--repository-root", $RepoRoot,
-        "--configuration", $Configuration
-    ) "API documentation generation failed."
-}
-
 function Clean-Outputs {
     Write-Host "[clean] Removing generated build outputs..." -ForegroundColor Cyan
     Remove-Item (Join-Path $RepoRoot "build") -Recurse -Force -ErrorAction SilentlyContinue
@@ -247,11 +317,6 @@ function Clean-Outputs {
         $projectDirectory = Split-Path -Parent $project
         Remove-Item (Join-Path $projectDirectory "bin") -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item (Join-Path $projectDirectory "obj") -Recurse -Force -ErrorAction SilentlyContinue
-    }
-    if (Test-Path $ApiDocsGenerator -PathType Leaf) {
-        $toolDirectory = Split-Path -Parent $ApiDocsGenerator
-        Remove-Item (Join-Path $toolDirectory "bin") -Recurse -Force -ErrorAction SilentlyContinue
-        Remove-Item (Join-Path $toolDirectory "obj") -Recurse -Force -ErrorAction SilentlyContinue
     }
     Write-Host "Generated build outputs removed." -ForegroundColor Green
 }
@@ -348,7 +413,7 @@ Write-Host "Configuration: $Configuration"
 Write-Host "Bridge:        $BridgeVersion"
 Write-Host "ABI:           $($Contract.nativeAbi.current) only"
 Write-Host "Author:        $Author"
-Write-Host "SDK:           $SdkVersion" -ForegroundColor DarkGray
+Write-Host "SDK contract:  $SdkVersion" -ForegroundColor DarkGray
 $occtRootSource = if ($env:OCCT_ROOT) { "environment" } elseif ($OcctRoot -eq $DefaultOcctRoot) { "default" } else { "argument" }
 Write-Host "OCCT root:     $OcctRoot ($occtRootSource)" -ForegroundColor DarkGray
 
@@ -356,6 +421,12 @@ if ($Target -eq "clean") {
     Clean-Outputs
     Write-Host "Build completed." -ForegroundColor Green
     exit 0
+}
+
+if ($Target -in @("managed", "test", "smoke", "dist", "all")) {
+    Resolve-DotNetSdk
+    Write-Host "dotnet:        $script:DotNetCommand" -ForegroundColor DarkGray
+    Write-Host "SDK resolved:  $script:ResolvedSdkVersion" -ForegroundColor Green
 }
 
 Invoke-ContractChecks
@@ -368,7 +439,6 @@ switch ($Target) {
         Build-Project "ManagedTests"
         Run-ManagedTests
     }
-    "docs" { Generate-ApiDocumentation }
     "dist" { Build-BinaryDistribution }
     "smoke" {
         Build-Native

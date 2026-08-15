@@ -112,7 +112,6 @@ $projectFiles = [ordered]@{
     "tests/OcctNet.Smoke/OcctNet.Smoke.csproj" = $expectedTargetFramework
     "src/OcctNet.WinForms/OcctNet.WinForms.csproj" = $expectedDesktopTargetFramework
     "src/OcctNet.Wpf/OcctNet.Wpf.csproj" = $expectedDesktopTargetFramework
-    "tools/OcctApiDocsGenerator/OcctApiDocsGenerator.csproj" = $expectedDesktopTargetFramework
 }
 foreach ($entry in $projectFiles.GetEnumerator()) {
     $relativePath = [string]$entry.Key
