@@ -2,7 +2,7 @@
 
 #include "OcctNative.h"
 
-constexpr int OcctManipulatorObjectKind = 6;
+constexpr int OcctManipulatorObjectKind = OcctObject_Manipulator;
 
 extern "C"
 {
