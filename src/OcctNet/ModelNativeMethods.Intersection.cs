@@ -8,16 +8,18 @@ internal static partial class ModelNativeMethods
 {
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
-    internal static partial int occt_model_intersect_edges(
+    internal static partial OcctStatus occt_model_intersect_edges(
         OcctModelingSafeHandle handle,
         long firstEdgeId,
         long secondEdgeId,
-        double tolerance);
+        double tolerance,
+        out int resultCount);
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
-    internal static partial int occt_model_edge_intersections_copy(
+    internal static partial OcctStatus occt_model_edge_intersections_snapshot_get(
         OcctModelingSafeHandle handle,
         [Out, MarshalUsing(CountElementName = nameof(capacity))] NativeModelEdgeIntersection[]? results,
-        int capacity);
+        int capacity,
+        out int required);
 }
