@@ -114,7 +114,7 @@ extern "C"
         });
     }
 
-    OcctStatus occt_model_shape_exists(
+    OcctStatus occt_model_shape_exists_get(
         OcctModelingSessionHandle handle,
         OcctObjectId shapeId,
         OcctBool* result)
@@ -140,7 +140,7 @@ extern "C"
         });
     }
 
-    OcctStatus occt_model_clear(OcctModelingSessionHandle handle)
+    OcctStatus occt_model_session_clear(OcctModelingSessionHandle handle)
     {
         ModelSession* model = sessionOf(handle);
         return executeStatus(model, [&]
@@ -154,7 +154,7 @@ extern "C"
 
     OcctStatus occt_model_operation_report_get(
         OcctModelingSessionHandle handle,
-        OcctOperationId operationId,
+        std::int64_t operationId,
         char* buffer,
         int capacity,
         int* required)
@@ -166,7 +166,7 @@ extern "C"
         std::string report;
         const OcctStatus status = executeStatus(model, [&]
         {
-            report = requireOperation(model, operationId).report;
+            report = requireOperation(model, static_cast<OcctOperationId>(operationId)).report;
         });
         if (status != OcctStatus_Ok) return status;
         return copyUtf8(report, buffer, capacity, required);
