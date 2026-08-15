@@ -40,7 +40,10 @@ function Read-ValidatedSdk {
         [int]$contract.nativeAbi.minimumSupported -ne 5 -or
         [string]$contract.api.policy -ne "abi5-only" -or
         [string]$contract.platform -ne "win-x64" -or
-        [string]$contract.dotnet.sdkVersion -ne "10.0.303") {
+        [string]$contract.dotnet.targetFramework -ne "net10.0" -or
+        [string]$contract.dotnet.desktopTargetFramework -ne "net10.0-windows" -or
+        [string]$contract.dotnet.sdkVersion -ne "10.0.303" -or
+        [string]$contract.dotnet.languageVersion -ne "14.0") {
         throw "The source SDK is not the expected Bridge 3 ABI5-only win-x64 SDK."
     }
 
@@ -48,14 +51,38 @@ function Read-ValidatedSdk {
     if ([int]$manifest.schemaVersion -ne 2 -or
         [int]$manifest.nativeAbi.current -ne 5 -or
         [int]$manifest.nativeAbi.minimumSupported -ne 5 -or
-        [string]$manifest.runtimeIdentifier -ne "win-x64" -or
-        [string]$manifest.dotnetSdkVersion -ne "10.0.303") {
+        [string]$manifest.author -ne [string]$contract.author -or
+        [string]$manifest.bridgeVersion -ne [string]$contract.bridgeVersion -or
+        [string]$manifest.occtVersion -ne [string]$contract.occtVersion -or
+        [string]$manifest.platform -ne [string]$contract.platform -or
+        [string]$manifest.targetFramework -ne [string]$contract.dotnet.targetFramework -or
+        [string]$manifest.sdkVersion -ne [string]$contract.dotnet.sdkVersion -or
+        [string]$manifest.languageVersion -ne [string]$contract.dotnet.languageVersion -or
+        [string]$manifest.configuration -ne "Release" -or
+        [string]::IsNullOrWhiteSpace([string]$manifest.sourceCommit)) {
         throw "The source SDK manifest is not the expected Bridge 3 ABI5-only win-x64 manifest."
     }
 
-    if ([string]$manifest.bridgeVersion -ne [string]$contract.bridgeVersion -or
-        [string]$manifest.occtVersion -ne [string]$contract.occtVersion) {
-        throw "The SDK contract and manifest version metadata do not agree."
+    $requiredHashes = @(
+        "OcctNative.dll",
+        "OcctNet.dll",
+        "OcctNet.WinForms.dll",
+        "OcctNet.Wpf.dll",
+        "OcctNet.Avalonia.dll",
+        "bridge-contract.json")
+    $entries = @($manifest.files)
+    $names = @($entries | ForEach-Object { [string]$_.name })
+    if ($names.Count -ne $requiredHashes.Count) { throw "The SDK manifest contains an unexpected number of hashed files." }
+    foreach ($name in $requiredHashes) {
+        if ($name -notin $names) { throw "The SDK manifest does not hash required file: $name" }
+    }
+    foreach ($entry in $entries) {
+        $path = Join-Path $Root ([string]$entry.name)
+        Assert-File $path
+        $actual = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($actual -ne ([string]$entry.sha256).ToLowerInvariant()) {
+            throw "The SDK manifest hash does not match: $($entry.name)"
+        }
     }
 
     return [pscustomobject]@{
