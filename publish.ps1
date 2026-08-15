@@ -139,17 +139,22 @@ function Test-BinarySdk {
         throw "Binary SDK contract must remain Bridge 3 ABI5-only."
     }
 
-    if ([int]$manifest.schemaVersion -ne 1 -or
+    if ($manifest.PSObject.Properties.Name -contains "nativeAbiVersion") {
+        throw "Binary SDK manifest must not contain retired flat nativeAbiVersion metadata."
+    }
+
+    if ([int]$manifest.schemaVersion -ne 2 -or
         [string]$manifest.author -ne [string]$contract.author -or
         [string]$manifest.bridgeVersion -ne [string]$contract.bridgeVersion -or
-        [int]$manifest.nativeAbiVersion -ne [int]$contract.nativeAbi.current -or
+        [int]$manifest.nativeAbi.current -ne [int]$contract.nativeAbi.current -or
+        [int]$manifest.nativeAbi.minimumSupported -ne [int]$contract.nativeAbi.minimumSupported -or
         [string]$manifest.occtVersion -ne [string]$contract.occtVersion -or
         [string]$manifest.platform -ne [string]$contract.platform -or
         [string]$manifest.targetFramework -ne [string]$contract.dotnet.targetFramework -or
         [string]$manifest.sdkVersion -ne [string]$contract.dotnet.sdkVersion -or
         [string]$manifest.languageVersion -ne [string]$contract.dotnet.languageVersion -or
         [string]$manifest.configuration -ne "Release") {
-        throw "Binary SDK manifest does not match bridge-contract.json or is not a Release SDK."
+        throw "Binary SDK manifest does not match bridge-contract.json or is not a Release ABI5 SDK."
     }
 
     if ([string]::IsNullOrWhiteSpace([string]$manifest.sourceCommit)) {
