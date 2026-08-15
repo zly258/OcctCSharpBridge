@@ -1,39 +1,78 @@
-﻿#include "core/OcctInternal.hxx"
-#include "OcctViewerInteraction.h"
+#include "presentation/OcctObjectTransform.h"
+#include "core/OcctInternal.hxx"
+
+#include <cmath>
+#include <stdexcept>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
 using namespace OcctBridge;
 
 namespace
 {
-    gp_Trsf transformFromMatrix(const double* matrix)
+    OcctStatus requireInitializedEngine(Engine* engine)
     {
-        if (matrix == nullptr) throw std::invalid_argument("Transformation matrix is null.");
-        gp_Trsf transform;
-        transform.SetValues(
-            matrix[0], matrix[1], matrix[2], matrix[3],
-            matrix[4], matrix[5], matrix[6], matrix[7],
-            matrix[8], matrix[9], matrix[10], matrix[11]);
-        return transform;
+        if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (!validateInitialized(engine)) return engine->errors.code;
+        return OcctStatus_Ok;
+    }
+
+    template<typename Function>
+    OcctStatus executeTransformStatus(Engine* engine, Function&& function)
+    {
+        const OcctStatus initialized = requireInitializedEngine(engine);
+        if (initialized != OcctStatus_Ok) return initialized;
+        return execute(engine, std::forward<Function>(function)) != 0
+            ? OcctStatus_Ok
+            : engine->errors.code;
+    }
+
+    ObjectEntry& requiredObject(Engine* engine, OcctObjectId objectId)
+    {
+        ObjectEntry* entry = engine->findObject(objectId);
+        if (entry == nullptr || entry->presentation.IsNull())
+            throw std::invalid_argument("Object ID does not exist.");
+        return *entry;
+    }
+
+    void validateTransformation(const OcctTransform3d& value)
+    {
+        const double values[] = {
+            value.m11, value.m12, value.m13, value.m14,
+            value.m21, value.m22, value.m23, value.m24,
+            value.m31, value.m32, value.m33, value.m34 };
+        for (double item : values)
+        {
+            if (!std::isfinite(item))
+                throw std::invalid_argument("Transformation matrix must contain only finite values.");
+        }
     }
 
     gp_Trsf transformFromValue(const OcctTransform3d& value)
     {
-        const double matrix[12] =
-        {
-            value.m00, value.m01, value.m02, value.m03,
-            value.m10, value.m11, value.m12, value.m13,
-            value.m20, value.m21, value.m22, value.m23
-        };
-        return transformFromMatrix(matrix);
+        validateTransformation(value);
+        gp_Trsf transform;
+        transform.SetValues(
+            value.m11, value.m12, value.m13, value.m14,
+            value.m21, value.m22, value.m23, value.m24,
+            value.m31, value.m32, value.m33, value.m34);
+        return transform;
     }
 
-    void writeMatrix(const gp_Trsf& transform, double* matrix)
+    OcctTransform3d transformToValue(const gp_Trsf& transform)
     {
-        if (matrix == nullptr) throw std::invalid_argument("Transformation result matrix is null.");
-        int index = 0;
-        for (int row = 1; row <= 3; ++row)
-            for (int column = 1; column <= 4; ++column)
-                matrix[index++] = transform.Value(row, column);
+        return {
+            transform.Value(1, 1), transform.Value(1, 2), transform.Value(1, 3), transform.Value(1, 4),
+            transform.Value(2, 1), transform.Value(2, 2), transform.Value(2, 3), transform.Value(2, 4),
+            transform.Value(3, 1), transform.Value(3, 2), transform.Value(3, 3), transform.Value(3, 4) };
+    }
+
+    void setTransformation(Engine* engine, ObjectEntry& entry, const OcctTransform3d& value)
+    {
+        const gp_Trsf transformation = transformFromValue(value);
+        entry.presentation->SetLocalTransformation(transformation);
+        engine->viewerContext.context->Redisplay(entry.presentation, Standard_False, Standard_True);
     }
 }
 
@@ -41,106 +80,91 @@ namespace OcctBridge
 {
     TopoDS_Shape shapeWithPresentationTransformation(const ObjectEntry& entry)
     {
-        if (entry.shape.IsNull()) return {};
-        if (entry.presentation.IsNull() || !entry.presentation->HasTransformation())
-            return entry.shape;
-        return transformed(entry.shape, entry.presentation->LocalTransformation());
+        if (entry.shape.IsNull() || entry.presentation.IsNull()) return entry.shape;
+        const gp_Trsf transformation = entry.presentation->LocalTransformation();
+        if (transformation.Form() == gp_Identity) return entry.shape;
+        return transformed(entry.shape, transformation);
     }
 }
 
 extern "C"
 {
-    int occt_set_object_transform(
-        OcctHandle handle,
+    OcctStatus occt_engine_object_transform_set(
+        OcctEngineHandle handle,
         OcctObjectId objectId,
-        const double* matrix3x4)
+        const OcctTransform3d* transformation)
     {
-        Engine* engine = engineOf(handle); if (!validateInitialized(engine)) return 0;
-        return execute(engine, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeTransformStatus(engine, [&]
         {
-            ObjectEntry* entry = engine->findObject(objectId);
-            if (entry == nullptr || entry->presentation.IsNull())
-                throw std::invalid_argument("Object ID does not exist.");
-            if (entry->kind == OcctObject_Shape) engine->invalidatePristineStepDocument();
-            entry->presentation->SetLocalTransformation(transformFromMatrix(matrix3x4));
-            entry->presentation->UpdateTransformation();
-            engine->viewerContext.context->RecomputeSelectionOnly(entry->presentation);
+            if (transformation == nullptr)
+                throw std::invalid_argument("Transformation is null.");
+            ObjectEntry& entry = requiredObject(engine, objectId);
+            setTransformation(engine, entry, *transformation);
             engine->requestRedraw();
         });
     }
 
-    int occt_get_object_transform(
-        OcctHandle handle,
+    OcctStatus occt_engine_object_transform_get(
+        OcctEngineHandle handle,
         OcctObjectId objectId,
-        double* matrix3x4,
-        int* hasTransform)
+        OcctTransform3d* transformation,
+        int* hasTransformation)
     {
-        Engine* engine = engineOf(handle); if (!validateInitialized(engine)) return 0;
-        return execute(engine, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeTransformStatus(engine, [&]
         {
-            if (hasTransform == nullptr) throw std::invalid_argument("hasTransform result is null.");
-            const ObjectEntry* entry = engine->findObject(objectId);
-            if (entry == nullptr || entry->presentation.IsNull())
-                throw std::invalid_argument("Object ID does not exist.");
-            *hasTransform = entry->presentation->HasTransformation() ? 1 : 0;
-            writeMatrix(entry->presentation->LocalTransformation(), matrix3x4);
+            if (transformation == nullptr || hasTransformation == nullptr)
+                throw std::invalid_argument("Transformation output is null.");
+            const ObjectEntry& entry = requiredObject(engine, objectId);
+            const gp_Trsf value = entry.presentation->LocalTransformation();
+            *transformation = transformToValue(value);
+            *hasTransformation = value.Form() == gp_Identity ? 0 : 1;
         });
     }
 
-    int occt_reset_object_transform(OcctHandle handle, OcctObjectId objectId)
+    OcctStatus occt_engine_object_transform_reset(
+        OcctEngineHandle handle,
+        OcctObjectId objectId)
     {
-        Engine* engine = engineOf(handle); if (!validateInitialized(engine)) return 0;
-        return execute(engine, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeTransformStatus(engine, [&]
         {
-            ObjectEntry* entry = engine->findObject(objectId);
-            if (entry == nullptr || entry->presentation.IsNull())
-                throw std::invalid_argument("Object ID does not exist.");
-            if (entry->kind == OcctObject_Shape) engine->invalidatePristineStepDocument();
-            entry->presentation->ResetTransformation();
-            entry->presentation->UpdateTransformation();
-            engine->viewerContext.context->RecomputeSelectionOnly(entry->presentation);
+            ObjectEntry& entry = requiredObject(engine, objectId);
+            entry.presentation->ResetTransformation();
+            engine->viewerContext.context->Redisplay(entry.presentation, Standard_False, Standard_True);
             engine->requestRedraw();
         });
     }
 
-    int occt_set_object_transforms(
-        OcctHandle handle,
-        const OcctObjectTransformUpdate* updates,
+    OcctStatus occt_engine_object_transforms_set(
+        OcctEngineHandle handle,
+        const OcctViewerObjectTransformUpdate* updates,
         int count)
     {
-        Engine* engine = engineOf(handle); if (!validateInitialized(engine)) return 0;
-        return execute(engine, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeTransformStatus(engine, [&]
         {
             if (count < 0) throw std::invalid_argument("Transformation update count must not be negative.");
             if (count > 0 && updates == nullptr)
                 throw std::invalid_argument("Transformation update array is null.");
 
-            struct PreparedUpdate
-            {
-                ObjectEntry* entry;
-                gp_Trsf transformation;
-            };
-
-            std::vector<PreparedUpdate> prepared;
-            prepared.reserve(static_cast<std::size_t>(count));
-            bool containsShape = false;
+            std::vector<ObjectEntry*> entries;
+            entries.reserve(static_cast<std::size_t>(count));
+            std::unordered_set<OcctObjectId> seen;
+            seen.reserve(static_cast<std::size_t>(count));
             for (int index = 0; index < count; ++index)
             {
-                ObjectEntry* entry = engine->findObject(updates[index].objectId);
-                if (entry == nullptr || entry->presentation.IsNull())
-                    throw std::invalid_argument("Object ID does not exist.");
-                prepared.push_back({entry, transformFromValue(updates[index].transformation)});
-                containsShape = containsShape || entry->kind == OcctObject_Shape;
+                const auto& update = updates[index];
+                if (!seen.insert(update.objectId).second)
+                    throw std::invalid_argument("Transformation update contains duplicate object IDs.");
+                validateTransformation(update.transformation);
+                entries.push_back(&requiredObject(engine, update.objectId));
             }
 
-            if (containsShape) engine->invalidatePristineStepDocument();
-            for (const PreparedUpdate& update : prepared)
-            {
-                update.entry->presentation->SetLocalTransformation(update.transformation);
-                update.entry->presentation->UpdateTransformation();
-                engine->viewerContext.context->RecomputeSelectionOnly(update.entry->presentation);
-            }
-            if (!prepared.empty()) engine->requestRedraw();
+            for (int index = 0; index < count; ++index)
+                setTransformation(engine, *entries[static_cast<std::size_t>(index)], updates[index].transformation);
+            if (count > 0) engine->requestRedraw();
         });
     }
 }
