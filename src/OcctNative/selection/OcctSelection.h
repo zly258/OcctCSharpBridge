@@ -98,17 +98,16 @@ extern "C"
         OcctEngineHandle handle,
         int enabled);
 
-    // Frozen ABI4 compatibility. Implemented by the selection domain.
-    OCCTBRIDGE_API int occt_set_object_selection_mode_active(
-        OcctHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_engine_selection_object_mode_set_active(
+        OcctEngineHandle handle,
         OcctObjectId objectId,
         int mode,
         int active,
         int concurrency,
         int force);
 
-    OCCTBRIDGE_API int occt_set_object_selection_sensitivity(
-        OcctHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_engine_selection_object_sensitivity_set(
+        OcctEngineHandle handle,
         OcctObjectId objectId,
         int mode,
         int sensitivity);
