@@ -1,5 +1,5 @@
-﻿#include "modeling/OcctModelingShapeInternal.hxx"
-#include "OcctModelingTopologyAnalysis.h"
+﻿#include "topology/OcctModelingTopologyAnalysis.h"
+#include "modeling/OcctModelingShapeInternal.hxx"
 
 #include <BRep_Builder.hxx>
 #include <ShapeAnalysis_FreeBounds.hxx>
@@ -12,16 +12,17 @@ using namespace OcctModelingInternal;
 
 extern "C"
 {
-    OcctObjectId occt_model_shape_free_bounds(
-        OcctModelHandle handle,
+    OcctStatus occt_model_shape_free_bounds(
+        OcctModelingSessionHandle handle,
         OcctObjectId shapeId,
         double tolerance,
         int boundaryKind,
-        int splitClosed,
-        int splitOpen)
+        OcctBool splitClosed,
+        OcctBool splitOpen,
+        OcctObjectId* result)
     {
-        ModelSession* model = modelOf(handle);
-        return executeShape(model, [&]
+        ModelSession* model = sessionOf(handle);
+        return executeShapeStatus(model, result, [&]
         {
             if (!std::isfinite(tolerance) || tolerance <= 0.0)
                 throw std::invalid_argument("Free-boundary tolerance must be finite and greater than zero.");
@@ -57,39 +58,39 @@ extern "C"
                 splitClosed != 0 ? Standard_True : Standard_False,
                 splitOpen != 0 ? Standard_True : Standard_False);
 
-            if (boundaryKind == OcctModelFreeBoundary_Closed)
-                return TopoDS_Shape(analysis.GetClosedWires());
-            return TopoDS_Shape(analysis.GetOpenWires());
+            return boundaryKind == OcctModelFreeBoundary_Closed
+                ? TopoDS_Shape(analysis.GetClosedWires())
+                : TopoDS_Shape(analysis.GetOpenWires());
         });
     }
 
-    int occt_model_shape_edge_adjacency(
-        OcctModelHandle handle,
+    OcctStatus occt_model_shape_edge_adjacency_snapshot_get(
+        OcctModelingSessionHandle handle,
         OcctObjectId shapeId,
         OcctModelEdgeAdjacency* items,
         int capacity,
-        int* count)
+        int* required)
     {
-        ModelSession* model = modelOf(handle);
-        if (count == nullptr) return 0;
-        return execute(model, [&]
-        {
-            if (capacity < 0)
-                throw std::invalid_argument("Edge adjacency capacity must not be negative.");
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (capacity < 0 || required == nullptr) return OcctStatus_ErrorInvalidArgument;
 
+        *required = 0;
+        return executeStatus(model, [&]
+        {
             const TopoDS_Shape& root = model->requireShape(shapeId);
             TopTools_IndexedMapOfShape edges;
             TopExp::MapShapes(root, TopAbs_EDGE, edges);
-            *count = edges.Extent();
+            *required = edges.Extent();
 
             if (items == nullptr)
             {
                 if (capacity != 0)
-                    throw std::invalid_argument("Edge adjacency output is null but capacity is non-zero.");
+                    throw std::invalid_argument("Null edge-adjacency buffer requires zero capacity.");
                 return;
             }
-            if (capacity < *count)
-                throw std::out_of_range("Edge adjacency output capacity is too small.");
+            if (capacity < *required)
+                throw std::out_of_range("Edge-adjacency buffer capacity is too small.");
 
             TopTools_IndexedDataMapOfShapeListOfShape edgeFaces;
             TopExp::MapShapesAndUniqueAncestors(root, TopAbs_EDGE, TopAbs_FACE, edgeFaces, Standard_False);
@@ -98,7 +99,9 @@ extern "C"
             {
                 const TopoDS_Shape& edge = edges(index);
                 items[index - 1].edgeId = model->addShape(edge);
-                items[index - 1].adjacentFaceCount = edgeFaces.Contains(edge) ? edgeFaces.FindFromKey(edge).Size() : 0;
+                items[index - 1].adjacentFaceCount = edgeFaces.Contains(edge)
+                    ? edgeFaces.FindFromKey(edge).Size()
+                    : 0;
             }
         });
     }
