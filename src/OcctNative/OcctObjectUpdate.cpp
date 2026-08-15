@@ -30,7 +30,7 @@ extern "C"
 {
     OcctStatus occt_engine_object_shape_update_from_model(
         OcctEngineHandle engineHandle,
-        OcctModelHandle modelHandle,
+        OcctModelingSessionHandle modelHandle,
         OcctObjectId viewerObjectId,
         OcctObjectId modelShapeId,
         std::uint32_t options)
@@ -39,7 +39,7 @@ extern "C"
         const OcctStatus initialized = requireInitializedEngine(engine);
         if (initialized != OcctStatus_Ok) return initialized;
 
-        ModelSession* model = modelOf(modelHandle);
+        ModelSession* model = sessionOf(modelHandle);
         if (model == nullptr)
         {
             engine->setError(OcctStatus_ErrorInvalidHandle, "The modeling session handle is invalid.");
