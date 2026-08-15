@@ -140,7 +140,7 @@ public sealed partial class DemoSession
     {
         var wire = Engine.MakeRectangleWire(values.Number("width"), values.Number("height"), values.Point());
         if (!values.Boolean("face")) return CreateShape(DemoLocalization.CommandText(DemoCommandId.Rectangle), wire);
-        Engine.SetVisible(wire, false);
+        Engine.SetObjectVisible(wire, false);
         return CreateShape(Local("Rectangle Face", "矩形面"), Engine.MakeFace(wire));
     }
 
@@ -174,15 +174,20 @@ public sealed partial class DemoSession
 
     private DemoCommandResult CreateText(DemoValues values)
     {
-        var text = Engine.MakeTextShape(
+        using var model = new OcctModelingSession();
+        var modelText = model.MakeBRepText(
             values.Text("text", "OCCT CAD"),
-            values.Point(),
-            values.Number("height", 18),
-            values.Number("depth", 0),
-            DemoFonts.ResolveOcctFont(values.Text("font", DemoFonts.OcctSansSerif)),
-            bold: values.Boolean("bold"),
-            italic: values.Boolean("italic"));
-        Engine.SetColor(text, Color.DarkSlateGray);
+            OcctBRepTextOptions.Default with
+            {
+                Position = values.Point(),
+                Height = values.Number("height", 18),
+                ExtrusionDepth = values.Number("depth", 0),
+                FontName = DemoFonts.ResolveOcctFont(values.Text("font", DemoFonts.OcctSansSerif)),
+                Bold = values.Boolean("bold"),
+                Italic = values.Boolean("italic")
+            });
+        var text = DisplayModelShape(model, modelText);
+        Engine.SetObjectColor(text, Color.DarkSlateGray);
         SetGeneratedName(text, DemoLocalization.CommandText(DemoCommandId.Text));
         ActiveObject = text;
         return DemoCommandResult.Created(DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(DemoCommandId.Text)), text);
@@ -191,75 +196,68 @@ public sealed partial class DemoSession
     private DemoCommandResult CreateLengthDimension(DemoValues values)
     {
         var edge = CopySelectedSubshape(0);
-        try
-        {
-            var dimension = Engine.MakeLengthAnnotationShape(
-                edge,
-                values.Number("flyout", 20),
-                values.Number("textHeight", 8),
-                values.Number("arrowSize", 5),
-                DemoFonts.ResolveOcctFont(values.Text("font", DemoFonts.OcctSansSerif)));
-            SetGeneratedName(dimension, DemoLocalization.CommandText(DemoCommandId.LengthDimension));
-            ActiveObject = dimension;
-            return DemoCommandResult.Created(DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(DemoCommandId.LengthDimension)), dimension);
-        }
-        finally
-        {
-            if (Engine.ContainsObject(edge.Id)) Engine.Delete(edge);
-        }
+        Engine.SetObjectVisible(edge, false);
+        Engine.SetObjectSelectable(edge, false);
+        SetGeneratedName(edge, Local("Linear Dimension Source", "线性尺寸源边"));
+
+        var dimension = Engine.AddLengthDimension(edge, values.Number("flyout", 20));
+        SetGeneratedName(dimension, DemoLocalization.CommandText(DemoCommandId.LengthDimension));
+        ActiveObject = dimension;
+        return DemoCommandResult.Created(
+            DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(DemoCommandId.LengthDimension)),
+            dimension,
+            edge);
     }
 
     private DemoCommandResult CreateAngleDimension(DemoValues values)
     {
         var first = CopySelectedSubshape(0);
         var second = CopySelectedSubshape(1);
-        try
-        {
-            var dimension = Engine.MakeAngleAnnotationShape(
-                first,
-                second,
-                values.Number("flyout", 30),
-                values.Number("textHeight", 8),
-                values.Number("arrowSize", 5),
-                DemoFonts.ResolveOcctFont(values.Text("font", DemoFonts.OcctSansSerif)));
-            SetGeneratedName(dimension, DemoLocalization.CommandText(DemoCommandId.AngleDimension));
-            ActiveObject = dimension;
-            return DemoCommandResult.Created(DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(DemoCommandId.AngleDimension)), dimension);
-        }
-        finally
-        {
-            if (Engine.ContainsObject(first.Id)) Engine.Delete(first);
-            if (Engine.ContainsObject(second.Id)) Engine.Delete(second);
-        }
+        Engine.SetObjectVisible(first, false);
+        Engine.SetObjectVisible(second, false);
+        Engine.SetObjectSelectable(first, false);
+        Engine.SetObjectSelectable(second, false);
+        SetGeneratedName(first, Local("Angle Dimension Source A", "角度尺寸源边 A"));
+        SetGeneratedName(second, Local("Angle Dimension Source B", "角度尺寸源边 B"));
+
+        var dimension = Engine.AddAngleDimension(first, second, values.Number("flyout", 30));
+        SetGeneratedName(dimension, DemoLocalization.CommandText(DemoCommandId.AngleDimension));
+        ActiveObject = dimension;
+        return DemoCommandResult.Created(
+            DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(DemoCommandId.AngleDimension)),
+            dimension,
+            first,
+            second);
     }
 
     private DemoCommandResult CreateRadiusDimension(DemoValues values, bool diameter)
     {
         var edge = CopySelectedSubshape(0);
-        try
-        {
-            var dimension = diameter
-                ? Engine.MakeDiameterAnnotationShape(
-                    edge,
-                    values.Number("flyout", 20),
-                    values.Number("textHeight", 8),
-                    values.Number("arrowSize", 5),
-                    DemoFonts.ResolveOcctFont(values.Text("font", DemoFonts.OcctSansSerif)))
-                : Engine.MakeRadiusAnnotationShape(
-                    edge,
-                    values.Number("flyout", 20),
-                    values.Number("textHeight", 8),
-                    values.Number("arrowSize", 5),
-                    DemoFonts.ResolveOcctFont(values.Text("font", DemoFonts.OcctSansSerif)));
-            var commandId = diameter ? DemoCommandId.DiameterDimension : DemoCommandId.RadiusDimension;
-            SetGeneratedName(dimension, DemoLocalization.CommandText(commandId));
-            ActiveObject = dimension;
-            return DemoCommandResult.Created(DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(commandId)), dimension);
-        }
-        finally
-        {
-            if (Engine.ContainsObject(edge.Id)) Engine.Delete(edge);
-        }
+        Engine.SetObjectVisible(edge, false);
+        Engine.SetObjectSelectable(edge, false);
+        SetGeneratedName(edge, Local("Circular Dimension Source", "圆尺寸源边"));
+
+        var dimension = diameter
+            ? Engine.AddDiameterDimension(edge, values.Number("flyout", 20))
+            : Engine.AddRadiusDimension(edge, values.Number("flyout", 20));
+        var commandId = diameter ? DemoCommandId.DiameterDimension : DemoCommandId.RadiusDimension;
+        SetGeneratedName(dimension, DemoLocalization.CommandText(commandId));
+        ActiveObject = dimension;
+        return DemoCommandResult.Created(
+            DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(commandId)),
+            dimension,
+            edge);
+    }
+
+    private OcctShape DisplayModelShape(OcctModelingSession model, OcctModelShape sourceShape)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        if (!sourceShape.IsValid)
+            throw new ArgumentException("Modeling shape is invalid.", nameof(sourceShape));
+
+        var viewerShape = Engine.MakeVertex(OcctPoint3d.Origin);
+        Engine.UpdateShape(viewerShape, model, sourceShape);
+        return viewerShape;
     }
 
     private DemoCommandResult DeleteSelected()
