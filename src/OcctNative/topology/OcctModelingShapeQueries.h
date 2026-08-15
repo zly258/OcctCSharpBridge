@@ -4,49 +4,78 @@
 
 extern "C"
 {
-    OCCTBRIDGE_API std::int64_t occt_model_shape_hash(OcctModelHandle handle, OcctObjectId shapeId);
-    OCCTBRIDGE_API int occt_model_shape_type(OcctModelHandle handle, OcctObjectId shapeId);
-    OCCTBRIDGE_API int occt_model_shape_orientation(OcctModelHandle handle, OcctObjectId shapeId);
-    OCCTBRIDGE_API int occt_model_shape_is_closed(OcctModelHandle handle, OcctObjectId shapeId);
-    OCCTBRIDGE_API int occt_model_shape_is_valid(OcctModelHandle handle, OcctObjectId shapeId);
-    OCCTBRIDGE_API double occt_model_shape_tolerance(OcctModelHandle handle, OcctObjectId shapeId);
+    OCCTBRIDGE_API OcctStatus occt_model_shape_hash(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        std::int64_t* result);
 
-    OCCTBRIDGE_API int occt_model_shape_bounds(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_shape_type(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        OcctShapeType* result);
+
+    OCCTBRIDGE_API OcctStatus occt_model_shape_orientation(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        OcctModelOrientation* result);
+
+    OCCTBRIDGE_API OcctStatus occt_model_shape_is_closed(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        OcctBool* result);
+
+    OCCTBRIDGE_API OcctStatus occt_model_shape_is_valid(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        OcctBool* result);
+
+    OCCTBRIDGE_API OcctStatus occt_model_shape_tolerance(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        double* result);
+
+    OCCTBRIDGE_API OcctStatus occt_model_shape_bounds(
+        OcctModelingSessionHandle handle,
         OcctObjectId shapeId,
         OcctBounds* result);
 
-    OCCTBRIDGE_API int occt_model_shape_linear_properties(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_shape_linear_properties(
+        OcctModelingSessionHandle handle,
         OcctObjectId shapeId,
         OcctMassProperties* result);
 
-    OCCTBRIDGE_API int occt_model_shape_surface_properties(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_shape_surface_properties(
+        OcctModelingSessionHandle handle,
         OcctObjectId shapeId,
         OcctMassProperties* result);
 
-    OCCTBRIDGE_API int occt_model_shape_volume_properties(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_shape_volume_properties(
+        OcctModelingSessionHandle handle,
         OcctObjectId shapeId,
         OcctMassProperties* result);
 
-    OCCTBRIDGE_API int occt_model_shape_distance(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_shape_distance(
+        OcctModelingSessionHandle handle,
         OcctObjectId firstId,
         OcctObjectId secondId,
         OcctDistanceResult* result);
 
-    OCCTBRIDGE_API const char* occt_model_check_report(OcctModelHandle handle, OcctObjectId shapeId);
+    OCCTBRIDGE_API OcctStatus occt_model_shape_check_report_get(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        char* buffer,
+        int capacity,
+        int* required);
 
-    OCCTBRIDGE_API int occt_model_get_location(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_shape_location_get(
+        OcctModelingSessionHandle handle,
         OcctObjectId shapeId,
         OcctModelLocation* result);
 
-    OCCTBRIDGE_API OcctObjectId occt_model_set_location(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_shape_location_set(
+        OcctModelingSessionHandle handle,
         OcctObjectId shapeId,
         const OcctModelLocation* location,
-        int copyShape);
+        OcctBool copyShape,
+        OcctObjectId* result);
 }
