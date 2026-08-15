@@ -6,16 +6,12 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $contractPath = Join-Path $RepositoryRoot "bridge-contract.json"
-if (-not (Test-Path $contractPath -PathType Leaf)) {
-    throw "Bridge contract file was not found: bridge-contract.json"
-}
+if (-not (Test-Path $contractPath -PathType Leaf)) { throw "Bridge contract file was not found: bridge-contract.json" }
 $contract = Get-Content $contractPath -Raw -Encoding UTF8 | ConvertFrom-Json
 if ([int]$contract.nativeAbi.current -ne 5 -or [int]$contract.nativeAbi.minimumSupported -ne 5) {
     throw "API surface validation requires an ABI5-only bridge contract."
 }
-if ([string]$contract.api.policy -ne "abi5-only") {
-    throw "bridge-contract.json api.policy must be 'abi5-only'."
-}
+if ([string]$contract.api.policy -ne "abi5-only") { throw "bridge-contract.json api.policy must be 'abi5-only'." }
 
 $nativeRoot = Join-Path $RepositoryRoot "src\OcctNative"
 $managedRoot = Join-Path $RepositoryRoot "src\OcctNet"
@@ -27,18 +23,14 @@ $publicManagedRoots = @(
 )
 
 $nativeHeaderNames = @($contract.api.nativeHeaders | ForEach-Object { [string]$_ })
-if ($nativeHeaderNames.Count -eq 0) {
-    throw "bridge-contract.json does not declare api.nativeHeaders."
-}
+if ($nativeHeaderNames.Count -eq 0) { throw "bridge-contract.json does not declare api.nativeHeaders." }
 if (@($nativeHeaderNames | Group-Object | Where-Object Count -gt 1).Count -gt 0) {
     throw "bridge-contract.json contains duplicate api.nativeHeaders entries."
 }
 $headerFiles = @($nativeHeaderNames | ForEach-Object { Join-Path $nativeRoot $_ })
 $cppFiles = @(Get-ChildItem $nativeRoot -Filter "*.cpp" -File -Recurse | Select-Object -ExpandProperty FullName)
 $managedSourceFiles = @($publicManagedRoots | ForEach-Object {
-    if (-not (Test-Path $_ -PathType Container)) {
-        throw "Public managed API root is missing: $_"
-    }
+    if (-not (Test-Path $_ -PathType Container)) { throw "Public managed API root is missing: $_" }
     Get-ChildItem $_ -Filter "*.cs" -File -Recurse | Select-Object -ExpandProperty FullName
 })
 $interopFiles = @(Get-ChildItem $managedRoot -Filter "*.cs" -File -Recurse | Where-Object {
@@ -47,9 +39,7 @@ $interopFiles = @(Get-ChildItem $managedRoot -Filter "*.cs" -File -Recurse | Whe
 } | Select-Object -ExpandProperty FullName)
 
 foreach ($path in @($headerFiles + $cppFiles + $managedSourceFiles + $interopFiles)) {
-    if (-not (Test-Path $path -PathType Leaf)) {
-        throw "API validation input was not found: $path"
-    }
+    if (-not (Test-Path $path -PathType Leaf)) { throw "API validation input was not found: $path" }
 }
 
 function Read-AllText {
@@ -102,8 +92,8 @@ $interopText = Read-AllText $interopFiles
 
 $declarationRaw = Get-RawMatches $headerText '\b(occt_[a-z0-9_]+)\s*\([^{};]*\)\s*;'
 $definitionRaw = Get-RawMatches $cppText '\b(occt_[a-z0-9_]+)\s*\([^;{}]*\)\s*\{'
-$interopRaw = Get-RawMatches $interopText '\b(?:extern|partial)\s+[A-Za-z0-9_<>,\[\]?*]+\s+(occt_[a-z0-9_]+)\s*\('
-$libraryImportRaw = Get-RawMatches $interopText '(?s)\[LibraryImport\([^\]]+\)\]\s*\[UnmanagedCallConv\(CallConvs\s*=\s*\[typeof\(CallConvCdecl\)\]\)\]\s*internal\s+static\s+partial\s+[A-Za-z0-9_<>,\[\]?*]+\s+(occt_[a-z0-9_]+)\s*\('
+$interopRaw = Get-RawMatches $interopText '\b(?:extern|(?:unsafe\s+)?partial)\s+[A-Za-z0-9_\.<>\[\],\?\*]+\s+(occt_[a-z0-9_]+)\s*\('
+$libraryImportRaw = Get-RawMatches $interopText '(?s)\[LibraryImport\([^\]]+\)\]\s*\[UnmanagedCallConv\(CallConvs\s*=\s*\[typeof\((?:System\.Runtime\.CompilerServices\.)?CallConvCdecl\)\]\)\]\s*internal\s+static\s+(?:unsafe\s+)?partial\s+[A-Za-z0-9_\.<>\[\],\?\*]+\s+(occt_[a-z0-9_]+)\s*\('
 
 Assert-NoDuplicates "native declarations" $declarationRaw
 Assert-NoDuplicates "native definitions" $definitionRaw
@@ -119,12 +109,12 @@ Assert-SetEqual "native definitions" $declarations $definitions
 Assert-SetEqual "managed ABI5 interop" $declarations $interopDeclarations
 Assert-SetEqual "LibraryImport + Cdecl bindings" $declarations $libraryImports
 
-$dllImportFiles = @($managedSourceFiles | Where-Object {
-    [System.IO.File]::ReadAllText($_).Contains("[DllImport(")
-})
+$dllImportFiles = @($managedSourceFiles | Where-Object { [System.IO.File]::ReadAllText($_).Contains("[DllImport(") })
 if ($dllImportFiles.Count -gt 0) {
     Write-Host "[api] DllImport is forbidden in OcctNet ABI5 production interop:" -ForegroundColor Red
-    $dllImportFiles | ForEach-Object { Write-Host ("  " + $_.Substring($RepositoryRoot.Length).TrimStart('\')) -ForegroundColor Red }
+    $dllImportFiles | ForEach-Object {
+        Write-Host ("  " + $_.Substring($RepositoryRoot.Length).TrimStart('\')) -ForegroundColor Red
+    }
     throw "Managed ABI5 interop must use LibraryImport only."
 }
 
@@ -134,21 +124,13 @@ $allowedMetadataExports = @(
     "occt_bridge_build_info",
     "occt_bridge_current_abi_version"
 )
-$allowedPrefixes = @(
-    "occt_engine_",
-    "occt_model_",
-    "occt_shape_",
-    "occt_mesh_",
-    "occt_algorithm_"
-)
+$allowedPrefixes = @("occt_engine_", "occt_model_", "occt_shape_", "occt_mesh_", "occt_algorithm_")
 $invalidExports = @($declarations | Where-Object {
     $name = $_
-    if ($name -in $allowedMetadataExports) { return $false }
-    return -not @($allowedPrefixes | Where-Object { $name.StartsWith($_, [StringComparison]::Ordinal) }).Count
+    if ($name -in $allowedMetadataExports) { $false }
+    else { @($allowedPrefixes | Where-Object { $name.StartsWith($_, [StringComparison]::Ordinal) }).Count -eq 0 }
 })
-if ($invalidExports.Count -gt 0) {
-    throw "Non-ABI5 native export names remain: $($invalidExports -join ', ')"
-}
+if ($invalidExports.Count -gt 0) { throw "Non-ABI5 native export names remain: $($invalidExports -join ', ')" }
 
 $invalidSemanticNames = @($declarations | Where-Object { $_ -match '(_v[0-9]+|_ex[0-9]*)$' })
 if ($invalidSemanticNames.Count -gt 0) {
@@ -165,9 +147,7 @@ $publicTypeNames = @(
 ) | Sort-Object -Unique
 
 $ocafExports = @($declarations | Where-Object { $_ -like 'occt_ocaf_*' })
-if ($ocafExports.Count -gt 0) {
-    throw "OCAF/XDE exports are not allowed in the reusable bridge."
-}
+if ($ocafExports.Count -gt 0) { throw "OCAF/XDE exports are not allowed in the reusable bridge." }
 
 $modelingPrefixes = @("occt_model_", "occt_shape_", "occt_mesh_", "occt_algorithm_")
 $modelingExports = @($declarations | Where-Object {
