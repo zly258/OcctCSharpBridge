@@ -94,9 +94,8 @@ extern "C"
         OcctObjectId pointId,
         const OcctViewerPointPixmapOptions* options);
 
-    // Frozen ABI4 compatibility. Implemented by the points domain.
-    OCCTBRIDGE_API int occt_update_points(
-        OcctHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_engine_points_update(
+        OcctEngineHandle handle,
         const OcctPointStateUpdate* updates,
         int count);
 }
