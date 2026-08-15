@@ -84,7 +84,7 @@ public sealed partial class OcctModelingSession : IDisposable
     {
         EnsureNotDisposed();
         if (!shape.IsValid || shape.OwnerId != _ownerId) return false;
-        var status = ModelNativeMethods.occt_model_shape_exists(_handle, shape.Id, out var exists);
+        var status = ModelNativeMethods.occt_model_shape_exists_get(_handle, shape.Id, out var exists);
         if (status != OcctStatus.Ok) throw CreateException();
         return exists != 0;
     }
@@ -95,7 +95,7 @@ public sealed partial class OcctModelingSession : IDisposable
     {
         EnsureNotDisposed();
         if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
-        var status = ModelNativeMethods.occt_model_shape_exists(_handle, id, out var exists);
+        var status = ModelNativeMethods.occt_model_shape_exists_get(_handle, id, out var exists);
         if (status != OcctStatus.Ok) throw CreateException();
         if (exists == 0)
             throw new ArgumentOutOfRangeException(nameof(id), id, "The shape ID does not exist in this modeling session.");
@@ -111,7 +111,7 @@ public sealed partial class OcctModelingSession : IDisposable
             return false;
         }
 
-        var status = ModelNativeMethods.occt_model_shape_exists(_handle, id, out var exists);
+        var status = ModelNativeMethods.occt_model_shape_exists_get(_handle, id, out var exists);
         if (status != OcctStatus.Ok) throw CreateException();
         if (exists != 0)
         {
@@ -129,7 +129,7 @@ public sealed partial class OcctModelingSession : IDisposable
         CheckStatus(ModelNativeMethods.occt_model_shape_delete(_handle, shape.Id));
     }
 
-    public void Clear() => CheckStatus(ModelNativeMethods.occt_model_clear(NativeHandle));
+    public void Clear() => CheckStatus(ModelNativeMethods.occt_model_session_clear(NativeHandle));
 
     public OcctModelShape Copy(OcctModelShape shape)
     {
@@ -170,7 +170,7 @@ public sealed partial class OcctModelingSession : IDisposable
         if (!shape.IsValid || shape.OwnerId != _ownerId)
             throw new ArgumentException("Shape does not belong to this modeling session.", nameof(shape));
 
-        var status = ModelNativeMethods.occt_model_shape_exists(_handle, shape.Id, out var exists);
+        var status = ModelNativeMethods.occt_model_shape_exists_get(_handle, shape.Id, out var exists);
         if (status != OcctStatus.Ok) throw CreateException();
         if (exists == 0)
             throw new ArgumentException("Shape no longer exists in this modeling session.", nameof(shape));
