@@ -16,7 +16,7 @@ Bridge 3 is **ABI 5 only**. ABI 4 exports, compatibility shims, legacy handles, 
 | Native ABI | **5 only** |
 | API policy | **abi5-only** |
 | OCCT | **7.9.0** |
-| .NET SDK | **10.0.302** |
+| .NET SDK | **10.0.303** |
 | Target Framework | **`net10.0` core / `net10.0-windows` desktop adapters** |
 | C# / Native | **14.0 / C++17** |
 | UI adapters | **WinForms / WPF / Avalonia** |
@@ -71,7 +71,7 @@ Linux x64:
 ./build.sh dist Release
 ```
 
-See [Build, Test and Publish](docs/en-US/08_Build-Test-and-Publish.md) for every target, the six static contract checks, managed tests, Native Smoke, .NET SDK 10.0.302 diagnostics and publication rules.
+See [Build, Test and Publish](docs/en-US/08_Build-Test-and-Publish.md) for every target, the six static contract checks, managed tests, Native Smoke, .NET SDK 10.0.303 diagnostics and publication rules.
 
 The ABI5 contract checks keep Native declarations, definitions and managed `LibraryImport` bindings aligned, reject retired pre-ABI5 handles and compatibility artifacts, and validate tracked platform Binary SDK contracts when such payloads exist.
 

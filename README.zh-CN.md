@@ -16,7 +16,7 @@ Bridge 3 **仅支持 ABI 5**。ABI 4 导出、兼容 Shim、旧 Handle、兼容�
 | Native ABI | **仅 ABI 5** |
 | API Policy | **abi5-only** |
 | OCCT | **7.9.0** |
-| .NET SDK | **10.0.302** |
+| .NET SDK | **10.0.303** |
 | Target Framework | **`net10.0` Core / `net10.0-windows` Desktop Adapter** |
 | C# / Native | **14.0 / C++17** |
 | UI Adapter | **WinForms / WPF / Avalonia** |
@@ -71,7 +71,7 @@ Linux x64：
 ./build.sh dist Release
 ```
 
-完整 target、6 个静态 Contract Checks、Managed Tests、Native Smoke、SDK 10.0.302 排障和发布说明见 [构建、测试与发布](docs/zh-CN/08_构建测试与发布.md)。
+完整 target、6 个静态 Contract Checks、Managed Tests、Native Smoke、SDK 10.0.303 排障和发布说明见 [构建、测试与发布](docs/zh-CN/08_构建测试与发布.md)。
 
 ABI5 契约检查会保证 Native 声明、实现和 Managed `LibraryImport` 一致，拒绝 pre-ABI5 Handle 与兼容遗留，并在仓库存在平台 Binary SDK 时检查其契约是否仍为 ABI5-only。
 

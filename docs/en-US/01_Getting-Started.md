@@ -8,7 +8,7 @@ Windows:
 
 - Windows x64
 - Visual Studio 2022 C++ toolchain
-- **.NET SDK 10.0.302 exactly**
+- **.NET SDK 10.0.303 exactly**
 - OCCT 7.9.0
 - CMake 3.21+
 
@@ -38,7 +38,7 @@ Run individual stages as needed:
 .\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-`managed` builds `OcctNet`, `OcctNet.WinForms`, `OcctNet.Wpf`, and `OcctNet.Avalonia`. Managed-dependent targets first resolve a `dotnet.exe` that can use .NET SDK 10.0.302 exactly.
+`managed` builds `OcctNet`, `OcctNet.WinForms`, `OcctNet.Wpf`, and `OcctNet.Avalonia`. Managed-dependent targets first resolve a `dotnet.exe` that can use .NET SDK 10.0.303 exactly.
 
 ## Minimal modeling use
 

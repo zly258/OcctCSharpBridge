@@ -8,7 +8,7 @@
 - Native ABI：**仅 ABI 5**，`current = 5`、`minimumSupported = 5`；
 - API Policy：`abi5-only`；
 - OCCT：`7.9.0`；
-- .NET SDK：**精确 `10.0.302`**，禁止 roll-forward；
+- .NET SDK：**精确 `10.0.303`**，禁止 roll-forward；
 - Target Framework：Core/Avalonia 为 `net10.0`，WinForms/WPF 为 `net10.0-windows`；
 - 公开 Managed 程序集：`OcctNet`、`OcctNet.WinForms`、`OcctNet.Wpf`、`OcctNet.Avalonia`；
 - 源码平台：Windows x64 / Linux x64。

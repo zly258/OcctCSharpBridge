@@ -14,7 +14,7 @@
   "dotnet": {
     "targetFramework": "net10.0",
     "desktopTargetFramework": "net10.0-windows",
-    "sdkVersion": "10.0.302",
+    "sdkVersion": "10.0.303",
     "languageVersion": "14.0"
   },
   "api": {

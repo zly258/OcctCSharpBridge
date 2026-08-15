@@ -10,7 +10,7 @@ Windows x64:
 - Visual Studio 2022 / MSVC x64 C++ toolchain;
 - CMake at or above the minimum declared by `bridge-contract.json`;
 - OCCT **7.9.0** x64;
-- **.NET SDK 10.0.302 exactly**;
+- **.NET SDK 10.0.303 exactly**;
 - C# 14;
 - PowerShell.
 
@@ -20,7 +20,7 @@ Linux x64:
 - C++17 compiler;
 - CMake;
 - OCCT 7.9.0;
-- .NET SDK 10.0.302 exactly.
+- .NET SDK 10.0.303 exactly.
 
 The root `global.json` disables SDK roll-forward. Do not weaken the version requirement or enable roll-forward as a workaround.
 
@@ -177,19 +177,19 @@ For the complete validation use:
 .\build.ps1 all Release
 ```
 
-## 6. Resolving .NET SDK 10.0.302
+## 6. Resolving .NET SDK 10.0.303
 
-Managed-dependent targets (`managed`, `test`, `smoke`, `dist`, and `all`) resolve a concrete `dotnet.exe` that can use **10.0.302** from the repository root before the build starts. Candidate sources include `DOTNET_ROOT`, the standard Windows x64 Program Files installation, and the current `PATH`.
+Managed-dependent targets (`managed`, `test`, `smoke`, `dist`, and `all`) resolve a concrete `dotnet.exe` that can use **10.0.303** from the repository root before the build starts. Candidate sources include `DOTNET_ROOT`, the standard Windows x64 Program Files installation, and the current `PATH`.
 
 A successful run reports values similar to:
 
 ```text
-SDK contract:  10.0.302
+SDK contract:  10.0.303
 dotnet:        C:\Program Files\dotnet\dotnet.exe
-SDK resolved:  10.0.302
+SDK resolved:  10.0.303
 ```
 
-If the `dotnet.exe` first found on `PATH` cannot see 10.0.302 but the standard x64 installation can, the script uses the working host instead of failing only after the Native build has completed.
+If the `dotnet.exe` first found on `PATH` cannot see 10.0.303 but the standard x64 installation can, the script uses the working host instead of failing only after the Native build has completed.
 
 Manual diagnostics:
 
@@ -199,7 +199,7 @@ Manual diagnostics:
 where.exe dotnet
 ```
 
-`--list-sdks` must contain `10.0.302`, and `--version` executed from the repository root must return `10.0.302`. If not, install the exact SDK or fix `DOTNET_ROOT/PATH`; do not edit `global.json` to accept another SDK.
+`--list-sdks` must contain `10.0.303`, and `--version` executed from the repository root must return `10.0.303`. If not, install the exact SDK or fix `DOTNET_ROOT/PATH`; do not edit `global.json` to accept another SDK.
 
 ## 7. Linux build.sh
 

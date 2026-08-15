@@ -8,7 +8,7 @@ Current source contract:
 - Native ABI: **ABI 5 only**, with `current = 5` and `minimumSupported = 5`;
 - API policy: `abi5-only`;
 - OCCT: `7.9.0`;
-- .NET SDK: **`10.0.302` exactly**, with roll-forward disabled;
+- .NET SDK: **`10.0.303` exactly**, with roll-forward disabled;
 - target frameworks: `net10.0` for Core/Avalonia and `net10.0-windows` for WinForms/WPF;
 - public managed assemblies: `OcctNet`, `OcctNet.WinForms`, `OcctNet.Wpf`, `OcctNet.Avalonia`;
 - source platforms: Windows x64 / Linux x64.

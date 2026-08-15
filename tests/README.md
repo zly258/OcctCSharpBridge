@@ -1,6 +1,6 @@
 # Tests and Validation
 
-`tests` 保留三类验证：**少量仓库级静态契约、Managed 回归测试、真实 Native Smoke**。Bridge 3 仅支持 ABI 5，不保留 ABI 4 Consumer、兼容测试或兼容入口。验证由本地 `build.ps1` / `build.sh`、精确的 .NET SDK 10.0.302 和真实 OCCT 7.9.0 环境完成。
+`tests` 保留三类验证：**少量仓库级静态契约、Managed 回归测试、真实 Native Smoke**。Bridge 3 仅支持 ABI 5，不保留 ABI 4 Consumer、兼容测试或兼容入口。验证由本地 `build.ps1` / `build.sh`、精确的 .NET SDK 10.0.303 和真实 OCCT 7.9.0 环境完成。
 
 ## 1. 静态契约
 
@@ -32,7 +32,7 @@ Linux：
 
 ## 2. Managed 回归
 
-`OcctNet.ManagedTests` 使用 `MSTest.Sdk`，根目录 `global.json` 固定 .NET SDK 10.0.302 并选择 Microsoft Testing Platform。
+`OcctNet.ManagedTests` 使用 `MSTest.Sdk`，根目录 `global.json` 固定 .NET SDK 10.0.303 并选择 Microsoft Testing Platform。
 
 测试不加载 OCCT，主要覆盖：
 
