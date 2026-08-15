@@ -1,19 +1,23 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace OcctNet;
 
 internal static partial class ModelNativeMethods
 {
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_model_intersect_edges(
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial int occt_model_intersect_edges(
         OcctModelingSafeHandle handle,
         long firstEdgeId,
         long secondEdgeId,
         double tolerance);
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_model_edge_intersections_copy(
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial int occt_model_edge_intersections_copy(
         OcctModelingSafeHandle handle,
-        [Out] NativeModelEdgeIntersection[]? results,
+        [Out, MarshalUsing(CountElementName = nameof(capacity))] NativeModelEdgeIntersection[]? results,
         int capacity);
 }
