@@ -253,4 +253,15 @@ Console.WriteLine($"OBB: {bounds.SizeX:G4} x {bounds.SizeY:G4} x {bounds.SizeZ:G
 Console.WriteLine($"Cut operation resource: {cutAlgorithm.OperationId}");
 Console.WriteLine($"Loft operation: {loft.OperationId}");
 Console.WriteLine("BRep text and four annotation kinds: validated");
+
+model.Dispose();
+if (cutAlgorithm.OperationId != cut.OperationId ||
+    cutAlgorithm.HasWarnings != cut.HasWarnings ||
+    cutAlgorithm.HasErrors != cut.HasErrors ||
+    !string.Equals(cutAlgorithm.Report, cut.Report, StringComparison.Ordinal))
+{
+    throw new InvalidOperationException(
+        "Owned algorithm diagnostics did not survive disposal of the source modeling session.");
+}
+Console.WriteLine("Owned algorithm diagnostics after session disposal: validated");
 Console.WriteLine($"Bridge {OcctBridgeInfo.ManagedVersion} native smoke tests passed.");

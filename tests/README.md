@@ -67,7 +67,8 @@ dotnet test .\tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj -c Release 
 - Selection / Viewer 关键路径；
 - Mesh；
 - STEP / IGES / BREP / STL；
-- Inertia、Structured Intersection、Topology Reference 等关键能力。
+- Inertia、Structured Intersection、Topology Reference 等关键能力；
+- Shape / Mesh / Algorithm owned resource 生命周期，包括源 Registry entry 或 Modeling Session 释放后的独立可用性。
 
 Windows：
 

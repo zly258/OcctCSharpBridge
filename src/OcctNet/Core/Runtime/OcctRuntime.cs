@@ -67,14 +67,15 @@ public static partial class OcctRuntime
 
         lock (SyncRoot)
         {
+            ValidateSupportedPlatform();
+            ValidateExplicitConfiguration(options);
+
             if (_configured)
             {
                 ValidateReconfiguration(options);
                 return;
             }
 
-            ValidateSupportedPlatform();
-            ValidateExplicitConfiguration(options);
             _repositoryProbingEnabled = options.EnableRepositoryProbing;
 
             InitializeNativeSearchPolicy();

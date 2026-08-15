@@ -54,6 +54,7 @@ extern "C"
             requirePositive(dy, "Box Y size");
             requirePositive(dz, "Box Z size");
             BRepPrimAPI_MakeBox maker(point({x, y, z}), dx, dy, dz);
+            maker.Build();
             if (!maker.IsDone()) throw std::runtime_error("Box creation failed.");
             return maker.Shape();
         });
@@ -67,6 +68,7 @@ extern "C"
             requirePositive(radius, "Cylinder radius");
             requirePositive(height, "Cylinder height");
             BRepPrimAPI_MakeCylinder maker(gp_Ax2(point(origin), direction(axis)), radius, height);
+            maker.Build();
             if (!maker.IsDone()) throw std::runtime_error("Cylinder creation failed.");
             return maker.Shape();
         });
@@ -83,6 +85,7 @@ extern "C"
                 throw std::invalid_argument("At least one cone radius must be greater than zero.");
             requirePositive(height, "Cone height");
             BRepPrimAPI_MakeCone maker(gp_Ax2(point(origin), direction(axis)), radius1, radius2, height);
+            maker.Build();
             if (!maker.IsDone()) throw std::runtime_error("Cone creation failed.");
             return maker.Shape();
         });
@@ -95,6 +98,7 @@ extern "C"
         {
             requirePositive(radius, "Sphere radius");
             BRepPrimAPI_MakeSphere maker(point(center), radius);
+            maker.Build();
             if (!maker.IsDone()) throw std::runtime_error("Sphere creation failed.");
             return maker.Shape();
         });
@@ -110,6 +114,7 @@ extern "C"
             if (minorRadius >= majorRadius)
                 throw std::invalid_argument("Torus minor radius must be less than major radius.");
             BRepPrimAPI_MakeTorus maker(gp_Ax2(point(center), direction(axis)), majorRadius, minorRadius);
+            maker.Build();
             if (!maker.IsDone()) throw std::runtime_error("Torus creation failed.");
             return maker.Shape();
         });
@@ -125,6 +130,7 @@ extern "C"
             requirePositive(dz, "Wedge Z size");
             if (!std::isfinite(ltx)) throw std::invalid_argument("Wedge ltx must be finite.");
             BRepPrimAPI_MakeWedge maker(dx, dy, dz, ltx);
+            maker.Build();
             if (!maker.IsDone()) throw std::runtime_error("Wedge creation failed.");
             return maker.Shape();
         });
