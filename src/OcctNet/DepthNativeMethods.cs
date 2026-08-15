@@ -1,62 +1,90 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
-internal static class DepthNativeMethods
+[Flags]
+internal enum NativeViewerDepthUpdateMask : uint
+{
+    AutoZFitSettings = 1u << 0,
+    AutoZFitNow = 1u << 1,
+    DefaultPolygonOffsets = 1u << 2
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeViewerDepthUpdateOptions
+{
+    internal uint StructSize;
+    internal uint ApiVersion;
+    internal NativeViewerDepthUpdateMask UpdateMask;
+    internal int AutoZFitEnabled;
+    internal double AutoZFitScaleFactor;
+    internal int PolygonOffsetMode;
+    internal double PolygonOffsetFactor;
+    internal double PolygonOffsetUnits;
+    internal int ApplyPolygonOffsetsToExisting;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeViewerDepthState
+{
+    internal uint StructSize;
+    internal uint ApiVersion;
+    internal int AutoZFitEnabled;
+    internal double AutoZFitScaleFactor;
+    internal int PolygonOffsetMode;
+    internal double PolygonOffsetFactor;
+    internal double PolygonOffsetUnits;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeViewerObjectPolygonOffsetOptions
+{
+    internal uint StructSize;
+    internal uint ApiVersion;
+    internal int ResetToDefault;
+    internal int Mode;
+    internal double Factor;
+    internal double Units;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeViewerObjectPolygonOffsetState
+{
+    internal uint StructSize;
+    internal uint ApiVersion;
+    internal int Mode;
+    internal double Factor;
+    internal double Units;
+}
+
+internal static partial class DepthNativeMethods
 {
     private const string LibraryName = "OcctNative";
 
-    [StructLayout(LayoutKind.Sequential)]
-    internal struct NativePolygonOffsetSettings
-    {
-        internal int Mode;
-        internal double Factor;
-        internal double Units;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal struct NativeAutoZFitSettings
-    {
-        internal int Enabled;
-        internal double ScaleFactor;
-    }
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_set_auto_z_fit_mode(OcctEngineSafeHandle handle, int enabled, double scaleFactor);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_get_auto_z_fit_mode(OcctEngineSafeHandle handle, out NativeAutoZFitSettings result);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_auto_z_fit(OcctEngineSafeHandle handle);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_set_default_polygon_offsets(
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_depth_update(
         OcctEngineSafeHandle handle,
-        int mode,
-        double factor,
-        double units,
-        int applyExisting);
+        in NativeViewerDepthUpdateOptions options);
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_get_default_polygon_offsets(
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_depth_state_get(
         OcctEngineSafeHandle handle,
-        out NativePolygonOffsetSettings result);
+        out NativeViewerDepthState state);
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_set_object_polygon_offsets(
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_object_polygon_offset_update(
         OcctEngineSafeHandle handle,
         long objectId,
-        int mode,
-        double factor,
-        double units);
+        in NativeViewerObjectPolygonOffsetOptions options);
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_get_object_polygon_offsets(
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_object_polygon_offset_get(
         OcctEngineSafeHandle handle,
         long objectId,
-        out NativePolygonOffsetSettings result);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    internal static extern int occt_reset_object_polygon_offsets(OcctEngineSafeHandle handle, long objectId);
+        out NativeViewerObjectPolygonOffsetState state);
 }
