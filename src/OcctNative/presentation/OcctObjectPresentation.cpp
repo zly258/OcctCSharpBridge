@@ -9,12 +9,15 @@
 #include <Graphic3d_Vec2.hxx>
 
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 using namespace OcctBridge;
 
 namespace
 {
+    constexpr std::uint32_t TransformPersistenceApiVersion = 1;
+
     ObjectEntry& requiredObject(Engine* engine, OcctObjectId id)
     {
         ObjectEntry* entry = engine->findObject(id);
@@ -84,27 +87,67 @@ namespace
         if (value == Graphic3d_TMF_TriedronPers) return OcctTransformPersistence_Triedron;
         throw std::runtime_error("Object uses a transform persistence mode outside the managed set.");
     }
+
+    OcctStatus requireInitializedEngine(Engine* engine)
+    {
+        if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (!validateInitialized(engine)) return engine->errors.code;
+        return OcctStatus_Ok;
+    }
+
+    template<typename Function>
+    OcctStatus executeObjectPresentationStatus(Engine* engine, Function&& function)
+    {
+        const OcctStatus initialized = requireInitializedEngine(engine);
+        if (initialized != OcctStatus_Ok) return initialized;
+        return execute(engine, std::forward<Function>(function)) != 0
+            ? OcctStatus_Ok
+            : engine->errors.code;
+    }
+
+    void validateTransformPersistenceOptions(const OcctViewerTransformPersistenceOptions* options)
+    {
+        if (options == nullptr) throw std::invalid_argument("Transform persistence options are null.");
+        if (options->structSize < sizeof(OcctViewerTransformPersistenceOptions) ||
+            options->apiVersion != TransformPersistenceApiVersion)
+        {
+            throw std::invalid_argument("Unsupported transform persistence options size or version.");
+        }
+        if (options->mode == OcctTransformPersistence_None)
+            throw std::invalid_argument("Use the clear operation to remove transform persistence.");
+        if (options->mode == OcctTransformPersistence_Screen2d ||
+            options->mode == OcctTransformPersistence_Triedron)
+        {
+            (void)cornerPosition(options->position);
+            if (options->offsetX < 0 || options->offsetY < 0)
+                throw std::invalid_argument("Transform persistence offsets must not be negative.");
+        }
+        else
+        {
+            (void)persistenceMode3d(options->mode);
+            (void)point(options->anchor);
+        }
+    }
 }
 
 extern "C"
 {
-    int occt_set_object_display_priority(
-        OcctHandle handle,
+    OcctStatus occt_engine_object_display_priority_set(
+        OcctEngineHandle handle,
         OcctObjectId objectId,
         int priority)
     {
-        return occt_set_objects_display_priority(handle, &objectId, 1, priority);
+        return occt_engine_objects_display_priority_set(handle, &objectId, 1, priority);
     }
 
-    int occt_set_objects_display_priority(
-        OcctHandle handle,
+    OcctStatus occt_engine_objects_display_priority_set(
+        OcctEngineHandle handle,
         const OcctObjectId* objectIds,
         int count,
         int priority)
     {
-        Engine* engine = engineOf(handle);
-        if (!validateInitialized(engine)) return 0;
-        return execute(engine, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeObjectPresentationStatus(engine, [&]
         {
             if (count < 0) throw std::invalid_argument("Object count must not be negative.");
             if (count > 0 && objectIds == nullptr)
@@ -122,70 +165,58 @@ extern "C"
         });
     }
 
-    int occt_get_object_display_priority(
-        OcctHandle handle,
+    OcctStatus occt_engine_object_display_priority_get(
+        OcctEngineHandle handle,
         OcctObjectId objectId,
         int* priority)
     {
-        Engine* engine = engineOf(handle);
-        if (!validateInitialized(engine) || priority == nullptr) return 0;
-        return execute(engine, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeObjectPresentationStatus(engine, [&]
         {
+            if (priority == nullptr) throw std::invalid_argument("Display priority result is null.");
             ObjectEntry& entry = requiredObject(engine, objectId);
             *priority = static_cast<int>(engine->viewerContext.context->DisplayPriority(entry.presentation));
         });
     }
 
-    int occt_set_object_transform_persistence_3d(
-        OcctHandle handle,
+    OcctStatus occt_engine_object_transform_persistence_set(
+        OcctEngineHandle handle,
         OcctObjectId objectId,
-        int mode,
-        OcctPoint3d anchor)
+        const OcctViewerTransformPersistenceOptions* options)
     {
-        Engine* engine = engineOf(handle);
-        if (!validateInitialized(engine)) return 0;
-        return execute(engine, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeObjectPresentationStatus(engine, [&]
         {
+            validateTransformPersistenceOptions(options);
             ObjectEntry& entry = requiredObject(engine, objectId);
-            const Handle(Graphic3d_TransformPers) persistence =
-                new Graphic3d_TransformPers(persistenceMode3d(mode), point(anchor));
+
+            Handle(Graphic3d_TransformPers) persistence;
+            if (options->mode == OcctTransformPersistence_Screen2d ||
+                options->mode == OcctTransformPersistence_Triedron)
+            {
+                persistence = new Graphic3d_TransformPers(
+                    persistenceMode2d(options->mode),
+                    cornerPosition(options->position),
+                    Graphic3d_Vec2i(options->offsetX, options->offsetY));
+            }
+            else
+            {
+                persistence = new Graphic3d_TransformPers(
+                    persistenceMode3d(options->mode),
+                    point(options->anchor));
+            }
+
             engine->viewerContext.context->SetTransformPersistence(entry.presentation, persistence);
             engine->requestRedraw();
         });
     }
 
-    int occt_set_object_transform_persistence_2d(
-        OcctHandle handle,
-        OcctObjectId objectId,
-        int mode,
-        int position,
-        int offsetX,
-        int offsetY)
-    {
-        Engine* engine = engineOf(handle);
-        if (!validateInitialized(engine)) return 0;
-        return execute(engine, [&]
-        {
-            if (offsetX < 0 || offsetY < 0)
-                throw std::invalid_argument("Transform persistence offsets must not be negative.");
-            ObjectEntry& entry = requiredObject(engine, objectId);
-            const Handle(Graphic3d_TransformPers) persistence =
-                new Graphic3d_TransformPers(
-                    persistenceMode2d(mode),
-                    cornerPosition(position),
-                    Graphic3d_Vec2i(offsetX, offsetY));
-            engine->viewerContext.context->SetTransformPersistence(entry.presentation, persistence);
-            engine->requestRedraw();
-        });
-    }
-
-    int occt_clear_object_transform_persistence(
-        OcctHandle handle,
+    OcctStatus occt_engine_object_transform_persistence_clear(
+        OcctEngineHandle handle,
         OcctObjectId objectId)
     {
-        Engine* engine = engineOf(handle);
-        if (!validateInitialized(engine)) return 0;
-        return execute(engine, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeObjectPresentationStatus(engine, [&]
         {
             ObjectEntry& entry = requiredObject(engine, objectId);
             Handle(Graphic3d_TransformPers) persistence;
@@ -194,15 +225,15 @@ extern "C"
         });
     }
 
-    int occt_get_object_transform_persistence(
-        OcctHandle handle,
+    OcctStatus occt_engine_object_transform_persistence_get(
+        OcctEngineHandle handle,
         OcctObjectId objectId,
         OcctTransformPersistenceState* result)
     {
-        Engine* engine = engineOf(handle);
-        if (!validateInitialized(engine) || result == nullptr) return 0;
-        return execute(engine, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeObjectPresentationStatus(engine, [&]
         {
+            if (result == nullptr) throw std::invalid_argument("Transform persistence result is null.");
             ObjectEntry& entry = requiredObject(engine, objectId);
             *result = {};
             result->mode = OcctTransformPersistence_None;
