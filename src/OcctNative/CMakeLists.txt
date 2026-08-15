@@ -77,23 +77,21 @@ endif()
 add_library(OcctNative SHARED
     core/OcctEngine.cpp
     viewer/OcctViewerContext.cpp
+    viewer/OcctViewerUpdate.cpp
     scene/OcctSceneRegistry.cpp
     platform/OcctPlatformWindow.cpp
     platform/OcctNativeSurface.cpp
     OcctEngineView.cpp
-    OcctRenderSurface.cpp
     selection/OcctEngineSelection.cpp
     OcctEngineObjects.cpp
     OcctEngineShapes.cpp
     presentation/OcctAppearance.cpp
+    presentation/OcctViewCube.cpp
     selection/OcctSelectionOverlay.cpp
-    OcctView.cpp
     OcctViewportExtensions.cpp
     OcctViewportState.cpp
     OcctObjectBatch.cpp
-    OcctObjectIdentity.cpp
     OcctObjectUpdate.cpp
-    OcctObjectInteraction.cpp
     OcctObjectTransform.cpp
     OcctViewerInteraction.cpp
     OcctViewerInteractionExtensions.cpp
@@ -146,8 +144,11 @@ add_library(OcctNative SHARED
     core/OcctInternal.hxx
     core/OcctErrorContext.hxx
     viewer/OcctViewerContext.hxx
+    viewer/OcctViewerUpdate.h
     scene/OcctSceneRegistry.hxx
+    scene/OcctViewerModelInterop.h
     platform/OcctPlatformWindow.hxx
+    platform/OcctNativeSurface.h
     modeling/OcctModelingSessionInternal.hxx
     geometry/OcctBRepTextBuilder.hxx
     geometry/OcctBRepAnnotationBuilder.hxx
@@ -162,15 +163,19 @@ add_library(OcctNative SHARED
     exchange/OcctModelingExchange.h
     exchange/OcctExchangePath.hxx
     OcctNative.h
-    platform/OcctNativeSurface.h
     geometry/OcctPoints.h
+    selection/OcctSelection.h
     selection/OcctSelectionOverlay.h
     selection/OcctSelectionState.h
     OcctViewerInteraction.h
     OcctViewerInteractionExtensions.h
     presentation/OcctAppearance.h
     presentation/OcctAnnotations.h
+    presentation/OcctView.h
+    presentation/OcctViewCube.h
     presentation/OcctViewport.h
+    presentation/OcctObjects.h
+    presentation/OcctObjectTransform.h
     presentation/OcctOverlay.h
     presentation/OcctPresentation.h
     selection/OcctDetection.h
