@@ -79,7 +79,8 @@ public sealed partial class DemoSession
         var data = model.GetBSplineSurfaceData(bsplineFace);
         ValidateBSplineSurfaceData(data);
 
-        var surface = Engine.Display(model, bsplineFace);
+        var surface = Engine.MakeBox(1, 1, 1);
+        Engine.UpdateShape(surface, model, bsplineFace);
         SetGeneratedName(surface, Local("B-Spline Surface", "B 样条曲面"));
         Engine.SetColor(surface, Color.SteelBlue);
         Engine.SetTransparency(surface, 0.28);
