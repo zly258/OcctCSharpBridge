@@ -139,6 +139,20 @@ public sealed partial class DemoSession
         return targets.Count;
     }
 
+    public int SetSceneDisplayMode(OcctDisplayMode displayMode)
+    {
+        var shapes = GetSceneShapes();
+        if (shapes.Count == 0) return 0;
+
+        using (Engine.BeginDisplayBatch())
+        {
+            foreach (var shape in shapes)
+                Engine.SetObjectDisplayMode(shape, displayMode);
+        }
+
+        return shapes.Count;
+    }
+
     public void NewDocument()
     {
         Engine.Clear();
