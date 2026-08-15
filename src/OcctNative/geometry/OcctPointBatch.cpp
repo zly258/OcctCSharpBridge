@@ -5,6 +5,7 @@
 #include <Geom_CartesianPoint.hxx>
 
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 using namespace OcctBridge;
@@ -32,18 +33,34 @@ namespace
         (void)position;
         return {entry, presentation, &update};
     }
+
+    OcctStatus requireInitializedEngine(Engine* engine)
+    {
+        if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (!validateInitialized(engine)) return engine->errors.code;
+        return OcctStatus_Ok;
+    }
+
+    template<typename Function>
+    OcctStatus executePointBatchStatus(Engine* engine, Function&& function)
+    {
+        const OcctStatus initialized = requireInitializedEngine(engine);
+        if (initialized != OcctStatus_Ok) return initialized;
+        return execute(engine, std::forward<Function>(function)) != 0
+            ? OcctStatus_Ok
+            : engine->errors.code;
+    }
 }
 
 extern "C"
 {
-    int occt_update_points(
-        OcctHandle handle,
+    OcctStatus occt_engine_points_update(
+        OcctEngineHandle handle,
         const OcctPointStateUpdate* updates,
         int count)
     {
-        Engine* engine = engineOf(handle);
-        if (!validateInitialized(engine)) return 0;
-        return execute(engine, [&]
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executePointBatchStatus(engine, [&]
         {
             if (count < 0) throw std::invalid_argument("Point update count must not be negative.");
             if (count > 0 && updates == nullptr)
