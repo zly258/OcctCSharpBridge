@@ -2,7 +2,7 @@
 
 #include "OcctNative.h"
 
-constexpr int OcctPointObjectKind = 4;
+constexpr int OcctPointObjectKind = OcctObject_Point;
 
 extern "C"
 {
