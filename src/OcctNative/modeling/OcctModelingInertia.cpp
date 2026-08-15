@@ -51,14 +51,17 @@ namespace
         result->hasSymmetryPoint = principal.HasSymmetryPoint() ? 1 : 0;
     }
 
-    int computeInertia(
+    OcctStatus computeInertia(
         ModelSession* model,
         OcctObjectId shapeId,
         OcctModelInertiaProperties* result,
         void (*compute)(const TopoDS_Shape&, GProp_GProps&))
     {
-        if (result == nullptr) return 0;
-        return execute(model, [&]
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = {};
+        return executeStatus(model, [&]
         {
             GProp_GProps properties;
             compute(model->requireShape(shapeId), properties);
@@ -84,18 +87,27 @@ namespace
 
 extern "C"
 {
-    int occt_model_shape_linear_inertia(OcctModelHandle handle, OcctObjectId shapeId, OcctModelInertiaProperties* result)
+    OcctStatus occt_model_shape_linear_inertia(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        OcctModelInertiaProperties* result)
     {
-        return computeInertia(modelOf(handle), shapeId, result, computeLinear);
+        return computeInertia(sessionOf(handle), shapeId, result, computeLinear);
     }
 
-    int occt_model_shape_surface_inertia(OcctModelHandle handle, OcctObjectId shapeId, OcctModelInertiaProperties* result)
+    OcctStatus occt_model_shape_surface_inertia(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        OcctModelInertiaProperties* result)
     {
-        return computeInertia(modelOf(handle), shapeId, result, computeSurface);
+        return computeInertia(sessionOf(handle), shapeId, result, computeSurface);
     }
 
-    int occt_model_shape_volume_inertia(OcctModelHandle handle, OcctObjectId shapeId, OcctModelInertiaProperties* result)
+    OcctStatus occt_model_shape_volume_inertia(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        OcctModelInertiaProperties* result)
     {
-        return computeInertia(modelOf(handle), shapeId, result, computeVolume);
+        return computeInertia(sessionOf(handle), shapeId, result, computeVolume);
     }
 }
