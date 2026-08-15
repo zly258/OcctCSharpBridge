@@ -140,6 +140,34 @@ foreach ($forbidden in @("DocumentManager", "CommandBus", "CommandRegistry", "To
     }
 }
 
+# Managed ABI5 source is organized by the same semantic domains as Native. Keep only
+# project-level source at the project root; production API and interop belong to domains.
+$managedRoot = (Resolve-Path (Join-Path $RepositoryRoot "src/OcctNet")).Path.TrimEnd('\')
+$allowedManagedRootFiles = @("AssemblyInfo.cs", "GlobalUsings.cs")
+$unexpectedManagedRootFiles = @($managedFiles | Where-Object {
+    $_.DirectoryName.TrimEnd('\') -eq $managedRoot -and $_.Name -notin $allowedManagedRootFiles
+})
+if ($unexpectedManagedRootFiles.Count -gt 0) {
+    throw "Managed ABI5 domain source must not be placed at src/OcctNet root: $($unexpectedManagedRootFiles.Name -join ', ')"
+}
+
+$misplacedInteropFiles = @($managedFiles | Where-Object {
+    $_.Name -match '(?i)NativeMethods.*\.cs$' -and
+    $_.FullName.Replace('/', '\') -notmatch '(?i)\\Interop\\'
+})
+if ($misplacedInteropFiles.Count -gt 0) {
+    $relative = @($misplacedInteropFiles | ForEach-Object { $_.FullName.Substring($RepositoryRoot.Length).TrimStart('\') })
+    throw "Managed ABI5 native method declarations must live under a domain Interop directory: $($relative -join ', ')"
+}
+
+$badManagedNames = @($managedFiles | Where-Object {
+    $_.Name -match '(?i)(\.Current\.|Compatibility|Legacy|Deprecated|Abi4)'
+})
+if ($badManagedNames.Count -gt 0) {
+    $relative = @($badManagedNames | ForEach-Object { $_.FullName.Substring($RepositoryRoot.Length).TrimStart('\') })
+    throw "Managed ABI5 source contains migration/compatibility naming residue: $($relative -join ', ')"
+}
+
 # ABI5 production interop uses source-generated LibraryImport only.
 $dllImportFiles = @($managedFiles | Where-Object {
     [System.IO.File]::ReadAllText($_.FullName).Contains("[DllImport(")
@@ -193,6 +221,19 @@ $badNativeNames = @($nativeFiles | Where-Object {
 if ($badNativeNames.Count -gt 0) {
     $relative = @($badNativeNames | ForEach-Object { $_.FullName.Substring($RepositoryRoot.Length).TrimStart('\') })
     throw "Native modules must use semantic domain names instead of generic utility names: $($relative -join ', ')"
+}
+
+# Only ABI umbrella/status headers are allowed at the Native project root. Implementations
+# and domain headers must remain in semantic domain directories.
+$nativeRoot = (Resolve-Path (Join-Path $RepositoryRoot "src/OcctNative")).Path.TrimEnd('\')
+$allowedNativeRootSources = @("OcctNative.h", "OcctStatus.h")
+$unexpectedNativeRootSources = @($nativeFiles | Where-Object {
+    $_.DirectoryName.TrimEnd('\') -eq $nativeRoot -and
+    $_.Extension -in @('.cpp', '.cxx', '.h', '.hpp', '.hxx') -and
+    $_.Name -notin $allowedNativeRootSources
+})
+if ($unexpectedNativeRootSources.Count -gt 0) {
+    throw "Native ABI5 domain source must not be placed at src/OcctNative root: $($unexpectedNativeRootSources.Name -join ', ')"
 }
 
 # Old exported ABI naming is forbidden. Internal helper names are not checked here;
