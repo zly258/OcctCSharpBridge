@@ -1,4 +1,4 @@
-﻿#include "modeling/OcctModelingAnnotations.h"
+#include "modeling/OcctModelingAnnotations.h"
 #include "geometry/OcctBRepAnnotationBuilder.hxx"
 #include "geometry/OcctBRepTextBuilder.hxx"
 #include "modeling/OcctModelingSessionInternal.hxx"
@@ -12,12 +12,25 @@
 #include <stdexcept>
 #include <string>
 
-using namespace OcctModelingInternal;
+using OcctModelingInternal::ModelSession;
+using OcctModelingInternal::buildAngleAnnotation;
+using OcctModelingInternal::buildBRepText;
+using OcctModelingInternal::buildDiameterAnnotation;
+using OcctModelingInternal::buildLengthAnnotation;
+using OcctModelingInternal::buildRadiusAnnotation;
+using OcctModelingInternal::executeShapeStatus;
+using OcctModelingInternal::sessionOf;
 
 namespace
 {
     constexpr std::uint32_t TextOptionsApiVersion = 1;
     constexpr std::uint32_t AnnotationOptionsApiVersion = 1;
+
+    void requirePositive(double value, const char* name)
+    {
+        if (!std::isfinite(value) || value <= 0.0)
+            throw std::invalid_argument(std::string(name) + " must be finite and greater than zero.");
+    }
 
     Graphic3d_HorizontalTextAlignment horizontalAlignment(int value)
     {
@@ -53,8 +66,8 @@ namespace
         if (options == nullptr) throw std::invalid_argument("BRep annotation options are null.");
         if (options->structSize < sizeof(OcctBRepAnnotationOptions) || options->apiVersion != AnnotationOptionsApiVersion)
             throw std::invalid_argument("Unsupported BRep annotation options size or version.");
-        OcctBridge::requirePositive(options->textHeight, "Text height");
-        OcctBridge::requirePositive(options->arrowSize, "Arrow size");
+        requirePositive(options->textHeight, "Text height");
+        requirePositive(options->arrowSize, "Arrow size");
         if (!std::isfinite(options->offset)) throw std::invalid_argument("Annotation offset must be finite.");
     }
 
@@ -64,23 +77,6 @@ namespace
         if (shape.ShapeType() != TopAbs_EDGE)
             throw std::invalid_argument(std::string(name) + " must be an edge.");
         return TopoDS::Edge(shape);
-    }
-
-    template<typename Factory>
-    OcctStatus executeShapeStatus(ModelSession* model, OcctObjectId* output, Factory&& factory)
-    {
-        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
-        model->errors.clear();
-        if (output == nullptr)
-        {
-            model->errors.set(OcctStatus_ErrorInvalidArgument, "Result shape ID output is null.");
-            return OcctStatus_ErrorInvalidArgument;
-        }
-
-        *output = 0;
-        if (!execute(model, [&] { *output = model->addShape(factory()); }))
-            return model->errors.code;
-        return OcctStatus_Ok;
     }
 }
 
@@ -93,7 +89,7 @@ extern "C"
         const OcctBRepTextOptions* options,
         OcctObjectId* resultShapeId)
     {
-        ModelSession* model = reinterpret_cast<ModelSession*>(session);
+        ModelSession* model = sessionOf(session);
         return executeShapeStatus(model, resultShapeId, [&]
         {
             validateTextOptions(options);
@@ -119,7 +115,7 @@ extern "C"
         const OcctBRepAnnotationOptions* options,
         OcctObjectId* resultShapeId)
     {
-        ModelSession* model = reinterpret_cast<ModelSession*>(session);
+        ModelSession* model = sessionOf(session);
         return executeShapeStatus(model, resultShapeId, [&]
         {
             validateAnnotationOptions(options);
@@ -140,11 +136,11 @@ extern "C"
         const OcctBRepAnnotationOptions* options,
         OcctObjectId* resultShapeId)
     {
-        ModelSession* model = reinterpret_cast<ModelSession*>(session);
+        ModelSession* model = sessionOf(session);
         return executeShapeStatus(model, resultShapeId, [&]
         {
             validateAnnotationOptions(options);
-            OcctBridge::requirePositive(options->offset, "Angular annotation radius");
+            requirePositive(options->offset, "Angular annotation radius");
             return buildAngleAnnotation(
                 requireEdge(model, firstEdgeId, "First angular annotation input"),
                 requireEdge(model, secondEdgeId, "Second angular annotation input"),
@@ -162,7 +158,7 @@ extern "C"
         const OcctBRepAnnotationOptions* options,
         OcctObjectId* resultShapeId)
     {
-        ModelSession* model = reinterpret_cast<ModelSession*>(session);
+        ModelSession* model = sessionOf(session);
         return executeShapeStatus(model, resultShapeId, [&]
         {
             validateAnnotationOptions(options);
@@ -182,7 +178,7 @@ extern "C"
         const OcctBRepAnnotationOptions* options,
         OcctObjectId* resultShapeId)
     {
-        ModelSession* model = reinterpret_cast<ModelSession*>(session);
+        ModelSession* model = sessionOf(session);
         return executeShapeStatus(model, resultShapeId, [&]
         {
             validateAnnotationOptions(options);

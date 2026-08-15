@@ -1,6 +1,5 @@
-﻿#include "geometry/OcctBRepAnnotationBuilder.hxx"
+#include "geometry/OcctBRepAnnotationBuilder.hxx"
 #include "geometry/OcctBRepTextBuilder.hxx"
-#include "core/OcctInternal.hxx"
 
 #include <BRep_Builder.hxx>
 #include <BRepAdaptor_Curve.hxx>
@@ -15,6 +14,9 @@
 #include <gp_Ax1.hxx>
 #include <gp_Ax2.hxx>
 #include <gp_Circ.hxx>
+#include <gp_Dir.hxx>
+#include <gp_Pnt.hxx>
+#include <gp_Vec.hxx>
 
 #include <array>
 #include <cmath>
@@ -38,10 +40,16 @@ namespace
         TopoDS_Compound myCompound;
     };
 
+    void requirePositive(double value, const char* name)
+    {
+        if (!std::isfinite(value) || value <= 0.0)
+            throw std::invalid_argument(std::string(name) + " must be finite and greater than zero.");
+    }
+
     void requireAnnotationOptions(double textHeight, double arrowSize)
     {
-        OcctBridge::requirePositive(textHeight, "Text height");
-        OcctBridge::requirePositive(arrowSize, "Arrow size");
+        requirePositive(textHeight, "Text height");
+        requirePositive(arrowSize, "Arrow size");
     }
 
     TopoDS_Shape line(const gp_Pnt& start, const gp_Pnt& end)
@@ -205,7 +213,7 @@ namespace OcctModelingInternal
         const char* fontName)
     {
         requireAnnotationOptions(textHeight, arrowSize);
-        OcctBridge::requirePositive(radius, "Angular annotation radius");
+        requirePositive(radius, "Angular annotation radius");
         requireLineEdge(firstEdge, "First angular annotation input");
         requireLineEdge(secondEdge, "Second angular annotation input");
         const EdgeRay rays = angleRays(firstEdge, secondEdge);

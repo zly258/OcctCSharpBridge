@@ -1,5 +1,4 @@
-﻿#include "geometry/OcctBRepTextBuilder.hxx"
-#include "core/OcctInternal.hxx"
+#include "geometry/OcctBRepTextBuilder.hxx"
 
 #include <BRepPrimAPI_MakePrism.hxx>
 #include <Font_FontAspect.hxx>
@@ -10,9 +9,13 @@
 #include <StdPrs_BRepTextBuilder.hxx>
 #include <TCollection_AsciiString.hxx>
 #include <gp_Ax3.hxx>
+#include <gp_Dir.hxx>
+#include <gp_Pnt.hxx>
+#include <gp_Vec.hxx>
 
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -24,6 +27,29 @@ namespace
         if (bold) return Font_FA_Bold;
         if (italic) return Font_FA_Italic;
         return Font_FA_Regular;
+    }
+
+    void requirePositive(double value, const char* name)
+    {
+        if (!std::isfinite(value) || value <= 0.0)
+            throw std::invalid_argument(std::string(name) + " must be finite and greater than zero.");
+    }
+
+    gp_Pnt point(OcctPoint3d value)
+    {
+        if (!std::isfinite(value.x) || !std::isfinite(value.y) || !std::isfinite(value.z))
+            throw std::invalid_argument("Point coordinates must be finite.");
+        return gp_Pnt(value.x, value.y, value.z);
+    }
+
+    gp_Dir direction(OcctVector3d value)
+    {
+        if (!std::isfinite(value.x) || !std::isfinite(value.y) || !std::isfinite(value.z))
+            throw std::invalid_argument("Direction vector must be finite.");
+        const gp_Vec vector(value.x, value.y, value.z);
+        if (vector.SquareMagnitude() <= Precision::SquareConfusion())
+            throw std::invalid_argument("Direction vector must not be zero.");
+        return gp_Dir(vector);
     }
 
     bool initializeFont(
@@ -87,7 +113,7 @@ namespace OcctModelingInternal
     {
         if (utf8Text == nullptr || utf8Text[0] == '\0')
             throw std::invalid_argument("Text is empty.");
-        OcctBridge::requirePositive(height, "Text height");
+        requirePositive(height, "Text height");
         if (!std::isfinite(extrusionDepth) || extrusionDepth < 0.0)
             throw std::invalid_argument("Text extrusion depth must be non-negative.");
 
@@ -95,13 +121,13 @@ namespace OcctModelingInternal
         if (!initializeFont(font, fontName, fontAspect(bold, italic), height))
             throw std::runtime_error("No usable system font was found for BRep text generation.");
 
-        const gp_Dir normalDirection = OcctBridge::direction(normal);
-        const gp_Dir xAxisDirection = OcctBridge::direction(xDirection);
+        const gp_Dir normalDirection = direction(normal);
+        const gp_Dir xAxisDirection = direction(xDirection);
         if (std::abs(normalDirection.Dot(xAxisDirection)) > 1.0 - Precision::Angular())
             throw std::invalid_argument("Text x-direction must not be parallel to the text normal.");
 
         StdPrs_BRepTextBuilder builder;
-        const gp_Ax3 placement(OcctBridge::point(position), normalDirection, xAxisDirection);
+        const gp_Ax3 placement(point(position), normalDirection, xAxisDirection);
         TopoDS_Shape result = builder.Perform(
             font,
             NCollection_String(utf8Text),
