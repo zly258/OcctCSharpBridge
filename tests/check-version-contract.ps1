@@ -110,9 +110,9 @@ $projectFiles = [ordered]@{
     "tests/OcctNet.AvaloniaSmoke/OcctNet.AvaloniaSmoke.csproj" = $expectedTargetFramework
     "tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj" = $expectedTargetFramework
     "tests/OcctNet.Smoke/OcctNet.Smoke.csproj" = $expectedTargetFramework
-    "tools/OcctApiDocsGenerator/OcctApiDocsGenerator.csproj" = $expectedTargetFramework
     "src/OcctNet.WinForms/OcctNet.WinForms.csproj" = $expectedDesktopTargetFramework
     "src/OcctNet.Wpf/OcctNet.Wpf.csproj" = $expectedDesktopTargetFramework
+    "tools/OcctApiDocsGenerator/OcctApiDocsGenerator.csproj" = $expectedDesktopTargetFramework
 }
 foreach ($entry in $projectFiles.GetEnumerator()) {
     $relativePath = [string]$entry.Key
