@@ -15,19 +15,21 @@ extern "C"
         double halfSizeZ;
     };
 
-    OCCTBRIDGE_API int occt_model_shape_is_same(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_shape_is_same(
+        OcctModelingSessionHandle handle,
         OcctObjectId firstId,
-        OcctObjectId secondId);
+        OcctObjectId secondId,
+        OcctBool* result);
 
-    OCCTBRIDGE_API int occt_model_shape_is_partner(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_shape_is_partner(
+        OcctModelingSessionHandle handle,
         OcctObjectId firstId,
-        OcctObjectId secondId);
+        OcctObjectId secondId,
+        OcctBool* result);
 
-    OCCTBRIDGE_API int occt_model_shape_oriented_bounds(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_shape_oriented_bounds(
+        OcctModelingSessionHandle handle,
         OcctObjectId shapeId,
-        int optimal,
+        OcctBool optimal,
         OcctOrientedBounds* result);
 }
