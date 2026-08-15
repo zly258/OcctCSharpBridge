@@ -15,7 +15,8 @@ public sealed partial class OcctEngine
 
     public bool IsShapeValid(OcctShape shape)
     {
-        if (!Exists(shape)) return false;
+        EnsureNotDisposed();
+        if (!shape.IsValid || shape.OwnerId != _ownerId || !ObjectExists(shape.Id)) return false;
         EnsureInitialized();
         var status = ViewerShapeNativeMethods.occt_engine_shape_validity_get(_handle, shape.Id, out var value);
         if (status != OcctStatus.Ok) throw CreateException();

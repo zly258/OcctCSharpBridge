@@ -25,9 +25,7 @@ public sealed partial class OcctEngine
     public bool ContainsObject(long objectId)
     {
         EnsureNotDisposed();
-        if (objectId <= 0) return false;
-        CheckObjectStatus(ObjectNativeMethods.occt_engine_object_exists(_handle, objectId, out var exists));
-        return exists != 0;
+        return ObjectExists(objectId);
     }
 
     public OcctObjectKind GetObjectKind(long objectId)
@@ -122,7 +120,7 @@ public sealed partial class OcctEngine
         OcctObjectKind.Text => new OcctText(objectId, _ownerId),
         OcctObjectKind.Dimension => new OcctDimension(objectId, _ownerId),
         OcctObjectKind.Point => new OcctPoint(objectId, _ownerId),
-        OcctObjectKind.Overlay => new OcctOverlay(objectId, _ownerId),
+        OcctObjectKind.Overlay => new OcctOverlay(objectId, _ownerId, GetOverlayPrimitiveType(objectId)),
         OcctObjectKind.Manipulator => new OcctManipulator(objectId, _ownerId),
         _ => throw new NotSupportedException($"Object kind {kind} is not supported by the managed bridge.")
     };
