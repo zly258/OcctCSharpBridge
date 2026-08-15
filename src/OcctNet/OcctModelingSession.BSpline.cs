@@ -5,7 +5,7 @@ public sealed partial class OcctModelingSession
     public OcctBSplineCurveData GetBSplineCurveData(OcctModelShape edge)
     {
         EnsureShape(edge);
-        Check(ModelNativeMethods.occt_model_edge_bspline_info(_handle, edge.Id, out var info));
+        CheckStatus(ModelNativeMethods.occt_model_edge_bspline_info(_handle, edge.Id, out var info));
         if (info.Degree < 1 || info.PoleCount < 2 || info.KnotCount < 2)
             throw new InvalidOperationException("Native B-Spline metadata is invalid.");
 
@@ -13,7 +13,7 @@ public sealed partial class OcctModelingSession
         var weights = new double[info.PoleCount];
         for (var index = 0; index < poles.Length; index++)
         {
-            Check(ModelNativeMethods.occt_model_edge_bspline_pole_at(
+            CheckStatus(ModelNativeMethods.occt_model_edge_bspline_pole_at(
                 _handle,
                 edge.Id,
                 index,
@@ -26,7 +26,7 @@ public sealed partial class OcctModelingSession
         var multiplicities = new int[info.KnotCount];
         for (var index = 0; index < knots.Length; index++)
         {
-            Check(ModelNativeMethods.occt_model_edge_bspline_knot_at(
+            CheckStatus(ModelNativeMethods.occt_model_edge_bspline_knot_at(
                 _handle,
                 edge.Id,
                 index,
@@ -48,7 +48,7 @@ public sealed partial class OcctModelingSession
     public OcctBSplineSurfaceData GetBSplineSurfaceData(OcctModelShape face)
     {
         EnsureShape(face);
-        Check(ModelNativeMethods.occt_model_face_bspline_info(_handle, face.Id, out var info));
+        CheckStatus(ModelNativeMethods.occt_model_face_bspline_info(_handle, face.Id, out var info));
         if (info.UDegree < 1 || info.VDegree < 1 ||
             info.UPoleCount < 2 || info.VPoleCount < 2 ||
             info.UKnotCount < 2 || info.VKnotCount < 2)
@@ -64,7 +64,7 @@ public sealed partial class OcctModelingSession
             for (var vIndex = 0; vIndex < info.VPoleCount; vIndex++)
             {
                 var flatIndex = checked(uIndex * info.VPoleCount + vIndex);
-                Check(ModelNativeMethods.occt_model_face_bspline_pole_at(
+                CheckStatus(ModelNativeMethods.occt_model_face_bspline_pole_at(
                     _handle,
                     face.Id,
                     uIndex,
@@ -79,7 +79,7 @@ public sealed partial class OcctModelingSession
         var uMultiplicities = new int[info.UKnotCount];
         for (var index = 0; index < uKnots.Length; index++)
         {
-            Check(ModelNativeMethods.occt_model_face_bspline_u_knot_at(
+            CheckStatus(ModelNativeMethods.occt_model_face_bspline_u_knot_at(
                 _handle,
                 face.Id,
                 index,
@@ -92,7 +92,7 @@ public sealed partial class OcctModelingSession
         var vMultiplicities = new int[info.VKnotCount];
         for (var index = 0; index < vKnots.Length; index++)
         {
-            Check(ModelNativeMethods.occt_model_face_bspline_v_knot_at(
+            CheckStatus(ModelNativeMethods.occt_model_face_bspline_v_knot_at(
                 _handle,
                 face.Id,
                 index,
