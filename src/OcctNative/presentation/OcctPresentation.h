@@ -31,6 +31,17 @@ extern "C"
         int offsetY;
     };
 
+    struct OcctViewerTransformPersistenceOptions
+    {
+        std::uint32_t structSize;
+        std::uint32_t apiVersion;
+        int mode;
+        OcctPoint3d anchor;
+        int position;
+        int offsetX;
+        int offsetY;
+    };
+
     struct OcctPresentationClipPlane
     {
         OcctPoint3d point;
@@ -127,43 +138,33 @@ extern "C"
         OcctObjectId objectId,
         int dynamic);
 
-    // Frozen ABI4 compatibility. Implemented by the presentation domain.
-    OCCTBRIDGE_API int occt_set_object_display_priority(
-        OcctHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_engine_object_display_priority_set(
+        OcctEngineHandle handle,
         OcctObjectId objectId,
         int priority);
 
-    OCCTBRIDGE_API int occt_set_objects_display_priority(
-        OcctHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_engine_objects_display_priority_set(
+        OcctEngineHandle handle,
         const OcctObjectId* objectIds,
         int count,
         int priority);
 
-    OCCTBRIDGE_API int occt_get_object_display_priority(
-        OcctHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_engine_object_display_priority_get(
+        OcctEngineHandle handle,
         OcctObjectId objectId,
         int* priority);
 
-    OCCTBRIDGE_API int occt_set_object_transform_persistence_3d(
-        OcctHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_engine_object_transform_persistence_set(
+        OcctEngineHandle handle,
         OcctObjectId objectId,
-        int mode,
-        OcctPoint3d anchor);
+        const OcctViewerTransformPersistenceOptions* options);
 
-    OCCTBRIDGE_API int occt_set_object_transform_persistence_2d(
-        OcctHandle handle,
-        OcctObjectId objectId,
-        int mode,
-        int position,
-        int offsetX,
-        int offsetY);
-
-    OCCTBRIDGE_API int occt_clear_object_transform_persistence(
-        OcctHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_engine_object_transform_persistence_clear(
+        OcctEngineHandle handle,
         OcctObjectId objectId);
 
-    OCCTBRIDGE_API int occt_get_object_transform_persistence(
-        OcctHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_engine_object_transform_persistence_get(
+        OcctEngineHandle handle,
         OcctObjectId objectId,
         OcctTransformPersistenceState* result);
 }
