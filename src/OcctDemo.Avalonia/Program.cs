@@ -17,8 +17,6 @@ internal static class Program
         try
         {
             Directory.SetCurrentDirectory(AppContext.BaseDirectory);
-            EnsureNativeBridgeIsDiscoverable();
-            Trace("Native bridge discovery check passed.");
             Trace("Starting Avalonia classic desktop lifetime.");
 
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
@@ -67,29 +65,6 @@ internal static class Program
             CrashReporter.Write(ApplicationName, args.Exception, "TaskScheduler.UnobservedTaskException");
             args.SetObserved();
         };
-    }
-
-    private static void EnsureNativeBridgeIsDiscoverable()
-    {
-        var libraryName = OperatingSystem.IsWindows()
-            ? "OcctNative.dll"
-            : OperatingSystem.IsLinux()
-                ? "libOcctNative.so"
-                : throw new PlatformNotSupportedException("CAD-Avalonia currently supports Windows x64 and Linux x64.");
-
-        var localBridge = Path.Combine(AppContext.BaseDirectory, libraryName);
-        if (File.Exists(localBridge))
-            return;
-
-        var configuredDirectory = Environment.GetEnvironmentVariable("OCCT_BRIDGE_NATIVE_DIR");
-        if (!string.IsNullOrWhiteSpace(configuredDirectory) &&
-            File.Exists(Path.Combine(configuredDirectory, libraryName)))
-            return;
-
-        throw new FileNotFoundException(
-            $"{libraryName} was not found beside the CAD-Avalonia application. " +
-            "Build with build.ps1 avalonia on Windows or ./build.sh avalonia on Linux so the native bridge is deployed next to the demo.",
-            localBridge);
     }
 
     private static void ReportFatal(string message, Exception exception)
