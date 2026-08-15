@@ -1,4 +1,4 @@
-﻿# Architecture and Boundaries
+# Architecture and Boundaries
 
 `main` keeps the reusable Bridge separate from product-level CAD/BIM architecture.
 
@@ -26,11 +26,36 @@ XDE may be used internally for STEP assembly/product structure and presentation 
 
 `main` owns the formal Avalonia host and the shared Windows/Linux Native Core. The `demo` and `avalonia` branches consume published SDK artifacts and do not carry private Bridge implementations.
 
+## Domain layout
+
+Managed and Native source trees use the same **domain-level ownership model** instead of a flat source directory or a file-for-file mirror. Public managed namespaces remain `OcctNet`; folders express internal source ownership and do not create artificial public namespaces.
+
+```text
+src/OcctNet/                 src/OcctNative/
+├─ Core/                     ├─ core/
+├─ Exchange/                 ├─ exchange/
+├─ Geometry/                 ├─ geometry/
+├─ Mesh/                     ├─ mesh/
+├─ Modeling/                 ├─ modeling/
+├─ Platform/                 ├─ platform/
+├─ Presentation/             ├─ presentation/
+├─ Scene/                    ├─ scene/
+├─ Selection/                ├─ selection/
+└─ Topology/                 └─ topology/
+                              └─ viewer/
+```
+
+Managed P/Invoke declarations live below the owning domain's `Interop/` directory. Generic root-level `NativeMethods.*` dumping grounds, migration names such as `*.Current.*`, and compatibility/legacy source names are not part of the ABI5 architecture.
+
+The Managed root keeps only project-level files such as `AssemblyInfo.cs`, `GlobalUsings.cs` and `OcctNet.csproj`. The Native root keeps only build/ABI umbrella files such as `CMakeLists.txt`, `OcctNative.h` and `OcctStatus.h`; domain implementations belong in domain directories.
+
+## Native boundaries
+
 Native operating-system integration is confined to `src/OcctNative/platform`. Window-system types and calls must not enter the public ABI or other native domains.
 
 Exchange implementation, STEP/XCAF document state, and import source metadata belong to `src/OcctNative/exchange`. Triangulation extraction belongs to `src/OcctNative/mesh`. Neither domain owns Viewer state; headless Modeling reaches them through the shared Modeling Session.
 
-Selection state, detection, selection overlays, and manipulators belong to `src/OcctNative/selection`. Visual appearance, overlays, and custom presentations belong to `src/OcctNative/presentation`; both use Viewer services without taking ownership of the Viewer context.
+Selection state, detection, selection overlays, and manipulators belong to `src/OcctNative/selection`. Visual appearance, overlays, annotations and custom presentations belong to `src/OcctNative/presentation`; both use Viewer services without taking ownership of the Viewer context.
 
 Engine coordination and structured native error state belong to `src/OcctNative/core`. Core composes ViewerContext, SceneRegistry, DocumentStore and rendering state; it does not own UI-framework adapters or application-level document and command models.
 
