@@ -1,9 +1,15 @@
-﻿namespace OcctNet;
+using System.Runtime.InteropServices;
+
+namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
-    public OcctManipulator AddManipulator() =>
-        CheckManipulator(ManipulatorNativeMethods.occt_add_manipulator(_handle));
+    public OcctManipulator AddManipulator()
+    {
+        EnsureInitialized();
+        CheckManipulatorStatus(ManipulatorNativeMethods.occt_engine_manipulator_create(_handle, out var id));
+        return CheckManipulator(id);
+    }
 
     public void AttachManipulator(
         OcctManipulator manipulator,
@@ -16,24 +22,35 @@ public sealed partial class OcctEngine
         if (ids.Contains(manipulator.Id)) throw new ArgumentException("Manipulator cannot be attached to itself.", nameof(objects));
 
         options ??= new OcctManipulatorAttachOptions();
-        var native = new NativeOcctManipulatorAttachOptions
+        var native = new NativeManipulatorAttachOptionsV1
         {
+            StructSize = (uint)Marshal.SizeOf<NativeManipulatorAttachOptionsV1>(),
+            ApiVersion = 1,
             AdjustPosition = options.AdjustPosition ? 1 : 0,
             AdjustSize = options.AdjustSize ? 1 : 0,
             EnableModes = options.EnableModes ? 1 : 0
         };
-        Check(ManipulatorNativeMethods.occt_attach_manipulator(
-            _handle,
-            manipulator.Id,
-            ids,
-            ids.Length,
-            in native));
+
+        var pinned = GCHandle.Alloc(ids, GCHandleType.Pinned);
+        try
+        {
+            CheckManipulatorStatus(ManipulatorNativeMethods.occt_engine_manipulator_attach(
+                _handle,
+                manipulator.Id,
+                pinned.AddrOfPinnedObject(),
+                ids.Length,
+                in native));
+        }
+        finally
+        {
+            pinned.Free();
+        }
     }
 
     public void DetachManipulator(OcctManipulator manipulator)
     {
         EnsureManipulator(manipulator);
-        Check(ManipulatorNativeMethods.occt_detach_manipulator(_handle, manipulator.Id));
+        CheckManipulatorStatus(ManipulatorNativeMethods.occt_engine_manipulator_detach(_handle, manipulator.Id));
     }
 
     public void SetManipulatorPart(
@@ -45,12 +62,15 @@ public sealed partial class OcctEngine
         EnsureManipulator(manipulator);
         ValidateManipulatorMode(mode);
         if (axisIndex is < 0 or > 2) throw new ArgumentOutOfRangeException(nameof(axisIndex));
-        Check(ManipulatorNativeMethods.occt_set_manipulator_part(
-            _handle,
-            manipulator.Id,
-            axisIndex ?? -1,
-            (int)mode,
-            enabled ? 1 : 0));
+        UpdateManipulator(manipulator, new NativeManipulatorUpdateOptions
+        {
+            StructSize = (uint)Marshal.SizeOf<NativeManipulatorUpdateOptions>(),
+            ApiVersion = 1,
+            UpdateMask = NativeManipulatorUpdateMask.Part,
+            AxisIndex = axisIndex ?? -1,
+            Mode = (int)mode,
+            Enabled = enabled ? 1 : 0
+        });
     }
 
     public void SetManipulatorModeEnabled(
@@ -60,20 +80,26 @@ public sealed partial class OcctEngine
     {
         EnsureManipulator(manipulator);
         ValidateManipulatorMode(mode);
-        Check(ManipulatorNativeMethods.occt_set_manipulator_mode_enabled(
-            _handle,
-            manipulator.Id,
-            (int)mode,
-            enabled ? 1 : 0));
+        UpdateManipulator(manipulator, new NativeManipulatorUpdateOptions
+        {
+            StructSize = (uint)Marshal.SizeOf<NativeManipulatorUpdateOptions>(),
+            ApiVersion = 1,
+            UpdateMask = NativeManipulatorUpdateMask.ModeEnabled,
+            Mode = (int)mode,
+            Enabled = enabled ? 1 : 0
+        });
     }
 
     public void SetManipulatorModeActivationOnDetection(OcctManipulator manipulator, bool enabled)
     {
         EnsureManipulator(manipulator);
-        Check(ManipulatorNativeMethods.occt_set_manipulator_mode_activation_on_detection(
-            _handle,
-            manipulator.Id,
-            enabled ? 1 : 0));
+        UpdateManipulator(manipulator, new NativeManipulatorUpdateOptions
+        {
+            StructSize = (uint)Marshal.SizeOf<NativeManipulatorUpdateOptions>(),
+            ApiVersion = 1,
+            UpdateMask = NativeManipulatorUpdateMask.ModeActivationOnDetection,
+            Enabled = enabled ? 1 : 0
+        });
     }
 
     public void SetManipulatorPosition(
@@ -90,48 +116,78 @@ public sealed partial class OcctEngine
         var normalizedX = xDirection.Normalized();
         if (Math.Abs(normalizedNormal.Dot(normalizedX)) > 1.0 - 1e-10)
             throw new ArgumentException("Manipulator normal and X direction must not be parallel.", nameof(xDirection));
-        Check(ManipulatorNativeMethods.occt_set_manipulator_position(
-            _handle,
-            manipulator.Id,
-            origin,
-            normal,
-            xDirection));
+
+        UpdateManipulator(manipulator, new NativeManipulatorUpdateOptions
+        {
+            StructSize = (uint)Marshal.SizeOf<NativeManipulatorUpdateOptions>(),
+            ApiVersion = 1,
+            UpdateMask = NativeManipulatorUpdateMask.Position,
+            Origin = origin,
+            Normal = normal,
+            XDirection = xDirection
+        });
     }
 
     public void SetManipulatorSize(OcctManipulator manipulator, double size)
     {
         EnsureManipulator(manipulator);
         OcctGuard.Positive(size, nameof(size));
-        Check(ManipulatorNativeMethods.occt_set_manipulator_size(_handle, manipulator.Id, size));
+        UpdateManipulator(manipulator, new NativeManipulatorUpdateOptions
+        {
+            StructSize = (uint)Marshal.SizeOf<NativeManipulatorUpdateOptions>(),
+            ApiVersion = 1,
+            UpdateMask = NativeManipulatorUpdateMask.Size,
+            Size = size
+        });
     }
 
     public void SetManipulatorGap(OcctManipulator manipulator, double gap)
     {
         EnsureManipulator(manipulator);
         if (!double.IsFinite(gap) || gap < 0.0) throw new ArgumentOutOfRangeException(nameof(gap));
-        Check(ManipulatorNativeMethods.occt_set_manipulator_gap(_handle, manipulator.Id, gap));
+        UpdateManipulator(manipulator, new NativeManipulatorUpdateOptions
+        {
+            StructSize = (uint)Marshal.SizeOf<NativeManipulatorUpdateOptions>(),
+            ApiVersion = 1,
+            UpdateMask = NativeManipulatorUpdateMask.Gap,
+            Gap = gap
+        });
     }
 
     public void SetManipulatorZoomPersistence(OcctManipulator manipulator, bool enabled)
     {
         EnsureManipulator(manipulator);
-        Check(ManipulatorNativeMethods.occt_set_manipulator_zoom_persistence(
-            _handle,
-            manipulator.Id,
-            enabled ? 1 : 0));
+        UpdateManipulator(manipulator, new NativeManipulatorUpdateOptions
+        {
+            StructSize = (uint)Marshal.SizeOf<NativeManipulatorUpdateOptions>(),
+            ApiVersion = 1,
+            UpdateMask = NativeManipulatorUpdateMask.ZoomPersistence,
+            Enabled = enabled ? 1 : 0
+        });
     }
 
     public void SetManipulatorSkin(OcctManipulator manipulator, OcctManipulatorSkin skin)
     {
         EnsureManipulator(manipulator);
         if (!Enum.IsDefined(skin)) throw new ArgumentOutOfRangeException(nameof(skin));
-        Check(ManipulatorNativeMethods.occt_set_manipulator_skin(_handle, manipulator.Id, (int)skin));
+        UpdateManipulator(manipulator, new NativeManipulatorUpdateOptions
+        {
+            StructSize = (uint)Marshal.SizeOf<NativeManipulatorUpdateOptions>(),
+            ApiVersion = 1,
+            UpdateMask = NativeManipulatorUpdateMask.Skin,
+            SkinMode = (int)skin
+        });
     }
 
     public OcctManipulatorState GetManipulatorState(OcctManipulator manipulator)
     {
         EnsureManipulator(manipulator);
-        Check(ManipulatorNativeMethods.occt_get_manipulator_state(_handle, manipulator.Id, out var native));
+        CheckManipulatorStatus(ManipulatorNativeMethods.occt_engine_manipulator_state_get(
+            _handle,
+            manipulator.Id,
+            out var native));
+        if (native.ApiVersion != 1 || native.StructSize < (uint)Marshal.SizeOf<NativeManipulatorStateV1>())
+            throw new OcctException("Native manipulator state ABI is incompatible with this SDK.");
         if (!Enum.IsDefined(typeof(OcctManipulatorMode), native.ActiveMode))
             throw new InvalidOperationException($"Native manipulator mode {native.ActiveMode} is not supported.");
         if (!Enum.IsDefined(typeof(OcctManipulatorSkin), native.SkinMode))
@@ -153,51 +209,83 @@ public sealed partial class OcctEngine
     public IReadOnlyList<IOcctObject> GetManipulatorTargets(OcctManipulator manipulator)
     {
         EnsureManipulator(manipulator);
-        Check(ManipulatorNativeMethods.occt_get_manipulator_objects(
+        CheckManipulatorStatus(ManipulatorNativeMethods.occt_engine_manipulator_targets_get(
             _handle,
             manipulator.Id,
-            null,
+            IntPtr.Zero,
             0,
             out var count));
         if (count == 0) return Array.Empty<IOcctObject>();
+        if (count < 0) throw new InvalidOperationException("Native manipulator target count is invalid.");
 
         var ids = new long[count];
-        Check(ManipulatorNativeMethods.occt_get_manipulator_objects(
-            _handle,
-            manipulator.Id,
-            ids,
-            ids.Length,
-            out var copied));
-        if (copied != ids.Length)
-            throw new InvalidOperationException("Manipulator target set changed while reading it.");
+        var pinned = GCHandle.Alloc(ids, GCHandleType.Pinned);
+        try
+        {
+            CheckManipulatorStatus(ManipulatorNativeMethods.occt_engine_manipulator_targets_get(
+                _handle,
+                manipulator.Id,
+                pinned.AddrOfPinnedObject(),
+                ids.Length,
+                out var copied));
+            if (copied != ids.Length)
+                throw new InvalidOperationException("Manipulator target set changed while reading it.");
+        }
+        finally
+        {
+            pinned.Free();
+        }
         return ids.Select(GetObject).ToArray();
     }
 
-    public void StartManipulatorTransform(OcctManipulator manipulator, int x, int y)
-    {
-        EnsureManipulator(manipulator);
-        Check(ManipulatorNativeMethods.occt_start_manipulator_transform(_handle, manipulator.Id, x, y));
-    }
+    public void StartManipulatorTransform(OcctManipulator manipulator, int x, int y) =>
+        TransformManipulator(manipulator, NativeManipulatorTransformAction.Start, x, y, apply: false);
 
-    public void UpdateManipulatorTransform(OcctManipulator manipulator, int x, int y)
-    {
-        EnsureManipulator(manipulator);
-        Check(ManipulatorNativeMethods.occt_update_manipulator_transform(_handle, manipulator.Id, x, y));
-    }
+    public void UpdateManipulatorTransform(OcctManipulator manipulator, int x, int y) =>
+        TransformManipulator(manipulator, NativeManipulatorTransformAction.Update, x, y, apply: false);
 
-    public void StopManipulatorTransform(OcctManipulator manipulator, bool apply = true)
+    public void StopManipulatorTransform(OcctManipulator manipulator, bool apply = true) =>
+        TransformManipulator(manipulator, NativeManipulatorTransformAction.Stop, 0, 0, apply);
+
+    public void DeactivateManipulatorMode(OcctManipulator manipulator) =>
+        TransformManipulator(manipulator, NativeManipulatorTransformAction.DeactivateMode, 0, 0, apply: false);
+
+    private void UpdateManipulator(OcctManipulator manipulator, NativeManipulatorUpdateOptions options)
     {
-        EnsureManipulator(manipulator);
-        Check(ManipulatorNativeMethods.occt_stop_manipulator_transform(
+        EnsureInitialized();
+        CheckManipulatorStatus(ManipulatorNativeMethods.occt_engine_manipulator_update(
             _handle,
             manipulator.Id,
-            apply ? 1 : 0));
+            in options));
     }
 
-    public void DeactivateManipulatorMode(OcctManipulator manipulator)
+    private void TransformManipulator(
+        OcctManipulator manipulator,
+        NativeManipulatorTransformAction action,
+        int x,
+        int y,
+        bool apply)
     {
         EnsureManipulator(manipulator);
-        Check(ManipulatorNativeMethods.occt_deactivate_manipulator_mode(_handle, manipulator.Id));
+        var options = new NativeManipulatorTransformOptions
+        {
+            StructSize = (uint)Marshal.SizeOf<NativeManipulatorTransformOptions>(),
+            ApiVersion = 1,
+            Action = action,
+            X = x,
+            Y = y,
+            Apply = apply ? 1 : 0
+        };
+        EnsureInitialized();
+        CheckManipulatorStatus(ManipulatorNativeMethods.occt_engine_manipulator_transform(
+            _handle,
+            manipulator.Id,
+            in options));
+    }
+
+    private void CheckManipulatorStatus(OcctStatus status)
+    {
+        if (status != OcctStatus.Ok) throw CreateException();
     }
 
     private static void ValidateManipulatorMode(OcctManipulatorMode mode)
