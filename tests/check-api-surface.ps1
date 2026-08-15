@@ -137,12 +137,12 @@ $adapterManagedText = Read-AllText $adapterManagedSourceFiles
 $declarationPattern = '\b(occt_[a-z0-9_]+)\s*\([^{};]*\)\s*;'
 $definitionPattern = '\b(occt_[a-z0-9_]+)\s*\([^;{}]*\)\s*\{'
 $managedInteropPattern = '\b(?:extern|(?:unsafe\s+)?partial)\s+[A-Za-z0-9_\.<>\[\],\?\*]+\s+(occt_[a-z0-9_]+)\s*\('
-$declarationRaw = Get-RawMatches $headerText $declarationPattern
-$allNativeDeclarationRaw = Get-RawMatches $allNativeHeaderText $declarationPattern
-$definitionRaw = Get-RawMatches $cppText $definitionPattern
-$interopRaw = Get-RawMatches $coreInteropText $managedInteropPattern
-$libraryImportRaw = Get-RawMatches $coreInteropText '(?s)\[LibraryImport\([^\]]+\)\]\s*\[UnmanagedCallConv\(CallConvs\s*=\s*\[typeof\((?:System\.Runtime\.CompilerServices\.)?CallConvCdecl\)\]\)\]\s*internal\s+static\s+(?:unsafe\s+)?partial\s+[A-Za-z0-9_\.<>\[\],\?\*]+\s+(occt_[a-z0-9_]+)\s*\('
-$adapterInteropRaw = Get-RawMatches $adapterManagedText $managedInteropPattern
+$declarationRaw = @(Get-RawMatches $headerText $declarationPattern)
+$allNativeDeclarationRaw = @(Get-RawMatches $allNativeHeaderText $declarationPattern)
+$definitionRaw = @(Get-RawMatches $cppText $definitionPattern)
+$interopRaw = @(Get-RawMatches $coreInteropText $managedInteropPattern)
+$libraryImportRaw = @(Get-RawMatches $coreInteropText '(?s)\[LibraryImport\([^\]]+\)\]\s*\[UnmanagedCallConv\(CallConvs\s*=\s*\[typeof\((?:System\.Runtime\.CompilerServices\.)?CallConvCdecl\)\]\)\]\s*internal\s+static\s+(?:unsafe\s+)?partial\s+[A-Za-z0-9_\.<>\[\],\?\*]+\s+(occt_[a-z0-9_]+)\s*\(')
+$adapterInteropRaw = @(Get-RawMatches $adapterManagedText $managedInteropPattern)
 
 Assert-NoDuplicates "canonical native declarations" $declarationRaw
 Assert-NoDuplicates "native declarations across tracked headers" $allNativeDeclarationRaw
