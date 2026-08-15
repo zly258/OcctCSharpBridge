@@ -1,5 +1,4 @@
-﻿using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace OcctNet;
@@ -92,6 +91,25 @@ public sealed partial class OcctEngine : IDisposable
         return new OcctException(message, status, operation, nativeMessage);
     }
 
+    private bool ObjectExists(long objectId)
+    {
+        if (objectId <= 0) return false;
+        var status = ObjectNativeMethods.occt_engine_object_exists(_handle, objectId, out var exists);
+        if (status != OcctStatus.Ok) throw CreateException();
+        if (exists is not 0 and not 1)
+            throw new InvalidOperationException("Native object-existence state is invalid.");
+        return exists != 0;
+    }
+
+    private OcctObjectKind QueryObjectKind(long objectId)
+    {
+        var status = ObjectNativeMethods.occt_engine_object_kind_get(_handle, objectId, out var kind);
+        if (status != OcctStatus.Ok) throw CreateException();
+        if (!Enum.IsDefined(typeof(OcctObjectKind), kind))
+            throw new InvalidOperationException($"Native object kind {kind} is not supported by this SDK.");
+        return (OcctObjectKind)kind;
+    }
+
     private void EnsureObject(IOcctObject value)
     {
         ArgumentNullException.ThrowIfNull(value);
@@ -99,7 +117,7 @@ public sealed partial class OcctEngine : IDisposable
 
         if (GetOwnerId(value) != _ownerId)
             throw new ArgumentException("Object does not belong to this OcctEngine.", nameof(value));
-        if (value.Id <= 0 || NativeMethods.occt_object_exists(_handle, value.Id) == 0)
+        if (!ObjectExists(value.Id))
             throw new ArgumentException("Object no longer exists in this OcctEngine.", nameof(value));
     }
 
@@ -108,31 +126,28 @@ public sealed partial class OcctEngine : IDisposable
         EnsureNotDisposed();
         if (!shape.IsValid || shape.OwnerId != _ownerId)
             throw new ArgumentException("Shape does not belong to this OcctEngine.", nameof(shape));
-        if (NativeMethods.occt_object_exists(_handle, shape.Id) == 0 ||
-            NativeMethods.occt_object_kind(_handle, shape.Id) != (int)OcctObjectKind.Shape)
-        {
+        if (!ObjectExists(shape.Id) || QueryObjectKind(shape.Id) != OcctObjectKind.Shape)
             throw new ArgumentException("Shape no longer exists in this OcctEngine.", nameof(shape));
-        }
     }
 
     private void EnsureText(OcctText text)
     {
         EnsureObject(text);
-        if (NativeMethods.occt_object_kind(_handle, text.Id) != (int)OcctObjectKind.Text)
+        if (QueryObjectKind(text.Id) != OcctObjectKind.Text)
             throw new ArgumentException("Object is not a text object in this OcctEngine.", nameof(text));
     }
 
     private void EnsureDimension(OcctDimension dimension)
     {
         EnsureObject(dimension);
-        if (NativeMethods.occt_object_kind(_handle, dimension.Id) != (int)OcctObjectKind.Dimension)
+        if (QueryObjectKind(dimension.Id) != OcctObjectKind.Dimension)
             throw new ArgumentException("Object is not a dimension object in this OcctEngine.", nameof(dimension));
     }
 
     private void EnsureOverlay(OcctOverlay overlay, OcctOverlayPrimitiveType? primitiveType = null)
     {
         EnsureObject(overlay);
-        if (NativeMethods.occt_object_kind(_handle, overlay.Id) != (int)OcctObjectKind.Overlay)
+        if (QueryObjectKind(overlay.Id) != OcctObjectKind.Overlay)
             throw new ArgumentException("Object is not an overlay object in this OcctEngine.", nameof(overlay));
         if (primitiveType is { } expected && overlay.PrimitiveType != expected)
             throw new ArgumentException($"Overlay must be of type {expected}.", nameof(overlay));
@@ -141,7 +156,7 @@ public sealed partial class OcctEngine : IDisposable
     private void EnsureManipulator(OcctManipulator manipulator)
     {
         EnsureObject(manipulator);
-        if (NativeMethods.occt_object_kind(_handle, manipulator.Id) != (int)OcctObjectKind.Manipulator)
+        if (QueryObjectKind(manipulator.Id) != OcctObjectKind.Manipulator)
             throw new ArgumentException("Object is not a manipulator in this OcctEngine.", nameof(manipulator));
     }
 
