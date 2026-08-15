@@ -179,7 +179,7 @@ public sealed partial class DemoSession
             values.Point(),
             values.Number("height", 18),
             values.Number("depth", 0),
-            values.Text("font", "Microsoft YaHei UI"),
+            DemoFonts.ResolveOcctFont(values.Text("font", DemoFonts.OcctSansSerif)),
             bold: values.Boolean("bold"),
             italic: values.Boolean("italic"));
         Engine.SetColor(text, Color.DarkSlateGray);
@@ -198,7 +198,7 @@ public sealed partial class DemoSession
                 values.Number("flyout", 20),
                 values.Number("textHeight", 8),
                 values.Number("arrowSize", 5),
-                values.Text("font", "Microsoft YaHei UI"));
+                DemoFonts.ResolveOcctFont(values.Text("font", DemoFonts.OcctSansSerif)));
             SetGeneratedName(dimension, DemoLocalization.CommandText(DemoCommandId.LengthDimension));
             ActiveObject = dimension;
             return DemoCommandResult.Created(DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(DemoCommandId.LengthDimension)), dimension);
@@ -221,7 +221,7 @@ public sealed partial class DemoSession
                 values.Number("flyout", 30),
                 values.Number("textHeight", 8),
                 values.Number("arrowSize", 5),
-                values.Text("font", "Microsoft YaHei UI"));
+                DemoFonts.ResolveOcctFont(values.Text("font", DemoFonts.OcctSansSerif)));
             SetGeneratedName(dimension, DemoLocalization.CommandText(DemoCommandId.AngleDimension));
             ActiveObject = dimension;
             return DemoCommandResult.Created(DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(DemoCommandId.AngleDimension)), dimension);
@@ -244,13 +244,13 @@ public sealed partial class DemoSession
                     values.Number("flyout", 20),
                     values.Number("textHeight", 8),
                     values.Number("arrowSize", 5),
-                    values.Text("font", "Microsoft YaHei UI"))
+                    DemoFonts.ResolveOcctFont(values.Text("font", DemoFonts.OcctSansSerif)))
                 : Engine.MakeRadiusAnnotationShape(
                     edge,
                     values.Number("flyout", 20),
                     values.Number("textHeight", 8),
                     values.Number("arrowSize", 5),
-                    values.Text("font", "Microsoft YaHei UI"));
+                    DemoFonts.ResolveOcctFont(values.Text("font", DemoFonts.OcctSansSerif)));
             var commandId = diameter ? DemoCommandId.DiameterDimension : DemoCommandId.RadiusDimension;
             SetGeneratedName(dimension, DemoLocalization.CommandText(commandId));
             ActiveObject = dimension;

@@ -176,7 +176,7 @@ public sealed partial class DemoSession
         results.Add(Name(cutResult, Local("Boolean Feature", "布尔特征")));
 
         results.Add(Name(Engine.MakeTorus(42, 11, new(330, 30, 35)), Local("Torus", "圆环体")));
-        var vectorText = Engine.MakeTextShape(Local("VECTOR", "矢量"), new(-80, 120, 0), 28, 2, "Microsoft YaHei UI", bold: true);
+        var vectorText = Engine.MakeTextShape(Local("VECTOR", "矢量"), new(-80, 120, 0), 28, 2, DemoFonts.OcctSansSerif, bold: true);
         Engine.SetColor(vectorText, Color.DarkSlateBlue);
         results.Add(Name(vectorText, Local("BRep Vector Text", "BRep 矢量文字")));
 
@@ -327,16 +327,16 @@ public sealed partial class DemoSession
         var radiusSource = Engine.MakeCircle(new(70, 55, 0), OcctVector3d.UnitZ, 38);
         var diameterSource = Engine.MakeCircle(new(185, -65, 0), OcctVector3d.UnitZ, 34);
 
-        var length = Engine.MakeLengthAnnotationShape(lengthSource, 26, 9, 6, "Microsoft YaHei UI");
-        var angle = Engine.MakeAngleAnnotationShape(angleFirst, angleSecond, 46, 9, 6, "Microsoft YaHei UI");
-        var radius = Engine.MakeRadiusAnnotationShape(radiusSource, 28, 9, 6, "Microsoft YaHei UI");
-        var diameter = Engine.MakeDiameterAnnotationShape(diameterSource, 24, 9, 6, "Microsoft YaHei UI");
+        var length = Engine.MakeLengthAnnotationShape(lengthSource, 26, 9, 6, DemoFonts.OcctSansSerif);
+        var angle = Engine.MakeAngleAnnotationShape(angleFirst, angleSecond, 46, 9, 6, DemoFonts.OcctSansSerif);
+        var radius = Engine.MakeRadiusAnnotationShape(radiusSource, 28, 9, 6, DemoFonts.OcctSansSerif);
+        var diameter = Engine.MakeDiameterAnnotationShape(diameterSource, 24, 9, 6, DemoFonts.OcctSansSerif);
         var text = Engine.MakeTextShape(
             Local("VECTOR ANNOTATIONS", "矢量注释标注"),
             new(-190, 135, 0),
             24,
             1.5,
-            "Microsoft YaHei UI",
+            DemoFonts.OcctSansSerif,
             bold: true);
 
         Name(length, Local("Vector Linear Dimension", "矢量线性尺寸"));

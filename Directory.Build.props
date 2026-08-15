@@ -1,4 +1,4 @@
-﻿<Project>
+<Project>
   <PropertyGroup>
     <LangVersion>14.0</LangVersion>
     <Deterministic>true</Deterministic>
@@ -9,7 +9,9 @@
     <Authors>zly258</Authors>
     <Company>zly258</Company>
     <Product>OcctCSharpBridge Demo</Product>
-    <Description>Binary SDK consumer demos for OcctCSharpBridge on .NET 10 and Windows x64.</Description>
-    <OcctBridgeDistRoot>$(MSBuildThisFileDirectory)dist\win-x64</OcctBridgeDistRoot>
+    <Description>Unified WinForms, WPF and Avalonia consumers for the OcctCSharpBridge Binary SDK.</Description>
+    <OcctBridgeRuntimeIdentifier Condition="$([MSBuild]::IsOSPlatform('Windows'))">win-x64</OcctBridgeRuntimeIdentifier>
+    <OcctBridgeRuntimeIdentifier Condition="$([MSBuild]::IsOSPlatform('Linux'))">linux-x64</OcctBridgeRuntimeIdentifier>
+    <OcctBridgeDistRoot>$(MSBuildThisFileDirectory)dist/$(OcctBridgeRuntimeIdentifier)</OcctBridgeDistRoot>
   </PropertyGroup>
 </Project>

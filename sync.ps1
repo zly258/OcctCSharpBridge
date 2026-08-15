@@ -1,71 +1,91 @@
-﻿param(
+param(
     [string]$Remote = "origin",
-    [string]$SourceBranch = "main-dev"
+    [string]$SourceBranch = "main",
+    [string]$OcctRoot = $env:OCCT_ROOT,
+    [string]$SdkRoot = ""
 )
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $RepoRoot = Split-Path -Parent $PSCommandPath
-$LocalSdkRoot = Join-Path $RepoRoot "dist\win-x64"
-$TempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("OcctCSharpBridge-sdk-" + [Guid]::NewGuid().ToString("N"))
+$Destination = Join-Path $RepoRoot "dist\win-x64"
+$TempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("OcctCSharpBridge-main-sdk-" + [Guid]::NewGuid().ToString("N"))
 $WorktreeAdded = $false
 
-function Invoke-Git {
-    param([Parameter(Mandatory = $true)][string[]]$Arguments)
-
-    & git -C $RepoRoot @Arguments
-    if ($LASTEXITCODE -ne 0) {
-        throw "git $($Arguments -join ' ') failed with exit code $LASTEXITCODE."
-    }
+function Assert-File {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "Required SDK file was not found: $Path" }
 }
 
-if ($null -eq (Get-Command git -ErrorAction SilentlyContinue)) {
-    throw "git was not found in PATH."
-}
-
-try {
-    Write-Host "[sync] Fetching $Remote/$SourceBranch..." -ForegroundColor Cyan
-    Invoke-Git @("fetch", "--quiet", $Remote, $SourceBranch)
-
-    $SourceRef = "$Remote/$SourceBranch"
-    Write-Host "[sync] Opening temporary worktree at $SourceRef..." -ForegroundColor DarkGray
-    Invoke-Git @("worktree", "add", "--detach", $TempRoot, $SourceRef)
-    $WorktreeAdded = $true
-
-    $SourceSdkRoot = Join-Path $TempRoot "dist\win-x64"
-    $RequiredFiles = @(
+function Test-SdkRoot {
+    param([Parameter(Mandatory = $true)][string]$Root)
+    foreach ($name in @(
         "OcctNative.dll",
         "OcctNet.dll",
         "OcctNet.WinForms.dll",
         "OcctNet.Wpf.dll",
-        "bridge-contract.json",
         "OcctNet.Avalonia.dll",
-        "bridge-manifest.json"
-    )
-
-    foreach ($Required in $RequiredFiles) {
-        if (-not (Test-Path (Join-Path $SourceSdkRoot $Required) -PathType Leaf)) {
-            throw ("Published Binary SDK is incomplete on {0}: missing {1}" -f $SourceRef, $Required)
-        }
+        "bridge-contract.json",
+        "bridge-manifest.json")) {
+        Assert-File (Join-Path $Root $name)
     }
-
-    if (Test-Path $LocalSdkRoot) {
-        Remove-Item $LocalSdkRoot -Recurse -Force
+    $contract = Get-Content -LiteralPath (Join-Path $Root "bridge-contract.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ([int]$contract.schemaVersion -ne 3 -or
+        [int]$contract.nativeAbi.current -ne 5 -or
+        [int]$contract.nativeAbi.minimumSupported -ne 5 -or
+        [string]$contract.api.policy -ne "abi5-only" -or
+        [string]$contract.platform -ne "win-x64" -or
+        [string]$contract.dotnet.sdkVersion -ne "10.0.303") {
+        throw "The source SDK is not the expected Bridge 3 ABI5-only win-x64 SDK."
     }
-    New-Item $LocalSdkRoot -ItemType Directory -Force | Out-Null
-    Copy-Item (Join-Path $SourceSdkRoot "*") $LocalSdkRoot -Recurse -Force
+    return $contract
+}
 
-    $Contract = Get-Content (Join-Path $LocalSdkRoot "bridge-contract.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+function Copy-Sdk {
+    param([Parameter(Mandatory = $true)][string]$Source)
+    $contract = Test-SdkRoot $Source
+    if (Test-Path -LiteralPath $Destination -PathType Container) { Remove-Item -LiteralPath $Destination -Recurse -Force }
+    New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+    Copy-Item -Path (Join-Path $Source "*") -Destination $Destination -Recurse -Force
     Write-Host "Binary SDK synchronized." -ForegroundColor Green
-    Write-Host ("Bridge: {0}, ABI {1}, OCCT {2}, .NET SDK {3}" -f $Contract.bridgeVersion, $Contract.nativeAbi.current, $Contract.occtVersion, $Contract.dotnet.sdkVersion) -ForegroundColor DarkGray
-    Write-Host "Path:   $LocalSdkRoot" -ForegroundColor DarkGray
+    Write-Host "Bridge: $($contract.bridgeVersion), ABI 5 only, OCCT $($contract.occtVersion), .NET SDK $($contract.dotnet.sdkVersion)" -ForegroundColor DarkGray
+    Write-Host "Path:   $Destination" -ForegroundColor DarkGray
+}
+
+if (-not [string]::IsNullOrWhiteSpace($SdkRoot)) {
+    Copy-Sdk ([System.IO.Path]::GetFullPath($SdkRoot))
+    exit 0
+}
+
+if ($null -eq (Get-Command git -ErrorAction SilentlyContinue)) { throw "git was not found in PATH." }
+
+try {
+    Write-Host "[sync] Fetching $Remote/$SourceBranch..." -ForegroundColor Cyan
+    & git -C $RepoRoot fetch --quiet $Remote $SourceBranch
+    if ($LASTEXITCODE -ne 0) { throw "Unable to fetch $Remote/$SourceBranch." }
+
+    Write-Host "[sync] Creating temporary clean SDK worktree..." -ForegroundColor DarkGray
+    & git -C $RepoRoot worktree add --detach $TempRoot "$Remote/$SourceBranch"
+    if ($LASTEXITCODE -ne 0) { throw "Unable to create worktree for $Remote/$SourceBranch." }
+    $WorktreeAdded = $true
+
+    $buildScript = Join-Path $TempRoot "build.ps1"
+    if (-not (Test-Path -LiteralPath $buildScript -PathType Leaf)) { throw "$Remote/$SourceBranch does not contain build.ps1." }
+
+    Write-Host "[sync] Building validated win-x64 Binary SDK from $Remote/$SourceBranch..." -ForegroundColor Cyan
+    $buildArgs = @("dist", "Release")
+    if (-not [string]::IsNullOrWhiteSpace($OcctRoot)) { $buildArgs += @("-OcctRoot", $OcctRoot) }
+    & $buildScript @buildArgs
+    if ($LASTEXITCODE -ne 0) { throw "Binary SDK build failed on $Remote/$SourceBranch." }
+
+    Copy-Sdk (Join-Path $TempRoot "dist\win-x64")
 }
 finally {
     if ($WorktreeAdded) {
         & git -C $RepoRoot worktree remove --force $TempRoot *> $null
     }
-    elseif (Test-Path $TempRoot) {
-        Remove-Item $TempRoot -Recurse -Force -ErrorAction SilentlyContinue
+    elseif (Test-Path -LiteralPath $TempRoot) {
+        Remove-Item -LiteralPath $TempRoot -Recurse -Force -ErrorAction SilentlyContinue
     }
 }

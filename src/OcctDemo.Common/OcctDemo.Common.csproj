@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Platforms>x64</Platforms>
@@ -8,7 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="OcctNet">
-      <HintPath>$(OcctBridgeDistRoot)\OcctNet.dll</HintPath>
+      <HintPath>$(OcctBridgeDistRoot)/OcctNet.dll</HintPath>
       <Private>true</Private>
     </Reference>
   </ItemGroup>
