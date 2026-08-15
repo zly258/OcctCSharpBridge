@@ -1,4 +1,5 @@
-﻿#include "modeling/OcctModelingAlgorithmInternal.hxx"
+﻿#include "modeling/OcctModelingBoolean.h"
+#include "modeling/OcctModelingAlgorithmInternal.hxx"
 
 #include <BRepAlgoAPI_Common.hxx>
 #include <BRepAlgoAPI_Cut.hxx>
@@ -10,12 +11,20 @@ using namespace OcctModelingInternal;
 
 extern "C"
 {
-    OcctModelAlgorithmResult occt_model_boolean(OcctModelHandle handle, int operation, OcctObjectId leftId, OcctObjectId rightId, const OcctModelBooleanOptions* options)
+    OcctStatus occt_model_boolean_execute(
+        OcctModelingSessionHandle handle,
+        int operation,
+        OcctObjectId leftId,
+        OcctObjectId rightId,
+        const OcctModelBooleanOptions* options,
+        OcctModelAlgorithmResult* result)
     {
-        ModelSession* model = modelOf(handle);
-        OcctModelAlgorithmResult result = failedAlgorithmResult();
-        execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        return executeAlgorithmStatus(model, result, [&]() -> OcctModelAlgorithmResult
         {
+            if (operation < OcctModelBoolean_Fuse || operation > OcctModelBoolean_Section)
+                throw std::invalid_argument("Boolean operation is invalid.");
+
             const TopoDS_Shape& left = model->requireShape(leftId);
             const TopoDS_Shape& right = model->requireShape(rightId);
             TopTools_ListOfShape arguments;
@@ -23,52 +32,60 @@ extern "C"
             TopTools_ListOfShape tools;
             tools.Append(right);
 
-            if (operation == OcctModelBoolean_Cut)
+            switch (operation)
             {
-                BRepAlgoAPI_Cut algorithm;
-                algorithm.SetArguments(arguments);
-                algorithm.SetTools(tools);
-                applyBooleanOptions(algorithm, options);
-                result = finishBuilderAlgorithm(model, algorithm, options);
-            }
-            else if (operation == OcctModelBoolean_Common)
-            {
-                BRepAlgoAPI_Common algorithm;
-                algorithm.SetArguments(arguments);
-                algorithm.SetTools(tools);
-                applyBooleanOptions(algorithm, options);
-                result = finishBuilderAlgorithm(model, algorithm, options);
-            }
-            else if (operation == OcctModelBoolean_Section)
-            {
-                BRepAlgoAPI_Section algorithm(left, right, Standard_False);
-                applyBooleanOptions(algorithm, options);
-                result = finishBuilderAlgorithm(model, algorithm, options);
-            }
-            else
-            {
-                BRepAlgoAPI_Fuse algorithm;
-                algorithm.SetArguments(arguments);
-                algorithm.SetTools(tools);
-                applyBooleanOptions(algorithm, options);
-                result = finishBuilderAlgorithm(model, algorithm, options);
+                case OcctModelBoolean_Cut:
+                {
+                    BRepAlgoAPI_Cut algorithm;
+                    algorithm.SetArguments(arguments);
+                    algorithm.SetTools(tools);
+                    applyBooleanOptions(algorithm, options);
+                    return finishBuilderAlgorithm(model, algorithm, options);
+                }
+                case OcctModelBoolean_Common:
+                {
+                    BRepAlgoAPI_Common algorithm;
+                    algorithm.SetArguments(arguments);
+                    algorithm.SetTools(tools);
+                    applyBooleanOptions(algorithm, options);
+                    return finishBuilderAlgorithm(model, algorithm, options);
+                }
+                case OcctModelBoolean_Section:
+                {
+                    BRepAlgoAPI_Section algorithm(left, right, Standard_False);
+                    applyBooleanOptions(algorithm, options);
+                    return finishBuilderAlgorithm(model, algorithm, options);
+                }
+                case OcctModelBoolean_Fuse:
+                default:
+                {
+                    BRepAlgoAPI_Fuse algorithm;
+                    algorithm.SetArguments(arguments);
+                    algorithm.SetTools(tools);
+                    applyBooleanOptions(algorithm, options);
+                    return finishBuilderAlgorithm(model, algorithm, options);
+                }
             }
         });
-        return result;
     }
 
-    OcctModelAlgorithmResult occt_model_split(OcctModelHandle handle, const OcctObjectId* objectIds, int objectCount, const OcctObjectId* toolIds, int toolCount, const OcctModelBooleanOptions* options)
+    OcctStatus occt_model_boolean_split_execute(
+        OcctModelingSessionHandle handle,
+        const OcctObjectId* objectIds,
+        int objectCount,
+        const OcctObjectId* toolIds,
+        int toolCount,
+        const OcctModelBooleanOptions* options,
+        OcctModelAlgorithmResult* result)
     {
-        ModelSession* model = modelOf(handle);
-        OcctModelAlgorithmResult result = failedAlgorithmResult();
-        execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        return executeAlgorithmStatus(model, result, [&]() -> OcctModelAlgorithmResult
         {
             BRepAlgoAPI_Splitter algorithm;
             algorithm.SetArguments(shapeList(model, objectIds, objectCount, "Splitter objects"));
             algorithm.SetTools(shapeList(model, toolIds, toolCount, "Splitter tools"));
             applyBooleanOptions(algorithm, options);
-            result = finishBuilderAlgorithm(model, algorithm, options);
+            return finishBuilderAlgorithm(model, algorithm, options);
         });
-        return result;
     }
 }
