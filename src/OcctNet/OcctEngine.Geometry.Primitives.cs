@@ -1,4 +1,4 @@
-﻿namespace OcctNet;
+namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
@@ -11,7 +11,16 @@ public sealed partial class OcctEngine
         OcctGuard.Finite(y, nameof(y));
         OcctGuard.Finite(z, nameof(z));
         EnsureInitialized();
-        return CheckShape(NativeMethods.occt_make_box(_handle, x, y, z, dx, dy, dz));
+        var status = ViewerGeometryCreationNativeMethods.occt_engine_shape_box_create(
+            _handle,
+            x,
+            y,
+            z,
+            dx,
+            dy,
+            dz,
+            out var result);
+        return GeometryResult(status, result);
     }
 
     public OcctShape MakeCylinder(OcctPoint3d origin, OcctVector3d axis, double radius, double height)
@@ -21,7 +30,14 @@ public sealed partial class OcctEngine
         OcctGuard.Positive(radius, nameof(radius));
         OcctGuard.Positive(height, nameof(height));
         EnsureInitialized();
-        return CheckShape(NativeMethods.occt_make_cylinder(_handle, origin, axis, radius, height));
+        var status = ViewerGeometryCreationNativeMethods.occt_engine_shape_cylinder_create(
+            _handle,
+            origin,
+            axis,
+            radius,
+            height,
+            out var result);
+        return GeometryResult(status, result);
     }
 
     public OcctShape MakeCylinder(double radius, double height, double x = 0, double y = 0, double z = 0) =>
@@ -33,7 +49,12 @@ public sealed partial class OcctEngine
         var center = new OcctPoint3d(x, y, z);
         OcctGuard.Finite(center, nameof(center));
         EnsureInitialized();
-        return CheckShape(NativeMethods.occt_make_sphere(_handle, center, radius));
+        var status = ViewerGeometryCreationNativeMethods.occt_engine_shape_sphere_create(
+            _handle,
+            center,
+            radius,
+            out var result);
+        return GeometryResult(status, result);
     }
 
     public OcctShape MakeCone(OcctPoint3d origin, OcctVector3d axis, double radius1, double radius2, double height)
@@ -46,22 +67,43 @@ public sealed partial class OcctEngine
             throw new ArgumentException("At least one cone radius must be greater than zero.", nameof(radius1));
         OcctGuard.Positive(height, nameof(height));
         EnsureInitialized();
-        return CheckShape(NativeMethods.occt_make_cone(_handle, origin, axis, radius1, radius2, height));
+        var status = ViewerGeometryCreationNativeMethods.occt_engine_shape_cone_create(
+            _handle,
+            origin,
+            axis,
+            radius1,
+            radius2,
+            height,
+            out var result);
+        return GeometryResult(status, result);
     }
 
     public OcctShape MakeCone(double radius1, double radius2, double height, double x = 0, double y = 0, double z = 0) =>
         MakeCone(new OcctPoint3d(x, y, z), OcctVector3d.UnitZ, radius1, radius2, height);
 
-    public OcctShape MakeTorus(double majorRadius, double minorRadius, OcctPoint3d? center = null, OcctVector3d? axis = null)
+    public OcctShape MakeTorus(
+        double majorRadius,
+        double minorRadius,
+        OcctPoint3d? center = null,
+        OcctVector3d? axis = null)
     {
         OcctGuard.Positive(majorRadius, nameof(majorRadius));
         OcctGuard.Positive(minorRadius, nameof(minorRadius));
+        if (minorRadius >= majorRadius)
+            throw new ArgumentException("minorRadius must be less than majorRadius.", nameof(minorRadius));
         var actualCenter = center ?? OcctPoint3d.Origin;
         var actualAxis = axis ?? OcctVector3d.UnitZ;
         OcctGuard.Finite(actualCenter, nameof(center));
         OcctGuard.NonZero(actualAxis, nameof(axis));
         EnsureInitialized();
-        return CheckShape(NativeMethods.occt_make_torus(_handle, actualCenter, actualAxis, majorRadius, minorRadius));
+        var status = ViewerGeometryCreationNativeMethods.occt_engine_shape_torus_create(
+            _handle,
+            actualCenter,
+            actualAxis,
+            majorRadius,
+            minorRadius,
+            out var result);
+        return GeometryResult(status, result);
     }
 
     public OcctShape MakeWedge(double dx, double dy, double dz, double ltx)
@@ -71,6 +113,13 @@ public sealed partial class OcctEngine
         OcctGuard.Positive(dz, nameof(dz));
         OcctGuard.Finite(ltx, nameof(ltx));
         EnsureInitialized();
-        return CheckShape(NativeMethods.occt_make_wedge(_handle, dx, dy, dz, ltx));
+        var status = ViewerGeometryCreationNativeMethods.occt_engine_shape_wedge_create(
+            _handle,
+            dx,
+            dy,
+            dz,
+            ltx,
+            out var result);
+        return GeometryResult(status, result);
     }
 }
