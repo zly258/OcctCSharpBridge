@@ -14,6 +14,22 @@ forbid_text() {
     local file="$1" text="$2" message="$3"
     if grep -Fq -- "${text}" "${file}"; then fail "${message}"; fi
 }
+tracked_path_exists() {
+    local relative="$1"
+    [[ -n "$(git -C "${ROOT_DIR}" ls-files -- "${relative}" "${relative}/**")" ]]
+}
+tracked_source_contains() {
+    local root="$1" token="$2"
+    local file
+    while IFS= read -r file; do
+        case "${file}" in
+            *.h|*.hpp|*.hxx|*.cpp|*.cxx)
+                if grep -Fq -- "${token}" "${ROOT_DIR}/${file}"; then return 0; fi
+                ;;
+        esac
+    done < <(git -C "${ROOT_DIR}" ls-files -- "${root}/**")
+    return 1
+}
 
 require_file "${CONTRACT}"
 require_text "${CONTRACT}" '"schemaVersion": 3' "ABI5-only contract must use schemaVersion 3."
@@ -48,9 +64,18 @@ forbid_text "${MANAGED_TESTS}" 'OcctNet.WinForms' "Managed core tests must not r
 forbid_text "${MANAGED_TESTS}" 'OcctNet.Wpf' "Managed core tests must not reference WPF."
 require_text "${AVALONIA_SMOKE_PROJECT}" '..\..\src\OcctNet.Avalonia\OcctNet.Avalonia.csproj' "Avalonia smoke must reference the formal Avalonia adapter."
 
-[[ ! -e "${ROOT_DIR}/tests/contracts/abi4-exports.txt" ]] || fail "ABI4 export baseline must not exist."
-[[ ! -e "${ROOT_DIR}/tests/check-abi-compatibility.ps1" ]] || fail "ABI4 compatibility checker must not exist."
-[[ ! -d "${ROOT_DIR}/tests/compatibility" ]] || fail "ABI4 compatibility tests must not exist."
+for retired in \
+    tests/contracts/abi4-exports.txt \
+    tests/check-abi-compatibility.ps1 \
+    tests/compatibility; do
+    if tracked_path_exists "${retired}"; then fail "Retired ABI4 artifact must not be tracked: ${retired}"; fi
+done
+
+for token in 'OcctModelHandle' 'modelOf('; do
+    if tracked_source_contains src/OcctNative "${token}"; then
+        fail "Retired pre-ABI5 modeling implementation token remains in tracked Native source: ${token}"
+    fi
+done
 
 require_text "${BUILD_SH}" 'validate_common()' "Linux build must keep common validation independent from native validation."
 require_text "${BUILD_SH}" 'validate_native()' "Linux build must keep an explicit native validation layer."
@@ -59,4 +84,4 @@ require_text "${BUILD_SH}" '"platform": "linux-x64"' "Linux distribution manifes
 require_text "${BUILD_SH}" 'avalonia-smoke)' "Linux build must expose an explicit Avalonia viewer smoke target."
 require_text "${BUILD_SH}" 'DISPLAY' "Avalonia viewer smoke must require an X11/XWayland display."
 
-printf '[linux-contract] ABI5-only cross-platform source/test/distribution boundaries validated.\n'
+printf '[linux-contract] ABI5-only cross-platform tracked source/test/distribution boundaries validated.\n'
