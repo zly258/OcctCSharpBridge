@@ -23,8 +23,9 @@ public partial class MainWindow
             ObjectTree.Items.Add(textRoot);
             ObjectTree.Items.Add(dimensionRoot);
             var assemblyNodes = new Dictionary<string, Controls.TreeViewItem>(StringComparer.Ordinal);
+            var objects = Session.Engine.GetObjects();
 
-            foreach (var value in Session.Engine.Objects)
+            foreach (var value in objects)
             {
                 var hierarchy = value.Kind == OcctObjectKind.Shape
                     ? Session.GetHierarchyPath(value)
@@ -68,9 +69,11 @@ public partial class MainWindow
         }
 
         ShowSelectionProperties(Session.Engine.SelectedObjects);
+        var objectCount = Session.Engine.ObjectCount;
+        var shapeCount = Session.Engine.GetObjects().OfType<OcctShape>().Count();
         SelectionStatus.Text = Local(
-            $"Objects {Session.Engine.ObjectCount} / Shapes {Session.Engine.ShapeCount}",
-            $"对象 {Session.Engine.ObjectCount} / 形体 {Session.Engine.ShapeCount}");
+            $"Objects {objectCount} / Shapes {shapeCount}",
+            $"对象 {objectCount} / 形体 {shapeCount}");
     }
 
     private Controls.TreeViewItem GetOrCreateAssemblyNode(
@@ -108,7 +111,7 @@ public partial class MainWindow
         menu.Items.Add(MenuItem(DemoLocalization.Text("Menu.FitSelected"), (_, _) =>
         {
             Session.ActiveObject = value;
-            if (value.Kind == OcctObjectKind.Shape) Session.Engine.Fit(Session.Engine.GetShape(value.Id));
+            if (value is OcctShape shape) Session.Engine.Fit(shape);
         }));
         menu.Items.Add(MenuItem(Local("Show", "显示"), (_, _) => Session.Engine.SetVisible(value, true)));
         menu.Items.Add(MenuItem(Local("Hide", "隐藏"), (_, _) => Session.Engine.SetVisible(value, false)));
@@ -194,7 +197,7 @@ public partial class MainWindow
 
     private OcctShape? ActiveShape()
     {
-        if (_session?.ActiveObject is { Kind: OcctObjectKind.Shape } active) return Session.Engine.GetShape(active.Id);
+        if (_session?.ActiveObject is OcctShape active) return active;
         return _session?.Engine.FirstSelected;
     }
 }
