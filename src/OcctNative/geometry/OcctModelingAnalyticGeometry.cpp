@@ -1,4 +1,5 @@
-﻿#include "modeling/OcctModelingShapeInternal.hxx"
+﻿#include "geometry/OcctModelingAnalyticGeometry.h"
+#include "modeling/OcctModelingShapeInternal.hxx"
 
 #include <BRepAdaptor_Curve.hxx>
 #include <BRepAdaptor_Surface.hxx>
@@ -43,18 +44,16 @@ namespace
 
 extern "C"
 {
-    int occt_model_edge_line_geometry(
-        OcctModelHandle handle,
-        OcctObjectId edgeId,
-        OcctModelLineGeometry* result)
+    OcctStatus occt_model_edge_line_geometry(OcctModelingSessionHandle handle, OcctObjectId edgeId, OcctModelLineGeometry* result)
     {
-        ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+        *result = {};
+        return executeStatus(model, [&]
         {
             const BRepAdaptor_Curve curve(requireEdge(model, edgeId));
-            if (curve.GetType() != GeomAbs_Line)
-                throw std::invalid_argument("Edge curve is not a line.");
+            if (curve.GetType() != GeomAbs_Line) throw std::invalid_argument("Edge curve is not a line.");
             const gp_Lin value = curve.Line();
             result->origin = toNativePoint(value.Location());
             result->direction = toNativeVector(value.Direction());
@@ -63,18 +62,16 @@ extern "C"
         });
     }
 
-    int occt_model_edge_circle_geometry(
-        OcctModelHandle handle,
-        OcctObjectId edgeId,
-        OcctModelCircleGeometry* result)
+    OcctStatus occt_model_edge_circle_geometry(OcctModelingSessionHandle handle, OcctObjectId edgeId, OcctModelCircleGeometry* result)
     {
-        ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+        *result = {};
+        return executeStatus(model, [&]
         {
             const BRepAdaptor_Curve curve(requireEdge(model, edgeId));
-            if (curve.GetType() != GeomAbs_Circle)
-                throw std::invalid_argument("Edge curve is not a circle.");
+            if (curve.GetType() != GeomAbs_Circle) throw std::invalid_argument("Edge curve is not a circle.");
             const gp_Circ value = curve.Circle();
             result->center = toNativePoint(value.Position().Location());
             result->normal = toNativeVector(value.Position().Direction());
@@ -85,18 +82,16 @@ extern "C"
         });
     }
 
-    int occt_model_edge_ellipse_geometry(
-        OcctModelHandle handle,
-        OcctObjectId edgeId,
-        OcctModelEllipseGeometry* result)
+    OcctStatus occt_model_edge_ellipse_geometry(OcctModelingSessionHandle handle, OcctObjectId edgeId, OcctModelEllipseGeometry* result)
     {
-        ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+        *result = {};
+        return executeStatus(model, [&]
         {
             const BRepAdaptor_Curve curve(requireEdge(model, edgeId));
-            if (curve.GetType() != GeomAbs_Ellipse)
-                throw std::invalid_argument("Edge curve is not an ellipse.");
+            if (curve.GetType() != GeomAbs_Ellipse) throw std::invalid_argument("Edge curve is not an ellipse.");
             const gp_Elips value = curve.Ellipse();
             result->center = toNativePoint(value.Position().Location());
             result->normal = toNativeVector(value.Position().Direction());
@@ -108,18 +103,16 @@ extern "C"
         });
     }
 
-    int occt_model_face_plane_geometry(
-        OcctModelHandle handle,
-        OcctObjectId faceId,
-        OcctModelPlaneGeometry* result)
+    OcctStatus occt_model_face_plane_geometry(OcctModelingSessionHandle handle, OcctObjectId faceId, OcctModelPlaneGeometry* result)
     {
-        ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+        *result = {};
+        return executeStatus(model, [&]
         {
             const BRepAdaptor_Surface surface(requireFace(model, faceId));
-            if (surface.GetType() != GeomAbs_Plane)
-                throw std::invalid_argument("Face surface is not a plane.");
+            if (surface.GetType() != GeomAbs_Plane) throw std::invalid_argument("Face surface is not a plane.");
             const gp_Pln value = surface.Plane();
             result->origin = toNativePoint(value.Position().Location());
             result->normal = toNativeVector(value.Position().Direction());
@@ -127,18 +120,16 @@ extern "C"
         });
     }
 
-    int occt_model_face_cylinder_geometry(
-        OcctModelHandle handle,
-        OcctObjectId faceId,
-        OcctModelCylinderGeometry* result)
+    OcctStatus occt_model_face_cylinder_geometry(OcctModelingSessionHandle handle, OcctObjectId faceId, OcctModelCylinderGeometry* result)
     {
-        ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+        *result = {};
+        return executeStatus(model, [&]
         {
             const BRepAdaptor_Surface surface(requireFace(model, faceId));
-            if (surface.GetType() != GeomAbs_Cylinder)
-                throw std::invalid_argument("Face surface is not a cylinder.");
+            if (surface.GetType() != GeomAbs_Cylinder) throw std::invalid_argument("Face surface is not a cylinder.");
             const gp_Cylinder value = surface.Cylinder();
             result->origin = toNativePoint(value.Position().Location());
             result->axis = toNativeVector(value.Position().Direction());
@@ -147,18 +138,16 @@ extern "C"
         });
     }
 
-    int occt_model_face_cone_geometry(
-        OcctModelHandle handle,
-        OcctObjectId faceId,
-        OcctModelConeGeometry* result)
+    OcctStatus occt_model_face_cone_geometry(OcctModelingSessionHandle handle, OcctObjectId faceId, OcctModelConeGeometry* result)
     {
-        ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+        *result = {};
+        return executeStatus(model, [&]
         {
             const BRepAdaptor_Surface surface(requireFace(model, faceId));
-            if (surface.GetType() != GeomAbs_Cone)
-                throw std::invalid_argument("Face surface is not a cone.");
+            if (surface.GetType() != GeomAbs_Cone) throw std::invalid_argument("Face surface is not a cone.");
             const gp_Cone value = surface.Cone();
             result->apex = toNativePoint(value.Apex());
             result->axis = toNativeVector(value.Position().Direction());
@@ -168,18 +157,16 @@ extern "C"
         });
     }
 
-    int occt_model_face_sphere_geometry(
-        OcctModelHandle handle,
-        OcctObjectId faceId,
-        OcctModelSphereGeometry* result)
+    OcctStatus occt_model_face_sphere_geometry(OcctModelingSessionHandle handle, OcctObjectId faceId, OcctModelSphereGeometry* result)
     {
-        ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+        *result = {};
+        return executeStatus(model, [&]
         {
             const BRepAdaptor_Surface surface(requireFace(model, faceId));
-            if (surface.GetType() != GeomAbs_Sphere)
-                throw std::invalid_argument("Face surface is not a sphere.");
+            if (surface.GetType() != GeomAbs_Sphere) throw std::invalid_argument("Face surface is not a sphere.");
             const gp_Sphere value = surface.Sphere();
             result->center = toNativePoint(value.Position().Location());
             result->axis = toNativeVector(value.Position().Direction());
@@ -188,18 +175,16 @@ extern "C"
         });
     }
 
-    int occt_model_face_torus_geometry(
-        OcctModelHandle handle,
-        OcctObjectId faceId,
-        OcctModelTorusGeometry* result)
+    OcctStatus occt_model_face_torus_geometry(OcctModelingSessionHandle handle, OcctObjectId faceId, OcctModelTorusGeometry* result)
     {
-        ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+        *result = {};
+        return executeStatus(model, [&]
         {
             const BRepAdaptor_Surface surface(requireFace(model, faceId));
-            if (surface.GetType() != GeomAbs_Torus)
-                throw std::invalid_argument("Face surface is not a torus.");
+            if (surface.GetType() != GeomAbs_Torus) throw std::invalid_argument("Face surface is not a torus.");
             const gp_Torus value = surface.Torus();
             result->center = toNativePoint(value.Position().Location());
             result->axis = toNativeVector(value.Position().Direction());
