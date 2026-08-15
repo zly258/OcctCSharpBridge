@@ -9,29 +9,32 @@ public sealed partial class OcctModelingSession
         bool splitOpen = true)
     {
         EnsureShape(shape);
-        OcctGuard.Finite(tolerance, nameof(tolerance));
-        if (tolerance <= 0)
-            throw new ArgumentOutOfRangeException(nameof(tolerance), tolerance, "Tolerance must be greater than zero.");
+        OcctGuard.Positive(tolerance, nameof(tolerance));
 
         const int closedKind = 0;
         const int openKind = 1;
         var splitClosedNative = splitClosed ? 1 : 0;
         var splitOpenNative = splitOpen ? 1 : 0;
 
-        var closedCompound = CheckShape(ModelNativeMethods.occt_model_shape_free_bounds(
+        var status = ModelNativeMethods.occt_model_shape_free_bounds(
             _handle,
             shape.Id,
             tolerance,
             closedKind,
             splitClosedNative,
-            splitOpenNative));
-        var openCompound = CheckShape(ModelNativeMethods.occt_model_shape_free_bounds(
+            splitOpenNative,
+            out var closedId);
+        var closedCompound = CheckShape(status, closedId);
+
+        status = ModelNativeMethods.occt_model_shape_free_bounds(
             _handle,
             shape.Id,
             tolerance,
             openKind,
             splitClosedNative,
-            splitOpenNative));
+            splitOpenNative,
+            out var openId);
+        var openCompound = CheckShape(status, openId);
 
         return new OcctFreeBoundsResult(
             tolerance,
@@ -46,26 +49,24 @@ public sealed partial class OcctModelingSession
     public OcctEdgeAdjacencyResult AnalyzeEdgeAdjacency(OcctModelShape root)
     {
         EnsureShape(root);
-        Check(ModelNativeMethods.occt_model_shape_edge_adjacency(
+        CheckStatus(ModelNativeMethods.occt_model_shape_edge_adjacency_snapshot_get(
             _handle,
             root.Id,
             null,
             0,
             out var edgeCount));
-        if (edgeCount < 0)
-            throw new InvalidOperationException("Native edge adjacency count is invalid.");
         if (edgeCount == 0)
             return new OcctEdgeAdjacencyResult(root, Array.Empty<OcctEdgeAdjacencyInfo>());
 
         var nativeEntries = new NativeModelEdgeAdjacency[edgeCount];
-        Check(ModelNativeMethods.occt_model_shape_edge_adjacency(
+        CheckStatus(ModelNativeMethods.occt_model_shape_edge_adjacency_snapshot_get(
             _handle,
             root.Id,
             nativeEntries,
             nativeEntries.Length,
-            out var returnedCount));
-        if (returnedCount != edgeCount)
-            throw new InvalidOperationException($"Native edge adjacency count changed during analysis: expected {edgeCount}, returned {returnedCount}.");
+            out var required));
+        if (required != edgeCount)
+            throw new InvalidOperationException($"Native edge adjacency count changed during analysis: expected {edgeCount}, returned {required}.");
 
         var entries = new OcctEdgeAdjacencyInfo[edgeCount];
         for (var index = 0; index < nativeEntries.Length; index++)
