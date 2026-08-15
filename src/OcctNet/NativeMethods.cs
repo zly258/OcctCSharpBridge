@@ -1,11 +1,13 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
 internal static partial class NativeMethods
 {
-    private const string LibraryName = "OcctNative";
+    internal const string LibraryName = "OcctNative";
 
     static NativeMethods()
     {
@@ -29,7 +31,7 @@ internal static partial class NativeMethods
 
             if (OperatingSystem.IsWindows())
             {
-                var handle = LoadLibrary(candidate);
+                var handle = LoadLibraryW(candidate);
                 if (handle != IntPtr.Zero)
                     return handle;
 
@@ -58,29 +60,42 @@ internal static partial class NativeMethods
             Environment.NewLine + details);
     }
 
-    [DllImport("kernel32.dll", EntryPoint = "LoadLibraryW", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern IntPtr LoadLibrary(string fileName);
+    [LibraryImport("kernel32.dll", EntryPoint = "LoadLibraryW", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
+    private static partial IntPtr LoadLibraryW(string fileName);
 
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern IntPtr occt_create();
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern void occt_destroy(IntPtr handle);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern IntPtr occt_last_error(IntPtr handle);
     [LibraryImport(LibraryName)]
-    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial IntPtr occt_engine_create();
+
     [LibraryImport(LibraryName)]
-    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial void occt_engine_destroy(IntPtr handle);
+
     [LibraryImport(LibraryName)]
-    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_engine_last_error_code(OcctEngineSafeHandle handle);
+
     [LibraryImport(LibraryName)]
-    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
-    internal static partial OcctStatus occt_engine_last_error_message(OcctEngineSafeHandle handle, [Out] byte[]? buffer, int capacity, out int required);
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern IntPtr occt_version();
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern int occt_bridge_abi_version();
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_last_error_message(
+        OcctEngineSafeHandle handle,
+        [Out] byte[]? buffer,
+        int capacity,
+        out int required);
+
     [LibraryImport(LibraryName)]
-    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial IntPtr occt_version();
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial int occt_bridge_current_abi_version();
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern IntPtr occt_bridge_version();
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)] internal static extern IntPtr occt_bridge_build_info();
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial IntPtr occt_bridge_version();
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial IntPtr occt_bridge_build_info();
 }
