@@ -6,8 +6,13 @@ public sealed partial class OcctModelingSession
     {
         EnsureShape(shape);
         if (!Enum.IsDefined(type)) throw new ArgumentOutOfRangeException(nameof(type));
-        var count = ModelNativeMethods.occt_model_subshapes_copy(_handle, shape.Id, (int)type, null, 0);
-        if (count < 0) throw CreateException();
+        CheckStatus(ModelNativeMethods.occt_model_subshapes_snapshot_get(
+            _handle,
+            shape.Id,
+            (int)type,
+            null,
+            0,
+            out var count));
         return count;
     }
 
@@ -16,29 +21,34 @@ public sealed partial class OcctModelingSession
         EnsureShape(shape);
         if (!Enum.IsDefined(type)) throw new ArgumentOutOfRangeException(nameof(type));
         return ReadShapeCollection(
-            (buffer, capacity) => ModelNativeMethods.occt_model_subshapes_copy(
-                _handle,
-                shape.Id,
-                (int)type,
-                buffer,
-                capacity));
+            (long[]? buffer, int capacity, out int required) =>
+                ModelNativeMethods.occt_model_subshapes_snapshot_get(
+                    _handle,
+                    shape.Id,
+                    (int)type,
+                    buffer,
+                    capacity,
+                    out required));
     }
 
     public OcctModelShape GetOuterWire(OcctModelShape face)
     {
         EnsureShape(face);
-        return CheckShape(ModelNativeMethods.occt_model_outer_wire(_handle, face.Id));
+        var status = ModelNativeMethods.occt_model_outer_wire_get(_handle, face.Id, out var result);
+        return CheckShape(status, result);
     }
 
     public IReadOnlyList<OcctModelShape> GetInnerWires(OcctModelShape face)
     {
         EnsureShape(face);
         return ReadShapeCollection(
-            (buffer, capacity) => ModelNativeMethods.occt_model_inner_wires_copy(
-                _handle,
-                face.Id,
-                buffer,
-                capacity));
+            (long[]? buffer, int capacity, out int required) =>
+                ModelNativeMethods.occt_model_inner_wires_snapshot_get(
+                    _handle,
+                    face.Id,
+                    buffer,
+                    capacity,
+                    out required));
     }
 
     public IReadOnlyList<OcctModelShape> GetAncestors(
@@ -50,27 +60,28 @@ public sealed partial class OcctModelingSession
         EnsureShape(child);
         if (!Enum.IsDefined(ancestorType)) throw new ArgumentOutOfRangeException(nameof(ancestorType));
         return ReadShapeCollection(
-            (buffer, capacity) => ModelNativeMethods.occt_model_ancestors_copy(
-                _handle,
-                root.Id,
-                child.Id,
-                (int)ancestorType,
-                buffer,
-                capacity));
+            (long[]? buffer, int capacity, out int required) =>
+                ModelNativeMethods.occt_model_ancestors_snapshot_get(
+                    _handle,
+                    root.Id,
+                    child.Id,
+                    (int)ancestorType,
+                    buffer,
+                    capacity,
+                    out required));
     }
 
-    private delegate int ShapeCollectionCopy(long[]? buffer, int capacity);
+    private delegate OcctStatus ShapeCollectionSnapshot(long[]? buffer, int capacity, out int required);
 
-    private IReadOnlyList<OcctModelShape> ReadShapeCollection(ShapeCollectionCopy copy)
+    private IReadOnlyList<OcctModelShape> ReadShapeCollection(ShapeCollectionSnapshot snapshot)
     {
-        var count = copy(null, 0);
-        if (count < 0) throw CreateException();
+        CheckStatus(snapshot(null, 0, out var count));
         if (count == 0) return Array.Empty<OcctModelShape>();
 
         var ids = new long[count];
-        var copied = copy(ids, ids.Length);
-        if (copied < 0) throw CreateException();
-        if (copied != count) throw new InvalidOperationException("Native topology result count changed during bulk copy.");
+        CheckStatus(snapshot(ids, ids.Length, out var required));
+        if (required != count)
+            throw new InvalidOperationException("Native topology result count changed during snapshot copy.");
 
         var result = new OcctModelShape[count];
         for (var index = 0; index < count; index++)
