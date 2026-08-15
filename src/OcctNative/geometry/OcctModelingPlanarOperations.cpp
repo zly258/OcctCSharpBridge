@@ -46,14 +46,15 @@ namespace
 
 extern "C"
 {
-    OcctObjectId occt_model_make_face_with_holes(
-        OcctModelHandle handle,
+    OcctStatus occt_model_make_face_with_holes(
+        OcctModelingSessionHandle handle,
         OcctObjectId outerWireId,
         const OcctObjectId* innerWireIds,
-        int innerWireCount)
+        int innerWireCount,
+        OcctObjectId* result)
     {
-        ModelSession* model = modelOf(handle);
-        return executeShape(model, [&]
+        ModelSession* model = sessionOf(handle);
+        return executeShapeStatus(model, result, [&]
         {
             if (innerWireCount < 0)
                 throw std::invalid_argument("Inner wire count must not be negative.");
@@ -77,14 +78,15 @@ extern "C"
         });
     }
 
-    OcctObjectId occt_model_trim_edge(
-        OcctModelHandle handle,
+    OcctStatus occt_model_trim_edge(
+        OcctModelingSessionHandle handle,
         OcctObjectId edgeId,
         double firstParameter,
-        double lastParameter)
+        double lastParameter,
+        OcctObjectId* result)
     {
-        ModelSession* model = modelOf(handle);
-        return executeShape(model, [&]
+        ModelSession* model = sessionOf(handle);
+        return executeShapeStatus(model, result, [&]
         {
             if (!std::isfinite(firstParameter) ||
                 !std::isfinite(lastParameter) ||
@@ -111,16 +113,17 @@ extern "C"
         });
     }
 
-    OcctObjectId occt_model_offset_wire(
-        OcctModelHandle handle,
+    OcctStatus occt_model_offset_wire(
+        OcctModelingSessionHandle handle,
         OcctObjectId wireId,
         double offset,
         double altitude,
         int joinType,
-        int openResult)
+        OcctBool openResult,
+        OcctObjectId* result)
     {
-        ModelSession* model = modelOf(handle);
-        return executeShape(model, [&]
+        ModelSession* model = sessionOf(handle);
+        return executeShapeStatus(model, result, [&]
         {
             if (!std::isfinite(offset) || std::abs(offset) <= Precision::Confusion())
                 throw std::invalid_argument("Wire offset must be finite and non-zero.");
