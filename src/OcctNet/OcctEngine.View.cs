@@ -106,7 +106,8 @@ public sealed partial class OcctEngine
     public void SetViewCubeLanguage(OcctViewCubeLanguage language)
     {
         if (!Enum.IsDefined(language)) throw new ArgumentOutOfRangeException(nameof(language));
-        CheckInitialized(() => NativeMethods.occt_set_view_cube_language(_handle, (int)language));
+        EnsureInitialized();
+        CheckViewStatus(ViewNativeMethods.occt_engine_view_cube_language_set(_handle, (int)language));
     }
 
     public void SetComputedHlr(bool enabled) =>
