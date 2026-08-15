@@ -1,4 +1,4 @@
-﻿#include "OcctStepDocument.h"
+#include "OcctStepDocument.h"
 #include "core/OcctInternal.hxx"
 
 #include <Quantity_ColorRGBA.hxx>
@@ -15,7 +15,10 @@
 #include <XCAFPrs_DocumentExplorer.hxx>
 #include <XCAFPrs_IndexedDataMapOfShapeStyle.hxx>
 
+#include <algorithm>
+#include <cstring>
 #include <iomanip>
+#include <limits>
 #include <sstream>
 
 using namespace OcctBridge;
@@ -142,8 +145,6 @@ namespace
 
     std::vector<StepSubshapeStyleSnapshot> captureSubshapeStyles(const XCAFPrs_DocumentNode& node)
     {
-        // Prefer the occurrence/component label so instance-specific styles are
-        // represented. Direct Part nodes naturally fall back to their own label.
         const TDF_Label sourceLabel = node.Label.IsNull() ? node.RefLabel : node.Label;
         if (sourceLabel.IsNull()) return {};
 
@@ -209,7 +210,9 @@ namespace
             }
         }
 
-        if (engine->documents.stepDocuments.empty() || engine->documents.lastStepImportObjectIds.empty()) return TDF_Label();
+        if (engine->documents.stepDocuments.empty() || engine->documents.lastStepImportObjectIds.empty())
+            return TDF_Label();
+
         const OcctObjectId objectId = objectIdOfEntry(engine, entry);
         if (objectId == 0) return TDF_Label();
 
@@ -457,29 +460,67 @@ namespace OcctBridge
     }
 }
 
-extern "C" OCCTBRIDGE_API const char* occt_get_last_step_document_json(OcctHandle h)
+extern "C"
 {
-    Engine* engine = engineOf(h);
-    if (engine == nullptr) return "";
-    engine->clearError();
-    try
+    OcctStatus occt_engine_step_document_json_get(
+        OcctEngineHandle handle,
+        char* utf8Buffer,
+        int capacity,
+        int* requiredBytes)
     {
-        engine->errors.scratch = buildLastStepDocumentJson(engine);
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (capacity < 0 || requiredBytes == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *requiredBytes = 0;
+        engine->clearError();
+        try
+        {
+            const std::string json = buildLastStepDocumentJson(engine);
+            if (json.size() >= static_cast<std::size_t>(std::numeric_limits<int>::max()))
+            {
+                engine->setError(OcctStatus_ErrorOutOfMemory, "STEP assembly snapshot exceeds the ABI buffer size limit.");
+                return OcctStatus_ErrorOutOfMemory;
+            }
+
+            const int required = static_cast<int>(json.size()) + 1;
+            *requiredBytes = required;
+            if (utf8Buffer == nullptr)
+                return capacity == 0 ? OcctStatus_Ok : OcctStatus_ErrorInvalidArgument;
+            if (capacity < required) return OcctStatus_ErrorBufferTooSmall;
+
+            std::memcpy(utf8Buffer, json.c_str(), static_cast<std::size_t>(required));
+            return OcctStatus_Ok;
+        }
+        catch (const Standard_Failure& failure)
+        {
+            engine->setError(OcctStatus_ErrorOcct, failureMessage(failure));
+            return OcctStatus_ErrorOcct;
+        }
+        catch (const std::invalid_argument& exception)
+        {
+            engine->setError(OcctStatus_ErrorInvalidArgument, exception.what());
+            return OcctStatus_ErrorInvalidArgument;
+        }
+        catch (const std::logic_error& exception)
+        {
+            engine->setError(OcctStatus_ErrorInvalidState, exception.what());
+            return OcctStatus_ErrorInvalidState;
+        }
+        catch (const std::bad_alloc&)
+        {
+            engine->setError(OcctStatus_ErrorOutOfMemory, "Native memory allocation failed while building STEP assembly snapshot.");
+            return OcctStatus_ErrorOutOfMemory;
+        }
+        catch (const std::exception& exception)
+        {
+            engine->setError(OcctStatus_ErrorUnknown, exception.what());
+            return OcctStatus_ErrorUnknown;
+        }
+        catch (...)
+        {
+            engine->setError(OcctStatus_ErrorUnknown, "Unknown native error while reading the STEP assembly document.");
+            return OcctStatus_ErrorUnknown;
+        }
     }
-    catch (const Standard_Failure& failure)
-    {
-        engine->setError(OcctStatus_ErrorOcct, failureMessage(failure));
-        engine->errors.scratch.clear();
-    }
-    catch (const std::exception& exception)
-    {
-        engine->setError(exception.what());
-        engine->errors.scratch.clear();
-    }
-    catch (...)
-    {
-        engine->setError("Unknown native error while reading the STEP assembly document.");
-        engine->errors.scratch.clear();
-    }
-    return engine->errors.scratch.c_str();
 }
