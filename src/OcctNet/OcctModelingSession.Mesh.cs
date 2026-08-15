@@ -12,49 +12,62 @@ public sealed partial class OcctModelingSession
         OcctGuard.Positive(actual.AngularDeflection, nameof(actual.AngularDeflection));
         OcctGuard.NonNegative(actual.MinimumSize, nameof(actual.MinimumSize));
         var native = actual.ToNative();
-        Check(ModelNativeMethods.occt_model_mesh(_handle, shape.Id, in native));
+        CheckStatus(ModelNativeMethods.occt_model_mesh(_handle, shape.Id, in native));
     }
 
     public void ClearTriangulation(OcctModelShape shape)
     {
         EnsureShape(shape);
-        Check(ModelNativeMethods.occt_model_clear_mesh(_handle, shape.Id));
+        CheckStatus(ModelNativeMethods.occt_model_clear_mesh(_handle, shape.Id));
     }
 
     public OcctMesh GetFaceMesh(OcctModelShape face)
     {
         EnsureShape(face);
 
-        var nodeCount = ModelNativeMethods.occt_model_face_mesh_nodes_copy(_handle, face.Id, null, 0);
-        if (nodeCount < 0) throw CreateException();
-        var triangleCount = ModelNativeMethods.occt_model_face_mesh_triangles_copy(_handle, face.Id, null, 0);
-        if (triangleCount < 0) throw CreateException();
+        var status = ModelNativeMethods.occt_model_face_mesh_nodes_snapshot_get(
+            _handle,
+            face.Id,
+            null,
+            0,
+            out var nodeCount);
+        CheckStatus(status);
+
+        status = ModelNativeMethods.occt_model_face_mesh_triangles_snapshot_get(
+            _handle,
+            face.Id,
+            null,
+            0,
+            out var triangleCount);
+        CheckStatus(status);
 
         var nativeNodes = new NativeModelMeshNode[nodeCount];
         var triangles = new OcctModelMeshTriangle[triangleCount];
 
         if (nodeCount > 0)
         {
-            var copiedNodes = ModelNativeMethods.occt_model_face_mesh_nodes_copy(
+            status = ModelNativeMethods.occt_model_face_mesh_nodes_snapshot_get(
                 _handle,
                 face.Id,
                 nativeNodes,
-                nativeNodes.Length);
-            if (copiedNodes < 0) throw CreateException();
-            if (copiedNodes != nodeCount)
-                throw new InvalidOperationException("Native mesh-node count changed during bulk copy.");
+                nativeNodes.Length,
+                out var requiredNodes);
+            CheckStatus(status);
+            if (requiredNodes != nodeCount)
+                throw new InvalidOperationException("Native mesh-node count changed during snapshot copy.");
         }
 
         if (triangleCount > 0)
         {
-            var copiedTriangles = ModelNativeMethods.occt_model_face_mesh_triangles_copy(
+            status = ModelNativeMethods.occt_model_face_mesh_triangles_snapshot_get(
                 _handle,
                 face.Id,
                 triangles,
-                triangles.Length);
-            if (copiedTriangles < 0) throw CreateException();
-            if (copiedTriangles != triangleCount)
-                throw new InvalidOperationException("Native mesh-triangle count changed during bulk copy.");
+                triangles.Length,
+                out var requiredTriangles);
+            CheckStatus(status);
+            if (requiredTriangles != triangleCount)
+                throw new InvalidOperationException("Native mesh-triangle count changed during snapshot copy.");
         }
 
         var nodes = new OcctModelMeshNode[nodeCount];
