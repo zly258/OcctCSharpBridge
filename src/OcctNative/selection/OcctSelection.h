@@ -13,6 +13,13 @@ extern "C"
         OcctViewerSelection_Clear = 4
     };
 
+    enum OcctSelectionModeConcurrency
+    {
+        OcctSelectionConcurrency_Single = 0,
+        OcctSelectionConcurrency_GlobalOrLocal = 1,
+        OcctSelectionConcurrency_Multiple = 2
+    };
+
     enum OcctViewerSelectionSettingsUpdateMask : std::uint32_t
     {
         OcctViewerSelectionSettingsUpdate_Mode = 1u << 0,
@@ -90,4 +97,19 @@ extern "C"
     OCCTBRIDGE_API OcctStatus occt_engine_selection_automatic_highlight_set(
         OcctEngineHandle handle,
         int enabled);
+
+    // Frozen ABI4 compatibility. Implemented by the selection domain.
+    OCCTBRIDGE_API int occt_set_object_selection_mode_active(
+        OcctHandle handle,
+        OcctObjectId objectId,
+        int mode,
+        int active,
+        int concurrency,
+        int force);
+
+    OCCTBRIDGE_API int occt_set_object_selection_sensitivity(
+        OcctHandle handle,
+        OcctObjectId objectId,
+        int mode,
+        int sensitivity);
 }
