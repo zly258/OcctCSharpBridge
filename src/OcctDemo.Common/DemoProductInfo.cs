@@ -11,6 +11,7 @@ public static class DemoProductInfo
     public const string CSharpVersion = "C# 14";
     public const string NativeLanguage = "C++17";
     public const string Platform = "Windows x64 / Linux x64";
+    public const string UiHosts = "WinForms / WPF / Avalonia";
     public const string AvaloniaVersion = "12.1.0";
     public const string Repository = "https://github.com/zly258/OcctCSharpBridge";
     public const string License = "GNU LGPL 2.1 + OcctCSharpBridge Exception 1.0";
@@ -20,6 +21,6 @@ public static class DemoProductInfo
     public static string OcctVersion => OcctEngine.OcctVersion;
 
     public static string AboutText(DemoLanguage language) => language == DemoLanguage.ChineseSimplified
-        ? $"OCCT CAD Avalonia 演示应用\nBridge {BridgeVersion} · Native ABI {NativeAbiVersion}\nOCCT {OcctVersion} · {DotNetVersion} · {CSharpVersion} · {NativeLanguage}\nAvalonia {AvaloniaVersion} · {Platform}\n\nRepository: {Repository}\nLicense: {License}\nAuthor: {Author}\nEmail: {Email}"
-        : $"OCCT CAD Avalonia demonstration application\nBridge {BridgeVersion} · Native ABI {NativeAbiVersion}\nOCCT {OcctVersion} · {DotNetVersion} · {CSharpVersion} · {NativeLanguage}\nAvalonia {AvaloniaVersion} · {Platform}\n\nRepository: {Repository}\nLicense: {License}\nAuthor: {Author}\nEmail: {Email}";
+        ? $"OCCT CAD 统一演示应用\nBridge {BridgeVersion} · Native ABI {NativeAbiVersion}\nOCCT {OcctVersion} · {DotNetVersion} · {CSharpVersion} · {NativeLanguage}\nWindows: {UiHosts} · Linux: Avalonia · Avalonia {AvaloniaVersion}\n\nRepository: {Repository}\nLicense: {License}\nAuthor: {Author}\nEmail: {Email}"
+        : $"OCCT CAD unified demonstration application\nBridge {BridgeVersion} · Native ABI {NativeAbiVersion}\nOCCT {OcctVersion} · {DotNetVersion} · {CSharpVersion} · {NativeLanguage}\nWindows: {UiHosts} · Linux: Avalonia · Avalonia {AvaloniaVersion}\n\nRepository: {Repository}\nLicense: {License}\nAuthor: {Author}\nEmail: {Email}";
 }
