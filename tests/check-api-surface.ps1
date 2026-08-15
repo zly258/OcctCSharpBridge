@@ -84,12 +84,13 @@ if ([string]$contract.api.policy -ne "abi5-only") { throw "bridge-contract.json 
 
 $nativeRoot = Join-Path $RepositoryRoot "src\OcctNative"
 $managedRoot = Join-Path $RepositoryRoot "src\OcctNet"
-$publicManagedRelativeRoots = @(
-    "src/OcctNet",
+$coreManagedRelativeRoot = "src/OcctNet"
+$adapterManagedRelativeRoots = @(
     "src/OcctNet.WinForms",
     "src/OcctNet.Wpf",
     "src/OcctNet.Avalonia"
 )
+$publicManagedRelativeRoots = @($coreManagedRelativeRoot) + $adapterManagedRelativeRoots
 
 $nativeHeaderNames = @($contract.api.nativeHeaders | ForEach-Object { [string]$_ })
 if ($nativeHeaderNames.Count -eq 0) { throw "bridge-contract.json does not declare api.nativeHeaders." }
@@ -110,19 +111,21 @@ $headerFiles = @($nativeHeaderNames | ForEach-Object {
 $cppFiles = @($trackedNativeFiles | Where-Object { $_.Extension -in @('.cpp', '.cxx') } | Select-Object -ExpandProperty FullName)
 $allNativeHeaderFiles = @($trackedNativeFiles | Where-Object { $_.Extension -in @('.h', '.hpp') } | Select-Object -ExpandProperty FullName)
 
-$managedSourceFiles = @(
-    foreach ($relativeRoot in $publicManagedRelativeRoots) {
+$coreManagedSourceFiles = @(Get-TrackedFiles $coreManagedRelativeRoot @('.cs') | Select-Object -ExpandProperty FullName)
+$adapterManagedSourceFiles = @(
+    foreach ($relativeRoot in $adapterManagedRelativeRoots) {
         $rootPath = Join-Path $RepositoryRoot $relativeRoot
         if (-not (Test-Path $rootPath -PathType Container)) { throw "Public managed API root is missing: $rootPath" }
         Get-TrackedFiles $relativeRoot @('.cs') | Select-Object -ExpandProperty FullName
     }
 )
-$interopFiles = @($managedSourceFiles | Where-Object {
+$managedSourceFiles = @($coreManagedSourceFiles + $adapterManagedSourceFiles)
+$coreInteropFiles = @($coreManagedSourceFiles | Where-Object {
     $text = [System.IO.File]::ReadAllText($_)
     $text.Contains("[LibraryImport(") -or $text.Contains("[DllImport(")
 })
 
-foreach ($path in @($headerFiles + $cppFiles + $allNativeHeaderFiles + $managedSourceFiles + $interopFiles)) {
+foreach ($path in @($headerFiles + $cppFiles + $allNativeHeaderFiles + $managedSourceFiles + $coreInteropFiles)) {
     if (-not (Test-Path $path -PathType Leaf)) { throw "API validation input was not found: $path" }
 }
 
@@ -130,15 +133,18 @@ $headerText = Read-AllText $headerFiles
 $allNativeHeaderText = Read-AllText $allNativeHeaderFiles
 $cppText = Read-AllText $cppFiles
 $managedText = Read-AllText $managedSourceFiles
-$interopText = Read-AllText $interopFiles
+$coreInteropText = Read-AllText $coreInteropFiles
+$adapterManagedText = Read-AllText $adapterManagedSourceFiles
 
 $declarationPattern = '\b(occt_[a-z0-9_]+)\s*\([^{};]*\)\s*;'
 $definitionPattern = '\b(occt_[a-z0-9_]+)\s*\([^;{}]*\)\s*\{'
+$managedInteropPattern = '\b(?:extern|(?:unsafe\s+)?partial)\s+[A-Za-z0-9_\.<>\[\],\?\*]+\s+(occt_[a-z0-9_]+)\s*\('
 $declarationRaw = Get-RawMatches $headerText $declarationPattern
 $allNativeDeclarationRaw = Get-RawMatches $allNativeHeaderText $declarationPattern
 $definitionRaw = Get-RawMatches $cppText $definitionPattern
-$interopRaw = Get-RawMatches $interopText '\b(?:extern|(?:unsafe\s+)?partial)\s+[A-Za-z0-9_\.<>\[\],\?\*]+\s+(occt_[a-z0-9_]+)\s*\('
-$libraryImportRaw = Get-RawMatches $interopText '(?s)\[LibraryImport\([^\]]+\)\]\s*\[UnmanagedCallConv\(CallConvs\s*=\s*\[typeof\((?:System\.Runtime\.CompilerServices\.)?CallConvCdecl\)\]\)\]\s*internal\s+static\s+(?:unsafe\s+)?partial\s+[A-Za-z0-9_\.<>\[\],\?\*]+\s+(occt_[a-z0-9_]+)\s*\('
+$interopRaw = Get-RawMatches $coreInteropText $managedInteropPattern
+$libraryImportRaw = Get-RawMatches $coreInteropText '(?s)\[LibraryImport\([^\]]+\)\]\s*\[UnmanagedCallConv\(CallConvs\s*=\s*\[typeof\((?:System\.Runtime\.CompilerServices\.)?CallConvCdecl\)\]\)\]\s*internal\s+static\s+(?:unsafe\s+)?partial\s+[A-Za-z0-9_\.<>\[\],\?\*]+\s+(occt_[a-z0-9_]+)\s*\('
+$adapterInteropRaw = Get-RawMatches $adapterManagedText $managedInteropPattern
 
 Assert-NoDuplicates "canonical native declarations" $declarationRaw
 Assert-NoDuplicates "native declarations across tracked headers" $allNativeDeclarationRaw
@@ -157,13 +163,17 @@ Assert-SetEqual "native definitions" $declarations $definitions
 Assert-SetEqual "managed ABI5 interop" $declarations $interopDeclarations
 Assert-SetEqual "LibraryImport + Cdecl bindings" $declarations $libraryImports
 
-$dllImportFiles = @($managedSourceFiles | Where-Object { [System.IO.File]::ReadAllText($_).Contains("[DllImport(") })
-if ($dllImportFiles.Count -gt 0) {
-    Write-Host "[api] DllImport is forbidden in OcctNet ABI5 production interop:" -ForegroundColor Red
-    $dllImportFiles | ForEach-Object {
+$coreDllImportFiles = @($coreManagedSourceFiles | Where-Object { [System.IO.File]::ReadAllText($_).Contains("[DllImport(") })
+if ($coreDllImportFiles.Count -gt 0) {
+    Write-Host "[api] DllImport is forbidden in OcctNet core ABI5 interop:" -ForegroundColor Red
+    $coreDllImportFiles | ForEach-Object {
         Write-Host ("  " + $_.Substring($RepositoryRoot.Length).TrimStart('\')) -ForegroundColor Red
     }
-    throw "Managed ABI5 interop must use LibraryImport only."
+    throw "OcctNet core ABI5 interop must use LibraryImport only."
+}
+
+if ($adapterInteropRaw.Count -gt 0) {
+    throw "UI adapters must not declare OcctNative ABI entry points directly: $((@($adapterInteropRaw | Sort-Object -Unique)) -join ', ')"
 }
 
 $allowedMetadataExports = @(
