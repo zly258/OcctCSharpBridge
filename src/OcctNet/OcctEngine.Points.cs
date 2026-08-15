@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+using System.Drawing;
 using System.Runtime.InteropServices;
 
 namespace OcctNet;
@@ -26,6 +26,12 @@ public sealed partial class OcctEngine
         var status = NativeMethods.occt_engine_point_create(_handle, in options, out var pointId);
         if (status != OcctStatus.Ok) throw CreateException(nameof(AddPoint));
         return CheckPoint(pointId);
+    }
+
+    public OcctPoint AddPoint(OcctPoint3d position, OcctMarkerPixmap marker)
+    {
+        ValidateMarkerPixmap(marker);
+        return AddPointPixmap(position, marker.Width, marker.Height, marker.Pixels, marker.PixelFormat);
     }
 
     public unsafe OcctPoint AddPointPixmap(
@@ -79,6 +85,12 @@ public sealed partial class OcctEngine
             scale,
             color);
         CheckPointStatus(NativeMethods.occt_engine_point_update(_handle, point.Id, in options));
+    }
+
+    public void SetPointStyle(OcctPoint point, OcctMarkerPixmap marker)
+    {
+        ValidateMarkerPixmap(marker);
+        SetPointPixmapStyle(point, marker.Width, marker.Height, marker.Pixels, marker.PixelFormat);
     }
 
     public unsafe void SetPointPixmapStyle(
@@ -168,6 +180,13 @@ public sealed partial class OcctEngine
         }
     }
 
+    private static void ValidateMarkerPixmap(OcctMarkerPixmap marker)
+    {
+        ArgumentNullException.ThrowIfNull(marker);
+        ArgumentNullException.ThrowIfNull(marker.Pixels);
+        ValidatePointPixmap(marker.Width, marker.Height, marker.Pixels, marker.PixelFormat);
+    }
+
     private void CheckPointStatus(OcctStatus status)
     {
         if (status != OcctStatus.Ok) throw CreateException();
@@ -182,7 +201,7 @@ public sealed partial class OcctEngine
     private void EnsurePoint(OcctPoint point)
     {
         EnsureObject(point);
-        if (NativeMethods.occt_object_kind(_handle, point.Id) != (int)OcctObjectKind.Point)
+        if (QueryObjectKind(point.Id) != OcctObjectKind.Point)
             throw new ArgumentException("Object is not a point object in this OcctEngine.", nameof(point));
     }
 }
