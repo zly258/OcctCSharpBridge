@@ -43,6 +43,7 @@ extern "C"
             return engine == nullptr ? OcctStatus_ErrorInvalidHandle : OcctStatus_ErrorInvalidArgument;
         }
 
+        *result = {};
         return executeObjectStateStatus(engine, [&]
         {
             const ObjectEntry* entry = engine->findObject(objectId);
@@ -51,11 +52,10 @@ extern "C"
 
             result->structSize = static_cast<std::uint32_t>(sizeof(OcctViewerObjectState));
             result->apiVersion = ObjectStateApiVersion;
-            result->kind = entry->kind;
             result->visible = engine->viewerContext.context->IsDisplayed(entry->presentation) ? 1 : 0;
-            result->selectable = entry->selectable ? 1 : 0;
             result->selected = engine->viewerContext.context->IsSelected(entry->presentation) ? 1 : 0;
             result->highlighted = engine->viewerContext.context->IsHilighted(entry->presentation) ? 1 : 0;
+            result->selectable = entry->selectable ? 1 : 0;
         });
     }
 }
