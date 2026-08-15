@@ -37,11 +37,17 @@ public sealed class BRepAnnotationContractTests
     [TestMethod]
     public void TextAlignmentNativeValuesRemainStable()
     {
-        Assert.AreEqual(0, (int)OcctTextHorizontalAlignment.Left);
-        Assert.AreEqual(1, (int)OcctTextHorizontalAlignment.Center);
-        Assert.AreEqual(2, (int)OcctTextHorizontalAlignment.Right);
-        Assert.AreEqual(0, (int)OcctTextVerticalAlignment.Bottom);
-        Assert.AreEqual(1, (int)OcctTextVerticalAlignment.Center);
-        Assert.AreEqual(2, (int)OcctTextVerticalAlignment.Top);
+        AssertEnumValue(0, OcctTextHorizontalAlignment.Left);
+        AssertEnumValue(1, OcctTextHorizontalAlignment.Center);
+        AssertEnumValue(2, OcctTextHorizontalAlignment.Right);
+        AssertEnumValue(0, OcctTextVerticalAlignment.Bottom);
+        AssertEnumValue(1, OcctTextVerticalAlignment.Center);
+        AssertEnumValue(2, OcctTextVerticalAlignment.Top);
+    }
+
+    private static void AssertEnumValue<TEnum>(int expected, TEnum actual)
+        where TEnum : struct, Enum
+    {
+        Assert.AreEqual(expected, Convert.ToInt32(actual));
     }
 }
