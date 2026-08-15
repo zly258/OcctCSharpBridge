@@ -102,14 +102,14 @@ public static partial class OcctRuntime
         Environment.SetEnvironmentVariable("PATH", directory + Path.PathSeparator + currentPath);
     }
 
-    [DllImport("kernel32.dll", SetLastError = true)]
+    [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetDefaultDllDirectories(uint directoryFlags);
+    private static partial bool SetDefaultDllDirectories(uint directoryFlags);
 
-    [DllImport("kernel32.dll", EntryPoint = "AddDllDirectory", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern IntPtr AddDllDirectory(string newDirectory);
+    [LibraryImport("kernel32.dll", EntryPoint = "AddDllDirectory", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+    private static partial IntPtr AddDllDirectory(string newDirectory);
 
-    [DllImport("kernel32.dll", EntryPoint = "SetDllDirectoryW", CharSet = CharSet.Unicode, SetLastError = true)]
+    [LibraryImport("kernel32.dll", EntryPoint = "SetDllDirectoryW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetDllDirectory(string pathName);
+    private static partial bool SetDllDirectory(string pathName);
 }
