@@ -381,7 +381,7 @@ public sealed partial class MainWindow
     {
         var color = await DialogService.PickColorAsync(this, Local("Object color", "对象颜色"), DrawingColor.SteelBlue);
         if (color is not null)
-            ExecuteSafe(() => Session.Engine.SetColor(value, color.Value));
+            ExecuteSafe(() => Session.Engine.SetObjectColor(value, color.Value));
     }
 
     private async Task SetObjectMaterialAsync(IOcctObject value)
@@ -397,7 +397,7 @@ public sealed partial class MainWindow
         if (!input.Accepted) return;
         var name = new DemoValues(input.Values).Text("material");
         var material = Enum.GetValues<OcctMaterial>().First(item => MaterialDisplayName(item) == name);
-        ExecuteSafe(() => Session.Engine.SetMaterial(value, material));
+        ExecuteSafe(() => Session.Engine.SetObjectMaterial(value, material));
     }
 
     private async Task<bool> ConfirmDiscardChangesAsync()
