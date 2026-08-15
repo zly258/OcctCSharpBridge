@@ -119,9 +119,9 @@ public partial class MainWindow
         view.Items.Add(new Controls.Separator());
 
         var display = Menu(MenuHeader("Menu.Display"));
-        display.Items.Add(MenuItem(DemoLocalization.Text("Menu.Shaded"), (_, _) => Session.Engine.SetDisplayMode(OcctDisplayMode.Shaded)));
+        display.Items.Add(MenuItem(DemoLocalization.Text("Menu.Shaded"), (_, _) => Session.SetSceneDisplayMode(OcctDisplayMode.Shaded)));
         display.Items.Add(CheckMenuItem(DemoLocalization.Text("Menu.ShadedEdges"), true, item => ExecuteSafe(() => Session.Engine.SetFaceBoundariesVisible(item.IsChecked))));
-        display.Items.Add(MenuItem(DemoLocalization.Text("Menu.Wireframe"), (_, _) => Session.Engine.SetDisplayMode(OcctDisplayMode.Wireframe)));
+        display.Items.Add(MenuItem(DemoLocalization.Text("Menu.Wireframe"), (_, _) => Session.SetSceneDisplayMode(OcctDisplayMode.Wireframe)));
         display.Items.Add(CheckMenuItem(DemoLocalization.Text("Menu.Hlr"), false, item => Session.Engine.SetComputedHlr(item.IsChecked)));
         display.Items.Add(CheckMenuItem(DemoLocalization.Text("Menu.Antialiasing"), true, item => Session.Engine.SetAntialiasing(item.IsChecked)));
         display.Items.Add(CheckMenuItem(DemoLocalization.Text("Menu.Triedron"), true, item => ExecuteSafe(() => Session.Engine.SetTriedronVisible(item.IsChecked))));
@@ -248,8 +248,8 @@ public partial class MainWindow
         MainToolBar.Items.Add(CommandButton(DemoLocalization.Text("Toolbar.Box"), DemoCommandId.Box));
         MainToolBar.Items.Add(CommandButton(DemoLocalization.Text("Toolbar.Cylinder"), DemoCommandId.Cylinder));
         MainToolBar.Items.Add(new Controls.Separator());
-        MainToolBar.Items.Add(ToolButton(DemoLocalization.Text("Toolbar.Shaded"), (_, _) => Session.Engine.SetDisplayMode(OcctDisplayMode.Shaded)));
-        MainToolBar.Items.Add(ToolButton(DemoLocalization.Text("Toolbar.Wireframe"), (_, _) => Session.Engine.SetDisplayMode(OcctDisplayMode.Wireframe)));
+        MainToolBar.Items.Add(ToolButton(DemoLocalization.Text("Toolbar.Shaded"), (_, _) => Session.SetSceneDisplayMode(OcctDisplayMode.Shaded)));
+        MainToolBar.Items.Add(ToolButton(DemoLocalization.Text("Toolbar.Wireframe"), (_, _) => Session.SetSceneDisplayMode(OcctDisplayMode.Wireframe)));
         MainToolBar.Items.Add(ToolButton(DemoLocalization.Text("Toolbar.Extents"), (_, _) => Session.Engine.FitAll()));
         MainToolBar.Items.Add(ToolButton(DemoLocalization.Text("Toolbar.Isometric"), (_, _) => Session.Engine.SetView(OcctViewOrientation.Isometric)));
         MainToolBar.Items.Add(new Controls.Separator());
