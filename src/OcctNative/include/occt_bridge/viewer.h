@@ -4,6 +4,7 @@
 #include "exchange/OcctStepDocument.h"
 #include "exchange/OcctViewerExchange.h"
 #include "platform/OcctNativeSurface.h"
+#include "viewer/OcctViewerUpdate.h"
 #include "geometry/OcctPoints.h"
 #include "geometry/OcctViewerGeometry.h"
 #include "geometry/OcctViewerShapeQueries.h"
