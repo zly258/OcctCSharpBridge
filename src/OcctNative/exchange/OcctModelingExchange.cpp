@@ -7,21 +7,26 @@
 #include <BRepTools.hxx>
 #include <StlAPI_Writer.hxx>
 
+#include <cmath>
 #include <filesystem>
 #include <stdexcept>
 #include <string>
 #include <utility>
 
-using namespace OcctModelingInternal;
+using OcctModelingInternal::ModelSession;
+using OcctModelingInternal::execute;
+using OcctModelingInternal::modelOutputStream;
+using OcctModelingInternal::readModelBrep;
+using OcctModelingInternal::readModelIges;
+using OcctModelingInternal::readModelStep;
+using OcctModelingInternal::readModelStl;
+using OcctModelingInternal::sessionOf;
+using OcctModelingInternal::writeModelIges;
+using OcctModelingInternal::writeModelStep;
 
 namespace
 {
     constexpr std::uint32_t StlExportOptionsApiVersion = 1;
-
-    ModelSession* sessionOf(OcctModelingSessionHandle handle)
-    {
-        return reinterpret_cast<ModelSession*>(handle);
-    }
 
     std::filesystem::path requiredPath(const char* utf8Path)
     {
@@ -64,8 +69,10 @@ namespace
         {
             throw std::invalid_argument("Unsupported STL export options size or version.");
         }
-        requirePositive(options->linearDeflection, "Linear deflection");
-        requirePositive(options->angularDeflection, "Angular deflection");
+        if (!std::isfinite(options->linearDeflection) || options->linearDeflection <= 0.0)
+            throw std::invalid_argument("Linear deflection must be finite and greater than zero.");
+        if (!std::isfinite(options->angularDeflection) || options->angularDeflection <= 0.0)
+            throw std::invalid_argument("Angular deflection must be finite and greater than zero.");
     }
 }
 

@@ -39,9 +39,9 @@ namespace
     void validateTransformation(const OcctTransform3d& value)
     {
         const double values[] = {
-            value.m11, value.m12, value.m13, value.m14,
-            value.m21, value.m22, value.m23, value.m24,
-            value.m31, value.m32, value.m33, value.m34 };
+            value.m00, value.m01, value.m02, value.m03,
+            value.m10, value.m11, value.m12, value.m13,
+            value.m20, value.m21, value.m22, value.m23 };
         for (double item : values)
         {
             if (!std::isfinite(item))
@@ -54,9 +54,9 @@ namespace
         validateTransformation(value);
         gp_Trsf transform;
         transform.SetValues(
-            value.m11, value.m12, value.m13, value.m14,
-            value.m21, value.m22, value.m23, value.m24,
-            value.m31, value.m32, value.m33, value.m34);
+            value.m00, value.m01, value.m02, value.m03,
+            value.m10, value.m11, value.m12, value.m13,
+            value.m20, value.m21, value.m22, value.m23);
         return transform;
     }
 
