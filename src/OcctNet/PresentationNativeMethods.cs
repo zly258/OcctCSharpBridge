@@ -35,6 +35,18 @@ internal struct NativeViewerPresentationState
 }
 
 [StructLayout(LayoutKind.Sequential)]
+internal struct NativeViewerTransformPersistenceOptions
+{
+    internal uint StructSize;
+    internal uint ApiVersion;
+    internal int Mode;
+    internal OcctPoint3d Anchor;
+    internal int Position;
+    internal int OffsetX;
+    internal int OffsetY;
+}
+
+[StructLayout(LayoutKind.Sequential)]
 internal struct NativePresentationClipPlane
 {
     internal OcctPoint3d Point;
@@ -109,4 +121,46 @@ internal static partial class PresentationNativeMethods
         OcctEngineSafeHandle handle,
         long objectId,
         int dynamic);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_object_display_priority_set(
+        OcctEngineSafeHandle handle,
+        long objectId,
+        int priority);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_objects_display_priority_set(
+        OcctEngineSafeHandle handle,
+        IntPtr objectIds,
+        int count,
+        int priority);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_object_display_priority_get(
+        OcctEngineSafeHandle handle,
+        long objectId,
+        out int priority);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_object_transform_persistence_set(
+        OcctEngineSafeHandle handle,
+        long objectId,
+        in NativeViewerTransformPersistenceOptions options);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_object_transform_persistence_clear(
+        OcctEngineSafeHandle handle,
+        long objectId);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_object_transform_persistence_get(
+        OcctEngineSafeHandle handle,
+        long objectId,
+        out NativeOcctTransformPersistenceState result);
 }
