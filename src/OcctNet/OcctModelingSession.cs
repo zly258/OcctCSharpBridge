@@ -139,12 +139,12 @@ public sealed partial class OcctModelingSession : IDisposable
         return CheckShape(result);
     }
 
-    private delegate int PropertyCall(OcctModelingSafeHandle handle, long id, out OcctMassProperties result);
+    private delegate OcctStatus PropertyCall(OcctModelingSafeHandle handle, long id, out OcctMassProperties result);
 
     private OcctMassProperties GetProperties(OcctModelShape shape, PropertyCall call)
     {
         EnsureShape(shape);
-        Check(call(_handle, shape.Id, out var result));
+        CheckStatus(call(_handle, shape.Id, out var result));
         return result;
     }
 
