@@ -80,11 +80,6 @@ namespace OcctModelingInternal
         }
     };
 
-    inline ModelSession* modelOf(OcctModelHandle handle)
-    {
-        return static_cast<ModelSession*>(handle);
-    }
-
     inline ModelSession* sessionOf(OcctModelingSessionHandle handle)
     {
         return reinterpret_cast<ModelSession*>(handle);
