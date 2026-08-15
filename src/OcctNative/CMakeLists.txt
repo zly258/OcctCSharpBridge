@@ -6,6 +6,23 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS OFF)
 
+# Native modules are part of the stable SDK architecture. Generic Extension/Extensions
+# filenames hide ownership and tend to become cross-domain dumping grounds, so require
+# every module to use a semantic domain name instead.
+file(GLOB_RECURSE OCCT_GENERIC_EXTENSION_MODULES
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*Extension.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*Extension.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*Extension.hxx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*Extensions.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*Extensions.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*Extensions.hxx")
+if(OCCT_GENERIC_EXTENSION_MODULES)
+    list(JOIN OCCT_GENERIC_EXTENSION_MODULES ", " OCCT_GENERIC_EXTENSION_MODULES_TEXT)
+    message(FATAL_ERROR
+        "Native modules must use semantic domain names; generic Extension/Extensions modules are forbidden: ${OCCT_GENERIC_EXTENSION_MODULES_TEXT}")
+endif()
+
 get_filename_component(BRIDGE_REPOSITORY_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 set(BRIDGE_CONTRACT_FILE "${BRIDGE_REPOSITORY_ROOT}/bridge-contract.json")
 if(NOT EXISTS "${BRIDGE_CONTRACT_FILE}")
