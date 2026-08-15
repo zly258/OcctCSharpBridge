@@ -17,10 +17,10 @@ extern "C"
         OcctBounds bounds;
     };
 
-    OCCTBRIDGE_API int occt_model_shape_face_analysis(
-        OcctModelHandle handle,
+    OCCTBRIDGE_API OcctStatus occt_model_shape_face_analysis_snapshot_get(
+        OcctModelingSessionHandle handle,
         OcctObjectId shapeId,
         OcctModelFaceAnalysis* items,
         int capacity,
-        int* count);
+        int* required);
 }
