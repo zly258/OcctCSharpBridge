@@ -6,7 +6,11 @@ public sealed partial class OcctModelingSession
     {
         EnsureShape(root);
         EnsureShape(subshape);
-        Check(ModelNativeMethods.occt_model_create_topology_reference(_handle, root.Id, subshape.Id, out var result));
+        CheckStatus(ModelNativeMethods.occt_model_create_topology_reference(
+            _handle,
+            root.Id,
+            subshape.Id,
+            out var result));
         return result.ToManaged();
     }
 
@@ -17,10 +21,9 @@ public sealed partial class OcctModelingSession
     {
         EnsureShape(root);
         OcctGuard.NonNegative(matchingTolerance, nameof(matchingTolerance));
-        if (!double.IsFinite(matchingTolerance)) throw new ArgumentOutOfRangeException(nameof(matchingTolerance));
 
         var nativeReference = NativeModelTopologyReference.FromManaged(reference);
-        Check(ModelNativeMethods.occt_model_resolve_topology_reference(
+        CheckStatus(ModelNativeMethods.occt_model_resolve_topology_reference(
             _handle,
             root.Id,
             in nativeReference,
@@ -40,10 +43,9 @@ public sealed partial class OcctModelingSession
         EnsureShape(sourceShape);
         if (operationId <= 0) throw new ArgumentOutOfRangeException(nameof(operationId));
         OcctGuard.NonNegative(matchingTolerance, nameof(matchingTolerance));
-        if (!double.IsFinite(matchingTolerance)) throw new ArgumentOutOfRangeException(nameof(matchingTolerance));
 
         var nativeReference = NativeModelTopologyReference.FromManaged(reference);
-        Check(ModelNativeMethods.occt_model_resolve_topology_reference_with_history(
+        CheckStatus(ModelNativeMethods.occt_model_resolve_topology_reference_with_history(
             _handle,
             root.Id,
             operationId,
