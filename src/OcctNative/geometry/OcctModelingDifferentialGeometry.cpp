@@ -1,4 +1,5 @@
-﻿#include "modeling/OcctModelingShapeInternal.hxx"
+﻿#include "geometry/OcctModelingDifferentialGeometry.h"
+#include "modeling/OcctModelingShapeInternal.hxx"
 
 #include <BRepAdaptor_Curve.hxx>
 #include <BRepAdaptor_Surface.hxx>
@@ -70,14 +71,16 @@ namespace
 
 extern "C"
 {
-    int occt_model_edge_parameter_range(
-        OcctModelHandle handle,
+    OcctStatus occt_model_edge_parameter_range(
+        OcctModelingSessionHandle handle,
         OcctObjectId edgeId,
         OcctModelParameterRange* result)
     {
-        ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+        *result = {};
+        return executeStatus(model, [&]
         {
             const BRepAdaptor_Curve curve(requireEdge(model, edgeId));
             result->firstParameter = curve.FirstParameter();
@@ -88,15 +91,17 @@ extern "C"
         });
     }
 
-    int occt_model_edge_differential(
-        OcctModelHandle handle,
+    OcctStatus occt_model_edge_differential(
+        OcctModelingSessionHandle handle,
         OcctObjectId edgeId,
         double parameter,
         OcctModelCurveDifferential* result)
     {
-        ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+        *result = {};
+        return executeStatus(model, [&]
         {
             const BRepAdaptor_Curve curve(requireEdge(model, edgeId));
             validateCurveParameter(curve, parameter);
@@ -113,16 +118,18 @@ extern "C"
         });
     }
 
-    int occt_model_edge_curvature(
-        OcctModelHandle handle,
+    OcctStatus occt_model_edge_curvature(
+        OcctModelingSessionHandle handle,
         OcctObjectId edgeId,
         double parameter,
         double resolution,
         OcctModelCurveCurvature* result)
     {
-        ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+        *result = {};
+        return executeStatus(model, [&]
         {
             requirePositive(resolution, "Resolution");
             const BRepAdaptor_Curve curve(requireEdge(model, edgeId));
@@ -131,13 +138,7 @@ extern "C"
 
             result->parameter = parameter;
             result->point = toNativePoint(properties.Value());
-            result->tangent = {0.0, 0.0, 0.0};
-            result->normal = {0.0, 0.0, 0.0};
             result->centerOfCurvature = result->point;
-            result->curvature = 0.0;
-            result->hasTangent = 0;
-            result->hasNormal = 0;
-            result->hasCenterOfCurvature = 0;
 
             if (!properties.IsTangentDefined()) return;
 
@@ -160,14 +161,16 @@ extern "C"
         });
     }
 
-    int occt_model_face_periodicity(
-        OcctModelHandle handle,
+    OcctStatus occt_model_face_periodicity(
+        OcctModelingSessionHandle handle,
         OcctObjectId faceId,
         OcctModelSurfacePeriodicity* result)
     {
-        ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+        *result = {};
+        return executeStatus(model, [&]
         {
             const BRepAdaptor_Surface surface(requireFace(model, faceId));
             result->isUClosed = surface.IsUClosed() ? 1 : 0;
@@ -179,17 +182,19 @@ extern "C"
         });
     }
 
-    int occt_model_face_differential(
-        OcctModelHandle handle,
+    OcctStatus occt_model_face_differential(
+        OcctModelingSessionHandle handle,
         OcctObjectId faceId,
         double u,
         double v,
         double resolution,
         OcctModelSurfaceDifferential* result)
     {
-        ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+        *result = {};
+        return executeStatus(model, [&]
         {
             requirePositive(resolution, "Resolution");
             const TopoDS_Face face = requireFace(model, faceId);
@@ -201,26 +206,16 @@ extern "C"
             gp_Vec uSecondDerivative;
             gp_Vec vSecondDerivative;
             gp_Vec uvDerivative;
-            surface.D2(
-                u,
-                v,
-                point,
-                uDerivative,
-                vDerivative,
-                uSecondDerivative,
-                vSecondDerivative,
-                uvDerivative);
+            surface.D2(u, v, point, uDerivative, vDerivative, uSecondDerivative, vSecondDerivative, uvDerivative);
 
             result->u = u;
             result->v = v;
             result->point = toNativePoint(point);
-            result->normal = {0.0, 0.0, 0.0};
             result->uDerivative = toNativeVector(uDerivative);
             result->vDerivative = toNativeVector(vDerivative);
             result->uSecondDerivative = toNativeVector(uSecondDerivative);
             result->vSecondDerivative = toNativeVector(vSecondDerivative);
             result->uvDerivative = toNativeVector(uvDerivative);
-            result->hasNormal = 0;
 
             const gp_Vec cross = uDerivative.Crossed(vDerivative);
             if (cross.SquareMagnitude() <= resolution * resolution) return;
@@ -232,17 +227,19 @@ extern "C"
         });
     }
 
-    int occt_model_face_curvature(
-        OcctModelHandle handle,
+    OcctStatus occt_model_face_curvature(
+        OcctModelingSessionHandle handle,
         OcctObjectId faceId,
         double u,
         double v,
         double resolution,
         OcctModelSurfaceCurvature* result)
     {
-        ModelSession* model = modelOf(handle);
-        if (result == nullptr) return 0;
-        return execute(model, [&]
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+        *result = {};
+        return executeStatus(model, [&]
         {
             requirePositive(resolution, "Resolution");
             const TopoDS_Face face = requireFace(model, faceId);
@@ -252,16 +249,6 @@ extern "C"
             result->u = u;
             result->v = v;
             result->point = toNativePoint(properties.Value());
-            result->normal = {0.0, 0.0, 0.0};
-            result->maximumDirection = {0.0, 0.0, 0.0};
-            result->minimumDirection = {0.0, 0.0, 0.0};
-            result->maximumCurvature = 0.0;
-            result->minimumCurvature = 0.0;
-            result->meanCurvature = 0.0;
-            result->gaussianCurvature = 0.0;
-            result->isUmbilic = 0;
-            result->hasNormal = 0;
-            result->hasCurvature = 0;
 
             if (properties.IsNormalDefined())
             {
