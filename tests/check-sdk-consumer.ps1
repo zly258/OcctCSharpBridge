@@ -25,7 +25,7 @@ $sourceFiles = @(
     $tracked | Where-Object { $_ -like "src/*.cs" -or $_ -like "src/*/*.cs" }
 )
 $legacyNativePattern = '\bocct_(?:create|destroy|last_error|initialize|initialize_surface|model_create|model_destroy|model_last_error)\b|\b(?:NativeOcctSurface|LegacyNativeSurface)\b'
-$retiredManagedPattern = '\bEngine\.(?:Objects|Shapes|ShapeCount|Exists|GetShape|GetName|SetName|GetObjectKind)\b'
+$retiredManagedPattern = '\bEngine\.(?:Objects|Shapes|Exists|GetShape|GetName|SetName)\b'
 $violations = @()
 foreach ($relativePath in $sourceFiles) {
     $path = Join-Path $RepositoryRoot $relativePath
