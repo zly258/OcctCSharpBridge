@@ -15,6 +15,30 @@ function Test-TrackedPath {
     return $tracked.Count -gt 0
 }
 
+function Get-TrackedSourceText {
+    param(
+        [Parameter(Mandatory = $true)][string]$RelativeRoot,
+        [Parameter(Mandatory = $true)][string[]]$Extensions
+    )
+
+    $normalizedRoot = $RelativeRoot.Replace('\', '/').TrimEnd('/')
+    $tracked = @(& git -C $RepositoryRoot ls-files -- "$normalizedRoot/**" 2>$null)
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to inspect tracked repository files with git ls-files: $RelativeRoot"
+    }
+
+    $parts = @()
+    foreach ($relativePath in $tracked) {
+        if ([System.IO.Path]::GetExtension($relativePath) -notin $Extensions) { continue }
+        $fullPath = Join-Path $RepositoryRoot $relativePath
+        if (-not (Test-Path $fullPath -PathType Leaf)) {
+            throw "Tracked source file is missing from the working tree: $relativePath"
+        }
+        $parts += [System.IO.File]::ReadAllText($fullPath)
+    }
+    return $parts -join "`n"
+}
+
 $contractPath = Join-Path $RepositoryRoot "bridge-contract.json"
 if (-not (Test-Path $contractPath -PathType Leaf)) {
     throw "Bridge contract file was not found: bridge-contract.json"
@@ -57,4 +81,14 @@ foreach ($retiredPath in @(
     }
 }
 
-Write-Host "[abi5] ABI 5 is the only supported native ABI; no ABI4 compatibility artifacts are tracked." -ForegroundColor Green
+$nativeText = Get-TrackedSourceText "src/OcctNative" @('.h', '.hpp', '.hxx', '.cpp', '.cxx')
+foreach ($retiredToken in @(
+    "OcctModelHandle",
+    "modelOf("
+)) {
+    if ($nativeText.Contains($retiredToken)) {
+        throw "Retired pre-ABI5 modeling implementation token remains in tracked Native source: $retiredToken"
+    }
+}
+
+Write-Host "[abi5] ABI 5 is the only supported native ABI; no ABI4 compatibility artifacts or legacy modeling handles are tracked." -ForegroundColor Green
