@@ -40,12 +40,11 @@ public sealed partial class DemoSession
     public CadCommandAvailability GetCommandAvailability(DemoCommandId commandId)
     {
         var selectedEntries = Engine.SelectedObjects
-            .Where(value => Engine.Exists(value))
+            .Where(value => Engine.ContainsObject(value.Id))
             .ToArray();
         var selectedShapes = selectedEntries
-            .Where(value => value.Kind == OcctObjectKind.Shape)
+            .OfType<OcctShape>()
             .DistinctBy(value => value.Id)
-            .Select(value => Engine.GetShape(value.Id))
             .ToArray();
 
         if (commandId == DemoCommandId.Delete)
@@ -57,7 +56,7 @@ public sealed partial class DemoSession
             or DemoCommandId.DiameterDimension)
         {
             var selectedHits = Engine.GetSelectedHits()
-                .Where(hit => Engine.Exists(hit.Owner))
+                .Where(hit => Engine.ContainsObject(hit.Owner.Id))
                 .DistinctBy(hit => (hit.Owner.Id, hit.SubshapeType, hit.SubshapeIndex))
                 .ToArray();
             var required = commandId == DemoCommandId.AngleDimension ? 2 : 1;

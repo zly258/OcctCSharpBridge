@@ -14,7 +14,7 @@ public sealed partial class DemoSession
 
     private DemoCommandResult ExecuteModelingTest(string testId)
     {
-        var initialObjectIds = Engine.Objects.Select(item => item.Id).ToHashSet();
+        var initialObjectIds = Engine.GetObjects().Select(item => item.Id).ToHashSet();
         DemoCommandResult result;
 
         using (Engine.BeginDisplayBatch(fitAllOnDispose: true))

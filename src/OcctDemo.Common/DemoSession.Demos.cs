@@ -360,9 +360,8 @@ public sealed partial class DemoSession
         IEnumerable<IOcctObject> resultObjects)
     {
         var resultIds = resultObjects.Select(item => item.Id).ToHashSet();
-        var processObjects = Engine.Objects
+        var processObjects = Engine.GetObjects()
             .Where(item => !initialObjectIds.Contains(item.Id) && !resultIds.Contains(item.Id))
-            .Select(item => (IOcctObject)item)
             .ToArray();
         if (processObjects.Length > 0) Engine.Delete(processObjects);
     }
@@ -381,5 +380,4 @@ public sealed partial class DemoSession
             or DemoCommandId.DemoManifold
             or DemoCommandId.DemoTwistedDuct
             or DemoCommandId.DemoAnnotations;
-
 }

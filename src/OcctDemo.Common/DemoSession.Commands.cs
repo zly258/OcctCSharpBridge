@@ -17,7 +17,7 @@ public sealed partial class DemoSession
         var isDemoCommand = IsDemoCommand(commandId);
         var displayBatch = isDemoCommand ? Engine.BeginDisplayBatch() : null;
         var demoInitialObjectIds = isDemoCommand
-            ? Engine.Objects.Select(item => item.Id).ToHashSet()
+            ? Engine.GetObjects().Select(item => item.Id).ToHashSet()
             : null;
         DemoCommandResult result;
         try
@@ -205,7 +205,7 @@ public sealed partial class DemoSession
         }
         finally
         {
-            if (Engine.Exists(edge)) Engine.Delete(edge);
+            if (Engine.ContainsObject(edge.Id)) Engine.Delete(edge);
         }
     }
 
@@ -228,8 +228,8 @@ public sealed partial class DemoSession
         }
         finally
         {
-            if (Engine.Exists(first)) Engine.Delete(first);
-            if (Engine.Exists(second)) Engine.Delete(second);
+            if (Engine.ContainsObject(first.Id)) Engine.Delete(first);
+            if (Engine.ContainsObject(second.Id)) Engine.Delete(second);
         }
     }
 
@@ -258,7 +258,7 @@ public sealed partial class DemoSession
         }
         finally
         {
-            if (Engine.Exists(edge)) Engine.Delete(edge);
+            if (Engine.ContainsObject(edge.Id)) Engine.Delete(edge);
         }
     }
 
@@ -268,7 +268,7 @@ public sealed partial class DemoSession
 
         var targets = selected
             .DistinctBy(item => item.Id)
-            .Where(item => Engine.Exists(item))
+            .Where(item => Engine.ContainsObject(item.Id))
             .Select(item => (IOcctObject)item)
             .ToArray();
 
@@ -279,10 +279,8 @@ public sealed partial class DemoSession
                 "请先选择要删除的对象。"));
         }
 
-        // One managed call, one P/Invoke transition, one native validation pass and one redraw.
         Engine.Delete(targets);
         ActiveObject = null;
         return DemoCommandResult.Empty(DemoLocalization.Text("Session.Deleted", targets.Length));
     }
-
 }
