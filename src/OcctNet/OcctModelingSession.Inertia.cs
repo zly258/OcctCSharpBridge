@@ -14,9 +14,12 @@ public sealed partial class OcctModelingSession
     private OcctInertiaProperties GetInertiaProperties(OcctModelShape shape, InertiaQuery query)
     {
         EnsureShape(shape);
-        Check(query(_handle, shape.Id, out var result));
+        CheckStatus(query(_handle, shape.Id, out var result));
         return result.ToManaged();
     }
 
-    private delegate int InertiaQuery(OcctModelingSafeHandle handle, long shapeId, out NativeModelInertiaProperties result);
+    private delegate OcctStatus InertiaQuery(
+        OcctModelingSafeHandle handle,
+        long shapeId,
+        out NativeModelInertiaProperties result);
 }
