@@ -7,21 +7,23 @@ internal static partial class ModelNativeMethods
 {
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
-    internal static partial int occt_model_shape_is_same(
+    internal static partial OcctStatus occt_model_shape_is_same(
         OcctModelingSafeHandle handle,
         long firstId,
-        long secondId);
+        long secondId,
+        out int result);
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
-    internal static partial int occt_model_shape_is_partner(
+    internal static partial OcctStatus occt_model_shape_is_partner(
         OcctModelingSafeHandle handle,
         long firstId,
-        long secondId);
+        long secondId,
+        out int result);
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
-    internal static partial int occt_model_shape_oriented_bounds(
+    internal static partial OcctStatus occt_model_shape_oriented_bounds(
         OcctModelingSafeHandle handle,
         long shapeId,
         int optimal,
