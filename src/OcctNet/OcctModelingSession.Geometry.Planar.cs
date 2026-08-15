@@ -1,4 +1,4 @@
-﻿namespace OcctNet;
+namespace OcctNet;
 
 public sealed partial class OcctModelingSession
 {
@@ -18,8 +18,17 @@ public sealed partial class OcctModelingSession
         OcctGuard.Finite(actualCenter, nameof(center));
         OcctGuard.NonZero(actualNormal, nameof(normal));
         OcctGuard.NonZero(actualXDirection, nameof(xDirection));
-        return CheckShape(ModelNativeMethods.occt_model_make_regular_polygon(
-            NativeHandle, actualCenter, actualNormal, actualXDirection, radius, sideCount, makeFace ? 1 : 0));
+
+        var status = ModelNativeMethods.occt_model_planar_regular_polygon_create(
+            NativeHandle,
+            actualCenter,
+            actualNormal,
+            actualXDirection,
+            radius,
+            sideCount,
+            makeFace ? 1 : 0,
+            out var result);
+        return CheckShape(status, result);
     }
 
     public OcctModelShape MakeRectangleWire(
@@ -37,8 +46,16 @@ public sealed partial class OcctModelingSession
         OcctGuard.Finite(actualOrigin, nameof(origin));
         OcctGuard.NonZero(actualXDirection, nameof(xDirection));
         OcctGuard.NonZero(actualNormal, nameof(normal));
-        return CheckShape(ModelNativeMethods.occt_model_make_rectangle_wire(
-            NativeHandle, actualOrigin, actualXDirection, actualNormal, width, height));
+
+        var status = ModelNativeMethods.occt_model_planar_rectangle_wire_create(
+            NativeHandle,
+            actualOrigin,
+            actualXDirection,
+            actualNormal,
+            width,
+            height,
+            out var result);
+        return CheckShape(status, result);
     }
 
     public OcctModelShape MakePlaneFace(
@@ -56,13 +73,26 @@ public sealed partial class OcctModelingSession
         OcctGuard.Finite(actualOrigin, nameof(origin));
         OcctGuard.NonZero(actualXDirection, nameof(xDirection));
         OcctGuard.NonZero(actualNormal, nameof(normal));
-        return CheckShape(ModelNativeMethods.occt_model_make_plane_face(
-            NativeHandle, actualOrigin, actualXDirection, actualNormal, width, height));
+
+        var status = ModelNativeMethods.occt_model_planar_face_create(
+            NativeHandle,
+            actualOrigin,
+            actualXDirection,
+            actualNormal,
+            width,
+            height,
+            out var result);
+        return CheckShape(status, result);
     }
 
     public OcctModelShape MakeFace(OcctModelShape wire)
     {
         EnsureShape(wire);
-        return CheckShape(ModelNativeMethods.occt_model_make_face_from_wire(_handle, wire.Id, 0));
+        var status = ModelNativeMethods.occt_model_planar_face_from_wire_create(
+            _handle,
+            wire.Id,
+            0,
+            out var result);
+        return CheckShape(status, result);
     }
 }
