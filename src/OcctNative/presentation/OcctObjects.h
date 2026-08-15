@@ -38,6 +38,15 @@ extern "C"
         OcctViewerObjectPresentation_Unhighlight = 2
     };
 
+    struct OcctViewerObjectState
+    {
+        std::uint32_t structSize;
+        std::uint32_t apiVersion;
+        int visible;
+        int selected;
+        int selectable;
+    };
+
     OCCTBRIDGE_API OcctStatus occt_engine_objects_snapshot_get(
         OcctEngineHandle handle,
         OcctObjectDescriptor* items,
@@ -59,6 +68,17 @@ extern "C"
         OcctEngineHandle handle,
         OcctObjectId objectId,
         const OcctViewerObjectUpdateOptions* options);
+
+    OCCTBRIDGE_API OcctStatus occt_engine_objects_update(
+        OcctEngineHandle handle,
+        const OcctObjectId* objectIds,
+        int count,
+        const OcctViewerObjectUpdateOptions* options);
+
+    OCCTBRIDGE_API OcctStatus occt_engine_object_state_get(
+        OcctEngineHandle handle,
+        OcctObjectId objectId,
+        OcctViewerObjectState* state);
 
     OCCTBRIDGE_API OcctStatus occt_engine_object_name_get(
         OcctEngineHandle handle,
@@ -94,5 +114,11 @@ extern "C"
     OCCTBRIDGE_API OcctStatus occt_engine_object_presentation_action(
         OcctEngineHandle handle,
         OcctObjectId objectId,
+        int action);
+
+    OCCTBRIDGE_API OcctStatus occt_engine_objects_presentation_action(
+        OcctEngineHandle handle,
+        const OcctObjectId* objectIds,
+        int count,
         int action);
 }
