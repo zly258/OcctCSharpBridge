@@ -25,7 +25,7 @@ $sourceFiles = @(
     $tracked | Where-Object { $_ -like "src/*.cs" -or $_ -like "src/*/*.cs" }
 )
 $legacyNativePattern = '\bocct_(?:create|destroy|last_error|initialize|initialize_surface|model_create|model_destroy|model_last_error)\b|\b(?:NativeOcctSurface|LegacyNativeSurface)\b'
-$retiredManagedPattern = '\bEngine\.(?:Objects|Shapes|Exists|GetShape|GetName|SetName)\b'
+$retiredManagedPattern = '\bEngine\.(?:Objects|Shapes|Exists|GetShape|GetName|SetName|Display|SetColor|SetTransparency|SetVisible|SetLineWidth|SetMaterial|SetDisplayMode|MakeTextShape|MakeLengthAnnotationShape|MakeAngleAnnotationShape|MakeRadiusAnnotationShape|MakeDiameterAnnotationShape)\b'
 $violations = @()
 foreach ($relativePath in $sourceFiles) {
     $path = Join-Path $RepositoryRoot $relativePath
@@ -40,4 +40,4 @@ if ($violations.Count -gt 0) {
     throw "Demo implementation uses retired Bridge APIs:`n - $($violations -join "`n - ")"
 }
 
-Write-Host "[consumer] Demo contains no SDK implementation sources, legacy native lifecycle calls, or retired managed object APIs." -ForegroundColor Green
+Write-Host "[consumer] Demo contains no SDK implementation sources, legacy native lifecycle calls, or retired managed presentation/object APIs." -ForegroundColor Green
