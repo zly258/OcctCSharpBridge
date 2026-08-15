@@ -8,26 +8,24 @@ public sealed partial class OcctModelingSession
     public OcctFaceAnalysisResult AnalyzeFaces(OcctModelShape root)
     {
         EnsureShape(root);
-        Check(ModelNativeMethods.occt_model_shape_face_analysis(
+        CheckStatus(ModelNativeMethods.occt_model_shape_face_analysis_snapshot_get(
             _handle,
             root.Id,
             null,
             0,
             out var faceCount));
-        if (faceCount < 0)
-            throw new InvalidOperationException("Native face analysis count is invalid.");
         if (faceCount == 0)
             return new OcctFaceAnalysisResult(root, Array.Empty<OcctFaceAnalysisInfo>());
 
         var nativeItems = new NativeModelFaceAnalysis[faceCount];
-        Check(ModelNativeMethods.occt_model_shape_face_analysis(
+        CheckStatus(ModelNativeMethods.occt_model_shape_face_analysis_snapshot_get(
             _handle,
             root.Id,
             nativeItems,
             nativeItems.Length,
-            out var returnedCount));
-        if (returnedCount != faceCount)
-            throw new InvalidOperationException($"Native face analysis count changed during analysis: expected {faceCount}, returned {returnedCount}.");
+            out var required));
+        if (required != faceCount)
+            throw new InvalidOperationException($"Native face analysis count changed during analysis: expected {faceCount}, returned {required}.");
 
         var items = new OcctFaceAnalysisInfo[faceCount];
         for (var index = 0; index < nativeItems.Length; index++)
