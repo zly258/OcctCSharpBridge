@@ -1,34 +1,27 @@
-﻿#include "core/OcctInternal.hxx"
-#include "platform/OcctNativeSurface.h"
+#include "core/OcctInternal.hxx"
 
-#include <Aspect_PolygonOffsetMode.hxx>
-#include <Aspect_TypeOfTriedronPosition.hxx>
 #include <BRepBuilderAPI_Transform.hxx>
-#include <Graphic3d_AspectFillArea3d.hxx>
 #include <Graphic3d_NameOfMaterial.hxx>
-#include <Graphic3d_TransformPers.hxx>
-#include <Graphic3d_TransModeFlags.hxx>
-#include <Graphic3d_Vec2.hxx>
 #include <Precision.hxx>
-#include <Prs3d_Drawer.hxx>
-#include <Prs3d_ShadingAspect.hxx>
 #include <Standard_Version.hxx>
 #include <TopAbs_ShapeEnum.hxx>
-#include <V3d_TypeOfOrientation.hxx>
-#include <cstring>
 
+#include <cstring>
 
 namespace OcctBridge
 {
     bool Engine::isInitialized() const { return viewerContext.isInitialized(); }
+
     void Engine::clearError()
     {
         errors.clear();
     }
+
     void Engine::setError(const std::string& message)
     {
         setError(OcctStatus_ErrorUnknown, message);
     }
+
     void Engine::setError(OcctStatus code, const std::string& message)
     {
         errors.set(code, message);
@@ -89,6 +82,7 @@ namespace OcctBridge
     void Engine::applySelectionMode(const Handle(AIS_InteractiveObject)& presentation)
     {
         if (presentation.IsNull()) return;
+
         viewerContext.context->Deactivate(presentation);
         const OcctObjectId objectId = findPresentation(presentation);
         const ObjectEntry* entry = findObject(objectId);
@@ -141,9 +135,13 @@ namespace OcctBridge
         return addShapePresentation(shape, ais, fit, name);
     }
 
-    OcctObjectId Engine::addPresentation(const Handle(AIS_InteractiveObject)& presentation, int kind, const std::string& name)
+    OcctObjectId Engine::addPresentation(
+        const Handle(AIS_InteractiveObject)& presentation,
+        int kind,
+        const std::string& name)
     {
         if (presentation.IsNull()) throw std::runtime_error("OCCT returned a null presentation.");
+
         const OcctObjectId id = scene.allocateId();
         viewerContext.context->Display(presentation, Standard_False);
         scene.objects.emplace(id, ObjectEntry{kind, TopoDS_Shape(), presentation, name});
@@ -163,6 +161,7 @@ namespace OcctBridge
     {
         auto iterator = scene.objects.find(id);
         if (iterator == scene.objects.end()) return;
+
         if (iterator->second.kind == OcctObject_Shape) invalidatePristineStepDocument();
         if (!iterator->second.presentation.IsNull())
             viewerContext.context->Remove(iterator->second.presentation, Standard_False);
@@ -171,11 +170,15 @@ namespace OcctBridge
         scene.objects.erase(iterator);
     }
 
-    Engine* engineOf(OcctHandle handle) { return static_cast<Engine*>(handle); }
+    Engine* engineOf(OcctHandle handle)
+    {
+        return static_cast<Engine*>(handle);
+    }
 
     bool validateInitialized(Engine* engine)
     {
         if (engine == nullptr) return false;
+
         engine->clearError();
         if (!engine->isInitialized())
         {
@@ -200,8 +203,15 @@ namespace OcctBridge
             Quantity_TOC_RGB);
     }
 
-    gp_Pnt point(OcctPoint3d value) { return gp_Pnt(value.x, value.y, value.z); }
-    gp_Vec vector(OcctVector3d value) { return gp_Vec(value.x, value.y, value.z); }
+    gp_Pnt point(OcctPoint3d value)
+    {
+        return gp_Pnt(value.x, value.y, value.z);
+    }
+
+    gp_Vec vector(OcctVector3d value)
+    {
+        return gp_Vec(value.x, value.y, value.z);
+    }
 
     gp_Dir direction(OcctVector3d value)
     {
@@ -255,12 +265,14 @@ namespace OcctBridge
 
     void requirePositive(double value, const char* name)
     {
-        if (value <= 0.0) throw std::invalid_argument(std::string(name) + " must be greater than zero.");
+        if (value <= 0.0)
+            throw std::invalid_argument(std::string(name) + " must be greater than zero.");
     }
 
     void requireCount(int count, int minimum, const char* name)
     {
-        if (count < minimum) throw std::invalid_argument(std::string(name) + " has too few items.");
+        if (count < minimum)
+            throw std::invalid_argument(std::string(name) + " has too few items.");
     }
 
     TopoDS_Shape transformed(const TopoDS_Shape& source, const gp_Trsf& transform)
@@ -297,29 +309,19 @@ extern "C"
 {
     OcctEngineHandle occt_engine_create()
     {
-        try { return reinterpret_cast<OcctEngineHandle>(new Engine()); }
-        catch (...) { return nullptr; }
+        try
+        {
+            return reinterpret_cast<OcctEngineHandle>(new Engine());
+        }
+        catch (...)
+        {
+            return nullptr;
+        }
     }
 
     void occt_engine_destroy(OcctEngineHandle handle)
     {
         delete reinterpret_cast<Engine*>(handle);
-    }
-
-    OcctHandle occt_create()
-    {
-        return reinterpret_cast<OcctHandle>(occt_engine_create());
-    }
-
-    void occt_destroy(OcctHandle handle)
-    {
-        occt_engine_destroy(reinterpret_cast<OcctEngineHandle>(handle));
-    }
-
-    const char* occt_last_error(OcctHandle handle)
-    {
-        Engine* engine = engineOf(handle);
-        return engine == nullptr ? "Invalid OCCT engine handle." : engine->errors.message.c_str();
     }
 
     OcctStatus occt_engine_last_error_code(OcctEngineHandle handle)
@@ -340,17 +342,28 @@ extern "C"
 
         const int size = static_cast<int>(engine->errors.message.size()) + 1;
         *required = size;
-        if (buffer == nullptr) return capacity == 0 ? OcctStatus_Ok : OcctStatus_ErrorInvalidArgument;
+        if (buffer == nullptr)
+            return capacity == 0 ? OcctStatus_Ok : OcctStatus_ErrorInvalidArgument;
         if (capacity < size) return OcctStatus_ErrorBufferTooSmall;
+
         std::memcpy(buffer, engine->errors.message.c_str(), static_cast<std::size_t>(size));
         return OcctStatus_Ok;
     }
 
+    const char* occt_version()
+    {
+        return OCC_VERSION_COMPLETE;
+    }
 
-    const char* occt_version() { return OCC_VERSION_COMPLETE; }
-    int occt_bridge_abi_version() { return 4; }
-    int occt_bridge_current_abi_version() { return 5; }
-    const char* occt_bridge_version() { return "3.0.0-preview.1"; }
+    int occt_bridge_current_abi_version()
+    {
+        return 5;
+    }
+
+    const char* occt_bridge_version()
+    {
+        return "3.0.0-preview.1";
+    }
 
     const char* occt_bridge_build_info()
     {
@@ -383,54 +396,5 @@ extern "C"
             return value;
         }();
         return info.c_str();
-    }
-
-    int occt_initialize(OcctHandle handle, void* windowHandle)
-    {
-        const OcctNativeSurface surface{
-            static_cast<std::uint32_t>(sizeof(OcctNativeSurface)),
-            1,
-            OcctNativeSurface_Auto,
-            windowHandle,
-            nullptr};
-        return occt_engine_initialize_surface(reinterpret_cast<OcctEngineHandle>(handle), &surface) == OcctStatus_Ok ? 1 : 0;
-    }
-
-    int occt_resize(OcctHandle h)
-    {
-        Engine* e = engineOf(h);
-        if (!validateInitialized(e)) return 0;
-        return execute(e, [&]
-        {
-            e->viewerContext.view->MustBeResized();
-            e->viewerContext.view->Redraw();
-        });
-    }
-
-    int occt_redraw(OcctHandle h)
-    {
-        Engine* e = engineOf(h);
-        if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { e->requestRedraw(); });
-    }
-
-    int occt_begin_update(OcctHandle h)
-    {
-        Engine* e = engineOf(h);
-        if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { e->beginUpdate(); });
-    }
-
-    int occt_end_update(OcctHandle h, int fitAll)
-    {
-        Engine* e = engineOf(h);
-        if (!validateInitialized(e)) return 0;
-        return execute(e, [&] { e->endUpdate(fitAll != 0); });
-    }
-
-    int occt_is_updating(OcctHandle h)
-    {
-        Engine* e = engineOf(h);
-        return e != nullptr && e->isUpdating() ? 1 : 0;
     }
 }
