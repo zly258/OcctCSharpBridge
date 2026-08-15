@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "core/OcctErrorContext.hxx"
 #include "modeling/OcctModeling.h"
@@ -8,8 +8,8 @@
 #include <Standard_Failure.hxx>
 #include <TopoDS_Shape.hxx>
 
-#include <stdexcept>
 #include <new>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -85,6 +85,11 @@ namespace OcctModelingInternal
         return static_cast<ModelSession*>(handle);
     }
 
+    inline ModelSession* sessionOf(OcctModelingSessionHandle handle)
+    {
+        return reinterpret_cast<ModelSession*>(handle);
+    }
+
     template<typename Function>
     inline int execute(ModelSession* model, Function&& function)
     {
@@ -112,7 +117,6 @@ namespace OcctModelingInternal
         {
             model->errors.set(OcctStatus_ErrorOutOfMemory, "Native memory allocation failed.");
         }
-
         catch (const std::exception& exception)
         {
             model->errors.set(OcctStatus_ErrorUnknown, exception.what());
@@ -124,6 +128,15 @@ namespace OcctModelingInternal
         return 0;
     }
 
+    template<typename Function>
+    inline OcctStatus executeStatus(ModelSession* model, Function&& function)
+    {
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        return execute(model, std::forward<Function>(function)) != 0
+            ? OcctStatus_Ok
+            : model->errors.code;
+    }
+
     template<typename Result, typename Function>
     inline Result executeValue(ModelSession* model, Result fallback, Function&& function)
     {
@@ -132,13 +145,27 @@ namespace OcctModelingInternal
         return result;
     }
 
-
     template<typename Function>
     inline OcctObjectId executeShape(ModelSession* model, Function&& function)
     {
         OcctObjectId result = 0;
         execute(model, [&] { result = model->addShape(function()); });
         return result;
+    }
+
+    template<typename Function>
+    inline OcctStatus executeShapeStatus(
+        ModelSession* model,
+        OcctObjectId* result,
+        Function&& function)
+    {
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+        *result = 0;
+        return executeStatus(model, [&]
+        {
+            *result = model->addShape(function());
+        });
     }
 
     inline OperationRecord& requireOperation(ModelSession* model, OcctOperationId operationId)
