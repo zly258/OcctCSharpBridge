@@ -74,9 +74,12 @@ try {
     if (-not (Test-Path -LiteralPath $buildScript -PathType Leaf)) { throw "$Remote/$SourceBranch does not contain build.ps1." }
 
     Write-Host "[sync] Building validated win-x64 Binary SDK from $Remote/$SourceBranch..." -ForegroundColor Cyan
-    $buildArgs = @("dist", "Release")
-    if (-not [string]::IsNullOrWhiteSpace($OcctRoot)) { $buildArgs += @("-OcctRoot", $OcctRoot) }
-    & $buildScript @buildArgs
+    $buildParameters = @{
+        Target = "dist"
+        Configuration = "Release"
+    }
+    if (-not [string]::IsNullOrWhiteSpace($OcctRoot)) { $buildParameters.OcctRoot = $OcctRoot }
+    & $buildScript @buildParameters
     if ($LASTEXITCODE -ne 0) { throw "Binary SDK build failed on $Remote/$SourceBranch." }
 
     Copy-Sdk (Join-Path $TempRoot "dist\win-x64")
