@@ -13,7 +13,7 @@ public static partial class OcctRuntime
         var candidates = new List<string>
         {
             Path.Combine(AppContext.BaseDirectory, NativeLibraryFileName),
-            Path.Combine(AppContext.BaseDirectory, "runtimes", "win-x64", "native", NativeLibraryFileName)
+            Path.Combine(AppContext.BaseDirectory, "runtimes", RuntimeIdentifier, "native", NativeLibraryFileName)
         };
 
         if (!string.IsNullOrWhiteSpace(ConfiguredNativeDirectory))
@@ -22,6 +22,10 @@ public static partial class OcctRuntime
         var configuredDirectory = Environment.GetEnvironmentVariable("OCCT_BRIDGE_NATIVE_DIR");
         if (!string.IsNullOrWhiteSpace(configuredDirectory))
             candidates.Add(Path.Combine(configuredDirectory, NativeLibraryFileName));
+
+        var portableRuntimeDirectory = Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "runtime"));
+        candidates.Add(Path.Combine(portableRuntimeDirectory, NativeLibraryFileName));
 
         if (_repositoryProbingEnabled)
         {
@@ -48,7 +52,7 @@ public static partial class OcctRuntime
         foreach (var candidate in new[]
                  {
                      AppContext.BaseDirectory,
-                     Path.Combine(AppContext.BaseDirectory, "runtimes", "win-x64", "native"),
+                     Path.Combine(AppContext.BaseDirectory, "runtimes", RuntimeIdentifier, "native"),
                      Environment.GetEnvironmentVariable("OCCT_BRIDGE_NATIVE_DIR"),
                      portableRuntimeDirectory
                  })
@@ -86,6 +90,21 @@ public static partial class OcctRuntime
         }
 
         return null;
+    }
+
+    private static string? ResolveOcctKernelPath(string? occtRoot)
+    {
+        if (string.IsNullOrWhiteSpace(occtRoot)) return null;
+
+        var candidates = OperatingSystem.IsWindows()
+            ? new[] { Path.Combine(occtRoot, "win64", "vc14", "bin", OcctKernelFileName) }
+            : new[]
+            {
+                Path.Combine(occtRoot, "lib", OcctKernelFileName),
+                Path.Combine(occtRoot, "lib64", OcctKernelFileName)
+            };
+
+        return candidates.FirstOrDefault(File.Exists) ?? candidates[0];
     }
 
     private static string? FindRepositoryRoot(string startDirectory)

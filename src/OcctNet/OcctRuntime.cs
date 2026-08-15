@@ -5,7 +5,23 @@
 /// </summary>
 public static partial class OcctRuntime
 {
-    private const string NativeLibraryFileName = "OcctNative.dll";
+    private static string NativeLibraryFileName => OperatingSystem.IsWindows()
+        ? "OcctNative.dll"
+        : OperatingSystem.IsLinux()
+            ? "libOcctNative.so"
+            : throw new PlatformNotSupportedException("OcctCSharpBridge supports Windows x64 and Linux x64 only.");
+
+    private static string OcctKernelFileName => OperatingSystem.IsWindows()
+        ? "TKernel.dll"
+        : OperatingSystem.IsLinux()
+            ? "libTKernel.so"
+            : throw new PlatformNotSupportedException("OcctCSharpBridge supports Windows x64 and Linux x64 only.");
+
+    private static string RuntimeIdentifier => OperatingSystem.IsWindows()
+        ? "win-x64"
+        : OperatingSystem.IsLinux()
+            ? "linux-x64"
+            : throw new PlatformNotSupportedException("OcctCSharpBridge supports Windows x64 and Linux x64 only.");
 
     private static readonly object SyncRoot = new();
     private static bool _configured;
@@ -57,6 +73,7 @@ public static partial class OcctRuntime
                 return;
             }
 
+            ValidateSupportedPlatform();
             ValidateExplicitConfiguration(options);
             _repositoryProbingEnabled = options.EnableRepositoryProbing;
 
@@ -73,11 +90,12 @@ public static partial class OcctRuntime
             ConfiguredRoot = ResolveOcctRoot(options.OcctRoot);
             if (!string.IsNullOrWhiteSpace(ConfiguredRoot))
             {
-                var occtBinDirectory = Path.Combine(ConfiguredRoot, "win64", "vc14", "bin");
-                var thirdPartyDirectory = Path.Combine(ConfiguredRoot, "3rdparty-vc14-64");
+                foreach (var runtimeDirectory in GetOcctRuntimeDirectories(ConfiguredRoot))
+                    AddRuntimeSearchPath(runtimeDirectory);
 
-                AddRuntimeSearchPath(occtBinDirectory);
-                AddThirdPartyRuntimePaths(thirdPartyDirectory);
+                if (OperatingSystem.IsWindows())
+                    AddThirdPartyRuntimePaths(Path.Combine(ConfiguredRoot, "3rdparty-vc14-64"));
+
                 SetIfMissing("OCCT_ROOT", ConfiguredRoot);
                 SetIfMissing("CASROOT", ConfiguredRoot);
                 ConfigureResources(FindResourceDirectory(ConfiguredRoot));
@@ -85,6 +103,14 @@ public static partial class OcctRuntime
 
             _configured = true;
         }
+    }
+
+    private static void ValidateSupportedPlatform()
+    {
+        if (!Environment.Is64BitProcess)
+            throw new PlatformNotSupportedException("OcctCSharpBridge requires a 64-bit process.");
+        if (!OperatingSystem.IsWindows() && !OperatingSystem.IsLinux())
+            throw new PlatformNotSupportedException("OcctCSharpBridge supports Windows x64 and Linux x64 only.");
     }
 
     private static void ValidateExplicitConfiguration(OcctRuntimeOptions options)
@@ -129,6 +155,21 @@ public static partial class OcctRuntime
             (!string.IsNullOrWhiteSpace(options.OcctRoot) || !string.IsNullOrWhiteSpace(options.NativeBridgeDirectory)))
         {
             throw new InvalidOperationException("OCCT runtime repository probing policy cannot be changed after configuration.");
+        }
+    }
+
+    private static IEnumerable<string> GetOcctRuntimeDirectories(string occtRoot)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            yield return Path.Combine(occtRoot, "win64", "vc14", "bin");
+            yield break;
+        }
+
+        if (OperatingSystem.IsLinux())
+        {
+            yield return Path.Combine(occtRoot, "lib");
+            yield return Path.Combine(occtRoot, "lib64");
         }
     }
 

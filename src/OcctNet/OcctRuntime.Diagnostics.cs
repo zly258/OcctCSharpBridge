@@ -90,7 +90,7 @@ public static partial class OcctRuntime
     {
         var baseDirectory = AppContext.BaseDirectory;
         var applicationNativeBridgePath = Path.Combine(baseDirectory, NativeLibraryFileName);
-        var applicationOcctKernelPath = Path.Combine(baseDirectory, "TKernel.dll");
+        var applicationOcctKernelPath = Path.Combine(baseDirectory, OcctKernelFileName);
         var configuredNativeDirectory = DiagnosticGetEnvironmentPath("OCCT_BRIDGE_NATIVE_DIR");
         var configuredOcctRoot = DiagnosticGetEnvironmentPath("OCCT_ROOT");
         var configuredCasRoot = DiagnosticGetEnvironmentPath("CASROOT");
@@ -99,9 +99,7 @@ public static partial class OcctRuntime
         var configuredNativeBridgePath = configuredNativeDirectory is null
             ? null
             : Path.Combine(configuredNativeDirectory, NativeLibraryFileName);
-        var configuredOcctKernelPath = effectiveOcctRoot is null
-            ? null
-            : Path.Combine(effectiveOcctRoot, "win64", "vc14", "bin", "TKernel.dll");
+        var configuredOcctKernelPath = ResolveOcctKernelPath(effectiveOcctRoot);
 
         return new OcctRuntimeDiagnosticInfo(
             DateTimeOffset.UtcNow,
@@ -124,7 +122,7 @@ public static partial class OcctRuntime
             configuredOcctKernelPath,
             DiagnosticFileExistsOrNull(configuredOcctKernelPath),
             DiagnosticTryFindLoadedRuntimeModule(NativeLibraryFileName),
-            DiagnosticTryFindLoadedRuntimeModule("TKernel.dll"),
+            DiagnosticTryFindLoadedRuntimeModule(OcctKernelFileName),
             GetDiagnosticReport());
     }
 
@@ -136,12 +134,13 @@ public static partial class OcctRuntime
     {
         var baseDirectory = AppContext.BaseDirectory;
         var appLocalBridge = Path.Combine(baseDirectory, NativeLibraryFileName);
-        var appLocalKernel = Path.Combine(baseDirectory, "TKernel.dll");
+        var appLocalKernel = Path.Combine(baseDirectory, OcctKernelFileName);
         var builder = new StringBuilder();
         builder.AppendLine($"Configured: {_configured}");
+        builder.AppendLine($"Platform: {RuntimeIdentifier}");
         builder.AppendLine($"Base directory: {baseDirectory}");
         builder.AppendLine($"App-local bridge: {(File.Exists(appLocalBridge) ? "[found]" : "[missing]")} {appLocalBridge}");
-        builder.AppendLine($"App-local TKernel: {(File.Exists(appLocalKernel) ? "[found]" : "[missing]")} {appLocalKernel}");
+        builder.AppendLine($"App-local OCCT kernel: {(File.Exists(appLocalKernel) ? "[found]" : "[missing]")} {appLocalKernel}");
         builder.AppendLine($"Native bridge directory: {ConfiguredNativeDirectory ?? "<not resolved>"}");
         builder.AppendLine($"OCCT root: {ConfiguredRoot ?? "<not resolved>"}");
         builder.AppendLine($"Repository probing: {_repositoryProbingEnabled}");
