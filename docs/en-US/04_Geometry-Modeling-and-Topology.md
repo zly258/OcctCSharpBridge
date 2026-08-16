@@ -1,6 +1,6 @@
 # Geometry, Modeling and Topology
 
-`OcctModelingSession` is the headless modeling owner on `main`. Its semantics are independent of WinForms/WPF and are intended to remain reusable by other host branches.
+`OcctModelingSession` is the headless modeling owner on `main`. Its semantics are independent of WinForms, WPF and Avalonia and remain reusable by every supported consumer host.
 
 The Modeling surface includes primitives, Boolean operations, extrusion/revolution/sweep/loft, fillet/chamfer, offset/shelling, healing, mesh generation, shape validation, geometry evaluation, topology traversal, adjacency, intersections, inertia and operation history.
 
