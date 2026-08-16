@@ -40,7 +40,7 @@ public sealed class OcctViewportWorldPointEventArgs : EventArgs
     public OcctPoint3d WorldPoint { get; }
 }
 
-public sealed partial class OcctViewportControl : Control
+public sealed partial class OcctViewportControl : Control, IOcctViewportHost, IOcctViewportInputSource
 {
     private OcctEngine? _engine;
     private Point _lastMouse;
@@ -60,11 +60,11 @@ public sealed partial class OcctViewportControl : Control
     private OcctViewportInteractionFeatures _interactionFeatures = OcctViewportInteractionFeatures.Default;
     private double _zoomSensitivity = 1.0;
     private readonly HashSet<Keys> _pressedKeys = [];
+    private OcctViewportHostState _hostState = OcctViewportHostState.Detached;
+    private long _engineGeneration;
 
     public OcctViewportControl()
     {
-        // OCCT renders directly into this HWND. WinForms UserPaint/double buffering must stay disabled;
-        // the selection rectangle is rendered by OCCT as a top-layer AIS_RubberBand instead.
         SetStyle(ControlStyles.UserPaint, false);
         SetStyle(ControlStyles.AllPaintingInWmPaint, false);
         SetStyle(ControlStyles.OptimizedDoubleBuffer, false);
@@ -73,6 +73,9 @@ public sealed partial class OcctViewportControl : Control
     }
 
     public OcctEngine Engine => _engine ?? throw new InvalidOperationException("The OCCT viewport handle has not been created yet.");
+    public bool IsEngineInitialized => _engine?.IsInitialized == true;
+    public OcctViewportHostState HostState => _hostState;
+    public long EngineGeneration => _engineGeneration;
 
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public OcctViewportInteractionFeatures InteractionFeatures
@@ -88,7 +91,10 @@ public sealed partial class OcctViewportControl : Control
             _interactionFeatures = value;
             if (!HasInteractionFeature(OcctViewportInteractionFeatures.Rotate)) _rotating = false;
             if (!HasInteractionFeature(OcctViewportInteractionFeatures.Pan)) _panning = false;
-            if (!HasInteractionFeature(OcctViewportInteractionFeatures.Selection)) CancelRectangleSelection();
+            if (!HasInteractionFeature(OcctViewportInteractionFeatures.RectangleSelection) && _selectingRectangle)
+                CancelRectangleSelection();
+            else if (!HasInteractionFeature(OcctViewportInteractionFeatures.Selection))
+                CancelRectangleSelection();
         }
     }
 
@@ -121,11 +127,14 @@ public sealed partial class OcctViewportControl : Control
     public event EventHandler<OcctViewportSelectionEventArgs>? ObjectSelectionChanged;
     public event EventHandler<OcctViewportWorldPointEventArgs>? WorldPointChanged;
     public event EventHandler<OcctViewportErrorEventArgs>? ErrorOccurred;
-    public event EventHandler? EngineInitialized;
     public event EventHandler<OcctPointerInputEventArgs>? PreviewPointerInput;
     public event EventHandler<OcctPointerInputEventArgs>? PointerInput;
     public event EventHandler<OcctKeyInputEventArgs>? PreviewKeyInput;
     public event EventHandler<OcctKeyInputEventArgs>? KeyInput;
+    public event EventHandler<OcctViewportHostStateChangedEventArgs>? HostStateChanged;
+    public event EventHandler<OcctViewportFaultedEventArgs>? Faulted;
+    public event EventHandler<OcctEngineLifecycleEventArgs>? EngineDisposing;
+    public event EventHandler<OcctEngineLifecycleEventArgs>? EngineRecreated;
 
     public void RaiseSelectionChanged()
     {
