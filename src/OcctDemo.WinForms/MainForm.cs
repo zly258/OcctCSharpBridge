@@ -64,6 +64,7 @@ public sealed partial class MainForm : Form
             _commandStatus.Text = args.Exception.Message;
             Log($"VIEWPORT ERROR: {args.Exception.Message}");
         };
+        _viewport.PreviewKeyInput += ViewportPreviewKeyInput;
         _viewport.ObjectSelectionChanged += (_, args) =>
         {
             if (_session is null) return;
