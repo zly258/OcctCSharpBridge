@@ -38,6 +38,33 @@ public sealed class ViewportHostContractTests
     }
 
     [TestMethod]
+    public void NativeHandleChangedCarriesBothHandlesAndGeneration()
+    {
+        var previous = new IntPtr(123);
+        var current = new IntPtr(456);
+        var args = new OcctNativeHandleChangedEventArgs(previous, current, 5);
+
+        Assert.AreEqual(previous, args.PreviousHandle);
+        Assert.AreEqual(current, args.NativeHandle);
+        Assert.AreEqual(5L, args.Generation);
+    }
+
+    [TestMethod]
+    public void ViewportHostContractExposesNativeHandleLifecycle()
+    {
+        var type = typeof(IOcctViewportHost);
+        var nativeHandle = type.GetProperty(nameof(IOcctViewportHost.NativeHandle));
+        var nativeHandleChanged = type.GetEvent(nameof(IOcctViewportHost.NativeHandleChanged));
+
+        Assert.IsNotNull(nativeHandle);
+        Assert.AreEqual(typeof(IntPtr), nativeHandle.PropertyType);
+        Assert.IsNotNull(nativeHandleChanged);
+        Assert.AreEqual(
+            typeof(EventHandler<OcctNativeHandleChangedEventArgs>),
+            nativeHandleChanged.EventHandlerType);
+    }
+
+    [TestMethod]
     public void DefaultInitialOptionsMatchBridgeViewerDefaults()
     {
         var options = new OcctViewportInitializationOptions();
@@ -63,6 +90,9 @@ public sealed class ViewportHostContractTests
 
         Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>
             new OcctFirstFrameRenderedEventArgs(0));
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>
+            new OcctNativeHandleChangedEventArgs(IntPtr.Zero, new IntPtr(1), 0));
     }
 
     [TestMethod]
