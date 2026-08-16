@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using OcctDemo.Common;
@@ -139,6 +139,9 @@ public sealed partial class MainWindow
             MenuItem(DemoLocalization.Text("Menu.Perspective"), () => Session.Engine.SetProjection(OcctProjectionType.Perspective)),
             AsyncMenuItem(DemoLocalization.Text("Menu.PerspectiveFov"), SetPerspectiveFovAsync));
 
+        var rectangleSelectionEnabled =
+            (_viewport.InteractionFeatures & OcctViewportInteractionFeatures.RectangleSelection) != 0;
+
         return Menu(MenuHeader("Menu.View"),
             MenuItem(DemoLocalization.Text("Menu.FitAll"), () => Session.Engine.FitAll(), Shortcut(Key.F)),
             MenuItem(DemoLocalization.Text("Menu.FitSelected"), () =>
@@ -156,9 +159,12 @@ public sealed partial class MainWindow
             BuildMaterialMenu(),
             BuildSelectionMenu(),
             BuildSelectionAppearanceMenu(),
-            CheckMenuItem(DemoLocalization.Text("Menu.WindowSelection"), _viewport.EnableRectangleSelection, item =>
+            CheckMenuItem(DemoLocalization.Text("Menu.WindowSelection"), rectangleSelectionEnabled, item =>
             {
-                _viewport.EnableRectangleSelection = item.IsChecked;
+                if (item.IsChecked)
+                    _viewport.InteractionFeatures |= OcctViewportInteractionFeatures.RectangleSelection;
+                else
+                    _viewport.InteractionFeatures &= ~OcctViewportInteractionFeatures.RectangleSelection;
                 _commandStatus.Text = DemoLocalization.Text(item.IsChecked ? "Status.WindowSelectionOn" : "Status.WindowSelectionOff");
             }),
             AsyncMenuItem(DemoLocalization.Text("Menu.SelectionTolerance"), SetSelectionToleranceAsync),
