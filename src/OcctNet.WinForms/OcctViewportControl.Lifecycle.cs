@@ -13,11 +13,12 @@ public sealed partial class OcctViewportControl
         ResetRenderReady();
         SetHostState(OcctViewportHostState.Initializing);
         var generation = ++_engineGeneration;
+        SetNativeHandle(Handle, generation);
         try
         {
             var engine = new OcctEngine();
             _engine = engine;
-            engine.InitializeNativeSurface(OcctNativeSurfaceKind.Auto, Handle, redrawAfterInitialize: false);
+            engine.InitializeNativeSurface(OcctNativeSurfaceKind.Auto, NativeHandle, redrawAfterInitialize: false);
             using (engine.BeginDisplayBatch())
             {
                 engine.ResizeSurface();
@@ -45,6 +46,7 @@ public sealed partial class OcctViewportControl
         _rotating = false;
         _panning = false;
         DisposeCurrentEngine(transitionToDisposed: true);
+        SetNativeHandle(IntPtr.Zero, _engineGeneration);
         _lastNativeSize = Size.Empty;
         base.OnHandleDestroyed(e);
     }
