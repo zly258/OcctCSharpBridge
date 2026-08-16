@@ -61,7 +61,9 @@ namespace OcctBridge
 
         engine->viewerContext.view->SetProj(V3d_XposYnegZpos);
         engine->viewerContext.view->MustBeResized();
-        engine->viewerContext.view->Redraw();
+        // Do not draw here. Public OcctEngine.Initialize preserves the historical immediate
+        // first frame, while reusable UI adapters intentionally configure their initial view
+        // inside one display batch before presenting the first frame.
     }
 }
 
