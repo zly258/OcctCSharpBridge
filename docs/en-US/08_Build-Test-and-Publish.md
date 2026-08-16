@@ -40,15 +40,22 @@ Targets:
 | `native` | build `OcctNative.dll` |
 | `managed` | build Core, WinForms, WPF and Avalonia |
 | `test` | build/run managed regression tests |
-| `smoke` | Native + Managed + real Native Smoke |
+| `smoke` | Native + Managed + real Core Native Smoke |
+| `viewport-smoke` | run WinForms, WPF and Avalonia native-host smoke tests |
 | `dist` | produce Release `dist/win-x64` Binary SDK |
 | `clean` | remove generated outputs |
-| `all` | full local validation; does not create `dist` |
+| `all` | full local validation including Core and all three Viewport Host smokes; does not create `dist` |
 
 Recommended full validation:
 
 ```powershell
 .\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
+```
+
+When changing adapter input/lifecycle/first-frame behavior, the focused gate is:
+
+```powershell
+.\build.ps1 viewport-smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
 Generate a Windows Binary SDK:
@@ -70,11 +77,11 @@ Every non-`clean` Windows target runs the repository invariant checks first:
 | `tests/check-abi5-contract.ps1` | ABI5-only; reject pre-ABI5 compatibility residue |
 | `tests/check-bulk-abi.ps1` | keep bulk collections on Snapshot/Buffer ABI |
 | `tests/check-native-build-structure.ps1` | Native CMake inventory and platform isolation |
-| `tests/check-api-surface.ps1` | exact Native declaration/definition and Core `LibraryImport + Cdecl` parity |
+| `tests/check-api-surface.ps1` | exact Native declaration/definition and Core `LibraryImport + Cdecl` parity, including additive geometry-query exports |
 
 These checks do not replace compiler validation, managed regression tests or Native Smoke.
 
-## 4. Managed regression and Native Smoke
+## 4. Managed regression and Native/Viewport Smoke
 
 Managed-only regression project:
 
@@ -88,17 +95,19 @@ Run:
 .\build.ps1 test Release
 ```
 
-Native Smoke project:
-
-```text
-tests/OcctNet.Smoke/OcctNet.Smoke.csproj
-```
-
-Run:
+Core Native Smoke:
 
 ```powershell
 .\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
+
+Viewport Host Smoke:
+
+```powershell
+.\build.ps1 viewport-smoke Release -OcctRoot "D:\tools\occt-vc144-64"
+```
+
+The Viewport gate creates real WinForms/WPF/Avalonia native hosts and checks host state, engine generation, first-frame readiness, native handle lifecycle and core viewer operations. Avalonia also exercises `ProjectPointToEdge` / `ProjectPointToFace` parameter round trips.
 
 For the complete Windows gate use `build.ps1 all Release`.
 
@@ -140,6 +149,7 @@ Common commands:
 ./build.sh managed Release
 ./build.sh test Release
 ./build.sh all Release
+./build.sh avalonia-smoke Release
 ./build.sh dist Release
 ```
 
@@ -177,19 +187,25 @@ The Binary SDK manifest uses schema 2 with nested ABI5 metadata and records the 
 
 This prevents repository growth, stale source/binary mismatches and platform payload churn. Consumers must validate the package contract, manifest, source commit and hashes rather than infer freshness from Git history.
 
-The unified `demo` branch follows the same policy and treats `dist/` as disposable local cache state. Its Windows/Linux synchronization scripts reuse a Binary SDK only when `manifest.sourceCommit` and all hashes match the selected `main` revision.
+The unified `demo` branch follows the same policy and treats `dist/` as disposable local cache state. Its Windows/Linux synchronization scripts reuse a Binary SDK only when `manifest.sourceCommit` and all hashes match the selected SDK source revision.
 
 ## 9. Formal distribution
 
-Windows publication validation can be run from a clean, current `main`:
+Windows publication validation, from a clean current `main`:
 
 ```powershell
 .\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-`publish.ps1` validates the current branch/source revision, invokes Release Binary SDK generation, and verifies contract/manifest/source-commit/hash consistency. It does **not** run `git add`, create a commit or push.
+Linux publication validation, from a clean current `main`:
 
-After validation, distribute the generated binaries through a reviewed artifact channel such as a GitHub Release asset or another controlled package location. Do not commit generated Binary SDK payloads to `main`, `main-dev`, `demo` or `demo-dev`. This workflow does not require GitHub Actions.
+```bash
+./publish.sh
+```
+
+Both publish scripts are validation/artifact-generation entry points. They verify the formal branch/source revision, Release Binary SDK contract, schema-2 manifest, ABI5 metadata, source commit and SHA-256 hashes. They do **not** run `git add`, create a commit or push a branch. The Linux script must never restore the retired flat `nativeAbiVersion` check or source-controlled `dist/linux-x64` workflow.
+
+After validation, distribute the generated binaries through a reviewed artifact channel such as GitHub Release assets or another controlled package location. Do not commit generated Binary SDK payloads to `main`, `main-dev`, `demo` or `demo-dev`. This workflow does not require GitHub Actions.
 
 ## 10. Demo consumer model
 
@@ -198,7 +214,7 @@ The formal `demo` / `demo-dev` branches are the single application-consumer line
 - Windows x64: WinForms, WPF and Avalonia;
 - Linux x64: Avalonia only.
 
-Demo consumes Binary SDKs produced from `main` and must not vendor Bridge Native/Core implementation source or declare the `occt_*` ABI directly.
+Demo consumes Binary SDKs produced from `main` and must not vendor Bridge Native/Core implementation source or declare the `occt_*` ABI directly. During development only, `demo-dev` may explicitly regenerate its local Windows SDK from `main-dev`; the formal default remains `main`.
 
 ## 11. Documentation and API-surface policy
 
