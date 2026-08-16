@@ -44,7 +44,7 @@ viewport.InitialOptions = new OcctViewportInitializationOptions
 };
 ```
 
-The adapters create the native surface without an immediate redraw, apply the initial options inside one `BeginDisplayBatch()` scope, resize the surface, and submit the first frame once. This avoids exposing a default-background/default-camera frame before application configuration is applied.
+The adapters create the native surface without an immediate redraw, apply the initial options inside one `BeginDisplayBatch()` scope, resize the surface, and submit the first frame once. Native window mapping is deferred until that first real redraw, so the first visible HWND/XID frame already contains the configured background, view, projection and decorations instead of exposing an empty/default native window first.
 
 After the viewport is ready, use normal `OcctEngine` APIs to change background, view, projection, triedron, or view cube state.
 
@@ -108,17 +108,23 @@ Do not add a parallel `BeginUpdate`, `EndUpdate`, or `DeferRefresh` abstraction 
 
 ## Edge and face point projection
 
-Viewer geometry queries include projection onto real trimmed BRep topology:
+Viewer geometry queries project a point onto real trimmed BRep topology and return the local differential direction needed by snapping/work-plane consumers in the same call:
 
 ```csharp
 var edgeProjection = engine.ProjectPointToEdge(edge, sourcePoint);
+OcctPoint3d nearestOnEdge = edgeProjection.Point;
+OcctVector3d tangent = edgeProjection.Tangent;
 var edgePoint = engine.EvaluateEdge(edge, edgeProjection.NormalizedParameter);
 
 var faceProjection = engine.ProjectPointToFace(face, sourcePoint);
+OcctPoint3d nearestOnFace = faceProjection.Point;
+OcctVector3d normal = faceProjection.Normal;
 var facePoint = engine.EvaluateFace(face, faceProjection.U, faceProjection.V);
 ```
 
-`OcctEdgeProjectionResult` returns the nearest point, normalized edge parameter (`0..1`), and distance. `OcctFaceProjectionResult` returns the nearest point, face `U/V`, and distance. These queries form the geometry foundation for nearest/perpendicular/tangent snapping and face-based work-plane interaction.
+`OcctEdgeProjectionResult` returns the nearest point, normalized edge parameter (`0..1`), normalized tangent and distance. `OcctFaceProjectionResult` returns the nearest point, face `U/V`, orientation-corrected normalized normal and distance. The returned parameter/UV can be evaluated back to the same point and direction through `EvaluateEdge` / `EvaluateFace`.
+
+These queries form the geometry foundation for nearest/perpendicular/tangent snapping, face-normal interaction and face-based work planes without requiring a second geometry query solely to recover tangent/normal data.
 
 ## Adapter notes
 
