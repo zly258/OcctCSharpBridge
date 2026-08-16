@@ -66,6 +66,7 @@ public partial class MainWindow : System.Windows.Window
             CommandStatus.Text = args.Exception.Message;
             Log($"VIEWPORT ERROR: {args.Exception.Message}");
         };
+        Viewport.PreviewKeyInput += ViewportPreviewKeyInput;
         Viewport.ObjectSelectionChanged += (_, args) => Dispatcher.InvokeAsync(() =>
         {
             if (_session is null) return;
@@ -181,7 +182,7 @@ public partial class MainWindow : System.Windows.Window
 
     private static string CadFileFilter() => DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified
         ? "所有支持格式|*.step;*.stp;*.iges;*.igs;*.brep;*.rle;*.stl|STEP 文件|*.step;*.stp|IGES 文件|*.iges;*.igs|BREP 文件|*.brep;*.rle|STL 文件|*.stl|所有文件|*.*"
-        : "All Supported Files|*.step;*.stp|IGES Files|*.iges;*.igs|BREP Files|*.brep;*.rle|STL Files|*.stl|All Files|*.*";
+        : "All Supported Files|*.step;*.stp;*.iges;*.igs;*.brep;*.rle;*.stl|STEP Files|*.step;*.stp|IGES Files|*.iges;*.igs|BREP Files|*.brep;*.rle|STL Files|*.stl|All Files|*.*";
 
     private static string SaveFileFilter() => DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified
         ? "STEP 文件|*.step;*.stp|IGES 文件|*.iges;*.igs|BREP 文件|*.brep|STL 文件|*.stl"
