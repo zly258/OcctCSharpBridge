@@ -51,20 +51,6 @@ namespace
             throw std::invalid_argument("Projection source point must be finite.");
     }
 
-    BRepExtrema_DistShapeShape closestPointOnShape(
-        const gp_Pnt& source,
-        const TopoDS_Shape& target)
-    {
-        BRepBuilderAPI_MakeVertex sourceBuilder(source);
-        if (!sourceBuilder.IsDone())
-            throw std::runtime_error("Unable to construct the projection source vertex.");
-
-        BRepExtrema_DistShapeShape distance(sourceBuilder.Vertex(), target);
-        if (!distance.IsDone() || distance.NbSolution() < 1)
-            throw std::runtime_error("Point projection distance calculation failed.");
-        return distance;
-    }
-
     double normalizedEdgeParameter(
         const BRepExtrema_DistShapeShape& distance,
         const TopoDS_Edge& edge,
@@ -156,7 +142,13 @@ extern "C"
                 throw std::invalid_argument("Input must be an edge.");
 
             const TopoDS_Edge edge = TopoDS::Edge(transformed);
-            BRepExtrema_DistShapeShape distance = closestPointOnShape(point(sourcePoint), edge);
+            BRepBuilderAPI_MakeVertex sourceBuilder(point(sourcePoint));
+            if (!sourceBuilder.IsDone())
+                throw std::runtime_error("Unable to construct the projection source vertex.");
+            BRepExtrema_DistShapeShape distance(sourceBuilder.Vertex(), edge);
+            if (!distance.IsDone() || distance.NbSolution() < 1)
+                throw std::runtime_error("Point-to-edge projection failed.");
+
             const gp_Pnt projected = distance.PointOnShape2(1);
             const double normalizedParameter = normalizedEdgeParameter(distance, edge, projected);
             const double value = distance.Value();
@@ -187,7 +179,13 @@ extern "C"
                 throw std::invalid_argument("Input must be a face.");
 
             const TopoDS_Face face = TopoDS::Face(transformed);
-            BRepExtrema_DistShapeShape distance = closestPointOnShape(point(sourcePoint), face);
+            BRepBuilderAPI_MakeVertex sourceBuilder(point(sourcePoint));
+            if (!sourceBuilder.IsDone())
+                throw std::runtime_error("Unable to construct the projection source vertex.");
+            BRepExtrema_DistShapeShape distance(sourceBuilder.Vertex(), face);
+            if (!distance.IsDone() || distance.NbSolution() < 1)
+                throw std::runtime_error("Point-to-face projection failed.");
+
             const gp_Pnt projected = distance.PointOnShape2(1);
             double u = 0.0;
             double v = 0.0;
