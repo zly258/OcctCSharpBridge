@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("validate", "native", "managed", "test", "smoke", "dist", "clean", "all")]
+    [ValidateSet("validate", "native", "managed", "test", "smoke", "viewport-smoke", "dist", "clean", "all")]
     [string]$Target = "all",
 
     [Parameter(Position = 1)]
@@ -54,6 +54,8 @@ $Projects = [ordered]@{
     Avalonia = "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj"
     ManagedTests = "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj"
     Smoke = "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
+    WinFormsSmoke = "tests\OcctNet.WinFormsSmoke\OcctNet.WinFormsSmoke.csproj"
+    WpfSmoke = "tests\OcctNet.WpfSmoke\OcctNet.WpfSmoke.csproj"
     AvaloniaSmoke = "tests\OcctNet.AvaloniaSmoke\OcctNet.AvaloniaSmoke.csproj"
 }
 
@@ -262,15 +264,8 @@ function Build-Managed {
     Build-Project "Avalonia"
 }
 
-function Run-Smoke {
-    Assert-Path $NativeDll
+function Get-OcctRuntimeDirectories {
     Resolve-OcctConfiguration
-    Build-Project "Smoke"
-
-    $smokeProject = Join-Path $RepoRoot $Projects.Smoke
-    $smokeOutput = Join-Path (Split-Path -Parent $smokeProject) "bin\x64\$Configuration\$TargetFramework"
-    Copy-Item $NativeDll (Join-Path $smokeOutput "OcctNative.dll") -Force
-
     $runtimeDirectories = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     [void]$runtimeDirectories.Add($script:OcctBinDir)
     $thirdPartyRoot = Join-Path $script:OcctRoot "3rdparty-vc14-64"
@@ -279,16 +274,57 @@ function Run-Smoke {
             [void]$runtimeDirectories.Add($dll.DirectoryName)
         }
     }
+    return @($runtimeDirectories)
+}
 
+function Invoke-WithOcctRuntime {
+    param(
+        [Parameter(Mandatory = $true)][string]$NativeDirectory,
+        [Parameter(Mandatory = $true)][scriptblock]$Action
+    )
+
+    Assert-Path $NativeDirectory
+    $runtimeDirectories = @(Get-OcctRuntimeDirectories)
     $previousPath = $env:PATH
     $previousNativeDirectory = $env:OCCT_BRIDGE_NATIVE_DIR
     $previousOcctRoot = $env:OCCT_ROOT
     $previousCasRoot = $env:CASROOT
     try {
-        $env:PATH = (@($smokeOutput) + @($runtimeDirectories) + @($previousPath)) -join [System.IO.Path]::PathSeparator
-        $env:OCCT_BRIDGE_NATIVE_DIR = $smokeOutput
+        $env:PATH = (@($NativeDirectory) + $runtimeDirectories + @($previousPath)) -join [System.IO.Path]::PathSeparator
+        $env:OCCT_BRIDGE_NATIVE_DIR = $NativeDirectory
         $env:OCCT_ROOT = $script:OcctRoot
         $env:CASROOT = $script:OcctRoot
+        & $Action
+    }
+    finally {
+        $env:PATH = $previousPath
+        $env:OCCT_BRIDGE_NATIVE_DIR = $previousNativeDirectory
+        $env:OCCT_ROOT = $previousOcctRoot
+        $env:CASROOT = $previousCasRoot
+    }
+}
+
+function Prepare-SmokeOutput {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectKey,
+        [Parameter(Mandatory = $true)][string]$Framework
+    )
+
+    $project = Join-Path $RepoRoot $Projects[$ProjectKey]
+    Assert-Path $project
+    $output = Join-Path (Split-Path -Parent $project) "bin\x64\$Configuration\$Framework"
+    Assert-Path $output
+    Copy-Item $NativeDll (Join-Path $output "OcctNative.dll") -Force
+    return $output
+}
+
+function Run-Smoke {
+    Assert-Path $NativeDll
+    Build-Project "Smoke"
+    $smokeProject = Join-Path $RepoRoot $Projects.Smoke
+    $smokeOutput = Prepare-SmokeOutput "Smoke" $TargetFramework
+
+    Invoke-WithOcctRuntime $smokeOutput {
         Write-Host "[smoke] Running ABI5 native modeling scenarios..." -ForegroundColor Cyan
         Invoke-DotNetChecked @(
             "run",
@@ -299,12 +335,36 @@ function Run-Smoke {
             "--no-build"
         ) "Smoke test failed."
     }
-    finally {
-        $env:PATH = $previousPath
-        $env:OCCT_BRIDGE_NATIVE_DIR = $previousNativeDirectory
-        $env:OCCT_ROOT = $previousOcctRoot
-        $env:CASROOT = $previousCasRoot
+}
+
+function Run-ViewportSmokeProject {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectKey,
+        [Parameter(Mandatory = $true)][string]$Framework
+    )
+
+    Assert-Path $NativeDll
+    Build-Project $ProjectKey
+    $project = Join-Path $RepoRoot $Projects[$ProjectKey]
+    $output = Prepare-SmokeOutput $ProjectKey $Framework
+
+    Invoke-WithOcctRuntime $output {
+        Write-Host "[$($ProjectKey.ToLowerInvariant())] Running native viewport lifecycle/render smoke..." -ForegroundColor Cyan
+        Invoke-DotNetChecked @(
+            "run",
+            "--project", $project,
+            "-c", $Configuration,
+            "-p:Platform=x64",
+            "-p:Version=$BridgeVersion",
+            "--no-build"
+        ) "$ProjectKey failed."
     }
+}
+
+function Run-ViewportSmokes {
+    Run-ViewportSmokeProject "WinFormsSmoke" $DesktopTargetFramework
+    Run-ViewportSmokeProject "WpfSmoke" $DesktopTargetFramework
+    Run-ViewportSmokeProject "AvaloniaSmoke" $TargetFramework
 }
 
 function Clean-Outputs {
@@ -423,7 +483,7 @@ if ($Target -eq "clean") {
     exit 0
 }
 
-if ($Target -in @("managed", "test", "smoke", "dist", "all")) {
+if ($Target -in @("managed", "test", "smoke", "viewport-smoke", "dist", "all")) {
     Resolve-DotNetSdk
     Write-Host "dotnet:        $script:DotNetCommand" -ForegroundColor DarkGray
     Write-Host "SDK resolved:  $script:ResolvedSdkVersion" -ForegroundColor Green
@@ -445,12 +505,18 @@ switch ($Target) {
         Build-Managed
         Run-Smoke
     }
+    "viewport-smoke" {
+        Build-Native
+        Build-Managed
+        Run-ViewportSmokes
+    }
     "all" {
         Build-Native
         Build-Managed
         Build-Project "ManagedTests"
         Run-ManagedTests
         Run-Smoke
+        Run-ViewportSmokes
     }
 }
 
