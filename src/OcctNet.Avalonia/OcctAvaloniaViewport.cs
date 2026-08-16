@@ -48,7 +48,7 @@ public sealed class OcctAvaloniaWorldPointEventArgs : EventArgs
 /// The public control API is platform-neutral. Native Wayland hosting can therefore be added later
 /// without changing application code that consumes <see cref="OcctAvaloniaViewport"/>.
 /// </remarks>
-public sealed partial class OcctAvaloniaViewport : NativeControlHost
+public sealed partial class OcctAvaloniaViewport : NativeControlHost, IOcctViewportHost, IOcctViewportInputSource
 {
     private readonly WndProcDelegate _windowProcedure;
     private readonly HashSet<uint> _x11PressedKeys = [];
@@ -74,6 +74,8 @@ public sealed partial class OcctAvaloniaViewport : NativeControlHost
     private long _lastHoverTimestamp;
     private long _lastWorldPointTimestamp;
     private bool _nativeRefreshScheduled;
+    private OcctViewportHostState _hostState = OcctViewportHostState.Detached;
+    private long _engineGeneration;
 
     public OcctAvaloniaViewport()
     {
@@ -85,6 +87,8 @@ public sealed partial class OcctAvaloniaViewport : NativeControlHost
     public OcctEngine Engine => _engine ?? throw new InvalidOperationException("The Avalonia OCCT viewport has not been created yet.");
     public IntPtr NativeHandle => _nativeHandle;
     public bool IsEngineInitialized => _engine?.IsInitialized == true;
+    public OcctViewportHostState HostState => _hostState;
+    public long EngineGeneration => _engineGeneration;
 
     public OcctViewportInteractionFeatures InteractionFeatures
     {
@@ -124,11 +128,14 @@ public sealed partial class OcctAvaloniaViewport : NativeControlHost
     public event EventHandler<OcctAvaloniaSelectionEventArgs>? ObjectSelectionChanged;
     public event EventHandler<OcctAvaloniaWorldPointEventArgs>? WorldPointChanged;
     public event EventHandler<OcctAvaloniaErrorEventArgs>? ErrorOccurred;
-    public event EventHandler? EngineInitialized;
     public event EventHandler<OcctPointerInputEventArgs>? PreviewPointerInput;
     public event EventHandler<OcctPointerInputEventArgs>? PointerInput;
     public event EventHandler<OcctKeyInputEventArgs>? PreviewKeyInput;
     public event EventHandler<OcctKeyInputEventArgs>? KeyInput;
+    public event EventHandler<OcctViewportHostStateChangedEventArgs>? HostStateChanged;
+    public event EventHandler<OcctViewportFaultedEventArgs>? Faulted;
+    public event EventHandler<OcctEngineLifecycleEventArgs>? EngineDisposing;
+    public event EventHandler<OcctEngineLifecycleEventArgs>? EngineRecreated;
 
     public void RaiseSelectionChanged()
     {
