@@ -1,6 +1,6 @@
 # Getting Started
 
-The formal Bridge 3 SDK source maintains the Native Core, `OcctNet`, WinForms, WPF, and Avalonia adapters together. The source contract supports Windows x64 and Linux x64; the `demo` / `avalonia` branches are consumers and packaging examples rather than private copies of Bridge Core/Native.
+The formal Bridge 3 SDK source maintains the Native Core, `OcctNet`, WinForms, WPF, and Avalonia adapters together. The source contract supports Windows x64 and Linux x64. `demo` / `demo-dev` are the single consumer line: Windows x64 uses WinForms, WPF and Avalonia; Linux x64 uses Avalonia only.
 
 ## Requirements
 
@@ -39,6 +39,13 @@ Run individual stages as needed:
 ```
 
 `managed` builds `OcctNet`, `OcctNet.WinForms`, `OcctNet.Wpf`, and `OcctNet.Avalonia`. Managed-dependent targets first resolve a `dotnet.exe` that can use .NET SDK 10.0.303 exactly.
+
+## Unified Demo consumer
+
+The SDK source does not contain a second Demo-specific Core/Native implementation. The formal `demo` branch synchronizes generated Binary SDKs from `main` and provides:
+
+- Windows x64: WinForms, WPF and Avalonia;
+- Linux x64: Avalonia only.
 
 ## Minimal modeling use
 

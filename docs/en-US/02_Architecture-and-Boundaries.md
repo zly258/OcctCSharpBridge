@@ -24,7 +24,7 @@ Application documents, feature trees, commands/tools, undo/redo, snapping, grips
 
 XDE may be used internally for STEP assembly/product structure and presentation metadata, but OCAF/XDE is not the consuming application's document architecture.
 
-`main` owns the formal Avalonia host and the shared Windows/Linux Native Core. The `demo` and `avalonia` branches consume published SDK artifacts and do not carry private Bridge implementations.
+`main` owns the formal WinForms/WPF/Avalonia adapters and the shared Windows/Linux Native Core. The unified `demo` branch consumes generated Binary SDK artifacts: Windows x64 provides WinForms, WPF and Avalonia hosts; Linux x64 provides Avalonia only. Demo does not carry a private Bridge implementation.
 
 ## Domain layout
 

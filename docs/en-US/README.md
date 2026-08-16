@@ -13,7 +13,7 @@ Current source contract:
 - public managed assemblies: `OcctNet`, `OcctNet.WinForms`, `OcctNet.Wpf`, `OcctNet.Avalonia`;
 - source platforms: Windows x64 / Linux x64.
 
-The formal `demo` and `avalonia` branches are SDK consumers and packaging examples; Bridge SDK implementation is maintained by `main`.
+`main` / `main-dev` are the SDK source line. The unified `demo` / `demo-dev` branches are Binary SDK consumers: Windows x64 provides WinForms, WPF and Avalonia hosts; Linux x64 provides Avalonia only. No standalone Avalonia consumer branch is part of the supported architecture.
 
 ## Guide
 

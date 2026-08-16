@@ -13,7 +13,7 @@
 - 公开 Managed 程序集：`OcctNet`、`OcctNet.WinForms`、`OcctNet.Wpf`、`OcctNet.Avalonia`；
 - 源码平台：Windows x64 / Linux x64。
 
-`demo` 与 `avalonia` 正式分支只作为 SDK Consumer 和打包示例；Bridge SDK 实现统一由 `main` 维护。
+`main` / `main-dev` 是 SDK 源码线。统一 `demo` / `demo-dev` 是 Binary SDK Consumer：Windows x64 提供 WinForms、WPF、Avalonia，Linux x64 仅提供 Avalonia。目标架构中不再维护独立 Avalonia Consumer 分支。
 
 ## 文档目录
 

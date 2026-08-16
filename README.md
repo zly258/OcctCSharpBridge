@@ -1,8 +1,8 @@
 # OcctCSharpBridge
 
-[简体中文](README.zh-CN.md) · [English Docs](docs/en-US/README.md) · [中文文档](docs/zh-CN/README.md) · [Build/Test Guide](docs/en-US/08_Build-Test-and-Publish.md) · [Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo) · [Cross-platform Avalonia](https://github.com/zly258/OcctCSharpBridge/tree/avalonia)
+[简体中文](README.zh-CN.md) · [English Docs](docs/en-US/README.md) · [中文文档](docs/zh-CN/README.md) · [Build/Test Guide](docs/en-US/08_Build-Test-and-Publish.md) · [Unified Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
-OcctCSharpBridge is the reusable **Open CASCADE Technology 7.9.0 → .NET 10 / C# 14** bridge. `main` owns the formal Native Core, managed API, WinForms/WPF/Avalonia viewport hosts, tests, documentation and platform Binary SDK production.
+OcctCSharpBridge is the reusable **Open CASCADE Technology 7.9.0 → .NET 10 / C# 14** bridge. `main` owns the formal Native Core, managed API, WinForms/WPF/Avalonia adapters, tests, documentation and platform Binary SDK production.
 
 Bridge 3 is **ABI 5 only**. ABI 4 exports, compatibility shims, legacy handles, compatibility tests, old consumer contracts and old Binary SDK payloads are not part of the current source tree.
 
@@ -16,11 +16,11 @@ Bridge 3 is **ABI 5 only**. ABI 4 exports, compatibility shims, legacy handles, 
 | Native ABI | **5 only** |
 | API policy | **abi5-only** |
 | OCCT | **7.9.0** |
-| .NET SDK | **10.0.303** |
-| Target Framework | **`net10.0` core / `net10.0-windows` desktop adapters** |
+| .NET SDK | **10.0.303 exactly** |
+| Target Framework | **`net10.0` core/Avalonia · `net10.0-windows` WinForms/WPF** |
 | C# / Native | **14.0 / C++17** |
 | UI adapters | **WinForms / WPF / Avalonia** |
-| Source platform contract | **Windows x64 / Linux x64** |
+| Source platforms | **Windows x64 / Linux x64** |
 
 `bridge-contract.json` is the machine-readable source of truth. Native declarations, definitions and managed `LibraryImport` bindings are validated directly from current source by `tests/check-api-surface.ps1`; README/docs intentionally do not maintain hard-coded API counts or a generated API reference.
 
@@ -42,22 +42,16 @@ Application documents, feature trees, commands/tools, undo/redo, snapping, grips
 
 ## Build and validation
 
-Recommended full Windows validation:
+Windows full validation:
 
 ```powershell
 .\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-Other common targets:
+Windows Binary SDK:
 
 ```powershell
-.\build.ps1 validate Release
-.\build.ps1 native Release
-.\build.ps1 managed Release
-.\build.ps1 test Release
-.\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 .\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
-.\build.ps1 clean
 ```
 
 Linux x64:
@@ -71,13 +65,13 @@ Linux x64:
 ./build.sh dist Release
 ```
 
-See [Build, Test and Publish](docs/en-US/08_Build-Test-and-Publish.md) for every target, the six static contract checks, managed tests, Native Smoke, .NET SDK 10.0.303 diagnostics and publication rules.
+See [Build, Test and Publish](docs/en-US/08_Build-Test-and-Publish.md) for target details, static contract checks, managed tests, Native Smoke and publication rules.
 
-The ABI5 contract checks keep Native declarations, definitions and managed `LibraryImport` bindings aligned, reject retired pre-ABI5 handles and compatibility artifacts, and validate tracked platform Binary SDK contracts when such payloads exist.
+## Binary SDK policy
 
-## Binary SDKs
+`dist/win-x64` and `dist/linux-x64` are generated Release artifacts, not source-controlled SDK payloads. Source branches do **not** commit Binary SDK files. Each package records its source commit and SHA-256 hashes in `bridge-manifest.json` and is validated before local consumption or external distribution.
 
-Development branches must not retain ABI4 Binary SDK payloads. `build.ps1 dist` / `build.sh dist` produce platform packages from the current ABI5 source. Formal publishing must validate the package contract, manifest, source commit and hashes before a `dist/<rid>` payload is tracked on `main`.
+The unified `demo` branch consumes these generated SDKs by `sourceCommit` and manifest hash. Formal binary distribution can use reviewed GitHub Release assets or another controlled artifact channel; no GitHub Actions pipeline is required.
 
 ## Usage
 
@@ -94,9 +88,12 @@ model.ExportStep(cut.Shape, "plate.step");
 ## Branch responsibilities
 
 - `main` — sole formal Bridge SDK source and Binary SDK producer.
-- `main-dev` — ABI5 SDK development and validation before PR to `main`.
-- `demo` / `demo-dev` — WinForms/WPF consumer applications; no private copy of Core/Native source.
-- `avalonia` / `avalonia-dev` — Windows/Linux Avalonia consumer and packaging flow.
+- `main-dev` — Bridge SDK development and validation before PR to `main`.
+- `demo` / `demo-dev` — the single Binary SDK consumer: Windows x64 has WinForms, WPF and Avalonia; Linux x64 has Avalonia only.
+- `website` — bilingual project website.
+- `backup/*` — historical backup branches; leave unchanged.
+
+Standalone `avalonia` / `avalonia-dev` branches are retired after their useful content has been absorbed into the unified Demo.
 
 ## License
 
