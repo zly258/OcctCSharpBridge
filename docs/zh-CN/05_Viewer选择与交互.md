@@ -44,7 +44,7 @@ viewport.InitialOptions = new OcctViewportInitializationOptions
 };
 ```
 
-Adapter 创建 Native Surface 时不会立即 Redraw，而是在一个 `BeginDisplayBatch()` 中完成 InitialOptions、Resize 等首帧配置，最后只提交一次首帧。这样不会先显示默认背景、默认相机，再切换到应用配置，从而避免启动黑闪或默认状态闪现。
+Adapter 创建 Native Surface 时不会立即 Redraw，而是在一个 `BeginDisplayBatch()` 中完成 InitialOptions、Resize 等首帧配置，最后只提交一次首帧。Native Window 的 Map 也延迟到第一次真实 Redraw，因此 HWND/XID 真正可见时已经包含最终背景、视图、Projection 和装饰，不会先暴露空白或默认 Native Window。
 
 Viewport 进入 Ready 后，背景、View、Projection、Triedron、ViewCube 的运行时修改继续使用普通 `OcctEngine` API。
 
@@ -108,17 +108,23 @@ using (engine.BeginDisplayBatch())
 
 ## Edge / Face 点投影
 
-Viewer Geometry Query 支持对真实 trimmed BRep Topology 求最近投影：
+Viewer Geometry Query 支持对真实 trimmed BRep Topology 求最近投影，并在同一次查询中直接返回捕捉/工作面需要的局部微分方向：
 
 ```csharp
 var edgeProjection = engine.ProjectPointToEdge(edge, sourcePoint);
+OcctPoint3d nearestOnEdge = edgeProjection.Point;
+OcctVector3d tangent = edgeProjection.Tangent;
 var edgePoint = engine.EvaluateEdge(edge, edgeProjection.NormalizedParameter);
 
 var faceProjection = engine.ProjectPointToFace(face, sourcePoint);
+OcctPoint3d nearestOnFace = faceProjection.Point;
+OcctVector3d normal = faceProjection.Normal;
 var facePoint = engine.EvaluateFace(face, faceProjection.U, faceProjection.V);
 ```
 
-`OcctEdgeProjectionResult` 返回最近点、归一化 Edge 参数（`0..1`）和距离；`OcctFaceProjectionResult` 返回最近点、Face `U/V` 和距离。这些能力可作为后续最近点、垂足、切线捕捉以及基于面的工作平面/3D 交互基础。
+`OcctEdgeProjectionResult` 返回最近点、归一化 Edge 参数（`0..1`）、归一化切线和距离；`OcctFaceProjectionResult` 返回最近点、Face `U/V`、已考虑 Face Orientation 的归一化法向和距离。返回的 Parameter/UV 可通过 `EvaluateEdge` / `EvaluateFace` 回代到同一个点和方向。
+
+这些能力可直接作为最近点、垂足、切线捕捉、面法向交互和基于面的工作平面基础，不需要上层为了获得 Tangent/Normal 再执行第二次几何查询。
 
 ## Adapter 说明
 
