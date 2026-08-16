@@ -1,6 +1,6 @@
 # Tests and Validation
 
-`tests` 保留三类验证：**少量仓库级静态契约、Managed 回归测试、真实 Native Smoke**。Bridge 3 仅支持 ABI 5，不保留 ABI 4 Consumer、兼容测试或兼容入口。验证由本地 `build.ps1` / `build.sh`、精确的 .NET SDK 10.0.303 和真实 OCCT 7.9.0 环境完成。
+`tests` 保留四类验证：**仓库级静态契约、Managed 回归测试、Core Native Smoke、Viewport Host Smoke**。Bridge 3 仅支持 ABI 5，不保留 ABI 4 Consumer、兼容测试或兼容入口。验证由本地 `build.ps1` / `build.sh`、精确的 .NET SDK 10.0.303 和真实 OCCT 7.9.0 环境完成。
 
 ## 1. 静态契约
 
@@ -9,12 +9,12 @@
 | Script | Responsibility |
 | --- | --- |
 | `check-version-contract.ps1` | 校验 `bridge-contract.json` 与 Native/Managed/.NET/CMake 的版本、ABI、平台和 SDK 契约 |
-| `check-architecture-boundaries.ps1` | 校验 Core/UI 依赖方向、Managed/Native 领域目录、Interop 归属，以及禁止应用层和兼容层回流 |
+| `check-architecture-boundaries.ps1` | 校验 Core/UI 依赖方向、Managed/Native 领域目录、Interop 归属，以及禁止应用层、Demo consumer 和兼容层回流到 SDK source line |
 | `check-abi5-contract.ps1` | 保证 ABI 5 是唯一受支持 Native ABI，拒绝 pre-ABI5 文件、元数据、Handle 与 Binary SDK Manifest 残留 |
 | `check-bulk-abi.ps1` | 高数量 Modeling 集合与 Selection Hit 必须保持 Snapshot/Buffer ABI，禁止恢复 N+1 indexed ABI |
 | `check-native-build-structure.ps1` | 校验 CMake Native 源清单、领域边界、平台隔离和 OCCT 7.9 数据交换 Toolkit |
-| `check-api-surface.ps1` | 校验 Native declaration/definition 与 Core `LibraryImport + Cdecl` 一一对应；UI Adapter 可调用 Win32/X11 等平台 API，但不得自行声明 `occt_*` Bridge ABI 入口 |
-| `check-linux-contract.sh` | Linux x64 的 ABI5、TFM、构建、发布与 Manifest 平台契约 |
+| `check-api-surface.ps1` | 校验 Native declaration/definition 与 Core `LibraryImport + Cdecl` 一一对应；新 Edge/Face Projection exports 也自动参与集合比对；UI Adapter 不得自行声明 `occt_*` Bridge ABI 入口 |
+| `check-linux-contract.sh` | Linux x64 的 ABI5、TFM、构建、发布与 Manifest 平台契约，并防止 Linux `publish.sh` 恢复旧 metadata 或自动 Git commit/push |
 
 Windows 静态验证：
 
@@ -40,8 +40,13 @@ Linux：
 - Owner-aware Handle 语义；
 - Geometry/Transform 纯 Managed 行为；
 - Runtime Diagnostic 无副作用；
-- Viewport Interaction Policy；
+- 平台无关 Pointer/Key/InteractionFeatures 输入契约与未知 flag 拒绝；
+- Hover identity tracker：同一 Owner/Subshape 内 Point/Depth 变化不重复触发；
+- Viewport Host lifecycle / generation / first-frame options / `NativeHandleChanged` DTO；
+- `OcctEdgeProjectionResult` / `OcctFaceProjectionResult` ABI layout；
 - Inertia、Intersection、Topology Reference 等 DTO Mapping。
+
+MSTest Analyzer 保持启用；测试代码必须遵循 `Assert.AreEqual(expected, actual)` 等 analyzer 规则，不通过禁用规则绕过错误。
 
 执行：
 
@@ -57,7 +62,7 @@ dotnet test .\tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj -c Release 
 
 日常仓库验证优先使用 `build.ps1`，因为它会先锁定契约要求的 .NET SDK 并运行静态 Contract Checks。
 
-## 3. Native Smoke
+## 3. Core Native Smoke
 
 `OcctNet.Smoke` 使用当前构建的 ABI5 `OcctNative.dll` / `libOcctNative.so` 和 OCCT 7.9.0，验证只有真实 Native 执行才能确认的行为：
 
@@ -88,13 +93,44 @@ Linux：
 ./build.sh smoke Release
 ```
 
-Avalonia Viewer 的 Linux Smoke 需要 X11/XWayland Display：
+## 4. Viewport Host Smoke
+
+Windows 对三个正式 UI Adapter 分别保留最小 Native Host Smoke：
+
+| Project | Validation |
+| --- | --- |
+| `OcctNet.WinFormsSmoke` | WinForms HWND host、HostState、EngineGeneration、RenderReady、`NativeHandle`/`NativeHandleChanged`、first frame、Box/Fit/Redraw、Dispose |
+| `OcctNet.WpfSmoke` | WPF HwndHost、HostState、EngineGeneration、RenderReady、`NativeHandle`/`NativeHandleChanged`、first frame、Box/Fit/Redraw、Dispose |
+| `OcctNet.AvaloniaSmoke` | Avalonia Windows HWND 或 Linux X11/XWayland XID host、HostState、EngineGeneration、RenderReady、`NativeHandle`/`NativeHandleChanged`、first frame、Box/Fit/Redraw、Edge/Face point projection、Dispose |
+
+Avalonia Smoke 还验证：
+
+- `ProjectPointToEdge` 内部最近点、裁剪端点和 `[0,1]` normalized parameter；
+- 投影 parameter 通过 `EvaluateEdge` 回代到同一点；
+- `ProjectPointToFace` 最近点、距离、UV；
+- UV 通过 `EvaluateFace` 回代到同一点。
+
+Windows 一次运行三个 Host Smoke：
+
+```powershell
+.\build.ps1 viewport-smoke Release
+```
+
+`all` 同时覆盖 Core Smoke 与三个 Windows Viewport Host Smoke：
+
+```powershell
+.\build.ps1 all Release
+```
+
+Linux 只存在 Avalonia UI Adapter，且 Viewer Smoke 需要可用的 X11/XWayland `DISPLAY`：
 
 ```bash
 ./build.sh avalonia-smoke Release
 ```
 
-## 4. 构建缓存与清理
+Linux Headless 环境仍可以运行 `validate`、`managed`、`test` 和 Core `smoke`；交互式 Avalonia Host Smoke 不伪装成 headless test。
+
+## 5. 构建缓存与清理
 
 默认构建保留 `bin/obj`，交给 MSBuild/CMake 做增量判断。只有确实需要全量重建时执行：
 
@@ -104,7 +140,7 @@ Avalonia Viewer 的 Linux Smoke 需要 X11/XWayland Display：
 
 不要在日常构建前手工删除每个项目的 `bin/obj`。
 
-## 5. 推荐验证顺序
+## 6. 推荐验证顺序
 
 日常 Managed 修改：
 
@@ -117,17 +153,29 @@ Avalonia Viewer 的 Linux Smoke 需要 X11/XWayland Display：
 涉及 Native / ABI / OCCT：
 
 ```powershell
+.\build.ps1 smoke Release
+```
+
+涉及 WinForms/WPF/Avalonia Adapter、输入、生命周期、Native Handle 或首帧行为：
+
+```powershell
+.\build.ps1 viewport-smoke Release
+```
+
+Windows 完整 Gate：
+
+```powershell
 .\build.ps1 all Release
 ```
 
-Windows 与 Linux 的 `all` 都覆盖静态契约检查、Native 构建、Managed 构建、Managed Tests 和 Native Smoke。`dist` 保持独立，因为它会生成平台 Binary SDK；默认 `all` 不修改 `dist`。
+Windows `all` 覆盖静态契约检查、Native 构建、Managed 构建、Managed Tests、Core Native Smoke 和三个 Viewport Host Smoke。Linux `all` 覆盖静态契约、Native、Managed、Managed Tests 与 Core Smoke；Avalonia Linux Viewer Smoke 保持显式目标，因为它要求图形 Display。`dist` 保持独立，因为它会生成平台 Binary SDK；默认 `all` 不修改 `dist`。
 
 完整 target、环境要求、SDK 解析和发布说明见：
 
 - `docs/zh-CN/08_构建测试与发布.md`
 - `docs/en-US/08_Build-Test-and-Publish.md`
 
-## 6. 新增检查原则
+## 7. 新增检查原则
 
 新增静态 Contract Check 前，先确认：
 

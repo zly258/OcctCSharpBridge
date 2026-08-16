@@ -14,6 +14,11 @@ namespace OcctBridge
         return updateDepth > 0;
     }
 
+    void ViewerContext::ensureWindowMapped()
+    {
+        if (!window.IsNull() && !window->IsMapped()) window->Map();
+    }
+
     void ViewerContext::beginUpdate()
     {
         ++updateDepth;
@@ -26,6 +31,7 @@ namespace OcctBridge
             redrawPending = true;
             return;
         }
+        ensureWindowMapped();
         view->Redraw();
     }
 
@@ -39,6 +45,7 @@ namespace OcctBridge
         }
         view->FitAll(0.01, Standard_False);
         view->ZFitAll();
+        ensureWindowMapped();
         view->Redraw();
     }
 
@@ -58,7 +65,11 @@ namespace OcctBridge
             view->FitAll(0.01, Standard_False);
             view->ZFitAll();
         }
-        if (fitAllPending || redrawPending) view->Redraw();
+        if (fitAllPending || redrawPending)
+        {
+            ensureWindowMapped();
+            view->Redraw();
+        }
         fitAllPending = false;
         redrawPending = false;
     }

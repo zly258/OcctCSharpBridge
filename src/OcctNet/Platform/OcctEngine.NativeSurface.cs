@@ -2,7 +2,11 @@ namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
-    internal void InitializeNativeSurface(OcctNativeSurfaceKind kind, IntPtr handle, IntPtr display = default)
+    internal void InitializeNativeSurface(
+        OcctNativeSurfaceKind kind,
+        IntPtr handle,
+        IntPtr display = default,
+        bool redrawAfterInitialize = true)
     {
         EnsureNotDisposed();
         if (handle == IntPtr.Zero)
@@ -21,5 +25,6 @@ public sealed partial class OcctEngine
         var status = SurfaceNativeMethods.occt_engine_initialize_surface(_handle, in surface);
         if (status != OcctStatus.Ok) throw CreateException();
         Volatile.Write(ref _initialized, true);
+        if (redrawAfterInitialize) Redraw();
     }
 }

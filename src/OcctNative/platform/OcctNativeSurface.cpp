@@ -37,7 +37,9 @@ namespace OcctBridge
             windowHandle);
 
         engine->viewerContext.view->SetWindow(engine->viewerContext.window);
-        if (!engine->viewerContext.window->IsMapped()) engine->viewerContext.window->Map();
+        // Mapping is intentionally deferred until the first real redraw. UI adapters can
+        // configure background/view/projection/decorations inside a display batch while
+        // the native child remains hidden, so the first presented frame is already final.
         engine->viewerContext.view->SetBackgroundColor(color(0.94, 0.96, 0.98));
         engine->viewerContext.view->TriedronDisplay(
             Aspect_TOTP_RIGHT_LOWER,
@@ -61,7 +63,6 @@ namespace OcctBridge
 
         engine->viewerContext.view->SetProj(V3d_XposYnegZpos);
         engine->viewerContext.view->MustBeResized();
-        engine->viewerContext.view->Redraw();
     }
 }
 
@@ -128,7 +129,7 @@ extern "C"
         return execute(engine, [&]
         {
             engine->viewerContext.view->MustBeResized();
-            if (redraw != 0) engine->viewerContext.view->Redraw();
+            if (redraw != 0) engine->viewerContext.requestRedraw();
         }) != 0 ? OcctStatus_Ok : engine->errors.code;
     }
 

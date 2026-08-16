@@ -40,12 +40,33 @@ OcctNet.Avalonia ─┘
 
 Application documents, feature trees, commands/tools, undo/redo, snapping, grips and project persistence remain application responsibilities.
 
+## Viewport host contract
+
+WinForms, WPF and Avalonia now share one platform-neutral host/input lifecycle instead of exposing framework-specific interaction requirements to applications:
+
+- `OcctViewportInteractionFeatures` enables hover detection, point/rectangle selection, rotate, pan and zoom independently;
+- `PreviewPointerInput / PointerInput` and `PreviewKeyInput / KeyInput` normalize Windows and Linux input and support preview cancellation through `Handled`;
+- `OcctViewportHostState`, `HostStateChanged`, `Faulted`, `EngineGeneration`, `EngineDisposing` and `EngineRecreated` define native-host recreation safely;
+- `OcctViewportInitializationOptions`, `RenderReady` and `FirstFrameRendered` allow background/view/projection/Triedron/ViewCube configuration before the first presented frame;
+- `HoverHitChanged` provides owner/subshape identity changes without application-side repeated detection queries;
+- `NativeHandleChanged` reports HWND/XID replacement for advanced hosting/diagnostics; ordinary application interaction should not depend on the native handle;
+- existing `BeginDisplayBatch()` remains the single batched refresh API; no duplicate `BeginUpdate`/`DeferRefresh` surface is introduced;
+- `ProjectPointToEdge` and `ProjectPointToFace` provide nearest point plus reusable edge parameter or face UV for snapping/work-plane style application features.
+
+See [Viewer, Selection and Interaction](docs/en-US/05_Viewer-Selection-and-Interaction.md) for event ordering and usage boundaries.
+
 ## Build and validation
 
 Windows full validation:
 
 ```powershell
 .\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
+```
+
+The Windows full gate includes Core Native Smoke and WinForms/WPF/Avalonia Viewport Host Smoke. The individual host target is:
+
+```powershell
+.\build.ps1 viewport-smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
 Windows Binary SDK:
@@ -91,9 +112,9 @@ model.ExportStep(cut.Shape, "plate.step");
 - `main-dev` — Bridge SDK development and validation before PR to `main`.
 - `demo` / `demo-dev` — the single Binary SDK consumer: Windows x64 has WinForms, WPF and Avalonia; Linux x64 has Avalonia only.
 - `website` — bilingual project website.
-- `backup/*` — historical backup branches; leave unchanged.
+- historical backup branches, when present, remain outside normal development and are left unchanged.
 
-Standalone `avalonia` / `avalonia-dev` branches are retired after their useful content has been absorbed into the unified Demo.
+There are no standalone Avalonia source branches. Avalonia belongs to the formal SDK and unified Demo architecture.
 
 ## License
 

@@ -49,8 +49,9 @@ MANAGED_TESTS="${ROOT_DIR}/tests/OcctNet.ManagedTests/OcctNet.ManagedTests.cspro
 SMOKE_PROJECT="${ROOT_DIR}/tests/OcctNet.Smoke/OcctNet.Smoke.csproj"
 AVALONIA_SMOKE_PROJECT="${ROOT_DIR}/tests/OcctNet.AvaloniaSmoke/OcctNet.AvaloniaSmoke.csproj"
 BUILD_SH="${ROOT_DIR}/build.sh"
+PUBLISH_SH="${ROOT_DIR}/publish.sh"
 
-for file in "${CORE_PROJECT}" "${AVALONIA_PROJECT}" "${MANAGED_TESTS}" "${SMOKE_PROJECT}" "${AVALONIA_SMOKE_PROJECT}" "${BUILD_SH}"; do
+for file in "${CORE_PROJECT}" "${AVALONIA_PROJECT}" "${MANAGED_TESTS}" "${SMOKE_PROJECT}" "${AVALONIA_SMOKE_PROJECT}" "${BUILD_SH}" "${PUBLISH_SH}"; do
     require_file "${file}"
 done
 
@@ -90,5 +91,22 @@ forbid_text "${BUILD_SH}" 'nativeAbiVersion' "Linux Binary SDK generator must no
 require_text "${BUILD_SH}" '"platform": "linux-x64"' "Linux distribution manifest must identify linux-x64."
 require_text "${BUILD_SH}" 'avalonia-smoke)' "Linux build must expose an explicit Avalonia viewer smoke target."
 require_text "${BUILD_SH}" 'DISPLAY' "Avalonia viewer smoke must require an X11/XWayland display."
+
+# Formal SDK publishing is validation-only. It must never mutate Git history or force generated
+# Binary SDK payloads into the source tree. Release/upload remains an explicit reviewed step.
+require_text "${PUBLISH_SH}" '[[ "${branch}" == "main" ]]' "Linux formal publishing must run from main only."
+require_text "${PUBLISH_SH}" 'assert_clean_worktree "before publishing"' "Linux formal publishing must require a clean worktree."
+require_text "${PUBLISH_SH}" 'assert_remote_main_ancestor' "Linux formal publishing must validate current origin/main ancestry."
+require_text "${PUBLISH_SH}" '"${BUILD_SCRIPT}" dist Release' "Linux formal publishing must produce a fresh Release Binary SDK."
+require_text "${PUBLISH_SH}" '"$(json_number "${MANIFEST}" schemaVersion)" == "2"' "Linux publish validation must require manifest schemaVersion 2."
+require_text "${PUBLISH_SH}" '"$(json_number "${MANIFEST}" current)" == "$(json_number "${CONTRACT}" current)"' "Linux publish validation must verify nested current ABI metadata."
+require_text "${PUBLISH_SH}" '"$(json_number "${MANIFEST}" minimumSupported)" == "$(json_number "${CONTRACT}" minimumSupported)"' "Linux publish validation must verify nested minimum ABI metadata."
+require_text "${PUBLISH_SH}" '! grep -Fq '\''"nativeAbiVersion"'\''' "Linux publish validation must reject retired flat ABI metadata."
+require_text "${PUBLISH_SH}" 'sourceCommit' "Linux publish validation must bind the Binary SDK to the source commit."
+require_text "${PUBLISH_SH}" 'sha256sum' "Linux publish validation must verify Binary SDK hashes."
+require_text "${PUBLISH_SH}" 'No Git commit or push was performed.' "Linux publish script must clearly remain validation-only."
+forbid_text "${PUBLISH_SH}" 'git -C "${ROOT_DIR}" add' "Linux publish script must never git-add Binary SDK output."
+forbid_text "${PUBLISH_SH}" 'git -C "${ROOT_DIR}" commit' "Linux publish script must never create commits."
+forbid_text "${PUBLISH_SH}" 'git -C "${ROOT_DIR}" push' "Linux publish script must never push branches."
 
 printf '[linux-contract] ABI5-only cross-platform tracked source/test/distribution boundaries validated.\n'

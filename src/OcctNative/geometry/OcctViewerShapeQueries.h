@@ -114,6 +114,12 @@ extern "C"
         OcctPoint3d* point,
         OcctVector3d* tangent);
 
+    OCCTBRIDGE_API OcctStatus occt_engine_shape_edge_project_point(
+        OcctEngineHandle handle,
+        OcctObjectId edgeId,
+        OcctPoint3d sourcePoint,
+        OcctEdgeProjectionResult* result);
+
     OCCTBRIDGE_API OcctStatus occt_engine_shape_edge_curve_type_get(
         OcctEngineHandle handle,
         OcctObjectId edgeId,
@@ -136,4 +142,10 @@ extern "C"
         double v,
         OcctPoint3d* point,
         OcctVector3d* normal);
+
+    OCCTBRIDGE_API OcctStatus occt_engine_shape_face_project_point(
+        OcctEngineHandle handle,
+        OcctObjectId faceId,
+        OcctPoint3d sourcePoint,
+        OcctFaceProjectionResult* result);
 }

@@ -123,6 +123,7 @@ add_library(OcctNative SHARED
     presentation/OcctDepth.cpp
     geometry/OcctViewerGeometry.cpp
     geometry/OcctViewerShapeQueries.cpp
+    geometry/OcctViewerShapeProjection.cpp
     geometry/OcctViewerFeatures.cpp
     geometry/OcctViewerGeometryCreation.cpp
     geometry/OcctBRepTextBuilder.cpp

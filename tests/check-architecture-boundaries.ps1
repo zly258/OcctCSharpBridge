@@ -246,29 +246,16 @@ if ($legacyExports.Count -gt 0) {
     throw "Legacy native ABI entry points remain: $($legacyExports -join ', ')"
 }
 
-# Demo projects are not allowed on main/main-dev. On demo branches all three must exist as a set.
-$demoProjects = @("src/OcctDemo.Common", "src/OcctDemo.WinForms", "src/OcctDemo.Wpf")
-$trackedDemoProjects = @($demoProjects | Where-Object { Test-TrackedPath $_ })
-if ($trackedDemoProjects.Count -ne 0 -and $trackedDemoProjects.Count -ne $demoProjects.Count) {
-    throw "Demo projects must be either fully absent on main or fully present on demo."
-}
-if (Test-TrackedPath "src/OcctDemo.Avalonia") {
-    throw "Avalonia demo must live on the avalonia branch, not main/demo."
+# The SDK source line is the sole Bridge implementation source and must never track Demo consumers.
+# Demo branch composition is validated by the Demo itself; this checker intentionally does not model it.
+$trackedDemoFiles = @(& git -C $RepositoryRoot ls-files -- "src/OcctDemo.*" "src/OcctDemo.*/**" 2>$null)
+if ($LASTEXITCODE -ne 0) { throw "Unable to inspect Demo consumer paths with git ls-files." }
+if ($trackedDemoFiles.Count -gt 0) {
+    throw "SDK source branches must not track OcctDemo consumer projects: $($trackedDemoFiles -join ', ')"
 }
 
 foreach ($legacyProject in @("src/CadCommon", "src/CadWinForms", "src/CadWpf", "src/CadAvalonia")) {
     if (Test-TrackedPath $legacyProject) { throw "Legacy application project must not be tracked: $legacyProject" }
-}
-
-if ($trackedDemoProjects.Count -eq $demoProjects.Count) {
-    $demoCommon = Read-Project "src/OcctDemo.Common/OcctDemo.Common.csproj"
-    $demoWinForms = Read-Project "src/OcctDemo.WinForms/OcctDemo.WinForms.csproj"
-    $demoWpf = Read-Project "src/OcctDemo.Wpf/OcctDemo.Wpf.csproj"
-    Assert-Reference @(Get-ProjectReferences $demoCommon) "..\OcctNet\OcctNet.csproj" "OcctDemo.Common"
-    Assert-Reference @(Get-ProjectReferences $demoWinForms) "..\OcctDemo.Common\OcctDemo.Common.csproj" "OcctDemo.WinForms"
-    Assert-Reference @(Get-ProjectReferences $demoWinForms) "..\OcctNet.WinForms\OcctNet.WinForms.csproj" "OcctDemo.WinForms"
-    Assert-Reference @(Get-ProjectReferences $demoWpf) "..\OcctDemo.Common\OcctDemo.Common.csproj" "OcctDemo.Wpf"
-    Assert-Reference @(Get-ProjectReferences $demoWpf) "..\OcctNet.Wpf\OcctNet.Wpf.csproj" "OcctDemo.Wpf"
 }
 
 Write-Host "[architecture] ABI5-only SDK boundaries validated." -ForegroundColor Green
