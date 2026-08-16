@@ -91,4 +91,5 @@ public interface IOcctViewportInputSource
     event EventHandler<OcctPointerInputEventArgs>? PointerInput;
     event EventHandler<OcctKeyInputEventArgs>? PreviewKeyInput;
     event EventHandler<OcctKeyInputEventArgs>? KeyInput;
+    event EventHandler<OcctViewportHoverHitChangedEventArgs>? HoverHitChanged;
 }
