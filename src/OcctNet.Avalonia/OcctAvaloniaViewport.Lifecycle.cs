@@ -17,19 +17,19 @@ public sealed partial class OcctAvaloniaViewport
 
     protected override IPlatformHandle CreateNativeControlCore(IPlatformHandle parent)
     {
+        ResetRenderReady();
         SetHostState(OcctViewportHostState.Initializing);
         var generation = ++_engineGeneration;
         try
         {
             IPlatformHandle control = OperatingSystem.IsWindows()
-                ? CreateWindowsHost(parent)
+                ? CreateWindowsHost(parent, generation)
                 : OperatingSystem.IsLinux()
-                    ? CreateLinuxHost(parent)
+                    ? CreateLinuxHost(parent, generation)
                     : throw new PlatformNotSupportedException(
                         "OcctNet.Avalonia currently supports Windows x64 and Linux x64.");
 
-            var engine = _engine ?? throw new InvalidOperationException("The OCCT engine was not created by the native host.");
-            NotifyEngineRecreated(engine, generation);
+            MarkFirstFrameRendered(generation);
             SetHostState(OcctViewportHostState.Ready);
             return control;
         }
@@ -51,7 +51,7 @@ public sealed partial class OcctAvaloniaViewport
         base.DestroyNativeControlCore(control);
     }
 
-    private IPlatformHandle CreateWindowsHost(IPlatformHandle parent)
+    private IPlatformHandle CreateWindowsHost(IPlatformHandle parent, long generation)
     {
         if (!string.Equals(parent.HandleDescriptor, "HWND", StringComparison.OrdinalIgnoreCase))
             throw new PlatformNotSupportedException($"Expected an HWND parent but received '{parent.HandleDescriptor}'.");
@@ -82,11 +82,11 @@ public sealed partial class OcctAvaloniaViewport
             OcctNativeSurfaceKind.Win32Window,
             handle,
             redrawAfterInitialize: false);
-        FinishEngineInitialization();
+        FinishEngineInitialization(generation);
         return new PlatformHandle(handle, "HWND");
     }
 
-    private IPlatformHandle CreateLinuxHost(IPlatformHandle parent)
+    private IPlatformHandle CreateLinuxHost(IPlatformHandle parent, long generation)
     {
         if (!string.Equals(parent.HandleDescriptor, "XID", StringComparison.OrdinalIgnoreCase))
         {
@@ -122,13 +122,13 @@ public sealed partial class OcctAvaloniaViewport
             _nativeHandle,
             _x11Display,
             redrawAfterInitialize: false);
-        FinishEngineInitialization();
+        FinishEngineInitialization(generation);
         InstallX11Input(window);
         StartX11InputPump();
         return new PlatformHandle(_nativeHandle, "XID");
     }
 
-    private void FinishEngineInitialization()
+    private void FinishEngineInitialization(long generation)
     {
         var engine = _engine ?? throw new InvalidOperationException("The OCCT engine has not been created.");
         using (engine.BeginDisplayBatch())
@@ -136,6 +136,7 @@ public sealed partial class OcctAvaloniaViewport
             SynchronizeDpi();
             engine.ResizeSurface();
             _initialOptions.Apply(engine);
+            NotifyEngineRecreated(engine, generation);
         }
         _lastHoverTimestamp = 0;
         _lastWorldPointTimestamp = 0;
@@ -179,6 +180,7 @@ public sealed partial class OcctAvaloniaViewport
 
     private void DisposeNativeHost(IntPtr handle, bool transitionToDisposed)
     {
+        ResetRenderReady();
         StopX11InputPump();
         CancelInteraction();
         _x11PressedKeys.Clear();
@@ -240,6 +242,7 @@ public sealed partial class OcctAvaloniaViewport
 
     private void SetHostFault(Exception exception)
     {
+        ResetRenderReady();
         SetHostState(OcctViewportHostState.Faulted);
         try { Faulted?.Invoke(this, new OcctViewportFaultedEventArgs(exception, _engineGeneration)); }
         catch (Exception handlerException) { ReportLifecycleError(handlerException); }
