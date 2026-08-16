@@ -58,6 +58,7 @@ public sealed partial class OcctViewportControl : Control, IOcctViewportHost, IO
     private long _lastHoverTimestamp;
     private long _lastWorldPointTimestamp;
     private OcctViewportInteractionFeatures _interactionFeatures = OcctViewportInteractionFeatures.Default;
+    private OcctViewportInitializationOptions _initialOptions = new();
     private double _zoomSensitivity = 1.0;
     private readonly HashSet<Keys> _pressedKeys = [];
     private OcctViewportHostState _hostState = OcctViewportHostState.Detached;
@@ -76,6 +77,13 @@ public sealed partial class OcctViewportControl : Control, IOcctViewportHost, IO
     public bool IsEngineInitialized => _engine?.IsInitialized == true;
     public OcctViewportHostState HostState => _hostState;
     public long EngineGeneration => _engineGeneration;
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public OcctViewportInitializationOptions InitialOptions
+    {
+        get => _initialOptions;
+        set => _initialOptions = value ?? throw new ArgumentNullException(nameof(value));
+    }
 
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public OcctViewportInteractionFeatures InteractionFeatures
