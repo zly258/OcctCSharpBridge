@@ -8,6 +8,7 @@ public sealed partial class OcctEngine
     {
         EnsureInitialized();
         CheckSelectionStatus(SelectionNativeMethods.occt_engine_selection_move_to(_handle, x, y));
+        UpdateDetectedHit(x, y);
     }
 
     public void Select(int x, int y, bool appendSelection = false)
