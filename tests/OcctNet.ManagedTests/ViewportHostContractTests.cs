@@ -57,11 +57,11 @@ public sealed class ViewportHostContractTests
         var nativeHandleChanged = type.GetEvent(nameof(IOcctViewportHost.NativeHandleChanged));
 
         Assert.IsNotNull(nativeHandle);
-        Assert.AreEqual(typeof(IntPtr), nativeHandle.PropertyType);
+        var actualPropertyType = nativeHandle.PropertyType;
+        Assert.AreEqual(typeof(IntPtr), actualPropertyType);
         Assert.IsNotNull(nativeHandleChanged);
-        Assert.AreEqual(
-            typeof(EventHandler<OcctNativeHandleChangedEventArgs>),
-            nativeHandleChanged.EventHandlerType);
+        var actualEventType = nativeHandleChanged.EventHandlerType;
+        Assert.AreEqual(typeof(EventHandler<OcctNativeHandleChangedEventArgs>), actualEventType);
     }
 
     [TestMethod]
@@ -98,8 +98,13 @@ public sealed class ViewportHostContractTests
     [TestMethod]
     public void HostStateNamesDoNotOverlapCameraViewportState()
     {
-        Assert.AreEqual(nameof(OcctViewportHostState), typeof(OcctViewportHostState).Name);
-        Assert.AreEqual(nameof(OcctViewportState), typeof(OcctViewportState).Name);
-        Assert.AreNotEqual(typeof(OcctViewportHostState), typeof(OcctViewportState));
+        var actualHostStateName = typeof(OcctViewportHostState).Name;
+        var actualCameraStateName = typeof(OcctViewportState).Name;
+        var actualHostStateType = typeof(OcctViewportHostState);
+        var actualCameraStateType = typeof(OcctViewportState);
+
+        Assert.AreEqual(nameof(OcctViewportHostState), actualHostStateName);
+        Assert.AreEqual(nameof(OcctViewportState), actualCameraStateName);
+        Assert.AreNotEqual(actualHostStateType, actualCameraStateType);
     }
 }
