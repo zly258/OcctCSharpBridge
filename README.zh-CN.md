@@ -40,12 +40,33 @@ OcctNet.Avalonia ─┘
 
 Document、Feature Tree、Command/Tool、Undo/Redo、捕捉、夹点和项目持久化仍属于上层应用职责。
 
+## Viewport Host 契约
+
+WinForms、WPF、Avalonia 现在共享同一套平台无关 Host/Input 生命周期，上层应用不需要再直接处理框架特有输入或 HWND/X11 交互：
+
+- `OcctViewportInteractionFeatures` 可以独立控制 Hover Detection、点选/框选、旋转、平移、缩放；
+- `PreviewPointerInput / PointerInput`、`PreviewKeyInput / KeyInput` 统一 Windows/Linux 输入，并可通过 `Handled` 在 Preview 阶段阻止默认 Viewer 交互；
+- `OcctViewportHostState`、`HostStateChanged`、`Faulted`、`EngineGeneration`、`EngineDisposing`、`EngineRecreated` 明确定义 Native Host 重建生命周期；
+- `OcctViewportInitializationOptions`、`RenderReady`、`FirstFrameRendered` 支持在真正首帧显示前设置背景、初始视图、Projection、Triedron、ViewCube；
+- `HoverHitChanged` 直接提供 Owner/Subshape 身份变化，应用无需在鼠标移动时重复查询 Detection；
+- `NativeHandleChanged` 只面向高级 HWND/XID 宿主集成和诊断，普通应用交互不应依赖 Native Handle；
+- 批量刷新继续统一使用已有 `BeginDisplayBatch()`，不新增重复的 `BeginUpdate`/`DeferRefresh` API；
+- `ProjectPointToEdge`、`ProjectPointToFace` 提供最近点和可复用的 Edge Parameter / Face UV，为后续捕捉、工作面等上层功能提供基础。
+
+事件顺序与使用边界见 [Viewer 选择与交互](docs/zh-CN/05_Viewer选择与交互.md)。
+
 ## 构建与校验
 
 Windows 完整验证：
 
 ```powershell
 .\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
+```
+
+Windows 完整 Gate 已包含 Core Native Smoke 和 WinForms/WPF/Avalonia 三套 Viewport Host Smoke；也可单独执行：
+
+```powershell
+.\build.ps1 viewport-smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
 Windows Binary SDK：
@@ -91,9 +112,9 @@ model.ExportStep(cut.Shape, "plate.step");
 - `main-dev`：Bridge SDK 开发与校验，通过后 PR 到 `main`。
 - `demo` / `demo-dev`：唯一 Binary SDK Consumer；Windows x64 提供 WinForms、WPF、Avalonia，Linux x64 仅提供 Avalonia。
 - `website`：双语项目官网。
-- `backup/*`：历史备份分支，保持不变。
+- 历史备份分支如存在，不参与日常开发并保持不变。
 
-独立 `avalonia` / `avalonia-dev` 分支的有效内容全部并入统一 Demo 后废弃。
+当前不存在独立 Avalonia 源码分支；Avalonia 已属于正式 SDK 和统一 Demo 架构。
 
 ## 许可证
 
