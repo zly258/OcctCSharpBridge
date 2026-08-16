@@ -49,12 +49,12 @@ public sealed partial class OcctWpfViewport
                     $"Unable to create the WPF OCCT child HWND. Win32 error: {Marshal.GetLastWin32Error()}.");
             }
 
-            _nativeHandle = handle;
+            SetNativeHandle(handle, generation);
             var engine = new OcctEngine();
             _engine = engine;
             engine.InitializeNativeSurface(
                 OcctNativeSurfaceKind.Win32Window,
-                handle,
+                NativeHandle,
                 redrawAfterInitialize: false);
             using (engine.BeginDisplayBatch())
             {
@@ -140,7 +140,7 @@ public sealed partial class OcctWpfViewport
             catch (Exception exception) { ReportLifecycleError(exception); }
         }
 
-        _nativeHandle = IntPtr.Zero;
+        SetNativeHandle(IntPtr.Zero, _engineGeneration);
         _nativeRefreshScheduled = false;
         _nativeRenderScheduled = false;
         _lastRenderDpi = 0;
