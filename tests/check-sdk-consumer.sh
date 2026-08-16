@@ -24,6 +24,7 @@ patterns=(
     '\bEngine\.(SetColor|SetTransparency|SetVisible|SetLineWidth|SetMaterial)\b'
     '\bEngine\.Display\b'
     '\bEngine\.(MakeTextShape|MakeLengthAnnotationShape|MakeAngleAnnotationShape|MakeRadiusAnnotationShape|MakeDiameterAnnotationShape)\b'
+    '\b(EngineInitialized|EnableDefaultInteraction|EnableRectangleSelection)\b'
 )
 
 violations=()
@@ -42,4 +43,4 @@ if (( ${#violations[@]} > 0 )); then
     exit 1
 fi
 
-printf '[consumer] Demo is a Bridge 3/ABI5 consumer only: no SDK sources, direct native ABI calls, pre-ABI5 handles/metadata, or retired managed APIs.\n'
+printf '[consumer] Demo is a Bridge 3/ABI5 consumer only: no SDK sources, direct native ABI calls, pre-ABI5 handles/metadata, retired managed APIs, or retired viewport lifecycle flags.\n'
