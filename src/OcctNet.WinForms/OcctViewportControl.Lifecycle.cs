@@ -10,6 +10,7 @@ public sealed partial class OcctViewportControl
         base.OnHandleCreated(e);
         if (DesignMode) return;
 
+        ResetRenderReady();
         SetHostState(OcctViewportHostState.Initializing);
         var generation = ++_engineGeneration;
         try
@@ -21,11 +22,12 @@ public sealed partial class OcctViewportControl
             {
                 engine.ResizeSurface();
                 _initialOptions.Apply(engine);
+                NotifyEngineRecreated(engine, generation);
             }
             _lastNativeSize = ClientSize;
             _lastHoverTimestamp = 0;
             _lastWorldPointTimestamp = 0;
-            NotifyEngineRecreated(engine, generation);
+            MarkFirstFrameRendered(generation);
             SetHostState(OcctViewportHostState.Ready);
         }
         catch (Exception exception)
@@ -92,6 +94,7 @@ public sealed partial class OcctViewportControl
 
     private void DisposeCurrentEngine(bool transitionToDisposed)
     {
+        ResetRenderReady();
         var engine = _engine;
         _engine = null;
         if (engine is not null)
@@ -124,6 +127,7 @@ public sealed partial class OcctViewportControl
 
     private void SetHostFault(Exception exception)
     {
+        ResetRenderReady();
         SetHostState(OcctViewportHostState.Faulted);
         try { Faulted?.Invoke(this, new OcctViewportFaultedEventArgs(exception, _engineGeneration)); }
         catch (Exception handlerException) { ReportLifecycleError(handlerException); }
