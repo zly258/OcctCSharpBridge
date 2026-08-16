@@ -155,9 +155,14 @@ public partial class MainWindow
         view.Items.Add(BuildMaterialMenu());
         view.Items.Add(BuildSelectionMenu());
         view.Items.Add(BuildSelectionAppearanceMenu());
-        view.Items.Add(CheckMenuItem(DemoLocalization.Text("Menu.WindowSelection"), Viewport.EnableRectangleSelection, item =>
+        var rectangleSelectionEnabled =
+            (Viewport.InteractionFeatures & OcctViewportInteractionFeatures.RectangleSelection) != 0;
+        view.Items.Add(CheckMenuItem(DemoLocalization.Text("Menu.WindowSelection"), rectangleSelectionEnabled, item =>
         {
-            Viewport.EnableRectangleSelection = item.IsChecked;
+            if (item.IsChecked)
+                Viewport.InteractionFeatures |= OcctViewportInteractionFeatures.RectangleSelection;
+            else
+                Viewport.InteractionFeatures &= ~OcctViewportInteractionFeatures.RectangleSelection;
             CommandStatus.Text = DemoLocalization.Text(item.IsChecked ? "Status.WindowSelectionOn" : "Status.WindowSelectionOff");
         }));
         view.Items.Add(MenuItem(DemoLocalization.Text("Menu.SelectionTolerance"), (_, _) => SetSelectionTolerance()));
