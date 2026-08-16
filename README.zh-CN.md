@@ -2,93 +2,66 @@
 
 [English](README.md) · [Main SDK](https://github.com/zly258/OcctCSharpBridge/tree/main)
 
-`demo` 是 `main` Binary SDK 的统一 Consumer 分支。当前 Windows 阶段已经统一一套共享业务场景和三个桌面 UI Host：
+`demo` 是唯一的 Binary SDK Consumer 分支，`main` 是唯一的 Bridge SDK 源。
 
 ```text
 OcctDemo.Common
-├─ OcctDemo.WinForms  → OcctNet.WinForms
-├─ OcctDemo.Wpf       → OcctNet.Wpf
-└─ OcctDemo.Avalonia  → OcctNet.Avalonia
+├─ OcctDemo.WinForms  → Windows x64
+├─ OcctDemo.Wpf       → Windows x64
+└─ OcctDemo.Avalonia  → Windows x64 / Linux x64
 ```
 
-Windows x64 构建 WinForms、WPF、Avalonia；Linux x64 最终只构建 Avalonia。Linux 的 shell 构建/运行/发布流程将在 Windows 验证完成后继续并入同一个 `demo` 分支，不再使用独立 Avalonia Demo 分支。
+平台矩阵：
 
-Demo 严格作为 Bridge 3 / ABI5 Consumer：不跟踪 `OcctNative`、`OcctNet*` SDK 实现源码，也不直接调用 `occt_*` Native ABI。
+| 平台 | WinForms | WPF | Avalonia |
+|---|---:|---:|---:|
+| Windows x64 | 是 | 是 | 是 |
+| Linux x64 | 否 | 否 | 是 |
 
-## Demo 运行预览
+Demo 严格作为 Bridge 3 / ABI5 Consumer：不跟踪 `OcctNative`、`OcctNet*` 实现源码，也不直接调用 `occt_*` Native ABI。
 
-### WinForms / Windows
+## Binary SDK 流程
 
-[![WinForms 中文运行界面](assets/previews/winform-demo-zh.png)](assets/previews/winform-demo-zh.png)
+`dist/` 只作为本地构建状态存在并被 Git 忽略。Windows/Linux 两套同步脚本都会校验 contract schema 3、manifest schema 2、ABI5-only、.NET SDK 10.0.303、C# 14 和 SDK 文件哈希；当 `manifest.sourceCommit` 已与 `origin/main` 一致时直接复用，不重复构建 SDK。
 
-### WPF / Windows
-
-[![WPF 中文运行界面](assets/previews/wpf-demo-zh.png)](assets/previews/wpf-demo-zh.png)
-
-### Avalonia / Windows
-
-[![Avalonia Windows 中文运行界面](assets/previews/avalonia-win-demo-zh.png)](assets/previews/avalonia-win-demo-zh.png)
-
-点击图片可查看原始 PNG 大图。
-
-## Binary SDK 同步
-
-`dist/` 只作为本地构建状态存在并被 Git 忽略。`sync.ps1` 会获取 `main`、校验 Bridge 3 / ABI5 contract 与 Binary SDK manifest；如果本地 `dist/win-x64` 的 `sourceCommit` 已与 `origin/main` 一致，则直接复用，不重复编译 SDK。
+Windows：
 
 ```powershell
 .\sync.ps1
-```
-
-仅在确实需要时强制重新生成 SDK：
-
-```powershell
-.\sync.ps1 -ForceRebuild
-```
-
-也可以显式消费已经生成好的 SDK：
-
-```powershell
-.\sync.ps1 -SdkRoot D:\sdk\OcctCSharpBridge\win-x64
-```
-
-## Windows 构建
-
-```powershell
-.\build.ps1 validate Release
-.\build.ps1 common Release
-.\build.ps1 winform Release
-.\build.ps1 wpf Release
-.\build.ps1 avalonia Release
 .\build.ps1 all Release
-```
-
-Consumer 检查会在编译前禁止 SDK 实现源码、直接 `OcctNative` ABI 调用、pre-ABI5 Handle/metadata 以及已经退休的 Managed Bridge API。
-
-## Windows 运行
-
-```powershell
 .\run.ps1 winform Release
 .\run.ps1 wpf Release
 .\run.ps1 avalonia Release
-```
-
-## Windows 独立发布包
-
-```powershell
-.\publish.ps1 winform Release -OcctRoot "D:\tools\occt-vc144-64"
-.\publish.ps1 wpf Release -OcctRoot "D:\tools\occt-vc144-64"
-.\publish.ps1 avalonia Release -OcctRoot "D:\tools\occt-vc144-64"
 .\publish.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-`all` 会生成三个彼此独立的 Windows 发布包，不会把三个应用混合到同一目录。
+Linux：
+
+```bash
+./sync.sh
+./build.sh all Release
+./run.sh Release
+./publish.sh Release
+```
+
+Linux 只构建 `OcctDemo.Common` 和 `OcctDemo.Avalonia`，绝不构建 WinForms/WPF。当前 Avalonia Viewer 交互运行需要 X11/XWayland。
+
+平台细节见 [LINUX.md](LINUX.md) 和 [docs/platform-matrix.md](docs/platform-matrix.md)。
+
+## Demo 预览
+
+- WinForms / Windows：`assets/previews/winform-demo-zh.png`
+- WPF / Windows：`assets/previews/wpf-demo-zh.png`
+- Avalonia / Windows：`assets/previews/avalonia-win-demo-zh.png`
+- Avalonia / Linux：`assets/previews/avalonia-linux-demo-zh.png`
 
 ## 分支职责
 
-- `main`：唯一正式 Bridge SDK 源（`OcctNative`、Core、WinForms、WPF、Avalonia Adapter）。
-- `demo`：统一 SDK Consumer；Windows 提供 WinForms/WPF/Avalonia，Windows 验证完成后继续承载 Linux Avalonia。
-- `website`：统一中英文官网。
+- `main` / `main-dev`：Bridge SDK 源码和开发。
+- `demo` / `demo-dev`：统一的 Windows/Linux Demo Consumer。
+- `website`：中英文项目官网。
+- `backup/*`：历史备份，本次迁移不修改。
 
-原 `avalonia` / `avalonia-dev` 仅作为迁移来源保留；待剩余 Linux 内容全部并入并验证后删除，不再作为目标分支架构的一部分。
+原独立 `avalonia`、`avalonia-dev` 分支在有效内容迁入 `demo` 后废弃。
 
 许可证为 GNU LGPL 2.1 + OcctCSharpBridge Exception 1.0。
