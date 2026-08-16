@@ -75,15 +75,15 @@ public sealed partial class OcctAvaloniaViewport
                 $"Unable to create the Avalonia OCCT child HWND. Win32 error: {Marshal.GetLastWin32Error()}.");
         }
 
-        _nativeHandle = handle;
+        SetNativeHandle(handle, generation);
         InstallInputWindowProcedure(handle);
         _engine = new OcctEngine();
         _engine.InitializeNativeSurface(
             OcctNativeSurfaceKind.Win32Window,
-            handle,
+            NativeHandle,
             redrawAfterInitialize: false);
         FinishEngineInitialization(generation);
-        return new PlatformHandle(handle, "HWND");
+        return new PlatformHandle(NativeHandle, "HWND");
     }
 
     private IPlatformHandle CreateLinuxHost(IPlatformHandle parent, long generation)
@@ -113,19 +113,19 @@ public sealed partial class OcctAvaloniaViewport
             throw new InvalidOperationException("Unable to create the Avalonia OCCT X11 child window.");
         }
 
-        _nativeHandle = new IntPtr(unchecked((long)window));
+        SetNativeHandle(new IntPtr(unchecked((long)window)), generation);
         XMapWindow(_x11Display, window);
         XFlush(_x11Display);
         _engine = new OcctEngine();
         _engine.InitializeNativeSurface(
             OcctNativeSurfaceKind.X11Window,
-            _nativeHandle,
+            NativeHandle,
             _x11Display,
             redrawAfterInitialize: false);
         FinishEngineInitialization(generation);
         InstallX11Input(window);
         StartX11InputPump();
-        return new PlatformHandle(_nativeHandle, "XID");
+        return new PlatformHandle(NativeHandle, "XID");
     }
 
     private void FinishEngineInitialization(long generation)
@@ -194,6 +194,7 @@ public sealed partial class OcctAvaloniaViewport
             catch (Exception exception) { ReportLifecycleError(exception); }
         }
 
+        SetNativeHandle(IntPtr.Zero, _engineGeneration);
         if (OperatingSystem.IsWindows())
         {
             if (handle != IntPtr.Zero && _previousWindowProcedure != IntPtr.Zero)
@@ -217,7 +218,6 @@ public sealed partial class OcctAvaloniaViewport
             }
         }
 
-        _nativeHandle = IntPtr.Zero;
         _selectionFrame = null;
         _nativeRefreshScheduled = false;
         if (transitionToDisposed) SetHostState(OcctViewportHostState.Disposed);
