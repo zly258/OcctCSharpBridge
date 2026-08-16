@@ -62,6 +62,7 @@ public interface IOcctViewportHost
     bool IsEngineInitialized { get; }
     OcctViewportHostState HostState { get; }
     long EngineGeneration { get; }
+    OcctViewportInitializationOptions InitialOptions { get; set; }
 
     event EventHandler<OcctViewportHostStateChangedEventArgs>? HostStateChanged;
     event EventHandler<OcctViewportFaultedEventArgs>? Faulted;
