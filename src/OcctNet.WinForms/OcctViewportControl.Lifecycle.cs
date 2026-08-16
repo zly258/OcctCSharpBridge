@@ -16,7 +16,12 @@ public sealed partial class OcctViewportControl
         {
             var engine = new OcctEngine();
             _engine = engine;
-            engine.Initialize(Handle);
+            engine.InitializeNativeSurface(OcctNativeSurfaceKind.Auto, Handle, redrawAfterInitialize: false);
+            using (engine.BeginDisplayBatch())
+            {
+                engine.ResizeSurface();
+                _initialOptions.Apply(engine);
+            }
             _lastNativeSize = ClientSize;
             _lastHoverTimestamp = 0;
             _lastWorldPointTimestamp = 0;
