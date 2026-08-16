@@ -6,6 +6,7 @@ namespace OcctNet;
 public struct OcctEdgeProjectionResult
 {
     public OcctPoint3d Point;
+    public OcctVector3d Tangent;
     public double NormalizedParameter;
     public double Distance;
 }
@@ -14,6 +15,7 @@ public struct OcctEdgeProjectionResult
 public struct OcctFaceProjectionResult
 {
     public OcctPoint3d Point;
+    public OcctVector3d Normal;
     public double U;
     public double V;
     public double Distance;
