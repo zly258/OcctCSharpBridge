@@ -58,8 +58,11 @@ internal sealed class SmokeApp : Application
             readyHandled = true;
             try
             {
-                if (!viewport.IsEngineInitialized || viewport.EngineGeneration <= 0)
-                    throw new InvalidOperationException("Avalonia viewport reached Ready without a live OCCT engine generation.");
+                if (!viewport.IsEngineInitialized || viewport.EngineGeneration <= 0 || !viewport.RenderReady)
+                {
+                    throw new InvalidOperationException(
+                        "Avalonia viewport reached Ready without a live, first-frame-rendered OCCT engine generation.");
+                }
 
                 var box = viewport.Engine.MakeBox(100, 80, 60);
                 if (!box.IsValid)
@@ -78,7 +81,7 @@ internal sealed class SmokeApp : Application
                     Console.WriteLine($"Bridge {OcctBridgeInfo.ManagedVersion} / ABI {OcctBridgeInfo.ExpectedAbiVersion}");
                     Console.WriteLine($"Platform: {(OperatingSystem.IsWindows() ? "Windows" : "Linux")}");
                     Console.WriteLine($"Engine generation: {viewport.EngineGeneration}");
-                    Console.WriteLine("Avalonia viewer lifecycle smoke passed.");
+                    Console.WriteLine("Avalonia viewer lifecycle/render smoke passed.");
                     desktop.Shutdown(0);
                 });
             }
@@ -97,7 +100,7 @@ internal sealed class SmokeApp : Application
                 await Task.Delay(TimeSpan.FromSeconds(10));
                 if (completed) return;
                 Console.Error.WriteLine(
-                    $"Avalonia viewer smoke timed out before Ready. Current state: {viewport.HostState}, generation: {viewport.EngineGeneration}.");
+                    $"Avalonia viewer smoke timed out before Ready. Current state: {viewport.HostState}, render ready: {viewport.RenderReady}, generation: {viewport.EngineGeneration}.");
                 desktop.Shutdown(2);
             });
         };
