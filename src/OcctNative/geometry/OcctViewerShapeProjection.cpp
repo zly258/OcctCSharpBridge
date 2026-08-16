@@ -86,6 +86,21 @@ namespace
         return std::clamp((parameter - first) / (last - first), 0.0, 1.0);
     }
 
+    gp_Vec edgeTangent(const TopoDS_Edge& edge, double normalizedParameter)
+    {
+        BRepAdaptor_Curve curve(edge);
+        const double first = curve.FirstParameter();
+        const double last = curve.LastParameter();
+        const double parameter = first + (last - first) * normalizedParameter;
+        gp_Pnt value;
+        gp_Vec tangent;
+        curve.D1(parameter, value, tangent);
+        if (tangent.SquareMagnitude() <= Precision::SquareConfusion())
+            throw std::runtime_error("Edge tangent is undefined at the projected point.");
+        tangent.Normalize();
+        return tangent;
+    }
+
     void faceParameters(
         const BRepExtrema_DistShapeShape& distance,
         const TopoDS_Face& face,
@@ -120,6 +135,21 @@ namespace
         if (!std::isfinite(u) || !std::isfinite(v))
             throw std::runtime_error("Face projection returned non-finite parameters.");
     }
+
+    gp_Vec faceNormal(const TopoDS_Face& face, double u, double v)
+    {
+        BRepAdaptor_Surface surface(face, Standard_True);
+        gp_Pnt value;
+        gp_Vec du;
+        gp_Vec dv;
+        surface.D1(u, v, value, du, dv);
+        gp_Vec normal = du.Crossed(dv);
+        if (normal.SquareMagnitude() <= Precision::SquareConfusion())
+            throw std::runtime_error("Face normal is undefined at the projected UV position.");
+        if (face.Orientation() == TopAbs_REVERSED) normal.Reverse();
+        normal.Normalize();
+        return normal;
+    }
 }
 
 extern "C"
@@ -151,11 +181,13 @@ extern "C"
 
             const gp_Pnt projected = distance.PointOnShape2(1);
             const double normalizedParameter = normalizedEdgeParameter(distance, edge, projected);
+            const gp_Vec tangent = edgeTangent(edge, normalizedParameter);
             const double value = distance.Value();
             if (!std::isfinite(value))
                 throw std::runtime_error("Edge projection returned a non-finite distance.");
 
             result->point = {projected.X(), projected.Y(), projected.Z()};
+            result->tangent = {tangent.X(), tangent.Y(), tangent.Z()};
             result->normalizedParameter = normalizedParameter;
             result->distance = value;
         });
@@ -190,11 +222,13 @@ extern "C"
             double u = 0.0;
             double v = 0.0;
             faceParameters(distance, face, projected, u, v);
+            const gp_Vec normal = faceNormal(face, u, v);
             const double value = distance.Value();
             if (!std::isfinite(value))
                 throw std::runtime_error("Face projection returned a non-finite distance.");
 
             result->point = {projected.X(), projected.Y(), projected.Z()};
+            result->normal = {normal.X(), normal.Y(), normal.Z()};
             result->u = u;
             result->v = v;
             result->distance = value;
