@@ -1,8 +1,8 @@
 # OcctCSharpBridge
 
-[English](README.md) · [中文文档](docs/zh-CN/README.md) · [English Docs](docs/en-US/README.md) · [构建/测试说明](docs/zh-CN/08_构建测试与发布.md) · [Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo) · [跨平台 Avalonia](https://github.com/zly258/OcctCSharpBridge/tree/avalonia)
+[English](README.md) · [中文文档](docs/zh-CN/README.md) · [English Docs](docs/en-US/README.md) · [构建/测试说明](docs/zh-CN/08_构建测试与发布.md) · [统一 Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
-OcctCSharpBridge 是可复用的 **Open CASCADE Technology 7.9.0 → .NET 10 / C# 14** Bridge。`main` 统一维护正式 Native Core、Managed API、WinForms/WPF/Avalonia 视口宿主、测试、文档和各平台 Binary SDK 生产流程。
+OcctCSharpBridge 是可复用的 **Open CASCADE Technology 7.9.0 → .NET 10 / C# 14** Bridge。`main` 统一维护正式 Native Core、Managed API、WinForms/WPF/Avalonia Adapter、测试、文档和各平台 Binary SDK 生产流程。
 
 Bridge 3 **仅支持 ABI 5**。ABI 4 导出、兼容 Shim、旧 Handle、兼容性测试、旧 Consumer 契约和旧 Binary SDK 都不属于当前源码树。
 
@@ -16,8 +16,8 @@ Bridge 3 **仅支持 ABI 5**。ABI 4 导出、兼容 Shim、旧 Handle、兼容�
 | Native ABI | **仅 ABI 5** |
 | API Policy | **abi5-only** |
 | OCCT | **7.9.0** |
-| .NET SDK | **10.0.303** |
-| Target Framework | **`net10.0` Core / `net10.0-windows` Desktop Adapter** |
+| .NET SDK | **精确 10.0.303** |
+| Target Framework | **`net10.0` Core/Avalonia · `net10.0-windows` WinForms/WPF** |
 | C# / Native | **14.0 / C++17** |
 | UI Adapter | **WinForms / WPF / Avalonia** |
 | 源码平台 | **Windows x64 / Linux x64** |
@@ -42,22 +42,16 @@ Document、Feature Tree、Command/Tool、Undo/Redo、捕捉、夹点和项目持
 
 ## 构建与校验
 
-Windows 推荐完整验证：
+Windows 完整验证：
 
 ```powershell
 .\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-其它常用 target：
+Windows Binary SDK：
 
 ```powershell
-.\build.ps1 validate Release
-.\build.ps1 native Release
-.\build.ps1 managed Release
-.\build.ps1 test Release
-.\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 .\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
-.\build.ps1 clean
 ```
 
 Linux x64：
@@ -71,13 +65,13 @@ Linux x64：
 ./build.sh dist Release
 ```
 
-完整 target、6 个静态 Contract Checks、Managed Tests、Native Smoke、SDK 10.0.303 排障和发布说明见 [构建、测试与发布](docs/zh-CN/08_构建测试与发布.md)。
+完整 Target、静态 Contract Checks、Managed Tests、Native Smoke、SDK 10.0.303 排障和发布说明见 [构建、测试与发布](docs/zh-CN/08_构建测试与发布.md)。
 
-ABI5 契约检查会保证 Native 声明、实现和 Managed `LibraryImport` 一致，拒绝 pre-ABI5 Handle 与兼容遗留，并在仓库存在平台 Binary SDK 时检查其契约是否仍为 ABI5-only。
+## Binary SDK 策略
 
-## Binary SDK
+`dist/win-x64` 与 `dist/linux-x64` 是生成的 Release 构建产物，不是源码仓库内容。源码分支**不提交 Binary SDK 文件**。每个包通过 `bridge-manifest.json` 记录 Source Commit 与 SHA-256，并在本地消费或外部分发前完成校验。
 
-开发分支不保留 ABI4 Binary SDK。`build.ps1 dist` / `build.sh dist` 只从当前 ABI5 源码生成平台包。正式发布前必须验证 Package Contract、Manifest、Source Commit 与文件哈希，验证通过后才允许在 `main` 跟踪对应的 `dist/<rid>`。
+统一 `demo` 分支按 `sourceCommit` 与 Manifest Hash 消费这些 SDK。正式二进制可通过受审查的 GitHub Release Asset 或其它受控制品渠道发布，不需要 GitHub Actions 流水线。
 
 ## 使用示例
 
@@ -93,10 +87,13 @@ model.ExportStep(cut.Shape, "plate.step");
 
 ## 分支职责
 
-- `main`：唯一正式 Bridge SDK 源码和 Binary SDK 生产分支。
-- `main-dev`：ABI5 SDK 开发与校验，通过后 PR 到 `main`。
-- `demo` / `demo-dev`：WinForms/WPF Consumer，不保存第二份 Core/Native 源码。
-- `avalonia` / `avalonia-dev`：Windows/Linux Avalonia Consumer 与打包流程。
+- `main`：唯一正式 Bridge SDK 源码与 Binary SDK 生产分支。
+- `main-dev`：Bridge SDK 开发与校验，通过后 PR 到 `main`。
+- `demo` / `demo-dev`：唯一 Binary SDK Consumer；Windows x64 提供 WinForms、WPF、Avalonia，Linux x64 仅提供 Avalonia。
+- `website`：双语项目官网。
+- `backup/*`：历史备份分支，保持不变。
+
+独立 `avalonia` / `avalonia-dev` 分支的有效内容全部并入统一 Demo 后废弃。
 
 ## 许可证
 
