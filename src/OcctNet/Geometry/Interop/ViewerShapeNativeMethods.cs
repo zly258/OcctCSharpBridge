@@ -79,6 +79,10 @@ internal static partial class ViewerShapeNativeMethods
 
     [LibraryImport(NativeMethods.LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_shape_edge_project_point(OcctEngineSafeHandle handle, long edgeId, OcctPoint3d sourcePoint, out OcctEdgeProjectionResult result);
+
+    [LibraryImport(NativeMethods.LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_engine_shape_edge_curve_type_get(OcctEngineSafeHandle handle, long edgeId, out int result);
 
     [LibraryImport(NativeMethods.LibraryName)]
@@ -92,4 +96,8 @@ internal static partial class ViewerShapeNativeMethods
     [LibraryImport(NativeMethods.LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_engine_shape_face_evaluate(OcctEngineSafeHandle handle, long faceId, double u, double v, out OcctPoint3d point, out OcctVector3d normal);
+
+    [LibraryImport(NativeMethods.LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_shape_face_project_point(OcctEngineSafeHandle handle, long faceId, OcctPoint3d sourcePoint, out OcctFaceProjectionResult result);
 }
