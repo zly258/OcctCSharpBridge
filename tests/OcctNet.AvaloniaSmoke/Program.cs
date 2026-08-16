@@ -99,7 +99,7 @@ internal sealed class SmokeApp : Application
                     Console.WriteLine($"Platform: {(OperatingSystem.IsWindows() ? "Windows" : "Linux")}");
                     Console.WriteLine($"Engine generation: {viewport.EngineGeneration}");
                     Console.WriteLine($"Native handle: 0x{viewport.NativeHandle.ToInt64():X}");
-                    Console.WriteLine("Viewer edge/face point projection: validated");
+                    Console.WriteLine("Viewer edge/face point projection with tangent/normal: validated");
                     Console.WriteLine("Avalonia viewer lifecycle/render/native-handle smoke passed.");
                     desktop.Shutdown(0);
                 });
@@ -135,15 +135,23 @@ internal sealed class SmokeApp : Application
             new OcctPoint3d(100, 0, 0));
         var edgeProjection = engine.ProjectPointToEdge(edge, new OcctPoint3d(40, 25, 0));
         if (edgeProjection.Point.DistanceTo(new OcctPoint3d(40, 0, 0)) > 1e-6
+            || Math.Abs(edgeProjection.Tangent.X - 1.0) > 1e-8
+            || Math.Abs(edgeProjection.Tangent.Y) > 1e-8
+            || Math.Abs(edgeProjection.Tangent.Z) > 1e-8
             || Math.Abs(edgeProjection.NormalizedParameter - 0.4) > 1e-8
             || Math.Abs(edgeProjection.Distance - 25.0) > 1e-6)
         {
-            throw new InvalidOperationException("Point-to-edge projection returned unexpected interior geometry.");
+            throw new InvalidOperationException("Point-to-edge projection returned unexpected geometry or tangent.");
         }
 
         var evaluatedEdge = engine.EvaluateEdge(edge, edgeProjection.NormalizedParameter);
-        if (evaluatedEdge.Point.DistanceTo(edgeProjection.Point) > 1e-6)
-            throw new InvalidOperationException("Projected edge parameter does not evaluate back to the projected point.");
+        if (evaluatedEdge.Point.DistanceTo(edgeProjection.Point) > 1e-6
+            || Math.Abs(evaluatedEdge.Tangent.X - edgeProjection.Tangent.X) > 1e-8
+            || Math.Abs(evaluatedEdge.Tangent.Y - edgeProjection.Tangent.Y) > 1e-8
+            || Math.Abs(evaluatedEdge.Tangent.Z - edgeProjection.Tangent.Z) > 1e-8)
+        {
+            throw new InvalidOperationException("Projected edge parameter/tangent does not round-trip through EvaluateEdge.");
+        }
 
         var endpointProjection = engine.ProjectPointToEdge(edge, new OcctPoint3d(150, 10, 0));
         if (endpointProjection.Point.DistanceTo(new OcctPoint3d(100, 0, 0)) > 1e-6
@@ -160,13 +168,21 @@ internal sealed class SmokeApp : Application
         var source = facePoint.Point + facePoint.Normal * 20.0;
         var faceProjection = engine.ProjectPointToFace(face, source);
         if (faceProjection.Point.DistanceTo(facePoint.Point) > 1e-5
+            || Math.Abs(faceProjection.Normal.X - facePoint.Normal.X) > 1e-8
+            || Math.Abs(faceProjection.Normal.Y - facePoint.Normal.Y) > 1e-8
+            || Math.Abs(faceProjection.Normal.Z - facePoint.Normal.Z) > 1e-8
             || Math.Abs(faceProjection.Distance - 20.0) > 1e-5)
         {
-            throw new InvalidOperationException("Point-to-face projection returned unexpected geometry.");
+            throw new InvalidOperationException("Point-to-face projection returned unexpected geometry or normal.");
         }
 
         var evaluatedFace = engine.EvaluateFace(face, faceProjection.U, faceProjection.V);
-        if (evaluatedFace.Point.DistanceTo(faceProjection.Point) > 1e-5)
-            throw new InvalidOperationException("Projected face parameters do not evaluate back to the projected point.");
+        if (evaluatedFace.Point.DistanceTo(faceProjection.Point) > 1e-5
+            || Math.Abs(evaluatedFace.Normal.X - faceProjection.Normal.X) > 1e-8
+            || Math.Abs(evaluatedFace.Normal.Y - faceProjection.Normal.Y) > 1e-8
+            || Math.Abs(evaluatedFace.Normal.Z - faceProjection.Normal.Z) > 1e-8)
+        {
+            throw new InvalidOperationException("Projected face UV/normal does not round-trip through EvaluateFace.");
+        }
     }
 }
