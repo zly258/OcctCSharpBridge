@@ -78,7 +78,10 @@ public sealed partial class OcctAvaloniaViewport
         _nativeHandle = handle;
         InstallInputWindowProcedure(handle);
         _engine = new OcctEngine();
-        _engine.InitializeNativeSurface(OcctNativeSurfaceKind.Win32Window, handle);
+        _engine.InitializeNativeSurface(
+            OcctNativeSurfaceKind.Win32Window,
+            handle,
+            redrawAfterInitialize: false);
         FinishEngineInitialization();
         return new PlatformHandle(handle, "HWND");
     }
@@ -114,7 +117,11 @@ public sealed partial class OcctAvaloniaViewport
         XMapWindow(_x11Display, window);
         XFlush(_x11Display);
         _engine = new OcctEngine();
-        _engine.InitializeNativeSurface(OcctNativeSurfaceKind.X11Window, _nativeHandle, _x11Display);
+        _engine.InitializeNativeSurface(
+            OcctNativeSurfaceKind.X11Window,
+            _nativeHandle,
+            _x11Display,
+            redrawAfterInitialize: false);
         FinishEngineInitialization();
         InstallX11Input(window);
         StartX11InputPump();
@@ -123,9 +130,13 @@ public sealed partial class OcctAvaloniaViewport
 
     private void FinishEngineInitialization()
     {
-        SynchronizeDpi();
-        _engine!.ResizeSurface();
-        _engine.Redraw();
+        var engine = _engine ?? throw new InvalidOperationException("The OCCT engine has not been created.");
+        using (engine.BeginDisplayBatch())
+        {
+            SynchronizeDpi();
+            engine.ResizeSurface();
+            _initialOptions.Apply(engine);
+        }
         _lastHoverTimestamp = 0;
         _lastWorldPointTimestamp = 0;
         Dispatcher.UIThread.Post(RefreshNativeView, DispatcherPriority.Background);
