@@ -33,7 +33,7 @@ public sealed partial class OcctWpfViewport
                 0,
                 OcctWpfRenderWindowClass.Name,
                 string.Empty,
-                WsChild | WsVisible | WsClipSiblings | WsClipChildren,
+                WsChild | WsClipSiblings | WsClipChildren,
                 0,
                 0,
                 100,
