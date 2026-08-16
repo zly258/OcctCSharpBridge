@@ -20,6 +20,8 @@ extern "C"
     struct OcctBounds { double minX; double minY; double minZ; double maxX; double maxY; double maxZ; };
     struct OcctMassProperties { double mass; double centerX; double centerY; double centerZ; };
     struct OcctDistanceResult { double distance; OcctPoint3d pointOnFirst; OcctPoint3d pointOnSecond; };
+    struct OcctEdgeProjectionResult { OcctPoint3d point; double normalizedParameter; double distance; };
+    struct OcctFaceProjectionResult { OcctPoint3d point; double u; double v; double distance; };
     struct OcctCameraState { OcctPoint3d eye; OcctPoint3d center; OcctVector3d up; OcctVector3d direction; double scale; };
     struct OcctProjectionRay { OcctPoint3d origin; OcctVector3d direction; };
     struct OcctViewportState
