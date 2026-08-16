@@ -51,10 +51,16 @@ public sealed partial class OcctWpfViewport
             _nativeHandle = handle;
             var engine = new OcctEngine();
             _engine = engine;
-            engine.Initialize(handle);
-            SynchronizeDpi();
-            engine.ResizeSurface();
-            engine.Redraw();
+            engine.InitializeNativeSurface(
+                OcctNativeSurfaceKind.Win32Window,
+                handle,
+                redrawAfterInitialize: false);
+            using (engine.BeginDisplayBatch())
+            {
+                SynchronizeDpi();
+                engine.ResizeSurface();
+                _initialOptions.Apply(engine);
+            }
             _lastHoverTimestamp = 0;
             _lastWorldPointTimestamp = 0;
             NotifyEngineRecreated(engine, generation);
