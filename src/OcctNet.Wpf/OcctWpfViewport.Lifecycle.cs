@@ -22,6 +22,7 @@ public sealed partial class OcctWpfViewport
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException("OcctNet.Wpf supports Windows HWND hosting only.");
 
+        ResetRenderReady();
         SetHostState(OcctViewportHostState.Initializing);
         var generation = ++_engineGeneration;
         IntPtr handle = IntPtr.Zero;
@@ -60,10 +61,11 @@ public sealed partial class OcctWpfViewport
                 SynchronizeDpi();
                 engine.ResizeSurface();
                 _initialOptions.Apply(engine);
+                NotifyEngineRecreated(engine, generation);
             }
             _lastHoverTimestamp = 0;
             _lastWorldPointTimestamp = 0;
-            NotifyEngineRecreated(engine, generation);
+            MarkFirstFrameRendered(generation);
             SetHostState(OcctViewportHostState.Ready);
 
             // HwndHost receives its final arranged size after BuildWindowCore.
@@ -127,6 +129,7 @@ public sealed partial class OcctWpfViewport
 
     private void DisposeNativeHost(IntPtr handle, bool transitionToDisposed)
     {
+        ResetRenderReady();
         CancelInteraction();
         var engine = _engine;
         _engine = null;
@@ -164,6 +167,7 @@ public sealed partial class OcctWpfViewport
 
     private void SetHostFault(Exception exception)
     {
+        ResetRenderReady();
         SetHostState(OcctViewportHostState.Faulted);
         try { Faulted?.Invoke(this, new OcctViewportFaultedEventArgs(exception, _engineGeneration)); }
         catch (Exception handlerException) { ReportLifecycleError(handlerException); }
