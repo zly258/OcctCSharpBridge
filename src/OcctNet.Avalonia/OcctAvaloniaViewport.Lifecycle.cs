@@ -17,16 +17,35 @@ public sealed partial class OcctAvaloniaViewport
 
     protected override IPlatformHandle CreateNativeControlCore(IPlatformHandle parent)
     {
-        if (OperatingSystem.IsWindows()) return CreateWindowsHost(parent);
-        if (OperatingSystem.IsLinux()) return CreateLinuxHost(parent);
-        throw new PlatformNotSupportedException("OcctNet.Avalonia currently supports Windows x64 and Linux x64.");
+        SetHostState(OcctViewportHostState.Initializing);
+        var generation = ++_engineGeneration;
+        try
+        {
+            IPlatformHandle control = OperatingSystem.IsWindows()
+                ? CreateWindowsHost(parent)
+                : OperatingSystem.IsLinux()
+                    ? CreateLinuxHost(parent)
+                    : throw new PlatformNotSupportedException(
+                        "OcctNet.Avalonia currently supports Windows x64 and Linux x64.");
+
+            var engine = _engine ?? throw new InvalidOperationException("The OCCT engine was not created by the native host.");
+            NotifyEngineRecreated(engine, generation);
+            SetHostState(OcctViewportHostState.Ready);
+            return control;
+        }
+        catch (Exception exception)
+        {
+            SetHostFault(exception);
+            DisposeNativeHost(_nativeHandle, transitionToDisposed: false);
+            throw;
+        }
     }
 
     protected override void DestroyNativeControlCore(IPlatformHandle control)
     {
         if (control.Handle == _nativeHandle)
         {
-            DisposeNativeHost(control.Handle);
+            DisposeNativeHost(control.Handle, transitionToDisposed: true);
             return;
         }
         base.DestroyNativeControlCore(control);
@@ -51,22 +70,17 @@ public sealed partial class OcctAvaloniaViewport
             IntPtr.Zero,
             IntPtr.Zero);
         if (handle == IntPtr.Zero)
-            throw new InvalidOperationException($"Unable to create the Avalonia OCCT child HWND. Win32 error: {Marshal.GetLastWin32Error()}.");
+        {
+            throw new InvalidOperationException(
+                $"Unable to create the Avalonia OCCT child HWND. Win32 error: {Marshal.GetLastWin32Error()}.");
+        }
 
         _nativeHandle = handle;
-        try
-        {
-            InstallInputWindowProcedure(handle);
-            _engine = new OcctEngine();
-            _engine.InitializeNativeSurface(OcctNativeSurfaceKind.Win32Window, handle);
-            FinishEngineInitialization();
-            return new PlatformHandle(handle, "HWND");
-        }
-        catch
-        {
-            DisposeNativeHost(handle);
-            throw;
-        }
+        InstallInputWindowProcedure(handle);
+        _engine = new OcctEngine();
+        _engine.InitializeNativeSurface(OcctNativeSurfaceKind.Win32Window, handle);
+        FinishEngineInitialization();
+        return new PlatformHandle(handle, "HWND");
     }
 
     private IPlatformHandle CreateLinuxHost(IPlatformHandle parent)
@@ -80,7 +94,10 @@ public sealed partial class OcctAvaloniaViewport
 
         _x11Display = XOpenDisplay(IntPtr.Zero);
         if (_x11Display == IntPtr.Zero)
-            throw new InvalidOperationException("Unable to open the X11 display. Ensure DISPLAY is configured and X11/XWayland is available.");
+        {
+            throw new InvalidOperationException(
+                "Unable to open the X11 display. Ensure DISPLAY is configured and X11/XWayland is available.");
+        }
 
         var screen = XDefaultScreen(_x11Display);
         var black = XBlackPixel(_x11Display, screen);
@@ -94,22 +111,14 @@ public sealed partial class OcctAvaloniaViewport
         }
 
         _nativeHandle = new IntPtr(unchecked((long)window));
-        try
-        {
-            XMapWindow(_x11Display, window);
-            XFlush(_x11Display);
-            _engine = new OcctEngine();
-            _engine.InitializeNativeSurface(OcctNativeSurfaceKind.X11Window, _nativeHandle, _x11Display);
-            FinishEngineInitialization();
-            InstallX11Input(window);
-            StartX11InputPump();
-            return new PlatformHandle(_nativeHandle, "XID");
-        }
-        catch
-        {
-            DisposeNativeHost(_nativeHandle);
-            throw;
-        }
+        XMapWindow(_x11Display, window);
+        XFlush(_x11Display);
+        _engine = new OcctEngine();
+        _engine.InitializeNativeSurface(OcctNativeSurfaceKind.X11Window, _nativeHandle, _x11Display);
+        FinishEngineInitialization();
+        InstallX11Input(window);
+        StartX11InputPump();
+        return new PlatformHandle(_nativeHandle, "XID");
     }
 
     private void FinishEngineInitialization()
@@ -119,7 +128,6 @@ public sealed partial class OcctAvaloniaViewport
         _engine.Redraw();
         _lastHoverTimestamp = 0;
         _lastWorldPointTimestamp = 0;
-        EngineInitialized?.Invoke(this, EventArgs.Empty);
         Dispatcher.UIThread.Post(RefreshNativeView, DispatcherPriority.Background);
     }
 
@@ -158,7 +166,7 @@ public sealed partial class OcctAvaloniaViewport
         }
     }
 
-    private void DisposeNativeHost(IntPtr handle)
+    private void DisposeNativeHost(IntPtr handle, bool transitionToDisposed)
     {
         StopX11InputPump();
         CancelInteraction();
@@ -168,8 +176,9 @@ public sealed partial class OcctAvaloniaViewport
         _engine = null;
         if (engine is not null)
         {
+            NotifyEngineDisposing(engine, _engineGeneration);
             try { engine.Dispose(); }
-            catch (Exception exception) { ReportError(exception); }
+            catch (Exception exception) { ReportLifecycleError(exception); }
         }
 
         if (OperatingSystem.IsWindows())
@@ -198,5 +207,49 @@ public sealed partial class OcctAvaloniaViewport
         _nativeHandle = IntPtr.Zero;
         _selectionFrame = null;
         _nativeRefreshScheduled = false;
+        if (transitionToDisposed) SetHostState(OcctViewportHostState.Disposed);
+    }
+
+    private void SetHostState(OcctViewportHostState state)
+    {
+        if (_hostState == state) return;
+        var previous = _hostState;
+        _hostState = state;
+        try
+        {
+            HostStateChanged?.Invoke(
+                this,
+                new OcctViewportHostStateChangedEventArgs(previous, state, _engineGeneration));
+        }
+        catch (Exception exception)
+        {
+            ReportLifecycleError(exception);
+        }
+    }
+
+    private void SetHostFault(Exception exception)
+    {
+        SetHostState(OcctViewportHostState.Faulted);
+        try { Faulted?.Invoke(this, new OcctViewportFaultedEventArgs(exception, _engineGeneration)); }
+        catch (Exception handlerException) { ReportLifecycleError(handlerException); }
+    }
+
+    private void NotifyEngineRecreated(OcctEngine engine, long generation)
+    {
+        try { EngineRecreated?.Invoke(this, new OcctEngineLifecycleEventArgs(engine, generation)); }
+        catch (Exception exception) { ReportLifecycleError(exception); }
+    }
+
+    private void NotifyEngineDisposing(OcctEngine engine, long generation)
+    {
+        try { EngineDisposing?.Invoke(this, new OcctEngineLifecycleEventArgs(engine, generation)); }
+        catch (Exception exception) { ReportLifecycleError(exception); }
+    }
+
+    private void ReportLifecycleError(Exception exception)
+    {
+        System.Diagnostics.Debug.WriteLine(exception);
+        try { ErrorOccurred?.Invoke(this, new OcctAvaloniaErrorEventArgs(exception)); }
+        catch (Exception handlerException) { System.Diagnostics.Debug.WriteLine(handlerException); }
     }
 }
