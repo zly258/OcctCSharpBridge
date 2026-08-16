@@ -34,7 +34,7 @@ public sealed partial class OcctViewportControl
         catch (Exception exception)
         {
             SetHostFault(exception);
-            DisposeCurrentEngine(transitionToDisposed: false);
+            DisposeCurrentEngine();
             throw;
         }
     }
@@ -45,8 +45,9 @@ public sealed partial class OcctViewportControl
         _pressedKeys.Clear();
         _rotating = false;
         _panning = false;
-        DisposeCurrentEngine(transitionToDisposed: true);
+        DisposeCurrentEngine();
         SetNativeHandle(IntPtr.Zero, _engineGeneration);
+        SetHostState(OcctViewportHostState.Disposed);
         _lastNativeSize = Size.Empty;
         base.OnHandleDestroyed(e);
     }
@@ -94,20 +95,16 @@ public sealed partial class OcctViewportControl
         TryInvoke(_engine.Resize);
     }
 
-    private void DisposeCurrentEngine(bool transitionToDisposed)
+    private void DisposeCurrentEngine()
     {
         ResetRenderReady();
         var engine = _engine;
         _engine = null;
-        if (engine is not null)
-        {
-            NotifyEngineDisposing(engine, _engineGeneration);
-            try { engine.Dispose(); }
-            catch (Exception exception) { ReportLifecycleError(exception); }
-        }
+        if (engine is null) return;
 
-        if (transitionToDisposed)
-            SetHostState(OcctViewportHostState.Disposed);
+        NotifyEngineDisposing(engine, _engineGeneration);
+        try { engine.Dispose(); }
+        catch (Exception exception) { ReportLifecycleError(exception); }
     }
 
     private void SetHostState(OcctViewportHostState state)
