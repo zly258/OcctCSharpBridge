@@ -96,7 +96,6 @@
 
                 <Border Grid.Column="2" Margin="4" BorderBrush="#AEB6BE" BorderThickness="1" Background="#E8EDF2">
                     <occt:OcctWpfViewport x:Name="Viewport"
-                                          EnableRectangleSelection="True"
                                           RectangleSelectionThreshold="5"
                                           SynchronizeRenderDpi="True"/>
                 </Border>
