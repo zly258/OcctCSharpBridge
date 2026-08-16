@@ -2,22 +2,30 @@
 
 项目双语静态官网。
 
-当前官网明确区分四个分支职责：
+官网按最终分支模型展示：
 
-- `main`：Windows x64 Bridge，`OcctNet + WinForms + WPF`，源码契约 349/349、113 个 Public .NET Type。
-- `demo`：仅 Windows WinForms/WPF Demo。
-- `avalonia`：独立跨平台 `OcctNet + OcctNet.Avalonia`，`net10.0`，Windows x64 + Linux x64，源码契约 350/350、109 个 Public .NET Type。
+- `main` / `main-dev`：唯一 Bridge SDK 源与开发线。
+- `demo` / `demo-dev`：统一 Binary SDK Consumer；Windows x64 提供 WinForms、WPF、Avalonia，Linux x64 仅提供 Avalonia。
 - `website`：本静态官网。
+- `backup/*`：历史备份分支，本次迁移保持不变。
 
-Demo 区只展示 WinForms/WPF 四张中英文截图；Avalonia 不再作为第三个 Windows Demo，而是作为独立跨平台分支展示。
+官网展示的当前 Contract：
 
-Linux Avalonia 第一阶段 Viewer Backend 明确写为 X11/XWayland，官网不会宣称 Native Wayland Viewer 已经完成。
+- Bridge `3.0.0-preview.1`
+- Native ABI `5` only
+- OCCT `7.9.0`
+- .NET SDK `10.0.303` exact
+- C# `14`
+
+Demo 区统一引用正式 `demo` 分支中的 WinForms/Windows、WPF/Windows、Avalonia/Windows、Avalonia/Linux 截图。目标架构中不再存在独立 Avalonia 分支。
+
+Linux Avalonia 当前 Viewer Backend 明确为 X11/XWayland，官网不宣称 Native Wayland Viewer 已完成。
 
 ## 文件
 
-- `index.html`：页面结构、分支与能力说明。
+- `index.html`：当前仓库架构、能力、Demo 平台矩阵、文档链接和构建示例。
 - `app.js`：中英文切换、主题、复制和预览 Lightbox。
 - `styles.css`：统一视觉样式。
 - `.nojekyll`：静态托管标记。
 
-后续不要再把 `OcctNet.Avalonia` 写回 main/demo 的职责描述。
+后续不要重新引入 ABI4、Bridge 2.x、过期 API 数量统计或独立 Avalonia 分支描述。
