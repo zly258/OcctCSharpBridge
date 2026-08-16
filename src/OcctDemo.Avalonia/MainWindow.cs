@@ -144,6 +144,7 @@ public sealed partial class MainWindow : Window
             _commandStatus.Text = args.Exception.Message;
             Log($"VIEWPORT ERROR: {args.Exception.Message}");
         };
+        _viewport.PreviewKeyInput += ViewportPreviewKeyInput;
         _viewport.ObjectSelectionChanged += (_, args) => Dispatcher.UIThread.Post(() =>
         {
             if (_session is null) return;
