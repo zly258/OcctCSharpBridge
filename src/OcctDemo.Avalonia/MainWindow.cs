@@ -79,8 +79,15 @@ public sealed partial class MainWindow : Window
         };
         _viewport = new OcctAvaloniaViewport
         {
-            EnableDefaultInteraction = true,
-            EnableRectangleSelection = true,
+            InteractionFeatures = OcctViewportInteractionFeatures.Default,
+            InitialOptions = new OcctViewportInitializationOptions
+            {
+                BackgroundColor = DrawingColor.White,
+                ViewOrientation = OcctViewOrientation.Isometric,
+                Projection = OcctProjectionType.Orthographic,
+                TriedronVisible = true,
+                ViewCubeVisible = true
+            },
             RectangleSelectionThreshold = 5,
             RectangleSelectionBehavior = OcctRectangleSelectionBehavior.Directional,
             SynchronizeRenderDpi = true
@@ -123,7 +130,20 @@ public sealed partial class MainWindow : Window
 
     private void WireEvents()
     {
-        _viewport.EngineInitialized += (_, _) => Dispatcher.UIThread.Post(InitializeSession, DispatcherPriority.Background);
+        _viewport.EngineRecreated += (_, args) => InitializeSession(args.Engine, args.Generation);
+        _viewport.EngineDisposing += (_, args) =>
+        {
+            if (_session?.Engine == args.Engine) _session = null;
+        };
+        _viewport.FirstFrameRendered += (_, args) =>
+            Log($"Viewport generation {args.Generation} first frame rendered.");
+        _viewport.NativeHandleChanged += (_, args) =>
+            Log($"Viewport native handle changed: 0x{args.PreviousHandle.ToInt64():X} -> 0x{args.NativeHandle.ToInt64():X} (generation {args.Generation}).");
+        _viewport.Faulted += (_, args) =>
+        {
+            _commandStatus.Text = args.Exception.Message;
+            Log($"VIEWPORT ERROR: {args.Exception.Message}");
+        };
         _viewport.ObjectSelectionChanged += (_, args) => Dispatcher.UIThread.Post(() =>
         {
             if (_session is null) return;
@@ -148,18 +168,9 @@ public sealed partial class MainWindow : Window
         Opened += (_, _) => Dispatcher.UIThread.Post(_viewport.RefreshNativeView, DispatcherPriority.Background);
     }
 
-    private void InitializeSession()
+    private void InitializeSession(OcctEngine engine, long generation)
     {
-        if (_session is not null) return;
-        try
-        {
-            _session = new DemoSession(_viewport.Engine);
-        }
-        catch (InvalidOperationException)
-        {
-            return;
-        }
-
+        _session = new DemoSession(engine);
         _session.ModelChanged += (_, _) => Dispatcher.UIThread.Post(() =>
         {
             RefreshObjectTree();
@@ -173,24 +184,25 @@ public sealed partial class MainWindow : Window
             Log(message);
         });
 
-        ExecuteSafe(() =>
+        using (engine.BeginDisplayBatch())
         {
-            _session.Engine.SetGradientBackground(DrawingColor.White, DrawingColor.FromArgb(202, 221, 238));
-            _session.Engine.SetTriedronVisible(true);
-            _session.Engine.SetViewCubeVisible(true);
+            engine.SetGradientBackground(DrawingColor.White, DrawingColor.FromArgb(202, 221, 238));
+            engine.SetTriedronVisible(true);
+            engine.SetViewCubeVisible(true);
             ApplyViewCubeLanguage();
-            _session.Engine.SetAntialiasing(true);
-            _session.Engine.SetFaceBoundariesVisible(true, applyExisting: true);
-            _session.Engine.SetAutoZFitMode(true, 1.0);
-            _session.Engine.SetSelectionTolerance(4);
-            _session.Engine.SetDefaultMaterial(OcctMaterial.Plastified);
-            _session.Engine.SetSelectionHighlightColor(_selectionHighlightColor);
-            _session.Engine.SetHoverHighlightColor(_hoverHighlightColor);
-            _session.Engine.SetSceneLighting(_lightingSettings);
-        });
+            engine.SetAntialiasing(true);
+            engine.SetFaceBoundariesVisible(true, applyExisting: true);
+            engine.SetAutoZFitMode(true, 1.0);
+            engine.SetSelectionTolerance(4);
+            engine.SetDefaultMaterial(OcctMaterial.Plastified);
+            engine.SetSelectionHighlightColor(_selectionHighlightColor);
+            engine.SetHoverHighlightColor(_hoverHighlightColor);
+            engine.SetSceneLighting(_lightingSettings);
+        }
 
         _commandStatus.Text = DemoLocalization.Text("Status.Ready", OcctEngine.OcctVersion);
         _selectionStatus.Text = DemoLocalization.Text("Status.NoneSelected");
+        Log($"Viewport ready on engine generation {generation}.");
         RefreshObjectTree();
         UpdateHistoryUi();
     }
