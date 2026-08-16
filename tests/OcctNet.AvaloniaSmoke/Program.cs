@@ -45,6 +45,16 @@ internal sealed class SmokeApp : Application
 
         var completed = false;
         var readyHandled = false;
+        var nativeHandleCreated = false;
+        viewport.NativeHandleChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PreviousHandle == IntPtr.Zero
+                && eventArgs.NativeHandle != IntPtr.Zero
+                && eventArgs.Generation > 0)
+            {
+                nativeHandleCreated = true;
+            }
+        };
         viewport.Faulted += (_, eventArgs) =>
         {
             if (completed) return;
@@ -58,10 +68,14 @@ internal sealed class SmokeApp : Application
             readyHandled = true;
             try
             {
-                if (!viewport.IsEngineInitialized || viewport.EngineGeneration <= 0 || !viewport.RenderReady)
+                if (!viewport.IsEngineInitialized
+                    || viewport.EngineGeneration <= 0
+                    || !viewport.RenderReady
+                    || viewport.NativeHandle == IntPtr.Zero
+                    || !nativeHandleCreated)
                 {
                     throw new InvalidOperationException(
-                        "Avalonia viewport reached Ready without a live, first-frame-rendered OCCT engine generation.");
+                        "Avalonia viewport reached Ready without a live engine, native handle, and first rendered frame.");
                 }
 
                 var engine = viewport.Engine;
@@ -84,8 +98,9 @@ internal sealed class SmokeApp : Application
                     Console.WriteLine($"Bridge {OcctBridgeInfo.ManagedVersion} / ABI {OcctBridgeInfo.ExpectedAbiVersion}");
                     Console.WriteLine($"Platform: {(OperatingSystem.IsWindows() ? "Windows" : "Linux")}");
                     Console.WriteLine($"Engine generation: {viewport.EngineGeneration}");
+                    Console.WriteLine($"Native handle: 0x{viewport.NativeHandle.ToInt64():X}");
                     Console.WriteLine("Viewer edge/face point projection: validated");
-                    Console.WriteLine("Avalonia viewer lifecycle/render smoke passed.");
+                    Console.WriteLine("Avalonia viewer lifecycle/render/native-handle smoke passed.");
                     desktop.Shutdown(0);
                 });
             }
