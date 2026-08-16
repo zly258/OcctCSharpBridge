@@ -53,6 +53,7 @@ internal sealed class SmokeApp : Application
                     throw new InvalidOperationException("Avalonia viewport smoke created an invalid OCCT box.");
 
                 viewport.Engine.SetBackground(System.Drawing.Color.FromArgb(245, 247, 250));
+                viewport.Engine.SetView(OcctViewOrientation.Isometric);
                 viewport.Engine.Fit(box);
                 viewport.Engine.Redraw();
 
