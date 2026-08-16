@@ -24,6 +24,9 @@ public sealed partial class MainWindow
             items.Add(MenuItem(
                 Local("Mesh Generation Test", "网格生成测试"),
                 () => RunModelingTest(Session.RunMeshGenerationTest)));
+            items.Add(MenuItem(
+                Local("Viewer Projection Test", "Viewer 投影测试"),
+                () => RunModelingTest(Session.RunViewerProjectionTest)));
             samples.ItemsSource = items;
         }
 
