@@ -23,6 +23,9 @@ public sealed partial class MainForm
             samples.DropDownItems.Add(MenuItem(
                 Local("Mesh Generation Test", "网格生成测试"),
                 (_, _) => RunModelingTest(Session.RunMeshGenerationTest)));
+            samples.DropDownItems.Add(MenuItem(
+                Local("Viewer Projection Test", "Viewer 投影测试"),
+                (_, _) => RunModelingTest(Session.RunViewerProjectionTest)));
         }
 
         var view = _menu.Items
