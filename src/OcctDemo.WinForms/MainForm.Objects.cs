@@ -33,8 +33,9 @@ public sealed partial class MainForm
             var textRoot = _objectTree.Nodes.Add(DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified ? "文字" : "Text");
             var dimensionRoot = _objectTree.Nodes.Add(DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified ? "尺寸" : "Dimensions");
             var assemblyNodes = new Dictionary<string, TreeNode>(StringComparer.Ordinal);
+            var objects = Session.Engine.GetObjects();
 
-            foreach (var value in Session.Engine.Objects)
+            foreach (var value in objects)
             {
                 var hierarchy = value.Kind == OcctObjectKind.Shape
                     ? Session.GetHierarchyPath(value)
@@ -72,9 +73,11 @@ public sealed partial class MainForm
             _refreshingTree = false;
         }
         ShowObjectProperties(Session.ActiveObject);
+        var objectCount = Session.Engine.ObjectCount;
+        var shapeCount = Session.Engine.GetObjects().OfType<OcctShape>().Count();
         _selectionStatus.Text = DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified
-            ? $"对象 {Session.Engine.ObjectCount} / 形体 {Session.Engine.ShapeCount}"
-            : $"Objects {Session.Engine.ObjectCount} / Shapes {Session.Engine.ShapeCount}";
+            ? $"对象 {objectCount} / 形体 {shapeCount}"
+            : $"Objects {objectCount} / Shapes {shapeCount}";
     }
 
     private static TreeNode GetOrCreateAssemblyNode(
@@ -120,7 +123,7 @@ public sealed partial class MainForm
         var node = e.Node;
         if (_refreshingTree || _session is null || node is null || node.Tag is not IOcctObject value) return;
 
-        ExecuteSafe(() => Session.Engine.SetVisible(value, node.Checked));
+        ExecuteSafe(() => Session.Engine.SetObjectVisible(value, node.Checked));
     }
 
     private void ShowObjectProperties(IOcctObject? value)
@@ -150,7 +153,7 @@ public sealed partial class MainForm
 
     private OcctShape? ActiveShape()
     {
-        if (_session?.ActiveObject is { Kind: OcctObjectKind.Shape } active) return Session.Engine.GetShape(active.Id);
+        if (_session?.ActiveObject is OcctShape active) return active;
         return _session?.Engine.FirstSelected;
     }
 }

@@ -91,11 +91,11 @@ public static class DemoCommandCatalog
         new(DemoCommandId.Copy, "编辑", "复制", "复制当前选择形体。", new[] { B("hide","隐藏原对象",false) }),
         new(DemoCommandId.Delete, "编辑", "删除", "删除全部选中对象。", Array.Empty<DemoParameterDefinition>(), "Delete"),
 
-        new(DemoCommandId.Text, "注释", "矢量文字", "生成可缩放的 BRep 矢量文字，放大后保持清晰。", new[] { T("text","文字","OCCT CAD"), N("x","X",0), N("y","Y",0), N("z","Z",0), N("height","文字高度",18), N("depth","挤出厚度",0), T("font","字体","Microsoft YaHei UI"), B("bold","粗体",false), B("italic","斜体",false) }),
-        new(DemoCommandId.LengthDimension, "注释", "矢量线性尺寸", "将尺寸线、箭头和文字生成一个 BRep 结果。", new[] { N("flyout","引出距离",20), N("textHeight","文字高度",8), N("arrowSize","箭头大小",5), T("font","字体","Microsoft YaHei UI") }),
-        new(DemoCommandId.AngleDimension, "注释", "矢量角度尺寸", "将圆弧、箭头和文字生成一个 BRep 结果。", new[] { N("flyout","圆弧半径",30), N("textHeight","文字高度",8), N("arrowSize","箭头大小",5), T("font","字体","Microsoft YaHei UI") }),
-        new(DemoCommandId.RadiusDimension, "注释", "矢量半径尺寸", "将引线、箭头和文字生成一个 BRep 结果。", new[] { N("flyout","引出距离",20), N("textHeight","文字高度",8), N("arrowSize","箭头大小",5), T("font","字体","Microsoft YaHei UI") }),
-        new(DemoCommandId.DiameterDimension, "注释", "矢量直径尺寸", "将尺寸线、箭头和文字生成一个 BRep 结果。", new[] { N("flyout","引出距离",20), N("textHeight","文字高度",8), N("arrowSize","箭头大小",5), T("font","字体","Microsoft YaHei UI") }),
+        new(DemoCommandId.Text, "注释", "矢量文字", "通过 Headless Modeling 生成 BRep 矢量文字并显示到 Viewer。", new[] { T("text","文字","OCCT CAD"), N("x","X",0), N("y","Y",0), N("z","Z",0), N("height","文字高度",18), N("depth","挤出厚度",0), T("font","字体",DemoFonts.OcctSansSerif), B("bold","粗体",false), B("italic","斜体",false) }),
+        new(DemoCommandId.LengthDimension, "注释", "线性尺寸", "基于当前选中边创建交互式 Viewer 线性尺寸。", new[] { N("flyout","引出距离",20) }),
+        new(DemoCommandId.AngleDimension, "注释", "角度尺寸", "基于当前选择的两条边创建交互式 Viewer 角度尺寸。", new[] { N("flyout","圆弧半径",30) }),
+        new(DemoCommandId.RadiusDimension, "注释", "半径尺寸", "基于当前选中圆边创建交互式 Viewer 半径尺寸。", new[] { N("flyout","引出距离",20) }),
+        new(DemoCommandId.DiameterDimension, "注释", "直径尺寸", "基于当前选中圆边创建交互式 Viewer 直径尺寸。", new[] { N("flyout","引出距离",20) }),
 
         new(DemoCommandId.AnalyzeBounds, "工具", "包围盒", "查询当前形体包围盒。", Array.Empty<DemoParameterDefinition>()),
         new(DemoCommandId.AnalyzeMass, "工具", "几何属性", "查询长度、面积、体积和重心。", Array.Empty<DemoParameterDefinition>()),
@@ -115,7 +115,7 @@ public static class DemoCommandCatalog
         new(DemoCommandId.DemoGear, "示例", "复杂齿轮", "生成带轮齿、中心孔和减重孔的完整齿轮。", Array.Empty<DemoParameterDefinition>()),
         new(DemoCommandId.DemoManifold, "示例", "多通道阀体", "生成带多方向接口和内部孔道的复杂阀体。", Array.Empty<DemoParameterDefinition>()),
         new(DemoCommandId.DemoTwistedDuct, "示例", "扭转风管", "生成多截面扭转过渡的中空风管。", Array.Empty<DemoParameterDefinition>()),
-        new(DemoCommandId.DemoAnnotations, "示例", "矢量注释标注", "生成 BRep 文字、线性、角度、半径和直径标注。", Array.Empty<DemoParameterDefinition>())
+        new(DemoCommandId.DemoAnnotations, "示例", "矢量注释标注", "通过 Headless Modeling 生成 BRep 文字、线性、角度、半径和直径标注。", Array.Empty<DemoParameterDefinition>())
     };
 
     public static DemoCommandDefinition Get(DemoCommandId id) => All.First(command => command.Id == id);

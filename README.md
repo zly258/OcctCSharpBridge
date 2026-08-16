@@ -1,69 +1,67 @@
 # OcctCSharpBridge Demo
 
-[简体中文](README.zh-CN.md) · [Main](https://github.com/zly258/OcctCSharpBridge/tree/main) · [Cross-platform Avalonia](https://github.com/zly258/OcctCSharpBridge/tree/avalonia)
+[简体中文](README.zh-CN.md) · [Main SDK](https://github.com/zly258/OcctCSharpBridge/tree/main)
 
-The `demo` branch contains the Windows demonstration applications for the published `main` Binary SDK. It keeps the shared demo scenarios plus the two Windows UI hosts:
+`demo` is the single Binary SDK consumer branch. `main` is the sole Bridge SDK source.
 
 ```text
 OcctDemo.Common
-OcctDemo.WinForms
-OcctDemo.Wpf
+├─ OcctDemo.WinForms  → Windows x64
+├─ OcctDemo.Wpf       → Windows x64
+└─ OcctDemo.Avalonia  → Windows x64 / Linux x64
 ```
 
-Avalonia is developed independently on the `avalonia` branch, where the same CAD-style scenarios are demonstrated on Windows and Linux.
+Platform matrix:
 
-## Demo previews
+| Platform | WinForms | WPF | Avalonia |
+|---|---:|---:|---:|
+| Windows x64 | yes | yes | yes |
+| Linux x64 | no | no | yes |
 
-### WinForms
+The Demo is a strict Bridge 3 / ABI5 consumer. It does not track `OcctNative` or `OcctNet*` implementation sources and does not call the native `occt_*` ABI directly.
 
-[![WinForms demo](assets/previews/winform-demo-en.png)](assets/previews/winform-demo-en.png)
+## Binary SDK workflow
 
-### WPF
+`dist/` is local build state and is intentionally ignored by Git. Both synchronization scripts validate contract schema 3, manifest schema 2, ABI5-only metadata, .NET SDK 10.0.303, C# 14 and SDK file hashes. A matching `manifest.sourceCommit` is reused instead of rebuilding the SDK.
 
-[![WPF demo](assets/previews/wpf-demo-en.png)](assets/previews/wpf-demo-en.png)
-
-Click a preview to open the original PNG.
-
-## SDK consumption
-
-`demo/dist/win-x64` is local and ignored by Git. Synchronize the currently published Windows SDK from `main`:
+Windows:
 
 ```powershell
 .\sync.ps1
-```
-
-The synchronized SDK must provide the Core, WinForms and WPF Bridge assemblies. No `OcctNet.Avalonia.dll` is required by this branch.
-
-## Build
-
-```powershell
-.\build.ps1 validate Release
-.\build.ps1 common Release
-.\build.ps1 winform Release
-.\build.ps1 wpf Release
 .\build.ps1 all Release
-```
-
-## Run
-
-```powershell
 .\run.ps1 winform Release
 .\run.ps1 wpf Release
-```
-
-## Publish portable demo applications
-
-```powershell
-.\publish.ps1 winform Release -OcctRoot "D:\tools\occt-vc144-64"
-.\publish.ps1 wpf Release -OcctRoot "D:\tools\occt-vc144-64"
+.\run.ps1 avalonia Release
 .\publish.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
+Linux:
+
+```bash
+./sync.sh
+./build.sh all Release
+./run.sh Release
+./publish.sh Release
+```
+
+Linux builds only `OcctDemo.Common` and `OcctDemo.Avalonia`. WinForms and WPF are never part of the Linux build. The current Avalonia Viewer backend requires X11/XWayland for interactive running.
+
+See [LINUX.md](LINUX.md) and [docs/platform-matrix.md](docs/platform-matrix.md) for platform-specific details.
+
+## Demo previews
+
+- WinForms / Windows: `assets/previews/winform-demo-en.png`
+- WPF / Windows: `assets/previews/wpf-demo-en.png`
+- Avalonia / Windows: `assets/previews/avalonia-win-demo-en.png`
+- Avalonia / Linux: `assets/previews/avalonia-linux-demo-en.png`
+
 ## Branch responsibilities
 
-- `main`: Windows Bridge source + tracked Windows Binary SDK (`OcctNet`, WinForms, WPF).
-- `demo`: Windows WinForms/WPF demonstration applications.
-- `avalonia`: standalone `OcctNet + OcctNet.Avalonia` for Windows x64 + Linux x64, with its own Windows/Linux previews.
-- `website`: bilingual project website presenting both demo families.
+- `main` / `main-dev`: Bridge SDK source and development.
+- `demo` / `demo-dev`: unified Windows/Linux Demo consumer.
+- `website`: bilingual project website.
+- `backup/*`: retained historical backups; not modified by the migration.
+
+Standalone `avalonia` and `avalonia-dev` branches are retired after their useful content has been absorbed into `demo`.
 
 The project uses GNU LGPL 2.1 + OcctCSharpBridge Exception 1.0; see the repository license files.

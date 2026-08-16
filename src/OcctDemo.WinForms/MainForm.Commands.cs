@@ -230,14 +230,14 @@ public sealed partial class MainForm
     private void SetActiveVisibility(bool visible)
     {
         if (Session.ActiveObject is not { } active) return;
-        ExecuteSafe(() => { Session.Engine.SetVisible(active, visible); RefreshObjectTree(); });
+        ExecuteSafe(() => { Session.Engine.SetObjectVisible(active, visible); RefreshObjectTree(); });
     }
 
     private void SetActiveColor()
     {
         if (Session.ActiveObject is not { } active) return;
         using var dialog = new ColorDialog { Color = Color.SteelBlue, FullOpen = true };
-        if (dialog.ShowDialog(this) == DialogResult.OK) ExecuteSafe(() => Session.Engine.SetColor(active, dialog.Color));
+        if (dialog.ShowDialog(this) == DialogResult.OK) ExecuteSafe(() => Session.Engine.SetObjectColor(active, dialog.Color));
     }
 
     private void SetActiveMaterial()
@@ -247,7 +247,7 @@ public sealed partial class MainForm
         if (!ParameterDialog.TryGetValues(this, DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified ? "对象材质" : "Object Material", parameters, out var raw)) return;
         var selectedName = new DemoValues(raw).Text("material");
         var material = Enum.GetValues<OcctMaterial>().First(item => MaterialDisplayName(item) == selectedName);
-        ExecuteSafe(() => Session.Engine.SetMaterial(active, material));
+        ExecuteSafe(() => Session.Engine.SetObjectMaterial(active, material));
     }
 
     private bool ConfirmDiscardChanges()

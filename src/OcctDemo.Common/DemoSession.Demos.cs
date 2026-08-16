@@ -31,7 +31,7 @@ public sealed partial class DemoSession
         body = Engine.DrillHole(body, new(-91, 0, 70), OcctVector3d.UnitX, 18, 25, true);
         try { body = Engine.FilletAllEdges(body, 3, true); } catch (OcctException) { }
         SetGeneratedName(body, Local("Mechanical Bracket", "机械支架"));
-        Engine.SetMaterial(body, OcctMaterial.Steel);
+        Engine.SetObjectMaterial(body, OcctMaterial.Steel);
         Engine.FitAll();
         return DemoCommandResult.Created(Local("Mechanical bracket sample created.", "已生成机械支架示例。"), body);
     }
@@ -49,7 +49,7 @@ public sealed partial class DemoSession
         }
         try { body = Engine.FilletAllEdges(body, 1.5, true); } catch (OcctException) { }
         SetGeneratedName(body, Local("Eight-Hole Flange", "八孔法兰"));
-        Engine.SetMaterial(body, OcctMaterial.Steel);
+        Engine.SetObjectMaterial(body, OcctMaterial.Steel);
         Engine.FitAll();
         return DemoCommandResult.Created(Local("Eight-hole flange sample created.", "已生成八孔法兰示例。"), body);
     }
@@ -65,7 +65,7 @@ public sealed partial class DemoSession
         var inner = Engine.Fuse(innerMain, innerBranch, true);
         var tee = Engine.Cut(outer, inner, true);
         SetGeneratedName(tee, Local("Hollow Pipe Tee", "空心管道三通"));
-        Engine.SetMaterial(tee, OcctMaterial.Steel);
+        Engine.SetObjectMaterial(tee, OcctMaterial.Steel);
         Engine.FitAll();
         return DemoCommandResult.Created(Local("Hollow pipe tee sample created.", "已生成空心管道三通示例。"), tee);
     }
@@ -82,7 +82,7 @@ public sealed partial class DemoSession
         var inner = Engine.Loft(new[] { CircleWire(Engine, 44, -1), CircleWire(Engine, 36, 60), CircleWire(Engine, 24, 131) }, true, false, hideInputs: true);
         var reducer = Engine.Cut(outer, inner, true);
         SetGeneratedName(reducer, Local("Hollow Reducer", "空心异径管"));
-        Engine.SetMaterial(reducer, OcctMaterial.Copper);
+        Engine.SetObjectMaterial(reducer, OcctMaterial.Copper);
         Engine.FitAll();
         return DemoCommandResult.Created(Local("Hollow reducer sample created.", "已生成空心异径管示例。"), reducer);
     }
@@ -95,7 +95,7 @@ public sealed partial class DemoSession
         var profile = Engine.MakeWire(new[] { profileEdge }, true);
         var pipe = Engine.Sweep(spine, profile, true);
         SetGeneratedName(pipe, Local("Swept Pipe", "扫掠弯管"));
-        Engine.SetMaterial(pipe, OcctMaterial.Copper);
+        Engine.SetObjectMaterial(pipe, OcctMaterial.Copper);
         Engine.FitAll();
         return DemoCommandResult.Created(Local("Swept pipe sample created.", "已生成扫掠弯管示例。"), pipe);
     }
@@ -110,7 +110,7 @@ public sealed partial class DemoSession
         }
         var loft = Engine.Loft(sections, true, false, hideInputs: true);
         SetGeneratedName(loft, Local("Lofted Body", "放样壳体"));
-        Engine.SetMaterial(loft, OcctMaterial.Aluminum);
+        Engine.SetObjectMaterial(loft, OcctMaterial.Aluminum);
         Engine.FitAll();
         return DemoCommandResult.Created(Local("Lofted body sample created.", "已生成放样壳体示例。"), loft);
     }
@@ -176,15 +176,28 @@ public sealed partial class DemoSession
         results.Add(Name(cutResult, Local("Boolean Feature", "布尔特征")));
 
         results.Add(Name(Engine.MakeTorus(42, 11, new(330, 30, 35)), Local("Torus", "圆环体")));
-        var vectorText = Engine.MakeTextShape(Local("VECTOR", "矢量"), new(-80, 120, 0), 28, 2, "Microsoft YaHei UI", bold: true);
-        Engine.SetColor(vectorText, Color.DarkSlateBlue);
-        results.Add(Name(vectorText, Local("BRep Vector Text", "BRep 矢量文字")));
+        using (var model = new OcctModelingSession())
+        {
+            var modelText = model.MakeBRepText(
+                Local("VECTOR", "矢量"),
+                OcctBRepTextOptions.Default with
+                {
+                    Position = new OcctPoint3d(-80, 120, 0),
+                    Height = 28,
+                    ExtrusionDepth = 2,
+                    FontName = DemoFonts.OcctSansSerif,
+                    Bold = true
+                });
+            var vectorText = DisplayModelShape(model, modelText);
+            Engine.SetObjectColor(vectorText, Color.DarkSlateBlue);
+            results.Add(Name(vectorText, Local("BRep Vector Text", "BRep 矢量文字")));
+        }
 
         foreach (var shape in results.OfType<OcctShape>())
         {
             if (Engine.GetShapeType(shape) is OcctShapeType.Solid or OcctShapeType.CompSolid)
             {
-                Engine.SetMaterial(shape, OcctMaterial.Satin);
+                Engine.SetObjectMaterial(shape, OcctMaterial.Satin);
             }
         }
         Engine.FitAll();
@@ -234,7 +247,7 @@ public sealed partial class DemoSession
         }
         try { gear = Engine.ChamferAllEdges(gear, 0.8, true); } catch (OcctException) { }
         SetGeneratedName(gear, Local("Complex Gear", "复杂齿轮"));
-        Engine.SetMaterial(gear, OcctMaterial.Steel);
+        Engine.SetObjectMaterial(gear, OcctMaterial.Steel);
         Engine.FitAll();
         return DemoCommandResult.Created(Local("Complex gear result created.", "已生成复杂齿轮结果。"), gear);
     }
@@ -264,7 +277,7 @@ public sealed partial class DemoSession
         }
         try { body = Engine.FilletAllEdges(body, 2.0, true); } catch (OcctException) { }
         SetGeneratedName(body, Local("Multi-Port Manifold", "多通道阀体"));
-        Engine.SetMaterial(body, OcctMaterial.Steel);
+        Engine.SetObjectMaterial(body, OcctMaterial.Steel);
         Engine.FitAll();
         return DemoCommandResult.Created(Local("Multi-port manifold result created.", "已生成多通道阀体结果。"), body);
     }
@@ -314,41 +327,88 @@ public sealed partial class DemoSession
         var inner = Engine.Loft(innerSections, true, false, hideInputs: true);
         var duct = Engine.Cut(outer, inner, true);
         SetGeneratedName(duct, Local("Twisted Transition Duct", "扭转过渡风管"));
-        Engine.SetMaterial(duct, OcctMaterial.Aluminum);
+        Engine.SetObjectMaterial(duct, OcctMaterial.Aluminum);
         Engine.FitAll();
         return DemoCommandResult.Created(Local("Twisted transition duct result created.", "已生成扭转过渡风管结果。"), duct);
     }
 
     private DemoCommandResult DemoAnnotations()
     {
-        var lengthSource = Engine.MakeLine(new(-190, -90, 0), new(-40, -90, 0));
-        var angleFirst = Engine.MakeLine(new(-180, 15, 0), new(-70, 15, 0));
-        var angleSecond = Engine.MakeLine(new(-180, 15, 0), new(-105, 82, 0));
-        var radiusSource = Engine.MakeCircle(new(70, 55, 0), OcctVector3d.UnitZ, 38);
-        var diameterSource = Engine.MakeCircle(new(185, -65, 0), OcctVector3d.UnitZ, 34);
+        using var model = new OcctModelingSession();
+        var lengthSource = model.MakeLine(new(-190, -90, 0), new(-40, -90, 0));
+        var angleFirst = model.MakeLine(new(-180, 15, 0), new(-70, 15, 0));
+        var angleSecond = model.MakeLine(new(-180, 15, 0), new(-105, 82, 0));
+        var radiusSource = model.MakeCircle(new(70, 55, 0), OcctVector3d.UnitZ, 38);
+        var diameterSource = model.MakeCircle(new(185, -65, 0), OcctVector3d.UnitZ, 34);
 
-        var length = Engine.MakeLengthAnnotationShape(lengthSource, 26, 9, 6, "Microsoft YaHei UI");
-        var angle = Engine.MakeAngleAnnotationShape(angleFirst, angleSecond, 46, 9, 6, "Microsoft YaHei UI");
-        var radius = Engine.MakeRadiusAnnotationShape(radiusSource, 28, 9, 6, "Microsoft YaHei UI");
-        var diameter = Engine.MakeDiameterAnnotationShape(diameterSource, 24, 9, 6, "Microsoft YaHei UI");
-        var text = Engine.MakeTextShape(
-            Local("VECTOR ANNOTATIONS", "矢量注释标注"),
-            new(-190, 135, 0),
-            24,
-            1.5,
-            "Microsoft YaHei UI",
-            bold: true);
+        var length = DisplayModelShape(
+            model,
+            model.MakeLengthAnnotation(
+                lengthSource,
+                OcctBRepAnnotationOptions.Default with
+                {
+                    Offset = 26,
+                    TextHeight = 9,
+                    ArrowSize = 6,
+                    FontName = DemoFonts.OcctSansSerif
+                }));
+        var angle = DisplayModelShape(
+            model,
+            model.MakeAngleAnnotation(
+                angleFirst,
+                angleSecond,
+                OcctBRepAnnotationOptions.Default with
+                {
+                    Offset = 46,
+                    TextHeight = 9,
+                    ArrowSize = 6,
+                    FontName = DemoFonts.OcctSansSerif
+                }));
+        var radius = DisplayModelShape(
+            model,
+            model.MakeRadiusAnnotation(
+                radiusSource,
+                OcctBRepAnnotationOptions.Default with
+                {
+                    Offset = 28,
+                    TextHeight = 9,
+                    ArrowSize = 6,
+                    FontName = DemoFonts.OcctSansSerif
+                }));
+        var diameter = DisplayModelShape(
+            model,
+            model.MakeDiameterAnnotation(
+                diameterSource,
+                OcctBRepAnnotationOptions.Default with
+                {
+                    Offset = 24,
+                    TextHeight = 9,
+                    ArrowSize = 6,
+                    FontName = DemoFonts.OcctSansSerif
+                }));
+        var text = DisplayModelShape(
+            model,
+            model.MakeBRepText(
+                Local("VECTOR ANNOTATIONS", "矢量注释标注"),
+                OcctBRepTextOptions.Default with
+                {
+                    Position = new OcctPoint3d(-190, 135, 0),
+                    Height = 24,
+                    ExtrusionDepth = 1.5,
+                    FontName = DemoFonts.OcctSansSerif,
+                    Bold = true
+                }));
 
         Name(length, Local("Vector Linear Dimension", "矢量线性尺寸"));
         Name(angle, Local("Vector Angular Dimension", "矢量角度尺寸"));
         Name(radius, Local("Vector Radius Dimension", "矢量半径尺寸"));
         Name(diameter, Local("Vector Diameter Dimension", "矢量直径尺寸"));
         Name(text, Local("BRep Note Text", "BRep 说明文字"));
-        Engine.SetColor(length, Color.DarkBlue);
-        Engine.SetColor(angle, Color.DarkGreen);
-        Engine.SetColor(radius, Color.DarkRed);
-        Engine.SetColor(diameter, Color.Purple);
-        Engine.SetColor(text, Color.Black);
+        Engine.SetObjectColor(length, Color.DarkBlue);
+        Engine.SetObjectColor(angle, Color.DarkGreen);
+        Engine.SetObjectColor(radius, Color.DarkRed);
+        Engine.SetObjectColor(diameter, Color.Purple);
+        Engine.SetObjectColor(text, Color.Black);
         Engine.FitAll();
         return new(
             Local("Vector annotation results created.", "已生成矢量注释标注结果。"),
@@ -360,9 +420,8 @@ public sealed partial class DemoSession
         IEnumerable<IOcctObject> resultObjects)
     {
         var resultIds = resultObjects.Select(item => item.Id).ToHashSet();
-        var processObjects = Engine.Objects
+        var processObjects = Engine.GetObjects()
             .Where(item => !initialObjectIds.Contains(item.Id) && !resultIds.Contains(item.Id))
-            .Select(item => (IOcctObject)item)
             .ToArray();
         if (processObjects.Length > 0) Engine.Delete(processObjects);
     }
@@ -381,5 +440,4 @@ public sealed partial class DemoSession
             or DemoCommandId.DemoManifold
             or DemoCommandId.DemoTwistedDuct
             or DemoCommandId.DemoAnnotations;
-
 }

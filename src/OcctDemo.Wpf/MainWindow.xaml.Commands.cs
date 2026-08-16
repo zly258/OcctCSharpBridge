@@ -287,7 +287,7 @@ public partial class MainWindow
     private void SetObjectColor(IOcctObject value)
     {
         if (!WpfColorDialog.TryPick(this, Local("Object Color", "对象颜色"), DrawingColor.SteelBlue, out var color)) return;
-        ExecuteSafe(() => Session.Engine.SetColor(value, color));
+        ExecuteSafe(() => Session.Engine.SetObjectColor(value, color));
     }
 
     private void SetObjectMaterial(IOcctObject value)
@@ -302,7 +302,7 @@ public partial class MainWindow
         if (!ParameterDialog.TryGetValues(this, Local("Object Material", "对象材质"), parameters, out var raw)) return;
         var name = new DemoValues(raw).Text("material");
         var material = Enum.GetValues<OcctMaterial>().First(item => MaterialDisplayName(item) == name);
-        ExecuteSafe(() => Session.Engine.SetMaterial(value, material));
+        ExecuteSafe(() => Session.Engine.SetObjectMaterial(value, material));
     }
 
     private bool ConfirmDiscardChanges()

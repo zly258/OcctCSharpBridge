@@ -67,15 +67,15 @@ public sealed partial class DemoSession
                 var append = false;
                 foreach (var objectId in entry.SelectedObjectIds)
                 {
+                    if (!Engine.ContainsObject(objectId)) continue;
                     var value = Engine.GetObject(objectId);
-                    if (!Engine.Exists(value)) continue;
                     Engine.SelectObject(value, append);
                     append = true;
                 }
                 Execute(commandId, entry.Values);
             }
             Engine.ClearSelection();
-            if (Engine.ShapeCount > 0) Engine.FitAll();
+            if (GetSceneShapes().Count > 0) Engine.FitAll();
             IsModified = _historyPosition > 0;
         }
         finally

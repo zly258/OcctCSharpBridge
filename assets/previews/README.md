@@ -1,6 +1,6 @@
 # Demo Preview Images
 
-This directory contains the canonical full-resolution screenshots for the two Windows demo hosts on the `demo` branch.
+This directory contains the canonical full-resolution screenshots for the unified `demo` branch.
 
 Canonical files:
 
@@ -9,15 +9,19 @@ assets/previews/winform-demo-en.png
 assets/previews/winform-demo-zh.png
 assets/previews/wpf-demo-en.png
 assets/previews/wpf-demo-zh.png
+assets/previews/avalonia-win-demo-en.png
+assets/previews/avalonia-win-demo-zh.png
+assets/previews/avalonia-linux-demo-en.png
+assets/previews/avalonia-linux-demo-zh.png
 ```
 
 Rules:
 
-- keep exactly one English and one Simplified Chinese PNG for WinForms and WPF;
-- commit lossless full-resolution PNGs;
-- keep the two language variants at the same resolution when practical;
-- show a representative OCCT model and the complete application window;
+- Windows has WinForms, WPF and Avalonia previews;
+- Linux has Avalonia previews only;
+- keep one English and one Simplified Chinese PNG for each supported host/platform pair;
+- commit lossless full-resolution PNGs and keep language variants at the same resolution when practical;
 - replace canonical files in place when refreshing screenshots;
-- do not add Avalonia preview files to `demo`; Avalonia belongs to the separate `avalonia` branch.
+- do not create a separate Avalonia branch-specific preview set.
 
-The website should reference these four demo screenshots only.
+The website should reference these canonical Demo screenshots from the `demo` branch.

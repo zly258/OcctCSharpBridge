@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using OcctNet;
 
 namespace OcctDemo.Common;
@@ -42,18 +42,22 @@ public static class CrashReporter
             var bridgeState = FormatFileState(info.ApplicationNativeBridgeExists, chinese);
             var kernelState = FormatFileState(info.ApplicationOcctKernelExists, chinese);
             var guidance = BuildNativeLoadGuidance(info, chinese);
-            var title = chinese ? "原生运行库加载失败。" : "The native OCCT runtime could not be loaded.";
+            var title = chinese ? "原生 OCCT 运行库加载失败。" : "The native OCCT runtime could not be loaded.";
             var architectureLabel = chinese ? "进程架构" : "Process architecture";
+            var osLabel = chinese ? "操作系统" : "Operating system";
             var baseDirectoryLabel = chinese ? "应用目录" : "Application directory";
             var adviceLabel = chinese ? "建议" : "Recommendation";
+            var bridgeName = Path.GetFileName(info.ApplicationNativeBridgePath);
+            var kernelName = Path.GetFileName(info.ApplicationOcctKernelPath);
 
             return
                 $"{title}{Environment.NewLine}{Environment.NewLine}" +
                 $"{exception.Message}{Environment.NewLine}{Environment.NewLine}" +
+                $"{osLabel}: {info.OperatingSystemDescription}{Environment.NewLine}" +
                 $"{architectureLabel}: {info.ProcessArchitecture}{Environment.NewLine}" +
                 $"{baseDirectoryLabel}: {info.BaseDirectory}{Environment.NewLine}" +
-                $"OcctNative.dll: {bridgeState} {info.ApplicationNativeBridgePath}{Environment.NewLine}" +
-                $"TKernel.dll: {kernelState} {info.ApplicationOcctKernelPath}{Environment.NewLine}{Environment.NewLine}" +
+                $"{bridgeName}: {bridgeState} {info.ApplicationNativeBridgePath}{Environment.NewLine}" +
+                $"{kernelName}: {kernelState} {info.ApplicationOcctKernelPath}{Environment.NewLine}{Environment.NewLine}" +
                 $"{adviceLabel}: {guidance}{logMessage}";
         }
         catch
@@ -92,27 +96,27 @@ public static class CrashReporter
         if (!info.Is64BitProcess)
         {
             return chinese
-                ? "当前进程不是 x64。该桥接层和发布包仅支持 Windows x64，请重新使用 x64 配置构建并发布。"
-                : "The current process is not x64. This bridge and its redistributable package require Windows x64; rebuild and publish for x64.";
+                ? "当前进程不是 x64。该 Bridge 与 Demo 仅支持 Windows x64 / Linux x64，请使用 x64 配置重新构建。"
+                : "The current process is not x64. The Bridge and demo support Windows x64 / Linux x64 only; rebuild for x64.";
         }
 
         if (!info.ApplicationNativeBridgeExists)
         {
             return chinese
-                ? "程序目录缺少 OcctNative.dll。请使用最新 demo/publish.ps1 重新生成发布包，不要手工复制单个 DLL。"
-                : "OcctNative.dll is missing from the application directory. Republish with the latest demo/publish.ps1 instead of copying individual DLLs.";
+                ? "应用目录缺少 Native Bridge。Windows 请运行 .\\build.ps1 avalonia，Linux 请运行 ./build.sh avalonia，确保原生库复制到 Demo 输出目录。"
+                : "The application-local native bridge is missing. Run .\\build.ps1 avalonia on Windows or ./build.sh avalonia on Linux so the native bridge is copied beside the demo.";
         }
 
         if (!info.ApplicationOcctKernelExists)
         {
             return chinese
-                ? "OcctNative.dll 已存在，但程序目录缺少 TKernel.dll，说明原生依赖闭包不完整。请使用最新 demo/publish.ps1 重新发布。"
-                : "OcctNative.dll exists, but TKernel.dll is missing from the application directory, so the native dependency closure is incomplete. Republish with the latest demo/publish.ps1.";
+                ? "Native Bridge 已存在，但应用目录没有 OCCT Kernel。请确认 OCCT_ROOT/CASROOT 正确，并确保 Windows PATH 或 Linux LD_LIBRARY_PATH 包含 OCCT 运行库目录。"
+                : "The native bridge exists, but the app-local OCCT kernel is not present. Verify OCCT_ROOT/CASROOT and ensure the Windows PATH or Linux LD_LIBRARY_PATH contains the OCCT runtime directory.";
         }
 
         return chinese
-            ? "OcctNative.dll 与 TKernel.dll 均存在。若仍出现 Win32 126，通常是更深层的 OCCT、第三方或 Visual C++ 运行库依赖缺失/版本不匹配。请使用最新 demo/publish.ps1 生成完整包，并查看日志中的 OCCT runtime diagnostics。"
-            : "OcctNative.dll and TKernel.dll are both present. If Win32 126 still occurs, a deeper OCCT, third-party, or Visual C++ runtime dependency is usually missing or mismatched. Republish with the latest demo/publish.ps1 and inspect the OCCT runtime diagnostics in the log.";
+            ? "Native Bridge 与 OCCT Kernel 均存在。若仍加载失败，请检查更深层 OCCT/第三方依赖与架构是否匹配，并查看日志中的 OCCT runtime diagnostics。"
+            : "The native bridge and OCCT kernel are present. If loading still fails, check deeper OCCT/third-party dependencies and architecture compatibility, then inspect the OCCT runtime diagnostics in the log.";
     }
 
     private static string FormatFileState(bool exists, bool chinese)
@@ -164,7 +168,9 @@ public static class CrashReporter
     private static bool ContainsNativeLibraryName(string? value) =>
         !string.IsNullOrWhiteSpace(value) &&
         (value.Contains("OcctNative.dll", StringComparison.OrdinalIgnoreCase) ||
-         value.Contains("TKernel.dll", StringComparison.OrdinalIgnoreCase));
+         value.Contains("libOcctNative.so", StringComparison.Ordinal) ||
+         value.Contains("TKernel.dll", StringComparison.OrdinalIgnoreCase) ||
+         value.Contains("libTKernel.so", StringComparison.Ordinal));
 
     private static string WriteCore(string applicationName, string source, string details)
     {

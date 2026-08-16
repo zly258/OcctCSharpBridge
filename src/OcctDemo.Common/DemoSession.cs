@@ -110,7 +110,7 @@ public sealed partial class DemoSession
 
         if (targets.Count == 0
             && ActiveObject is { Kind: OcctObjectKind.Shape } active
-            && Engine.Exists(active))
+            && Engine.ContainsObject(active.Id))
         {
             targets.Add(active);
         }
@@ -124,18 +124,10 @@ public sealed partial class DemoSession
                 switch (preset)
                 {
                     case DemoDepthBiasPreset.Forward:
-                        Engine.SetPolygonOffsets(
-                            target,
-                            OcctPolygonOffsetMode.Fill,
-                            factor: -1.0,
-                            units: -1.0);
+                        Engine.SetPolygonOffsets(target, OcctPolygonOffsetMode.Fill, factor: -1.0, units: -1.0);
                         break;
                     case DemoDepthBiasPreset.Backward:
-                        Engine.SetPolygonOffsets(
-                            target,
-                            OcctPolygonOffsetMode.Fill,
-                            factor: 3.0,
-                            units: 3.0);
+                        Engine.SetPolygonOffsets(target, OcctPolygonOffsetMode.Fill, factor: 3.0, units: 3.0);
                         break;
                     default:
                         Engine.ResetPolygonOffsets(target);
@@ -266,17 +258,13 @@ public sealed partial class DemoSession
         Engine.FitAll();
     }
 
-    /// <summary>
-    /// Compatibility alias for the lightweight selection-property path. Expensive BRep
-    /// validation, bounds and topology enumeration are available only through Analysis commands.
-    /// </summary>
     public IReadOnlyList<KeyValuePair<string, string>> DescribeObject(IOcctObject value) =>
         DescribeObjectLightweight(value);
 
     public string SafeName(IOcctObject value)
     {
-        var name = Engine.GetName(value);
-        return string.IsNullOrWhiteSpace(name) ? $"{DemoLocalization.ObjectKind(Engine.GetObjectKind(value.Id))} {value.Id}" : name;
+        var name = Engine.GetObjectName(value);
+        return string.IsNullOrWhiteSpace(name) ? $"{DemoLocalization.ObjectKind(value.Kind)} {value.Id}" : name;
     }
 
     private static string Local(string english, string chinese) =>
@@ -297,8 +285,8 @@ public sealed partial class DemoSession
 
     private void SetGeneratedName(IOcctObject value, string baseName)
     {
-        var clean = string.IsNullOrWhiteSpace(baseName) ? Engine.GetObjectKind(value.Id).ToString() : baseName.Trim();
-        Engine.SetName(value, $"{clean}_{_nameSequence++:000}");
+        var clean = string.IsNullOrWhiteSpace(baseName) ? value.Kind.ToString() : baseName.Trim();
+        Engine.SetObjectName(value, $"{clean}_{_nameSequence++:000}");
     }
 
     private OcctShape RequireShape()
@@ -315,14 +303,16 @@ public sealed partial class DemoSession
         return shapes;
     }
 
-    private List<OcctShape> SelectedShapes()
-    {
-        return Engine.SelectedObjects
-            .Where(item => item.Kind == OcctObjectKind.Shape)
-            .Select(item => Engine.GetShape(item.Id))
+    private List<OcctShape> SelectedShapes() =>
+        Engine.SelectedObjects
+            .OfType<OcctShape>()
             .DistinctBy(item => item.Id)
             .ToList();
-    }
+
+    private List<OcctShape> GetSceneShapes() =>
+        Engine.GetObjects()
+            .OfType<OcctShape>()
+            .ToList();
 
     private OcctShape CopySelectedSubshape(int index)
     {
@@ -332,7 +322,7 @@ public sealed partial class DemoSession
 
     private void ExportSingleOrCompound(string filePath, Action<OcctShape, string> exporter)
     {
-        var shapes = Engine.Shapes;
+        var shapes = GetSceneShapes();
         if (shapes.Count == 0) throw new InvalidOperationException(DemoLocalization.Text("Session.NoExportShape"));
         if (shapes.Count == 1) { exporter(shapes[0], filePath); return; }
         var compound = Engine.MakeCompound(shapes, false);
@@ -342,8 +332,9 @@ public sealed partial class DemoSession
 
     private OcctPoint3d GetSceneCenter()
     {
-        if (Engine.Shapes.Count == 0) return OcctPoint3d.Origin;
-        var bounds = Engine.Shapes.Select(Engine.GetShapeBounds).ToArray();
+        var shapes = GetSceneShapes();
+        if (shapes.Count == 0) return OcctPoint3d.Origin;
+        var bounds = shapes.Select(Engine.GetShapeBounds).ToArray();
         return new(
             (bounds.Min(item => item.MinX) + bounds.Max(item => item.MaxX)) / 2,
             (bounds.Min(item => item.MinY) + bounds.Max(item => item.MaxY)) / 2,
@@ -352,8 +343,9 @@ public sealed partial class DemoSession
 
     private double GetSceneDiagonal()
     {
-        if (Engine.Shapes.Count == 0) return 100;
-        var bounds = Engine.Shapes.Select(Engine.GetShapeBounds).ToArray();
+        var shapes = GetSceneShapes();
+        if (shapes.Count == 0) return 100;
+        var bounds = shapes.Select(Engine.GetShapeBounds).ToArray();
         var dx = bounds.Max(item => item.MaxX) - bounds.Min(item => item.MinX);
         var dy = bounds.Max(item => item.MaxY) - bounds.Min(item => item.MinY);
         var dz = bounds.Max(item => item.MaxZ) - bounds.Min(item => item.MinZ);
