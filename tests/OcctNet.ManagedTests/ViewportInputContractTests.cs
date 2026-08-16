@@ -16,12 +16,18 @@ public sealed class ViewportInputContractTests
             OcctViewportInteractionFeatures.Rotate |
             OcctViewportInteractionFeatures.Pan |
             OcctViewportInteractionFeatures.Zoom;
+        var expectedDefault =
+            OcctViewportInteractionFeatures.HoverDetection |
+            expectedSelection |
+            expectedNavigation;
 
-        Assert.AreEqual(expectedSelection, OcctViewportInteractionFeatures.Selection);
-        Assert.AreEqual(expectedNavigation, OcctViewportInteractionFeatures.Navigation);
-        Assert.AreEqual(
-            OcctViewportInteractionFeatures.HoverDetection | expectedSelection | expectedNavigation,
-            OcctViewportInteractionFeatures.Default);
+        var actualSelection = OcctViewportInteractionFeatures.Selection;
+        var actualNavigation = OcctViewportInteractionFeatures.Navigation;
+        var actualDefault = OcctViewportInteractionFeatures.Default;
+
+        Assert.AreEqual(expectedSelection, actualSelection);
+        Assert.AreEqual(expectedNavigation, actualNavigation);
+        Assert.AreEqual(expectedDefault, actualDefault);
     }
 
     [TestMethod]
