@@ -11,8 +11,6 @@ OcctDemo.Common
 └─ OcctDemo.Avalonia  → Windows x64 / Linux x64
 ```
 
-Platform matrix:
-
 | Platform | WinForms | WPF | Avalonia |
 |---|---:|---:|---:|
 | Windows x64 | yes | yes | yes |
@@ -20,11 +18,26 @@ Platform matrix:
 
 The Demo is a strict Bridge 3 / ABI5 consumer. It does not track `OcctNative` or `OcctNet*` implementation sources and does not call the native `occt_*` ABI directly.
 
+## Current viewport contract
+
+All three UI hosts consume the same Bridge viewport model instead of framework-specific lifecycle logic:
+
+- `OcctViewportInteractionFeatures` controls hover, point/rectangle selection, rotate, pan and zoom;
+- `PreviewPointerInput / PointerInput` and `PreviewKeyInput / KeyInput` provide platform-neutral input;
+- `HostState`, `EngineGeneration`, `EngineRecreated`, `EngineDisposing` and `Faulted` define native-host lifecycle;
+- `InitialOptions`, `RenderReady` and `FirstFrameRendered` define first-frame readiness;
+- `NativeHandleChanged` exposes HWND/XID changes only for advanced hosting/diagnostics;
+- `HoverHitChanged` reports owner/subshape identity changes without requiring application-side `DetectAt` polling;
+- `BeginDisplayBatch()` is used for grouped scene/view configuration;
+- the Samples menu includes a transient **Viewer Projection Test** using `ProjectPointToEdge` and `ProjectPointToFace` with parameter round-trip validation.
+
+The shared Demo shortcut mapper consumes `OcctKeyInputEventArgs`, so viewport-focused Ctrl+Z/Y/N/O/S, Delete, F, 0/1/2/3 and Escape no longer depend on WinForms/WPF/Avalonia key enums. Framework window shortcuts remain only as focus fallback.
+
 ## Binary SDK workflow
 
 `dist/` is local build state and is intentionally ignored by Git. Both synchronization scripts validate contract schema 3, manifest schema 2, ABI5-only metadata, .NET SDK 10.0.303, C# 14 and SDK file hashes. A matching `manifest.sourceCommit` is reused instead of rebuilding the SDK.
 
-Windows:
+Formal Windows consumption from `main`:
 
 ```powershell
 .\sync.ps1
@@ -34,6 +47,16 @@ Windows:
 .\run.ps1 avalonia Release
 .\publish.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
+
+When validating `demo-dev` against unreleased SDK work on `main-dev`, explicitly regenerate the local SDK from that source branch:
+
+```powershell
+.\sync.ps1 -SourceBranch main-dev -ForceRebuild
+.\build.ps1 validate Release
+.\build.ps1 all Release
+```
+
+Do not change the default `SourceBranch=main`; formal `demo` must consume formal `main`.
 
 Linux:
 
@@ -60,8 +83,8 @@ See [LINUX.md](LINUX.md) and [docs/platform-matrix.md](docs/platform-matrix.md) 
 - `main` / `main-dev`: Bridge SDK source and development.
 - `demo` / `demo-dev`: unified Windows/Linux Demo consumer.
 - `website`: bilingual project website.
-- `backup/*`: retained historical backups; not modified by the migration.
+- historical backup branches, when present, are not part of normal development and remain unchanged.
 
-Standalone `avalonia` and `avalonia-dev` branches are retired after their useful content has been absorbed into `demo`.
+There are no standalone Avalonia source branches. Avalonia is part of `main` and the unified `demo` branch.
 
 The project uses GNU LGPL 2.1 + OcctCSharpBridge Exception 1.0; see the repository license files.
