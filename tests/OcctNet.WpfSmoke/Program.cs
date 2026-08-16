@@ -10,6 +10,7 @@ internal static class Program
     {
         var exitCode = 2;
         var completed = false;
+        var nativeHandleCreated = false;
         var application = new Application
         {
             ShutdownMode = ShutdownMode.OnMainWindowClose
@@ -33,6 +34,16 @@ internal static class Program
             Content = viewport
         };
 
+        viewport.NativeHandleChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PreviousHandle == IntPtr.Zero
+                && eventArgs.NativeHandle != IntPtr.Zero
+                && eventArgs.Generation > 0)
+            {
+                nativeHandleCreated = true;
+            }
+        };
+
         viewport.Faulted += (_, eventArgs) =>
         {
             if (completed) return;
@@ -47,8 +58,15 @@ internal static class Program
             if (eventArgs.State != OcctViewportHostState.Ready || completed) return;
             try
             {
-                if (!viewport.IsEngineInitialized || !viewport.RenderReady || viewport.EngineGeneration <= 0)
-                    throw new InvalidOperationException("WPF viewport reached Ready without a rendered OCCT engine generation.");
+                if (!viewport.IsEngineInitialized
+                    || !viewport.RenderReady
+                    || viewport.EngineGeneration <= 0
+                    || viewport.NativeHandle == IntPtr.Zero
+                    || !nativeHandleCreated)
+                {
+                    throw new InvalidOperationException(
+                        "WPF viewport reached Ready without a live engine, native handle, and first rendered frame.");
+                }
 
                 var box = viewport.Engine.MakeBox(100, 80, 60);
                 if (!box.IsValid)
@@ -69,7 +87,8 @@ internal static class Program
                     Console.WriteLine($"OCCT {OcctEngine.OcctVersion}");
                     Console.WriteLine($"Bridge {OcctBridgeInfo.ManagedVersion} / ABI {OcctBridgeInfo.ExpectedAbiVersion}");
                     Console.WriteLine($"Engine generation: {viewport.EngineGeneration}");
-                    Console.WriteLine("WPF viewport lifecycle/render smoke passed.");
+                    Console.WriteLine($"Native handle: 0x{viewport.NativeHandle.ToInt64():X}");
+                    Console.WriteLine("WPF viewport lifecycle/render/native-handle smoke passed.");
                     window.Close();
                 };
                 closeTimer.Start();
