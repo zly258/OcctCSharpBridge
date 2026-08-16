@@ -50,12 +50,9 @@ Makefile
 *.so
 *.dylib
 
-# Validated platform Binary SDK payloads under dist/<rid> may be tracked after Release validation.
-!dist/
-!dist/**
-/dist/.win-x64-staging/
-/dist/.win-x64-backup/
-/dist/.linux-x64-staging/
+# Local/generated Binary SDK output. Keep only the policy README in source control.
+/dist/*
+!/dist/README.md
 
 # CAD test and generated files
 *.brep
