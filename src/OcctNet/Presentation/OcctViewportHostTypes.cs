@@ -67,6 +67,21 @@ public sealed class OcctFirstFrameRenderedEventArgs : EventArgs
     public long Generation { get; }
 }
 
+public sealed class OcctNativeHandleChangedEventArgs : EventArgs
+{
+    public OcctNativeHandleChangedEventArgs(IntPtr previousHandle, IntPtr nativeHandle, long generation)
+    {
+        if (generation <= 0) throw new ArgumentOutOfRangeException(nameof(generation));
+        PreviousHandle = previousHandle;
+        NativeHandle = nativeHandle;
+        Generation = generation;
+    }
+
+    public IntPtr PreviousHandle { get; }
+    public IntPtr NativeHandle { get; }
+    public long Generation { get; }
+}
+
 public interface IOcctViewportHost
 {
     OcctEngine Engine { get; }
@@ -74,6 +89,7 @@ public interface IOcctViewportHost
     OcctViewportHostState HostState { get; }
     long EngineGeneration { get; }
     bool RenderReady { get; }
+    IntPtr NativeHandle { get; }
     OcctViewportInitializationOptions InitialOptions { get; set; }
 
     event EventHandler<OcctViewportHostStateChangedEventArgs>? HostStateChanged;
@@ -81,6 +97,7 @@ public interface IOcctViewportHost
     event EventHandler<OcctEngineLifecycleEventArgs>? EngineDisposing;
     event EventHandler<OcctEngineLifecycleEventArgs>? EngineRecreated;
     event EventHandler<OcctFirstFrameRenderedEventArgs>? FirstFrameRendered;
+    event EventHandler<OcctNativeHandleChangedEventArgs>? NativeHandleChanged;
 }
 
 public interface IOcctViewportInputSource
