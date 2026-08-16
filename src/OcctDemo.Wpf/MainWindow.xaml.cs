@@ -52,20 +52,20 @@ public partial class MainWindow : System.Windows.Window
 
     private void WireEvents()
     {
-        Viewport.EngineRecreated += (_, args) => Dispatcher.InvokeAsync(() => InitializeSession(args.Engine, args.Generation));
-        Viewport.EngineDisposing += (_, args) => Dispatcher.InvokeAsync(() =>
+        Viewport.EngineRecreated += (_, args) => InitializeSession(args.Engine, args.Generation);
+        Viewport.EngineDisposing += (_, args) =>
         {
             if (_session?.Engine == args.Engine) _session = null;
-        });
-        Viewport.FirstFrameRendered += (_, args) => Dispatcher.InvokeAsync(() =>
-            Log($"Viewport generation {args.Generation} first frame rendered."));
-        Viewport.NativeHandleChanged += (_, args) => Dispatcher.InvokeAsync(() =>
-            Log($"Viewport native handle changed: 0x{args.PreviousHandle.ToInt64():X} -> 0x{args.NativeHandle.ToInt64():X} (generation {args.Generation})."));
-        Viewport.Faulted += (_, args) => Dispatcher.InvokeAsync(() =>
+        };
+        Viewport.FirstFrameRendered += (_, args) =>
+            Log($"Viewport generation {args.Generation} first frame rendered.");
+        Viewport.NativeHandleChanged += (_, args) =>
+            Log($"Viewport native handle changed: 0x{args.PreviousHandle.ToInt64():X} -> 0x{args.NativeHandle.ToInt64():X} (generation {args.Generation}).");
+        Viewport.Faulted += (_, args) =>
         {
             CommandStatus.Text = args.Exception.Message;
             Log($"VIEWPORT ERROR: {args.Exception.Message}");
-        });
+        };
         Viewport.ObjectSelectionChanged += (_, args) => Dispatcher.InvokeAsync(() =>
         {
             if (_session is null) return;
@@ -181,7 +181,7 @@ public partial class MainWindow : System.Windows.Window
 
     private static string CadFileFilter() => DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified
         ? "所有支持格式|*.step;*.stp;*.iges;*.igs;*.brep;*.rle;*.stl|STEP 文件|*.step;*.stp|IGES 文件|*.iges;*.igs|BREP 文件|*.brep;*.rle|STL 文件|*.stl|所有文件|*.*"
-        : "All Supported Files|*.step;*.stp;*.iges;*.igs;*.brep;*.rle;*.stl|STEP Files|*.step;*.stp|IGES Files|*.iges;*.igs|BREP Files|*.brep;*.rle|STL Files|*.stl|All Files|*.*";
+        : "All Supported Files|*.step;*.stp|IGES Files|*.iges;*.igs|BREP Files|*.brep;*.rle|STL Files|*.stl|All Files|*.*";
 
     private static string SaveFileFilter() => DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified
         ? "STEP 文件|*.step;*.stp|IGES 文件|*.iges;*.igs|BREP 文件|*.brep|STL 文件|*.stl"
