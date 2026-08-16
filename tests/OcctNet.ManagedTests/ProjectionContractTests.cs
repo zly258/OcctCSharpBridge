@@ -10,8 +10,10 @@ public sealed class ProjectionContractTests
     [TestMethod]
     public void ProjectionResultLayoutsRemainBlittableAndStable()
     {
-        Assert.AreEqual(40, Marshal.SizeOf<OcctEdgeProjectionResult>());
-        Assert.AreEqual(48, Marshal.SizeOf<OcctFaceProjectionResult>());
+        var actualEdgeSize = Marshal.SizeOf<OcctEdgeProjectionResult>();
+        var actualFaceSize = Marshal.SizeOf<OcctFaceProjectionResult>();
+        Assert.AreEqual(40, actualEdgeSize);
+        Assert.AreEqual(48, actualFaceSize);
 
         var edge = new OcctEdgeProjectionResult
         {
