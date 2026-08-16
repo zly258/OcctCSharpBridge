@@ -13,8 +13,8 @@
 | `check-abi5-contract.ps1` | 保证 ABI 5 是唯一受支持 Native ABI，拒绝 pre-ABI5 文件、元数据、Handle 与 Binary SDK Manifest 残留 |
 | `check-bulk-abi.ps1` | 高数量 Modeling 集合与 Selection Hit 必须保持 Snapshot/Buffer ABI，禁止恢复 N+1 indexed ABI |
 | `check-native-build-structure.ps1` | 校验 CMake Native 源清单、领域边界、平台隔离和 OCCT 7.9 数据交换 Toolkit |
-| `check-api-surface.ps1` | 校验 Native declaration/definition 与 Core `LibraryImport + Cdecl` 一一对应；UI Adapter 可调用 Win32/X11 等平台 API，但不得自行声明 `occt_*` Bridge ABI 入口 |
-| `check-linux-contract.sh` | Linux x64 的 ABI5、TFM、构建、发布与 Manifest 平台契约 |
+| `check-api-surface.ps1` | 校验 Native declaration/definition 与 Core `LibraryImport + Cdecl` 一一对应；新 Edge/Face Projection exports 也自动参与集合比对；UI Adapter 不得自行声明 `occt_*` Bridge ABI 入口 |
+| `check-linux-contract.sh` | Linux x64 的 ABI5、TFM、构建、发布与 Manifest 平台契约，并防止 Linux `publish.sh` 恢复旧 metadata 或自动 Git commit/push |
 
 Windows 静态验证：
 
@@ -40,10 +40,13 @@ Linux：
 - Owner-aware Handle 语义；
 - Geometry/Transform 纯 Managed 行为；
 - Runtime Diagnostic 无副作用；
-- Viewport Interaction Policy；
-- 平台无关 Pointer/Key/InteractionFeatures 输入契约；
-- Viewport Host lifecycle / generation / first-frame options DTO；
+- 平台无关 Pointer/Key/InteractionFeatures 输入契约与未知 flag 拒绝；
+- Hover identity tracker：同一 Owner/Subshape 内 Point/Depth 变化不重复触发；
+- Viewport Host lifecycle / generation / first-frame options / `NativeHandleChanged` DTO；
+- `OcctEdgeProjectionResult` / `OcctFaceProjectionResult` ABI layout；
 - Inertia、Intersection、Topology Reference 等 DTO Mapping。
+
+MSTest Analyzer 保持启用；测试代码必须遵循 `Assert.AreEqual(expected, actual)` 等 analyzer 规则，不通过禁用规则绕过错误。
 
 执行：
 
@@ -96,9 +99,16 @@ Windows 对三个正式 UI Adapter 分别保留最小 Native Host Smoke：
 
 | Project | Validation |
 | --- | --- |
-| `OcctNet.WinFormsSmoke` | WinForms HWND host、HostState、EngineGeneration、RenderReady、first frame、Box/Fit/Redraw、Dispose |
-| `OcctNet.WpfSmoke` | WPF HwndHost、HostState、EngineGeneration、RenderReady、first frame、Box/Fit/Redraw、Dispose |
-| `OcctNet.AvaloniaSmoke` | Avalonia Windows HWND 或 Linux X11/XWayland XID host、HostState、EngineGeneration、RenderReady、first frame、Box/Fit/Redraw、Dispose |
+| `OcctNet.WinFormsSmoke` | WinForms HWND host、HostState、EngineGeneration、RenderReady、`NativeHandle`/`NativeHandleChanged`、first frame、Box/Fit/Redraw、Dispose |
+| `OcctNet.WpfSmoke` | WPF HwndHost、HostState、EngineGeneration、RenderReady、`NativeHandle`/`NativeHandleChanged`、first frame、Box/Fit/Redraw、Dispose |
+| `OcctNet.AvaloniaSmoke` | Avalonia Windows HWND 或 Linux X11/XWayland XID host、HostState、EngineGeneration、RenderReady、`NativeHandle`/`NativeHandleChanged`、first frame、Box/Fit/Redraw、Edge/Face point projection、Dispose |
+
+Avalonia Smoke 还验证：
+
+- `ProjectPointToEdge` 内部最近点、裁剪端点和 `[0,1]` normalized parameter；
+- 投影 parameter 通过 `EvaluateEdge` 回代到同一点；
+- `ProjectPointToFace` 最近点、距离、UV；
+- UV 通过 `EvaluateFace` 回代到同一点。
 
 Windows 一次运行三个 Host Smoke：
 
@@ -146,7 +156,7 @@ Linux Headless 环境仍可以运行 `validate`、`managed`、`test` 和 Core `s
 .\build.ps1 smoke Release
 ```
 
-涉及 WinForms/WPF/Avalonia Adapter、输入、生命周期或首帧行为：
+涉及 WinForms/WPF/Avalonia Adapter、输入、生命周期、Native Handle 或首帧行为：
 
 ```powershell
 .\build.ps1 viewport-smoke Release
