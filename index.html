@@ -4,43 +4,323 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light dark" />
-  <meta name="theme-color" content="#f7f9fc" />
-  <meta name="description" content="OcctCSharpBridge — Bridge 3 ABI5-only OCCT 7.9.0 SDK for .NET 10, with WinForms/WPF/Avalonia demos on Windows and Avalonia on Linux." />
+  <meta name="theme-color" content="#f6f8fb" />
+  <meta name="description" content="OcctCSharpBridge — Bridge 3 ABI5-only OCCT 7.9.0 SDK for .NET 10, with WinForms, WPF and Avalonia on Windows and Avalonia on Linux." />
   <title>OcctCSharpBridge · OCCT for .NET</title>
   <link rel="stylesheet" href="styles.css" />
-  <script>(()=>{const saved=localStorage.getItem('occt-theme');const theme=saved==='dark'||saved==='light'?saved:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=theme;})();</script>
+  <script>
+    (() => {
+      const saved = localStorage.getItem('occt-theme');
+      const theme = saved === 'dark' || saved === 'light'
+        ? saved
+        : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.dataset.theme = theme;
+    })();
+  </script>
 </head>
 <body>
-<header class="site-header"><div class="header-shell shell"><a class="brand-text" href="#top">OcctCSharpBridge</a><nav class="nav" aria-label="Primary navigation"><a href="#branches" data-i18n="navBranches">Branches</a><a href="#capabilities" data-i18n="navCapabilities">Capabilities</a><a href="#demo" data-i18n="navDemo">Demo</a><a href="#docs" data-i18n="navDocs">Docs</a><a href="#license" data-i18n="navLicense">License</a></nav><div class="header-actions"><button id="themeToggle" class="text-button" type="button"><span id="themeLabel">Dark</span></button><button id="languageToggle" class="text-button" type="button">中文</button><a class="github-link" href="https://github.com/zly258/OcctCSharpBridge" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a></div></div></header>
-<main id="top">
-<section class="hero shell"><div class="hero-copy"><div class="eyebrow">OPEN CASCADE × .NET</div><h1 data-i18n="heroTitle">One Bridge SDK, one unified Demo for Windows and Linux</h1><p class="hero-lead" data-i18n="heroLead"></p><div class="hero-actions"><a class="button primary" href="https://github.com/zly258/OcctCSharpBridge/tree/main" target="_blank" rel="noreferrer" data-i18n="viewMain">View SDK</a><a class="button secondary" href="https://github.com/zly258/OcctCSharpBridge/tree/demo" target="_blank" rel="noreferrer" data-i18n="viewDemo">View Demo</a></div><div class="badges"><span>Bridge 3.0.0-preview.1</span><span>ABI 5 only</span><span>OCCT 7.9.0</span><span>.NET SDK 10.0.303</span><span>C# 14</span></div></div><div class="hero-panel"><div class="panel-title" data-i18n="architectureStack">Repository architecture</div><div class="stack-diagram"><div class="stack app-stack"><strong>main / main-dev</strong><small data-i18n="mainStack"></small></div><div class="connector">↓</div><div class="stack managed-stack"><strong>Binary SDK</strong><small data-i18n="commonCore"></small></div><div class="connector">↓</div><div class="stack app-stack"><strong>demo / demo-dev</strong><small data-i18n="demoStack"></small></div></div></div></section>
-<section id="branches" class="section section-soft"><div class="shell"><div class="section-heading"><div class="eyebrow" data-i18n="branchEyebrow">BRANCHES</div><h2 data-i18n="branchTitle"></h2></div><div class="feature-grid"><article class="feature-card"><span>01</span><h3>main / main-dev</h3><p data-i18n="mainText"></p><a href="https://github.com/zly258/OcctCSharpBridge/tree/main" target="_blank" rel="noreferrer" data-i18n="openBranch">Open branch ↗</a></article><article class="feature-card"><span>02</span><h3>demo / demo-dev</h3><p data-i18n="demoBranchText"></p><a href="https://github.com/zly258/OcctCSharpBridge/tree/demo" target="_blank" rel="noreferrer" data-i18n="openBranch">Open branch ↗</a></article><article class="feature-card"><span>03</span><h3>website</h3><p data-i18n="websiteText"></p></article></div></div></section>
-<section id="capabilities" class="section shell"><div class="section-heading"><div class="eyebrow" data-i18n="capEyebrow">CAPABILITIES</div><h2 data-i18n="capTitle"></h2><p data-i18n="capLead"></p></div><div class="feature-grid"><article class="feature-card"><span>01</span><h3 data-i18n="f1Title"></h3><p data-i18n="f1Text"></p></article><article class="feature-card"><span>02</span><h3 data-i18n="f2Title"></h3><p data-i18n="f2Text"></p></article><article class="feature-card"><span>03</span><h3 data-i18n="f3Title"></h3><p data-i18n="f3Text"></p></article><article class="feature-card"><span>04</span><h3 data-i18n="f4Title"></h3><p data-i18n="f4Text"></p></article><article class="feature-card"><span>05</span><h3 data-i18n="f5Title"></h3><p data-i18n="f5Text"></p></article><article class="feature-card"><span>06</span><h3 data-i18n="f6Title"></h3><p data-i18n="f6Text"></p></article><article class="feature-card"><span>07</span><h3 data-i18n="f7Title"></h3><p data-i18n="f7Text"></p></article><article class="feature-card"><span>08</span><h3 data-i18n="f8Title"></h3><p data-i18n="f8Text"></p></article></div></section>
-<section id="demo" class="section shell"><div class="section-heading"><div class="eyebrow" data-i18n="demoEyebrow">RUNNING PREVIEWS</div><h2 data-i18n="demoTitle"></h2><p data-i18n="demoLead"></p></div><div class="preview-grid">
-<figure class="preview-card"><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-en.png" data-src-en="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-en.png" data-src-zh="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-zh.png" alt="WinForms demo preview" loading="lazy"><figcaption><strong>WinForms · Windows</strong><span data-i18n="winformsCaption"></span></figcaption></figure>
-<figure class="preview-card"><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-en.png" data-src-en="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-en.png" data-src-zh="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-zh.png" alt="WPF demo preview" loading="lazy"><figcaption><strong>WPF · Windows</strong><span data-i18n="wpfCaption"></span></figcaption></figure>
-<figure class="preview-card"><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-win-demo-en.png" data-src-en="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-win-demo-en.png" data-src-zh="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-win-demo-zh.png" alt="Avalonia Windows x64 preview" loading="lazy"><figcaption><strong>Avalonia · Windows</strong><span data-i18n="avaloniaWinCaption"></span></figcaption></figure>
-<figure class="preview-card"><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-linux-demo-en.png" data-src-en="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-linux-demo-en.png" data-src-zh="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-linux-demo-zh.png" alt="Avalonia Linux x64 preview" loading="lazy"><figcaption><strong>Avalonia · Linux</strong><span data-i18n="avaloniaLinuxCaption"></span></figcaption></figure>
-</div></section>
-<section id="docs" class="section section-soft"><div class="shell docs-layout"><div class="section-heading"><div class="eyebrow" data-i18n="docsEyebrow">DOCUMENTATION</div><h2 data-i18n="docsTitle"></h2><p data-i18n="docsLead"></p></div><div class="link-grid"><a href="https://github.com/zly258/OcctCSharpBridge/blob/main/docs/en-US/README.md" target="_blank" rel="noreferrer"><strong data-i18n="mainDocs"></strong><span>Bridge SDK · Windows / Linux</span></a><a href="https://github.com/zly258/OcctCSharpBridge/blob/demo/README.md" target="_blank" rel="noreferrer"><strong data-i18n="demoDocs"></strong><span>WinForms · WPF · Avalonia · Linux</span></a><a href="https://github.com/zly258/OcctCSharpBridge/blob/main/bridge-contract.json" target="_blank" rel="noreferrer"><strong data-i18n="contractDocs"></strong><span>schema 3 · ABI5-only</span></a></div></div></section>
-<section id="start" class="section shell"><div class="start-grid"><div class="section-heading"><div class="eyebrow" data-i18n="startEyebrow">GET STARTED</div><h2 data-i18n="startTitle"></h2><p data-i18n="startLead"></p></div><div class="code-window"><div class="code-tabs"><span>PowerShell / Bash</span><button id="copyCode" type="button" data-i18n="copy">Copy</button></div><pre><code id="buildCode"># Build the SDK on Windows
-git switch main
-.\build.ps1 all Release
+  <a class="skip-link" href="#main" data-i18n="skipContent">Skip to content</a>
 
-# Consume it from the unified Windows Demo
+  <header class="site-header">
+    <div class="header-shell shell">
+      <a class="brand" href="#top" aria-label="OcctCSharpBridge home">
+        <span class="brand-mark" aria-hidden="true">OC</span>
+        <span class="brand-copy"><strong>OcctCSharpBridge</strong><small>OCCT × .NET</small></span>
+      </a>
+
+      <nav class="nav" aria-label="Primary navigation">
+        <a href="#branches" data-i18n="navBranches">Branches</a>
+        <a href="#platforms" data-i18n="navPlatforms">Platforms</a>
+        <a href="#capabilities" data-i18n="navCapabilities">Capabilities</a>
+        <a href="#demo" data-i18n="navDemo">Demo</a>
+        <a href="#docs" data-i18n="navDocs">Docs</a>
+      </nav>
+
+      <div class="header-actions">
+        <button id="themeToggle" class="text-button" type="button"><span id="themeLabel">Dark</span></button>
+        <button id="languageToggle" class="text-button" type="button">中文</button>
+        <a class="github-link" href="https://github.com/zly258/OcctCSharpBridge" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section id="top" class="hero shell">
+      <div class="hero-copy">
+        <div class="eyebrow" data-i18n="heroEyebrow">BRIDGE 3 · ABI5-ONLY</div>
+        <h1 data-i18n="heroTitle">A focused OCCT bridge for modern .NET desktop CAD applications</h1>
+        <p class="hero-lead" data-i18n="heroLead">
+          One SDK source, one consumer Demo, explicit Windows/Linux boundaries. Strongly typed modeling, topology, exchange and Viewer APIs sit above OCCT 7.9.0 without exposing application-level document architecture.
+        </p>
+
+        <div class="hero-actions">
+          <a class="button primary" href="https://github.com/zly258/OcctCSharpBridge/tree/main" target="_blank" rel="noreferrer" data-i18n="viewMain">Explore SDK</a>
+          <a class="button secondary" href="https://github.com/zly258/OcctCSharpBridge/tree/demo" target="_blank" rel="noreferrer" data-i18n="viewDemo">Open Demo</a>
+        </div>
+
+        <div class="contract-strip" aria-label="Current source contract">
+          <div><span data-i18n="contractBridge">Bridge</span><strong>3.0.0-preview.1</strong></div>
+          <div><span data-i18n="contractAbi">Native ABI</span><strong>5 only</strong></div>
+          <div><span>OCCT</span><strong>7.9.0</strong></div>
+          <div><span>.NET SDK</span><strong>10.0.303</strong></div>
+          <div><span>C#</span><strong>14</strong></div>
+        </div>
+      </div>
+
+      <aside class="hero-panel" aria-label="Repository architecture">
+        <div class="panel-heading">
+          <span class="panel-kicker" data-i18n="architectureStack">Repository architecture</span>
+          <span class="status-dot"><i></i><span data-i18n="currentArchitecture">Current architecture</span></span>
+        </div>
+        <div class="stack-diagram">
+          <div class="stack">
+            <span class="stack-label">01 · SDK</span>
+            <strong>main / main-dev</strong>
+            <small data-i18n="mainStack">Native Core · OcctNet · WinForms · WPF · Avalonia</small>
+          </div>
+          <div class="flow" aria-hidden="true"><span></span><b>Binary SDK</b><span></span></div>
+          <div class="stack accent-stack">
+            <span class="stack-label">02 · CONSUMER</span>
+            <strong>demo / demo-dev</strong>
+            <small data-i18n="demoStack">Windows: 3 hosts · Linux: Avalonia only</small>
+          </div>
+          <div class="flow" aria-hidden="true"><span></span><b>Docs & previews</b><span></span></div>
+          <div class="stack">
+            <span class="stack-label">03 · SITE</span>
+            <strong>website</strong>
+            <small data-i18n="websiteStack">Bilingual project overview · canonical links · Demo previews</small>
+          </div>
+        </div>
+        <p class="panel-note" data-i18n="panelNote">Generated Binary SDK payloads are build/release artifacts, not a second source tree.</p>
+      </aside>
+    </section>
+
+    <section id="branches" class="section section-soft">
+      <div class="shell">
+        <div class="section-heading">
+          <div class="eyebrow" data-i18n="branchEyebrow">REPOSITORY MODEL</div>
+          <h2 data-i18n="branchTitle">Three responsibilities, no duplicated Bridge implementation</h2>
+          <p data-i18n="branchLead">Development and formal branches stay paired, while SDK implementation, consumer applications and the public website remain intentionally separate.</p>
+        </div>
+
+        <div class="branch-grid">
+          <article class="branch-card">
+            <div class="card-index">01</div>
+            <div class="branch-title-row"><h3>main / main-dev</h3><span class="pill">SDK</span></div>
+            <p data-i18n="mainText">The sole Bridge SDK source. It owns Native Core, OcctNet, WinForms/WPF/Avalonia adapters, tests, ABI checks, documentation and platform Binary SDK production.</p>
+            <dl>
+              <div><dt data-i18n="roleLabel">Role</dt><dd data-i18n="mainRole">SDK source of truth</dd></div>
+              <div><dt data-i18n="platformLabel">Platforms</dt><dd>Windows x64 · Linux x64</dd></div>
+            </dl>
+            <a href="https://github.com/zly258/OcctCSharpBridge/tree/main" target="_blank" rel="noreferrer" data-i18n="openBranch">Open branch ↗</a>
+          </article>
+
+          <article class="branch-card featured">
+            <div class="card-index">02</div>
+            <div class="branch-title-row"><h3>demo / demo-dev</h3><span class="pill">CONSUMER</span></div>
+            <p data-i18n="demoBranchText">The single SDK consumer application tree. Windows provides WinForms, WPF and Avalonia; Linux provides Avalonia only. Demo consumes validated SDK outputs and does not vendor Bridge implementation source.</p>
+            <dl>
+              <div><dt data-i18n="roleLabel">Role</dt><dd data-i18n="demoRole">Integration and packaging example</dd></div>
+              <div><dt data-i18n="platformLabel">Platforms</dt><dd>Windows x64 · Linux x64</dd></div>
+            </dl>
+            <a href="https://github.com/zly258/OcctCSharpBridge/tree/demo" target="_blank" rel="noreferrer" data-i18n="openBranch">Open branch ↗</a>
+          </article>
+
+          <article class="branch-card">
+            <div class="card-index">03</div>
+            <div class="branch-title-row"><h3>website</h3><span class="pill">DOCS</span></div>
+            <p data-i18n="websiteText">A lightweight bilingual static site that presents the current Bridge contract, platform matrix, canonical Demo screenshots, documentation routes and licensing boundaries.</p>
+            <dl>
+              <div><dt data-i18n="roleLabel">Role</dt><dd data-i18n="websiteRole">Project overview and navigation</dd></div>
+              <div><dt data-i18n="sourceLabel">Sources</dt><dd>main · demo</dd></div>
+            </dl>
+            <a href="https://github.com/zly258/OcctCSharpBridge/tree/website" target="_blank" rel="noreferrer" data-i18n="openBranch">Open branch ↗</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="platforms" class="section shell">
+      <div class="section-heading">
+        <div class="eyebrow" data-i18n="platformEyebrow">PLATFORM MATRIX</div>
+        <h2 data-i18n="platformTitle">Platform support is explicit, not inferred</h2>
+        <p data-i18n="platformLead">The SDK source is cross-platform x64. Desktop framework availability differs by operating system, so build, run and publish workflows follow the matrix below.</p>
+      </div>
+
+      <div class="matrix-wrap" role="region" aria-label="Platform support matrix" tabindex="0">
+        <table class="platform-matrix">
+          <thead>
+            <tr>
+              <th scope="col" data-i18n="matrixArea">Area</th>
+              <th scope="col">Windows x64</th>
+              <th scope="col">Linux x64</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">OcctNative + OcctNet</th><td><span class="support yes" data-i18n="supported">Supported</span></td><td><span class="support yes" data-i18n="supported">Supported</span></td></tr>
+            <tr><th scope="row">WinForms</th><td><span class="support yes" data-i18n="supported">Supported</span></td><td><span class="support no" data-i18n="notApplicable">—</span></td></tr>
+            <tr><th scope="row">WPF</th><td><span class="support yes" data-i18n="supported">Supported</span></td><td><span class="support no" data-i18n="notApplicable">—</span></td></tr>
+            <tr><th scope="row">Avalonia</th><td><span class="support yes" data-i18n="supported">Supported</span></td><td><span class="support yes" data-i18n="supported">Supported</span></td></tr>
+            <tr><th scope="row" data-i18n="demoHosts">Demo hosts</th><td>WinForms · WPF · Avalonia</td><td>Avalonia</td></tr>
+            <tr><th scope="row" data-i18n="publishFlow">Demo publish</th><td>3 independent packages</td><td>1 Avalonia package</td></tr>
+            <tr><th scope="row" data-i18n="viewerBackend">Viewer backend</th><td>Win32 / WNT_Window</td><td>X11/XWayland / Xw_Window</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="matrix-notes">
+        <article><strong data-i18n="windowsNoteTitle">Windows x64</strong><p data-i18n="windowsNote">WinForms, WPF and Avalonia are independent hosts over the same Bridge SDK. Release publishing keeps the three application packages separate.</p></article>
+        <article><strong data-i18n="linuxNoteTitle">Linux x64</strong><p data-i18n="linuxNote">Linux builds Core + Avalonia only. The interactive Viewer requires an X11/XWayland DISPLAY; headless modeling does not.</p></article>
+      </div>
+    </section>
+
+    <section id="capabilities" class="section section-soft">
+      <div class="shell">
+        <div class="section-heading">
+          <div class="eyebrow" data-i18n="capEyebrow">BRIDGE CAPABILITIES</div>
+          <h2 data-i18n="capTitle">OCCT functionality with clear managed ownership</h2>
+          <p data-i18n="capLead">Core APIs focus on reusable geometry and Viewer semantics. Application documents, commands, undo/redo, feature trees, snapping, grips and project persistence remain above the Bridge.</p>
+        </div>
+
+        <div class="capability-grid">
+          <article class="cap-card"><span>01</span><h3 data-i18n="f1Title">Viewer & AIS</h3><p data-i18n="f1Text"></p></article>
+          <article class="cap-card"><span>02</span><h3 data-i18n="f2Title">Headless modeling</h3><p data-i18n="f2Text"></p></article>
+          <article class="cap-card"><span>03</span><h3 data-i18n="f3Title">Selection & interaction</h3><p data-i18n="f3Text"></p></article>
+          <article class="cap-card"><span>04</span><h3 data-i18n="f4Title">Geometry & topology</h3><p data-i18n="f4Text"></p></article>
+          <article class="cap-card"><span>05</span><h3 data-i18n="f5Title">Meshing</h3><p data-i18n="f5Text"></p></article>
+          <article class="cap-card"><span>06</span><h3 data-i18n="f6Title">STEP assembly exchange</h3><p data-i18n="f6Text"></p></article>
+          <article class="cap-card"><span>07</span><h3 data-i18n="f7Title">Runtime diagnostics</h3><p data-i18n="f7Text"></p></article>
+          <article class="cap-card"><span>08</span><h3 data-i18n="f8Title">ABI contract checks</h3><p data-i18n="f8Text"></p></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="demo" class="section shell">
+      <div class="section-heading">
+        <div class="eyebrow" data-i18n="demoEyebrow">DEMO PREVIEWS</div>
+        <h2 data-i18n="demoTitle">One consumer tree across Windows and Linux</h2>
+        <p data-i18n="demoLead">The four screenshots below are canonical assets from the formal demo branch. Language switching loads the matching English or Simplified Chinese preview.</p>
+      </div>
+
+      <div class="preview-grid">
+        <figure class="preview-card">
+          <img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-en.png" data-src-en="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-en.png" data-src-zh="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-zh.png" alt="WinForms demo preview" loading="lazy">
+          <figcaption><div><strong>WinForms</strong><span>Windows x64</span></div><p data-i18n="winformsCaption">Classic Windows CAD host.</p></figcaption>
+        </figure>
+        <figure class="preview-card">
+          <img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-en.png" data-src-en="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-en.png" data-src-zh="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-zh.png" alt="WPF demo preview" loading="lazy">
+          <figcaption><div><strong>WPF</strong><span>Windows x64</span></div><p data-i18n="wpfCaption">Native HWND viewport host.</p></figcaption>
+        </figure>
+        <figure class="preview-card">
+          <img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-win-demo-en.png" data-src-en="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-win-demo-en.png" data-src-zh="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-win-demo-zh.png" alt="Avalonia Windows x64 preview" loading="lazy">
+          <figcaption><div><strong>Avalonia</strong><span>Windows x64</span></div><p data-i18n="avaloniaWinCaption">Cross-platform UI over the Windows Viewer backend.</p></figcaption>
+        </figure>
+        <figure class="preview-card">
+          <img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-linux-demo-en.png" data-src-en="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-linux-demo-en.png" data-src-zh="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-linux-demo-zh.png" alt="Avalonia Linux x64 preview" loading="lazy">
+          <figcaption><div><strong>Avalonia</strong><span>Linux x64</span></div><p data-i18n="avaloniaLinuxCaption">X11/XWayland desktop Viewer host.</p></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="workflow" class="section section-soft">
+      <div class="shell">
+        <div class="section-heading">
+          <div class="eyebrow" data-i18n="workflowEyebrow">CONSUMER WORKFLOW</div>
+          <h2 data-i18n="workflowTitle">Build the SDK, validate it, then consume it</h2>
+          <p data-i18n="workflowLead">Demo synchronization verifies platform contract, source commit and manifest hashes before applications are built or published.</p>
+        </div>
+
+        <div class="workflow-grid">
+          <article><span>01</span><strong data-i18n="flow1Title">Build SDK</strong><p data-i18n="flow1Text">Generate the platform Binary SDK from main.</p></article>
+          <article><span>02</span><strong data-i18n="flow2Title">Synchronize</strong><p data-i18n="flow2Text">Copy the validated SDK into demo/dist/&lt;rid&gt;.</p></article>
+          <article><span>03</span><strong data-i18n="flow3Title">Build & run</strong><p data-i18n="flow3Text">Compile only the hosts supported by the current OS.</p></article>
+          <article><span>04</span><strong data-i18n="flow4Title">Publish</strong><p data-i18n="flow4Text">Create independent application packages with runtime closure.</p></article>
+        </div>
+
+        <div class="command-grid">
+          <article class="code-window">
+            <div class="code-tabs"><span>Windows x64 · PowerShell</span><button type="button" data-copy-target="windowsCode" data-i18n="copy">Copy</button></div>
+            <pre><code id="windowsCode"># SDK
+git switch main
+.\build.ps1 dist Release
+
+# Demo
 git switch demo
 .\sync.ps1
 .\build.ps1 all Release
+.\publish.ps1 all Release</code></pre>
+          </article>
+          <article class="code-window">
+            <div class="code-tabs"><span>Linux x64 · Bash</span><button type="button" data-copy-target="linuxCode" data-i18n="copy">Copy</button></div>
+            <pre><code id="linuxCode"># SDK
+git switch main
+./build.sh dist Release
 
-# Linux x64: Avalonia Demo only
+# Demo
 git switch demo
 ./sync.sh
 ./build.sh all Release
-./run.sh Release</code></pre></div></div></section>
-<section id="license" class="section license-section"><div class="shell"><div class="section-heading centered-heading"><div class="eyebrow" data-i18n="licenseEyebrow">LICENSING</div><h2 data-i18n="licenseTitle"></h2><p data-i18n="licenseLead"></p></div><div class="license-grid"><article class="license-card"><span class="license-kicker">GNU LGPL 2.1</span><h3 data-i18n="licenseCardTitle">Bridge license</h3><p data-i18n="licenseCardText"></p><a href="https://github.com/zly258/OcctCSharpBridge/blob/main/LICENSE" target="_blank" rel="noreferrer" data-i18n="readLicense">Read license ↗</a></article><article class="license-card commercial-card"><span class="license-kicker">PROJECT EXCEPTION</span><h3 data-i18n="exceptionCardTitle">Linking exception</h3><p data-i18n="exceptionCardText"></p><a href="https://github.com/zly258/OcctCSharpBridge/blob/main/OcctCSharpBridge_LGPL_EXCEPTION.txt" target="_blank" rel="noreferrer" data-i18n="readException">Read exception ↗</a></article></div></div></section>
-</main>
-<footer class="site-footer"><div class="shell footer-shell"><div class="footer-brand"><strong>OcctCSharpBridge</strong><span data-i18n="footerLead"></span></div><div class="footer-meta"><span>Bridge 3.0.0-preview.1</span><span>ABI 5 only</span><a href="https://github.com/zly258/OcctCSharpBridge" target="_blank" rel="noreferrer">GitHub ↗</a></div></div></footer>
-<div id="previewLightbox" class="preview-lightbox" hidden><button id="previewClose" type="button" aria-label="Close preview">×</button><img id="previewLightboxImage" alt="Demo preview"></div>
-<script src="app.js"></script>
+./publish.sh Release</code></pre>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="docs" class="section shell">
+      <div class="docs-layout">
+        <div class="section-heading">
+          <div class="eyebrow" data-i18n="docsEyebrow">DOCUMENTATION</div>
+          <h2 data-i18n="docsTitle">Follow the source of truth for the layer you are using</h2>
+          <p data-i18n="docsLead">SDK implementation and ABI rules belong to main. Consumer synchronization, platform builds and application publishing belong to demo.</p>
+        </div>
+
+        <div class="link-grid">
+          <a href="https://github.com/zly258/OcctCSharpBridge/blob/main/docs/en-US/README.md" target="_blank" rel="noreferrer"><span class="link-kicker">SDK</span><strong data-i18n="mainDocs">main · SDK documentation</strong><small data-i18n="mainDocsNote">Architecture, API conventions, runtime, build and deployment</small></a>
+          <a href="https://github.com/zly258/OcctCSharpBridge/blob/demo/README.md" target="_blank" rel="noreferrer"><span class="link-kicker">DEMO</span><strong data-i18n="demoDocs">demo · Consumer documentation</strong><small data-i18n="demoDocsNote">Windows/Linux synchronization, build, run and publish</small></a>
+          <a href="https://github.com/zly258/OcctCSharpBridge/blob/main/bridge-contract.json" target="_blank" rel="noreferrer"><span class="link-kicker">CONTRACT</span><strong data-i18n="contractDocs">Bridge source contract</strong><small>schema 3 · ABI5-only · supportedPlatforms</small></a>
+          <a href="https://github.com/zly258/OcctCSharpBridge/blob/main/LICENSE" target="_blank" rel="noreferrer"><span class="link-kicker">LICENSE</span><strong data-i18n="licenseDocs">License & exception</strong><small data-i18n="licenseDocsNote">GNU LGPL 2.1 + OcctCSharpBridge Exception 1.0</small></a>
+        </div>
+      </div>
+    </section>
+
+    <section id="license" class="section license-section">
+      <div class="shell">
+        <div class="section-heading centered-heading">
+          <div class="eyebrow" data-i18n="licenseEyebrow">LICENSING</div>
+          <h2 data-i18n="licenseTitle">Bridge licensing and application linking are documented separately</h2>
+          <p data-i18n="licenseLead">OcctCSharpBridge uses GNU LGPL 2.1 with the OcctCSharpBridge Exception 1.0. The exception covers normal runtime linking by commercial and proprietary applications; modifications to the Bridge itself remain governed by the Bridge license.</p>
+        </div>
+
+        <div class="license-grid">
+          <article class="license-card">
+            <span class="license-kicker">GNU LGPL 2.1</span>
+            <h3 data-i18n="licenseCardTitle">Bridge license</h3>
+            <p data-i18n="licenseCardText">Terms for OcctCSharpBridge itself and redistributed modifications.</p>
+            <a href="https://github.com/zly258/OcctCSharpBridge/blob/main/LICENSE" target="_blank" rel="noreferrer" data-i18n="readLicense">Read license ↗</a>
+          </article>
+          <article class="license-card accent-license">
+            <span class="license-kicker">PROJECT EXCEPTION</span>
+            <h3 data-i18n="exceptionCardTitle">Linking exception</h3>
+            <p data-i18n="exceptionCardText">Rules for normal .NET references, dynamic linking, P/Invoke and equivalent runtime linking.</p>
+            <a href="https://github.com/zly258/OcctCSharpBridge/blob/main/OcctCSharpBridge_LGPL_EXCEPTION.txt" target="_blank" rel="noreferrer" data-i18n="readException">Read exception ↗</a>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="shell footer-shell">
+      <div class="footer-brand"><strong>OcctCSharpBridge</strong><span data-i18n="footerLead">Bridge 3 · OCCT 7.9.0 · .NET 10 · Windows x64 / Linux x64</span></div>
+      <div class="footer-meta"><span>3.0.0-preview.1</span><span>ABI 5 only</span><a href="https://github.com/zly258/OcctCSharpBridge" target="_blank" rel="noreferrer">GitHub ↗</a></div>
+    </div>
+  </footer>
+
+  <div id="previewLightbox" class="preview-lightbox" hidden aria-hidden="true">
+    <button id="previewClose" type="button" aria-label="Close preview">×</button>
+    <img id="previewLightboxImage" alt="Demo preview" />
+  </div>
+
+  <script src="app.js"></script>
 </body>
 </html>
