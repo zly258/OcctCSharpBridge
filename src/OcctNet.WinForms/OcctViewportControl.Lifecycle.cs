@@ -10,12 +10,25 @@ public sealed partial class OcctViewportControl
         base.OnHandleCreated(e);
         if (DesignMode) return;
 
-        _engine = new OcctEngine();
-        _engine.Initialize(Handle);
-        _lastNativeSize = ClientSize;
-        _lastHoverTimestamp = 0;
-        _lastWorldPointTimestamp = 0;
-        EngineInitialized?.Invoke(this, EventArgs.Empty);
+        SetHostState(OcctViewportHostState.Initializing);
+        var generation = ++_engineGeneration;
+        try
+        {
+            var engine = new OcctEngine();
+            _engine = engine;
+            engine.Initialize(Handle);
+            _lastNativeSize = ClientSize;
+            _lastHoverTimestamp = 0;
+            _lastWorldPointTimestamp = 0;
+            NotifyEngineRecreated(engine, generation);
+            SetHostState(OcctViewportHostState.Ready);
+        }
+        catch (Exception exception)
+        {
+            SetHostFault(exception);
+            DisposeCurrentEngine(transitionToDisposed: false);
+            throw;
+        }
     }
 
     protected override void OnHandleDestroyed(EventArgs e)
@@ -24,8 +37,7 @@ public sealed partial class OcctViewportControl
         _pressedKeys.Clear();
         _rotating = false;
         _panning = false;
-        _engine?.Dispose();
-        _engine = null;
+        DisposeCurrentEngine(transitionToDisposed: true);
         _lastNativeSize = Size.Empty;
         base.OnHandleDestroyed(e);
     }
@@ -34,8 +46,6 @@ public sealed partial class OcctViewportControl
     {
         base.OnResize(e);
 
-        // WindowsFormsHost and first-focus DPI/layout negotiation can resize the HWND while
-        // the first rectangle gesture is active. Preserve the gesture and rebuild its overlay.
         var restoreRectangle = IsActiveRectangleGesture && _rectangleDragStarted;
         if (restoreRectangle) HideSelectionFrame();
         ResizeNativeView();
@@ -73,5 +83,63 @@ public sealed partial class OcctViewportControl
 
         _lastNativeSize = ClientSize;
         TryInvoke(_engine.Resize);
+    }
+
+    private void DisposeCurrentEngine(bool transitionToDisposed)
+    {
+        var engine = _engine;
+        _engine = null;
+        if (engine is not null)
+        {
+            NotifyEngineDisposing(engine, _engineGeneration);
+            try { engine.Dispose(); }
+            catch (Exception exception) { ReportLifecycleError(exception); }
+        }
+
+        if (transitionToDisposed)
+            SetHostState(OcctViewportHostState.Disposed);
+    }
+
+    private void SetHostState(OcctViewportHostState state)
+    {
+        if (_hostState == state) return;
+        var previous = _hostState;
+        _hostState = state;
+        try
+        {
+            HostStateChanged?.Invoke(
+                this,
+                new OcctViewportHostStateChangedEventArgs(previous, state, _engineGeneration));
+        }
+        catch (Exception exception)
+        {
+            ReportLifecycleError(exception);
+        }
+    }
+
+    private void SetHostFault(Exception exception)
+    {
+        SetHostState(OcctViewportHostState.Faulted);
+        try { Faulted?.Invoke(this, new OcctViewportFaultedEventArgs(exception, _engineGeneration)); }
+        catch (Exception handlerException) { ReportLifecycleError(handlerException); }
+    }
+
+    private void NotifyEngineRecreated(OcctEngine engine, long generation)
+    {
+        try { EngineRecreated?.Invoke(this, new OcctEngineLifecycleEventArgs(engine, generation)); }
+        catch (Exception exception) { ReportLifecycleError(exception); }
+    }
+
+    private void NotifyEngineDisposing(OcctEngine engine, long generation)
+    {
+        try { EngineDisposing?.Invoke(this, new OcctEngineLifecycleEventArgs(engine, generation)); }
+        catch (Exception exception) { ReportLifecycleError(exception); }
+    }
+
+    private void ReportLifecycleError(Exception exception)
+    {
+        System.Diagnostics.Debug.WriteLine(exception);
+        try { ErrorOccurred?.Invoke(this, new OcctViewportErrorEventArgs(exception)); }
+        catch (Exception handlerException) { System.Diagnostics.Debug.WriteLine(handlerException); }
     }
 }
