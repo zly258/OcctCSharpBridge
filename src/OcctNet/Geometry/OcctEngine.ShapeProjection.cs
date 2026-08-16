@@ -39,6 +39,8 @@ public sealed partial class OcctEngine
     private static void ValidateEdgeProjectionResult(OcctEdgeProjectionResult result)
     {
         if (!result.Point.IsFinite
+            || !result.Tangent.IsFinite
+            || result.Tangent.LengthSquared <= 1e-30
             || !double.IsFinite(result.NormalizedParameter)
             || !double.IsFinite(result.Distance)
             || result.Distance < 0.0
@@ -52,6 +54,8 @@ public sealed partial class OcctEngine
     private static void ValidateFaceProjectionResult(OcctFaceProjectionResult result)
     {
         if (!result.Point.IsFinite
+            || !result.Normal.IsFinite
+            || result.Normal.LengthSquared <= 1e-30
             || !double.IsFinite(result.U)
             || !double.IsFinite(result.V)
             || !double.IsFinite(result.Distance)
