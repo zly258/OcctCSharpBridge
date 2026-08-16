@@ -25,11 +25,13 @@ if ($forbiddenSdkSources.Count -gt 0) {
     throw "demo-dev must consume the main SDK and must not track SDK implementation sources."
 }
 
+$consumerExtensions = @(".cs", ".xaml", ".axaml")
 $sourceFiles = @(
     $tracked | Where-Object {
         $path = [string]$_
+        $extension = [System.IO.Path]::GetExtension($path)
         $path.StartsWith("src/", [StringComparison]::Ordinal) -and
-        [System.IO.Path]::GetExtension($path) -eq ".cs"
+        $extension -in $consumerExtensions
     }
 )
 
@@ -46,12 +48,16 @@ $retiredAppearancePattern = '\bEngine\.(?:SetColor|SetTransparency|SetVisible|Se
 # Modeling-to-viewer handoff and BRep annotation creation now have explicit Bridge 3 domains.
 $retiredInteropPattern = '\bEngine\.Display\b|\bEngine\.(?:MakeTextShape|MakeLengthAnnotationShape|MakeAngleAnnotationShape|MakeRadiusAnnotationShape|MakeDiameterAnnotationShape)\b'
 
+# Viewport consumers must use the generation-aware lifecycle and feature flags introduced by Bridge 3.
+$retiredViewportPattern = '\b(?:EngineInitialized|EnableDefaultInteraction|EnableRectangleSelection)\b'
+
 $guardPatterns = @(
     $nativeAbiPattern,
     $retiredAbiPattern,
     $retiredObjectPattern,
     $retiredAppearancePattern,
-    $retiredInteropPattern
+    $retiredInteropPattern,
+    $retiredViewportPattern
 )
 
 $violations = @()
@@ -68,4 +74,4 @@ if ($violations.Count -gt 0) {
     throw "Demo implementation crosses the Bridge 3 consumer boundary or uses retired APIs:`n - $($violations -join "`n - ")"
 }
 
-Write-Host "[consumer] Demo is a Bridge 3/ABI5 consumer only: no SDK implementation sources, direct native ABI calls, pre-ABI5 handles/metadata, or retired managed APIs." -ForegroundColor Green
+Write-Host "[consumer] Demo is a Bridge 3/ABI5 consumer only: no SDK implementation sources, direct native ABI calls, pre-ABI5 handles/metadata, retired managed APIs, or retired viewport lifecycle flags in code or markup." -ForegroundColor Green

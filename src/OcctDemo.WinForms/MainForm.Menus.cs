@@ -126,9 +126,14 @@ public sealed partial class MainForm
         view.DropDownItems.Add(BuildMaterialMenu());
         view.DropDownItems.Add(BuildSelectionMenu());
         view.DropDownItems.Add(BuildSelectionAppearanceMenu());
-        view.DropDownItems.Add(CheckMenuItem(DemoLocalization.Text("Menu.WindowSelection"), _viewport.EnableRectangleSelection, (_, item) =>
+        var rectangleSelectionEnabled =
+            (_viewport.InteractionFeatures & OcctViewportInteractionFeatures.RectangleSelection) != 0;
+        view.DropDownItems.Add(CheckMenuItem(DemoLocalization.Text("Menu.WindowSelection"), rectangleSelectionEnabled, (_, item) =>
         {
-            _viewport.EnableRectangleSelection = item.Checked;
+            if (item.Checked)
+                _viewport.InteractionFeatures |= OcctViewportInteractionFeatures.RectangleSelection;
+            else
+                _viewport.InteractionFeatures &= ~OcctViewportInteractionFeatures.RectangleSelection;
             _commandStatus.Text = DemoLocalization.Text(item.Checked ? "Status.WindowSelectionOn" : "Status.WindowSelectionOff");
         }));
         view.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.SelectionTolerance"), (_, _) => SetSelectionTolerance()));

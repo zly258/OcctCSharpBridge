@@ -13,10 +13,6 @@ public sealed partial class MainForm
         {
             _initialPanelLayoutApplied = ApplyInitialPanelLayout();
             ApplyDepthDisplayDefaults();
-            if (!_depthDefaultsApplied)
-            {
-                _viewport.EngineInitialized += (_, _) => ApplyDepthDisplayDefaults();
-            }
         }
         finally
         {

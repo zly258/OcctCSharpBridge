@@ -244,7 +244,6 @@ partial class MainForm
         //
         _viewport.BackColor = Color.FromArgb(232, 237, 242);
         _viewport.Dock = DockStyle.Fill;
-        _viewport.EnableRectangleSelection = true;
         _viewport.Location = new Point(0, 0);
         _viewport.Margin = new Padding(0);
         _viewport.Name = "_viewport";

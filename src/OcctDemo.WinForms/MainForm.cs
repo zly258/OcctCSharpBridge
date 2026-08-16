@@ -23,6 +23,7 @@ public sealed partial class MainForm : Form
     public MainForm()
     {
         InitializeComponent();
+        ConfigureViewportContract();
         BuildMenus();
         BuildToolBar();
         WireEvents();
@@ -34,9 +35,36 @@ public sealed partial class MainForm : Form
             ? "OCCT 视口尚未初始化。"
             : "The OCCT viewport has not been initialized.");
 
+    private void ConfigureViewportContract()
+    {
+        _viewport.InteractionFeatures = OcctViewportInteractionFeatures.Default;
+        _viewport.InitialOptions = new OcctViewportInitializationOptions
+        {
+            BackgroundColor = Color.White,
+            ViewOrientation = OcctViewOrientation.Isometric,
+            Projection = OcctProjectionType.Orthographic,
+            TriedronVisible = true,
+            ViewCubeVisible = true
+        };
+    }
+
     private void WireEvents()
     {
-        _viewport.EngineInitialized += (_, _) => InitializeSession();
+        _viewport.EngineRecreated += (_, args) => InitializeSession(args.Engine, args.Generation);
+        _viewport.EngineDisposing += (_, args) =>
+        {
+            if (_session?.Engine == args.Engine) _session = null;
+        };
+        _viewport.FirstFrameRendered += (_, args) =>
+            Log($"Viewport generation {args.Generation} first frame rendered.");
+        _viewport.NativeHandleChanged += (_, args) =>
+            Log($"Viewport native handle changed: 0x{args.PreviousHandle.ToInt64():X} -> 0x{args.NativeHandle.ToInt64():X} (generation {args.Generation}).");
+        _viewport.Faulted += (_, args) =>
+        {
+            _commandStatus.Text = args.Exception.Message;
+            Log($"VIEWPORT ERROR: {args.Exception.Message}");
+        };
+        _viewport.PreviewKeyInput += ViewportPreviewKeyInput;
         _viewport.ObjectSelectionChanged += (_, args) =>
         {
             if (_session is null) return;
@@ -61,9 +89,10 @@ public sealed partial class MainForm : Form
         KeyDown += MainFormKeyDown;
     }
 
-    private void InitializeSession()
+    private void InitializeSession(OcctEngine engine, long generation)
     {
-        _session = new DemoSession(_viewport.Engine);
+        _depthDefaultsApplied = false;
+        _session = new DemoSession(engine);
         _session.ModelChanged += (_, _) => RefreshObjectTree();
         _session.HistoryChanged += (_, _) => UpdateHistoryUi();
         _session.StatusChanged += (_, message) =>
@@ -71,19 +100,26 @@ public sealed partial class MainForm : Form
             _commandStatus.Text = message;
             Log(message);
         };
-        _session.Engine.SetGradientBackground(Color.White, Color.FromArgb(202, 221, 238));
-        _session.Engine.SetTriedronVisible(true);
-        _session.Engine.SetViewCubeVisible(true);
-        ApplyViewCubeLanguage();
-        _session.Engine.SetAntialiasing(true);
-        _session.Engine.SetAutoZFitMode(true, 1.0);
-        _session.Engine.SetSelectionTolerance(4);
-        _session.Engine.SetDefaultMaterial(OcctMaterial.Plastified);
-        _session.Engine.SetSelectionHighlightColor(_selectionHighlightColor);
-        _session.Engine.SetHoverHighlightColor(_hoverHighlightColor);
-        _session.Engine.SetSceneLighting(_lightingSettings);
+
+        using (engine.BeginDisplayBatch())
+        {
+            engine.SetGradientBackground(Color.White, Color.FromArgb(202, 221, 238));
+            engine.SetTriedronVisible(true);
+            engine.SetViewCubeVisible(true);
+            ApplyViewCubeLanguage();
+            engine.SetAntialiasing(true);
+            engine.SetAutoZFitMode(true, 1.0);
+            engine.SetSelectionTolerance(4);
+            engine.SetDefaultMaterial(OcctMaterial.Plastified);
+            engine.SetSelectionHighlightColor(_selectionHighlightColor);
+            engine.SetHoverHighlightColor(_hoverHighlightColor);
+            engine.SetSceneLighting(_lightingSettings);
+            ApplyDepthDisplayDefaults();
+        }
+
         _commandStatus.Text = DemoLocalization.Text("Status.Ready", OcctEngine.OcctVersion);
         _selectionStatus.Text = DemoLocalization.Text("Status.NoneSelected");
+        Log($"Viewport ready on engine generation {generation}.");
         RefreshObjectTree();
         UpdateHistoryUi();
     }
