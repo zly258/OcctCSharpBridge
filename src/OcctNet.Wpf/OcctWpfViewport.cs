@@ -49,7 +49,7 @@ public sealed class OcctWpfErrorEventArgs : EventArgs
 /// Native WPF host for the OCCT HWND viewport. The WPF adapter owns its child HWND directly
 /// through <see cref="HwndHost"/> and has no dependency on Windows Forms.
 /// </summary>
-public sealed partial class OcctWpfViewport : HwndHost
+public sealed partial class OcctWpfViewport : HwndHost, IOcctViewportHost, IOcctViewportInputSource
 {
     private OcctEngine? _engine;
     private IntPtr _nativeHandle;
@@ -70,6 +70,8 @@ public sealed partial class OcctWpfViewport : HwndHost
     private bool _nativeRefreshScheduled;
     private bool _nativeRenderScheduled;
     private uint _lastRenderDpi;
+    private OcctViewportHostState _hostState = OcctViewportHostState.Detached;
+    private long _engineGeneration;
 
     public static readonly DependencyProperty InteractionFeaturesProperty =
         DependencyProperty.Register(
@@ -143,6 +145,8 @@ public sealed partial class OcctWpfViewport : HwndHost
     public OcctEngine Engine => _engine ?? throw new InvalidOperationException("The WPF OCCT viewport has not been created yet.");
     public IntPtr NativeHandle => _nativeHandle;
     public bool IsEngineInitialized => _engine?.IsInitialized == true;
+    public OcctViewportHostState HostState => _hostState;
+    public long EngineGeneration => _engineGeneration;
 
     public OcctViewportInteractionFeatures InteractionFeatures
     {
@@ -202,11 +206,14 @@ public sealed partial class OcctWpfViewport : HwndHost
     public event EventHandler<OcctWpfSelectionEventArgs>? ObjectSelectionChanged;
     public event EventHandler<OcctWpfWorldPointEventArgs>? WorldPointChanged;
     public event EventHandler<OcctWpfErrorEventArgs>? ErrorOccurred;
-    public event EventHandler? EngineInitialized;
     public event EventHandler<OcctPointerInputEventArgs>? PreviewPointerInput;
     public event EventHandler<OcctPointerInputEventArgs>? PointerInput;
     public event EventHandler<OcctKeyInputEventArgs>? PreviewKeyInput;
     public event EventHandler<OcctKeyInputEventArgs>? KeyInput;
+    public event EventHandler<OcctViewportHostStateChangedEventArgs>? HostStateChanged;
+    public event EventHandler<OcctViewportFaultedEventArgs>? Faulted;
+    public event EventHandler<OcctEngineLifecycleEventArgs>? EngineDisposing;
+    public event EventHandler<OcctEngineLifecycleEventArgs>? EngineRecreated;
 
     public void FocusViewport()
     {
