@@ -42,5 +42,6 @@ namespace OcctBridge
         void endUpdate(bool fitAll);
         void requestRedraw();
         void requestFitAll();
+        void ensureWindowMapped();
     };
 }
