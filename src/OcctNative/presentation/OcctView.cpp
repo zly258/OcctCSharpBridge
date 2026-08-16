@@ -61,6 +61,7 @@ namespace
     {
         switch (value)
         {
+            case OcctView_Isometric: return V3d_TypeOfOrientation_Zup_AxoRight;
             case OcctView_Front: return V3d_Yneg;
             case OcctView_Back: return V3d_Ypos;
             case OcctView_Left: return V3d_Xneg;
