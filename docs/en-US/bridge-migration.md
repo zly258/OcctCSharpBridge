@@ -1,11 +1,12 @@
 ﻿# Bridge 3 ABI5 Migration
 
-Bridge 3 makes `main` the only formal SDK source. The migration order is:
+Bridge 3 makes `main` the only formal SDK source. The branch migration is now consolidated around one SDK line and one Demo consumer line:
 
-1. Stabilize and validate the ABI5-only Native Core, `OcctNet`, WinForms, WPF and Avalonia host on `main-dev`.
-2. Move the Windows examples on `demo-dev` to consume the resulting SDK.
-3. Move Avalonia examples and packaging on `avalonia-dev` to consume the same SDK.
-4. Submit `main-dev -> main`, `demo-dev -> demo`, and `avalonia-dev -> avalonia` as independent PRs.
+1. `main-dev` stabilized the ABI5-only Native Core, `OcctNet`, WinForms, WPF and Avalonia adapters.
+2. The validated SDK rewrite was squash-merged to `main`.
+3. `demo-dev` migrated WinForms/WPF and absorbed Avalonia Windows/Linux examples and packaging.
+4. The unified Demo was squash-merged to `demo`.
+5. Standalone `avalonia` / `avalonia-dev` branches are retired after migration; Avalonia remains a first-class SDK adapter and Demo host.
 
 ## ABI policy
 
@@ -23,7 +24,14 @@ Managed production interop uses source-generated `LibraryImport` with C calling 
 - Viewer/Scene/Document contexts separated from headless Modeling state;
 - OS window-system integration isolated under `src/OcctNative/platform`;
 - topology history and persistent topology references owned by the Modeling Session;
-- `demo-dev` and `avalonia-dev` remain SDK consumers rather than carrying private Native/Core implementations.
+- `main` / `main-dev` own SDK implementation;
+- `demo` / `demo-dev` consume generated Binary SDKs only;
+- Windows Demo hosts: WinForms, WPF, Avalonia;
+- Linux Demo host: Avalonia only.
+
+## Binary SDK policy
+
+Generated `dist/win-x64` and `dist/linux-x64` payloads are local/Release artifacts and are not committed to SDK or Demo source branches. Package freshness is established through schema-3 contract metadata, schema-2 manifest metadata, `sourceCommit` and SHA-256 hashes.
 
 ## Validation gates
 
@@ -31,8 +39,9 @@ Every standard validation run checks that:
 
 - `bridge-contract.json` declares ABI 5 as both current and minimum supported ABI with `api.policy = abi5-only`;
 - retired compatibility files and old version-specific documentation are not tracked;
-- tracked platform Binary SDK contracts, when present, are ABI5-only;
 - Native declarations, implementations and managed `LibraryImport` bindings are identical sets;
 - `DllImport` is not used by production managed ABI5 interop;
 - Native C++ inventory, module boundaries and platform isolation remain valid;
 - bulk collections use snapshot/buffer APIs rather than borrowed legacy handles.
+
+The Demo consumer guards additionally reject SDK implementation source, direct `occt_*` calls and retired managed consumer APIs.
