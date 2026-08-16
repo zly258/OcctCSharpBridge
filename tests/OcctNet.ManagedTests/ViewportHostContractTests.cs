@@ -1,3 +1,4 @@
+using System.Drawing;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OcctNet;
 
@@ -30,6 +31,25 @@ public sealed class ViewportHostContractTests
     }
 
     [TestMethod]
+    public void FirstFrameCarriesEngineGeneration()
+    {
+        var args = new OcctFirstFrameRenderedEventArgs(4);
+        Assert.AreEqual(4L, args.Generation);
+    }
+
+    [TestMethod]
+    public void DefaultInitialOptionsMatchBridgeViewerDefaults()
+    {
+        var options = new OcctViewportInitializationOptions();
+
+        Assert.AreEqual(Color.FromArgb(240, 245, 250), options.BackgroundColor);
+        Assert.AreEqual(OcctViewOrientation.Isometric, options.ViewOrientation);
+        Assert.AreEqual(OcctProjectionType.Orthographic, options.Projection);
+        Assert.IsTrue(options.TriedronVisible);
+        Assert.IsTrue(options.ViewCubeVisible);
+    }
+
+    [TestMethod]
     public void HostLifecycleArgumentsRejectInvalidGenerations()
     {
         Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>
@@ -40,6 +60,9 @@ public sealed class ViewportHostContractTests
 
         Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>
             new OcctViewportFaultedEventArgs(new InvalidOperationException(), -1));
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>
+            new OcctFirstFrameRenderedEventArgs(0));
     }
 
     [TestMethod]
