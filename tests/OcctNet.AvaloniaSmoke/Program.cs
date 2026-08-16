@@ -44,10 +44,23 @@ internal sealed class SmokeApp : Application
         };
 
         var completed = false;
-        viewport.EngineInitialized += (_, _) =>
+        var readyHandled = false;
+        viewport.Faulted += (_, eventArgs) =>
         {
+            if (completed) return;
+            Console.Error.WriteLine(eventArgs.Exception);
+            completed = true;
+            desktop.Shutdown(1);
+        };
+        viewport.HostStateChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.State != OcctViewportHostState.Ready || readyHandled) return;
+            readyHandled = true;
             try
             {
+                if (!viewport.IsEngineInitialized || viewport.EngineGeneration <= 0)
+                    throw new InvalidOperationException("Avalonia viewport reached Ready without a live OCCT engine generation.");
+
                 var box = viewport.Engine.MakeBox(100, 80, 60);
                 if (!box.IsValid)
                     throw new InvalidOperationException("Avalonia viewport smoke created an invalid OCCT box.");
@@ -64,7 +77,8 @@ internal sealed class SmokeApp : Application
                     Console.WriteLine($"OCCT {OcctEngine.OcctVersion}");
                     Console.WriteLine($"Bridge {OcctBridgeInfo.ManagedVersion} / ABI {OcctBridgeInfo.ExpectedAbiVersion}");
                     Console.WriteLine($"Platform: {(OperatingSystem.IsWindows() ? "Windows" : "Linux")}");
-                    Console.WriteLine("Avalonia viewer smoke passed.");
+                    Console.WriteLine($"Engine generation: {viewport.EngineGeneration}");
+                    Console.WriteLine("Avalonia viewer lifecycle smoke passed.");
                     desktop.Shutdown(0);
                 });
             }
@@ -82,7 +96,8 @@ internal sealed class SmokeApp : Application
             {
                 await Task.Delay(TimeSpan.FromSeconds(10));
                 if (completed) return;
-                Console.Error.WriteLine("Avalonia viewer smoke timed out before the OCCT EngineInitialized event.");
+                Console.Error.WriteLine(
+                    $"Avalonia viewer smoke timed out before Ready. Current state: {viewport.HostState}, generation: {viewport.EngineGeneration}.");
                 desktop.Shutdown(2);
             });
         };
