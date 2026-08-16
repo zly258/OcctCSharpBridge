@@ -56,18 +56,31 @@ public sealed class OcctEngineLifecycleEventArgs : EventArgs
     public long Generation { get; }
 }
 
+public sealed class OcctFirstFrameRenderedEventArgs : EventArgs
+{
+    public OcctFirstFrameRenderedEventArgs(long generation)
+    {
+        if (generation <= 0) throw new ArgumentOutOfRangeException(nameof(generation));
+        Generation = generation;
+    }
+
+    public long Generation { get; }
+}
+
 public interface IOcctViewportHost
 {
     OcctEngine Engine { get; }
     bool IsEngineInitialized { get; }
     OcctViewportHostState HostState { get; }
     long EngineGeneration { get; }
+    bool RenderReady { get; }
     OcctViewportInitializationOptions InitialOptions { get; set; }
 
     event EventHandler<OcctViewportHostStateChangedEventArgs>? HostStateChanged;
     event EventHandler<OcctViewportFaultedEventArgs>? Faulted;
     event EventHandler<OcctEngineLifecycleEventArgs>? EngineDisposing;
     event EventHandler<OcctEngineLifecycleEventArgs>? EngineRecreated;
+    event EventHandler<OcctFirstFrameRenderedEventArgs>? FirstFrameRendered;
 }
 
 public interface IOcctViewportInputSource
