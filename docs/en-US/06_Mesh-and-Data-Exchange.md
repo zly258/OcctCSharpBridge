@@ -8,4 +8,4 @@ Valid multi-solid STEP parts remain one logical Part where the source product st
 
 Non-geometric STEP metadata can round-trip through the retained imported XDE representation while geometry remains unchanged.
 
-These Core exchange semantics are host-independent; the `avalonia` branch reuses the same Core concepts under its separate cross-platform source contract.
+These Core exchange semantics are host-independent. WinForms, WPF and Avalonia all consume the same `OcctNet` Core contract; Linux Avalonia uses the same exchange model as Windows rather than a separate branch-specific contract.
