@@ -60,7 +60,7 @@ public sealed partial class OcctAvaloniaViewport
             0,
             "STATIC",
             "OCCT_Render_Target",
-            WsChild | WsVisible | WsClipSiblings | WsClipChildren | SsNotify,
+            WsChild | WsClipSiblings | WsClipChildren | SsNotify,
             0,
             0,
             100,
@@ -114,8 +114,6 @@ public sealed partial class OcctAvaloniaViewport
         }
 
         SetNativeHandle(new IntPtr(unchecked((long)window)), generation);
-        XMapWindow(_x11Display, window);
-        XFlush(_x11Display);
         _engine = new OcctEngine();
         _engine.InitializeNativeSurface(
             OcctNativeSurfaceKind.X11Window,
