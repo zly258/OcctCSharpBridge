@@ -18,6 +18,8 @@ OcctDemo.Common
 
 The Demo is a strict Bridge 3 / ABI5 consumer. It does not track `OcctNative` or `OcctNet*` implementation sources and does not call the native `occt_*` ABI directly.
 
+The Demo itself targets **.NET 10** to exercise the latest supported consumer runtime. Its build tooling uses a stable .NET 10 SDK with a `10.0.100` baseline and `latestFeature` roll-forward, so later stable 10.0.x SDKs such as `10.0.302` are accepted. The consumed Bridge Binary SDK may target .NET 8, .NET 9 or .NET 10; the current development contract uses .NET 8 as the minimum Bridge runtime baseline so the same SDK can serve .NET 8-10 applications.
+
 ## Current viewport contract
 
 All three UI hosts consume the same Bridge viewport model instead of framework-specific lifecycle logic:
@@ -35,7 +37,7 @@ The shared Demo shortcut mapper consumes `OcctKeyInputEventArgs`, so viewport-fo
 
 ## Binary SDK workflow
 
-`dist/` is local build state and is intentionally ignored by Git. Both synchronization scripts validate contract schema 3, manifest schema 2, ABI5-only metadata, the stable .NET 10 SDK baseline/`latestFeature` policy, C# 14 and SDK file hashes. A matching `manifest.sourceCommit` is reused instead of rebuilding the SDK.
+`dist/` is local build state and is intentionally ignored by Git. Both synchronization scripts validate contract schema 3, manifest schema 2, ABI5-only metadata, supported Bridge TFMs, C# 14 and SDK file hashes. They validate the Binary SDK's SDK baseline against its own contract rather than requiring it to equal the Demo machine's exact SDK version. A matching `manifest.sourceCommit` is reused instead of rebuilding the SDK.
 
 Formal Windows consumption from `main`:
 

@@ -32,17 +32,16 @@ $ConsumerCheckPath = Join-Path $RepoRoot "tests\check-sdk-consumer.ps1"
 $globalJson = Get-Content -LiteralPath $GlobalJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $SdkVersion = [string]$globalJson.sdk.version
 $SdkRollForward = [string]$globalJson.sdk.rollForward
-try { $SdkBaseline = [version]$SdkVersion }
-catch { throw "global.json contains an invalid .NET SDK baseline: $SdkVersion" }
-if ($SdkBaseline.Major -ne 10 -or $SdkBaseline.Minor -ne 0) { throw "global.json must use a .NET 10 SDK baseline." }
-if ($SdkRollForward -ne "latestFeature") { throw "global.json must use latestFeature SDK roll-forward." }
+if ($SdkRollForward -ne "latestFeature") { throw "global.json must use rollForward=latestFeature for the .NET 10 SDK baseline." }
 if ([bool]$globalJson.sdk.allowPrerelease) { throw "global.json must not allow prerelease SDKs." }
 
 $script:DotNetCommand = $null
 $script:ResolvedSdkVersion = $null
 $script:BridgeVersion = ""
-$script:CoreTargetFramework = "net10.0"
-$script:DesktopTargetFramework = "net10.0-windows"
+$script:BridgeCoreTargetFramework = ""
+$script:BridgeDesktopTargetFramework = ""
+$script:DemoCoreTargetFramework = "net10.0"
+$script:DemoDesktopTargetFramework = "net10.0-windows"
 
 $Projects = [ordered]@{
     common = @{
@@ -94,41 +93,44 @@ function Get-DotNetCandidates {
 
 function Resolve-DotNetSdk {
     if (-not [string]::IsNullOrWhiteSpace($script:DotNetCommand)) { return }
+
+    try { $minimumSdkVersion = [version]$SdkVersion }
+    catch { throw "global.json contains an invalid SDK baseline: $SdkVersion" }
+
     $diagnostics = [System.Collections.Generic.List[string]]::new()
     foreach ($candidate in @(Get-DotNetCandidates)) {
         if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
             $diagnostics.Add("$candidate => not found")
             continue
         }
-        $sdkLines = @(& $candidate --list-sdks 2>&1)
-        if ($LASTEXITCODE -ne 0) {
-            $diagnostics.Add("$candidate => --list-sdks failed")
-            continue
-        }
-        $installed = @($sdkLines | ForEach-Object {
-            $line = [string]$_
-            if ($line -match '^\s*([^\s]+)\s+\[') { $Matches[1] }
-        })
-        $diagnostics.Add("$candidate => " + $(if ($installed.Count -eq 0) { "no SDKs" } else { $installed -join ", " }))
         Push-Location $RepoRoot
         try {
             $resolved = @(& $candidate --version 2>&1)
             $exitCode = $LASTEXITCODE
         }
         finally { Pop-Location }
-        if ($exitCode -ne 0 -or $resolved.Count -ne 1) { continue }
-        $versionText = ([string]$resolved[0]).Trim()
-        try { $version = [version]$versionText }
-        catch { continue }
-        if ($version.Major -ne $SdkBaseline.Major -or
-            $version.Minor -ne $SdkBaseline.Minor -or
-            $version -lt $SdkBaseline) { continue }
+        if ($exitCode -ne 0 -or $resolved.Count -ne 1) {
+            $diagnostics.Add("$candidate => SDK resolution failed")
+            continue
+        }
+        $version = ([string]$resolved[0]).Trim()
+        try { $resolvedSdkVersion = [version]$version }
+        catch {
+            $diagnostics.Add("$candidate => $version (not a stable SDK version)")
+            continue
+        }
+        $diagnostics.Add("$candidate => $version")
+        if ($resolvedSdkVersion.Major -ne $minimumSdkVersion.Major -or
+            $resolvedSdkVersion.Minor -ne $minimumSdkVersion.Minor -or
+            $resolvedSdkVersion -lt $minimumSdkVersion) {
+            continue
+        }
         $script:DotNetCommand = [System.IO.Path]::GetFullPath($candidate)
-        $script:ResolvedSdkVersion = $versionText
+        $script:ResolvedSdkVersion = $version
         return
     }
     $detail = if ($diagnostics.Count -eq 0) { "No dotnet host candidates were found." } else { $diagnostics -join [Environment]::NewLine }
-    throw "OcctCSharpBridge Demo requires a stable .NET 10 SDK at or above baseline $SdkVersion using '$SdkRollForward' roll-forward.`nChecked dotnet hosts:`n$detail"
+    throw "OcctCSharpBridge Demo requires a stable .NET 10 SDK compatible with baseline $SdkVersion and roll-forward '$SdkRollForward'.`nChecked dotnet hosts:`n$detail"
 }
 
 function Invoke-DotNetChecked {
@@ -164,11 +166,22 @@ function Test-BinarySdk {
     if ([int]$contract.nativeAbi.current -ne 5 -or [int]$contract.nativeAbi.minimumSupported -ne 5) { throw "Demo requires ABI 5 only." }
     if ([string]$contract.api.policy -ne "abi5-only") { throw "Demo requires api.policy=abi5-only." }
     if ([string]$contract.platform -ne "win-x64") { throw "Expected win-x64 Binary SDK; received $($contract.platform)." }
-    if ([string]$contract.dotnet.targetFramework -ne "net10.0") { throw "Unsupported Core target framework: $($contract.dotnet.targetFramework)" }
-    if ([string]$contract.dotnet.desktopTargetFramework -ne "net10.0-windows") { throw "Unsupported Desktop target framework: $($contract.dotnet.desktopTargetFramework)" }
-    if ([string]$contract.dotnet.sdkVersion -ne $SdkVersion) { throw "Binary SDK baseline $($contract.dotnet.sdkVersion) does not match Demo baseline $SdkVersion." }
-    if ([string]$contract.dotnet.sdkRollForward -ne $SdkRollForward) { throw "Binary SDK roll-forward policy does not match the Demo policy." }
-    if ([string]$contract.dotnet.languageVersion -ne "14.0") { throw "Demo requires C# 14.0." }
+
+    $bridgeCoreFramework = [string]$contract.dotnet.targetFramework
+    $bridgeDesktopFramework = [string]$contract.dotnet.desktopTargetFramework
+    if ($bridgeCoreFramework -notin @("net8.0", "net9.0", "net10.0")) {
+        throw "Unsupported Bridge Core target framework: $bridgeCoreFramework"
+    }
+    $expectedDesktopFramework = "$bridgeCoreFramework-windows"
+    if ($bridgeDesktopFramework -ne $expectedDesktopFramework) {
+        throw "Bridge Desktop target framework '$bridgeDesktopFramework' does not match Core target '$bridgeCoreFramework'."
+    }
+
+    $binarySdkBaseline = [string]$contract.dotnet.sdkVersion
+    if ([string]::IsNullOrWhiteSpace($binarySdkBaseline)) { throw "Binary SDK .NET SDK baseline is missing." }
+    try { [void][version]$binarySdkBaseline }
+    catch { throw "Binary SDK contains an invalid SDK baseline: $binarySdkBaseline" }
+    if ([string]$contract.dotnet.languageVersion -ne "14.0") { throw "Demo requires a Bridge built with C# 14.0 contract metadata." }
 
     if ([int]$manifest.schemaVersion -ne 2) { throw "Demo requires Binary SDK manifest schema 2." }
     if ([int]$manifest.nativeAbi.current -ne 5 -or [int]$manifest.nativeAbi.minimumSupported -ne 5) { throw "Binary SDK manifest is not ABI5-only." }
@@ -176,9 +189,8 @@ function Test-BinarySdk {
         [string]$manifest.bridgeVersion -ne [string]$contract.bridgeVersion -or
         [string]$manifest.occtVersion -ne [string]$contract.occtVersion -or
         [string]$manifest.platform -ne [string]$contract.platform -or
-        [string]$manifest.targetFramework -ne [string]$contract.dotnet.targetFramework -or
-        [string]$manifest.sdkVersion -ne [string]$contract.dotnet.sdkVersion -or
-        [string]$manifest.sdkRollForward -ne [string]$contract.dotnet.sdkRollForward -or
+        [string]$manifest.targetFramework -ne $bridgeCoreFramework -or
+        [string]$manifest.sdkVersion -ne $binarySdkBaseline -or
         [string]$manifest.languageVersion -ne [string]$contract.dotnet.languageVersion -or
         [string]$manifest.configuration -ne "Release") {
         throw "Binary SDK manifest does not match bridge-contract.json."
@@ -200,8 +212,8 @@ function Test-BinarySdk {
     }
 
     $script:BridgeVersion = [string]$contract.bridgeVersion
-    $script:CoreTargetFramework = [string]$contract.dotnet.targetFramework
-    $script:DesktopTargetFramework = [string]$contract.dotnet.desktopTargetFramework
+    $script:BridgeCoreTargetFramework = $bridgeCoreFramework
+    $script:BridgeDesktopTargetFramework = $bridgeDesktopFramework
     return $contract
 }
 
@@ -209,7 +221,7 @@ function Get-OutputDirectory {
     param([Parameter(Mandatory = $true)][string]$Name)
     $definition = $Projects[$Name]
     $project = Join-Path $RepoRoot $definition.Project
-    $framework = if ([string]$definition.Framework -eq "desktop") { $script:DesktopTargetFramework } else { $script:CoreTargetFramework }
+    $framework = if ([string]$definition.Framework -eq "desktop") { $script:DemoDesktopTargetFramework } else { $script:DemoCoreTargetFramework }
     return Join-Path (Split-Path -Parent $project) "bin\x64\$Configuration\$framework"
 }
 
@@ -241,6 +253,7 @@ function Clean-Outputs {
 Write-Host "Target:        $Target"
 Write-Host "Configuration: $Configuration"
 Write-Host "SDK contract:  $SdkVersion + $SdkRollForward" -ForegroundColor DarkGray
+Write-Host "Demo TFM:      $script:DemoCoreTargetFramework / $script:DemoDesktopTargetFramework" -ForegroundColor DarkGray
 Write-Host "Bridge SDK:    $DistRoot" -ForegroundColor DarkGray
 
 if ($Target -eq "clean") {
@@ -257,7 +270,7 @@ Write-Host "[consumer] Running SDK consumer boundary check..." -ForegroundColor 
 & $ConsumerCheckPath -RepositoryRoot $RepoRoot
 if (-not $?) { throw "SDK consumer boundary validation failed." }
 $contract = Test-BinarySdk
-Write-Host "Bridge:        $($contract.bridgeVersion), ABI 5 only, OCCT $($contract.occtVersion)" -ForegroundColor Green
+Write-Host "Bridge:        $($contract.bridgeVersion), ABI 5 only, OCCT $($contract.occtVersion), target $script:BridgeCoreTargetFramework" -ForegroundColor Green
 
 switch ($Target) {
     "validate" { }

@@ -18,13 +18,17 @@ require_command() { command -v "$1" >/dev/null 2>&1 || fail "Required command wa
 json_string() { sed -nE "s/^[[:space:]]*\"$2\"[[:space:]]*:[[:space:]]*\"([^\"]+)\".*/\\1/p" "$1" | head -n 1; }
 json_number() { sed -nE "s/^[[:space:]]*\"$2\"[[:space:]]*:[[:space:]]*([0-9]+).*/\\1/p" "$1" | head -n 1; }
 
-sdk_compatible() {
-    local baseline="$1" detected="$2" base_major base_minor detected_major detected_minor lowest
-    IFS=. read -r base_major base_minor _ <<<"${baseline}"
-    IFS=. read -r detected_major detected_minor _ <<<"${detected}"
-    [[ "${detected_major}" == "${base_major}" && "${detected_minor}" == "${base_minor}" ]] || return 1
-    lowest="$(printf '%s\n%s\n' "${baseline}" "${detected}" | sort -V | head -n 1)"
-    [[ "${lowest}" == "${baseline}" ]]
+sdk_is_compatible() {
+    local baseline="$1" detected="$2" policy="$3"
+    [[ "${policy}" == "latestFeature" ]] || return 1
+    [[ "${baseline}" != *-* && "${detected}" != *-* ]] || return 1
+    local min_major min_minor min_patch detected_major detected_minor detected_patch
+    IFS=. read -r min_major min_minor min_patch <<<"${baseline}"
+    IFS=. read -r detected_major detected_minor detected_patch <<<"${detected}"
+    [[ "${min_major}" =~ ^[0-9]+$ && "${min_minor}" =~ ^[0-9]+$ && "${min_patch}" =~ ^[0-9]+$ ]] || return 1
+    [[ "${detected_major}" =~ ^[0-9]+$ && "${detected_minor}" =~ ^[0-9]+$ && "${detected_patch}" =~ ^[0-9]+$ ]] || return 1
+    [[ "${detected_major}" == "${min_major}" && "${detected_minor}" == "${min_minor}" ]] || return 1
+    ((10#${detected_patch} >= 10#${min_patch}))
 }
 
 validate_sdk() {
@@ -34,16 +38,14 @@ validate_sdk() {
     require_command dotnet
     require_command git
     require_command sha256sum
-    require_command sort
 
     [[ -f "${GLOBAL_JSON}" ]] || fail "global.json was not found."
-    local required_sdk required_roll_forward detected_sdk
+    local required_sdk roll_forward detected_sdk
     required_sdk="$(json_string "${GLOBAL_JSON}" version)"
-    required_roll_forward="$(json_string "${GLOBAL_JSON}" rollForward)"
+    roll_forward="$(json_string "${GLOBAL_JSON}" rollForward)"
     [[ -n "${required_sdk}" ]] || fail "Unable to read the SDK baseline from global.json."
-    [[ "${required_roll_forward}" == "latestFeature" ]] || fail "global.json must use latestFeature SDK roll-forward."
-    detected_sdk="$(dotnet --version)"
-    sdk_compatible "${required_sdk}" "${detected_sdk}" || fail ".NET 10 SDK at or above baseline ${required_sdk} is required; detected ${detected_sdk}."
+    detected_sdk="$(cd "${ROOT_DIR}" && dotnet --version)"
+    sdk_is_compatible "${required_sdk}" "${detected_sdk}" "${roll_forward}" || fail "A stable .NET 10 SDK compatible with baseline ${required_sdk} / ${roll_forward} is required; detected ${detected_sdk}."
 
     for name in libOcctNative.so OcctNet.dll OcctNet.Avalonia.dll bridge-contract.json bridge-manifest.json; do
         [[ -f "${DIST_ROOT}/${name}" ]] || fail "Linux Binary SDK is incomplete: ${name} is missing. Run ./sync.sh first."
@@ -53,17 +55,19 @@ validate_sdk() {
     [[ "$(json_number "${CONTRACT}" current)" == "5" && "$(json_number "${CONTRACT}" minimumSupported)" == "5" ]] || fail "Bridge contract must be ABI5-only."
     [[ "$(json_string "${CONTRACT}" policy)" == "abi5-only" ]] || fail "Bridge contract must use api.policy=abi5-only."
     [[ "$(json_string "${CONTRACT}" platform)" == "linux-x64" ]] || fail "Expected a linux-x64 Binary SDK."
-    [[ "$(json_string "${CONTRACT}" targetFramework)" == "net10.0" ]] || fail "Linux Demo requires net10.0."
-    [[ "$(json_string "${CONTRACT}" sdkVersion)" == "${required_sdk}" ]] || fail "Binary SDK and Demo SDK baselines do not match."
-    [[ "$(json_string "${CONTRACT}" sdkRollForward)" == "${required_roll_forward}" ]] || fail "Binary SDK and Demo SDK roll-forward policies do not match."
-    [[ "$(json_string "${CONTRACT}" languageVersion)" == "14.0" ]] || fail "Bridge 3 Demo requires C# 14.0."
+
+    local bridge_tfm bridge_sdk
+    bridge_tfm="$(json_string "${CONTRACT}" targetFramework)"
+    case "${bridge_tfm}" in net8.0|net9.0|net10.0) ;; *) fail "Unsupported Bridge target framework: ${bridge_tfm}." ;; esac
+    bridge_sdk="$(json_string "${CONTRACT}" sdkVersion)"
+    [[ "${bridge_sdk}" =~ ^10\.0\.[0-9]+$ ]] || fail "Bridge SDK baseline must belong to stable .NET 10: ${bridge_sdk}."
+    [[ "$(json_string "${CONTRACT}" languageVersion)" == "14.0" ]] || fail "Bridge 3 Demo requires C# 14.0 contract metadata."
 
     [[ "$(json_number "${MANIFEST}" schemaVersion)" == "2" ]] || fail "Binary SDK manifest schema 2 is required."
     [[ "$(json_number "${MANIFEST}" current)" == "5" && "$(json_number "${MANIFEST}" minimumSupported)" == "5" ]] || fail "Binary SDK manifest must be ABI5-only."
     [[ "$(json_string "${MANIFEST}" platform)" == "linux-x64" ]] || fail "Binary SDK manifest platform is not linux-x64."
-    [[ "$(json_string "${MANIFEST}" targetFramework)" == "net10.0" ]] || fail "Binary SDK manifest target framework is not net10.0."
-    [[ "$(json_string "${MANIFEST}" sdkVersion)" == "${required_sdk}" ]] || fail "Binary SDK manifest SDK baseline does not match global.json."
-    [[ "$(json_string "${MANIFEST}" sdkRollForward)" == "${required_roll_forward}" ]] || fail "Binary SDK manifest roll-forward policy does not match global.json."
+    [[ "$(json_string "${MANIFEST}" targetFramework)" == "${bridge_tfm}" ]] || fail "Binary SDK manifest target framework does not match its contract."
+    [[ "$(json_string "${MANIFEST}" sdkVersion)" == "${bridge_sdk}" ]] || fail "Binary SDK manifest SDK baseline does not match its contract."
     [[ "$(json_string "${MANIFEST}" languageVersion)" == "14.0" ]] || fail "Binary SDK manifest language version is not C# 14.0."
     [[ "$(json_string "${MANIFEST}" configuration)" == "Release" ]] || fail "Demo consumes a Release Binary SDK only."
     [[ -n "$(json_string "${MANIFEST}" sourceCommit)" ]] || fail "Binary SDK manifest sourceCommit is missing."
@@ -79,7 +83,7 @@ validate_sdk() {
     [[ ${hash_lines} -eq 4 ]] || fail "Linux Binary SDK manifest must hash exactly four files."
 
     bash "${ROOT_DIR}/tests/check-sdk-consumer.sh" "${ROOT_DIR}"
-    log "Bridge $(json_string "${CONTRACT}" bridgeVersion), ABI 5 only, OCCT $(json_string "${CONTRACT}" occtVersion), SDK ${required_sdk} + ${required_roll_forward}"
+    log "Bridge $(json_string "${CONTRACT}" bridgeVersion), ABI 5 only, OCCT $(json_string "${CONTRACT}" occtVersion), target ${bridge_tfm}; Demo SDK ${detected_sdk}"
 }
 
 build_common() {
