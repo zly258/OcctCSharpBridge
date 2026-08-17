@@ -1,6 +1,7 @@
 #include "presentation/OcctViewCube.h"
 #include "core/OcctInternal.hxx"
 
+#include <AIS_ViewCubeOwner.hxx>
 #include <TCollection_AsciiString.hxx>
 
 #include <stdexcept>
@@ -70,6 +71,32 @@ extern "C"
                 Standard_False,
                 Standard_True);
             engine->requestRedraw();
+        });
+    }
+
+    OcctStatus occt_engine_view_cube_try_click(
+        OcctEngineHandle handle,
+        int x,
+        int y,
+        int* handled)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (handled == nullptr) return OcctStatus_ErrorInvalidArgument;
+        *handled = 0;
+        return executeViewCubeStatus(engine, [&]
+        {
+            ViewerContext& viewerContext = engine->viewerContext;
+            if (viewerContext.viewCube.IsNull()) return;
+
+            viewerContext.context->MoveTo(x, y, viewerContext.view, Standard_False);
+            const Handle(SelectMgr_EntityOwner) detected = viewerContext.context->DetectedOwner();
+            const Handle(AIS_ViewCubeOwner) cubeOwner = Handle(AIS_ViewCubeOwner)::DownCast(detected);
+            if (cubeOwner.IsNull() || cubeOwner->Selectable() != viewerContext.viewCube) return;
+
+            viewerContext.viewCube->HandleClick(cubeOwner);
+            viewerContext.context->ClearDetected(Standard_False);
+            engine->requestRedraw();
+            *handled = 1;
         });
     }
 }
