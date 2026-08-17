@@ -5,11 +5,16 @@ namespace OcctNet;
 
 public sealed partial class OcctViewportControl
 {
+    private Form? _hostForm;
+    private FormWindowState _lastHostFormWindowState = FormWindowState.Normal;
+    private bool _hostRestoreRefreshScheduled;
+
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
         if (DesignMode) return;
 
+        AttachHostForm();
         ResetRenderReady();
         SetHostState(OcctViewportHostState.Initializing);
         var generation = ++_engineGeneration;
@@ -41,6 +46,8 @@ public sealed partial class OcctViewportControl
 
     protected override void OnHandleDestroyed(EventArgs e)
     {
+        DetachHostForm();
+        _hostRestoreRefreshScheduled = false;
         HideSelectionFrame();
         _pressedKeys.Clear();
         _rotating = false;
@@ -50,6 +57,12 @@ public sealed partial class OcctViewportControl
         SetHostState(OcctViewportHostState.Disposed);
         _lastNativeSize = Size.Empty;
         base.OnHandleDestroyed(e);
+    }
+
+    protected override void OnParentChanged(EventArgs e)
+    {
+        base.OnParentChanged(e);
+        if (!DesignMode && IsHandleCreated) AttachHostForm();
     }
 
     protected override void OnResize(EventArgs e)
@@ -76,6 +89,71 @@ public sealed partial class OcctViewportControl
     protected override void OnPaintBackground(PaintEventArgs pevent)
     {
         if (_engine?.IsInitialized != true) base.OnPaintBackground(pevent);
+    }
+
+    private void AttachHostForm()
+    {
+        var hostForm = FindForm();
+        if (ReferenceEquals(_hostForm, hostForm)) return;
+
+        DetachHostForm();
+        _hostForm = hostForm;
+        if (_hostForm is null) return;
+
+        _lastHostFormWindowState = _hostForm.WindowState;
+        _hostForm.Resize += OnHostFormResize;
+    }
+
+    private void DetachHostForm()
+    {
+        if (_hostForm is not null)
+            _hostForm.Resize -= OnHostFormResize;
+        _hostForm = null;
+        _lastHostFormWindowState = FormWindowState.Normal;
+    }
+
+    private void OnHostFormResize(object? sender, EventArgs e)
+    {
+        if (!ReferenceEquals(sender, _hostForm) || _hostForm is null) return;
+
+        var previousState = _lastHostFormWindowState;
+        var currentState = _hostForm.WindowState;
+        _lastHostFormWindowState = currentState;
+
+        if (previousState == FormWindowState.Minimized && currentState != FormWindowState.Minimized)
+            ScheduleHostRestoreRefresh();
+    }
+
+    private void ScheduleHostRestoreRefresh()
+    {
+        if (_hostRestoreRefreshScheduled
+            || _engine?.IsInitialized != true
+            || !IsHandleCreated
+            || IsDisposed
+            || Disposing)
+        {
+            return;
+        }
+
+        _hostRestoreRefreshScheduled = true;
+        try
+        {
+            BeginInvoke((Action)(() =>
+            {
+                _hostRestoreRefreshScheduled = false;
+                if (_hostForm is null || _hostForm.WindowState == FormWindowState.Minimized) return;
+
+                // OCCT requires an explicit redraw after deiconification. Force the resize/redraw
+                // path even when the restored client size is identical to the pre-minimize size.
+                ResizeNativeView(force: true);
+                if (IsActiveRectangleGesture && _rectangleDragStarted)
+                    ScheduleSelectionFrameRestore();
+            }));
+        }
+        catch (InvalidOperationException)
+        {
+            _hostRestoreRefreshScheduled = false;
+        }
     }
 
     private void ResizeNativeView(bool force = false)

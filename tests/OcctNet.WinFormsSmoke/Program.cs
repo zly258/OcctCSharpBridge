@@ -11,7 +11,12 @@ internal static class Program
 
         var exitCode = 2;
         var completed = false;
+        var readyHandled = false;
         var nativeHandleCreated = false;
+        var restoreStep = 0;
+        var initialNativeHandle = IntPtr.Zero;
+        var initialGeneration = 0L;
+
         using var viewport = new OcctViewportControl
         {
             Dock = DockStyle.Fill,
@@ -31,6 +36,54 @@ internal static class Program
             Height = 520
         };
         form.Controls.Add(viewport);
+
+        using var restoreTimer = new System.Windows.Forms.Timer { Interval = 250 };
+        restoreTimer.Tick += (_, _) =>
+        {
+            if (completed) return;
+
+            try
+            {
+                switch (restoreStep++)
+                {
+                    case 0:
+                        form.WindowState = FormWindowState.Minimized;
+                        break;
+                    case 1:
+                        form.WindowState = FormWindowState.Normal;
+                        break;
+                    default:
+                        restoreTimer.Stop();
+                        if (!viewport.IsEngineInitialized
+                            || viewport.HostState != OcctViewportHostState.Ready
+                            || viewport.NativeHandle != initialNativeHandle
+                            || viewport.EngineGeneration != initialGeneration)
+                        {
+                            throw new InvalidOperationException(
+                                "WinForms viewport did not preserve its ready engine/native handle across minimize/restore.");
+                        }
+
+                        completed = true;
+                        exitCode = 0;
+                        Console.WriteLine($"OCCT {OcctEngine.OcctVersion}");
+                        Console.WriteLine($"Bridge {OcctBridgeInfo.ManagedVersion} / ABI {OcctBridgeInfo.ExpectedAbiVersion}");
+                        Console.WriteLine($"Engine generation: {viewport.EngineGeneration}");
+                        Console.WriteLine($"Native handle: 0x{viewport.NativeHandle.ToInt64():X}");
+                        Console.WriteLine("WinForms minimize/restore exposure path exercised without pointer input.");
+                        Console.WriteLine("WinForms viewport lifecycle/render/native-handle smoke passed.");
+                        form.Close();
+                        break;
+                }
+            }
+            catch (Exception exception)
+            {
+                restoreTimer.Stop();
+                Console.Error.WriteLine(exception);
+                completed = true;
+                exitCode = 1;
+                form.Close();
+            }
+        };
 
         viewport.NativeHandleChanged += (_, eventArgs) =>
         {
@@ -53,7 +106,8 @@ internal static class Program
 
         viewport.HostStateChanged += (_, eventArgs) =>
         {
-            if (eventArgs.State != OcctViewportHostState.Ready || completed) return;
+            if (eventArgs.State != OcctViewportHostState.Ready || completed || readyHandled) return;
+            readyHandled = true;
             try
             {
                 if (!viewport.IsEngineInitialized
@@ -72,22 +126,9 @@ internal static class Program
 
                 viewport.Engine.Fit(box);
                 viewport.Engine.Redraw();
-                completed = true;
-                exitCode = 0;
-
-                _ = Task.Run(async () =>
-                {
-                    await Task.Delay(300).ConfigureAwait(false);
-                    form.BeginInvoke((Action)(() =>
-                    {
-                        Console.WriteLine($"OCCT {OcctEngine.OcctVersion}");
-                        Console.WriteLine($"Bridge {OcctBridgeInfo.ManagedVersion} / ABI {OcctBridgeInfo.ExpectedAbiVersion}");
-                        Console.WriteLine($"Engine generation: {viewport.EngineGeneration}");
-                        Console.WriteLine($"Native handle: 0x{viewport.NativeHandle.ToInt64():X}");
-                        Console.WriteLine("WinForms viewport lifecycle/render/native-handle smoke passed.");
-                        form.Close();
-                    }));
-                });
+                initialNativeHandle = viewport.NativeHandle;
+                initialGeneration = viewport.EngineGeneration;
+                restoreTimer.Start();
             }
             catch (Exception exception)
             {
@@ -104,7 +145,7 @@ internal static class Program
             timeout.Stop();
             if (completed) return;
             Console.Error.WriteLine(
-                $"WinForms viewport smoke timed out before Ready. Current state: {viewport.HostState}, render ready: {viewport.RenderReady}, generation: {viewport.EngineGeneration}.");
+                $"WinForms viewport smoke timed out. Current state: {viewport.HostState}, render ready: {viewport.RenderReady}, generation: {viewport.EngineGeneration}, restore step: {restoreStep}.");
             completed = true;
             exitCode = 2;
             form.Close();

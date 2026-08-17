@@ -10,7 +10,11 @@ internal static class Program
     {
         var exitCode = 2;
         var completed = false;
+        var readyHandled = false;
         var nativeHandleCreated = false;
+        var restoreStep = 0;
+        var initialNativeHandle = IntPtr.Zero;
+        var initialGeneration = 0L;
         var application = new Application
         {
             ShutdownMode = ShutdownMode.OnMainWindowClose
@@ -34,6 +38,57 @@ internal static class Program
             Content = viewport
         };
 
+        var restoreTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(250)
+        };
+        restoreTimer.Tick += (_, _) =>
+        {
+            if (completed) return;
+
+            try
+            {
+                switch (restoreStep++)
+                {
+                    case 0:
+                        window.WindowState = WindowState.Minimized;
+                        break;
+                    case 1:
+                        window.WindowState = WindowState.Normal;
+                        break;
+                    default:
+                        restoreTimer.Stop();
+                        if (!viewport.IsEngineInitialized
+                            || viewport.HostState != OcctViewportHostState.Ready
+                            || viewport.NativeHandle != initialNativeHandle
+                            || viewport.EngineGeneration != initialGeneration)
+                        {
+                            throw new InvalidOperationException(
+                                "WPF viewport did not preserve its ready engine/native handle across minimize/restore.");
+                        }
+
+                        completed = true;
+                        exitCode = 0;
+                        Console.WriteLine($"OCCT {OcctEngine.OcctVersion}");
+                        Console.WriteLine($"Bridge {OcctBridgeInfo.ManagedVersion} / ABI {OcctBridgeInfo.ExpectedAbiVersion}");
+                        Console.WriteLine($"Engine generation: {viewport.EngineGeneration}");
+                        Console.WriteLine($"Native handle: 0x{viewport.NativeHandle.ToInt64():X}");
+                        Console.WriteLine("WPF minimize/restore exposure path exercised without pointer input.");
+                        Console.WriteLine("WPF viewport lifecycle/render/native-handle smoke passed.");
+                        window.Close();
+                        break;
+                }
+            }
+            catch (Exception exception)
+            {
+                restoreTimer.Stop();
+                Console.Error.WriteLine(exception);
+                completed = true;
+                exitCode = 1;
+                window.Close();
+            }
+        };
+
         viewport.NativeHandleChanged += (_, eventArgs) =>
         {
             if (eventArgs.PreviousHandle == IntPtr.Zero
@@ -55,7 +110,8 @@ internal static class Program
 
         viewport.HostStateChanged += (_, eventArgs) =>
         {
-            if (eventArgs.State != OcctViewportHostState.Ready || completed) return;
+            if (eventArgs.State != OcctViewportHostState.Ready || completed || readyHandled) return;
+            readyHandled = true;
             try
             {
                 if (!viewport.IsEngineInitialized
@@ -74,24 +130,9 @@ internal static class Program
 
                 viewport.Engine.Fit(box);
                 viewport.Engine.Redraw();
-                completed = true;
-                exitCode = 0;
-
-                var closeTimer = new DispatcherTimer(DispatcherPriority.Background)
-                {
-                    Interval = TimeSpan.FromMilliseconds(300)
-                };
-                closeTimer.Tick += (_, _) =>
-                {
-                    closeTimer.Stop();
-                    Console.WriteLine($"OCCT {OcctEngine.OcctVersion}");
-                    Console.WriteLine($"Bridge {OcctBridgeInfo.ManagedVersion} / ABI {OcctBridgeInfo.ExpectedAbiVersion}");
-                    Console.WriteLine($"Engine generation: {viewport.EngineGeneration}");
-                    Console.WriteLine($"Native handle: 0x{viewport.NativeHandle.ToInt64():X}");
-                    Console.WriteLine("WPF viewport lifecycle/render/native-handle smoke passed.");
-                    window.Close();
-                };
-                closeTimer.Start();
+                initialNativeHandle = viewport.NativeHandle;
+                initialGeneration = viewport.EngineGeneration;
+                restoreTimer.Start();
             }
             catch (Exception exception)
             {
@@ -111,7 +152,7 @@ internal static class Program
             timeout.Stop();
             if (completed) return;
             Console.Error.WriteLine(
-                $"WPF viewport smoke timed out before Ready. Current state: {viewport.HostState}, render ready: {viewport.RenderReady}, generation: {viewport.EngineGeneration}.");
+                $"WPF viewport smoke timed out. Current state: {viewport.HostState}, render ready: {viewport.RenderReady}, generation: {viewport.EngineGeneration}, restore step: {restoreStep}.");
             completed = true;
             exitCode = 2;
             window.Close();

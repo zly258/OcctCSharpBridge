@@ -7,6 +7,9 @@ namespace OcctNet;
 
 public sealed partial class OcctWpfViewport
 {
+    private Window? _hostWindow;
+    private WindowState _lastHostWindowState = WindowState.Normal;
+
     /// <summary>
     /// Synchronizes the OCCT render target with the current child HWND size and
     /// coalesces presentation into one WPF render-priority callback.
@@ -72,9 +75,17 @@ public sealed partial class OcctWpfViewport
             MarkFirstFrameRendered(generation);
             SetHostState(OcctViewportHostState.Ready);
 
-            // HwndHost receives its final arranged size after BuildWindowCore.
-            // Keep one render-priority refresh to cover that first layout pass.
-            Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(RefreshNativeView));
+            AttachHostWindow();
+
+            // HwndHost receives its final arranged size after BuildWindowCore. Attach to the
+            // containing Window again at render priority in case the visual tree was not yet
+            // fully connected, then cover the first layout pass with one native refresh.
+            Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(() =>
+            {
+                if (_engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero) return;
+                AttachHostWindow();
+                RefreshNativeView();
+            }));
             return new HandleRef(this, handle);
         }
         catch (Exception exception)
@@ -101,6 +112,43 @@ public sealed partial class OcctWpfViewport
         base.OnPropertyChanged(e);
         if (e.Property == CursorProperty && _nativeHandle != IntPtr.Zero)
             ApplyCurrentCursor();
+    }
+
+    private void AttachHostWindow()
+    {
+        var hostWindow = Window.GetWindow(this);
+        if (ReferenceEquals(_hostWindow, hostWindow)) return;
+
+        DetachHostWindow();
+        _hostWindow = hostWindow;
+        if (_hostWindow is null) return;
+
+        _lastHostWindowState = _hostWindow.WindowState;
+        _hostWindow.StateChanged += OnHostWindowStateChanged;
+    }
+
+    private void DetachHostWindow()
+    {
+        if (_hostWindow is not null)
+            _hostWindow.StateChanged -= OnHostWindowStateChanged;
+        _hostWindow = null;
+        _lastHostWindowState = WindowState.Normal;
+    }
+
+    private void OnHostWindowStateChanged(object? sender, EventArgs e)
+    {
+        if (!ReferenceEquals(sender, _hostWindow) || _hostWindow is null) return;
+
+        var previousState = _lastHostWindowState;
+        var currentState = _hostWindow.WindowState;
+        _lastHostWindowState = currentState;
+
+        if (previousState == WindowState.Minimized && currentState != WindowState.Minimized)
+        {
+            // V3d_View requires an explicit redraw after deiconification. Run this through the
+            // existing coalesced resize/render path so no pointer input is needed to expose a frame.
+            ScheduleNativeViewRefresh();
+        }
     }
 
     private bool ApplyCurrentCursor()
@@ -146,6 +194,7 @@ public sealed partial class OcctWpfViewport
 
     private void DisposeNativeHost(IntPtr handle, bool transitionToDisposed)
     {
+        DetachHostWindow();
         ResetRenderReady();
         CancelInteraction();
         var engine = _engine;
