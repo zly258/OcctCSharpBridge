@@ -46,6 +46,9 @@ $RequiredOcctVersion = [string]$Contract.occtVersion
 $TargetFramework = [string]$Contract.dotnet.targetFramework
 $DesktopTargetFramework = [string]$Contract.dotnet.desktopTargetFramework
 $SdkVersion = [string]$Contract.dotnet.sdkVersion
+$SdkRollForward = [string]$Contract.dotnet.sdkRollForward
+try { $SdkBaseline = [version]$SdkVersion }
+catch { throw "Bridge contract contains an invalid .NET SDK baseline: $SdkVersion" }
 
 $Projects = [ordered]@{
     Core = "src\OcctNet\OcctNet.csproj"
@@ -138,7 +141,6 @@ function Resolve-DotNetSdk {
         })
         $installedText = if ($installed.Count -eq 0) { "no SDKs" } else { $installed -join ", " }
         $diagnostics.Add("$candidate => $installedText")
-        if ($SdkVersion -notin $installed) { continue }
 
         Push-Location $RepoRoot
         try {
@@ -151,7 +153,14 @@ function Resolve-DotNetSdk {
 
         if ($resolvedExitCode -ne 0 -or $resolvedOutput.Count -ne 1) { continue }
         $resolvedVersion = ([string]$resolvedOutput[0]).Trim()
-        if ($resolvedVersion -ne $SdkVersion) { continue }
+        try { $resolvedSdk = [version]$resolvedVersion }
+        catch { continue }
+
+        if ($resolvedSdk.Major -ne $SdkBaseline.Major -or
+            $resolvedSdk.Minor -ne $SdkBaseline.Minor -or
+            $resolvedSdk -lt $SdkBaseline) {
+            continue
+        }
 
         $script:DotNetCommand = [System.IO.Path]::GetFullPath($candidate)
         $script:ResolvedSdkVersion = $resolvedVersion
@@ -159,7 +168,7 @@ function Resolve-DotNetSdk {
     }
 
     $detail = if ($diagnostics.Count -eq 0) { "No dotnet host candidates were found." } else { $diagnostics -join [Environment]::NewLine }
-    throw "OcctCSharpBridge requires .NET SDK $SdkVersion exactly, but no usable dotnet host could resolve it from this repository.`nChecked dotnet hosts:`n$detail`nInstall .NET SDK $SdkVersion for x64 or fix DOTNET_ROOT/PATH so C:\Program Files\dotnet\dotnet.exe can see that SDK. SDK roll-forward remains disabled by contract."
+    throw "OcctCSharpBridge requires a stable .NET $($SdkBaseline.Major).$($SdkBaseline.Minor) SDK at or above baseline $SdkVersion using '$SdkRollForward' roll-forward, but no usable dotnet host could resolve one from this repository.`nChecked dotnet hosts:`n$detail`nInstall a compatible x64 .NET 10 SDK or fix DOTNET_ROOT/PATH so C:\Program Files\dotnet\dotnet.exe can see it."
 }
 
 function Invoke-DotNetChecked {
@@ -441,6 +450,7 @@ function Build-BinaryDistribution {
             platform = "win-x64"
             targetFramework = $TargetFramework
             sdkVersion = $SdkVersion
+            sdkRollForward = $SdkRollForward
             languageVersion = [string]$Contract.dotnet.languageVersion
             configuration = "Release"
             sourceCommit = $sourceCommit
@@ -473,7 +483,7 @@ Write-Host "Configuration: $Configuration"
 Write-Host "Bridge:        $BridgeVersion"
 Write-Host "ABI:           $($Contract.nativeAbi.current) only"
 Write-Host "Author:        $Author"
-Write-Host "SDK contract:  $SdkVersion" -ForegroundColor DarkGray
+Write-Host "SDK contract:  $SdkVersion + $SdkRollForward" -ForegroundColor DarkGray
 $occtRootSource = if ($env:OCCT_ROOT) { "environment" } elseif ($OcctRoot -eq $DefaultOcctRoot) { "default" } else { "argument" }
 Write-Host "OCCT root:     $OcctRoot ($occtRootSource)" -ForegroundColor DarkGray
 

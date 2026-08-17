@@ -16,13 +16,13 @@ Bridge 3 **仅支持 ABI 5**。ABI 4 导出、兼容 Shim、旧 Handle、兼容�
 | Native ABI | **仅 ABI 5** |
 | API Policy | **abi5-only** |
 | OCCT | **7.9.0** |
-| .NET SDK | **精确 10.0.303** |
+| .NET SDK | **稳定版 .NET 10；基线 10.0.100 + `latestFeature` roll-forward** |
 | Target Framework | **`net10.0` Core/Avalonia · `net10.0-windows` WinForms/WPF** |
 | C# / Native | **14.0 / C++17** |
 | UI Adapter | **WinForms / WPF / Avalonia** |
 | 源码平台 | **Windows x64 / Linux x64** |
 
-`bridge-contract.json` 是机器可读的唯一契约事实源。Native Declaration、Definition 与 Managed `LibraryImport` 的 API Surface 由 `tests/check-api-surface.ps1` 直接从当前源码校验；README 和 docs 不维护容易失真的硬编码接口数量或生成式 API Reference。
+`bridge-contract.json` 是机器可读的唯一契约事实源。SDK 以 `10.0.100` 为基线，使用 `latestFeature` roll-forward，并禁止 prerelease，因此可以使用兼容的稳定版 .NET 10 SDK，同时不会隐式滚动到 .NET 11。Native Declaration、Definition 与 Managed `LibraryImport` 的 API Surface 由 `tests/check-api-surface.ps1` 直接从当前源码校验；README 和 docs 不维护容易失真的硬编码接口数量或生成式 API Reference。
 
 ## 架构
 
@@ -86,11 +86,11 @@ Linux x64：
 ./build.sh dist Release
 ```
 
-完整 Target、静态 Contract Checks、Managed Tests、Native Smoke、SDK 10.0.303 排障和发布说明见 [构建、测试与发布](docs/zh-CN/08_构建测试与发布.md)。
+完整 Target、静态 Contract Checks、Managed Tests、Native Smoke、.NET 10 SDK 解析与发布说明见 [构建、测试与发布](docs/zh-CN/08_构建测试与发布.md)。
 
 ## Binary SDK 策略
 
-`dist/win-x64` 与 `dist/linux-x64` 是生成的 Release 构建产物，不是源码仓库内容。源码分支**不提交 Binary SDK 文件**。每个包通过 `bridge-manifest.json` 记录 Source Commit 与 SHA-256，并在本地消费或外部分发前完成校验。
+`dist/win-x64` 与 `dist/linux-x64` 是生成的 Release 构建产物，不是源码仓库内容。源码分支**不提交 Binary SDK 文件**。每个包通过 `bridge-manifest.json` 记录 Source Commit、.NET SDK 基线/roll-forward 策略与 SHA-256，并在本地消费或外部分发前完成校验。
 
 统一 `demo` 分支按 `sourceCommit` 与 Manifest Hash 消费这些 SDK。正式二进制可通过受审查的 GitHub Release Asset 或其它受控制品渠道发布，不需要 GitHub Actions 流水线。
 

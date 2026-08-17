@@ -16,13 +16,13 @@ Bridge 3 is **ABI 5 only**. ABI 4 exports, compatibility shims, legacy handles, 
 | Native ABI | **5 only** |
 | API policy | **abi5-only** |
 | OCCT | **7.9.0** |
-| .NET SDK | **10.0.303 exactly** |
+| .NET SDK | **stable .NET 10; baseline 10.0.100 + `latestFeature` roll-forward** |
 | Target Framework | **`net10.0` core/Avalonia · `net10.0-windows` WinForms/WPF** |
 | C# / Native | **14.0 / C++17** |
 | UI adapters | **WinForms / WPF / Avalonia** |
 | Source platforms | **Windows x64 / Linux x64** |
 
-`bridge-contract.json` is the machine-readable source of truth. Native declarations, definitions and managed `LibraryImport` bindings are validated directly from current source by `tests/check-api-surface.ps1`; README/docs intentionally do not maintain hard-coded API counts or a generated API reference.
+`bridge-contract.json` is the machine-readable source of truth. The SDK baseline is `10.0.100` with `latestFeature` roll-forward and prerelease SDKs disabled, so compatible stable .NET 10 SDKs can be used without implicitly rolling to .NET 11. Native declarations, definitions and managed `LibraryImport` bindings are validated directly from current source by `tests/check-api-surface.ps1`; README/docs intentionally do not maintain hard-coded API counts or a generated API reference.
 
 ## Architecture
 
@@ -90,7 +90,7 @@ See [Build, Test and Publish](docs/en-US/08_Build-Test-and-Publish.md) for targe
 
 ## Binary SDK policy
 
-`dist/win-x64` and `dist/linux-x64` are generated Release artifacts, not source-controlled SDK payloads. Source branches do **not** commit Binary SDK files. Each package records its source commit and SHA-256 hashes in `bridge-manifest.json` and is validated before local consumption or external distribution.
+`dist/win-x64` and `dist/linux-x64` are generated Release artifacts, not source-controlled SDK payloads. Source branches do **not** commit Binary SDK files. Each package records its source commit, .NET SDK baseline/roll-forward policy and SHA-256 hashes in `bridge-manifest.json` and is validated before local consumption or external distribution.
 
 The unified `demo` branch consumes these generated SDKs by `sourceCommit` and manifest hash. Formal binary distribution can use reviewed GitHub Release assets or another controlled artifact channel; no GitHub Actions pipeline is required.
 

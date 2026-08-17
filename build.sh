@@ -23,6 +23,7 @@ contract_number() { sed -nE "s/^[[:space:]]*\"$1\"[[:space:]]*:[[:space:]]*([0-9
 BRIDGE_VERSION="$(contract_string bridgeVersion)"
 OCCT_VERSION="$(contract_string occtVersion)"
 SDK_VERSION="$(contract_string sdkVersion)"
+SDK_ROLL_FORWARD="$(contract_string sdkRollForward)"
 LANGUAGE_VERSION="$(contract_string languageVersion)"
 AUTHOR="$(contract_string author)"
 SOURCE_PLATFORM="$(contract_string platform)"
@@ -30,14 +31,25 @@ CURRENT_ABI="$(contract_number current)"
 MINIMUM_ABI="$(contract_number minimumSupported)"
 TFM="net10.0"
 
+sdk_compatible() {
+    local detected="$1" base_major base_minor detected_major detected_minor lowest
+    IFS=. read -r base_major base_minor _ <<<"${SDK_VERSION}"
+    IFS=. read -r detected_major detected_minor _ <<<"${detected}"
+    [[ "${detected_major}" == "${base_major}" && "${detected_minor}" == "${base_minor}" ]] || return 1
+    lowest="$(printf '%s\n%s\n' "${SDK_VERSION}" "${detected}" | sort -V | head -n 1)"
+    [[ "${lowest}" == "${SDK_VERSION}" ]]
+}
+
 validate_common() {
     [[ "$(uname -s)" == "Linux" ]] || fail "build.sh supports Linux only; use build.ps1 on Windows."
     case "$(uname -m)" in x86_64|amd64) ;; *) fail "Linux x64 is required; detected $(uname -m)." ;; esac
     case "${CONFIGURATION}" in Debug|Release|RelWithDebInfo) ;; *) fail "Unknown configuration: ${CONFIGURATION}" ;; esac
     require_command dotnet
+    require_command sort
     [[ "${SOURCE_PLATFORM}" == "cross-platform-x64" ]] || fail "Source contract platform must be cross-platform-x64; found ${SOURCE_PLATFORM}."
+    [[ "${SDK_ROLL_FORWARD}" == "latestFeature" ]] || fail "Bridge SDK roll-forward policy must be latestFeature; found ${SDK_ROLL_FORWARD}."
     local detected_sdk="$(dotnet --version)"
-    [[ "${detected_sdk}" == "${SDK_VERSION}" ]] || fail ".NET SDK ${SDK_VERSION} is required exactly; detected ${detected_sdk}."
+    sdk_compatible "${detected_sdk}" || fail ".NET 10 SDK at or above baseline ${SDK_VERSION} is required; detected ${detected_sdk}."
     [[ -n "${BRIDGE_VERSION}" && "${CURRENT_ABI}" == "5" && "${MINIMUM_ABI}" == "5" ]] || fail "Bridge contract must be complete and ABI5-only."
     bash "${ROOT_DIR}/tests/check-linux-contract.sh" "${ROOT_DIR}"
 }
@@ -138,6 +150,7 @@ dist() {
         printf '  "platform": "linux-x64",\n'
         printf '  "targetFramework": "%s",\n' "${TFM}"
         printf '  "sdkVersion": "%s",\n' "${SDK_VERSION}"
+        printf '  "sdkRollForward": "%s",\n' "${SDK_ROLL_FORWARD}"
         printf '  "languageVersion": "%s",\n' "${LANGUAGE_VERSION}"
         printf '  "configuration": "Release",\n'
         printf '  "sourceCommit": "%s",\n  "files": [\n' "${source_commit}"

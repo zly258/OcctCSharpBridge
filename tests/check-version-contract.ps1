@@ -44,6 +44,7 @@ $expectedAuthor = [string]$contract.author
 $expectedTargetFramework = [string]$contract.dotnet.targetFramework
 $expectedDesktopTargetFramework = [string]$contract.dotnet.desktopTargetFramework
 $expectedSdkVersion = [string]$contract.dotnet.sdkVersion
+$expectedSdkRollForward = [string]$contract.dotnet.sdkRollForward
 $expectedLanguageVersion = [string]$contract.dotnet.languageVersion
 
 foreach ($entry in ([ordered]@{
@@ -55,6 +56,7 @@ foreach ($entry in ([ordered]@{
     targetFramework = $expectedTargetFramework
     desktopTargetFramework = $expectedDesktopTargetFramework
     sdkVersion = $expectedSdkVersion
+    sdkRollForward = $expectedSdkRollForward
     languageVersion = $expectedLanguageVersion
 }).GetEnumerator()) {
     if ([string]::IsNullOrWhiteSpace([string]$entry.Value)) { throw "Bridge contract value is missing: $($entry.Key)" }
@@ -96,7 +98,14 @@ if (@($supportedPlatforms | Group-Object | Where-Object Count -gt 1).Count -gt 0
     throw "Bridge contract supportedPlatforms must not contain duplicates."
 }
 
-[void](Convert-ToSdkVersion $expectedSdkVersion "bridge-contract.json")
+$baselineSdk = Convert-ToSdkVersion $expectedSdkVersion "bridge-contract.json"
+if ($baselineSdk.Major -ne 10 -or $baselineSdk.Minor -ne 0) {
+    throw "Bridge 3 must use a .NET 10 SDK baseline; found '$expectedSdkVersion'."
+}
+if ($expectedSdkRollForward -ne "latestFeature") {
+    throw "Bridge 3 SDK roll-forward policy must be 'latestFeature'."
+}
+
 $nativeEngine = Read-Text "src/OcctNative/core/OcctEngine.cpp"
 if (-not $nativeEngine.Contains("return `"$expectedVersion`";")) { throw "Native bridge version differs from bridge-contract.json." }
 if (-not $nativeEngine.Contains("return $expectedAbiVersion;")) { throw "Native ABI version differs from bridge-contract.json." }
@@ -129,10 +138,10 @@ catch { throw "global.json is not valid JSON: $($_.Exception.Message)" }
 $globalSdkText = [string]$globalJson.sdk.version
 [void](Convert-ToSdkVersion $globalSdkText "global.json")
 if ($globalSdkText -ne $expectedSdkVersion) {
-    throw "global.json must select .NET SDK $expectedSdkVersion; found $globalSdkText."
+    throw "global.json SDK baseline must match bridge-contract.json '$expectedSdkVersion'; found '$globalSdkText'."
 }
-if ([string]$globalJson.sdk.rollForward -ne "disable") {
-    throw "global.json must disable SDK roll-forward so the contracted SDK is used exactly."
+if ([string]$globalJson.sdk.rollForward -ne $expectedSdkRollForward) {
+    throw "global.json SDK roll-forward must match bridge-contract.json '$expectedSdkRollForward'."
 }
 if ([bool]$globalJson.sdk.allowPrerelease) { throw "global.json must not allow prerelease SDKs." }
 if ([string]$globalJson.test.runner -ne "Microsoft.Testing.Platform") { throw "global.json must select Microsoft.Testing.Platform for .NET 10 tests." }
@@ -158,11 +167,12 @@ foreach ($token in @(
     if (-not $nativeCmake.Contains($token)) { throw "Native CMake version contract is missing: $token" }
 }
 
-Write-Host ("[version] Bridge {0}, ABI {1} only, OCCT {2}, platform {3}, SDK {4}, target {5}, C# {6}." -f
+Write-Host ("[version] Bridge {0}, ABI {1} only, OCCT {2}, platform {3}, SDK {4} + {5}, target {6}, C# {7}." -f
     $expectedVersion,
     $expectedAbiVersion,
     $expectedOcctVersion,
     $expectedPlatform,
     $expectedSdkVersion,
+    $expectedSdkRollForward,
     $expectedTargetFramework,
     $expectedLanguageVersion) -ForegroundColor Green
