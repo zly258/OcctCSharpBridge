@@ -2,6 +2,15 @@
 
 namespace OcctNet;
 
+public enum OcctLineStyle
+{
+    Solid = 0,
+    Dash = 1,
+    Dot = 2,
+    DotDash = 3,
+    Center = 4
+}
+
 public enum OcctLightingPreset
 {
     Neutral = 0,
