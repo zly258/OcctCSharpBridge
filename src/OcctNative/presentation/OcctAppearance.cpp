@@ -1,6 +1,9 @@
 #include "presentation/OcctAppearance.h"
 #include "core/OcctInternal.hxx"
 
+#include <Aspect_TypeOfLine.hxx>
+#include <Prs3d_Drawer.hxx>
+#include <Prs3d_LineAspect.hxx>
 #include <Prs3d_TypeOfHighlight.hxx>
 
 #include <cmath>
@@ -142,6 +145,51 @@ namespace
         engine->viewerContext.viewer->UpdateLights();
         engine->requestRedraw();
     }
+
+    Aspect_TypeOfLine standardLineType(int lineStyle)
+    {
+        switch (lineStyle)
+        {
+            case OcctLineStyle_Solid: return Aspect_TOL_SOLID;
+            case OcctLineStyle_Dash: return Aspect_TOL_DASH;
+            case OcctLineStyle_Dot: return Aspect_TOL_DOT;
+            case OcctLineStyle_DotDash: return Aspect_TOL_DOTDASH;
+            case OcctLineStyle_Center: return Aspect_TOL_USERDEFINED;
+            default: throw std::invalid_argument("Line style is out of range.");
+        }
+    }
+
+    void applyLineStyle(const Handle(Prs3d_LineAspect)& aspect, int lineStyle)
+    {
+        if (aspect.IsNull()) return;
+        if (lineStyle == OcctLineStyle_Center)
+        {
+            // Long-short center pattern. SetLinePattern switches the aspect to USERDEFINED.
+            aspect->Aspect()->SetLinePattern(0xF18F);
+            aspect->Aspect()->SetLineStippleFactor(1);
+            return;
+        }
+        aspect->SetTypeOfLine(standardLineType(lineStyle));
+    }
+
+    void setObjectLineStyle(Engine* engine, OcctObjectId objectId, int lineStyle)
+    {
+        ObjectEntry* entry = engine->findObject(objectId);
+        if (entry == nullptr || entry->presentation.IsNull())
+            throw std::invalid_argument("Object ID does not exist.");
+
+        Handle(Prs3d_Drawer) drawer = entry->presentation->Attributes();
+        if (drawer.IsNull()) throw std::runtime_error("Object presentation has no drawer.");
+        drawer->SetOwnLineAspects();
+        applyLineStyle(drawer->LineAspect(), lineStyle);
+        applyLineStyle(drawer->WireAspect(), lineStyle);
+        applyLineStyle(drawer->SeenLineAspect(), lineStyle);
+        applyLineStyle(drawer->FreeBoundaryAspect(), lineStyle);
+        applyLineStyle(drawer->UnFreeBoundaryAspect(), lineStyle);
+        applyLineStyle(drawer->FaceBoundaryAspect(), lineStyle);
+        engine->viewerContext.context->Redisplay(entry->presentation, Standard_False);
+        engine->requestRedraw();
+    }
 }
 
 extern "C"
@@ -194,6 +242,19 @@ extern "C"
                 engine->viewerContext.context->HighlightStyle(Prs3d_TypeOfHighlight_LocalDynamic)->SetColor(value);
             }
             engine->requestRedraw();
+        });
+    }
+
+    OcctStatus occt_engine_object_line_style_set(
+        OcctEngineHandle handle,
+        OcctObjectId objectId,
+        int lineStyle)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeAppearanceStatus(engine, [&]
+        {
+            (void)standardLineType(lineStyle);
+            setObjectLineStyle(engine, objectId, lineStyle);
         });
     }
 }
