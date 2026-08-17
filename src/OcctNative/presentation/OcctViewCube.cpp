@@ -1,7 +1,7 @@
 #include "presentation/OcctViewCube.h"
 #include "core/OcctInternal.hxx"
 
-#include <AIS_ViewCubeOwner.hxx>
+#include <AIS_ViewCube.hxx>
 #include <TCollection_AsciiString.hxx>
 
 #include <stdexcept>
