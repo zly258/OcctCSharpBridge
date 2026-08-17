@@ -12,8 +12,10 @@
   "author": "zly258",
   "contactEmail": "zhangly1403@gmail.com",
   "dotnet": {
-    "targetFramework": "net10.0",
-    "desktopTargetFramework": "net10.0-windows",
+    "targetFramework": "net8.0",
+    "desktopTargetFramework": "net8.0-windows",
+    "supportedConsumerFrameworks": ["net8.0", "net9.0", "net10.0"],
+    "supportedDesktopConsumerFrameworks": ["net8.0-windows", "net9.0-windows", "net10.0-windows"],
     "sdkVersion": "10.0.100",
     "sdkRollForward": "latestFeature",
     "languageVersion": "14.0"

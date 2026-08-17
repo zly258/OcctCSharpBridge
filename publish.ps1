@@ -125,7 +125,6 @@ function Test-BinarySdk {
         [string]$manifest.platform -ne [string]$contract.platform -or
         [string]$manifest.targetFramework -ne [string]$contract.dotnet.targetFramework -or
         [string]$manifest.sdkVersion -ne [string]$contract.dotnet.sdkVersion -or
-        [string]$manifest.sdkRollForward -ne [string]$contract.dotnet.sdkRollForward -or
         [string]$manifest.languageVersion -ne [string]$contract.dotnet.languageVersion -or
         [string]$manifest.configuration -ne "Release") {
         throw "Binary SDK manifest does not match bridge-contract.json or is not a Release ABI5 SDK."

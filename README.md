@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md) · [English Docs](docs/en-US/README.md) · [中文文档](docs/zh-CN/README.md) · [Build/Test Guide](docs/en-US/08_Build-Test-and-Publish.md) · [Unified Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
-OcctCSharpBridge is the reusable **Open CASCADE Technology 7.9.0 → .NET 10 / C# 14** bridge. `main` owns the formal Native Core, managed API, WinForms/WPF/Avalonia adapters, tests, documentation and platform Binary SDK production.
+OcctCSharpBridge is the reusable **Open CASCADE Technology 7.9.0 → .NET 8-10 / C# 14** bridge. `main` owns the formal Native Core, managed API, WinForms/WPF/Avalonia adapters, tests, documentation and platform Binary SDK production.
 
 Bridge 3 is **ABI 5 only**. ABI 4 exports, compatibility shims, legacy handles, compatibility tests, old consumer contracts and old Binary SDK payloads are not part of the current source tree.
 
@@ -16,13 +16,16 @@ Bridge 3 is **ABI 5 only**. ABI 4 exports, compatibility shims, legacy handles, 
 | Native ABI | **5 only** |
 | API policy | **abi5-only** |
 | OCCT | **7.9.0** |
-| .NET SDK | **stable .NET 10; baseline 10.0.100 + `latestFeature` roll-forward** |
-| Target Framework | **`net10.0` core/Avalonia · `net10.0-windows` WinForms/WPF** |
+| Build SDK | **stable .NET 10 SDK, baseline `10.0.100`, `latestFeature` roll-forward** |
+| Binary SDK Target Framework | **`net8.0` core/Avalonia · `net8.0-windows` WinForms/WPF** |
+| Supported consumer TFMs | **.NET 8 / .NET 9 / .NET 10** |
 | C# / Native | **14.0 / C++17** |
 | UI adapters | **WinForms / WPF / Avalonia** |
 | Source platforms | **Windows x64 / Linux x64** |
 
-`bridge-contract.json` is the machine-readable source of truth. The SDK baseline is `10.0.100` with `latestFeature` roll-forward and prerelease SDKs disabled, so compatible stable .NET 10 SDKs can be used without implicitly rolling to .NET 11. Native declarations, definitions and managed `LibraryImport` bindings are validated directly from current source by `tests/check-api-surface.ps1`; README/docs intentionally do not maintain hard-coded API counts or a generated API reference.
+`bridge-contract.json` is the machine-readable source of truth. Native declarations, definitions and managed `LibraryImport` bindings are validated directly from current source by `tests/check-api-surface.ps1`; README/docs intentionally do not maintain hard-coded API counts or a generated API reference.
+
+The repository intentionally separates the **build SDK** from the **consumer runtime baseline**. A stable .NET 10 SDK is used to compile C# 14 source, while the distributed managed assemblies target .NET 8 so the same Binary SDK can be consumed by .NET 8, .NET 9 and .NET 10 applications without maintaining three duplicate DLL sets.
 
 ## Architecture
 
@@ -86,11 +89,13 @@ Linux x64:
 ./build.sh dist Release
 ```
 
+The repository accepts any stable .NET 10 SDK selected from the `10.0.100` baseline by `latestFeature` roll-forward. For example, `10.0.302` is valid; an exact patch/feature-band match is not required.
+
 See [Build, Test and Publish](docs/en-US/08_Build-Test-and-Publish.md) for target details, static contract checks, managed tests, Native Smoke and publication rules.
 
 ## Binary SDK policy
 
-`dist/win-x64` and `dist/linux-x64` are generated Release artifacts, not source-controlled SDK payloads. Source branches do **not** commit Binary SDK files. Each package records its source commit, .NET SDK baseline/roll-forward policy and SHA-256 hashes in `bridge-manifest.json` and is validated before local consumption or external distribution.
+`dist/win-x64` and `dist/linux-x64` are generated Release artifacts, not source-controlled SDK payloads. Source branches do **not** commit Binary SDK files. Each package records its source commit and SHA-256 hashes in `bridge-manifest.json` and is validated before local consumption or external distribution. The manifest also records the actual resolved build SDK separately from the rolling SDK baseline.
 
 The unified `demo` branch consumes these generated SDKs by `sourceCommit` and manifest hash. Formal binary distribution can use reviewed GitHub Release assets or another controlled artifact channel; no GitHub Actions pipeline is required.
 

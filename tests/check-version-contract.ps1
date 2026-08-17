@@ -43,6 +43,8 @@ $expectedCmakeVersion = [string]$contract.cmakeMinimumVersion
 $expectedAuthor = [string]$contract.author
 $expectedTargetFramework = [string]$contract.dotnet.targetFramework
 $expectedDesktopTargetFramework = [string]$contract.dotnet.desktopTargetFramework
+$supportedConsumerFrameworks = @($contract.dotnet.supportedConsumerFrameworks | ForEach-Object { [string]$_ })
+$supportedDesktopConsumerFrameworks = @($contract.dotnet.supportedDesktopConsumerFrameworks | ForEach-Object { [string]$_ })
 $expectedSdkVersion = [string]$contract.dotnet.sdkVersion
 $expectedSdkRollForward = [string]$contract.dotnet.sdkRollForward
 $expectedLanguageVersion = [string]$contract.dotnet.languageVersion
@@ -98,12 +100,30 @@ if (@($supportedPlatforms | Group-Object | Where-Object Count -gt 1).Count -gt 0
     throw "Bridge contract supportedPlatforms must not contain duplicates."
 }
 
-$baselineSdk = Convert-ToSdkVersion $expectedSdkVersion "bridge-contract.json"
-if ($baselineSdk.Major -ne 10 -or $baselineSdk.Minor -ne 0) {
-    throw "Bridge 3 must use a .NET 10 SDK baseline; found '$expectedSdkVersion'."
+if ($expectedTargetFramework -ne "net8.0" -or $expectedDesktopTargetFramework -ne "net8.0-windows") {
+    throw "Bridge Binary SDK must use the .NET 8 minimum target framework baseline."
+}
+$requiredConsumerFrameworks = @("net8.0", "net9.0", "net10.0")
+if ($supportedConsumerFrameworks.Count -ne $requiredConsumerFrameworks.Count) {
+    throw "supportedConsumerFrameworks must contain exactly net8.0, net9.0 and net10.0."
+}
+foreach ($framework in $requiredConsumerFrameworks) {
+    if ($framework -notin $supportedConsumerFrameworks) { throw "supportedConsumerFrameworks is missing '$framework'." }
+}
+$requiredDesktopConsumerFrameworks = @("net8.0-windows", "net9.0-windows", "net10.0-windows")
+if ($supportedDesktopConsumerFrameworks.Count -ne $requiredDesktopConsumerFrameworks.Count) {
+    throw "supportedDesktopConsumerFrameworks must contain exactly the .NET 8/9/10 Windows TFMs."
+}
+foreach ($framework in $requiredDesktopConsumerFrameworks) {
+    if ($framework -notin $supportedDesktopConsumerFrameworks) { throw "supportedDesktopConsumerFrameworks is missing '$framework'." }
+}
+
+$minimumSdkVersion = Convert-ToSdkVersion $expectedSdkVersion "bridge-contract.json"
+if ($minimumSdkVersion.Major -ne 10 -or $minimumSdkVersion.Minor -ne 0) {
+    throw "Bridge SDK baseline must remain on stable .NET 10.x."
 }
 if ($expectedSdkRollForward -ne "latestFeature") {
-    throw "Bridge 3 SDK roll-forward policy must be 'latestFeature'."
+    throw "Bridge SDK roll-forward must be latestFeature so any compatible stable .NET 10 feature band/patch can build the repository."
 }
 
 $nativeEngine = Read-Text "src/OcctNative/core/OcctEngine.cpp"
@@ -121,6 +141,8 @@ $projectFiles = [ordered]@{
     "tests/OcctNet.Smoke/OcctNet.Smoke.csproj" = $expectedTargetFramework
     "src/OcctNet.WinForms/OcctNet.WinForms.csproj" = $expectedDesktopTargetFramework
     "src/OcctNet.Wpf/OcctNet.Wpf.csproj" = $expectedDesktopTargetFramework
+    "tests/OcctNet.WinFormsSmoke/OcctNet.WinFormsSmoke.csproj" = $expectedDesktopTargetFramework
+    "tests/OcctNet.WpfSmoke/OcctNet.WpfSmoke.csproj" = $expectedDesktopTargetFramework
 }
 foreach ($entry in $projectFiles.GetEnumerator()) {
     $relativePath = [string]$entry.Key
@@ -138,13 +160,13 @@ catch { throw "global.json is not valid JSON: $($_.Exception.Message)" }
 $globalSdkText = [string]$globalJson.sdk.version
 [void](Convert-ToSdkVersion $globalSdkText "global.json")
 if ($globalSdkText -ne $expectedSdkVersion) {
-    throw "global.json SDK baseline must match bridge-contract.json '$expectedSdkVersion'; found '$globalSdkText'."
+    throw "global.json SDK baseline must match bridge-contract.json ($expectedSdkVersion); found $globalSdkText."
 }
 if ([string]$globalJson.sdk.rollForward -ne $expectedSdkRollForward) {
-    throw "global.json SDK roll-forward must match bridge-contract.json '$expectedSdkRollForward'."
+    throw "global.json rollForward must match bridge-contract.json ($expectedSdkRollForward)."
 }
 if ([bool]$globalJson.sdk.allowPrerelease) { throw "global.json must not allow prerelease SDKs." }
-if ([string]$globalJson.test.runner -ne "Microsoft.Testing.Platform") { throw "global.json must select Microsoft.Testing.Platform for .NET 10 tests." }
+if ([string]$globalJson.test.runner -ne "Microsoft.Testing.Platform") { throw "global.json must select Microsoft.Testing.Platform for repository tests." }
 
 [xml]$directoryProps = Read-Text "Directory.Build.props"
 $languageVersion = Get-ProjectProperty $directoryProps "LangVersion"
@@ -167,12 +189,12 @@ foreach ($token in @(
     if (-not $nativeCmake.Contains($token)) { throw "Native CMake version contract is missing: $token" }
 }
 
-Write-Host ("[version] Bridge {0}, ABI {1} only, OCCT {2}, platform {3}, SDK {4} + {5}, target {6}, C# {7}." -f
+Write-Host ("[version] Bridge {0}, ABI {1} only, OCCT {2}, platform {3}, target {4}, consumers .NET 8-10, SDK baseline {5} ({6}), C# {7}." -f
     $expectedVersion,
     $expectedAbiVersion,
     $expectedOcctVersion,
     $expectedPlatform,
+    $expectedTargetFramework,
     $expectedSdkVersion,
     $expectedSdkRollForward,
-    $expectedTargetFramework,
     $expectedLanguageVersion) -ForegroundColor Green

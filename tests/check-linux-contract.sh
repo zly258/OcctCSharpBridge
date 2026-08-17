@@ -38,7 +38,8 @@ require_text "${CONTRACT}" '"supportedPlatforms": ["windows-x64", "linux-x64"]' 
 require_text "${CONTRACT}" '"current": 5' "Current native ABI must remain ABI 5."
 require_text "${CONTRACT}" '"minimumSupported": 5' "Minimum supported native ABI must be ABI 5."
 require_text "${CONTRACT}" '"policy": "abi5-only"' "API policy must remain ABI5-only."
-require_text "${CONTRACT}" '"sdkRollForward": "latestFeature"' "SDK contract must allow stable .NET 10 feature-band roll-forward."
+require_text "${CONTRACT}" '"targetFramework": "net8.0"' "Binary SDK minimum target framework must be net8.0."
+require_text "${CONTRACT}" '"sdkRollForward": "latestFeature"' "SDK contract must allow stable .NET 10 feature-band/patch roll-forward."
 forbid_text "${CONTRACT}" '"legacy"' "Legacy ABI metadata must not be reintroduced."
 forbid_text "${CONTRACT}" '"compatibility"' "Compatibility metadata must not be reintroduced."
 forbid_text "${CONTRACT}" 'legacyAbi4Exports' "ABI4 accounting must not be reintroduced."
@@ -57,8 +58,8 @@ for file in "${CORE_PROJECT}" "${AVALONIA_PROJECT}" "${MANAGED_TESTS}" "${SMOKE_
 done
 
 for project in "${CORE_PROJECT}" "${AVALONIA_PROJECT}" "${MANAGED_TESTS}" "${SMOKE_PROJECT}" "${AVALONIA_SMOKE_PROJECT}"; do
-    require_text "${project}" '<TargetFramework>net10.0</TargetFramework>' "Cross-platform project must target net10.0: ${project#${ROOT_DIR}/}"
-    forbid_text "${project}" 'net10.0-windows' "Windows-only TFM escaped into a Linux/core project: ${project#${ROOT_DIR}/}"
+    require_text "${project}" '<TargetFramework>net8.0</TargetFramework>' "Cross-platform project must target the net8.0 minimum baseline: ${project#${ROOT_DIR}/}"
+    forbid_text "${project}" 'net8.0-windows' "Windows-only TFM escaped into a Linux/core project: ${project#${ROOT_DIR}/}"
 done
 
 require_text "${MANAGED_TESTS}" '..\..\src\OcctNet\OcctNet.csproj' "Managed tests must reference OcctNet core."
@@ -81,23 +82,20 @@ done
 
 require_text "${BUILD_SH}" 'validate_common()' "Linux build must keep common validation independent from native validation."
 require_text "${BUILD_SH}" 'validate_native()' "Linux build must keep an explicit native validation layer."
-require_text "${BUILD_SH}" 'SDK_ROLL_FORWARD="$(contract_string sdkRollForward)"' "Linux build must read the SDK roll-forward policy from the contract."
-require_text "${BUILD_SH}" 'sdk_compatible()' "Linux build must validate the resolved SDK against the .NET 10 baseline."
-require_text "${BUILD_SH}" 'sdk_compatible "${detected_sdk}"' "Linux build must accept a compatible stable .NET 10 SDK instead of one exact patch."
-forbid_text "${BUILD_SH}" 'is required exactly' "Linux build must not restore exact SDK patch locking."
+require_text "${BUILD_SH}" 'sdk_is_compatible' "Linux build must validate the resolved SDK against the rolling .NET 10 baseline."
+require_text "${BUILD_SH}" 'SDK_ROLL_FORWARD' "Linux build must consume the SDK roll-forward policy from the contract."
+forbid_text "${BUILD_SH}" '== "${SDK_VERSION}"' "Linux build must not require an exact SDK patch/feature-band match."
 require_text "${BUILD_SH}" 's/"platform": "cross-platform-x64"/"platform": "linux-x64"/' "Linux distribution must specialize the source contract to linux-x64."
 require_text "${BUILD_SH}" '"schemaVersion": 2' "Linux Binary SDK manifest must use schemaVersion 2."
 require_text "${BUILD_SH}" '"nativeAbi"' "Linux Binary SDK manifest must use nested nativeAbi metadata."
 require_text "${BUILD_SH}" '"current"' "Linux Binary SDK manifest must record the current ABI."
 require_text "${BUILD_SH}" '"minimumSupported"' "Linux Binary SDK manifest must record the minimum supported ABI."
-require_text "${BUILD_SH}" '"sdkRollForward"' "Linux Binary SDK manifest must record the SDK roll-forward policy."
+require_text "${BUILD_SH}" '"resolvedSdkVersion"' "Linux Binary SDK manifest must record the actual resolved build SDK."
 forbid_text "${BUILD_SH}" 'nativeAbiVersion' "Linux Binary SDK generator must not emit retired flat nativeAbiVersion metadata."
 require_text "${BUILD_SH}" '"platform": "linux-x64"' "Linux distribution manifest must identify linux-x64."
 require_text "${BUILD_SH}" 'avalonia-smoke)' "Linux build must expose an explicit Avalonia viewer smoke target."
 require_text "${BUILD_SH}" 'DISPLAY' "Avalonia viewer smoke must require an X11/XWayland display."
 
-# Formal SDK publishing is validation-only. It must never mutate Git history or force generated
-# Binary SDK payloads into the source tree. Release/upload remains an explicit reviewed step.
 require_text "${PUBLISH_SH}" '[[ "${branch}" == "main" ]]' "Linux formal publishing must run from main only."
 require_text "${PUBLISH_SH}" 'assert_clean_worktree "before publishing"' "Linux formal publishing must require a clean worktree."
 require_text "${PUBLISH_SH}" 'assert_remote_main_ancestor' "Linux formal publishing must validate current origin/main ancestry."
@@ -106,7 +104,6 @@ require_text "${PUBLISH_SH}" '"$(json_number "${MANIFEST}" schemaVersion)" == "2
 require_text "${PUBLISH_SH}" '"$(json_number "${MANIFEST}" current)" == "$(json_number "${CONTRACT}" current)"' "Linux publish validation must verify nested current ABI metadata."
 require_text "${PUBLISH_SH}" '"$(json_number "${MANIFEST}" minimumSupported)" == "$(json_number "${CONTRACT}" minimumSupported)"' "Linux publish validation must verify nested minimum ABI metadata."
 require_text "${PUBLISH_SH}" '! grep -Fq '\''"nativeAbiVersion"'\''' "Linux publish validation must reject retired flat ABI metadata."
-require_text "${PUBLISH_SH}" 'sdkRollForward' "Linux publish validation must verify SDK roll-forward metadata."
 require_text "${PUBLISH_SH}" 'sourceCommit' "Linux publish validation must bind the Binary SDK to the source commit."
 require_text "${PUBLISH_SH}" 'sha256sum' "Linux publish validation must verify Binary SDK hashes."
 require_text "${PUBLISH_SH}" 'No Git commit or push was performed.' "Linux publish script must clearly remain validation-only."
@@ -114,4 +111,4 @@ forbid_text "${PUBLISH_SH}" 'git -C "${ROOT_DIR}" add' "Linux publish script mus
 forbid_text "${PUBLISH_SH}" 'git -C "${ROOT_DIR}" commit' "Linux publish script must never create commits."
 forbid_text "${PUBLISH_SH}" 'git -C "${ROOT_DIR}" push' "Linux publish script must never push branches."
 
-printf '[linux-contract] ABI5-only cross-platform tracked source/test/distribution boundaries validated.\n'
+printf '[linux-contract] ABI5-only cross-platform source/test/distribution boundaries validated for .NET 8 minimum runtime and rolling .NET 10 SDK.\n'

@@ -47,8 +47,6 @@ $TargetFramework = [string]$Contract.dotnet.targetFramework
 $DesktopTargetFramework = [string]$Contract.dotnet.desktopTargetFramework
 $SdkVersion = [string]$Contract.dotnet.sdkVersion
 $SdkRollForward = [string]$Contract.dotnet.sdkRollForward
-try { $SdkBaseline = [version]$SdkVersion }
-catch { throw "Bridge contract contains an invalid .NET SDK baseline: $SdkVersion" }
 
 $Projects = [ordered]@{
     Core = "src\OcctNet\OcctNet.csproj"
@@ -121,26 +119,18 @@ function Get-DotNetCandidates {
 function Resolve-DotNetSdk {
     if (-not [string]::IsNullOrWhiteSpace($script:DotNetCommand)) { return }
 
+    try { $minimumSdkVersion = [version]$SdkVersion }
+    catch { throw "bridge-contract.json contains an invalid SDK baseline: $SdkVersion" }
+    if ($SdkRollForward -ne "latestFeature") {
+        throw "OcctCSharpBridge requires sdkRollForward=latestFeature; found '$SdkRollForward'."
+    }
+
     $diagnostics = [System.Collections.Generic.List[string]]::new()
     foreach ($candidate in @(Get-DotNetCandidates)) {
         if (-not (Test-Path $candidate -PathType Leaf)) {
             $diagnostics.Add("$candidate => not found")
             continue
         }
-
-        $sdkLines = @(& $candidate --list-sdks 2>&1)
-        $listExitCode = $LASTEXITCODE
-        if ($listExitCode -ne 0) {
-            $diagnostics.Add("$candidate => --list-sdks failed with exit code $listExitCode")
-            continue
-        }
-
-        $installed = @($sdkLines | ForEach-Object {
-            $line = [string]$_
-            if ($line -match '^\s*([^\s]+)\s+\[') { $Matches[1] }
-        })
-        $installedText = if ($installed.Count -eq 0) { "no SDKs" } else { $installed -join ", " }
-        $diagnostics.Add("$candidate => $installedText")
 
         Push-Location $RepoRoot
         try {
@@ -151,14 +141,22 @@ function Resolve-DotNetSdk {
             Pop-Location
         }
 
-        if ($resolvedExitCode -ne 0 -or $resolvedOutput.Count -ne 1) { continue }
-        $resolvedVersion = ([string]$resolvedOutput[0]).Trim()
-        try { $resolvedSdk = [version]$resolvedVersion }
-        catch { continue }
+        if ($resolvedExitCode -ne 0 -or $resolvedOutput.Count -ne 1) {
+            $diagnostics.Add("$candidate => SDK resolution failed")
+            continue
+        }
 
-        if ($resolvedSdk.Major -ne $SdkBaseline.Major -or
-            $resolvedSdk.Minor -ne $SdkBaseline.Minor -or
-            $resolvedSdk -lt $SdkBaseline) {
+        $resolvedVersion = ([string]$resolvedOutput[0]).Trim()
+        try { $resolvedSdkVersion = [version]$resolvedVersion }
+        catch {
+            $diagnostics.Add("$candidate => $resolvedVersion (not a stable SDK version)")
+            continue
+        }
+
+        $diagnostics.Add("$candidate => $resolvedVersion")
+        if ($resolvedSdkVersion.Major -ne $minimumSdkVersion.Major -or
+            $resolvedSdkVersion.Minor -ne $minimumSdkVersion.Minor -or
+            $resolvedSdkVersion -lt $minimumSdkVersion) {
             continue
         }
 
@@ -168,7 +166,7 @@ function Resolve-DotNetSdk {
     }
 
     $detail = if ($diagnostics.Count -eq 0) { "No dotnet host candidates were found." } else { $diagnostics -join [Environment]::NewLine }
-    throw "OcctCSharpBridge requires a stable .NET $($SdkBaseline.Major).$($SdkBaseline.Minor) SDK at or above baseline $SdkVersion using '$SdkRollForward' roll-forward, but no usable dotnet host could resolve one from this repository.`nChecked dotnet hosts:`n$detail`nInstall a compatible x64 .NET 10 SDK or fix DOTNET_ROOT/PATH so C:\Program Files\dotnet\dotnet.exe can see it."
+    throw "OcctCSharpBridge requires a stable .NET 10 SDK compatible with baseline $SdkVersion and roll-forward '$SdkRollForward'.`nChecked dotnet hosts:`n$detail`nInstall any stable .NET 10 SDK at or above $SdkVersion for x64, or fix DOTNET_ROOT/PATH."
 }
 
 function Invoke-DotNetChecked {
@@ -450,7 +448,7 @@ function Build-BinaryDistribution {
             platform = "win-x64"
             targetFramework = $TargetFramework
             sdkVersion = $SdkVersion
-            sdkRollForward = $SdkRollForward
+            resolvedSdkVersion = $script:ResolvedSdkVersion
             languageVersion = [string]$Contract.dotnet.languageVersion
             configuration = "Release"
             sourceCommit = $sourceCommit

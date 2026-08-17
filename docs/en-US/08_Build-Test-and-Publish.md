@@ -9,16 +9,18 @@ Windows x64:
 - Visual Studio 2022 / MSVC x64 C++ toolchain;
 - CMake at or above the minimum declared by `bridge-contract.json`;
 - OCCT **7.9.0** x64;
-- a stable **.NET 10 SDK** compatible with the `10.0.100` baseline;
+- a stable **.NET 10 SDK** compatible with the repository baseline (`10.0.100` or later in the 10.0 line);
 - C# 14 and PowerShell.
 
 Linux x64:
 
 - C++17 compiler and CMake;
 - OCCT 7.9.0;
-- a stable .NET 10 SDK compatible with the `10.0.100` baseline.
+- a stable .NET 10 SDK compatible with the repository baseline.
 
-The root `global.json` and `bridge-contract.json` use `10.0.100` with `latestFeature` roll-forward and disable prerelease SDKs. Compatible stable .NET 10 feature bands and patches are allowed; the resolver must not implicitly roll to .NET 11.
+The root `global.json` uses `version: 10.0.100`, `rollForward: latestFeature` and `allowPrerelease: false`. The build therefore accepts later stable .NET 10 feature bands and patches, such as `10.0.302`, instead of requiring one exact SDK patch.
+
+The managed Binary SDK targets **.NET 8** (`net8.0` / `net8.0-windows`) as its minimum runtime baseline. The same managed SDK is intended for .NET 8, .NET 9 and .NET 10 consumers. The repository still builds with .NET 10 because the source language contract is C# 14.
 
 Default Windows OCCT root:
 
@@ -72,7 +74,7 @@ Every non-`clean` Windows target runs the repository invariant checks first:
 
 | Script | Responsibility |
 | --- | --- |
-| `tests/check-version-contract.ps1` | Bridge/ABI/OCCT/.NET/CMake/TFM/platform contract |
+| `tests/check-version-contract.ps1` | Bridge/ABI/OCCT/.NET/CMake/TFM/platform contract, .NET 8-10 consumer matrix and rolling SDK policy |
 | `tests/check-architecture-boundaries.ps1` | Native/Managed and UI/Core dependency boundaries |
 | `tests/check-abi5-contract.ps1` | ABI5-only; reject pre-ABI5 compatibility residue |
 | `tests/check-bulk-abi.ps1` | keep bulk collections on Snapshot/Buffer ABI |
@@ -111,24 +113,18 @@ The Viewport gate creates real WinForms/WPF/Avalonia native hosts and checks hos
 
 For the complete Windows gate use `build.ps1 all Release`.
 
-## 5. .NET 10 SDK resolution
+## 5. Rolling .NET 10 SDK resolution
 
-Managed-dependent targets resolve `dotnet` from the repository root under the SDK contract:
-
-```text
-baseline:     10.0.100
-rollForward:  latestFeature
-prerelease:   disabled
-```
-
-A healthy run can therefore report, for example:
+Managed-dependent targets resolve a `dotnet` host from the repository root and validate it against the SDK baseline and roll-forward policy:
 
 ```text
 SDK contract:  10.0.100 + latestFeature
-SDK resolved:  10.0.302
+SDK resolved:  <installed stable 10.0.x SDK>
 ```
 
-or another compatible stable .NET 10 SDK. The resolved SDK must remain on major/minor `10.0` and must be at or above the baseline. If resolution fails, install a stable .NET 10 SDK or fix `DOTNET_ROOT` / `PATH`; do not weaken the contract to allow .NET 11 or prerelease SDKs.
+The resolved SDK must be a stable .NET 10 SDK at or above the `10.0.100` baseline. Exact feature-band/patch equality is intentionally not required. For example, `10.0.302` satisfies the contract.
+
+If resolution fails, install a stable .NET 10 SDK or fix `DOTNET_ROOT` / `PATH`. Do not enable prerelease SDKs as a workaround.
 
 ## 6. Linux build.sh
 
@@ -161,7 +157,7 @@ Common commands:
 ./build.sh dist Release
 ```
 
-Linux `managed` builds `OcctNet` and `OcctNet.Avalonia`; WinForms and WPF are Windows-only. `avalonia-smoke` requires an X11/XWayland `DISPLAY`; regular Native Smoke is headless. Linux applies the same .NET 10 baseline and roll-forward contract as Windows.
+Linux `managed` builds `OcctNet` and `OcctNet.Avalonia`; WinForms and WPF are Windows-only. `avalonia-smoke` requires an X11/XWayland `DISPLAY`; regular Native Smoke is headless.
 
 ## 7. Binary SDK layout
 
@@ -187,7 +183,7 @@ bridge-contract.json
 bridge-manifest.json
 ```
 
-The Binary SDK manifest uses schema 2 with nested ABI5 metadata and records the exact `sourceCommit`, SDK baseline/roll-forward policy and SHA-256 for every payload file. The retired flat `nativeAbiVersion` field must not return.
+The Binary SDK managed assemblies target the .NET 8 baseline. The manifest uses schema 2 with nested ABI5 metadata and records the exact `sourceCommit`, SHA-256 for every payload file, the SDK baseline, and the actual `resolvedSdkVersion` used to build the package. The retired flat `nativeAbiVersion` field must not return.
 
 ## 8. Binary SDK source-control policy
 
@@ -195,7 +191,7 @@ The Binary SDK manifest uses schema 2 with nested ABI5 metadata and records the 
 
 This prevents repository growth, stale source/binary mismatches and platform payload churn. Consumers must validate the package contract, manifest, source commit and hashes rather than infer freshness from Git history.
 
-The unified `demo` branch follows the same policy and treats `dist/` as disposable local cache state. Its Windows/Linux synchronization scripts reuse a Binary SDK only when `manifest.sourceCommit`, SDK policy and all hashes match the selected SDK source revision.
+The unified `demo` branch follows the same policy and treats `dist/` as disposable local cache state. Its Windows/Linux synchronization scripts reuse a Binary SDK only when `manifest.sourceCommit` and all hashes match the selected SDK source revision.
 
 ## 9. Formal distribution
 
@@ -211,7 +207,7 @@ Linux publication validation, from a clean current `main`:
 ./publish.sh
 ```
 
-Both publish scripts are validation/artifact-generation entry points. They verify the formal branch/source revision, Release Binary SDK contract, schema-2 manifest, ABI5 metadata, SDK roll-forward metadata, source commit and SHA-256 hashes. They do **not** run `git add`, create a commit or push a branch. The Linux script must never restore the retired flat `nativeAbiVersion` check or source-controlled `dist/linux-x64` workflow.
+Both publish scripts are validation/artifact-generation entry points. They verify the formal branch/source revision, Release Binary SDK contract, schema-2 manifest, ABI5 metadata, source commit and SHA-256 hashes. They do **not** run `git add`, create a commit or push a branch. The Linux script must never restore the retired flat `nativeAbiVersion` check or source-controlled `dist/linux-x64` workflow.
 
 After validation, distribute the generated binaries through a reviewed artifact channel such as GitHub Release assets or another controlled package location. Do not commit generated Binary SDK payloads to `main`, `main-dev`, `demo` or `demo-dev`. This workflow does not require GitHub Actions.
 
@@ -222,7 +218,7 @@ The formal `demo` / `demo-dev` branches are the single application-consumer line
 - Windows x64: WinForms, WPF and Avalonia;
 - Linux x64: Avalonia only.
 
-Demo consumes Binary SDKs produced from `main` and must not vendor Bridge Native/Core implementation source or declare the `occt_*` ABI directly. During development only, `demo-dev` may explicitly regenerate its local Windows SDK from `main-dev`; the formal default remains `main`.
+Demo currently targets .NET 10 so it exercises the latest supported consumer runtime, while the Bridge Binary SDK itself targets .NET 8 and is also valid for .NET 8/9 applications. Demo consumes Binary SDKs produced from `main` and must not vendor Bridge Native/Core implementation source or declare the `occt_*` ABI directly. During development only, `demo-dev` may explicitly regenerate its local Windows SDK from `main-dev`; the formal default remains `main`.
 
 ## 11. Documentation and API-surface policy
 
