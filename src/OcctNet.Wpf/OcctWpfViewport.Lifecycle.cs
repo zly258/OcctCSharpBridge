@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Threading;
 
 namespace OcctNet;
@@ -50,6 +51,9 @@ public sealed partial class OcctWpfViewport
             }
 
             SetNativeHandle(handle, generation);
+            OcctWpfRenderWindowClass.RegisterCursorHandler(handle, ApplyCurrentCursor);
+            ApplyCurrentCursor();
+
             var engine = new OcctEngine();
             _engine = engine;
             engine.InitializeNativeSurface(
@@ -90,6 +94,19 @@ public sealed partial class OcctWpfViewport
     {
         base.OnDpiChanged(oldDpi, newDpi);
         ScheduleNativeViewRefresh();
+    }
+
+    protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if (e.Property == CursorProperty && _nativeHandle != IntPtr.Zero)
+            ApplyCurrentCursor();
+    }
+
+    private bool ApplyCurrentCursor()
+    {
+        var cursor = Cursor ?? Cursors.Arrow;
+        return Mouse.SetCursor(cursor);
     }
 
     private void ScheduleRender()
@@ -140,6 +157,7 @@ public sealed partial class OcctWpfViewport
             catch (Exception exception) { ReportLifecycleError(exception); }
         }
 
+        OcctWpfRenderWindowClass.UnregisterCursorHandler(handle);
         SetNativeHandle(IntPtr.Zero, _engineGeneration);
         _nativeRefreshScheduled = false;
         _nativeRenderScheduled = false;

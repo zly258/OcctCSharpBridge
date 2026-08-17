@@ -7,12 +7,15 @@ internal static class OcctWpfRenderWindowClass
     internal const string Name = "OcctNet.Wpf.RenderHost";
 
     private const uint CsOwnDc = 0x0020;
+    private const uint WmSetCursor = 0x0020;
     private const uint WmEraseBkgnd = 0x0014;
+    private const int HtClient = 1;
     private const int ErrorClassAlreadyExists = 1410;
     private const int IdcArrow = 32512;
 
     private static readonly object SyncRoot = new();
     private static readonly WindowProcedure WindowProc = DispatchWindowMessage;
+    private static readonly Dictionary<IntPtr, Func<bool>> CursorHandlers = new();
     private static bool _registered;
     private static IntPtr _moduleHandle;
 
@@ -63,13 +66,48 @@ internal static class OcctWpfRenderWindowClass
         }
     }
 
+    internal static void RegisterCursorHandler(IntPtr hwnd, Func<bool> handler)
+    {
+        if (hwnd == IntPtr.Zero) throw new ArgumentException("A native render HWND is required.", nameof(hwnd));
+        ArgumentNullException.ThrowIfNull(handler);
+        lock (SyncRoot) CursorHandlers[hwnd] = handler;
+    }
+
+    internal static void UnregisterCursorHandler(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero) return;
+        lock (SyncRoot) CursorHandlers.Remove(hwnd);
+    }
+
     private static IntPtr DispatchWindowMessage(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam)
     {
         // OpenGL owns the complete client area. There is deliberately no class
         // background brush and no STATIC-control text/paint behavior.
         if (message == WmEraseBkgnd) return new IntPtr(1);
+
+        // HwndHost owns a native child HWND, so FrameworkElement.Cursor cannot rely on WPF's
+        // ordinary visual hit-test path. Route WM_SETCURSOR back through the owning WPF viewport.
+        if (message == WmSetCursor && LowWord(lParam) == HtClient)
+        {
+            Func<bool>? handler;
+            lock (SyncRoot) CursorHandlers.TryGetValue(hwnd, out handler);
+            if (handler is not null)
+            {
+                try
+                {
+                    if (handler()) return new IntPtr(1);
+                }
+                catch (Exception exception)
+                {
+                    System.Diagnostics.Debug.WriteLine(exception);
+                }
+            }
+        }
+
         return DefWindowProcW(hwnd, message, wParam, lParam);
     }
+
+    private static int LowWord(IntPtr value) => unchecked((ushort)(value.ToInt64() & 0xFFFF));
 
     [UnmanagedFunctionPointer(CallingConvention.Winapi)]
     private delegate IntPtr WindowProcedure(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
