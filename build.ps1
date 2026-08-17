@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("validate", "native", "managed", "test", "smoke", "viewport-smoke", "dist", "clean", "all")]
+    [ValidateSet("validate", "native", "managed", "consumer", "test", "smoke", "viewport-smoke", "dist", "sdk", "clean", "all")]
     [string]$Target = "all",
 
     [Parameter(Position = 1)]
@@ -53,6 +53,8 @@ $Projects = [ordered]@{
     WinForms = "src\OcctNet.WinForms\OcctNet.WinForms.csproj"
     Wpf = "src\OcctNet.Wpf\OcctNet.Wpf.csproj"
     Avalonia = "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj"
+    ConsumerMatrix = "tests\OcctNet.ConsumerMatrix\OcctNet.ConsumerMatrix.csproj"
+    DesktopConsumerMatrix = "tests\OcctNet.DesktopConsumerMatrix\OcctNet.DesktopConsumerMatrix.csproj"
     ManagedTests = "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj"
     Smoke = "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
     WinFormsSmoke = "tests\OcctNet.WinFormsSmoke\OcctNet.WinFormsSmoke.csproj"
@@ -67,6 +69,7 @@ $Checks = [ordered]@{
     BulkAbi = "tests\check-bulk-abi.ps1"
     NativeBuild = "tests\check-native-build-structure.ps1"
     ApiSurface = "tests\check-api-surface.ps1"
+    ConsumerMatrix = "tests\check-consumer-matrix.ps1"
 }
 
 $script:DotNetCommand = $null
@@ -197,7 +200,7 @@ function Invoke-ContractChecks {
 function Resolve-OcctConfiguration {
     $script:OcctRoot = [System.IO.Path]::GetFullPath($OcctRoot)
     if (-not (Test-Path $script:OcctRoot -PathType Container)) {
-        throw "OCCT SDK root was not found: $script:OcctRoot. Set OCCT_ROOT, pass -OcctRoot <path>, or install OCCT at $DefaultOcctRoot. validate/managed/test do not require OCCT."
+        throw "OCCT SDK root was not found: $script:OcctRoot. Set OCCT_ROOT, pass -OcctRoot <path>, or install OCCT at $DefaultOcctRoot. validate/managed/test/consumer do not require OCCT."
     }
     $script:OcctIncludeDir = Join-Path $script:OcctRoot "inc"
     $script:OcctLibDir = Join-Path $script:OcctRoot "win64\vc14\lib"
@@ -269,6 +272,12 @@ function Build-Managed {
     Build-Project "WinForms"
     Build-Project "Wpf"
     Build-Project "Avalonia"
+}
+
+function Build-ConsumerMatrix {
+    Write-Host "[consumer] Compiling .NET 8/9/10 consumer compatibility matrix..." -ForegroundColor Cyan
+    Build-Project "ConsumerMatrix"
+    Build-Project "DesktopConsumerMatrix"
 }
 
 function Get-OcctRuntimeDirectories {
@@ -392,19 +401,33 @@ function Assert-CleanSourceTree {
     Assert-Command "git"
     $changes = @(& git -C $RepoRoot status --porcelain --untracked-files=all)
     if ($LASTEXITCODE -ne 0) { throw "Failed to inspect the Git working tree." }
-    if ($changes.Count -gt 0) { throw "The working tree is not clean. Commit or remove source/configuration changes before producing dist/win-x64." }
+    if ($changes.Count -gt 0) {
+        Write-Host "[dist] Working tree changes prevent a reproducible Binary SDK:" -ForegroundColor Red
+        $changes | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+        throw "The working tree is not clean. Commit, remove, or ignore the listed local files before producing dist/win-x64."
+    }
     $commit = (& git -C $RepoRoot rev-parse HEAD 2>$null)
     if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($commit)) { throw "Failed to resolve the source commit." }
     return $commit.Trim()
 }
 
 function Build-BinaryDistribution {
-    if ($Configuration -ne "Release") { throw "Binary SDK distribution is Release-only. Run: .\build.ps1 dist Release" }
+    param(
+        [switch]$SkipBuild,
+        [string]$ExpectedSourceCommit = ""
+    )
+
+    if ($Configuration -ne "Release") { throw "Binary SDK distribution is Release-only. Run: .\build.ps1 sdk Release (validated) or .\build.ps1 dist Release (packaging only)." }
     $sourceCommit = Assert-CleanSourceTree
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedSourceCommit) -and $sourceCommit -ne $ExpectedSourceCommit) {
+        throw "The source commit changed during the validated SDK gate: expected $ExpectedSourceCommit, found $sourceCommit."
+    }
     Write-Host "[dist] Source commit: $sourceCommit" -ForegroundColor DarkGray
 
-    Build-Native
-    Build-Managed
+    if (-not $SkipBuild.IsPresent) {
+        Build-Native
+        Build-Managed
+    }
 
     $files = [ordered]@{
         "OcctNative.dll" = Join-Path $RepoRoot "build\native\bin\Release\OcctNative.dll"
@@ -491,7 +514,7 @@ if ($Target -eq "clean") {
     exit 0
 }
 
-if ($Target -in @("managed", "test", "smoke", "viewport-smoke", "dist", "all")) {
+if ($Target -in @("managed", "consumer", "test", "smoke", "viewport-smoke", "dist", "sdk", "all")) {
     Resolve-DotNetSdk
     Write-Host "dotnet:        $script:DotNetCommand" -ForegroundColor DarkGray
     Write-Host "SDK resolved:  $script:ResolvedSdkVersion" -ForegroundColor Green
@@ -503,11 +526,25 @@ switch ($Target) {
     "validate" { }
     "native" { Build-Native }
     "managed" { Build-Managed }
+    "consumer" { Build-ConsumerMatrix }
     "test" {
         Build-Project "ManagedTests"
         Run-ManagedTests
     }
     "dist" { Build-BinaryDistribution }
+    "sdk" {
+        if ($Configuration -ne "Release") { throw "Validated Binary SDK generation is Release-only. Run: .\build.ps1 sdk Release" }
+        $sdkSourceCommit = Assert-CleanSourceTree
+        Write-Host "[sdk] Clean source commit: $sdkSourceCommit" -ForegroundColor DarkGray
+        Build-Native
+        Build-Managed
+        Build-ConsumerMatrix
+        Build-Project "ManagedTests"
+        Run-ManagedTests
+        Run-Smoke
+        Run-ViewportSmokes
+        Build-BinaryDistribution -SkipBuild -ExpectedSourceCommit $sdkSourceCommit
+    }
     "smoke" {
         Build-Native
         Build-Managed
@@ -521,6 +558,7 @@ switch ($Target) {
     "all" {
         Build-Native
         Build-Managed
+        Build-ConsumerMatrix
         Build-Project "ManagedTests"
         Run-ManagedTests
         Run-Smoke

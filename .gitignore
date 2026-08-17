@@ -2,6 +2,7 @@
 build/
 artifacts/
 publish/
+.cache/
 [Bb]in/
 [Oo]bj/
 TestResults/

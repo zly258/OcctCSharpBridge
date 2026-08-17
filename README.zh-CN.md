@@ -25,7 +25,7 @@ Bridge 3 **仅支持 ABI 5**。ABI 4 导出、兼容 Shim、旧 Handle、兼容�
 
 `bridge-contract.json` 是机器可读的唯一契约事实源。Native Declaration、Definition 与 Managed `LibraryImport` 的 API Surface 由 `tests/check-api-surface.ps1` 直接从当前源码校验；README 和 docs 不维护容易失真的硬编码接口数量或生成式 API Reference。
 
-仓库明确区分**构建 SDK**与**Consumer 运行时基线**：源码仍使用稳定版 .NET 10 SDK 编译 C# 14，但发布的 Managed Binary SDK 以 .NET 8 为最低 TFM，因此同一套 DLL 可直接被 .NET 8、.NET 9、.NET 10 应用消费，无需为三个 TFM 维护三套重复 DLL。
+仓库明确区分**构建 SDK**与**Consumer 运行时基线**：源码仍使用稳定版 .NET 10 SDK 编译 C# 14，但发布的 Managed Binary SDK 以 .NET 8 为最低 TFM，因此同一套 DLL 可直接被 .NET 8、.NET 9、.NET 10 应用消费，无需为三个 TFM 维护三套重复 DLL。Windows Gate 另外使用独立 Consumer Matrix 项目，对 Core/Avalonia 与 WinForms/WPF 分别按 .NET 8/9/10 编译；`tests/check-consumer-matrix.ps1` 保证这些 TargetFrameworks 与 `bridge-contract.json` 声明完全一致。
 
 ## 架构
 
@@ -60,23 +60,26 @@ WinForms、WPF、Avalonia 现在共享同一套平台无关 Host/Input 生命周
 
 ## 构建与校验
 
-Windows 完整验证：
+Windows 完整验证但不生成 `dist`：
 
 ```powershell
 .\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-Windows 完整 Gate 已包含 Core Native Smoke 和 WinForms/WPF/Avalonia 三套 Viewport Host Smoke；也可单独执行：
+`all` 已包含 .NET 8/9/10 Consumer 编译矩阵、Managed Regression Tests、Core Native Smoke，以及 WinForms/WPF/Avalonia 三套 Viewport Host Smoke。也可单独执行：
 
 ```powershell
+.\build.ps1 consumer Release
 .\build.ps1 viewport-smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-Windows Binary SDK：
+生成**经过完整验证的 Windows Binary SDK**应使用：
 
 ```powershell
-.\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
+.\build.ps1 sdk Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
+
+`sdk` 会先完成完整 Windows Gate，再直接使用已经验证过的 Native/Managed 输出生成 `dist/win-x64`，不会为了打包重复构建 Native/Managed。`dist` 仍保留为底层 Release 打包目标，但它不运行 Consumer Matrix、Managed Regression Test 或 Smoke，不作为正式 Release / Demo 自动同步的首选入口。
 
 Linux x64：
 
@@ -91,13 +94,13 @@ Linux x64：
 
 仓库以 `10.0.100` 为 .NET 10 SDK 基线，并使用 `latestFeature` 滚动策略。因此 `10.0.302` 这类更高的稳定版 .NET 10 SDK 可以直接构建，不再要求精确补丁号或 Feature Band。
 
-完整 Target、静态 Contract Checks、Managed Tests、Native Smoke、SDK 排障和发布说明见 [构建、测试与发布](docs/zh-CN/08_构建测试与发布.md)。
+完整 Target、静态 Contract Checks、Consumer 兼容编译、Managed Tests、Native Smoke、SDK 排障和发布说明见 [构建、测试与发布](docs/zh-CN/08_构建测试与发布.md)。
 
 ## Binary SDK 策略
 
 `dist/win-x64` 与 `dist/linux-x64` 是生成的 Release 构建产物，不是源码仓库内容。源码分支**不提交 Binary SDK 文件**。每个包通过 `bridge-manifest.json` 记录 Source Commit、SHA-256，以及实际解析到的构建 SDK；SDK 基线与实际构建 SDK 分开记录，既可追溯又不形成精确版本锁定。
 
-统一 `demo` 分支按 `sourceCommit` 与 Manifest Hash 消费这些 SDK。正式二进制可通过受审查的 GitHub Release Asset 或其它受控制品渠道发布，不需要 GitHub Actions 流水线。
+统一 `demo` 分支按 `sourceCommit` 与 Manifest Hash 消费这些 SDK。Windows 源码同步会调用经过完整验证的 `sdk` Release Gate，而不是底层 `dist` 目标；Demo 只复制 Manifest 控制的精确 Binary SDK Payload。正式二进制可通过受审查的 GitHub Release Asset 或其它受控制品渠道发布，不需要 GitHub Actions 流水线。
 
 ## 使用示例
 

@@ -25,7 +25,7 @@ Bridge 3 is **ABI 5 only**. ABI 4 exports, compatibility shims, legacy handles, 
 
 `bridge-contract.json` is the machine-readable source of truth. Native declarations, definitions and managed `LibraryImport` bindings are validated directly from current source by `tests/check-api-surface.ps1`; README/docs intentionally do not maintain hard-coded API counts or a generated API reference.
 
-The repository intentionally separates the **build SDK** from the **consumer runtime baseline**. A stable .NET 10 SDK is used to compile C# 14 source, while the distributed managed assemblies target .NET 8 so the same Binary SDK can be consumed by .NET 8, .NET 9 and .NET 10 applications without maintaining three duplicate DLL sets.
+The repository intentionally separates the **build SDK** from the **consumer runtime baseline**. A stable .NET 10 SDK is used to compile C# 14 source, while the distributed managed assemblies target .NET 8 so the same Binary SDK can be consumed by .NET 8, .NET 9 and .NET 10 applications without maintaining three duplicate DLL sets. The Windows gate also compiles dedicated Core/Avalonia and WinForms/WPF consumer projects for every supported TFM; `tests/check-consumer-matrix.ps1` keeps those project TFMs identical to the lists declared by `bridge-contract.json`.
 
 ## Architecture
 
@@ -60,23 +60,26 @@ See [Viewer, Selection and Interaction](docs/en-US/05_Viewer-Selection-and-Inter
 
 ## Build and validation
 
-Windows full validation:
+Windows full validation without producing `dist`:
 
 ```powershell
 .\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-The Windows full gate includes Core Native Smoke and WinForms/WPF/Avalonia Viewport Host Smoke. The individual host target is:
+`all` includes the .NET 8/9/10 consumer compilation matrix, managed regression tests, Core Native Smoke and WinForms/WPF/Avalonia Viewport Host Smoke. The focused consumer and viewport targets are:
 
 ```powershell
+.\build.ps1 consumer Release
 .\build.ps1 viewport-smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-Windows Binary SDK:
+For a **validated Windows Binary SDK**, use the Release gate:
 
 ```powershell
-.\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
+.\build.ps1 sdk Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
+
+`sdk` runs the full Windows gate and only then writes `dist/win-x64` from those already validated Native/Managed outputs. `dist` remains available as a lower-level Release packaging target, but it does not run the consumer matrix, regression tests or smoke tests and is not the preferred release/consumer-sync entry point.
 
 Linux x64:
 
@@ -91,13 +94,13 @@ Linux x64:
 
 The repository accepts any stable .NET 10 SDK selected from the `10.0.100` baseline by `latestFeature` roll-forward. For example, `10.0.302` is valid; an exact patch/feature-band match is not required.
 
-See [Build, Test and Publish](docs/en-US/08_Build-Test-and-Publish.md) for target details, static contract checks, managed tests, Native Smoke and publication rules.
+See [Build, Test and Publish](docs/en-US/08_Build-Test-and-Publish.md) for target details, static contract checks, consumer compatibility compilation, managed tests, Native Smoke and publication rules.
 
 ## Binary SDK policy
 
 `dist/win-x64` and `dist/linux-x64` are generated Release artifacts, not source-controlled SDK payloads. Source branches do **not** commit Binary SDK files. Each package records its source commit and SHA-256 hashes in `bridge-manifest.json` and is validated before local consumption or external distribution. The manifest also records the actual resolved build SDK separately from the rolling SDK baseline.
 
-The unified `demo` branch consumes these generated SDKs by `sourceCommit` and manifest hash. Formal binary distribution can use reviewed GitHub Release assets or another controlled artifact channel; no GitHub Actions pipeline is required.
+The unified `demo` branch consumes these generated SDKs by `sourceCommit` and manifest hash. Windows source synchronization invokes the validated `sdk` Release gate rather than the lower-level `dist` target, and the Demo copies only the exact manifest-controlled Binary SDK payload. Formal binary distribution can use reviewed GitHub Release assets or another controlled artifact channel; no GitHub Actions pipeline is required.
 
 ## Usage
 
@@ -118,9 +121,3 @@ model.ExportStep(cut.Shape, "plate.step");
 - `demo` / `demo-dev` — the single Binary SDK consumer: Windows x64 has WinForms, WPF and Avalonia; Linux x64 has Avalonia only.
 - `website` — bilingual project website.
 - historical backup branches, when present, remain outside normal development and are left unchanged.
-
-There are no standalone Avalonia source branches. Avalonia belongs to the formal SDK and unified Demo architecture.
-
-## License
-
-OcctCSharpBridge is licensed under **GNU LGPL 2.1 + OcctCSharpBridge Exception 1.0**. See [LICENSE](LICENSE), [LICENSE_LGPL_21.txt](LICENSE_LGPL_21.txt), [OcctCSharpBridge_LGPL_EXCEPTION.txt](OcctCSharpBridge_LGPL_EXCEPTION.txt), [COMMERCIAL.md](COMMERCIAL.md), and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
