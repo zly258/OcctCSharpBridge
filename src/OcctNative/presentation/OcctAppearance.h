@@ -10,6 +10,15 @@ extern "C"
         OcctViewerHighlightUpdate_Hover = 1u << 1
     };
 
+    enum OcctLineStyle
+    {
+        OcctLineStyle_Solid = 0,
+        OcctLineStyle_Dash = 1,
+        OcctLineStyle_Dot = 2,
+        OcctLineStyle_DotDash = 3,
+        OcctLineStyle_Center = 4
+    };
+
     struct OcctViewerLightingOptions
     {
         std::uint32_t structSize;
@@ -36,4 +45,9 @@ extern "C"
     OCCTBRIDGE_API OcctStatus occt_engine_highlight_colors_set(
         OcctEngineHandle handle,
         const OcctViewerHighlightOptions* options);
+
+    OCCTBRIDGE_API OcctStatus occt_engine_object_line_style_set(
+        OcctEngineHandle handle,
+        OcctObjectId objectId,
+        int lineStyle);
 }
