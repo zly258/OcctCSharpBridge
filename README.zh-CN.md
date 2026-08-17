@@ -18,7 +18,7 @@ OcctDemo.Common
 
 Demo 严格作为 Bridge 3 / ABI5 Consumer：不跟踪 `OcctNative`、`OcctNet*` 实现源码，也不直接调用 `occt_*` Native ABI。
 
-Demo 本身继续以 **.NET 10** 为目标，用于验证最新支持的 Consumer Runtime。构建工具链以稳定版 .NET 10 SDK `10.0.100` 为基线，并使用 `latestFeature` 滚动，因此 `10.0.302` 这类后续稳定版 10.0.x SDK 可以直接使用。Demo 可消费 target .NET 8、.NET 9 或 .NET 10 的 Bridge Binary SDK；当前开发契约以 .NET 8 作为 Bridge 最低运行时基线，从而让同一套 SDK 服务 .NET 8-10 应用。
+Demo 本身继续以 **.NET 10** 为目标，用于验证最新支持的 Consumer Runtime。构建工具链以稳定版 .NET 10 SDK `10.0.100` 为基线，并使用 `latestFeature` 滚动，因此后续稳定版 10.0.x SDK 可以直接使用。Demo 可消费 target .NET 8、.NET 9 或 .NET 10 的 Bridge Binary SDK；当前开发契约以 .NET 8 作为 Bridge 最低运行时基线，从而让同一套 SDK 服务 .NET 8-10 应用。
 
 ## 当前 Viewport 契约
 
@@ -37,7 +37,9 @@ Demo 本身继续以 **.NET 10** 为目标，用于验证最新支持的 Consume
 
 ## Binary SDK 流程
 
-`dist/` 只作为本地构建状态存在并被 Git 忽略。Windows/Linux 两套同步脚本都会校验 contract schema 3、manifest schema 2、ABI5-only、Bridge 支持的 TFM、C# 14 和 SDK 文件哈希。Binary SDK 的 SDK 基线只需与它自己的 contract/manifest 保持一致，不再要求和 Demo 本机解析出的 SDK 精确相等；当 `manifest.sourceCommit` 与目标 SDK Source Commit 一致时直接复用，不重复构建。
+`dist/` 只作为本地构建状态存在并被 Git 忽略。Windows 同步脚本使用仓库内固定的 `.cache/main-sdk-source/` 作为可复用源码克隆：首次同步只克隆一次，后续仅 fetch/checkout 到目标 `main` 或 `main-dev` commit，并复用被忽略的构建缓存，不再在仓库旁边创建 `.OcctCSharpBridge-main-sdk-<guid>` 临时 worktree。`.cache/` 整体由 Git 忽略。
+
+Windows/Linux 两套同步流程都会校验 contract schema 3、manifest schema 2、ABI5-only、Bridge 支持的 TFM、C# 14 和 SDK 文件哈希。Binary SDK 的 SDK 基线只需与它自己的 contract/manifest 保持一致，不再要求和 Demo 本机解析出的 SDK 精确相等；当 `manifest.sourceCommit` 与目标 SDK Source Commit 一致时直接复用，不重复构建。
 
 正式 `demo` 在 Windows 上消费 `main`：
 
@@ -49,6 +51,8 @@ Demo 本身继续以 **.NET 10** 为目标，用于验证最新支持的 Consume
 .\run.ps1 avalonia Release
 .\publish.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
+
+`publish.ps1 all` 现在输出单一目录 `artifacts/publish/CAD-Demo-win-x64/`。WinForms、WPF、Avalonia 三个 EXE 共用同一套 .NET Runtime、Bridge、OCCT DLL 和 OCCT 资源，不再生成三个包含大量重复 DLL 的完整目录；启动脚本分别为 `run-winform.cmd`、`run-wpf.cmd`、`run-avalonia.cmd`。如只需要单个前端，仍可执行 `publish.ps1 winform|wpf|avalonia` 生成独立可部署包。
 
 开发阶段验证 `demo-dev` 对尚未合并的 `main-dev` SDK 时，必须显式指定来源：
 
