@@ -75,4 +75,11 @@ internal static partial class AppearanceNativeMethods
     internal static partial OcctStatus occt_engine_highlight_colors_set(
         OcctEngineSafeHandle handle,
         in NativeViewerHighlightOptions options);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_object_line_style_set(
+        OcctEngineSafeHandle handle,
+        long objectId,
+        int lineStyle);
 }
