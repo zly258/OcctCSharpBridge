@@ -98,6 +98,18 @@ public sealed partial class OcctWpfViewport
     private void HandlePointerReleased(IntPtr wParam, IntPtr lParam, OcctPointerButton button)
     {
         var (x, y) = GetPoint(lParam);
+
+        // Navigation decorations belong to the native viewer. Give AIS_ViewCube first chance to
+        // consume an ordinary left-button click before application preview handlers can translate
+        // it into managed entity selection. A non-ViewCube click falls through unchanged.
+        if (button == OcctPointerButton.Left
+            && _engine?.IsInitialized == true
+            && _engine.TryHandleViewCubeClick(x, y))
+        {
+            CancelHandledRelease(button);
+            return;
+        }
+
         var input = CreatePointerInput(OcctPointerInputKind.Released, button, wParam, x, y, 0);
         PreviewPointerInput?.Invoke(this, input);
         if (!input.Handled)
