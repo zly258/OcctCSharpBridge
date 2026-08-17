@@ -18,6 +18,8 @@ OcctDemo.Common
 
 Demo 严格作为 Bridge 3 / ABI5 Consumer：不跟踪 `OcctNative`、`OcctNet*` 实现源码，也不直接调用 `occt_*` Native ABI。
 
+Demo 本身继续以 **.NET 10** 为目标，用于验证最新支持的 Consumer Runtime。构建工具链以稳定版 .NET 10 SDK `10.0.100` 为基线，并使用 `latestFeature` 滚动，因此 `10.0.302` 这类后续稳定版 10.0.x SDK 可以直接使用。Demo 可消费 target .NET 8、.NET 9 或 .NET 10 的 Bridge Binary SDK；当前开发契约以 .NET 8 作为 Bridge 最低运行时基线，从而让同一套 SDK 服务 .NET 8-10 应用。
+
 ## 当前 Viewport 契约
 
 三个 UI Host 现在统一消费同一套 Bridge Viewport 模型，不再各自维护框架特有的生命周期逻辑：
@@ -35,7 +37,7 @@ Demo 严格作为 Bridge 3 / ABI5 Consumer：不跟踪 `OcctNative`、`OcctNet*`
 
 ## Binary SDK 流程
 
-`dist/` 只作为本地构建状态存在并被 Git 忽略。Windows/Linux 两套同步脚本都会校验 contract schema 3、manifest schema 2、ABI5-only、稳定版 .NET 10 SDK 基线/`latestFeature` 策略、C# 14 和 SDK 文件哈希；当 `manifest.sourceCommit` 与目标 SDK Source Commit 一致时直接复用，不重复构建。
+`dist/` 只作为本地构建状态存在并被 Git 忽略。Windows/Linux 两套同步脚本都会校验 contract schema 3、manifest schema 2、ABI5-only、Bridge 支持的 TFM、C# 14 和 SDK 文件哈希。Binary SDK 的 SDK 基线只需与它自己的 contract/manifest 保持一致，不再要求和 Demo 本机解析出的 SDK 精确相等；当 `manifest.sourceCommit` 与目标 SDK Source Commit 一致时直接复用，不重复构建。
 
 正式 `demo` 在 Windows 上消费 `main`：
 

@@ -26,6 +26,7 @@ $RunningOnWindows = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPla
 if (-not $RunningOnWindows) { throw "publish.ps1 supports Windows x64 only. Use ./publish.sh on Linux." }
 
 $RepoRoot = Split-Path -Parent $PSCommandPath
+$GlobalJsonPath = Join-Path $RepoRoot "global.json"
 $BuildScript = Join-Path $RepoRoot "build.ps1"
 $DistRoot = Join-Path $RepoRoot "dist\win-x64"
 $ContractPath = Join-Path $DistRoot "bridge-contract.json"
@@ -66,7 +67,15 @@ function Assert-Path {
 }
 
 function Resolve-DotNet {
-    $baseline = [version]"10.0.100"
+    Assert-Path $GlobalJsonPath
+    $globalJson = Get-Content -LiteralPath $GlobalJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $baselineText = [string]$globalJson.sdk.version
+    $rollForward = [string]$globalJson.sdk.rollForward
+    try { $baseline = [version]$baselineText }
+    catch { throw "global.json contains an invalid .NET SDK baseline: $baselineText" }
+    if ($rollForward -ne "latestFeature") { throw "global.json must use rollForward=latestFeature." }
+    if ([bool]$globalJson.sdk.allowPrerelease) { throw "global.json must not allow prerelease SDKs." }
+
     $candidates = @()
     foreach ($root in @($env:DOTNET_ROOT, $env:ProgramW6432, $env:ProgramFiles)) {
         if ([string]::IsNullOrWhiteSpace($root)) { continue }
@@ -83,14 +92,16 @@ function Resolve-DotNet {
             $exitCode = $LASTEXITCODE
         }
         finally { Pop-Location }
-        if ($exitCode -ne 0) { continue }
+        if ($exitCode -ne 0 -or [string]::IsNullOrWhiteSpace($versionText) -or $versionText.Contains("-")) { continue }
         try { $version = [version]$versionText }
         catch { continue }
-        if ($version.Major -eq 10 -and $version.Minor -eq 0 -and $version -ge $baseline) {
+        if ($version.Major -eq $baseline.Major -and
+            $version.Minor -eq $baseline.Minor -and
+            $version -ge $baseline) {
             return [System.IO.Path]::GetFullPath($candidate)
         }
     }
-    throw "A dotnet host resolving a stable .NET 10 SDK at or above baseline 10.0.100 was not found."
+    throw "A stable .NET 10 SDK compatible with baseline $baselineText / $rollForward was not found."
 }
 
 function Invoke-Checked {
