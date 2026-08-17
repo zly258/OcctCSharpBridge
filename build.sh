@@ -29,15 +29,20 @@ AUTHOR="$(contract_string author)"
 SOURCE_PLATFORM="$(contract_string platform)"
 CURRENT_ABI="$(contract_number current)"
 MINIMUM_ABI="$(contract_number minimumSupported)"
-TFM="net10.0"
+TFM="$(contract_string targetFramework)"
+RESOLVED_SDK_VERSION=""
 
-sdk_compatible() {
-    local detected="$1" base_major base_minor detected_major detected_minor lowest
-    IFS=. read -r base_major base_minor _ <<<"${SDK_VERSION}"
-    IFS=. read -r detected_major detected_minor _ <<<"${detected}"
-    [[ "${detected_major}" == "${base_major}" && "${detected_minor}" == "${base_minor}" ]] || return 1
-    lowest="$(printf '%s\n%s\n' "${SDK_VERSION}" "${detected}" | sort -V | head -n 1)"
-    [[ "${lowest}" == "${SDK_VERSION}" ]]
+sdk_is_compatible() {
+    local detected="$1"
+    [[ "${SDK_ROLL_FORWARD}" == "latestFeature" ]] || return 1
+    [[ "${detected}" != *-* ]] || return 1
+    local min_major min_minor min_band detected_major detected_minor detected_band
+    IFS=. read -r min_major min_minor min_band <<<"${SDK_VERSION}"
+    IFS=. read -r detected_major detected_minor detected_band <<<"${detected}"
+    [[ "${min_major}" =~ ^[0-9]+$ && "${min_minor}" =~ ^[0-9]+$ && "${min_band}" =~ ^[0-9]+$ ]] || return 1
+    [[ "${detected_major}" =~ ^[0-9]+$ && "${detected_minor}" =~ ^[0-9]+$ && "${detected_band}" =~ ^[0-9]+$ ]] || return 1
+    [[ "${detected_major}" == "${min_major}" && "${detected_minor}" == "${min_minor}" ]] || return 1
+    ((10#${detected_band} >= 10#${min_band}))
 }
 
 validate_common() {
@@ -45,11 +50,9 @@ validate_common() {
     case "$(uname -m)" in x86_64|amd64) ;; *) fail "Linux x64 is required; detected $(uname -m)." ;; esac
     case "${CONFIGURATION}" in Debug|Release|RelWithDebInfo) ;; *) fail "Unknown configuration: ${CONFIGURATION}" ;; esac
     require_command dotnet
-    require_command sort
     [[ "${SOURCE_PLATFORM}" == "cross-platform-x64" ]] || fail "Source contract platform must be cross-platform-x64; found ${SOURCE_PLATFORM}."
-    [[ "${SDK_ROLL_FORWARD}" == "latestFeature" ]] || fail "Bridge SDK roll-forward policy must be latestFeature; found ${SDK_ROLL_FORWARD}."
-    local detected_sdk="$(dotnet --version)"
-    sdk_compatible "${detected_sdk}" || fail ".NET 10 SDK at or above baseline ${SDK_VERSION} is required; detected ${detected_sdk}."
+    RESOLVED_SDK_VERSION="$(cd "${ROOT_DIR}" && dotnet --version)"
+    sdk_is_compatible "${RESOLVED_SDK_VERSION}" || fail "A stable .NET 10 SDK compatible with baseline ${SDK_VERSION} / ${SDK_ROLL_FORWARD} is required; detected ${RESOLVED_SDK_VERSION}."
     [[ -n "${BRIDGE_VERSION}" && "${CURRENT_ABI}" == "5" && "${MINIMUM_ABI}" == "5" ]] || fail "Bridge contract must be complete and ABI5-only."
     bash "${ROOT_DIR}/tests/check-linux-contract.sh" "${ROOT_DIR}"
 }
@@ -150,7 +153,7 @@ dist() {
         printf '  "platform": "linux-x64",\n'
         printf '  "targetFramework": "%s",\n' "${TFM}"
         printf '  "sdkVersion": "%s",\n' "${SDK_VERSION}"
-        printf '  "sdkRollForward": "%s",\n' "${SDK_ROLL_FORWARD}"
+        printf '  "resolvedSdkVersion": "%s",\n' "${RESOLVED_SDK_VERSION}"
         printf '  "languageVersion": "%s",\n' "${LANGUAGE_VERSION}"
         printf '  "configuration": "Release",\n'
         printf '  "sourceCommit": "%s",\n  "files": [\n' "${source_commit}"
