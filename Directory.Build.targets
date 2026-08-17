@@ -2,9 +2,12 @@
   <PropertyGroup>
     <OcctBridgeNativeLibrary Condition="$([MSBuild]::IsOSPlatform('Windows'))">OcctNative.dll</OcctBridgeNativeLibrary>
     <OcctBridgeNativeLibrary Condition="$([MSBuild]::IsOSPlatform('Linux'))">libOcctNative.so</OcctBridgeNativeLibrary>
+    <OcctBridgeIsDemoProject Condition="'$(MSBuildProjectName)' == 'OcctDemo.Common' or '$(MSBuildProjectName)' == 'OcctDemo.WinForms' or '$(MSBuildProjectName)' == 'OcctDemo.Wpf' or '$(MSBuildProjectName)' == 'OcctDemo.Avalonia'">true</OcctBridgeIsDemoProject>
   </PropertyGroup>
 
-  <Target Name="ValidateOcctBridgeBinarySdk" BeforeTargets="ResolveReferences">
+  <Target Name="ValidateOcctBridgeBinarySdk"
+          BeforeTargets="ResolveReferences"
+          Condition="'$(OcctBridgeIsDemoProject)' == 'true'">
     <Error Condition="'$(OcctBridgeRuntimeIdentifier)' == ''" Text="OcctCSharpBridge Demo supports Windows x64 and Linux x64 only." />
     <Error Condition="!Exists('$(OcctBridgeDistRoot)/$(OcctBridgeNativeLibrary)')" Text="The $(OcctBridgeRuntimeIdentifier) native Bridge is missing. Run the platform sync script first." />
     <Error Condition="!Exists('$(OcctBridgeDistRoot)/OcctNet.dll')" Text="OcctNet.dll is missing from the synchronized Binary SDK." />
@@ -17,7 +20,7 @@
 
   <Target Name="CopyOcctNativeBridge"
           AfterTargets="Build"
-          Condition="'$(OutputType)' == 'WinExe' or '$(OutputType)' == 'Exe'">
+          Condition="'$(OcctBridgeIsDemoProject)' == 'true' and ('$(OutputType)' == 'WinExe' or '$(OutputType)' == 'Exe')">
     <Copy SourceFiles="$(OcctBridgeDistRoot)/$(OcctBridgeNativeLibrary)"
           DestinationFolder="$(TargetDir)"
           SkipUnchangedFiles="true" />

@@ -35,8 +35,14 @@ function Invoke-GitChecked {
         [Parameter(Mandatory = $true)][string[]]$Arguments,
         [Parameter(Mandatory = $true)][string]$ErrorMessage
     )
-    & git -C $WorkingDirectory @Arguments
-    if ($LASTEXITCODE -ne 0) { throw $ErrorMessage }
+
+    $output = @(& git -C $WorkingDirectory @Arguments 2>&1)
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -ne 0) {
+        $detail = @($output | ForEach-Object { [string]$_ }) -join [Environment]::NewLine
+        if ([string]::IsNullOrWhiteSpace($detail)) { throw $ErrorMessage }
+        throw "$ErrorMessage`n$detail"
+    }
 }
 
 function Read-ValidatedSdk {
