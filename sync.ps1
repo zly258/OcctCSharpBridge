@@ -11,13 +11,21 @@ Set-StrictMode -Version Latest
 
 $RepoRoot = Split-Path -Parent $PSCommandPath
 $Destination = Join-Path $RepoRoot "dist\win-x64"
-$WorkspaceRoot = Split-Path -Parent $RepoRoot
-$WorktreeRoot = Join-Path $WorkspaceRoot (".OcctCSharpBridge-main-sdk-" + [Guid]::NewGuid().ToString("N"))
-$WorktreeAdded = $false
+$SourceRepoRoot = Join-Path $RepoRoot ".cache\main-sdk-source"
 
 function Assert-File {
     param([Parameter(Mandatory = $true)][string]$Path)
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "Required SDK file was not found: $Path" }
+}
+
+function Invoke-GitChecked {
+    param(
+        [Parameter(Mandatory = $true)][string]$WorkingDirectory,
+        [Parameter(Mandatory = $true)][string[]]$Arguments,
+        [Parameter(Mandatory = $true)][string]$ErrorMessage
+    )
+    & git -C $WorkingDirectory @Arguments
+    if ($LASTEXITCODE -ne 0) { throw $ErrorMessage }
 }
 
 function Read-ValidatedSdk {
@@ -122,6 +130,45 @@ function Copy-Sdk {
     Write-Host "Path:   $Destination" -ForegroundColor DarkGray
 }
 
+function Get-OrCreateSourceClone {
+    param(
+        [Parameter(Mandatory = $true)][string]$RemoteName,
+        [Parameter(Mandatory = $true)][string]$Branch,
+        [Parameter(Mandatory = $true)][string]$ExpectedCommit
+    )
+
+    $remoteUrl = ([string](& git -C $RepoRoot remote get-url $RemoteName)).Trim()
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($remoteUrl)) {
+        throw "Unable to resolve URL for Git remote '$RemoteName'."
+    }
+
+    $cacheGit = Join-Path $SourceRepoRoot ".git"
+    if (-not (Test-Path -LiteralPath $cacheGit)) {
+        if (Test-Path -LiteralPath $SourceRepoRoot) { Remove-Item -LiteralPath $SourceRepoRoot -Recurse -Force }
+        New-Item -ItemType Directory -Path (Split-Path -Parent $SourceRepoRoot) -Force | Out-Null
+        Write-Host "[sync] Creating reusable Bridge source clone in .cache/main-sdk-source..." -ForegroundColor DarkGray
+        & git clone --no-checkout --no-tags $remoteUrl $SourceRepoRoot
+        if ($LASTEXITCODE -ne 0) { throw "Unable to create reusable Bridge source clone from $remoteUrl." }
+    }
+    else {
+        Invoke-GitChecked $SourceRepoRoot @("remote", "set-url", "origin", $remoteUrl) "Unable to refresh cached source remote URL."
+    }
+
+    Write-Host "[sync] Updating reusable Bridge source clone..." -ForegroundColor DarkGray
+    Invoke-GitChecked $SourceRepoRoot @("fetch", "--quiet", "--prune", "origin", $Branch) "Unable to fetch origin/$Branch in cached source clone."
+    $fetchedCommit = ([string](& git -C $SourceRepoRoot rev-parse "FETCH_HEAD")).Trim()
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($fetchedCommit)) { throw "Unable to resolve fetched source commit." }
+    if ($fetchedCommit -ne $ExpectedCommit) {
+        throw "Cached source commit '$fetchedCommit' does not match $RemoteName/$Branch '$ExpectedCommit'."
+    }
+
+    Invoke-GitChecked $SourceRepoRoot @("reset", "--hard") "Unable to reset cached Bridge source clone."
+    Invoke-GitChecked $SourceRepoRoot @("clean", "-fd") "Unable to clean untracked files in cached Bridge source clone."
+    Invoke-GitChecked $SourceRepoRoot @("checkout", "--detach", "--force", $ExpectedCommit) "Unable to checkout cached Bridge source commit $ExpectedCommit."
+
+    return $SourceRepoRoot
+}
+
 if (-not [string]::IsNullOrWhiteSpace($SdkRoot)) {
     if ($ForceRebuild) { throw "-ForceRebuild cannot be combined with -SdkRoot; the supplied SDK is copied as-is after validation." }
     Copy-Sdk ([System.IO.Path]::GetFullPath($SdkRoot))
@@ -159,39 +206,23 @@ elseif ($ForceRebuild) {
     Write-Host "[sync] Forced Binary SDK rebuild requested." -ForegroundColor DarkGray
 }
 
-try {
-    Write-Host "[sync] Creating clean SDK worktree beside the repository..." -ForegroundColor DarkGray
-    & git -C $RepoRoot worktree prune
-    if ($LASTEXITCODE -ne 0) { throw "Unable to prune stale git worktrees." }
+$sourceRoot = Get-OrCreateSourceClone $Remote $SourceBranch $sourceCommit
+$buildScript = Join-Path $sourceRoot "build.ps1"
+if (-not (Test-Path -LiteralPath $buildScript -PathType Leaf)) { throw "$Remote/$SourceBranch does not contain build.ps1." }
 
-    & git -C $RepoRoot worktree add --detach $WorktreeRoot "$Remote/$SourceBranch"
-    if ($LASTEXITCODE -ne 0) { throw "Unable to create worktree for $Remote/$SourceBranch." }
-    $WorktreeAdded = $true
-
-    $buildScript = Join-Path $WorktreeRoot "build.ps1"
-    if (-not (Test-Path -LiteralPath $buildScript -PathType Leaf)) { throw "$Remote/$SourceBranch does not contain build.ps1." }
-
-    Write-Host "[sync] Building validated win-x64 Binary SDK from $Remote/$SourceBranch..." -ForegroundColor Cyan
-    $buildParameters = @{
-        Target = "dist"
-        Configuration = "Release"
-    }
-    if (-not [string]::IsNullOrWhiteSpace($OcctRoot)) { $buildParameters.OcctRoot = $OcctRoot }
-    & $buildScript @buildParameters
-    if ($LASTEXITCODE -ne 0) { throw "Binary SDK build failed on $Remote/$SourceBranch." }
-
-    $builtSdk = Read-ValidatedSdk (Join-Path $WorktreeRoot "dist\win-x64")
-    if ([string]$builtSdk.Manifest.sourceCommit -ne $sourceCommit) {
-        throw "Built SDK sourceCommit '$($builtSdk.Manifest.sourceCommit)' does not match $Remote/$SourceBranch '$sourceCommit'."
-    }
-
-    Copy-Sdk (Join-Path $WorktreeRoot "dist\win-x64")
+Write-Host "[sync] Building validated win-x64 Binary SDK from reusable source clone..." -ForegroundColor Cyan
+$buildParameters = @{
+    Target = "dist"
+    Configuration = "Release"
 }
-finally {
-    if ($WorktreeAdded) {
-        & git -C $RepoRoot worktree remove --force $WorktreeRoot *> $null
-    }
-    elseif (Test-Path -LiteralPath $WorktreeRoot) {
-        Remove-Item -LiteralPath $WorktreeRoot -Recurse -Force -ErrorAction SilentlyContinue
-    }
+if (-not [string]::IsNullOrWhiteSpace($OcctRoot)) { $buildParameters.OcctRoot = $OcctRoot }
+& $buildScript @buildParameters
+if ($LASTEXITCODE -ne 0) { throw "Binary SDK build failed on $Remote/$SourceBranch." }
+
+$builtSdkRoot = Join-Path $sourceRoot "dist\win-x64"
+$builtSdk = Read-ValidatedSdk $builtSdkRoot
+if ([string]$builtSdk.Manifest.sourceCommit -ne $sourceCommit) {
+    throw "Built SDK sourceCommit '$($builtSdk.Manifest.sourceCommit)' does not match $Remote/$SourceBranch '$sourceCommit'."
 }
+
+Copy-Sdk $builtSdkRoot

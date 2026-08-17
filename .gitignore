@@ -7,6 +7,9 @@ publish/
 TestResults/
 *.log
 
+# Local reusable source/build cache
+.cache/
+
 # Visual Studio / MSBuild
 .vs/
 *.suo
