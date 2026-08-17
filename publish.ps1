@@ -66,6 +66,7 @@ function Assert-Path {
 }
 
 function Resolve-DotNet {
+    $baseline = [version]"10.0.100"
     $candidates = @()
     foreach ($root in @($env:DOTNET_ROOT, $env:ProgramW6432, $env:ProgramFiles)) {
         if ([string]::IsNullOrWhiteSpace($root)) { continue }
@@ -78,13 +79,18 @@ function Resolve-DotNet {
         if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) { continue }
         Push-Location $RepoRoot
         try {
-            $version = (& $candidate --version 2>$null)
+            $versionText = ([string](& $candidate --version 2>$null)).Trim()
             $exitCode = $LASTEXITCODE
         }
         finally { Pop-Location }
-        if ($exitCode -eq 0 -and ([string]$version).Trim() -eq "10.0.303") { return [System.IO.Path]::GetFullPath($candidate) }
+        if ($exitCode -ne 0) { continue }
+        try { $version = [version]$versionText }
+        catch { continue }
+        if ($version.Major -eq 10 -and $version.Minor -eq 0 -and $version -ge $baseline) {
+            return [System.IO.Path]::GetFullPath($candidate)
+        }
     }
-    throw "A dotnet host resolving .NET SDK 10.0.303 exactly was not found."
+    throw "A dotnet host resolving a stable .NET 10 SDK at or above baseline 10.0.100 was not found."
 }
 
 function Invoke-Checked {

@@ -35,6 +35,8 @@ function Read-ValidatedSdk {
     }
 
     $contract = Get-Content -LiteralPath (Join-Path $Root "bridge-contract.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+    try { $sdkBaseline = [version][string]$contract.dotnet.sdkVersion }
+    catch { throw "The source SDK contains an invalid .NET SDK baseline." }
     if ([int]$contract.schemaVersion -ne 3 -or
         [int]$contract.nativeAbi.current -ne 5 -or
         [int]$contract.nativeAbi.minimumSupported -ne 5 -or
@@ -42,9 +44,11 @@ function Read-ValidatedSdk {
         [string]$contract.platform -ne "win-x64" -or
         [string]$contract.dotnet.targetFramework -ne "net10.0" -or
         [string]$contract.dotnet.desktopTargetFramework -ne "net10.0-windows" -or
-        [string]$contract.dotnet.sdkVersion -ne "10.0.303" -or
+        $sdkBaseline.Major -ne 10 -or
+        $sdkBaseline.Minor -ne 0 -or
+        [string]$contract.dotnet.sdkRollForward -ne "latestFeature" -or
         [string]$contract.dotnet.languageVersion -ne "14.0") {
-        throw "The source SDK is not the expected Bridge 3 ABI5-only win-x64 SDK."
+        throw "The source SDK is not the expected Bridge 3 ABI5-only win-x64 .NET 10 SDK."
     }
 
     $manifest = Get-Content -LiteralPath (Join-Path $Root "bridge-manifest.json") -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -57,6 +61,7 @@ function Read-ValidatedSdk {
         [string]$manifest.platform -ne [string]$contract.platform -or
         [string]$manifest.targetFramework -ne [string]$contract.dotnet.targetFramework -or
         [string]$manifest.sdkVersion -ne [string]$contract.dotnet.sdkVersion -or
+        [string]$manifest.sdkRollForward -ne [string]$contract.dotnet.sdkRollForward -or
         [string]$manifest.languageVersion -ne [string]$contract.dotnet.languageVersion -or
         [string]$manifest.configuration -ne "Release" -or
         [string]::IsNullOrWhiteSpace([string]$manifest.sourceCommit)) {
@@ -99,7 +104,7 @@ function Copy-Sdk {
     New-Item -ItemType Directory -Path $Destination -Force | Out-Null
     Copy-Item -Path (Join-Path $Source "*") -Destination $Destination -Recurse -Force
     Write-Host "Binary SDK synchronized." -ForegroundColor Green
-    Write-Host "Bridge: $($sdk.Contract.bridgeVersion), ABI 5 only, OCCT $($sdk.Contract.occtVersion), .NET SDK $($sdk.Contract.dotnet.sdkVersion)" -ForegroundColor DarkGray
+    Write-Host "Bridge: $($sdk.Contract.bridgeVersion), ABI 5 only, OCCT $($sdk.Contract.occtVersion), .NET SDK $($sdk.Contract.dotnet.sdkVersion) + $($sdk.Contract.dotnet.sdkRollForward)" -ForegroundColor DarkGray
     Write-Host "Path:   $Destination" -ForegroundColor DarkGray
 }
 
@@ -126,7 +131,7 @@ if (-not $ForceRebuild -and (Test-Path -LiteralPath $Destination -PathType Conta
         if ([string]$sdk.Manifest.sourceCommit -eq $sourceCommit) {
             Write-Host "Binary SDK is already synchronized; rebuild skipped." -ForegroundColor Green
             Write-Host "Source: $Remote/$SourceBranch @ $($sourceCommit.Substring(0, 7))" -ForegroundColor DarkGray
-            Write-Host "Bridge: $($sdk.Contract.bridgeVersion), ABI 5 only, OCCT $($sdk.Contract.occtVersion), .NET SDK $($sdk.Contract.dotnet.sdkVersion)" -ForegroundColor DarkGray
+            Write-Host "Bridge: $($sdk.Contract.bridgeVersion), ABI 5 only, OCCT $($sdk.Contract.occtVersion), .NET SDK $($sdk.Contract.dotnet.sdkVersion) + $($sdk.Contract.dotnet.sdkRollForward)" -ForegroundColor DarkGray
             Write-Host "Path:   $Destination" -ForegroundColor DarkGray
             exit 0
         }

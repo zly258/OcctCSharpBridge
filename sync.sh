@@ -46,6 +46,7 @@ validate_sdk() {
     local root="$1"
     local contract="${root}/bridge-contract.json"
     local manifest="${root}/bridge-manifest.json"
+    local sdk_version sdk_roll_forward
     for name in libOcctNative.so OcctNet.dll OcctNet.Avalonia.dll bridge-contract.json bridge-manifest.json; do
         [[ -f "${root}/${name}" ]] || return 1
     done
@@ -54,13 +55,17 @@ validate_sdk() {
     [[ "$(json_string "${contract}" policy)" == "abi5-only" ]] || return 1
     [[ "$(json_string "${contract}" platform)" == "linux-x64" ]] || return 1
     [[ "$(json_string "${contract}" targetFramework)" == "net10.0" ]] || return 1
-    [[ "$(json_string "${contract}" sdkVersion)" == "10.0.303" ]] || return 1
+    sdk_version="$(json_string "${contract}" sdkVersion)"
+    sdk_roll_forward="$(json_string "${contract}" sdkRollForward)"
+    [[ "${sdk_version}" =~ ^10\.0\.[0-9]+$ ]] || return 1
+    [[ "${sdk_roll_forward}" == "latestFeature" ]] || return 1
     [[ "$(json_string "${contract}" languageVersion)" == "14.0" ]] || return 1
     [[ "$(json_number "${manifest}" schemaVersion)" == "2" ]] || return 1
     [[ "$(json_number "${manifest}" current)" == "5" && "$(json_number "${manifest}" minimumSupported)" == "5" ]] || return 1
     [[ "$(json_string "${manifest}" platform)" == "linux-x64" ]] || return 1
     [[ "$(json_string "${manifest}" targetFramework)" == "net10.0" ]] || return 1
-    [[ "$(json_string "${manifest}" sdkVersion)" == "10.0.303" ]] || return 1
+    [[ "$(json_string "${manifest}" sdkVersion)" == "${sdk_version}" ]] || return 1
+    [[ "$(json_string "${manifest}" sdkRollForward)" == "${sdk_roll_forward}" ]] || return 1
     [[ "$(json_string "${manifest}" languageVersion)" == "14.0" ]] || return 1
     [[ "$(json_string "${manifest}" configuration)" == "Release" ]] || return 1
     [[ -n "$(json_string "${manifest}" sourceCommit)" ]] || return 1

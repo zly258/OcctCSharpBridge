@@ -35,7 +35,7 @@ Demo 严格作为 Bridge 3 / ABI5 Consumer：不跟踪 `OcctNative`、`OcctNet*`
 
 ## Binary SDK 流程
 
-`dist/` 只作为本地构建状态存在并被 Git 忽略。Windows/Linux 两套同步脚本都会校验 contract schema 3、manifest schema 2、ABI5-only、.NET SDK 10.0.303、C# 14 和 SDK 文件哈希；当 `manifest.sourceCommit` 与目标 SDK Source Commit 一致时直接复用，不重复构建。
+`dist/` 只作为本地构建状态存在并被 Git 忽略。Windows/Linux 两套同步脚本都会校验 contract schema 3、manifest schema 2、ABI5-only、稳定版 .NET 10 SDK 基线/`latestFeature` 策略、C# 14 和 SDK 文件哈希；当 `manifest.sourceCommit` 与目标 SDK Source Commit 一致时直接复用，不重复构建。
 
 正式 `demo` 在 Windows 上消费 `main`：
 

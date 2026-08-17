@@ -1,8 +1,8 @@
 {
   "sdk": {
-    "version": "10.0.303",
-    "rollForward": "disable",
+    "version": "10.0.100",
+    "rollForward": "latestFeature",
     "allowPrerelease": false,
-    "errorMessage": "OcctCSharpBridge Demo requires .NET SDK 10.0.303 exactly."
+    "errorMessage": "OcctCSharpBridge Demo requires a stable .NET 10 SDK."
   }
 }

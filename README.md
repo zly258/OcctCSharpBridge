@@ -35,7 +35,7 @@ The shared Demo shortcut mapper consumes `OcctKeyInputEventArgs`, so viewport-fo
 
 ## Binary SDK workflow
 
-`dist/` is local build state and is intentionally ignored by Git. Both synchronization scripts validate contract schema 3, manifest schema 2, ABI5-only metadata, .NET SDK 10.0.303, C# 14 and SDK file hashes. A matching `manifest.sourceCommit` is reused instead of rebuilding the SDK.
+`dist/` is local build state and is intentionally ignored by Git. Both synchronization scripts validate contract schema 3, manifest schema 2, ABI5-only metadata, the stable .NET 10 SDK baseline/`latestFeature` policy, C# 14 and SDK file hashes. A matching `manifest.sourceCommit` is reused instead of rebuilding the SDK.
 
 Formal Windows consumption from `main`:
 

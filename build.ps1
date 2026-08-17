@@ -31,7 +31,11 @@ $ConsumerCheckPath = Join-Path $RepoRoot "tests\check-sdk-consumer.ps1"
 
 $globalJson = Get-Content -LiteralPath $GlobalJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $SdkVersion = [string]$globalJson.sdk.version
-if ([string]$globalJson.sdk.rollForward -ne "disable") { throw "global.json must keep rollForward disabled." }
+$SdkRollForward = [string]$globalJson.sdk.rollForward
+try { $SdkBaseline = [version]$SdkVersion }
+catch { throw "global.json contains an invalid .NET SDK baseline: $SdkVersion" }
+if ($SdkBaseline.Major -ne 10 -or $SdkBaseline.Minor -ne 0) { throw "global.json must use a .NET 10 SDK baseline." }
+if ($SdkRollForward -ne "latestFeature") { throw "global.json must use latestFeature SDK roll-forward." }
 if ([bool]$globalJson.sdk.allowPrerelease) { throw "global.json must not allow prerelease SDKs." }
 
 $script:DotNetCommand = $null
@@ -106,7 +110,6 @@ function Resolve-DotNetSdk {
             if ($line -match '^\s*([^\s]+)\s+\[') { $Matches[1] }
         })
         $diagnostics.Add("$candidate => " + $(if ($installed.Count -eq 0) { "no SDKs" } else { $installed -join ", " }))
-        if ($SdkVersion -notin $installed) { continue }
         Push-Location $RepoRoot
         try {
             $resolved = @(& $candidate --version 2>&1)
@@ -114,14 +117,18 @@ function Resolve-DotNetSdk {
         }
         finally { Pop-Location }
         if ($exitCode -ne 0 -or $resolved.Count -ne 1) { continue }
-        $version = ([string]$resolved[0]).Trim()
-        if ($version -ne $SdkVersion) { continue }
+        $versionText = ([string]$resolved[0]).Trim()
+        try { $version = [version]$versionText }
+        catch { continue }
+        if ($version.Major -ne $SdkBaseline.Major -or
+            $version.Minor -ne $SdkBaseline.Minor -or
+            $version -lt $SdkBaseline) { continue }
         $script:DotNetCommand = [System.IO.Path]::GetFullPath($candidate)
-        $script:ResolvedSdkVersion = $version
+        $script:ResolvedSdkVersion = $versionText
         return
     }
     $detail = if ($diagnostics.Count -eq 0) { "No dotnet host candidates were found." } else { $diagnostics -join [Environment]::NewLine }
-    throw "OcctCSharpBridge Demo requires .NET SDK $SdkVersion exactly.`nChecked dotnet hosts:`n$detail"
+    throw "OcctCSharpBridge Demo requires a stable .NET 10 SDK at or above baseline $SdkVersion using '$SdkRollForward' roll-forward.`nChecked dotnet hosts:`n$detail"
 }
 
 function Invoke-DotNetChecked {
@@ -159,7 +166,8 @@ function Test-BinarySdk {
     if ([string]$contract.platform -ne "win-x64") { throw "Expected win-x64 Binary SDK; received $($contract.platform)." }
     if ([string]$contract.dotnet.targetFramework -ne "net10.0") { throw "Unsupported Core target framework: $($contract.dotnet.targetFramework)" }
     if ([string]$contract.dotnet.desktopTargetFramework -ne "net10.0-windows") { throw "Unsupported Desktop target framework: $($contract.dotnet.desktopTargetFramework)" }
-    if ([string]$contract.dotnet.sdkVersion -ne $SdkVersion) { throw "Binary SDK requires .NET SDK $($contract.dotnet.sdkVersion); Demo requires $SdkVersion." }
+    if ([string]$contract.dotnet.sdkVersion -ne $SdkVersion) { throw "Binary SDK baseline $($contract.dotnet.sdkVersion) does not match Demo baseline $SdkVersion." }
+    if ([string]$contract.dotnet.sdkRollForward -ne $SdkRollForward) { throw "Binary SDK roll-forward policy does not match the Demo policy." }
     if ([string]$contract.dotnet.languageVersion -ne "14.0") { throw "Demo requires C# 14.0." }
 
     if ([int]$manifest.schemaVersion -ne 2) { throw "Demo requires Binary SDK manifest schema 2." }
@@ -170,6 +178,7 @@ function Test-BinarySdk {
         [string]$manifest.platform -ne [string]$contract.platform -or
         [string]$manifest.targetFramework -ne [string]$contract.dotnet.targetFramework -or
         [string]$manifest.sdkVersion -ne [string]$contract.dotnet.sdkVersion -or
+        [string]$manifest.sdkRollForward -ne [string]$contract.dotnet.sdkRollForward -or
         [string]$manifest.languageVersion -ne [string]$contract.dotnet.languageVersion -or
         [string]$manifest.configuration -ne "Release") {
         throw "Binary SDK manifest does not match bridge-contract.json."
@@ -231,7 +240,7 @@ function Clean-Outputs {
 
 Write-Host "Target:        $Target"
 Write-Host "Configuration: $Configuration"
-Write-Host "SDK contract:  $SdkVersion exact" -ForegroundColor DarkGray
+Write-Host "SDK contract:  $SdkVersion + $SdkRollForward" -ForegroundColor DarkGray
 Write-Host "Bridge SDK:    $DistRoot" -ForegroundColor DarkGray
 
 if ($Target -eq "clean") {
