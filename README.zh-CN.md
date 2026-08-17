@@ -18,7 +18,9 @@ OcctDemo.Common
 
 Demo 严格作为 Bridge 3 / ABI5 Consumer：不跟踪 `OcctNative`、`OcctNet*` 实现源码，也不直接调用 `occt_*` Native ABI。
 
-Demo 本身继续以 **.NET 10** 为目标，用于验证最新支持的 Consumer Runtime。构建工具链以稳定版 .NET 10 SDK `10.0.100` 为基线，并使用 `latestFeature` 滚动，因此后续稳定版 10.0.x SDK 可以直接使用。Demo 可消费 target .NET 8、.NET 9 或 .NET 10 的 Bridge Binary SDK；当前开发契约以 .NET 8 作为 Bridge 最低运行时基线，从而让同一套 SDK 服务 .NET 8-10 应用。
+Demo 本身继续以 **.NET 10** 为目标，用于验证最新支持的 Consumer Runtime。构建工具链以稳定版 .NET 10 SDK `10.0.100` 为基线，并使用 `latestFeature` 滚动，因此后续稳定版 10.0.x SDK 可以直接使用。Bridge Binary SDK 当前以 .NET 8 为最低运行时基线，但 Demo 是否兼容由 Contract 中 `supportedConsumerFrameworks` / `supportedDesktopConsumerFrameworks` 决定，不再假设 Bridge 最低 TFM 必须是某一个固定值。
+
+Demo 自身运行目录也与 Bridge 最低 TFM 解耦：`run.ps1` 直接从各 Demo `.csproj` 读取 `TargetFramework`。因此当前 WPF/WinForms 正确运行于 `net10.0-windows` 输出目录，即使消费的 Bridge DLL 目标仍是 `net8.0-windows`。
 
 ## 当前 Viewport 契约
 
@@ -39,7 +41,21 @@ Demo 本身继续以 **.NET 10** 为目标，用于验证最新支持的 Consume
 
 `dist/` 只作为本地构建状态存在并被 Git 忽略。Windows 同步脚本使用仓库内固定的 `.cache/main-sdk-source/` 作为可复用源码克隆：首次同步只克隆一次，后续仅 fetch/checkout 到目标 `main` 或 `main-dev` commit，并复用被忽略的构建缓存，不再在仓库旁边创建 `.OcctCSharpBridge-main-sdk-<guid>` 临时 worktree。`.cache/` 整体由 Git 忽略。
 
-Windows/Linux 两套同步流程都会校验 contract schema 3、manifest schema 2、ABI5-only、Bridge 支持的 TFM、C# 14 和 SDK 文件哈希。Binary SDK 的 SDK 基线只需与它自己的 contract/manifest 保持一致，不再要求和 Demo 本机解析出的 SDK 精确相等；当 `manifest.sourceCommit` 与目标 SDK Source Commit 一致时直接复用，不重复构建。
+Windows 从源码同步时，如果所选 Bridge Source Revision 已提供 **`build.ps1 sdk Release`**，就直接执行该完整 Release Gate；对于尚未包含 `sdk` Target 的旧 Source Revision，`sync.ps1` 会执行等价的 **`all Release` → `dist Release`** 完整验证序列。因此迁移期间默认 `SourceBranch=main` 仍然可用，但不会退回成“只编译就打包”的未验证流程。新的 `sdk` Gate 会编译 .NET 8/9/10 Consumer Matrix、运行 ManagedTests、Core Native Smoke 与三套 Windows Viewport Host Smoke，全部通过后才用已经验证过的 Bridge 输出生成 `dist/win-x64`。
+
+Windows Binary SDK Payload 是严格、扁平的 7 个文件；Demo 只接受以下内容，`-SdkRoot` 同样不允许额外文件或目录：
+
+```text
+OcctNative.dll
+OcctNet.dll
+OcctNet.WinForms.dll
+OcctNet.Wpf.dll
+OcctNet.Avalonia.dll
+bridge-contract.json
+bridge-manifest.json
+```
+
+这样可以防止旧 DLL、未 Hash 文件混入一个表面上 Manifest 合法的 SDK。复制前会校验 contract schema 3、manifest schema 2、ABI5-only、Consumer TFM 支持列表、C# 14、`sourceCommit` 和全部 SHA-256；当本地 `manifest.sourceCommit` 与目标 SDK Source Commit 一致时直接复用，不重复构建。
 
 正式 `demo` 在 Windows 上消费 `main`：
 
@@ -52,7 +68,33 @@ Windows/Linux 两套同步流程都会校验 contract schema 3、manifest schema
 .\publish.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-`publish.ps1 all` 现在输出单一目录 `artifacts/publish/CAD-Demo-win-x64/`。WinForms、WPF、Avalonia 三个 EXE 共用同一套 .NET Runtime、Bridge、OCCT DLL 和 OCCT 资源，不再生成三个包含大量重复 DLL 的完整目录；启动脚本分别为 `run-winform.cmd`、`run-wpf.cmd`、`run-avalonia.cmd`。如只需要单个前端，仍可执行 `publish.ps1 winform|wpf|avalonia` 生成独立可部署包。
+`publish.ps1 all` 默认输出一个**framework-dependent** 统一目录：
+
+```text
+artifacts/publish/CAD-Demo-win-x64/
+├─ CAD-Winform.exe
+├─ CAD-WPF.exe
+├─ CAD-Avalonia.exe
+├─ run-winform.cmd
+├─ run-wpf.cmd
+├─ run-avalonia.cmd
+├─ Bridge / OCCT / 应用公共依赖（单份）
+├─ occt/resources/...
+└─ package-manifest.json
+```
+
+统一包**不携带 .NET Runtime**，目标机器需要安装 **.NET 10 Desktop Runtime x64**。三个应用共享一份应用公共依赖、Bridge DLL、OCCT DLL 和 OCCT 资源，不再生成三个包含大量重复框架/Bridge/OCCT DLL 的目录。
+
+发布前脚本只运行一次 Demo Build Gate：统一包执行 `all`，单目标包只执行对应目标；各 staging publish 不再额外重复调用 `build.ps1`。生成的 `package-manifest.json` 会记录 Bridge Source Commit、发布模式/所需 Runtime，以及包内每个文件的 SHA-256 和大小。
+
+只发布单个前端时仍生成独立包。单目标默认 self-contained，也可以显式改为 framework-dependent：
+
+```powershell
+.\publish.ps1 wpf Release -SelfContained -OcctRoot "D:\tools\occt-vc144-64"
+.\publish.ps1 avalonia Release -FrameworkDependent -OcctRoot "D:\tools\occt-vc144-64"
+```
+
+统一 `all` 不允许 self-contained，因为 WinForms/WPF/Avalonia 的 Windows Desktop Runtime Closure 中存在同名但内容不同的 Framework DLL；包装脚本会在真正 publish 前直接拒绝该组合。
 
 开发阶段验证 `demo-dev` 对尚未合并的 `main-dev` SDK 时，必须显式指定来源：
 

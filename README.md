@@ -18,7 +18,9 @@ OcctDemo.Common
 
 The Demo is a strict Bridge 3 / ABI5 consumer. It does not track `OcctNative` or `OcctNet*` implementation sources and does not call the native `occt_*` ABI directly.
 
-The Demo itself targets **.NET 10** to exercise the latest supported consumer runtime. Its build tooling uses a stable .NET 10 SDK with a `10.0.100` baseline and `latestFeature` roll-forward, so later stable 10.0.x SDKs are accepted. The consumed Bridge Binary SDK may target .NET 8, .NET 9 or .NET 10; the current development contract uses .NET 8 as the minimum Bridge runtime baseline so the same SDK can serve .NET 8-10 applications.
+The Demo itself targets **.NET 10** to exercise the latest supported consumer runtime. Its build tooling uses a stable .NET 10 SDK with a `10.0.100` baseline and `latestFeature` roll-forward, so later stable 10.0.x SDKs are accepted. The Bridge Binary SDK currently targets the .NET 8 minimum baseline, but Demo compatibility is decided from the contract's `supportedConsumerFrameworks` / `supportedDesktopConsumerFrameworks` lists rather than by assuming a particular Bridge minimum TFM.
+
+Demo runtime paths are also independent from the Bridge minimum TFM: `run.ps1` resolves each application's `TargetFramework` from its own `.csproj`, so the current WPF/WinForms output is `net10.0-windows` even though the consumed Bridge assemblies target `net8.0-windows`.
 
 ## Current viewport contract
 
@@ -39,7 +41,21 @@ The shared Demo shortcut mapper consumes `OcctKeyInputEventArgs`, so viewport-fo
 
 `dist/` is local build state and is intentionally ignored by Git. On Windows, `sync.ps1` keeps one reusable source clone at `.cache/main-sdk-source/`: the first sync clones once, and later syncs only fetch/checkout the requested `main` or `main-dev` commit while retaining ignored build caches. It no longer creates a new sibling `.OcctCSharpBridge-main-sdk-<guid>` worktree for every rebuild. The entire `.cache/` directory is ignored by Git.
 
-Both platform synchronization flows validate contract schema 3, manifest schema 2, ABI5-only metadata, supported Bridge TFMs, C# 14 and SDK file hashes. They validate the Binary SDK's SDK baseline against its own contract rather than requiring it to equal the Demo machine's exact SDK version. A matching `manifest.sourceCommit` is reused instead of rebuilding the SDK.
+Windows source synchronization uses the Bridge **`build.ps1 sdk Release`** gate when the selected source revision provides it. For older source revisions that predate the `sdk` target, `sync.ps1` runs the equivalent validated sequence **`all Release` → `dist Release`** instead, so the default `SourceBranch=main` remains usable during the rollout without falling back to an unvalidated package. The `sdk` gate compiles the .NET 8/9/10 consumer matrix, runs ManagedTests, Core Native Smoke and all three Windows Viewport Host smokes, and only then produces `dist/win-x64` from the already validated Bridge outputs.
+
+The Windows Binary SDK payload is strict and flat. Demo accepts exactly these seven files and rejects any extra file or directory, including when `-SdkRoot` is supplied:
+
+```text
+OcctNative.dll
+OcctNet.dll
+OcctNet.WinForms.dll
+OcctNet.Wpf.dll
+OcctNet.Avalonia.dll
+bridge-contract.json
+bridge-manifest.json
+```
+
+This prevents an old or unhashed DLL from being mixed into an otherwise valid manifest-controlled SDK. Contract schema 3, manifest schema 2, ABI5-only metadata, supported consumer TFMs, C# 14, `sourceCommit` and every declared SHA-256 are validated before the SDK is copied. A matching local `manifest.sourceCommit` is reused instead of rebuilding.
 
 Formal Windows consumption from `main`:
 
@@ -52,7 +68,33 @@ Formal Windows consumption from `main`:
 .\publish.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-`publish.ps1 all` now produces one `artifacts/publish/CAD-Demo-win-x64/` directory. The WinForms, WPF and Avalonia executables share one copy of the .NET runtime, Bridge, OCCT DLLs and OCCT resources instead of three complete directories with duplicate dependencies. Use `run-winform.cmd`, `run-wpf.cmd` or `run-avalonia.cmd` to launch each frontend. Publishing a single target (`winform`, `wpf` or `avalonia`) still produces a standalone deployable package.
+`publish.ps1 all` produces one shared **framework-dependent** directory:
+
+```text
+artifacts/publish/CAD-Demo-win-x64/
+├─ CAD-Winform.exe
+├─ CAD-WPF.exe
+├─ CAD-Avalonia.exe
+├─ run-winform.cmd
+├─ run-wpf.cmd
+├─ run-avalonia.cmd
+├─ Bridge / OCCT / application dependencies (one shared copy)
+├─ occt/resources/...
+└─ package-manifest.json
+```
+
+The unified package does **not** bundle the .NET runtime. The target machine must provide the **.NET 10 Desktop Runtime x64**. The three applications share one copy of application dependencies, Bridge DLLs, OCCT DLLs and OCCT resources instead of three duplicate directories.
+
+Before publishing, the script runs the Demo build gate once (`all` for the unified package, or the selected target for a standalone package); individual staging publishes no longer call `build.ps1` again. `package-manifest.json` records the Bridge source commit, package mode/runtime requirement and SHA-256/size for every packaged file.
+
+Publishing a single target still produces a standalone package. Single-target publishing is self-contained by default and can be made framework-dependent explicitly:
+
+```powershell
+.\publish.ps1 wpf Release -SelfContained -OcctRoot "D:\tools\occt-vc144-64"
+.\publish.ps1 avalonia Release -FrameworkDependent -OcctRoot "D:\tools\occt-vc144-64"
+```
+
+Unified `all` publishing cannot be self-contained because the WinForms/WPF/Avalonia Windows Desktop runtime closures contain conflicting same-name framework DLLs; the wrapper rejects that combination before publishing.
 
 When validating `demo-dev` against unreleased SDK work on `main-dev`, explicitly regenerate the local SDK from that source branch:
 

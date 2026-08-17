@@ -28,25 +28,54 @@ if (-not $?) { throw "Bridge validation failed." }
 
 $contract = Get-Content -LiteralPath $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $targetKey = $Target.ToLowerInvariant()
+
+function Get-ProjectTargetFramework {
+    param(
+        [Parameter(Mandatory = $true)][string]$RelativeProjectPath,
+        [Parameter(Mandatory = $true)][string]$ExpectedFramework
+    )
+
+    $projectPath = Join-Path $RepoRoot $RelativeProjectPath
+    if (-not (Test-Path -LiteralPath $projectPath -PathType Leaf)) { throw "Demo project was not found: $projectPath" }
+    try { [xml]$project = Get-Content -LiteralPath $projectPath -Raw -Encoding UTF8 }
+    catch { throw "Demo project is not valid XML: $RelativeProjectPath`n$($_.Exception.Message)" }
+
+    $node = $project.SelectSingleNode("/Project/PropertyGroup/TargetFramework[normalize-space(.) != '']")
+    if ($null -eq $node) { throw "Demo project does not declare TargetFramework: $RelativeProjectPath" }
+    $framework = ([string]$node.InnerText).Trim()
+    if ($framework -ne $ExpectedFramework) {
+        throw "Demo project '$RelativeProjectPath' targets '$framework'; expected '$ExpectedFramework'. Demo runtime TFM must remain independent from the Bridge Binary SDK TFM."
+    }
+    return $framework
+}
+
 $apps = @{
     winform = @{
-        Framework = [string]$contract.dotnet.desktopTargetFramework
-        Path = "src\OcctDemo.WinForms\bin\x64\$Configuration\{0}\CAD-Winform.exe"
+        Project = "src\OcctDemo.WinForms\OcctDemo.WinForms.csproj"
+        ExpectedFramework = "net10.0-windows"
+        OutputDirectory = "src\OcctDemo.WinForms\bin\x64\$Configuration"
+        Executable = "CAD-Winform.exe"
     }
     wpf = @{
-        Framework = [string]$contract.dotnet.desktopTargetFramework
-        Path = "src\OcctDemo.Wpf\bin\x64\$Configuration\{0}\CAD-WPF.exe"
+        Project = "src\OcctDemo.Wpf\OcctDemo.Wpf.csproj"
+        ExpectedFramework = "net10.0-windows"
+        OutputDirectory = "src\OcctDemo.Wpf\bin\x64\$Configuration"
+        Executable = "CAD-WPF.exe"
     }
     avalonia = @{
-        Framework = [string]$contract.dotnet.targetFramework
-        Path = "src\OcctDemo.Avalonia\bin\x64\$Configuration\{0}\CAD-Avalonia.exe"
+        Project = "src\OcctDemo.Avalonia\OcctDemo.Avalonia.csproj"
+        ExpectedFramework = "net10.0"
+        OutputDirectory = "src\OcctDemo.Avalonia\bin\x64\$Configuration"
+        Executable = "CAD-Avalonia.exe"
     }
 }
+
 $definition = $apps[$targetKey]
-$executable = Join-Path $RepoRoot ([string]::Format([string]$definition.Path, [string]$definition.Framework))
+$demoFramework = Get-ProjectTargetFramework ([string]$definition.Project) ([string]$definition.ExpectedFramework)
+$applicationDirectory = Join-Path $RepoRoot (Join-Path ([string]$definition.OutputDirectory) $demoFramework)
+$executable = Join-Path $applicationDirectory ([string]$definition.Executable)
 if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) { throw "Executable was not found: $executable`nRun .\build.ps1 $targetKey $Configuration first." }
 
-$applicationDirectory = Split-Path -Parent $executable
 $nativeBridge = Join-Path $applicationDirectory "OcctNative.dll"
 if (-not (Test-Path -LiteralPath $nativeBridge -PathType Leaf)) { throw "OcctNative.dll was not copied beside the application: $nativeBridge" }
 
@@ -103,7 +132,8 @@ if (Test-Path -LiteralPath $OcctThirdPartyDir -PathType Container) {
 }
 
 Write-Host "Application: $executable"
-Write-Host "Bridge:      $($contract.bridgeVersion), ABI $($contract.nativeAbi.current)" -ForegroundColor DarkGray
+Write-Host "Demo TFM:    $demoFramework" -ForegroundColor DarkGray
+Write-Host "Bridge:      $($contract.bridgeVersion), ABI $($contract.nativeAbi.current), SDK target $($contract.dotnet.targetFramework)" -ForegroundColor DarkGray
 Write-Host "OCCT root:   $OcctRoot" -ForegroundColor DarkGray
 
 $process = Start-Process -FilePath $executable -WorkingDirectory $applicationDirectory -PassThru

@@ -28,6 +28,15 @@ $ContractPath = Join-Path $DistRoot "bridge-contract.json"
 $ManifestPath = Join-Path $DistRoot "bridge-manifest.json"
 $GlobalJsonPath = Join-Path $RepoRoot "global.json"
 $ConsumerCheckPath = Join-Path $RepoRoot "tests\check-sdk-consumer.ps1"
+$SdkFileNames = @(
+    "OcctNative.dll",
+    "OcctNet.dll",
+    "OcctNet.WinForms.dll",
+    "OcctNet.Wpf.dll",
+    "OcctNet.Avalonia.dll",
+    "bridge-contract.json",
+    "bridge-manifest.json"
+)
 
 $globalJson = Get-Content -LiteralPath $GlobalJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $SdkVersion = [string]$globalJson.sdk.version
@@ -148,15 +157,13 @@ function Invoke-DotNetChecked {
 }
 
 function Test-BinarySdk {
-    foreach ($name in @(
-        "OcctNative.dll",
-        "OcctNet.dll",
-        "OcctNet.WinForms.dll",
-        "OcctNet.Wpf.dll",
-        "OcctNet.Avalonia.dll",
-        "bridge-contract.json",
-        "bridge-manifest.json")) {
-        Assert-Path (Join-Path $DistRoot $name)
+    foreach ($name in $SdkFileNames) { Assert-Path (Join-Path $DistRoot $name) }
+
+    $unexpectedEntries = @(
+        Get-ChildItem -LiteralPath $DistRoot -Force | Where-Object { $_.Name -notin $SdkFileNames }
+    )
+    if ($unexpectedEntries.Count -gt 0) {
+        throw "Demo dist/win-x64 contains files or directories outside the validated Binary SDK payload: $((@($unexpectedEntries.Name | Sort-Object)) -join ', '). Run .\sync.ps1 to refresh it."
     }
 
     $contract = Get-Content -LiteralPath $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -169,12 +176,19 @@ function Test-BinarySdk {
 
     $bridgeCoreFramework = [string]$contract.dotnet.targetFramework
     $bridgeDesktopFramework = [string]$contract.dotnet.desktopTargetFramework
-    if ($bridgeCoreFramework -notin @("net8.0", "net9.0", "net10.0")) {
-        throw "Unsupported Bridge Core target framework: $bridgeCoreFramework"
+    $supportedCoreFrameworks = @($contract.dotnet.supportedConsumerFrameworks | ForEach-Object { [string]$_ })
+    $supportedDesktopFrameworks = @($contract.dotnet.supportedDesktopConsumerFrameworks | ForEach-Object { [string]$_ })
+    if ($bridgeCoreFramework -notin $supportedCoreFrameworks) {
+        throw "Bridge Core target framework '$bridgeCoreFramework' is not declared in supportedConsumerFrameworks."
     }
-    $expectedDesktopFramework = "$bridgeCoreFramework-windows"
-    if ($bridgeDesktopFramework -ne $expectedDesktopFramework) {
-        throw "Bridge Desktop target framework '$bridgeDesktopFramework' does not match Core target '$bridgeCoreFramework'."
+    if ($bridgeDesktopFramework -notin $supportedDesktopFrameworks) {
+        throw "Bridge Desktop target framework '$bridgeDesktopFramework' is not declared in supportedDesktopConsumerFrameworks."
+    }
+    if ($script:DemoCoreTargetFramework -notin $supportedCoreFrameworks) {
+        throw "The synchronized Bridge SDK does not support Demo target $script:DemoCoreTargetFramework. Supported: $($supportedCoreFrameworks -join ', ')."
+    }
+    if ($script:DemoDesktopTargetFramework -notin $supportedDesktopFrameworks) {
+        throw "The synchronized Bridge SDK does not support Demo desktop target $script:DemoDesktopTargetFramework. Supported: $($supportedDesktopFrameworks -join ', ')."
     }
 
     $binarySdkBaseline = [string]$contract.dotnet.sdkVersion
@@ -258,6 +272,7 @@ Write-Host "Bridge SDK:    $DistRoot" -ForegroundColor DarkGray
 
 if ($Target -eq "clean") {
     Clean-Outputs
+    Write-Host "Build completed." -ForegroundColor Green
     exit 0
 }
 

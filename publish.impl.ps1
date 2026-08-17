@@ -255,9 +255,6 @@ function Publish-ProjectToStaging {
     $project = Join-Path $RepoRoot $definition.Project
     Assert-Path $project
 
-    & $BuildScript $Key $Configuration
-    if (-not $?) { throw "$($definition.Name) validation/build failed." }
-
     Remove-Item -LiteralPath $StagingRoot -Recurse -Force -ErrorAction SilentlyContinue
     New-Item -ItemType Directory -Path $StagingRoot -Force | Out-Null
     Write-Host "[publish] $($definition.Name) / $Configuration..." -ForegroundColor Cyan
@@ -344,22 +341,60 @@ if exist "%RES%\Textures" set "CSF_MDTVTexturesDirectory=%RES%\Textures"
     [System.IO.File]::WriteAllText((Join-Path $PackageRoot $FileName), $runCmd, [System.Text.Encoding]::ASCII)
 }
 
-function Write-PublishManifest {
+function Write-PackageManifest {
     param(
         [Parameter(Mandatory = $true)][string]$PackageRoot,
         [Parameter(Mandatory = $true)][string[]]$Apps
     )
-    $summary = @(
-        "OcctCSharpBridge Demo",
-        "Apps: $($Apps -join ', ')",
-        "Bridge: $($script:Contract.bridgeVersion)",
-        "ABI: $($script:Contract.nativeAbi.current) only",
-        "OCCT: $($script:Contract.occtVersion)",
-        "Platform: win-x64",
-        "Configuration: $Configuration",
-        "Self-contained: $UseSelfContained"
+
+    $manifestPath = Join-Path $PackageRoot "package-manifest.json"
+    Remove-Item -LiteralPath $manifestPath -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath (Join-Path $PackageRoot "publish-manifest.txt") -Force -ErrorAction SilentlyContinue
+
+    $root = [System.IO.Path]::GetFullPath($PackageRoot).TrimEnd('\') + '\'
+    $files = @(
+        Get-ChildItem -LiteralPath $PackageRoot -File -Recurse |
+            Sort-Object FullName |
+            ForEach-Object {
+                [ordered]@{
+                    name = $_.FullName.Substring($root.Length).Replace('\', '/')
+                    size = $_.Length
+                    sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+                }
+            }
     )
-    [System.IO.File]::WriteAllLines((Join-Path $PackageRoot "publish-manifest.txt"), $summary, [System.Text.UTF8Encoding]::new($false))
+
+    $requiresDesktopRuntime = @($Apps | Where-Object { $_ -in @("WinForms", "WPF") }).Count -gt 0
+    $requiredRuntime = if ($UseSelfContained) {
+        $null
+    }
+    elseif ($requiresDesktopRuntime) {
+        "Microsoft.WindowsDesktop.App 10.x x64"
+    }
+    else {
+        "Microsoft.NETCore.App 10.x x64"
+    }
+
+    $packageManifest = [ordered]@{
+        schemaVersion = 1
+        product = "OcctCSharpBridge Demo"
+        apps = $Apps
+        bridgeVersion = [string]$script:Contract.bridgeVersion
+        bridgeSourceCommit = [string]$script:Manifest.sourceCommit
+        bridgeTargetFramework = [string]$script:Contract.dotnet.targetFramework
+        nativeAbi = [int]$script:Contract.nativeAbi.current
+        occtVersion = [string]$script:Contract.occtVersion
+        platform = "win-x64"
+        configuration = $Configuration
+        selfContained = [bool]$UseSelfContained
+        requiredRuntime = $requiredRuntime
+        files = $files
+    }
+
+    [System.IO.File]::WriteAllText(
+        $manifestPath,
+        ($packageManifest | ConvertTo-Json -Depth 8) + [Environment]::NewLine,
+        [System.Text.UTF8Encoding]::new($false))
 }
 
 function Write-ZipPackage {
@@ -385,7 +420,7 @@ function Publish-Standalone {
         Merge-PublishTree $stagingRoot $packageRoot
         Copy-SharedPackageContent $packageRoot
         Write-RunCommand $Key $packageRoot "run.cmd"
-        Write-PublishManifest $packageRoot @([string]$definition.Name)
+        Write-PackageManifest $packageRoot @([string]$definition.Name)
     }
     finally { Remove-Item -LiteralPath $stagingRoot -Recurse -Force -ErrorAction SilentlyContinue }
 
@@ -420,7 +455,7 @@ function Publish-Unified {
         Write-RunCommand "winform" $packageRoot "run-winform.cmd"
         Write-RunCommand "wpf" $packageRoot "run-wpf.cmd"
         Write-RunCommand "avalonia" $packageRoot "run-avalonia.cmd"
-        Write-PublishManifest $packageRoot @("WinForms", "WPF", "Avalonia")
+        Write-PackageManifest $packageRoot @("WinForms", "WPF", "Avalonia")
     }
     finally { Remove-Item -LiteralPath $stagingRoot -Recurse -Force -ErrorAction SilentlyContinue }
 
@@ -437,9 +472,11 @@ $script:DotNet = Resolve-DotNet
 $script:Dumpbin = Resolve-Dumpbin
 $script:VcRuntimeDirectories = @(Get-VcRuntimeDirectories)
 $script:Contract = Get-Content -LiteralPath $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$script:Manifest = Get-Content -LiteralPath $ManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 
-& $BuildScript validate $Configuration
-if (-not $?) { throw "Bridge SDK validation failed." }
+$validationTarget = if ($Target -eq "all") { "all" } else { $Target }
+& $BuildScript $validationTarget $Configuration
+if (-not $?) { throw "Demo validation/build failed before publish." }
 
 if ($Target -eq "all") {
     Publish-Unified

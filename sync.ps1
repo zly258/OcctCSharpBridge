@@ -12,6 +12,17 @@ Set-StrictMode -Version Latest
 $RepoRoot = Split-Path -Parent $PSCommandPath
 $Destination = Join-Path $RepoRoot "dist\win-x64"
 $SourceRepoRoot = Join-Path $RepoRoot ".cache\main-sdk-source"
+$DemoCoreTargetFramework = "net10.0"
+$DemoDesktopTargetFramework = "net10.0-windows"
+$SdkFileNames = @(
+    "OcctNative.dll",
+    "OcctNet.dll",
+    "OcctNet.WinForms.dll",
+    "OcctNet.Wpf.dll",
+    "OcctNet.Avalonia.dll",
+    "bridge-contract.json",
+    "bridge-manifest.json"
+)
 
 function Assert-File {
     param([Parameter(Mandatory = $true)][string]$Path)
@@ -31,15 +42,13 @@ function Invoke-GitChecked {
 function Read-ValidatedSdk {
     param([Parameter(Mandatory = $true)][string]$Root)
 
-    foreach ($name in @(
-        "OcctNative.dll",
-        "OcctNet.dll",
-        "OcctNet.WinForms.dll",
-        "OcctNet.Wpf.dll",
-        "OcctNet.Avalonia.dll",
-        "bridge-contract.json",
-        "bridge-manifest.json")) {
-        Assert-File (Join-Path $Root $name)
+    foreach ($name in $SdkFileNames) { Assert-File (Join-Path $Root $name) }
+
+    $unexpectedEntries = @(
+        Get-ChildItem -LiteralPath $Root -Force | Where-Object { $_.Name -notin $SdkFileNames }
+    )
+    if ($unexpectedEntries.Count -gt 0) {
+        throw "The SDK root contains files or directories outside the validated payload: $((@($unexpectedEntries.Name | Sort-Object)) -join ', '). Use a clean Binary SDK directory."
     }
 
     $contract = Get-Content -LiteralPath (Join-Path $Root "bridge-contract.json") -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -54,11 +63,19 @@ function Read-ValidatedSdk {
 
     $coreFramework = [string]$contract.dotnet.targetFramework
     $desktopFramework = [string]$contract.dotnet.desktopTargetFramework
-    if ($coreFramework -notin @("net8.0", "net9.0", "net10.0")) {
-        throw "Unsupported Bridge Core target framework: $coreFramework"
+    $supportedCoreFrameworks = @($contract.dotnet.supportedConsumerFrameworks | ForEach-Object { [string]$_ })
+    $supportedDesktopFrameworks = @($contract.dotnet.supportedDesktopConsumerFrameworks | ForEach-Object { [string]$_ })
+    if ($coreFramework -notin $supportedCoreFrameworks) {
+        throw "Bridge Core target framework '$coreFramework' is not declared in supportedConsumerFrameworks."
     }
-    if ($desktopFramework -ne "$coreFramework-windows") {
-        throw "Bridge Desktop target framework '$desktopFramework' does not match Core target '$coreFramework'."
+    if ($desktopFramework -notin $supportedDesktopFrameworks) {
+        throw "Bridge Desktop target framework '$desktopFramework' is not declared in supportedDesktopConsumerFrameworks."
+    }
+    if ($DemoCoreTargetFramework -notin $supportedCoreFrameworks) {
+        throw "The Binary SDK does not declare support for Demo target $DemoCoreTargetFramework. Supported: $($supportedCoreFrameworks -join ', ')."
+    }
+    if ($DemoDesktopTargetFramework -notin $supportedDesktopFrameworks) {
+        throw "The Binary SDK does not declare support for Demo desktop target $DemoDesktopTargetFramework. Supported: $($supportedDesktopFrameworks -join ', ')."
     }
 
     $sdkBaseline = [string]$contract.dotnet.sdkVersion
@@ -124,7 +141,9 @@ function Copy-Sdk {
     $sdk = Read-ValidatedSdk $Source
     if (Test-Path -LiteralPath $Destination -PathType Container) { Remove-Item -LiteralPath $Destination -Recurse -Force }
     New-Item -ItemType Directory -Path $Destination -Force | Out-Null
-    Copy-Item -Path (Join-Path $Source "*") -Destination $Destination -Recurse -Force
+    foreach ($name in $SdkFileNames) {
+        Copy-Item -LiteralPath (Join-Path $Source $name) -Destination (Join-Path $Destination $name) -Force
+    }
     Write-Host "Binary SDK synchronized." -ForegroundColor Green
     Write-Host "Bridge: $($sdk.Contract.bridgeVersion), ABI 5 only, OCCT $($sdk.Contract.occtVersion), target $($sdk.Contract.dotnet.targetFramework), SDK baseline $($sdk.Contract.dotnet.sdkVersion)" -ForegroundColor DarkGray
     Write-Host "Path:   $Destination" -ForegroundColor DarkGray
@@ -169,6 +188,21 @@ function Get-OrCreateSourceClone {
     return $SourceRepoRoot
 }
 
+function Invoke-BridgeBuildTarget {
+    param(
+        [Parameter(Mandatory = $true)][string]$BuildScript,
+        [Parameter(Mandatory = $true)][string]$TargetName
+    )
+
+    $parameters = @{
+        Target = $TargetName
+        Configuration = "Release"
+    }
+    if (-not [string]::IsNullOrWhiteSpace($OcctRoot)) { $parameters.OcctRoot = $OcctRoot }
+    & $BuildScript @parameters
+    if ($LASTEXITCODE -ne 0) { throw "Bridge build target '$TargetName' failed on $Remote/$SourceBranch." }
+}
+
 if (-not [string]::IsNullOrWhiteSpace($SdkRoot)) {
     if ($ForceRebuild) { throw "-ForceRebuild cannot be combined with -SdkRoot; the supplied SDK is copied as-is after validation." }
     Copy-Sdk ([System.IO.Path]::GetFullPath($SdkRoot))
@@ -210,14 +244,16 @@ $sourceRoot = Get-OrCreateSourceClone $Remote $SourceBranch $sourceCommit
 $buildScript = Join-Path $sourceRoot "build.ps1"
 if (-not (Test-Path -LiteralPath $buildScript -PathType Leaf)) { throw "$Remote/$SourceBranch does not contain build.ps1." }
 
-Write-Host "[sync] Building validated win-x64 Binary SDK from reusable source clone..." -ForegroundColor Cyan
-$buildParameters = @{
-    Target = "dist"
-    Configuration = "Release"
+$buildScriptText = Get-Content -LiteralPath $buildScript -Raw -Encoding UTF8
+if ($buildScriptText -match '(?s)ValidateSet\([^)]*"sdk"') {
+    Write-Host "[sync] Running the validated win-x64 Binary SDK release gate in the reusable source clone..." -ForegroundColor Cyan
+    Invoke-BridgeBuildTarget $buildScript "sdk"
 }
-if (-not [string]::IsNullOrWhiteSpace($OcctRoot)) { $buildParameters.OcctRoot = $OcctRoot }
-& $buildScript @buildParameters
-if ($LASTEXITCODE -ne 0) { throw "Binary SDK build failed on $Remote/$SourceBranch." }
+else {
+    Write-Host "[sync] Source revision predates the 'sdk' target; running the equivalent validated legacy sequence: all -> dist." -ForegroundColor Yellow
+    Invoke-BridgeBuildTarget $buildScript "all"
+    Invoke-BridgeBuildTarget $buildScript "dist"
+}
 
 $builtSdkRoot = Join-Path $sourceRoot "dist\win-x64"
 $builtSdk = Read-ValidatedSdk $builtSdkRoot
