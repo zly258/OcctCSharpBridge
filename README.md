@@ -1,8 +1,8 @@
-# OcctCSharpBridge Demo
+# OcctCSharpBridge Demo Development
 
-[简体中文](README.zh-CN.md) · [Main SDK](https://github.com/zly258/OcctCSharpBridge/tree/main)
+[简体中文](README.zh-CN.md) · [Development SDK](https://github.com/zly258/OcctCSharpBridge/tree/main-dev)
 
-`demo` is the single Binary SDK consumer branch. `main` is the sole Bridge SDK source.
+`demo-dev` is the development Binary SDK consumer branch. Its default Bridge source is `main-dev`. Formal `demo` continues to consume formal `main`.
 
 ```text
 OcctDemo.Common
@@ -18,32 +18,39 @@ OcctDemo.Common
 
 The Demo is a strict Bridge 3 / ABI5 consumer. It does not track `OcctNative` or `OcctNet*` implementation sources and does not call the native `occt_*` ABI directly.
 
-The Demo itself targets **.NET 10** to exercise the latest supported consumer runtime. Its build tooling uses a stable .NET 10 SDK with a `10.0.100` baseline and `latestFeature` roll-forward, so later stable 10.0.x SDKs are accepted. The Bridge Binary SDK currently targets the .NET 8 minimum baseline, but Demo compatibility is decided from the contract's `supportedConsumerFrameworks` / `supportedDesktopConsumerFrameworks` lists rather than by assuming a particular Bridge minimum TFM.
-
-Demo runtime paths are also independent from the Bridge minimum TFM: `run.ps1` resolves each application's `TargetFramework` from its own `.csproj`, so the current WPF/WinForms output is `net10.0-windows` even though the consumed Bridge assemblies target `net8.0-windows`.
+The Demo targets **.NET 10** to exercise the latest supported consumer runtime. Build tooling uses a stable .NET 10 SDK with a `10.0.100` baseline and `latestFeature` roll-forward. The Bridge Binary SDK targets the .NET 8 minimum baseline, while compatibility is determined from the contract's `supportedConsumerFrameworks` / `supportedDesktopConsumerFrameworks` lists.
 
 ## Current viewport contract
 
-All three UI hosts consume the same Bridge viewport model instead of framework-specific lifecycle logic:
+All three UI hosts consume the same Bridge viewport model:
 
 - `OcctViewportInteractionFeatures` controls hover, point/rectangle selection, rotate, pan and zoom;
 - `PreviewPointerInput / PointerInput` and `PreviewKeyInput / KeyInput` provide platform-neutral input;
 - `HostState`, `EngineGeneration`, `EngineRecreated`, `EngineDisposing` and `Faulted` define native-host lifecycle;
 - `InitialOptions`, `RenderReady` and `FirstFrameRendered` define first-frame readiness;
-- `NativeHandleChanged` exposes HWND/XID changes only for advanced hosting/diagnostics;
-- `HoverHitChanged` reports owner/subshape identity changes without requiring application-side `DetectAt` polling;
+- `NativeHandleChanged` exposes HWND/XID changes for advanced hosting/diagnostics;
+- `HoverHitChanged` reports owner/subshape identity changes without application-side detection polling;
 - `BeginDisplayBatch()` is used for grouped scene/view configuration;
-- the Samples menu includes a transient **Viewer Projection Test** using `ProjectPointToEdge` and `ProjectPointToFace` with parameter round-trip validation.
+- the Samples menu includes a transient Viewer Projection Test using `ProjectPointToEdge` and `ProjectPointToFace`.
 
-The shared Demo shortcut mapper consumes `OcctKeyInputEventArgs`, so viewport-focused Ctrl+Z/Y/N/O/S, Delete, F, 0/1/2/3 and Escape no longer depend on WinForms/WPF/Avalonia key enums. Framework window shortcuts remain only as focus fallback.
+## SDK synchronization model
 
-## Binary SDK workflow
+`dist/` is local generated state and is ignored by Git. `demo-dev` now synchronizes **two matching Bridge artifacts from the same `main-dev` source commit**:
 
-`dist/` is local build state and is intentionally ignored by Git. On Windows, `sync.ps1` keeps one reusable source clone at `.cache/main-sdk-source/`: the first sync clones once, and later syncs only fetch/checkout the requested `main` or `main-dev` commit while retaining ignored build caches. It no longer creates a new sibling `.OcctCSharpBridge-main-sdk-<guid>` worktree for every rebuild. The entire `.cache/` directory is ignored by Git.
+```text
+dist/win-x64/                  # strict minimal Binary SDK used for compilation
+└─ 7-file ABI5 payload
 
-Windows source synchronization uses the Bridge **`build.ps1 sdk Release`** gate when the selected source revision provides it. For older source revisions that predate the `sdk` target, `sync.ps1` runs the equivalent validated sequence **`all Release` → `dist Release`** instead, so the default `SourceBranch=main` remains usable during the rollout without falling back to an unvalidated package. The `sdk` gate compiles the .NET 8/9/10 consumer matrix, runs ManagedTests, Core Native Smoke and all three Windows Viewport Host smokes, and only then produces `dist/win-x64` from the already validated Bridge outputs.
+dist/portable/win-x64/         # validated portable runtime used only for publishing
+├─ runtime/                     # OcctNative + OCCT/third-party/VC runtime closure
+├─ occt/resources/              # OCCT resources
+├─ package-manifest.json
+└─ Bridge notices/metadata
+```
 
-The Windows Binary SDK payload is strict and flat. Demo accepts exactly these seven files and rejects any extra file or directory, including when `-SdkRoot` is supplied:
+Linux uses the equivalent `dist/linux-x64` and `dist/portable/linux-x64` pair.
+
+The minimal Windows Binary SDK remains strict and flat. It contains exactly:
 
 ```text
 OcctNative.dll
@@ -55,84 +62,143 @@ bridge-contract.json
 bridge-manifest.json
 ```
 
-This prevents an old or unhashed DLL from being mixed into an otherwise valid manifest-controlled SDK. Contract schema 3, manifest schema 2, ABI5-only metadata, supported consumer TFMs, C# 14, `sourceCommit` and every declared SHA-256 are validated before the SDK is copied. A matching local `manifest.sourceCommit` is reused instead of rebuilding.
+This contract is intentionally unchanged so Demo compilation and Consumer validation remain deterministic.
 
-Formal Windows consumption from `main`:
+On Windows, `sync.ps1` keeps the reusable Bridge source clone under `.cache/main-sdk-source/`. For current `main-dev` it runs the full Bridge `build.ps1 sdk Release` gate, then invokes the Bridge-owned `tools/package-portable-sdk.ps1` against that exact Binary SDK. Both cached outputs must carry the same Bridge `sourceCommit`, and all declared hashes are revalidated after copying.
+
+On Linux, `sync.sh` builds the matching linux-x64 SDK and invokes Bridge `tools/package-portable-sdk.sh`. The Bridge packager—not the Demo—owns `ldd`, OCCT dependency selection, `$ORIGIN` RPATH rewriting and OCCT resource collection.
+
+Development synchronization:
 
 ```powershell
-.\sync.ps1
+.\sync.ps1 -ForceRebuild
+```
+
+The default source is already `main-dev`; an explicit override is still available:
+
+```powershell
+.\sync.ps1 -SourceBranch main-dev -ForceRebuild
+```
+
+When supplying prebuilt artifacts, the Binary SDK and matching Portable SDK must both be supplied:
+
+```powershell
+.\sync.ps1 -SdkRoot <binary-sdk> -PortableRoot <portable-sdk>
+```
+
+Linux equivalent:
+
+```bash
+./sync.sh --force-rebuild
+./sync.sh --sdk-root <binary-sdk> --portable-root <portable-sdk>
+```
+
+## Build and development run
+
+Windows:
+
+```powershell
 .\build.ps1 all Release
 .\run.ps1 winform Release
 .\run.ps1 wpf Release
 .\run.ps1 avalonia Release
-.\publish.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-`publish.ps1 all` produces one shared **framework-dependent** directory:
+`run.ps1` is a development runner and may still use a local OCCT installation. Portable OCCT deployment is a **publish-time** concern.
+
+Linux:
+
+```bash
+./build.sh all Release
+./run.sh Release
+```
+
+Linux builds only `OcctDemo.Common` and `OcctDemo.Avalonia`. Interactive Avalonia viewing requires X11/XWayland.
+
+## Publishing
+
+Demo publishing no longer contains its own OCCT dependency collector.
+
+Previously:
+
+```text
+Demo publish
+→ dumpbin / ldd
+→ independently discover OCCT/TBB/etc.
+→ independently copy OCCT resources
+```
+
+Current `demo-dev` flow:
+
+```text
+main-dev Bridge sync
+→ validated minimal Binary SDK
+→ Bridge-owned Portable SDK
+→ Demo .NET publish
+→ reuse matching Portable runtime/resources
+→ Demo package
+```
+
+This removes duplicated runtime-closure logic between Bridge and Demo. `publish.ps1` / `publish.sh` validate that the cached Portable SDK has the same `bridgeSourceCommit` and `bridgeVersion` as the synchronized minimal SDK before packaging.
+
+### Windows unified package
+
+```powershell
+.\publish.ps1 all Release -Zip
+```
+
+Output:
 
 ```text
 artifacts/publish/CAD-Demo-win-x64/
 ├─ CAD-Winform.exe
 ├─ CAD-WPF.exe
 ├─ CAD-Avalonia.exe
+├─ OcctNet*.dll
+├─ runtime/
+│  ├─ OcctNative.dll
+│  ├─ TKernel.dll
+│  ├─ TK*.dll
+│  └─ required third-party / VC runtime DLLs
+├─ occt/resources/...
+├─ bridge-contract.json
+├─ bridge-manifest.json
+├─ bridge-portable-manifest.json
 ├─ run-winform.cmd
 ├─ run-wpf.cmd
 ├─ run-avalonia.cmd
-├─ Bridge / OCCT / application dependencies (one shared copy)
-├─ occt/resources/...
 └─ package-manifest.json
 ```
 
-The unified package does **not** bundle the .NET runtime. The target machine must provide the **.NET 10 Desktop Runtime x64**. The three applications share one copy of application dependencies, Bridge DLLs, OCCT DLLs and OCCT resources instead of three duplicate directories.
+The root-level minimal `OcctNative.dll` emitted during project publishing is deliberately removed. The application uses the validated `runtime/OcctNative.dll` closure, and the run commands set `OCCT_BRIDGE_NATIVE_DIR`, `OCCT_ROOT`, `CASROOT`, `PATH` and OCCT resource variables accordingly.
 
-Before publishing, the script runs the Demo build gate once (`all` for the unified package, or the selected target for a standalone package); individual staging publishes no longer call `build.ps1` again. `package-manifest.json` records the Bridge source commit, package mode/runtime requirement and SHA-256/size for every packaged file.
+Unified `all` remains framework-dependent because the three Windows UI applications cannot safely merge separate self-contained Desktop runtime closures. The target machine therefore needs the **.NET 10 Desktop Runtime x64**.
 
-Publishing a single target still produces a standalone package. Single-target publishing is self-contained by default and can be made framework-dependent explicitly:
-
-```powershell
-.\publish.ps1 wpf Release -SelfContained -OcctRoot "D:\tools\occt-vc144-64"
-.\publish.ps1 avalonia Release -FrameworkDependent -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-Unified `all` publishing cannot be self-contained because the WinForms/WPF/Avalonia Windows Desktop runtime closures contain conflicting same-name framework DLLs; the wrapper rejects that combination before publishing.
-
-When validating `demo-dev` against unreleased SDK work on `main-dev`, explicitly regenerate the local SDK from that source branch:
+Single-target packages remain self-contained by default:
 
 ```powershell
-.\sync.ps1 -SourceBranch main-dev -ForceRebuild
-.\build.ps1 validate Release
-.\build.ps1 all Release
+.\publish.ps1 wpf Release -SelfContained -Zip
+.\publish.ps1 avalonia Release -FrameworkDependent -Zip
 ```
 
-Do not change the default `SourceBranch=main`; formal `demo` must consume formal `main`.
+The Demo publish command no longer accepts or needs `-OcctRoot`; OCCT runtime collection already happened in Bridge synchronization.
 
-Linux:
+### Linux package
 
 ```bash
-./sync.sh
-./build.sh all Release
-./run.sh Release
 ./publish.sh Release
 ```
 
-Linux builds only `OcctDemo.Common` and `OcctDemo.Avalonia`. WinForms and WPF are never part of the Linux build. The current Avalonia Viewer backend requires X11/XWayland for interactive running.
-
-See [LINUX.md](LINUX.md) and [docs/platform-matrix.md](docs/platform-matrix.md) for platform-specific details.
-
-## Demo previews
-
-- WinForms / Windows: `assets/previews/winform-demo-en.png`
-- WPF / Windows: `assets/previews/wpf-demo-en.png`
-- Avalonia / Windows: `assets/previews/avalonia-win-demo-en.png`
-- Avalonia / Linux: `assets/previews/avalonia-linux-demo-en.png`
+Linux publish removes any root-level `libOcctNative.so`, reuses `dist/portable/linux-x64/runtime`, reuses the matching OCCT resources, and writes a Demo `package-manifest.json`. The Bridge Portable shared libraries already carry `$ORIGIN` RPATH from the Bridge packager.
 
 ## Branch responsibilities
 
-- `main` / `main-dev`: Bridge SDK source and development.
-- `demo` / `demo-dev`: unified Windows/Linux Demo consumer.
+- `main-dev`: development Bridge SDK and Portable Runtime source.
+- `demo-dev`: development Demo consumer; default source is `main-dev`.
+- `main`: formal Bridge SDK source.
+- `demo`: formal Demo consumer; it should continue to default to `main` until the development changes are separately promoted.
 - `website`: bilingual project website.
-- historical backup branches, when present, are not part of normal development and remain unchanged.
 
-There are no standalone Avalonia source branches. Avalonia is part of `main` and the unified `demo` branch.
+There are no standalone Avalonia source branches. Avalonia is part of the unified Bridge/Demo lines.
 
 The project uses GNU LGPL 2.1 + OcctCSharpBridge Exception 1.0; see the repository license files.
