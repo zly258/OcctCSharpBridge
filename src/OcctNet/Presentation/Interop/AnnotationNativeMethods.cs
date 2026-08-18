@@ -101,6 +101,16 @@ internal static partial class AnnotationNativeMethods
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_angle_dimension_create_in_plane(
+        OcctEngineSafeHandle engine,
+        long firstEdgeShapeId,
+        long secondEdgeShapeId,
+        OcctVector3d planeNormal,
+        in NativeViewerDimensionOptions options,
+        out long resultDimensionId);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
     internal static partial OcctStatus occt_engine_dimension_update(
         OcctEngineSafeHandle engine,
         long dimensionId,
