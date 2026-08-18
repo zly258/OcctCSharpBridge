@@ -30,16 +30,19 @@ assert_clean_worktree() {
     [[ -z "$(worktree_changes)" ]] || fail "The working tree must be clean ${stage}. Review or commit changes through the normal PR workflow first."
 }
 
-assert_remote_main_ancestor() {
-    git -C "${ROOT_DIR}" fetch --quiet "${REMOTE}" main || fail "Failed to fetch ${REMOTE}/main."
-    if git -C "${ROOT_DIR}" merge-base --is-ancestor "${REMOTE}/main" HEAD; then
+assert_remote_branch_ancestor() {
+    local branch="$1"
+    local remote_ref="${REMOTE}/${branch}"
+
+    git -C "${ROOT_DIR}" fetch --quiet "${REMOTE}" "${branch}" || fail "Failed to fetch ${remote_ref}."
+    if git -C "${ROOT_DIR}" merge-base --is-ancestor "${remote_ref}" HEAD; then
         return
     fi
 
     local counts remote_only local_only
-    counts="$(git -C "${ROOT_DIR}" rev-list --left-right --count "${REMOTE}/main...HEAD")" || fail "Failed to compare HEAD with ${REMOTE}/main."
+    counts="$(git -C "${ROOT_DIR}" rev-list --left-right --count "${remote_ref}...HEAD")" || fail "Failed to compare HEAD with ${remote_ref}."
     read -r remote_only local_only <<<"${counts}"
-    fail "Local main is stale or diverged from ${REMOTE}/main (remote-only: ${remote_only:-?}, local-only: ${local_only:-?}). Synchronize main before publishing."
+    fail "Local ${branch} is stale or diverged from ${remote_ref} (remote-only: ${remote_only:-?}, local-only: ${local_only:-?}). Synchronize ${branch} before publishing."
 }
 
 assert_binary_sdk() {
@@ -114,20 +117,28 @@ case "$(uname -m)" in x86_64|amd64) ;; *) fail "Linux x64 is required; detected 
 [[ -x "${BUILD_SCRIPT}" || -f "${BUILD_SCRIPT}" ]] || fail "build.sh was not found."
 
 branch="$(current_branch)"
-[[ "${branch}" == "main" ]] || fail "publish.sh validates formal publishing from main only. Current branch: ${branch}"
+case "${branch}" in
+    main) publish_mode="Formal" ;;
+    main-dev) publish_mode="Development" ;;
+    *) fail "publish.sh validates publishing from main or main-dev only. Current branch: ${branch}" ;;
+esac
 assert_clean_worktree "before publishing"
-assert_remote_main_ancestor
-log "Formal main ancestry validated."
+assert_remote_branch_ancestor "${branch}"
+log "${publish_mode} ${branch} ancestry validated."
 
 source_commit="$(git -C "${ROOT_DIR}" rev-parse HEAD)" || fail "Failed to resolve the source commit used for Binary SDK publishing."
 [[ -n "${source_commit}" ]] || fail "Failed to resolve the source commit used for Binary SDK publishing."
 
+log "Running the complete headless Release validation before Binary SDK packaging..."
+"${BUILD_SCRIPT}" all Release
 log "Building and validating the Release ABI5 Binary SDK..."
 "${BUILD_SCRIPT}" dist Release
 assert_binary_sdk "${source_commit}"
 assert_only_dist_changes
 
 log "Bridge Binary SDK validated successfully."
+log "Mode:   ${publish_mode}"
+log "Branch: ${branch}"
 log "Source: ${source_commit}"
 log "Output: ${DIST_ROOT}"
 log "No Git commit or push was performed. Review the generated dist payload and publish it through the normal reviewed workflow."
