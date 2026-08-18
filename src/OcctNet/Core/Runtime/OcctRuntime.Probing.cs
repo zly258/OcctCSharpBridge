@@ -10,9 +10,11 @@ public static partial class OcctRuntime
 
     private static IReadOnlyList<string> GetNativeLibraryCandidatesCore()
     {
+        var appRuntimeDirectory = Path.Combine(AppContext.BaseDirectory, "runtime");
         var candidates = new List<string>
         {
             Path.Combine(AppContext.BaseDirectory, NativeLibraryFileName),
+            Path.Combine(appRuntimeDirectory, NativeLibraryFileName),
             Path.Combine(AppContext.BaseDirectory, "runtimes", RuntimeIdentifier, "native", NativeLibraryFileName)
         };
 
@@ -46,12 +48,14 @@ public static partial class OcctRuntime
         if (!string.IsNullOrWhiteSpace(explicitDirectory))
             return Path.GetFullPath(explicitDirectory);
 
+        var appRuntimeDirectory = Path.Combine(AppContext.BaseDirectory, "runtime");
         var portableRuntimeDirectory = Path.GetFullPath(
             Path.Combine(AppContext.BaseDirectory, "..", "..", "runtime"));
 
         foreach (var candidate in new[]
                  {
                      AppContext.BaseDirectory,
+                     appRuntimeDirectory,
                      Path.Combine(AppContext.BaseDirectory, "runtimes", RuntimeIdentifier, "native"),
                      Environment.GetEnvironmentVariable("OCCT_BRIDGE_NATIVE_DIR"),
                      portableRuntimeDirectory
@@ -72,11 +76,13 @@ public static partial class OcctRuntime
         if (!string.IsNullOrWhiteSpace(explicitRoot))
             return Path.GetFullPath(explicitRoot);
 
+        var appLocalOcctRoot = Path.Combine(AppContext.BaseDirectory, "occt");
         var portableOcctRoot = Path.GetFullPath(
             Path.Combine(AppContext.BaseDirectory, "..", "..", "occt"));
 
         foreach (var candidate in new[]
                  {
+                     appLocalOcctRoot,
                      portableOcctRoot,
                      Environment.GetEnvironmentVariable("OCCT_ROOT"),
                      Environment.GetEnvironmentVariable("CASROOT")
@@ -97,11 +103,18 @@ public static partial class OcctRuntime
         if (string.IsNullOrWhiteSpace(occtRoot)) return null;
 
         var candidates = OperatingSystem.IsWindows()
-            ? new[] { Path.Combine(occtRoot, "win64", "vc14", "bin", OcctKernelFileName) }
+            ? new[]
+            {
+                Path.Combine(occtRoot, "win64", "vc14", "bin", OcctKernelFileName),
+                Path.Combine(occtRoot, "runtime", OcctKernelFileName),
+                Path.Combine(AppContext.BaseDirectory, "runtime", OcctKernelFileName)
+            }
             : new[]
             {
                 Path.Combine(occtRoot, "lib", OcctKernelFileName),
-                Path.Combine(occtRoot, "lib64", OcctKernelFileName)
+                Path.Combine(occtRoot, "lib64", OcctKernelFileName),
+                Path.Combine(occtRoot, "runtime", OcctKernelFileName),
+                Path.Combine(AppContext.BaseDirectory, "runtime", OcctKernelFileName)
             };
 
         return candidates.FirstOrDefault(File.Exists) ?? candidates[0];
