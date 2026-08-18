@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
@@ -104,7 +104,7 @@ public sealed partial class OcctEngine
 
     /// <summary>
     /// Creates a viewer length dimension using the Bridge legacy inferred dimension plane.
-    /// Hosts that own a drafting plane should prefer the overload that accepts <paramref name="planeNormal"/>.
+    /// Hosts that own a drafting plane should prefer the overload that accepts an explicit plane normal.
     /// </summary>
     public OcctDimension AddLengthDimension(OcctShape edge, double flyout = 20, System.Drawing.Color? color = null)
     {
@@ -144,7 +144,7 @@ public sealed partial class OcctEngine
 
     /// <summary>
     /// Creates a viewer angle dimension using the Bridge legacy inferred dimension plane.
-    /// Hosts that own a drafting plane should prefer the overload that accepts <paramref name="planeNormal"/>.
+    /// Hosts that own a drafting plane should prefer the overload that accepts an explicit plane normal.
     /// </summary>
     public OcctDimension AddAngleDimension(OcctShape firstEdge, OcctShape secondEdge, double flyout = 20, System.Drawing.Color? color = null)
     {
