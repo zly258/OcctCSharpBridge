@@ -101,4 +101,11 @@ extern "C"
         OcctEngineHandle engine,
         OcctObjectId dimensionId,
         const OcctViewerDimensionOptions* options);
+
+    // Additive style setter kept outside OcctViewerDimensionOptions so ABI5 callers compiled
+    // against the original options struct remain binary compatible.
+    OCCTBRIDGE_API OcctStatus occt_engine_dimension_set_text_height(
+        OcctEngineHandle engine,
+        OcctObjectId dimensionId,
+        double textHeight);
 }
