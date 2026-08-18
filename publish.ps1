@@ -54,9 +54,11 @@ function Assert-CleanWorktree {
     }
 }
 
-function Assert-RemoteMainAncestor {
-    Invoke-Git @("fetch", "--quiet", $Remote, "main")
-    $remoteRef = "$Remote/main"
+function Assert-RemoteBranchAncestor {
+    param([Parameter(Mandatory = $true)][string]$Branch)
+
+    Invoke-Git @("fetch", "--quiet", $Remote, $Branch)
+    $remoteRef = "$Remote/$Branch"
 
     & git -C $RepoRoot merge-base --is-ancestor $remoteRef HEAD
     $ancestorExitCode = $LASTEXITCODE
@@ -65,12 +67,12 @@ function Assert-RemoteMainAncestor {
 
     $counts = @(& git -C $RepoRoot rev-list --left-right --count "$remoteRef...HEAD")
     if ($LASTEXITCODE -ne 0 -or $counts.Count -ne 1) {
-        throw "Local main is not based on the latest $remoteRef."
+        throw "Local $Branch is not based on the latest $remoteRef."
     }
 
     $parts = @(([string]$counts[0]) -split '\s+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-    if ($parts.Count -ne 2) { throw "Unable to compare local main with $remoteRef." }
-    throw "Local main is stale or diverged from $remoteRef (remote-only: $($parts[0]), local-only: $($parts[1])). Synchronize main before publishing."
+    if ($parts.Count -ne 2) { throw "Unable to compare local $Branch with $remoteRef." }
+    throw "Local $Branch is stale or diverged from $remoteRef (remote-only: $($parts[0]), local-only: $($parts[1])). Synchronize $Branch before publishing."
 }
 
 function Invoke-Build {
@@ -183,24 +185,27 @@ Assert-Command "git"
 if (-not (Test-Path $BuildScript -PathType Leaf)) { throw "build.ps1 was not found." }
 
 $currentBranch = Get-CurrentBranch
-if ($currentBranch -ne "main") {
-    throw "publish.ps1 validates formal publishing from main only. Current branch: $currentBranch"
+if ($currentBranch -notin @("main", "main-dev")) {
+    throw "publish.ps1 validates publishing from main or main-dev only. Current branch: $currentBranch"
 }
+$publishMode = if ($currentBranch -eq "main") { "Formal" } else { "Development" }
 Assert-CleanWorktree "before publishing"
-Assert-RemoteMainAncestor
-Write-Host "[publish] Formal main ancestry validated." -ForegroundColor DarkGray
+Assert-RemoteBranchAncestor $currentBranch
+Write-Host "[publish] $publishMode $currentBranch ancestry validated." -ForegroundColor DarkGray
 
 $sourceCommit = (& git -C $RepoRoot rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($sourceCommit)) {
     throw "Failed to resolve the source commit used for Binary SDK publishing."
 }
 
-Write-Host "[publish] Building and validating the Release ABI5 Binary SDK..." -ForegroundColor Cyan
-Invoke-Build "dist"
+Write-Host "[publish] Running the complete Release SDK gate before Binary SDK validation..." -ForegroundColor Cyan
+Invoke-Build "sdk"
 Test-BinarySdk -Path $DistRoot -ExpectedSourceCommit $sourceCommit
 Assert-OnlyDistChanges
 
 Write-Host "Bridge Binary SDK validated successfully." -ForegroundColor Green
+Write-Host "Mode:   $publishMode" -ForegroundColor DarkGray
+Write-Host "Branch: $currentBranch" -ForegroundColor DarkGray
 Write-Host "Source: $sourceCommit" -ForegroundColor DarkGray
 Write-Host "Output: $DistRoot" -ForegroundColor DarkGray
 Write-Host "No Git commit or push was performed. Review the generated dist payload and publish it through the normal reviewed workflow." -ForegroundColor Cyan
