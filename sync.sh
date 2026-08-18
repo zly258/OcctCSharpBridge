@@ -182,11 +182,12 @@ WORKTREE_ADDED=true
 [[ -x "${WORKTREE_ROOT}/build.sh" || -f "${WORKTREE_ROOT}/build.sh" ]] || fail "${REMOTE}/${SOURCE_BRANCH} does not contain build.sh."
 [[ -x "${WORKTREE_ROOT}/tools/package-portable-sdk.sh" || -f "${WORKTREE_ROOT}/tools/package-portable-sdk.sh" ]] || fail "${REMOTE}/${SOURCE_BRANCH} does not contain tools/package-portable-sdk.sh."
 
-log "Building validated linux-x64 Binary SDK from ${REMOTE}/${SOURCE_BRANCH}..."
+log "Running the complete headless Bridge Release gate from ${REMOTE}/${SOURCE_BRANCH}..."
 (
     cd "${WORKTREE_ROOT}"
+    bash ./build.sh all Release
     bash ./build.sh dist Release
-) || fail "Binary SDK build failed on ${REMOTE}/${SOURCE_BRANCH}."
+) || fail "Bridge Linux Release gate failed on ${REMOTE}/${SOURCE_BRANCH}."
 
 BUILT_SDK="${WORKTREE_ROOT}/dist/linux-x64"
 validate_sdk "${BUILT_SDK}" || fail "The generated linux-x64 SDK failed validation."
