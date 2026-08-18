@@ -7,6 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
+    <ApplicationIcon Condition="$([MSBuild]::IsOSPlatform('Windows'))">..\..\assets\icons\occt-demo.ico</ApplicationIcon>
     <AssemblyName>CAD-WPF</AssemblyName>
     <RootNamespace>OcctDemo.Wpf</RootNamespace>
   </PropertyGroup>
