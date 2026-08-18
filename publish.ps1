@@ -132,7 +132,9 @@ function Test-PortableRuntime {
         $path = Join-Path $PortableRoot $relative
         Assert-Path $path
         $actual = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
-        if ($actual -ne ([string]$entry.sha256).ToLowerInvariant()) { throw "Bridge portable runtime hash mismatch: $($entry.name)" }
+        if ($actual -ne ([string]$entry.sha256).ToLowerInvariant()) {
+            throw "Bridge portable runtime hash mismatch: $($entry.name)"
+        }
     }
     $script:PortableManifest = $package
 }
@@ -167,11 +169,16 @@ function Publish-ProjectToStaging {
 function Merge-PublishTree {
     param(
         [Parameter(Mandatory = $true)][string]$Source,
-        [Parameter(Mandatory = $true)][string]$Destination
+        [Parameter(Mandatory = $true)][string]$Destination,
+        [string]$ManifestRename = ""
     )
+
     $sourceRoot = [System.IO.Path]::GetFullPath($Source).TrimEnd('\') + '\'
     foreach ($file in @(Get-ChildItem -LiteralPath $Source -File -Recurse)) {
         $relative = $file.FullName.Substring($sourceRoot.Length)
+        if (-not [string]::IsNullOrWhiteSpace($ManifestRename) -and $relative -ieq "package-manifest.json") {
+            $relative = $ManifestRename
+        }
         $destinationPath = Join-Path $Destination $relative
         $destinationDirectory = Split-Path -Parent $destinationPath
         if (-not (Test-Path -LiteralPath $destinationDirectory -PathType Container)) {
@@ -180,60 +187,25 @@ function Merge-PublishTree {
         if (Test-Path -LiteralPath $destinationPath -PathType Leaf) {
             $sourceHash = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
             $destinationHash = (Get-FileHash -LiteralPath $destinationPath -Algorithm SHA256).Hash
-            if ($sourceHash -ne $destinationHash) { throw "Conflicting publish output '$relative' differs between Demo projects." }
+            if ($sourceHash -ne $destinationHash) {
+                throw "Conflicting publish payload '$relative' differs from the validated source."
+            }
             continue
         }
         Copy-Item -LiteralPath $file.FullName -Destination $destinationPath -Force
     }
 }
 
-function Assert-BridgeAssembliesMatch {
-    param([Parameter(Mandatory = $true)][string]$PackageRoot)
-    foreach ($name in @("OcctNet.dll", "OcctNet.WinForms.dll", "OcctNet.Wpf.dll", "OcctNet.Avalonia.dll")) {
-        $packagePath = Join-Path $PackageRoot $name
-        if (-not (Test-Path -LiteralPath $packagePath -PathType Leaf)) { continue }
-        $bridgePath = Join-Path $PortableRoot $name
-        Assert-Path $bridgePath
-        $packageHash = (Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash
-        $bridgeHash = (Get-FileHash -LiteralPath $bridgePath -Algorithm SHA256).Hash
-        if ($packageHash -ne $bridgeHash) { throw "Published Demo assembly does not match synchronized Bridge portable SDK: $name" }
-    }
-}
-
-function Copy-PortableDirectory {
-    param(
-        [Parameter(Mandatory = $true)][string]$Name,
-        [Parameter(Mandatory = $true)][string]$PackageRoot
-    )
-    $source = Join-Path $PortableRoot $Name
-    Assert-Path $source
-    $destination = Join-Path $PackageRoot $Name
-    Remove-Item -LiteralPath $destination -Recurse -Force -ErrorAction SilentlyContinue
-    Copy-Item -LiteralPath $source -Destination $destination -Recurse -Force
-}
-
-function Copy-SharedPackageContent {
+function Merge-BridgePortablePayload {
     param([Parameter(Mandatory = $true)][string]$PackageRoot)
 
-    # dotnet publish may copy the minimal OcctNative.dll beside the executable. Remove it so
-    # OcctRuntime selects the validated <app>/runtime closure instead of an incomplete app-local native module.
+    # Demo project output may contain the minimal app-local native Bridge. It is intentionally
+    # removed so runtime probing resolves the exact validated Portable SDK closure under runtime/.
     Remove-Item -LiteralPath (Join-Path $PackageRoot "OcctNative.dll") -Force -ErrorAction SilentlyContinue
 
-    Assert-BridgeAssembliesMatch $PackageRoot
-    Copy-PortableDirectory "runtime" $PackageRoot
-    Copy-PortableDirectory "occt" $PackageRoot
-
-    Copy-Item -LiteralPath $ContractPath -Destination (Join-Path $PackageRoot "bridge-contract.json") -Force
-    Copy-Item -LiteralPath $ManifestPath -Destination (Join-Path $PackageRoot "bridge-manifest.json") -Force
-    Copy-Item -LiteralPath $PortableManifestPath -Destination (Join-Path $PackageRoot "bridge-portable-manifest.json") -Force
-
-    foreach ($name in @("LICENSE", "LICENSE_LGPL_21.txt", "OcctCSharpBridge_LGPL_EXCEPTION.txt", "THIRD_PARTY_NOTICES.md", "COMMERCIAL.md", "PORTABLE-SDK.txt")) {
-        $source = Join-Path $PortableRoot $name
-        if (Test-Path -LiteralPath $source -PathType Leaf) {
-            $destinationName = if ($name -eq "PORTABLE-SDK.txt") { "BRIDGE-PORTABLE-SDK.txt" } else { $name }
-            Copy-Item -LiteralPath $source -Destination (Join-Path $PackageRoot $destinationName) -Force
-        }
-    }
+    Merge-PublishTree -Source $PortableRoot -Destination $PackageRoot -ManifestRename "bridge-portable-manifest.json"
+    Assert-Path (Join-Path $PackageRoot "runtime\OcctNative.dll")
+    Assert-Path (Join-Path $PackageRoot "bridge-portable-manifest.json")
 }
 
 function Write-RunCommand {
@@ -275,7 +247,6 @@ function Write-PackageManifest {
 
     $manifestPath = Join-Path $PackageRoot "package-manifest.json"
     Remove-Item -LiteralPath $manifestPath -Force -ErrorAction SilentlyContinue
-    Remove-Item -LiteralPath (Join-Path $PackageRoot "publish-manifest.txt") -Force -ErrorAction SilentlyContinue
 
     $root = [System.IO.Path]::GetFullPath($PackageRoot).TrimEnd('\') + '\'
     $files = @(
@@ -313,7 +284,10 @@ function Write-PackageManifest {
         files = $files
     }
 
-    [System.IO.File]::WriteAllText($manifestPath, ($packageManifest | ConvertTo-Json -Depth 8) + [Environment]::NewLine, [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText(
+        $manifestPath,
+        ($packageManifest | ConvertTo-Json -Depth 8) + [Environment]::NewLine,
+        [System.Text.UTF8Encoding]::new($false))
 }
 
 function Write-ZipPackage {
@@ -331,12 +305,15 @@ function Publish-Standalone {
     $packageRoot = Join-Path $OutputDirectory $definition.Package
     $stagingRoot = Join-Path $OutputDirectory (".$($definition.Package)-staging-$PID")
 
-    if ((Test-Path -LiteralPath $packageRoot) -and -not $KeepExisting.IsPresent) { Remove-Item -LiteralPath $packageRoot -Recurse -Force }
+    if ((Test-Path -LiteralPath $packageRoot) -and -not $KeepExisting.IsPresent) {
+        Remove-Item -LiteralPath $packageRoot -Recurse -Force
+    }
     New-Item -ItemType Directory -Path $packageRoot -Force | Out-Null
+
     try {
         Publish-ProjectToStaging $Key $stagingRoot
         Merge-PublishTree $stagingRoot $packageRoot
-        Copy-SharedPackageContent $packageRoot
+        Merge-BridgePortablePayload $packageRoot
         Write-RunCommand $Key $packageRoot "run.cmd"
         Write-PackageManifest $packageRoot @([string]$definition.Name)
     }
@@ -368,7 +345,7 @@ function Publish-Unified {
             Publish-ProjectToStaging $key $appStaging
             Merge-PublishTree $appStaging $packageRoot
         }
-        Copy-SharedPackageContent $packageRoot
+        Merge-BridgePortablePayload $packageRoot
         Write-RunCommand "winform" $packageRoot "run-winform.cmd"
         Write-RunCommand "wpf" $packageRoot "run-wpf.cmd"
         Write-RunCommand "avalonia" $packageRoot "run-avalonia.cmd"
@@ -393,5 +370,5 @@ $validationTarget = if ($Target -eq "all") { "all" } else { $Target }
 & $BuildScript $validationTarget $Configuration
 if (-not $?) { throw "Demo validation/build failed before publish." }
 
-Write-Host "[publish] Reusing Bridge portable runtime from source $($script:Manifest.sourceCommit)." -ForegroundColor DarkGray
+Write-Host "[publish] Reusing exact Bridge portable payload from source $($script:Manifest.sourceCommit)." -ForegroundColor DarkGray
 if ($Target -eq "all") { Publish-Unified } else { Publish-Standalone $Target }
