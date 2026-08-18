@@ -223,23 +223,52 @@ The unified `demo` branch follows the same policy and treats `dist/` as disposab
 
 A synchronized SDK is reused only when `manifest.sourceCommit`, contract compatibility and all hashes match the selected SDK source revision.
 
-## 9. Formal distribution
+## 9. Publication validation and formal distribution
 
-Windows publication validation, from a clean current `main`:
+`publish.ps1` and `publish.sh` accept only the two controlled Bridge branches:
+
+- `main-dev`: development publication gate for a candidate commit before promotion;
+- `main`: formal publication gate for a formal distribution candidate.
+
+The publish scripts detect the current branch and compare it with the matching remote branch (`origin/main-dev` or `origin/main` by default). Other branches and detached HEAD are rejected. Both scripts require a clean working tree and never run `git add`, create a commit or push a branch.
+
+Validate a Windows publication candidate on `main-dev`:
 
 ```powershell
+git fetch origin --prune
+git switch main-dev
+git reset --hard origin/main-dev
 .\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-Linux publication validation, from a clean current `main`:
+Windows `publish.ps1` runs the complete `build.ps1 sdk Release` gate. Managed compilation (including XML documentation diagnostics promoted to errors), the .NET 8/9/10 consumer matrix, ManagedTests, Core Native Smoke, WinForms/WPF/Avalonia Viewport Smoke, and Binary SDK packaging must all succeed.
+
+Validate a Linux publication candidate on `main-dev`:
 
 ```bash
+git fetch origin --prune
+git switch main-dev
+git reset --hard origin/main-dev
 ./publish.sh
 ```
 
-Both publish scripts are validation/artifact-generation entry points. They verify the formal branch/source revision, Release Binary SDK contract, schema-2 manifest, ABI5 metadata, source commit and SHA-256 hashes. They do **not** run `git add`, create a commit or push a branch. The Linux script must never restore the retired flat `nativeAbiVersion` check or source-controlled `dist/linux-x64` workflow.
+Linux `publish.sh` first runs the headless `build.sh all Release` gate, then `build.sh dist Release` and validates the manifest, source commit and SHA-256 hashes. `avalonia-smoke` remains an optional additional gate on a machine with an X11/XWayland `DISPLAY`.
 
-After validation, distribute the generated binaries through a reviewed artifact channel such as GitHub Release assets or another controlled package location. Do not commit generated Binary SDK payloads to `main`, `main-dev`, `demo` or `demo-dev`. This workflow does not require GitHub Actions.
+Only after the development publication gate succeeds should the **same tested `main-dev` commit** be fast-forwarded to `main`. Do not introduce another source change while promoting it. Then run the formal publication entry point again from `main`:
+
+```powershell
+git switch main
+git reset --hard origin/main
+.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
+```
+
+```bash
+git switch main
+git reset --hard origin/main
+./publish.sh
+```
+
+Both publish scripts validate the Release Binary SDK, schema-2 manifest, ABI5 metadata, source commit and SHA-256 hashes. After validation, distribute generated binaries through a reviewed artifact channel such as GitHub Release assets or another controlled package location. Do not commit generated Binary SDK payloads to `main`, `main-dev`, `demo` or `demo-dev`. This workflow does not require GitHub Actions.
 
 ## 10. Demo consumer model
 
