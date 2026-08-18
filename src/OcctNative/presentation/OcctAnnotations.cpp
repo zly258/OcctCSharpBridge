@@ -4,6 +4,7 @@
 #include <AIS_TextLabel.hxx>
 #include <BRepAdaptor_Curve.hxx>
 #include <Prs3d_DimensionAspect.hxx>
+#include <Prs3d_TextAspect.hxx>
 #include <Precision.hxx>
 #include <PrsDim_AngleDimension.hxx>
 #include <PrsDim_DiameterDimension.hxx>
@@ -139,14 +140,33 @@ namespace
         return dimension;
     }
 
+    Handle(Prs3d_DimensionAspect) dimensionAspect(const Handle(PrsDim_Dimension)& dimension)
+    {
+        Handle(Prs3d_DimensionAspect) aspect = dimension->DimensionAspect();
+        return aspect.IsNull() ? Handle(Prs3d_DimensionAspect)(new Prs3d_DimensionAspect()) : aspect;
+    }
+
     void setDimensionColor(
         const Handle(PrsDim_Dimension)& dimension,
         double red,
         double green,
         double blue)
     {
-        Handle(Prs3d_DimensionAspect) aspect = new Prs3d_DimensionAspect();
+        Handle(Prs3d_DimensionAspect) aspect = dimensionAspect(dimension);
         aspect->SetCommonColor(color(red, green, blue));
+        dimension->SetDimensionAspect(aspect);
+    }
+
+    void setDimensionTextHeight(
+        const Handle(PrsDim_Dimension)& dimension,
+        double textHeight)
+    {
+        requirePositive(textHeight, "Dimension text height");
+        Handle(Prs3d_DimensionAspect) aspect = dimensionAspect(dimension);
+        Handle(Prs3d_TextAspect) textAspect = aspect->TextAspect();
+        if (textAspect.IsNull()) textAspect = new Prs3d_TextAspect();
+        textAspect->SetHeight(textHeight);
+        aspect->SetTextAspect(textAspect);
         dimension->SetDimensionAspect(aspect);
     }
 
@@ -472,6 +492,22 @@ extern "C"
                 setDimensionColor(dimension, options->red, options->green, options->blue);
             if (!dimension->IsValid())
                 throw std::runtime_error("Dimension geometry is not valid after update.");
+            engine->viewerContext.context->Redisplay(dimension, Standard_True);
+        });
+    }
+
+    OcctStatus occt_engine_dimension_set_text_height(
+        OcctEngineHandle handle,
+        OcctObjectId dimensionId,
+        double textHeight)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeStatus(engine, [&]
+        {
+            Handle(PrsDim_Dimension) dimension = requiredDimension(engine, dimensionId);
+            setDimensionTextHeight(dimension, textHeight);
+            if (!dimension->IsValid())
+                throw std::runtime_error("Dimension geometry is not valid after text-height update.");
             engine->viewerContext.context->Redisplay(dimension, Standard_True);
         });
     }
