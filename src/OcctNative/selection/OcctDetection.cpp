@@ -2,14 +2,17 @@
 #include "core/OcctInternal.hxx"
 
 #include <Graphic3d_Camera.hxx>
+#include <Graphic3d_Vec2.hxx>
 #include <SelectMgr_SortCriterion.hxx>
 #include <StdSelect_BRepOwner.hxx>
 #include <StdSelect_ViewerSelector3d.hxx>
 #include <TopExp_Explorer.hxx>
 
+#include <algorithm>
 #include <stdexcept>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 using namespace OcctBridge;
 
@@ -40,6 +43,16 @@ namespace
         return brepOwner.IsNull() ? TopoDS_Shape() : brepOwner->Shape();
     }
 
+    OcctObjectId ownerObjectId(
+        Engine* engine,
+        const Handle(SelectMgr_EntityOwner)& owner)
+    {
+        if (owner.IsNull()) return 0;
+        const Handle(AIS_InteractiveObject) interactive =
+            Handle(AIS_InteractiveObject)::DownCast(owner->Selectable());
+        return interactive.IsNull() ? 0 : engine->findPresentation(interactive);
+    }
+
     int findSubshapeIndex(const TopoDS_Shape& root, const TopoDS_Shape& selected)
     {
         if (root.IsNull() || selected.IsNull() || root.IsSame(selected)) return -1;
@@ -58,10 +71,7 @@ namespace
         double depth,
         OcctSelectionHitDetail& result)
     {
-        if (owner.IsNull()) return false;
-        const Handle(AIS_InteractiveObject) interactive =
-            Handle(AIS_InteractiveObject)::DownCast(owner->Selectable());
-        const OcctObjectId objectId = engine->findPresentation(interactive);
+        const OcctObjectId objectId = ownerObjectId(engine, owner);
         if (objectId <= 0) return false;
 
         result = {};
@@ -178,6 +188,67 @@ extern "C"
                 items[filled++] = hit;
             }
             *count = filled;
+        });
+    }
+
+    OcctStatus occt_engine_selection_rectangle_query(
+        OcctEngineHandle handle,
+        int x1,
+        int y1,
+        int x2,
+        int y2,
+        int allowOverlap,
+        OcctObjectId* objectIds,
+        int capacity,
+        int* count)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (count == nullptr)
+        {
+            if (engine != nullptr)
+                engine->setError(OcctStatus_ErrorInvalidArgument, "Rectangle-query count output is null.");
+            return engine == nullptr ? OcctStatus_ErrorInvalidHandle : OcctStatus_ErrorInvalidArgument;
+        }
+
+        return executeDetectionStatus(engine, [&]
+        {
+            if (capacity < 0) throw std::invalid_argument("Rectangle-query capacity must not be negative.");
+            if (capacity > 0 && objectIds == nullptr)
+                throw std::invalid_argument("Rectangle-query output buffer is null.");
+
+            const Handle(StdSelect_ViewerSelector3d)& selector =
+                engine->viewerContext.context->MainSelector();
+            const Graphic3d_Vec2i minPoint(std::min(x1, x2), std::min(y1, y2));
+            const Graphic3d_Vec2i maxPoint(std::max(x1, x2), std::max(y1, y2));
+
+            selector->AllowOverlapDetection(allowOverlap != 0);
+            try
+            {
+                selector->Pick(minPoint, maxPoint, engine->viewerContext.view);
+            }
+            catch (...)
+            {
+                selector->AllowOverlapDetection(Standard_False);
+                throw;
+            }
+            selector->AllowOverlapDetection(Standard_False);
+
+            std::vector<OcctObjectId> results;
+            std::unordered_set<OcctObjectId> seen;
+            results.reserve(static_cast<std::size_t>(selector->NbPicked()));
+            seen.reserve(static_cast<std::size_t>(selector->NbPicked()));
+            for (int rank = 1; rank <= selector->NbPicked(); ++rank)
+            {
+                const OcctObjectId objectId = ownerObjectId(engine, selector->Picked(rank));
+                if (objectId > 0 && seen.insert(objectId).second)
+                    results.push_back(objectId);
+            }
+
+            *count = static_cast<int>(results.size());
+            if (capacity == 0) return;
+            if (capacity < *count)
+                throw std::out_of_range("Rectangle-query output capacity is smaller than the result count.");
+            std::copy(results.begin(), results.end(), objectIds);
         });
     }
 }
