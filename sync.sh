@@ -3,8 +3,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REMOTE="origin"
-SOURCE_BRANCH="main"
+SOURCE_BRANCH="main-dev"
 SDK_ROOT=""
+PORTABLE_ROOT=""
 FORCE_REBUILD=false
 
 usage() {
@@ -12,11 +13,12 @@ usage() {
 Usage: ./sync.sh [options]
 
 Options:
-  --remote <name>         Git remote (default: origin)
-  --source <branch>       SDK source branch (default: main)
-  --sdk-root <directory>  Copy an already generated linux-x64 Binary SDK
-  --force-rebuild         Rebuild even when sourceCommit already matches
-  -h, --help              Show this help
+  --remote <name>              Git remote (default: origin)
+  --source <branch>            SDK source branch (default: main-dev)
+  --sdk-root <directory>       Copy an already generated linux-x64 Binary SDK
+  --portable-root <directory>  Matching Bridge Portable SDK (required with --sdk-root)
+  --force-rebuild              Rebuild even when sourceCommit already matches
+  -h, --help                   Show this help
 EOF
 }
 
@@ -25,6 +27,7 @@ while [[ $# -gt 0 ]]; do
         --remote) [[ $# -ge 2 ]] || { echo "Missing value for --remote" >&2; exit 2; }; REMOTE="$2"; shift 2 ;;
         --source) [[ $# -ge 2 ]] || { echo "Missing value for --source" >&2; exit 2; }; SOURCE_BRANCH="$2"; shift 2 ;;
         --sdk-root) [[ $# -ge 2 ]] || { echo "Missing value for --sdk-root" >&2; exit 2; }; SDK_ROOT="$2"; shift 2 ;;
+        --portable-root) [[ $# -ge 2 ]] || { echo "Missing value for --portable-root" >&2; exit 2; }; PORTABLE_ROOT="$2"; shift 2 ;;
         --force-rebuild) FORCE_REBUILD=true; shift ;;
         -h|--help) usage; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; usage; exit 2 ;;
@@ -38,9 +41,12 @@ json_string() { sed -nE "s/^[[:space:]]*\"$2\"[[:space:]]*:[[:space:]]*\"([^\"]+
 json_number() { sed -nE "s/^[[:space:]]*\"$2\"[[:space:]]*:[[:space:]]*([0-9]+).*/\\1/p" "$1" | head -n 1; }
 
 DESTINATION="${ROOT_DIR}/dist/linux-x64"
+PORTABLE_DESTINATION="${ROOT_DIR}/dist/portable/linux-x64"
 WORKSPACE_ROOT="$(cd "${ROOT_DIR}/.." && pwd)"
 WORKTREE_ROOT="${WORKSPACE_ROOT}/.OcctCSharpBridge-main-sdk-$$-${RANDOM}"
 WORKTREE_ADDED=false
+OCCT_ROOT="${OCCT_ROOT:-/usr/local}"
+OCCT_LIB_DIR="${OCCT_LIB_DIR:-${OCCT_ROOT}/lib}"
 
 validate_sdk() {
     local root="$1"
@@ -81,6 +87,33 @@ validate_sdk() {
     [[ ${count} -eq 4 ]]
 }
 
+validate_portable() {
+    local root="$1" expected_commit="$2" expected_version="$3"
+    [[ -f "${root}/package-manifest.json" ]] || return 1
+    [[ -f "${root}/bridge-contract.json" && -f "${root}/bridge-manifest.json" ]] || return 1
+    [[ -f "${root}/runtime/libOcctNative.so" ]] || return 1
+    [[ -d "${root}/occt/resources" ]] || return 1
+    python3 - "${root}" "${expected_commit}" "${expected_version}" <<'PY'
+import hashlib, json, os, sys
+root, expected_commit, expected_version = sys.argv[1:]
+try:
+    with open(os.path.join(root, 'package-manifest.json'), encoding='utf-8') as f:
+        m = json.load(f)
+    if m.get('product') != 'OcctCSharpBridge Portable SDK': raise SystemExit(1)
+    if m.get('platform') != 'linux-x64' or not m.get('portableRuntime'): raise SystemExit(1)
+    if m.get('bridgeSourceCommit') != expected_commit or m.get('bridgeVersion') != expected_version: raise SystemExit(1)
+    for entry in m.get('files', []):
+        path = os.path.join(root, *entry['name'].split('/'))
+        if not os.path.isfile(path): raise SystemExit(1)
+        h = hashlib.sha256()
+        with open(path, 'rb') as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b''): h.update(chunk)
+        if h.hexdigest().lower() != str(entry['sha256']).lower(): raise SystemExit(1)
+except Exception:
+    raise SystemExit(1)
+PY
+}
+
 copy_sdk() {
     local source="$1"
     validate_sdk "${source}" || fail "The supplied SDK is not a valid Bridge 3 ABI5-only linux-x64 Binary SDK for a .NET 8-10 consumer."
@@ -88,6 +121,16 @@ copy_sdk() {
     mkdir -p "${DESTINATION}"
     cp -a "${source}/." "${DESTINATION}/"
     log "Binary SDK synchronized: ${DESTINATION}"
+}
+
+copy_portable() {
+    local source="$1" expected_commit="$2" expected_version="$3"
+    validate_portable "${source}" "${expected_commit}" "${expected_version}" || fail "The supplied Bridge Portable SDK is invalid or does not match the Binary SDK."
+    rm -rf "${PORTABLE_DESTINATION}"
+    mkdir -p "${PORTABLE_DESTINATION}"
+    cp -a "${source}/." "${PORTABLE_DESTINATION}/"
+    validate_portable "${PORTABLE_DESTINATION}" "${expected_commit}" "${expected_version}" || fail "Copied Bridge Portable SDK failed validation."
+    log "Portable Bridge runtime synchronized: ${PORTABLE_DESTINATION}"
 }
 
 cleanup() {
@@ -101,32 +144,44 @@ trap cleanup EXIT
 
 require_command git
 require_command sha256sum
+require_command python3
 
 if [[ -n "${SDK_ROOT}" ]]; then
     [[ "${FORCE_REBUILD}" == false ]] || fail "--force-rebuild cannot be combined with --sdk-root."
-    copy_sdk "$(cd "${SDK_ROOT}" && pwd)"
+    [[ -n "${PORTABLE_ROOT}" ]] || fail "--portable-root is required with --sdk-root on demo-dev."
+    SDK_ROOT="$(cd "${SDK_ROOT}" && pwd)"
+    PORTABLE_ROOT="$(cd "${PORTABLE_ROOT}" && pwd)"
+    validate_sdk "${SDK_ROOT}" || fail "The supplied Binary SDK is invalid."
+    SOURCE_COMMIT="$(json_string "${SDK_ROOT}/bridge-manifest.json" sourceCommit)"
+    BRIDGE_VERSION="$(json_string "${SDK_ROOT}/bridge-contract.json" bridgeVersion)"
+    copy_sdk "${SDK_ROOT}"
+    copy_portable "${PORTABLE_ROOT}" "${SOURCE_COMMIT}" "${BRIDGE_VERSION}"
     exit 0
 fi
+[[ -z "${PORTABLE_ROOT}" ]] || fail "--portable-root is only valid together with --sdk-root."
 
 log "Fetching ${REMOTE}/${SOURCE_BRANCH}..."
 git -C "${ROOT_DIR}" fetch --quiet "${REMOTE}" "${SOURCE_BRANCH}" || fail "Unable to fetch ${REMOTE}/${SOURCE_BRANCH}."
 SOURCE_COMMIT="$(git -C "${ROOT_DIR}" rev-parse "${REMOTE}/${SOURCE_BRANCH}")"
 [[ -n "${SOURCE_COMMIT}" ]] || fail "Unable to resolve ${REMOTE}/${SOURCE_BRANCH}."
 
-if [[ "${FORCE_REBUILD}" == false && -d "${DESTINATION}" ]] && validate_sdk "${DESTINATION}"; then
+if [[ "${FORCE_REBUILD}" == false && -d "${DESTINATION}" && -d "${PORTABLE_DESTINATION}" ]] && validate_sdk "${DESTINATION}"; then
     EXISTING_COMMIT="$(json_string "${DESTINATION}/bridge-manifest.json" sourceCommit)"
-    if [[ "${EXISTING_COMMIT}" == "${SOURCE_COMMIT}" ]]; then
-        log "Binary SDK already matches ${REMOTE}/${SOURCE_BRANCH} @ ${SOURCE_COMMIT:0:7}; rebuild skipped."
+    BRIDGE_VERSION="$(json_string "${DESTINATION}/bridge-contract.json" bridgeVersion)"
+    if [[ "${EXISTING_COMMIT}" == "${SOURCE_COMMIT}" ]] && validate_portable "${PORTABLE_DESTINATION}" "${SOURCE_COMMIT}" "${BRIDGE_VERSION}"; then
+        log "Binary SDK and portable runtime already match ${REMOTE}/${SOURCE_BRANCH} @ ${SOURCE_COMMIT:0:7}; rebuild skipped."
         exit 0
     fi
 fi
 
-[[ "${FORCE_REBUILD}" == false ]] || log "Forced Binary SDK rebuild requested."
+[[ "${FORCE_REBUILD}" == false ]] || log "Forced Binary SDK + portable runtime rebuild requested."
 git -C "${ROOT_DIR}" worktree prune
 git -C "${ROOT_DIR}" worktree add --detach "${WORKTREE_ROOT}" "${REMOTE}/${SOURCE_BRANCH}" >/dev/null || fail "Unable to create source worktree."
 WORKTREE_ADDED=true
 
 [[ -x "${WORKTREE_ROOT}/build.sh" || -f "${WORKTREE_ROOT}/build.sh" ]] || fail "${REMOTE}/${SOURCE_BRANCH} does not contain build.sh."
+[[ -x "${WORKTREE_ROOT}/tools/package-portable-sdk.sh" || -f "${WORKTREE_ROOT}/tools/package-portable-sdk.sh" ]] || fail "${REMOTE}/${SOURCE_BRANCH} does not contain tools/package-portable-sdk.sh."
+
 log "Building validated linux-x64 Binary SDK from ${REMOTE}/${SOURCE_BRANCH}..."
 (
     cd "${WORKTREE_ROOT}"
@@ -136,5 +191,18 @@ log "Building validated linux-x64 Binary SDK from ${REMOTE}/${SOURCE_BRANCH}..."
 BUILT_SDK="${WORKTREE_ROOT}/dist/linux-x64"
 validate_sdk "${BUILT_SDK}" || fail "The generated linux-x64 SDK failed validation."
 BUILT_COMMIT="$(json_string "${BUILT_SDK}/bridge-manifest.json" sourceCommit)"
+BRIDGE_VERSION="$(json_string "${BUILT_SDK}/bridge-contract.json" bridgeVersion)"
 [[ "${BUILT_COMMIT}" == "${SOURCE_COMMIT}" ]] || fail "Generated SDK sourceCommit does not match ${REMOTE}/${SOURCE_BRANCH}."
+
+require_command ldd
+require_command realpath
+require_command patchelf
+PORTABLE_OUTPUT="${WORKTREE_ROOT}/artifacts/demo-sync-portable"
+rm -rf "${PORTABLE_OUTPUT}"
+log "Building Bridge portable runtime from the same source commit..."
+bash "${WORKTREE_ROOT}/tools/package-portable-sdk.sh" "${BUILT_SDK}" "${OCCT_ROOT}" "${OCCT_LIB_DIR}" "${PORTABLE_OUTPUT}" false || fail "Bridge portable runtime packaging failed."
+BUILT_PORTABLE="${PORTABLE_OUTPUT}/OcctCSharpBridge-${BRIDGE_VERSION}-linux-x64-portable"
+validate_portable "${BUILT_PORTABLE}" "${SOURCE_COMMIT}" "${BRIDGE_VERSION}" || fail "Generated Bridge Portable SDK failed validation."
+
 copy_sdk "${BUILT_SDK}"
+copy_portable "${BUILT_PORTABLE}" "${SOURCE_COMMIT}" "${BRIDGE_VERSION}"
