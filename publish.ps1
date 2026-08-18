@@ -20,15 +20,13 @@ Set-StrictMode -Version Latest
 if ($SelfContained.IsPresent -and $FrameworkDependent.IsPresent) {
     throw "Use either -SelfContained or -FrameworkDependent, not both."
 }
-if ($Target -eq "all" -and $SelfContained.IsPresent) {
-    throw "Unified 'all' publish cannot be self-contained because WinForms/WPF/Avalonia Windows Desktop publish closures contain conflicting framework DLLs. Publish a single target with -SelfContained instead."
+if ($Target -eq "all" -and $KeepExisting.IsPresent) {
+    throw "-KeepExisting is not supported for unified 'all' publishing because the self-contained app layout must be rebuilt cleanly."
 }
 
-$UseSelfContained = $Target -ne "all" -and -not $FrameworkDependent.IsPresent
+# Distribution packages are portable by default. Framework-dependent output is now an explicit opt-in.
+$UseSelfContained = -not $FrameworkDependent.IsPresent
 if ($SelfContained.IsPresent) { $UseSelfContained = $true }
-if ($Target -eq "all") {
-    Write-Host "[publish] Unified Windows package uses framework-dependent .NET 10 Desktop Runtime to avoid duplicate/conflicting framework DLLs." -ForegroundColor DarkGray
-}
 
 $RunningOnWindows = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)
 if (-not $RunningOnWindows) { throw "publish.ps1 supports Windows x64 only. Use ./publish.sh on Linux." }
@@ -150,7 +148,8 @@ function Publish-ProjectToStaging {
 
     Remove-Item -LiteralPath $StagingRoot -Recurse -Force -ErrorAction SilentlyContinue
     New-Item -ItemType Directory -Path $StagingRoot -Force | Out-Null
-    Write-Host "[publish] $($definition.Name) / $Configuration..." -ForegroundColor Cyan
+    $mode = if ($UseSelfContained) { "self-contained" } else { "framework-dependent" }
+    Write-Host "[publish] $($definition.Name) / $Configuration / $mode..." -ForegroundColor Cyan
     Invoke-Checked $script:DotNet @(
         "publish", $project,
         "-c", $Configuration,
@@ -196,12 +195,33 @@ function Merge-PublishTree {
     }
 }
 
+function Assert-AppBridgeAssembliesMatch {
+    param([Parameter(Mandatory = $true)][string]$AppRoot)
+
+    foreach ($name in @("OcctNet.dll", "OcctNet.WinForms.dll", "OcctNet.Wpf.dll", "OcctNet.Avalonia.dll")) {
+        $appPath = Join-Path $AppRoot $name
+        if (-not (Test-Path -LiteralPath $appPath -PathType Leaf)) { continue }
+        $portablePath = Join-Path $PortableRoot $name
+        Assert-Path $portablePath
+        $appHash = (Get-FileHash -LiteralPath $appPath -Algorithm SHA256).Hash
+        $portableHash = (Get-FileHash -LiteralPath $portablePath -Algorithm SHA256).Hash
+        if ($appHash -ne $portableHash) {
+            throw "Published application contains a Bridge assembly that differs from the validated Portable SDK: $name"
+        }
+    }
+}
+
+function Prepare-AppDirectory {
+    param([Parameter(Mandatory = $true)][string]$AppRoot)
+
+    # The Bridge Native DLL must come from the shared validated Portable Runtime. Removing
+    # app-local copies also prevents the resolver from choosing an incomplete native closure first.
+    Remove-Item -LiteralPath (Join-Path $AppRoot "OcctNative.dll") -Force -ErrorAction SilentlyContinue
+    Assert-AppBridgeAssembliesMatch $AppRoot
+}
+
 function Merge-BridgePortablePayload {
     param([Parameter(Mandatory = $true)][string]$PackageRoot)
-
-    # Demo project output may contain the minimal app-local native Bridge. It is intentionally
-    # removed so runtime probing resolves the exact validated Portable SDK closure under runtime/.
-    Remove-Item -LiteralPath (Join-Path $PackageRoot "OcctNative.dll") -Force -ErrorAction SilentlyContinue
 
     Merge-PublishTree -Source $PortableRoot -Destination $PackageRoot -ManifestRename "bridge-portable-manifest.json"
     Assert-Path (Join-Path $PackageRoot "runtime\OcctNative.dll")
@@ -212,19 +232,29 @@ function Write-RunCommand {
     param(
         [Parameter(Mandatory = $true)][string]$Key,
         [Parameter(Mandatory = $true)][string]$PackageRoot,
-        [Parameter(Mandatory = $true)][string]$FileName
+        [Parameter(Mandatory = $true)][string]$FileName,
+        [string]$AppRelativeDirectory = ""
     )
+
     $executable = [string]$Projects[$Key].Executable
+    $appDirectoryLine = if ([string]::IsNullOrWhiteSpace($AppRelativeDirectory)) {
+        'set "APP_DIR=%ROOT%"'
+    }
+    else {
+        'set "APP_DIR=%ROOT%' + $AppRelativeDirectory.TrimEnd('\') + '\"'
+    }
+
     $runCmd = @"
 @echo off
 setlocal
-set "APP_DIR=%~dp0"
-set "NATIVE=%APP_DIR%runtime"
-set "CASROOT=%APP_DIR%occt"
-set "OCCT_ROOT=%APP_DIR%occt"
+set "ROOT=%~dp0"
+$appDirectoryLine
+set "NATIVE=%ROOT%runtime"
+set "CASROOT=%ROOT%occt"
+set "OCCT_ROOT=%ROOT%occt"
 set "OCCT_BRIDGE_NATIVE_DIR=%NATIVE%"
 set "PATH=%NATIVE%;%APP_DIR%;%PATH%"
-set "RES=%APP_DIR%occt\resources"
+set "RES=%ROOT%occt\resources"
 if exist "%RES%\SHMessage" set "CSF_SHMessage=%RES%\SHMessage"
 if exist "%RES%\XSMessage" set "CSF_XSMessage=%RES%\XSMessage"
 if exist "%RES%\StdResource" set "CSF_StandardDefaults=%RES%\StdResource"
@@ -242,7 +272,8 @@ if exist "%RES%\Textures" set "CSF_MDTVTexturesDirectory=%RES%\Textures"
 function Write-PackageManifest {
     param(
         [Parameter(Mandatory = $true)][string]$PackageRoot,
-        [Parameter(Mandatory = $true)][string[]]$Apps
+        [Parameter(Mandatory = $true)][string[]]$Apps,
+        [string]$ApplicationLayout = "flat"
     )
 
     $manifestPath = Join-Path $PackageRoot "package-manifest.json"
@@ -265,9 +296,10 @@ function Write-PackageManifest {
     $requiredRuntime = if ($UseSelfContained) { $null } elseif ($requiresDesktopRuntime) { "Microsoft.WindowsDesktop.App 10.x x64" } else { "Microsoft.NETCore.App 10.x x64" }
 
     $packageManifest = [ordered]@{
-        schemaVersion = 2
+        schemaVersion = 3
         product = "OcctCSharpBridge Demo"
         apps = $Apps
+        applicationLayout = $ApplicationLayout
         bridgeVersion = [string]$script:Contract.bridgeVersion
         bridgeSourceCommit = [string]$script:Manifest.sourceCommit
         bridgeTargetFramework = [string]$script:Contract.dotnet.targetFramework
@@ -313,6 +345,7 @@ function Publish-Standalone {
     try {
         Publish-ProjectToStaging $Key $stagingRoot
         Merge-PublishTree $stagingRoot $packageRoot
+        Prepare-AppDirectory $packageRoot
         Merge-BridgePortablePayload $packageRoot
         Write-RunCommand $Key $packageRoot "run.cmd"
         Write-PackageManifest $packageRoot @([string]$definition.Name)
@@ -325,36 +358,33 @@ function Publish-Standalone {
 
 function Publish-Unified {
     $packageRoot = Join-Path $OutputDirectory $UnifiedPackage
-    $stagingRoot = Join-Path $OutputDirectory (".$UnifiedPackage-staging-$PID")
+    $appsRoot = Join-Path $packageRoot "apps"
 
-    if (-not $KeepExisting.IsPresent) {
-        if (Test-Path -LiteralPath $packageRoot) { Remove-Item -LiteralPath $packageRoot -Recurse -Force }
-        foreach ($definition in $Projects.Values) {
-            $legacyRoot = Join-Path $OutputDirectory ([string]$definition.Package)
-            if (Test-Path -LiteralPath $legacyRoot) { Remove-Item -LiteralPath $legacyRoot -Recurse -Force }
-            Remove-Item -LiteralPath "$legacyRoot.zip" -Force -ErrorAction SilentlyContinue
-        }
-    }
-    Remove-Item -LiteralPath $stagingRoot -Recurse -Force -ErrorAction SilentlyContinue
-    New-Item -ItemType Directory -Path $packageRoot -Force | Out-Null
-    New-Item -ItemType Directory -Path $stagingRoot -Force | Out-Null
+    # The old flat unified layout was framework-dependent because three desktop publish closures
+    # cannot safely share one set of framework files. Keep each application's .NET closure isolated.
+    Remove-Item -LiteralPath $packageRoot -Recurse -Force -ErrorAction SilentlyContinue
+    New-Item -ItemType Directory -Path $appsRoot -Force | Out-Null
 
-    try {
-        foreach ($key in @("winform", "wpf", "avalonia")) {
-            $appStaging = Join-Path $stagingRoot $key
-            Publish-ProjectToStaging $key $appStaging
-            Merge-PublishTree $appStaging $packageRoot
-        }
-        Merge-BridgePortablePayload $packageRoot
-        Write-RunCommand "winform" $packageRoot "run-winform.cmd"
-        Write-RunCommand "wpf" $packageRoot "run-wpf.cmd"
-        Write-RunCommand "avalonia" $packageRoot "run-avalonia.cmd"
-        Write-PackageManifest $packageRoot @("WinForms", "WPF", "Avalonia")
+    foreach ($key in @("winform", "wpf", "avalonia")) {
+        $appRoot = Join-Path $appsRoot $key
+        Publish-ProjectToStaging $key $appRoot
+        Prepare-AppDirectory $appRoot
     }
-    finally { Remove-Item -LiteralPath $stagingRoot -Recurse -Force -ErrorAction SilentlyContinue }
+
+    Merge-BridgePortablePayload $packageRoot
+    Write-RunCommand "winform" $packageRoot "run-winform.cmd" "apps\winform"
+    Write-RunCommand "wpf" $packageRoot "run-wpf.cmd" "apps\wpf"
+    Write-RunCommand "avalonia" $packageRoot "run-avalonia.cmd" "apps\avalonia"
+    Write-PackageManifest $packageRoot @("WinForms", "WPF", "Avalonia") "apps/<frontend>"
 
     Write-ZipPackage $packageRoot
     Write-Host "Unified package: $packageRoot" -ForegroundColor Green
+    if ($UseSelfContained) {
+        Write-Host "The unified package is self-contained: target machines do not need the .NET 10 Desktop Runtime." -ForegroundColor Green
+    }
+    else {
+        Write-Host "Framework-dependent mode was explicitly requested; target machines need the .NET 10 Desktop Runtime x64." -ForegroundColor Yellow
+    }
 }
 
 Assert-Path $BuildScript
