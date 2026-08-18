@@ -30,4 +30,17 @@ internal static partial class DetectionNativeMethods
         [Out] NativeOcctSelectionHitDetail[] items,
         int capacity,
         out int count);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_selection_rectangle_query(
+        OcctEngineSafeHandle handle,
+        int x1,
+        int y1,
+        int x2,
+        int y2,
+        int allowOverlap,
+        [Out] long[] objectIds,
+        int capacity,
+        out int count);
 }
