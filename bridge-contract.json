@@ -24,7 +24,8 @@
     "policy": "abi5-only",
     "capabilities": [
       "viewer.dimension.explicit-plane",
-      "viewer.dimension.text-height"
+      "viewer.dimension.text-height",
+      "viewer.selection.rectangle-query"
     ],
     "nativeHeaders": [
       "OcctNative.h",
