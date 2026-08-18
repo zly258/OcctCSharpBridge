@@ -21,12 +21,17 @@ if ($SelfContained.IsPresent -and $FrameworkDependent.IsPresent) {
     throw "Use either -SelfContained or -FrameworkDependent, not both."
 }
 if ($Target -eq "all" -and $KeepExisting.IsPresent) {
-    throw "-KeepExisting is not supported for unified 'all' publishing because the self-contained app layout must be rebuilt cleanly."
+    throw "-KeepExisting is not supported for unified 'all' publishing because the package layout must be rebuilt cleanly."
 }
 
-# Distribution packages are portable by default. Framework-dependent output is now an explicit opt-in.
-$UseSelfContained = -not $FrameworkDependent.IsPresent
-if ($SelfContained.IsPresent) { $UseSelfContained = $true }
+# Unified Windows publishing is portable by default without carrying three duplicate .NET runtimes.
+# A single private .NET Desktop Runtime is stored at packageRoot/dotnet and the three apphosts
+# resolve it through AppHostDotNetSearch=AppRelative. Explicit -SelfContained preserves the old
+# per-application self-contained layout; explicit -FrameworkDependent requires a machine runtime.
+$UseSharedDotNet = $Target -eq "all" -and -not $SelfContained.IsPresent -and -not $FrameworkDependent.IsPresent
+$UseSelfContained = -not $FrameworkDependent.IsPresent -and -not $UseSharedDotNet
+if ($SelfContained.IsPresent) { $UseSelfContained = $true; $UseSharedDotNet = $false }
+$SharedDotNetRelativeFromApp = "../../dotnet"
 
 $RunningOnWindows = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)
 if (-not $RunningOnWindows) { throw "publish.ps1 supports Windows x64 only. Use ./publish.sh on Linux." }
@@ -111,6 +116,221 @@ function Invoke-Checked {
     if ($LASTEXITCODE -ne 0) { throw $ErrorMessage }
 }
 
+function Get-DirectorySizeBytes {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Container)) { return [int64]0 }
+    $sum = (Get-ChildItem -LiteralPath $Path -File -Recurse -Force | Measure-Object -Property Length -Sum).Sum
+    if ($null -eq $sum) { return [int64]0 }
+    return [int64]$sum
+}
+
+function Format-Size {
+    param([int64]$Bytes)
+    if ($Bytes -ge 1GB) { return "{0:N2} GB" -f ($Bytes / 1GB) }
+    return "{0:N1} MB" -f ($Bytes / 1MB)
+}
+
+function Remove-EmptyDirectories {
+    param([Parameter(Mandatory = $true)][string]$Root)
+    if (-not (Test-Path -LiteralPath $Root -PathType Container)) { return }
+    @(Get-ChildItem -LiteralPath $Root -Directory -Recurse -Force | Sort-Object { $_.FullName.Length } -Descending) |
+        ForEach-Object {
+            if (@(Get-ChildItem -LiteralPath $_.FullName -Force).Count -eq 0) {
+                Remove-Item -LiteralPath $_.FullName -Force
+            }
+        }
+}
+
+function Optimize-ManagedPayload {
+    param(
+        [Parameter(Mandatory = $true)][string]$Root,
+        [switch]$PrivateDotNetRuntime
+    )
+    if (-not (Test-Path -LiteralPath $Root -PathType Container)) { return }
+
+    $before = Get-DirectorySizeBytes $Root
+    $removedFiles = 0
+
+    # Satellite assemblies contain localized framework/package strings only. The Demo ships a
+    # neutral UI and deliberately falls back to neutral resources instead of carrying every locale.
+    foreach ($file in @(Get-ChildItem -LiteralPath $Root -File -Recurse -Force -Filter "*.resources.dll")) {
+        Remove-Item -LiteralPath $file.FullName -Force
+        $removedFiles++
+    }
+
+    # Symbols and runtimeconfig.dev.json are development-only artifacts.
+    foreach ($file in @(Get-ChildItem -LiteralPath $Root -File -Recurse -Force | Where-Object {
+        $_.Extension -ieq ".pdb" -or $_.Name -like "*.runtimeconfig.dev.json"
+    })) {
+        Remove-Item -LiteralPath $file.FullName -Force
+        $removedFiles++
+    }
+
+    # Remove assembly XML documentation while leaving arbitrary application XML untouched.
+    foreach ($file in @(Get-ChildItem -LiteralPath $Root -File -Recurse -Force -Filter "*.xml")) {
+        $base = [System.IO.Path]::Combine($file.DirectoryName, [System.IO.Path]::GetFileNameWithoutExtension($file.Name))
+        if ((Test-Path -LiteralPath "$base.dll" -PathType Leaf) -or (Test-Path -LiteralPath "$base.exe" -PathType Leaf)) {
+            Remove-Item -LiteralPath $file.FullName -Force
+            $removedFiles++
+        }
+    }
+
+    if ($PrivateDotNetRuntime.IsPresent) {
+        # These files support dump/debug/SOS workflows, not normal application execution.
+        $diagnosticNames = @(
+            "createdump.exe",
+            "mscordaccore.dll",
+            "mscordbi.dll",
+            "sos.dll",
+            "SOS.NETCore.dll"
+        )
+        foreach ($name in $diagnosticNames) {
+            foreach ($file in @(Get-ChildItem -LiteralPath $Root -File -Recurse -Force -Filter $name)) {
+                Remove-Item -LiteralPath $file.FullName -Force
+                $removedFiles++
+            }
+        }
+    }
+
+    Remove-EmptyDirectories $Root
+    $after = Get-DirectorySizeBytes $Root
+    $saved = $before - $after
+    Write-Host "[publish] Slimmed '$Root': removed $removedFiles files, saved $(Format-Size $saved)." -ForegroundColor DarkGray
+}
+
+function Copy-DirectoryContent {
+    param(
+        [Parameter(Mandatory = $true)][string]$Source,
+        [Parameter(Mandatory = $true)][string]$Destination
+    )
+    Assert-Path $Source
+    New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+    foreach ($item in @(Get-ChildItem -LiteralPath $Source -Force)) {
+        Copy-Item -LiteralPath $item.FullName -Destination $Destination -Recurse -Force
+    }
+}
+
+function Resolve-PrivateDotNetRuntime {
+    param([Parameter(Mandatory = $true)][string]$DotNetRoot)
+
+    $coreRoot = Join-Path $DotNetRoot "shared\Microsoft.NETCore.App"
+    $desktopRoot = Join-Path $DotNetRoot "shared\Microsoft.WindowsDesktop.App"
+    $fxrRoot = Join-Path $DotNetRoot "host\fxr"
+    Assert-Path $coreRoot
+    Assert-Path $desktopRoot
+    Assert-Path $fxrRoot
+
+    $coreNames = @(Get-ChildItem -LiteralPath $coreRoot -Directory | Where-Object { $_.Name -notmatch '-' } | ForEach-Object { $_.Name })
+    $desktopNames = @(Get-ChildItem -LiteralPath $desktopRoot -Directory | Where-Object { $_.Name -notmatch '-' } | ForEach-Object { $_.Name })
+    $commonNames = @($coreNames | Where-Object { $_ -in $desktopNames -and $_ -match '^10\.' } | Sort-Object { [version]$_ } -Descending)
+    if ($commonNames.Count -eq 0) {
+        throw "A matching stable Microsoft.NETCore.App + Microsoft.WindowsDesktop.App 10.x runtime was not found under $DotNetRoot. Install the .NET 10 Desktop Runtime/SDK."
+    }
+
+    $frameworkVersion = [string]$commonNames[0]
+    $fxrNames = @(Get-ChildItem -LiteralPath $fxrRoot -Directory | Where-Object { $_.Name -match '^10\.' -and $_.Name -notmatch '-' } | ForEach-Object { $_.Name } | Sort-Object { [version]$_ } -Descending)
+    if ($fxrNames.Count -eq 0) { throw "A stable .NET 10 hostfxr was not found under $DotNetRoot." }
+
+    return [pscustomobject]@{
+        FrameworkVersion = $frameworkVersion
+        HostFxrVersion = [string]$fxrNames[0]
+        CoreRoot = Join-Path $coreRoot $frameworkVersion
+        DesktopRoot = Join-Path $desktopRoot $frameworkVersion
+        HostFxrRoot = Join-Path $fxrRoot ([string]$fxrNames[0])
+    }
+}
+
+function Build-PrivateDotNetRuntime {
+    param([Parameter(Mandatory = $true)][string]$PackageRoot)
+
+    $dotnetRoot = Join-Path $PackageRoot "dotnet"
+    Remove-Item -LiteralPath $dotnetRoot -Recurse -Force -ErrorAction SilentlyContinue
+    New-Item -ItemType Directory -Path $dotnetRoot -Force | Out-Null
+
+    $sourceRoot = Split-Path -Parent $script:DotNet
+    $resolved = Resolve-PrivateDotNetRuntime $sourceRoot
+
+    $hostDestination = Join-Path $dotnetRoot ("host\fxr\" + $resolved.HostFxrVersion)
+    $coreDestination = Join-Path $dotnetRoot ("shared\Microsoft.NETCore.App\" + $resolved.FrameworkVersion)
+    $desktopDestination = Join-Path $dotnetRoot ("shared\Microsoft.WindowsDesktop.App\" + $resolved.FrameworkVersion)
+
+    Copy-DirectoryContent $resolved.HostFxrRoot $hostDestination
+    Copy-DirectoryContent $resolved.CoreRoot $coreDestination
+    Copy-DirectoryContent $resolved.DesktopRoot $desktopDestination
+
+    foreach ($name in @("dotnet.exe", "LICENSE.txt", "ThirdPartyNotices.txt")) {
+        $source = Join-Path $sourceRoot $name
+        if (Test-Path -LiteralPath $source -PathType Leaf) {
+            Copy-Item -LiteralPath $source -Destination (Join-Path $dotnetRoot $name) -Force
+        }
+    }
+
+    Optimize-ManagedPayload $dotnetRoot -PrivateDotNetRuntime
+
+    Assert-Path (Join-Path $hostDestination "hostfxr.dll")
+    Assert-Path (Join-Path $coreDestination "hostpolicy.dll")
+    Assert-Path (Join-Path $coreDestination "coreclr.dll")
+    Assert-Path (Join-Path $coreDestination "System.Private.CoreLib.dll")
+    Assert-Path (Join-Path $desktopDestination "PresentationFramework.dll")
+
+    $script:PrivateDotNetInfo = [pscustomobject]@{
+        FrameworkVersion = $resolved.FrameworkVersion
+        HostFxrVersion = $resolved.HostFxrVersion
+        Root = $dotnetRoot
+    }
+    Write-Host "[publish] Shared private .NET Desktop Runtime $($resolved.FrameworkVersion) prepared: $(Format-Size (Get-DirectorySizeBytes $dotnetRoot))." -ForegroundColor Green
+}
+
+function Test-BinaryContainsAscii {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Text
+    )
+    $haystack = [System.IO.File]::ReadAllBytes($Path)
+    $needle = [System.Text.Encoding]::UTF8.GetBytes($Text)
+    if ($needle.Length -eq 0 -or $haystack.Length -lt $needle.Length) { return $false }
+    for ($i = 0; $i -le $haystack.Length - $needle.Length; $i++) {
+        $match = $true
+        for ($j = 0; $j -lt $needle.Length; $j++) {
+            if ($haystack[$i + $j] -ne $needle[$j]) { $match = $false; break }
+        }
+        if ($match) { return $true }
+    }
+    return $false
+}
+
+function Assert-SharedRuntimeAppHost {
+    param(
+        [Parameter(Mandatory = $true)][string]$Key,
+        [Parameter(Mandatory = $true)][string]$AppRoot
+    )
+    $definition = $Projects[$Key]
+    $exe = Join-Path $AppRoot ([string]$definition.Executable)
+    $assemblyName = [System.IO.Path]::GetFileNameWithoutExtension([string]$definition.Executable)
+    $runtimeConfigPath = Join-Path $AppRoot "$assemblyName.runtimeconfig.json"
+    Assert-Path $exe
+    Assert-Path $runtimeConfigPath
+
+    foreach ($runtimeFile in @("hostfxr.dll", "hostpolicy.dll", "coreclr.dll", "System.Private.CoreLib.dll")) {
+        if (Test-Path -LiteralPath (Join-Path $AppRoot $runtimeFile) -PathType Leaf) {
+            throw "Shared-runtime publish gate failed: $runtimeFile was duplicated into $AppRoot."
+        }
+    }
+
+    $runtimeConfig = Get-Content -LiteralPath $runtimeConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $runtimeOptions = $runtimeConfig.PSObject.Properties["runtimeOptions"].Value
+    $framework = $runtimeOptions.PSObject.Properties["framework"]
+    $frameworks = $runtimeOptions.PSObject.Properties["frameworks"]
+    if ($null -eq $framework -and $null -eq $frameworks) {
+        throw "Shared-runtime publish gate failed: $assemblyName.runtimeconfig.json is not framework-dependent."
+    }
+
+    if (-not (Test-BinaryContainsAscii $exe $SharedDotNetRelativeFromApp)) {
+        throw "Shared-runtime publish gate failed: $($definition.Executable) does not contain the AppRelative .NET path '$SharedDotNetRelativeFromApp'."
+    }
+    Write-Host "[shared-runtime-gate] $($definition.Executable): AppRelative private .NET path verified." -ForegroundColor Green
+}
+
 function Test-PortableRuntime {
     Assert-Path $PortableManifestPath
     Assert-Path (Join-Path $PortableRoot "runtime\OcctNative.dll")
@@ -148,9 +368,11 @@ function Publish-ProjectToStaging {
 
     Remove-Item -LiteralPath $StagingRoot -Recurse -Force -ErrorAction SilentlyContinue
     New-Item -ItemType Directory -Path $StagingRoot -Force | Out-Null
-    $mode = if ($UseSelfContained) { "self-contained" } else { "framework-dependent" }
+
+    $mode = if ($UseSharedDotNet) { "shared-private-runtime" } elseif ($UseSelfContained) { "self-contained" } else { "framework-dependent" }
     Write-Host "[publish] $($definition.Name) / $Configuration / $mode..." -ForegroundColor Cyan
-    Invoke-Checked $script:DotNet @(
+
+    $arguments = @(
         "publish", $project,
         "-c", $Configuration,
         "-r", "win-x64",
@@ -158,11 +380,21 @@ function Publish-ProjectToStaging {
         "-p:Version=$($script:Contract.bridgeVersion)",
         "-p:DebugType=None",
         "-p:DebugSymbols=false",
+        "-p:UseAppHost=true",
+        "-p:SatelliteResourceLanguages=en-US",
         "--self-contained", $UseSelfContained.ToString().ToLowerInvariant(),
         "--nologo",
         "-o", $StagingRoot
-    ) "$($definition.Name) publish failed."
+    )
+    if ($UseSharedDotNet) {
+        $arguments += "-p:AppHostDotNetSearch=AppRelative"
+        $arguments += "-p:AppHostRelativeDotNet=$SharedDotNetRelativeFromApp"
+    }
+
+    Invoke-Checked $script:DotNet $arguments "$($definition.Name) publish failed."
     Assert-Path (Join-Path $StagingRoot $definition.Executable)
+    Optimize-ManagedPayload $StagingRoot
+    if ($UseSharedDotNet) { Assert-SharedRuntimeAppHost $Key $StagingRoot }
 }
 
 function Merge-PublishTree {
@@ -214,8 +446,7 @@ function Assert-AppBridgeAssembliesMatch {
 function Prepare-AppDirectory {
     param([Parameter(Mandatory = $true)][string]$AppRoot)
 
-    # The Bridge Native DLL must come from the shared validated Portable Runtime. Removing
-    # app-local copies also prevents the resolver from choosing an incomplete native closure first.
+    # The Bridge Native DLL must come from the shared validated Portable Runtime.
     Remove-Item -LiteralPath (Join-Path $AppRoot "OcctNative.dll") -Force -ErrorAction SilentlyContinue
     Assert-AppBridgeAssembliesMatch $AppRoot
 }
@@ -243,12 +474,17 @@ function Write-RunCommand {
     else {
         'set "APP_DIR=%ROOT%' + $AppRelativeDirectory.TrimEnd('\') + '\"'
     }
+    $dotnetLines = if ($UseSharedDotNet) {
+        "set `"DOTNET_ROOT=%ROOT%dotnet`"`r`nset `"DOTNET_ROOT_X64=%ROOT%dotnet`""
+    }
+    else { "" }
 
     $runCmd = @"
 @echo off
 setlocal
 set "ROOT=%~dp0"
 $appDirectoryLine
+$dotnetLines
 set "NATIVE=%ROOT%runtime"
 set "CASROOT=%ROOT%occt"
 set "OCCT_ROOT=%ROOT%occt"
@@ -293,13 +529,17 @@ function Write-PackageManifest {
     )
 
     $requiresDesktopRuntime = @($Apps | Where-Object { $_ -in @("WinForms", "WPF") }).Count -gt 0
-    $requiredRuntime = if ($UseSelfContained) { $null } elseif ($requiresDesktopRuntime) { "Microsoft.WindowsDesktop.App 10.x x64" } else { "Microsoft.NETCore.App 10.x x64" }
+    $requiredRuntime = if ($UseSharedDotNet -or $UseSelfContained) { $null } elseif ($requiresDesktopRuntime) { "Microsoft.WindowsDesktop.App 10.x x64" } else { "Microsoft.NETCore.App 10.x x64" }
+    $deploymentMode = if ($UseSharedDotNet) { "shared-private-dotnet" } elseif ($UseSelfContained) { "self-contained" } else { "framework-dependent" }
+    $privateFrameworkVersion = if ($UseSharedDotNet -and $null -ne $script:PrivateDotNetInfo) { [string]$script:PrivateDotNetInfo.FrameworkVersion } else { $null }
+    $privateHostFxrVersion = if ($UseSharedDotNet -and $null -ne $script:PrivateDotNetInfo) { [string]$script:PrivateDotNetInfo.HostFxrVersion } else { $null }
 
     $packageManifest = [ordered]@{
-        schemaVersion = 3
+        schemaVersion = 4
         product = "OcctCSharpBridge Demo"
         apps = $Apps
         applicationLayout = $ApplicationLayout
+        deploymentMode = $deploymentMode
         bridgeVersion = [string]$script:Contract.bridgeVersion
         bridgeSourceCommit = [string]$script:Manifest.sourceCommit
         bridgeTargetFramework = [string]$script:Contract.dotnet.targetFramework
@@ -312,6 +552,12 @@ function Write-PackageManifest {
         platform = "win-x64"
         configuration = $Configuration
         selfContained = [bool]$UseSelfContained
+        privateDotNetRuntime = [bool]$UseSharedDotNet
+        privateDotNetRoot = if ($UseSharedDotNet) { "dotnet" } else { $null }
+        privateDotNetFrameworkVersion = $privateFrameworkVersion
+        privateDotNetHostFxrVersion = $privateHostFxrVersion
+        satelliteResources = "neutral-only"
+        diagnosticsPayload = "removed"
         requiredRuntime = $requiredRuntime
         files = $files
     }
@@ -329,6 +575,18 @@ function Write-ZipPackage {
     Remove-Item -LiteralPath $zipPath -Force -ErrorAction SilentlyContinue
     Compress-Archive -Path (Join-Path $PackageRoot "*") -DestinationPath $zipPath -CompressionLevel Optimal
     Write-Host "Archive: $zipPath" -ForegroundColor Green
+}
+
+function Write-PackageSizeSummary {
+    param([Parameter(Mandatory = $true)][string]$PackageRoot)
+    Write-Host "[publish] Package size summary:" -ForegroundColor Cyan
+    foreach ($relative in @("apps\winform", "apps\wpf", "apps\avalonia", "dotnet", "runtime", "occt")) {
+        $path = Join-Path $PackageRoot $relative
+        if (Test-Path -LiteralPath $path -PathType Container) {
+            Write-Host ("  {0,-18} {1,12}" -f $relative, (Format-Size (Get-DirectorySizeBytes $path)))
+        }
+    }
+    Write-Host ("  {0,-18} {1,12}" -f "TOTAL", (Format-Size (Get-DirectorySizeBytes $PackageRoot))) -ForegroundColor Green
 }
 
 function Publish-Standalone {
@@ -360,8 +618,6 @@ function Publish-Unified {
     $packageRoot = Join-Path $OutputDirectory $UnifiedPackage
     $appsRoot = Join-Path $packageRoot "apps"
 
-    # The old flat unified layout was framework-dependent because three desktop publish closures
-    # cannot safely share one set of framework files. Keep each application's .NET closure isolated.
     Remove-Item -LiteralPath $packageRoot -Recurse -Force -ErrorAction SilentlyContinue
     New-Item -ItemType Directory -Path $appsRoot -Force | Out-Null
 
@@ -371,16 +627,24 @@ function Publish-Unified {
         Prepare-AppDirectory $appRoot
     }
 
+    if ($UseSharedDotNet) {
+        Build-PrivateDotNetRuntime $packageRoot
+    }
+
     Merge-BridgePortablePayload $packageRoot
     Write-RunCommand "winform" $packageRoot "run-winform.cmd" "apps\winform"
     Write-RunCommand "wpf" $packageRoot "run-wpf.cmd" "apps\wpf"
     Write-RunCommand "avalonia" $packageRoot "run-avalonia.cmd" "apps\avalonia"
     Write-PackageManifest $packageRoot @("WinForms", "WPF", "Avalonia") "apps/<frontend>"
+    Write-PackageSizeSummary $packageRoot
 
     Write-ZipPackage $packageRoot
     Write-Host "Unified package: $packageRoot" -ForegroundColor Green
-    if ($UseSelfContained) {
-        Write-Host "The unified package is self-contained: target machines do not need the .NET 10 Desktop Runtime." -ForegroundColor Green
+    if ($UseSharedDotNet) {
+        Write-Host "The unified package carries one shared private .NET Desktop Runtime. The three EXEs use AppRelative host lookup and can be started directly without a machine-wide .NET installation." -ForegroundColor Green
+    }
+    elseif ($UseSelfContained) {
+        Write-Host "Explicit self-contained mode carries a separate .NET runtime inside each app directory." -ForegroundColor Yellow
     }
     else {
         Write-Host "Framework-dependent mode was explicitly requested; target machines need the .NET 10 Desktop Runtime x64." -ForegroundColor Yellow
@@ -394,6 +658,7 @@ Assert-Path $PortableRoot
 $script:DotNet = Resolve-DotNet
 $script:Contract = Get-Content -LiteralPath $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $script:Manifest = Get-Content -LiteralPath $ManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$script:PrivateDotNetInfo = $null
 Test-PortableRuntime
 
 $validationTarget = if ($Target -eq "all") { "all" } else { $Target }
@@ -401,4 +666,7 @@ $validationTarget = if ($Target -eq "all") { "all" } else { $Target }
 if (-not $?) { throw "Demo validation/build failed before publish." }
 
 Write-Host "[publish] Reusing exact Bridge portable payload from source $($script:Manifest.sourceCommit)." -ForegroundColor DarkGray
+if ($UseSharedDotNet) {
+    Write-Host "[publish] Unified default: one shared private .NET runtime + neutral resources only." -ForegroundColor DarkGray
+}
 if ($Target -eq "all") { Publish-Unified } else { Publish-Standalone $Target }
