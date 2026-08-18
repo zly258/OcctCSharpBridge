@@ -131,11 +131,48 @@ public sealed partial class OcctEngine
         return CheckDimension(dimensionId);
     }
 
+    /// <summary>
+    /// Creates a viewer angle dimension using the Bridge legacy inferred dimension plane.
+    /// Hosts that own a drafting plane should prefer the overload that accepts <paramref name="planeNormal"/>.
+    /// </summary>
     public OcctDimension AddAngleDimension(OcctShape firstEdge, OcctShape secondEdge, double flyout = 20, System.Drawing.Color? color = null)
     {
         EnsureShape(firstEdge);
         EnsureShape(secondEdge);
         return AddDimension(NativeViewerDimensionKind.Angle, firstEdge.Id, secondEdge.Id, flyout, color);
+    }
+
+    /// <summary>
+    /// Creates a viewer angle dimension in an explicit host-owned plane. Both edges must lie in the
+    /// same plane represented by <paramref name="planeNormal"/>; invalid combinations fail instead
+    /// of silently accepting a viewer-inferred presentation plane.
+    /// </summary>
+    public OcctDimension AddAngleDimension(
+        OcctShape firstEdge,
+        OcctShape secondEdge,
+        OcctVector3d planeNormal,
+        double flyout = 20,
+        System.Drawing.Color? color = null)
+    {
+        EnsureShape(firstEdge);
+        EnsureShape(secondEdge);
+        OcctGuard.NonZero(planeNormal, nameof(planeNormal));
+        OcctGuard.Finite(flyout, nameof(flyout));
+        var actualColor = color ?? System.Drawing.Color.Black;
+        EnsureInitialized();
+        var options = DimensionOptions(
+            NativeViewerDimensionUpdateMask.Flyout | NativeViewerDimensionUpdateMask.Color,
+            flyout,
+            actualColor);
+        var status = AnnotationNativeMethods.occt_engine_angle_dimension_create_in_plane(
+            _handle,
+            firstEdge.Id,
+            secondEdge.Id,
+            planeNormal.Normalized(),
+            in options,
+            out var dimensionId);
+        if (status != OcctStatus.Ok) throw CreateException();
+        return CheckDimension(dimensionId);
     }
 
     public OcctDimension AddRadiusDimension(OcctShape circularShape, double flyout = 20, System.Drawing.Color? color = null)
