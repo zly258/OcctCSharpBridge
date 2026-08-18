@@ -25,4 +25,28 @@
           DestinationFolder="$(TargetDir)"
           SkipUnchangedFiles="true" />
   </Target>
+
+  <Target Name="VerifyWindowsSelfContainedPublish"
+          AfterTargets="Publish"
+          Condition="'$(RuntimeIdentifier)' == 'win-x64' and '$(SelfContained)' == 'true' and '$(OutputType)' == 'WinExe'">
+    <PropertyGroup>
+      <_PublishedRuntimeConfig>$(PublishDir)$(AssemblyName).runtimeconfig.json</_PublishedRuntimeConfig>
+    </PropertyGroup>
+
+    <Error Condition="!Exists('$(PublishDir)$(AssemblyName).exe')"
+           Text="Self-contained publish gate failed: $(AssemblyName).exe is missing from $(PublishDir)." />
+    <Error Condition="!Exists('$(_PublishedRuntimeConfig)')"
+           Text="Self-contained publish gate failed: $(AssemblyName).runtimeconfig.json is missing from $(PublishDir)." />
+    <Error Condition="!Exists('$(PublishDir)hostfxr.dll')"
+           Text="Self-contained publish gate failed: hostfxr.dll is missing from $(PublishDir). The package would require an installed .NET runtime." />
+    <Error Condition="!Exists('$(PublishDir)hostpolicy.dll')"
+           Text="Self-contained publish gate failed: hostpolicy.dll is missing from $(PublishDir)." />
+    <Error Condition="!Exists('$(PublishDir)coreclr.dll')"
+           Text="Self-contained publish gate failed: coreclr.dll is missing from $(PublishDir)." />
+    <Error Condition="!Exists('$(PublishDir)System.Private.CoreLib.dll')"
+           Text="Self-contained publish gate failed: System.Private.CoreLib.dll is missing from $(PublishDir)." />
+
+    <Message Importance="high"
+             Text="[self-contained-gate] $(AssemblyName): local .NET runtime payload verified in $(PublishDir)." />
+  </Target>
 </Project>
