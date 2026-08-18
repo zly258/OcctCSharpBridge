@@ -16,6 +16,7 @@
 #include <TopoDS_Edge.hxx>
 #include <gp_Pln.hxx>
 
+#include <algorithm>
 #include <cmath>
 #include <stdexcept>
 #include <utility>
