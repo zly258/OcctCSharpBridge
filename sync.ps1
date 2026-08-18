@@ -1,8 +1,9 @@
 param(
     [string]$Remote = "origin",
-    [string]$SourceBranch = "main",
+    [string]$SourceBranch = "main-dev",
     [string]$OcctRoot = $env:OCCT_ROOT,
     [string]$SdkRoot = "",
+    [string]$PortableRoot = "",
     [switch]$ForceRebuild
 )
 
@@ -11,7 +12,11 @@ Set-StrictMode -Version Latest
 
 $RepoRoot = Split-Path -Parent $PSCommandPath
 $Destination = Join-Path $RepoRoot "dist\win-x64"
+$PortableDestination = Join-Path $RepoRoot "dist\portable\win-x64"
 $SourceRepoRoot = Join-Path $RepoRoot ".cache\main-sdk-source"
+$DefaultOcctRoot = "D:\tools\occt-vc144-64"
+if ([string]::IsNullOrWhiteSpace($OcctRoot)) { $OcctRoot = $DefaultOcctRoot }
+$OcctRoot = [System.IO.Path]::GetFullPath($OcctRoot)
 $DemoCoreTargetFramework = "net10.0"
 $DemoDesktopTargetFramework = "net10.0-windows"
 $SdkFileNames = @(
@@ -26,7 +31,7 @@ $SdkFileNames = @(
 
 function Assert-File {
     param([Parameter(Mandatory = $true)][string]$Path)
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "Required SDK file was not found: $Path" }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "Required file was not found: $Path" }
 }
 
 function Invoke-GitChecked {
@@ -92,9 +97,7 @@ function Read-ValidatedSdk {
     }
     if ($contract.dotnet.PSObject.Properties.Name -contains "sdkRollForward") {
         $rollForward = [string]$contract.dotnet.sdkRollForward
-        if ($rollForward -ne "latestFeature") {
-            throw "Unsupported source SDK roll-forward policy: $rollForward"
-        }
+        if ($rollForward -ne "latestFeature") { throw "Unsupported source SDK roll-forward policy: $rollForward" }
     }
 
     $manifest = Get-Content -LiteralPath (Join-Path $Root "bridge-manifest.json") -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -130,29 +133,73 @@ function Read-ValidatedSdk {
         $path = Join-Path $Root ([string]$entry.name)
         Assert-File $path
         $actual = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
-        if ($actual -ne ([string]$entry.sha256).ToLowerInvariant()) {
-            throw "The SDK manifest hash does not match: $($entry.name)"
-        }
+        if ($actual -ne ([string]$entry.sha256).ToLowerInvariant()) { throw "The SDK manifest hash does not match: $($entry.name)" }
     }
 
-    return [pscustomobject]@{
-        Contract = $contract
-        Manifest = $manifest
+    return [pscustomobject]@{ Contract = $contract; Manifest = $manifest }
+}
+
+function Read-ValidatedPortable {
+    param(
+        [Parameter(Mandatory = $true)][string]$Root,
+        [Parameter(Mandatory = $true)][string]$ExpectedSourceCommit,
+        [Parameter(Mandatory = $true)][string]$ExpectedBridgeVersion
+    )
+
+    Assert-File (Join-Path $Root "package-manifest.json")
+    Assert-File (Join-Path $Root "bridge-contract.json")
+    Assert-File (Join-Path $Root "bridge-manifest.json")
+    Assert-File (Join-Path $Root "runtime\OcctNative.dll")
+    if (-not (Test-Path -LiteralPath (Join-Path $Root "occt\resources") -PathType Container)) {
+        throw "Portable SDK OCCT resources directory is missing: $Root"
     }
+
+    $package = Get-Content -LiteralPath (Join-Path $Root "package-manifest.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ([string]$package.product -ne "OcctCSharpBridge Portable SDK" -or
+        [string]$package.platform -ne "win-x64" -or
+        -not [bool]$package.portableRuntime -or
+        [string]$package.bridgeSourceCommit -ne $ExpectedSourceCommit -or
+        [string]$package.bridgeVersion -ne $ExpectedBridgeVersion) {
+        throw "Portable SDK metadata does not match the synchronized Bridge Binary SDK."
+    }
+
+    foreach ($entry in @($package.files)) {
+        $relative = ([string]$entry.name).Replace('/', [System.IO.Path]::DirectorySeparatorChar)
+        $path = Join-Path $Root $relative
+        Assert-File $path
+        $actual = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($actual -ne ([string]$entry.sha256).ToLowerInvariant()) {
+            throw "Portable SDK hash mismatch: $($entry.name)"
+        }
+    }
+    return $package
 }
 
 function Copy-Sdk {
     param([Parameter(Mandatory = $true)][string]$Source)
-
     $sdk = Read-ValidatedSdk $Source
     if (Test-Path -LiteralPath $Destination -PathType Container) { Remove-Item -LiteralPath $Destination -Recurse -Force }
     New-Item -ItemType Directory -Path $Destination -Force | Out-Null
-    foreach ($name in $SdkFileNames) {
-        Copy-Item -LiteralPath (Join-Path $Source $name) -Destination (Join-Path $Destination $name) -Force
-    }
+    foreach ($name in $SdkFileNames) { Copy-Item -LiteralPath (Join-Path $Source $name) -Destination (Join-Path $Destination $name) -Force }
     Write-Host "Binary SDK synchronized." -ForegroundColor Green
     Write-Host "Bridge: $($sdk.Contract.bridgeVersion), ABI 5 only, OCCT $($sdk.Contract.occtVersion), target $($sdk.Contract.dotnet.targetFramework), SDK baseline $($sdk.Contract.dotnet.sdkVersion)" -ForegroundColor DarkGray
     Write-Host "Path:   $Destination" -ForegroundColor DarkGray
+    return $sdk
+}
+
+function Copy-Portable {
+    param(
+        [Parameter(Mandatory = $true)][string]$Source,
+        [Parameter(Mandatory = $true)][string]$ExpectedSourceCommit,
+        [Parameter(Mandatory = $true)][string]$ExpectedBridgeVersion
+    )
+    [void](Read-ValidatedPortable $Source $ExpectedSourceCommit $ExpectedBridgeVersion)
+    if (Test-Path -LiteralPath $PortableDestination -PathType Container) { Remove-Item -LiteralPath $PortableDestination -Recurse -Force }
+    New-Item -ItemType Directory -Path $PortableDestination -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $Source "*") -Destination $PortableDestination -Recurse -Force
+    [void](Read-ValidatedPortable $PortableDestination $ExpectedSourceCommit $ExpectedBridgeVersion)
+    Write-Host "Portable Bridge runtime synchronized." -ForegroundColor Green
+    Write-Host "Path:   $PortableDestination" -ForegroundColor DarkGray
 }
 
 function Get-OrCreateSourceClone {
@@ -163,9 +210,7 @@ function Get-OrCreateSourceClone {
     )
 
     $remoteUrl = ([string](& git -C $RepoRoot remote get-url $RemoteName)).Trim()
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($remoteUrl)) {
-        throw "Unable to resolve URL for Git remote '$RemoteName'."
-    }
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($remoteUrl)) { throw "Unable to resolve URL for Git remote '$RemoteName'." }
 
     $cacheGit = Join-Path $SourceRepoRoot ".git"
     if (-not (Test-Path -LiteralPath $cacheGit)) {
@@ -183,14 +228,11 @@ function Get-OrCreateSourceClone {
     Invoke-GitChecked $SourceRepoRoot @("fetch", "--quiet", "--prune", "origin", $Branch) "Unable to fetch origin/$Branch in cached source clone."
     $fetchedCommit = ([string](& git -C $SourceRepoRoot rev-parse "FETCH_HEAD")).Trim()
     if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($fetchedCommit)) { throw "Unable to resolve fetched source commit." }
-    if ($fetchedCommit -ne $ExpectedCommit) {
-        throw "Cached source commit '$fetchedCommit' does not match $RemoteName/$Branch '$ExpectedCommit'."
-    }
+    if ($fetchedCommit -ne $ExpectedCommit) { throw "Cached source commit '$fetchedCommit' does not match $RemoteName/$Branch '$ExpectedCommit'." }
 
     Invoke-GitChecked $SourceRepoRoot @("reset", "--hard") "Unable to reset cached Bridge source clone."
     Invoke-GitChecked $SourceRepoRoot @("clean", "-fd") "Unable to clean untracked files in cached Bridge source clone."
     Invoke-GitChecked $SourceRepoRoot @("checkout", "--detach", "--force", $ExpectedCommit) "Unable to checkout cached Bridge source commit $ExpectedCommit."
-
     return $SourceRepoRoot
 }
 
@@ -199,56 +241,55 @@ function Invoke-BridgeBuildTarget {
         [Parameter(Mandatory = $true)][string]$BuildScript,
         [Parameter(Mandatory = $true)][string]$TargetName
     )
-
-    $parameters = @{
-        Target = $TargetName
-        Configuration = "Release"
-    }
-    if (-not [string]::IsNullOrWhiteSpace($OcctRoot)) { $parameters.OcctRoot = $OcctRoot }
-    & $BuildScript @parameters
+    & $BuildScript -Target $TargetName -Configuration "Release" -OcctRoot $OcctRoot
     if ($LASTEXITCODE -ne 0) { throw "Bridge build target '$TargetName' failed on $Remote/$SourceBranch." }
 }
 
 if (-not [string]::IsNullOrWhiteSpace($SdkRoot)) {
-    if ($ForceRebuild) { throw "-ForceRebuild cannot be combined with -SdkRoot; the supplied SDK is copied as-is after validation." }
-    Copy-Sdk ([System.IO.Path]::GetFullPath($SdkRoot))
+    if ($ForceRebuild) { throw "-ForceRebuild cannot be combined with -SdkRoot." }
+    if ([string]::IsNullOrWhiteSpace($PortableRoot)) {
+        throw "-PortableRoot is required with -SdkRoot on demo-dev so publish can reuse the matching validated Bridge portable runtime."
+    }
+    $sdk = Copy-Sdk ([System.IO.Path]::GetFullPath($SdkRoot))
+    Copy-Portable ([System.IO.Path]::GetFullPath($PortableRoot)) ([string]$sdk.Manifest.sourceCommit) ([string]$sdk.Contract.bridgeVersion)
     exit 0
 }
+if (-not [string]::IsNullOrWhiteSpace($PortableRoot)) { throw "-PortableRoot is only valid together with -SdkRoot." }
 
 if ($null -eq (Get-Command git -ErrorAction SilentlyContinue)) { throw "git was not found in PATH." }
 
 Write-Host "[sync] Fetching $Remote/$SourceBranch..." -ForegroundColor Cyan
 & git -C $RepoRoot fetch --quiet $Remote $SourceBranch
 if ($LASTEXITCODE -ne 0) { throw "Unable to fetch $Remote/$SourceBranch." }
-
 $sourceCommit = ([string](& git -C $RepoRoot rev-parse "$Remote/$SourceBranch")).Trim()
-if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($sourceCommit)) {
-    throw "Unable to resolve $Remote/$SourceBranch."
-}
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($sourceCommit)) { throw "Unable to resolve $Remote/$SourceBranch." }
 
-if (-not $ForceRebuild -and (Test-Path -LiteralPath $Destination -PathType Container)) {
+if (-not $ForceRebuild -and (Test-Path -LiteralPath $Destination -PathType Container) -and (Test-Path -LiteralPath $PortableDestination -PathType Container)) {
     try {
         $sdk = Read-ValidatedSdk $Destination
         if ([string]$sdk.Manifest.sourceCommit -eq $sourceCommit) {
-            Write-Host "Binary SDK is already synchronized; rebuild skipped." -ForegroundColor Green
+            [void](Read-ValidatedPortable $PortableDestination $sourceCommit ([string]$sdk.Contract.bridgeVersion))
+            Write-Host "Binary SDK and portable runtime are already synchronized; rebuild skipped." -ForegroundColor Green
             Write-Host "Source: $Remote/$SourceBranch @ $($sourceCommit.Substring(0, 7))" -ForegroundColor DarkGray
-            Write-Host "Bridge: $($sdk.Contract.bridgeVersion), ABI 5 only, OCCT $($sdk.Contract.occtVersion), target $($sdk.Contract.dotnet.targetFramework), SDK baseline $($sdk.Contract.dotnet.sdkVersion)" -ForegroundColor DarkGray
-            Write-Host "Path:   $Destination" -ForegroundColor DarkGray
+            Write-Host "SDK:    $Destination" -ForegroundColor DarkGray
+            Write-Host "Runtime:$PortableDestination" -ForegroundColor DarkGray
             exit 0
         }
         Write-Host "[sync] Existing SDK is from a different source commit; rebuilding." -ForegroundColor DarkGray
     }
     catch {
-        Write-Host "[sync] Existing SDK is incomplete or invalid; rebuilding." -ForegroundColor DarkGray
+        Write-Host "[sync] Existing SDK or portable runtime is incomplete/invalid; rebuilding." -ForegroundColor DarkGray
     }
 }
 elseif ($ForceRebuild) {
-    Write-Host "[sync] Forced Binary SDK rebuild requested." -ForegroundColor DarkGray
+    Write-Host "[sync] Forced Binary SDK + portable runtime rebuild requested." -ForegroundColor DarkGray
 }
 
 $sourceRoot = Get-OrCreateSourceClone $Remote $SourceBranch $sourceCommit
 $buildScript = Join-Path $sourceRoot "build.ps1"
+$portableScript = Join-Path $sourceRoot "tools\package-portable-sdk.ps1"
 if (-not (Test-Path -LiteralPath $buildScript -PathType Leaf)) { throw "$Remote/$SourceBranch does not contain build.ps1." }
+if (-not (Test-Path -LiteralPath $portableScript -PathType Leaf)) { throw "$Remote/$SourceBranch does not contain tools/package-portable-sdk.ps1. Update the Bridge development branch first." }
 
 $buildScriptText = Get-Content -LiteralPath $buildScript -Raw -Encoding UTF8
 if ($buildScriptText -match '(?s)ValidateSet\([^)]*"sdk"') {
@@ -263,8 +304,15 @@ else {
 
 $builtSdkRoot = Join-Path $sourceRoot "dist\win-x64"
 $builtSdk = Read-ValidatedSdk $builtSdkRoot
-if ([string]$builtSdk.Manifest.sourceCommit -ne $sourceCommit) {
-    throw "Built SDK sourceCommit '$($builtSdk.Manifest.sourceCommit)' does not match $Remote/$SourceBranch '$sourceCommit'."
-}
+if ([string]$builtSdk.Manifest.sourceCommit -ne $sourceCommit) { throw "Built SDK sourceCommit '$($builtSdk.Manifest.sourceCommit)' does not match $Remote/$SourceBranch '$sourceCommit'." }
 
-Copy-Sdk $builtSdkRoot
+$portableOutput = Join-Path $sourceRoot "artifacts\demo-sync-portable"
+Remove-Item -LiteralPath $portableOutput -Recurse -Force -ErrorAction SilentlyContinue
+Write-Host "[sync] Building validated Bridge portable runtime from the same source commit..." -ForegroundColor Cyan
+& $portableScript -SdkRoot $builtSdkRoot -OcctRoot $OcctRoot -OutputDirectory $portableOutput
+if ($LASTEXITCODE -ne 0) { throw "Bridge portable runtime packaging failed on $Remote/$SourceBranch." }
+$builtPortableRoot = Join-Path $portableOutput "OcctCSharpBridge-$($builtSdk.Contract.bridgeVersion)-win-x64-portable"
+[void](Read-ValidatedPortable $builtPortableRoot $sourceCommit ([string]$builtSdk.Contract.bridgeVersion))
+
+$sdk = Copy-Sdk $builtSdkRoot
+Copy-Portable $builtPortableRoot ([string]$sdk.Manifest.sourceCommit) ([string]$sdk.Contract.bridgeVersion)
