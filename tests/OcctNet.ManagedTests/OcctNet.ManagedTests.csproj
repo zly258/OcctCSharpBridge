@@ -1,6 +1,7 @@
 <Project Sdk="MSTest.Sdk/4.1.0">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
+    <RollForward>Major</RollForward>
     <ImplicitUsings>enable</ImplicitUsings>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
