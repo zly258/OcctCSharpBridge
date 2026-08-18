@@ -1,6 +1,8 @@
 param(
     [string]$OcctRoot = $env:OCCT_ROOT,
-    [string]$Remote = "origin"
+    [string]$Remote = "origin",
+    [string]$OutputDirectory = "",
+    [switch]$Zip
 )
 
 $ErrorActionPreference = "Stop"
@@ -8,9 +10,11 @@ Set-StrictMode -Version Latest
 
 $RepoRoot = Split-Path -Parent $PSCommandPath
 $BuildScript = Join-Path $RepoRoot "build.ps1"
+$PortablePackScript = Join-Path $RepoRoot "tools\package-portable-sdk.ps1"
 $DistRoot = Join-Path $RepoRoot "dist\win-x64"
 $DefaultOcctRoot = "D:\tools\occt-vc144-64"
 if ([string]::IsNullOrWhiteSpace($OcctRoot)) { $OcctRoot = $DefaultOcctRoot }
+if ([string]::IsNullOrWhiteSpace($OutputDirectory)) { $OutputDirectory = Join-Path $RepoRoot "artifacts\publish" }
 
 function Assert-Command {
     param([Parameter(Mandatory = $true)][string]$Name)
@@ -183,6 +187,7 @@ function Assert-OnlyDistChanges {
 
 Assert-Command "git"
 if (-not (Test-Path $BuildScript -PathType Leaf)) { throw "build.ps1 was not found." }
+if (-not (Test-Path $PortablePackScript -PathType Leaf)) { throw "Portable SDK packager was not found: $PortablePackScript" }
 
 $currentBranch = Get-CurrentBranch
 if ($currentBranch -notin @("main", "main-dev")) {
@@ -203,9 +208,18 @@ Invoke-Build "sdk"
 Test-BinarySdk -Path $DistRoot -ExpectedSourceCommit $sourceCommit
 Assert-OnlyDistChanges
 
-Write-Host "Bridge Binary SDK validated successfully." -ForegroundColor Green
-Write-Host "Mode:   $publishMode" -ForegroundColor DarkGray
-Write-Host "Branch: $currentBranch" -ForegroundColor DarkGray
-Write-Host "Source: $sourceCommit" -ForegroundColor DarkGray
-Write-Host "Output: $DistRoot" -ForegroundColor DarkGray
-Write-Host "No Git commit or push was performed. Review the generated dist payload and publish it through the normal reviewed workflow." -ForegroundColor Cyan
+Write-Host "[publish] Building portable SDK with the OCCT runtime closure..." -ForegroundColor Cyan
+& $PortablePackScript `
+    -SdkRoot $DistRoot `
+    -OcctRoot $OcctRoot `
+    -OutputDirectory $OutputDirectory `
+    -Zip:$Zip.IsPresent
+if ($LASTEXITCODE -ne 0) { throw "Portable Windows SDK packaging failed with exit code $LASTEXITCODE." }
+
+Write-Host "Bridge Binary SDK and portable runtime SDK validated successfully." -ForegroundColor Green
+Write-Host "Mode:      $publishMode" -ForegroundColor DarkGray
+Write-Host "Branch:    $currentBranch" -ForegroundColor DarkGray
+Write-Host "Source:    $sourceCommit" -ForegroundColor DarkGray
+Write-Host "Binary SDK: $DistRoot" -ForegroundColor DarkGray
+Write-Host "Portable:   $([System.IO.Path]::GetFullPath($OutputDirectory))" -ForegroundColor DarkGray
+Write-Host "No Git commit or push was performed. Publish the portable package through the normal reviewed artifact workflow." -ForegroundColor Cyan
