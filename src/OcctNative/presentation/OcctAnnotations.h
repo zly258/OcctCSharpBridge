@@ -80,11 +80,19 @@ extern "C"
         const OcctViewerDimensionOptions* options,
         OcctObjectId* resultDimensionId);
 
-    // Additive ABI5 API for hosts that own the drafting plane. The legacy generic dimension
+    // Additive ABI5 APIs for hosts that own the drafting plane. The legacy generic dimension
     // entry point remains unchanged for compatibility and may continue to infer a plane.
     OCCTBRIDGE_API OcctStatus occt_engine_length_dimension_create_in_plane(
         OcctEngineHandle engine,
         OcctObjectId edgeShapeId,
+        OcctVector3d planeNormal,
+        const OcctViewerDimensionOptions* options,
+        OcctObjectId* resultDimensionId);
+
+    OCCTBRIDGE_API OcctStatus occt_engine_angle_dimension_create_in_plane(
+        OcctEngineHandle engine,
+        OcctObjectId firstEdgeShapeId,
+        OcctObjectId secondEdgeShapeId,
         OcctVector3d planeNormal,
         const OcctViewerDimensionOptions* options,
         OcctObjectId* resultDimensionId);
