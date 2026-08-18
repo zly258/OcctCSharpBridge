@@ -91,6 +91,17 @@ public sealed partial class OcctEngine
         CheckAnnotationStatus(AnnotationNativeMethods.occt_engine_dimension_update(_handle, dimension.Id, in options));
     }
 
+    /// <summary>Sets the native dimension label height without changing its geometry, flyout or color.</summary>
+    public void SetDimensionTextHeight(OcctDimension dimension, double textHeight)
+    {
+        EnsureDimension(dimension);
+        OcctGuard.Positive(textHeight, nameof(textHeight));
+        CheckAnnotationStatus(AnnotationNativeMethods.occt_engine_dimension_set_text_height(
+            _handle,
+            dimension.Id,
+            textHeight));
+    }
+
     /// <summary>
     /// Creates a viewer length dimension using the Bridge legacy inferred dimension plane.
     /// Hosts that own a drafting plane should prefer the overload that accepts <paramref name="planeNormal"/>.
