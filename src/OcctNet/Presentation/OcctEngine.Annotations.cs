@@ -91,10 +91,44 @@ public sealed partial class OcctEngine
         CheckAnnotationStatus(AnnotationNativeMethods.occt_engine_dimension_update(_handle, dimension.Id, in options));
     }
 
+    /// <summary>
+    /// Creates a viewer length dimension using the Bridge legacy inferred dimension plane.
+    /// Hosts that own a drafting plane should prefer the overload that accepts <paramref name="planeNormal"/>.
+    /// </summary>
     public OcctDimension AddLengthDimension(OcctShape edge, double flyout = 20, System.Drawing.Color? color = null)
     {
         EnsureShape(edge);
         return AddDimension(NativeViewerDimensionKind.Length, edge.Id, 0, flyout, color);
+    }
+
+    /// <summary>
+    /// Creates a viewer length dimension in an explicit host-owned plane. The edge must lie in the
+    /// plane represented by <paramref name="planeNormal"/>; invalid combinations fail instead of
+    /// silently choosing a world-axis-derived dimension plane.
+    /// </summary>
+    public OcctDimension AddLengthDimension(
+        OcctShape edge,
+        OcctVector3d planeNormal,
+        double flyout = 20,
+        System.Drawing.Color? color = null)
+    {
+        EnsureShape(edge);
+        OcctGuard.NonZero(planeNormal, nameof(planeNormal));
+        OcctGuard.Finite(flyout, nameof(flyout));
+        var actualColor = color ?? System.Drawing.Color.Black;
+        EnsureInitialized();
+        var options = DimensionOptions(
+            NativeViewerDimensionUpdateMask.Flyout | NativeViewerDimensionUpdateMask.Color,
+            flyout,
+            actualColor);
+        var status = AnnotationNativeMethods.occt_engine_length_dimension_create_in_plane(
+            _handle,
+            edge.Id,
+            planeNormal.Normalized(),
+            in options,
+            out var dimensionId);
+        if (status != OcctStatus.Ok) throw CreateException();
+        return CheckDimension(dimensionId);
     }
 
     public OcctDimension AddAngleDimension(OcctShape firstEdge, OcctShape secondEdge, double flyout = 20, System.Drawing.Color? color = null)
