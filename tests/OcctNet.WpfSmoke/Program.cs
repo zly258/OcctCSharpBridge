@@ -73,6 +73,7 @@ internal static class Program
                         Console.WriteLine($"Bridge {OcctBridgeInfo.ManagedVersion} / ABI {OcctBridgeInfo.ExpectedAbiVersion}");
                         Console.WriteLine($"Engine generation: {viewport.EngineGeneration}");
                         Console.WriteLine($"Native handle: 0x{viewport.NativeHandle.ToInt64():X}");
+                        Console.WriteLine("WPF query-only rectangle detection preserved native selection state.");
                         Console.WriteLine("WPF minimize/restore exposure path exercised without pointer input.");
                         Console.WriteLine("WPF viewport lifecycle/render/native-handle smoke passed.");
                         window.Close();
@@ -130,6 +131,18 @@ internal static class Program
 
                 viewport.Engine.Fit(box);
                 viewport.Engine.Redraw();
+
+                viewport.Engine.ClearSelection();
+                if (viewport.Engine.SelectedObjects.Count != 0)
+                    throw new InvalidOperationException("WPF rectangle-query smoke did not start with an empty selection.");
+                var width = Math.Max(1, (int)Math.Ceiling(viewport.ActualWidth));
+                var height = Math.Max(1, (int)Math.Ceiling(viewport.ActualHeight));
+                var queried = viewport.Engine.QueryRectangle(0, 0, width - 1, height - 1, allowOverlap: false);
+                if (!queried.Any(item => item.Id == box.Id))
+                    throw new InvalidOperationException("QueryRectangle did not return the visible fitted box.");
+                if (viewport.Engine.SelectedObjects.Count != 0)
+                    throw new InvalidOperationException("QueryRectangle mutated the native selection set.");
+
                 initialNativeHandle = viewport.NativeHandle;
                 initialGeneration = viewport.EngineGeneration;
                 restoreTimer.Start();
