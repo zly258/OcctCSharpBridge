@@ -22,6 +22,10 @@
   },
   "api": {
     "policy": "abi5-only",
+    "capabilities": [
+      "viewer.dimension.explicit-plane",
+      "viewer.dimension.text-height"
+    ],
     "nativeHeaders": [
       "OcctNative.h",
       "exchange/OcctStepDocument.h",
