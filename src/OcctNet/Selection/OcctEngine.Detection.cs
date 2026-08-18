@@ -64,6 +64,53 @@ public sealed partial class OcctEngine
         }
     }
 
+    /// <summary>
+    /// Queries whole viewer objects intersecting or contained by a screen-space rectangle without
+    /// mutating the native selection set or highlight state.
+    /// </summary>
+    public IReadOnlyList<IOcctObject> QueryRectangle(
+        int x1,
+        int y1,
+        int x2,
+        int y2,
+        bool allowOverlap = false)
+    {
+        EnsureInitialized();
+        var empty = Array.Empty<long>();
+        CheckSelectionStatus(DetectionNativeMethods.occt_engine_selection_rectangle_query(
+            _handle,
+            x1,
+            y1,
+            x2,
+            y2,
+            allowOverlap ? 1 : 0,
+            empty,
+            0,
+            out var requiredCount));
+        if (requiredCount < 0)
+            throw new InvalidOperationException("Native rectangle-query result count is invalid.");
+        if (requiredCount == 0) return Array.Empty<IOcctObject>();
+
+        var objectIds = new long[requiredCount];
+        CheckSelectionStatus(DetectionNativeMethods.occt_engine_selection_rectangle_query(
+            _handle,
+            x1,
+            y1,
+            x2,
+            y2,
+            allowOverlap ? 1 : 0,
+            objectIds,
+            objectIds.Length,
+            out var filledCount));
+        if (filledCount < 0 || filledCount > objectIds.Length)
+            throw new InvalidOperationException("Native rectangle-query filled count is invalid.");
+
+        var result = new IOcctObject[filledCount];
+        for (var index = 0; index < filledCount; index++)
+            result[index] = GetObject(objectIds[index]);
+        return result;
+    }
+
     public bool TryGetDetectionCandidate(
         int x,
         int y,
