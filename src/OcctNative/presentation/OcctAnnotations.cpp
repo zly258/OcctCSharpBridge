@@ -159,22 +159,7 @@ namespace
             throw std::runtime_error("Dimension geometry is not valid for this annotation type.");
     }
 
-    gp_Pln dimensionPlaneForEdge(const TopoDS_Edge& edge)
-    {
-        BRepAdaptor_Curve curve(edge);
-        const gp_Pnt first = curve.Value(curve.FirstParameter());
-        const gp_Pnt last = curve.Value(curve.LastParameter());
-        const gp_Vec edgeVector(first, last);
-        if (edgeVector.SquareMagnitude() <= Precision::SquareConfusion())
-            throw std::runtime_error("Edge has zero length.");
-        const gp_Dir edgeDirection(edgeVector);
-        gp_Dir reference(0.0, 0.0, 1.0);
-        if (std::abs(edgeDirection.Dot(reference)) > 0.95)
-            reference = gp_Dir(1.0, 0.0, 0.0);
-        return gp_Pln(first, edgeDirection.Crossed(reference));
-    }
-
-    gp_Pln dimensionPlaneForEdge(const TopoDS_Edge& edge, const OcctVector3d& planeNormal)
+    gp_Dir validatedPlaneNormal(const OcctVector3d& planeNormal)
     {
         if (!std::isfinite(planeNormal.x) ||
             !std::isfinite(planeNormal.y) ||
@@ -186,19 +171,92 @@ namespace
         const gp_Vec normalVector(planeNormal.x, planeNormal.y, planeNormal.z);
         if (normalVector.SquareMagnitude() <= 1.0e-30)
             throw std::invalid_argument("Dimension plane normal must be non-zero.");
-        const gp_Dir normalDirection(normalVector);
+        return gp_Dir(normalVector);
+    }
 
+    std::pair<gp_Pnt, gp_Pnt> edgeEndpoints(const TopoDS_Edge& edge)
+    {
         BRepAdaptor_Curve curve(edge);
-        const gp_Pnt first = curve.Value(curve.FirstParameter());
-        const gp_Pnt last = curve.Value(curve.LastParameter());
+        return {
+            curve.Value(curve.FirstParameter()),
+            curve.Value(curve.LastParameter())
+        };
+    }
+
+    void requireEdgeDirectionInPlane(
+        const gp_Pnt& first,
+        const gp_Pnt& last,
+        const gp_Dir& planeNormal,
+        const char* errorMessage)
+    {
         const gp_Vec edgeVector(first, last);
         if (edgeVector.SquareMagnitude() <= Precision::SquareConfusion())
             throw std::runtime_error("Edge has zero length.");
-        const gp_Dir edgeDirection(edgeVector);
-        if (std::abs(edgeDirection.Dot(normalDirection)) > DimensionPlaneDotTolerance)
-            throw std::invalid_argument("Length dimension edge must lie in the requested dimension plane.");
+        if (std::abs(gp_Dir(edgeVector).Dot(planeNormal)) > DimensionPlaneDotTolerance)
+            throw std::invalid_argument(errorMessage);
+    }
 
-        return gp_Pln(first, normalDirection);
+    double signedDistanceToPlane(
+        const gp_Pnt& origin,
+        const gp_Pnt& pointValue,
+        const gp_Dir& planeNormal)
+    {
+        return (pointValue.X() - origin.X()) * planeNormal.X()
+             + (pointValue.Y() - origin.Y()) * planeNormal.Y()
+             + (pointValue.Z() - origin.Z()) * planeNormal.Z();
+    }
+
+    gp_Pln dimensionPlaneForEdge(const TopoDS_Edge& edge)
+    {
+        const auto endpoints = edgeEndpoints(edge);
+        const gp_Vec edgeVector(endpoints.first, endpoints.second);
+        if (edgeVector.SquareMagnitude() <= Precision::SquareConfusion())
+            throw std::runtime_error("Edge has zero length.");
+        const gp_Dir edgeDirection(edgeVector);
+        gp_Dir reference(0.0, 0.0, 1.0);
+        if (std::abs(edgeDirection.Dot(reference)) > 0.95)
+            reference = gp_Dir(1.0, 0.0, 0.0);
+        return gp_Pln(endpoints.first, edgeDirection.Crossed(reference));
+    }
+
+    gp_Pln dimensionPlaneForEdge(const TopoDS_Edge& edge, const OcctVector3d& planeNormal)
+    {
+        const gp_Dir normalDirection = validatedPlaneNormal(planeNormal);
+        const auto endpoints = edgeEndpoints(edge);
+        requireEdgeDirectionInPlane(
+            endpoints.first,
+            endpoints.second,
+            normalDirection,
+            "Length dimension edge must lie in the requested dimension plane.");
+        return gp_Pln(endpoints.first, normalDirection);
+    }
+
+    gp_Pln dimensionPlaneForEdges(
+        const TopoDS_Edge& firstEdge,
+        const TopoDS_Edge& secondEdge,
+        const OcctVector3d& planeNormal)
+    {
+        const gp_Dir normalDirection = validatedPlaneNormal(planeNormal);
+        const auto first = edgeEndpoints(firstEdge);
+        const auto second = edgeEndpoints(secondEdge);
+        requireEdgeDirectionInPlane(
+            first.first,
+            first.second,
+            normalDirection,
+            "First angle dimension edge must lie in the requested dimension plane.");
+        requireEdgeDirectionInPlane(
+            second.first,
+            second.second,
+            normalDirection,
+            "Second angle dimension edge must lie in the requested dimension plane.");
+
+        const double tolerance = std::max(Precision::Confusion(), 1.0e-8);
+        if (std::abs(signedDistanceToPlane(first.first, second.first, normalDirection)) > tolerance ||
+            std::abs(signedDistanceToPlane(first.first, second.second, normalDirection)) > tolerance)
+        {
+            throw std::invalid_argument("Angle dimension edges must lie in the same requested dimension plane.");
+        }
+        return gp_Pln(first.first, normalDirection);
     }
 
     template<typename Function>
@@ -366,6 +424,33 @@ extern "C"
                 dimensionPlaneForEdge(topologicalEdge, planeNormal));
             configureDimension(dimension, *options);
             return engine->addPresentation(dimension, OcctObject_Dimension, "LengthDimension");
+        });
+    }
+
+    OcctStatus occt_engine_angle_dimension_create_in_plane(
+        OcctEngineHandle handle,
+        OcctObjectId firstEdgeShapeId,
+        OcctObjectId secondEdgeShapeId,
+        OcctVector3d planeNormal,
+        const OcctViewerDimensionOptions* options,
+        OcctObjectId* resultDimensionId)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeObjectStatus(engine, resultDimensionId, [&]
+        {
+            validateDimensionOptions(options, false);
+            ObjectEntry& first = requiredShape(engine, firstEdgeShapeId);
+            ObjectEntry& second = requiredShape(engine, secondEdgeShapeId);
+            if (first.shape.ShapeType() != TopAbs_EDGE || second.shape.ShapeType() != TopAbs_EDGE)
+                throw std::invalid_argument("Angle dimension inputs must be edges.");
+
+            const TopoDS_Edge firstEdge = TopoDS::Edge(first.shape);
+            const TopoDS_Edge secondEdge = TopoDS::Edge(second.shape);
+            const gp_Pln dimensionPlane = dimensionPlaneForEdges(firstEdge, secondEdge, planeNormal);
+            Handle(PrsDim_Dimension) dimension = new PrsDim_AngleDimension(firstEdge, secondEdge);
+            dimension->SetCustomPlane(dimensionPlane);
+            configureDimension(dimension, *options);
+            return engine->addPresentation(dimension, OcctObject_Dimension, "AngleDimension");
         });
     }
 
