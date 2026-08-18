@@ -42,7 +42,6 @@ case "$(uname -m)" in x86_64|amd64) ;; *) fail "Linux x64 is required; detected 
 require_command dotnet
 require_command realpath
 require_command tar
-require_command sha256sum
 require_command python3
 
 DIST_ROOT="${ROOT_DIR}/dist/linux-x64"
@@ -65,26 +64,24 @@ BRIDGE_COMMIT="$(json_string "${MANIFEST}" sourceCommit)"
 BRIDGE_VERSION="$(json_string "${CONTRACT}" bridgeVersion)"
 [[ -n "${BRIDGE_COMMIT}" && -n "${BRIDGE_VERSION}" ]] || fail "Bridge Binary SDK metadata is incomplete."
 
-python3 - "${PORTABLE_ROOT}" "${BRIDGE_COMMIT}" "${BRIDGE_VERSION}" <<'PY'
+python3 - "${PORTABLE_ROOT}" "${BRIDGE_COMMIT}" "${BRIDGE_VERSION}" <<'PY' || exit $?
 import hashlib, json, os, sys
 root, expected_commit, expected_version = sys.argv[1:]
-try:
-    with open(os.path.join(root, 'package-manifest.json'), encoding='utf-8') as f:
-        m = json.load(f)
-    if m.get('product') != 'OcctCSharpBridge Portable SDK': raise SystemExit(1)
-    if m.get('platform') != 'linux-x64' or not m.get('portableRuntime'): raise SystemExit(1)
-    if m.get('bridgeSourceCommit') != expected_commit or m.get('bridgeVersion') != expected_version: raise SystemExit(1)
-    for entry in m.get('files', []):
-        path = os.path.join(root, *entry['name'].split('/'))
-        if not os.path.isfile(path): raise SystemExit(1)
-        h = hashlib.sha256()
-        with open(path, 'rb') as f:
-            for chunk in iter(lambda: f.read(1024 * 1024), b''): h.update(chunk)
-        if h.hexdigest().lower() != str(entry['sha256']).lower(): raise SystemExit(1)
-except Exception:
-    raise SystemExit(1)
+with open(os.path.join(root, 'package-manifest.json'), encoding='utf-8') as f:
+    m = json.load(f)
+if m.get('product') != 'OcctCSharpBridge Portable SDK': raise SystemExit('unexpected Bridge portable product')
+if m.get('platform') != 'linux-x64' or not m.get('portableRuntime'): raise SystemExit('unexpected Bridge portable platform/runtime mode')
+if m.get('bridgeSourceCommit') != expected_commit or m.get('bridgeVersion') != expected_version:
+    raise SystemExit('Bridge portable runtime does not match synchronized Binary SDK')
+for entry in m.get('files', []):
+    path = os.path.join(root, *entry['name'].split('/'))
+    if not os.path.isfile(path): raise SystemExit(f"portable file missing: {entry['name']}")
+    h = hashlib.sha256()
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b''): h.update(chunk)
+    if h.hexdigest().lower() != str(entry['sha256']).lower():
+        raise SystemExit(f"portable hash mismatch: {entry['name']}")
 PY
-[[ $? -eq 0 ]] || fail "Bridge portable runtime does not match the synchronized Binary SDK. Run ./sync.sh again."
 
 "${ROOT_DIR}/build.sh" validate "${CONFIGURATION}"
 "${ROOT_DIR}/build.sh" avalonia "${CONFIGURATION}"
@@ -104,27 +101,35 @@ if [[ "${SELF_CONTAINED}" == true ]]; then publish_args+=(--self-contained true)
 
 dotnet "${publish_args[@]}"
 cp -a "${STAGING_DIR}/." "${PACKAGE_DIR}/"
-
-# The project build can copy the minimal native Bridge beside the executable. Remove it so
-# OcctRuntime resolves the validated portable closure from <app>/runtime.
 rm -f "${PACKAGE_DIR}/libOcctNative.so"
 
-# Verify the managed Bridge assemblies emitted by dotnet publish are exactly those synchronized from the same Bridge revision.
-for name in OcctNet.dll OcctNet.Avalonia.dll; do
-    [[ -f "${PACKAGE_DIR}/${name}" ]] || continue
-    [[ -f "${PORTABLE_ROOT}/${name}" ]] || fail "Bridge portable SDK is missing ${name}."
-    [[ "$(sha256sum "${PACKAGE_DIR}/${name}" | awk '{print $1}')" == "$(sha256sum "${PORTABLE_ROOT}/${name}" | awk '{print $1}')" ]] || fail "Published Demo assembly differs from synchronized Bridge portable SDK: ${name}"
-done
+# Merge the complete validated Bridge Portable SDK payload. Existing app-publish files must be byte-identical.
+python3 - "${PORTABLE_ROOT}" "${PACKAGE_DIR}" <<'PY'
+import hashlib, os, shutil, sys
+src, dst = sys.argv[1:]
 
-cp -a "${PORTABLE_ROOT}/runtime" "${PACKAGE_DIR}/runtime"
-cp -a "${PORTABLE_ROOT}/occt" "${PACKAGE_DIR}/occt"
-cp -f "${CONTRACT}" "${PACKAGE_DIR}/bridge-contract.json"
-cp -f "${MANIFEST}" "${PACKAGE_DIR}/bridge-manifest.json"
-cp -f "${PORTABLE_MANIFEST}" "${PACKAGE_DIR}/bridge-portable-manifest.json"
-for notice in LICENSE LICENSE_LGPL_21.txt OcctCSharpBridge_LGPL_EXCEPTION.txt THIRD_PARTY_NOTICES.md COMMERCIAL.md; do
-    [[ -f "${PORTABLE_ROOT}/${notice}" ]] && cp -f "${PORTABLE_ROOT}/${notice}" "${PACKAGE_DIR}/${notice}"
-done
-[[ -f "${PORTABLE_ROOT}/PORTABLE-SDK.txt" ]] && cp -f "${PORTABLE_ROOT}/PORTABLE-SDK.txt" "${PACKAGE_DIR}/BRIDGE-PORTABLE-SDK.txt"
+def digest(path):
+    h = hashlib.sha256()
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b''): h.update(chunk)
+    return h.hexdigest()
+
+for base, _, names in os.walk(src):
+    for name in names:
+        source = os.path.join(base, name)
+        rel = os.path.relpath(source, src)
+        target_rel = 'bridge-portable-manifest.json' if rel == 'package-manifest.json' else rel
+        target = os.path.join(dst, target_rel)
+        os.makedirs(os.path.dirname(target) or dst, exist_ok=True)
+        if os.path.isfile(target):
+            if digest(source) != digest(target):
+                raise SystemExit(f"Demo publish conflicts with validated Bridge portable payload: {target_rel}")
+            continue
+        shutil.copy2(source, target)
+PY
+
+[[ -f "${PACKAGE_DIR}/runtime/libOcctNative.so" ]] || fail "Merged Demo package is missing runtime/libOcctNative.so."
+[[ -f "${PACKAGE_DIR}/bridge-portable-manifest.json" ]] || fail "Merged Demo package is missing bridge-portable-manifest.json."
 
 cat > "${PACKAGE_DIR}/run.sh" <<'EOF'
 #!/usr/bin/env bash
@@ -183,18 +188,6 @@ with open(manifest_path, 'w', encoding='utf-8', newline='\n') as f:
     f.write('\n')
 PY
 
-{
-    echo "CAD-Avalonia Linux x64"
-    echo "Configuration: ${CONFIGURATION}"
-    echo "Self-contained: ${SELF_CONTAINED}"
-    echo "Bridge: ${BRIDGE_VERSION}"
-    echo "Bridge source: ${BRIDGE_COMMIT}"
-    echo "Portable runtime: reused from dist/portable/linux-x64"
-    echo
-    echo "SHA256:"
-    (cd "${PACKAGE_DIR}" && find . -type f -print0 | sort -z | xargs -0 sha256sum)
-} > "${PACKAGE_DIR}/publish-manifest.txt"
-
 rm -rf "${STAGING_DIR}"
 if [[ "${CREATE_ARCHIVE}" == true ]]; then
     rm -f "${ARCHIVE_PATH}"
@@ -202,6 +195,6 @@ if [[ "${CREATE_ARCHIVE}" == true ]]; then
     log "Archive: ${ARCHIVE_PATH}"
 fi
 
-log "Bridge portable runtime reused: ${BRIDGE_COMMIT}"
+log "Bridge portable payload reused: ${BRIDGE_COMMIT}"
 log "Package: ${PACKAGE_DIR}"
 log "Run:     ${PACKAGE_DIR}/run.sh"
