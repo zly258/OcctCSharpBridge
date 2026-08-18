@@ -2,11 +2,41 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REMOTE="${1:-origin}"
+REMOTE="origin"
+OUTPUT_ROOT="${ROOT_DIR}/artifacts/publish"
+CREATE_ARCHIVE=true
+
+usage() {
+    cat <<'EOF'
+Usage: ./publish.sh [remote] [options]
+
+Options:
+  --output <directory>  Portable SDK output root (default: artifacts/publish)
+  --no-archive          Do not create the .tar.gz archive
+  -h, --help            Show this help
+EOF
+}
+
+if [[ $# -gt 0 && "$1" != --* && "$1" != "-h" ]]; then
+    REMOTE="$1"
+    shift
+fi
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --output) [[ $# -ge 2 ]] || { echo "Missing value for --output" >&2; exit 2; }; OUTPUT_ROOT="$2"; shift 2 ;;
+        --no-archive) CREATE_ARCHIVE=false; shift ;;
+        -h|--help) usage; exit 0 ;;
+        *) echo "Unknown argument: $1" >&2; usage; exit 2 ;;
+    esac
+done
+
 BUILD_SCRIPT="${ROOT_DIR}/build.sh"
+PORTABLE_PACK_SCRIPT="${ROOT_DIR}/tools/package-portable-sdk.sh"
 DIST_ROOT="${ROOT_DIR}/dist/linux-x64"
 CONTRACT="${DIST_ROOT}/bridge-contract.json"
 MANIFEST="${DIST_ROOT}/bridge-manifest.json"
+OCCT_ROOT="${OCCT_ROOT:-/usr/local}"
+OCCT_LIB_DIR="${OCCT_LIB_DIR:-${OCCT_ROOT}/lib}"
 
 fail() { printf '[publish-linux] ERROR: %s\n' "$*" >&2; exit 1; }
 log() { printf '[publish-linux] %s\n' "$*"; }
@@ -115,6 +145,7 @@ require_command sha256sum
 [[ "$(uname -s)" == "Linux" ]] || fail "publish.sh supports Linux only; use publish.ps1 on Windows."
 case "$(uname -m)" in x86_64|amd64) ;; *) fail "Linux x64 is required; detected $(uname -m)." ;; esac
 [[ -x "${BUILD_SCRIPT}" || -f "${BUILD_SCRIPT}" ]] || fail "build.sh was not found."
+[[ -f "${PORTABLE_PACK_SCRIPT}" ]] || fail "Portable SDK packager was not found: ${PORTABLE_PACK_SCRIPT}"
 
 branch="$(current_branch)"
 case "${branch}" in
@@ -136,9 +167,13 @@ log "Building and validating the Release ABI5 Binary SDK..."
 assert_binary_sdk "${source_commit}"
 assert_only_dist_changes
 
-log "Bridge Binary SDK validated successfully."
-log "Mode:   ${publish_mode}"
-log "Branch: ${branch}"
-log "Source: ${source_commit}"
-log "Output: ${DIST_ROOT}"
-log "No Git commit or push was performed. Review the generated dist payload and publish it through the normal reviewed workflow."
+log "Building portable SDK with the OCCT runtime closure..."
+bash "${PORTABLE_PACK_SCRIPT}" "${DIST_ROOT}" "${OCCT_ROOT}" "${OCCT_LIB_DIR}" "${OUTPUT_ROOT}" "${CREATE_ARCHIVE}"
+
+log "Bridge Binary SDK and portable runtime SDK validated successfully."
+log "Mode:       ${publish_mode}"
+log "Branch:     ${branch}"
+log "Source:     ${source_commit}"
+log "Binary SDK: ${DIST_ROOT}"
+log "Portable:   ${OUTPUT_ROOT}"
+log "No Git commit or push was performed. Publish the portable package through the normal reviewed artifact workflow."
