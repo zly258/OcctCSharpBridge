@@ -1,8 +1,8 @@
-# OcctCSharpBridge Demo
+# OcctCSharpBridge Demo 开发分支
 
-[English](README.md) · [Main SDK](https://github.com/zly258/OcctCSharpBridge/tree/main)
+[English](README.md) · [Development SDK](https://github.com/zly258/OcctCSharpBridge/tree/main-dev)
 
-`demo` 是唯一的 Binary SDK Consumer 分支，`main` 是唯一的 Bridge SDK 源。
+`demo-dev` 是开发阶段的 Demo Consumer 分支，默认消费 `main-dev`。正式 `demo` 仍然消费正式 `main`。
 
 ```text
 OcctDemo.Common
@@ -18,32 +18,44 @@ OcctDemo.Common
 
 Demo 严格作为 Bridge 3 / ABI5 Consumer：不跟踪 `OcctNative`、`OcctNet*` 实现源码，也不直接调用 `occt_*` Native ABI。
 
-Demo 本身继续以 **.NET 10** 为目标，用于验证最新支持的 Consumer Runtime。构建工具链以稳定版 .NET 10 SDK `10.0.100` 为基线，并使用 `latestFeature` 滚动，因此后续稳定版 10.0.x SDK 可以直接使用。Bridge Binary SDK 当前以 .NET 8 为最低运行时基线，但 Demo 是否兼容由 Contract 中 `supportedConsumerFrameworks` / `supportedDesktopConsumerFrameworks` 决定，不再假设 Bridge 最低 TFM 必须是某一个固定值。
-
-Demo 自身运行目录也与 Bridge 最低 TFM 解耦：`run.ps1` 直接从各 Demo `.csproj` 读取 `TargetFramework`。因此当前 WPF/WinForms 正确运行于 `net10.0-windows` 输出目录，即使消费的 Bridge DLL 目标仍是 `net8.0-windows`。
+Demo 本身以 **.NET 10** 为目标，用来覆盖 Bridge 支持的最新 Consumer Runtime。构建工具链使用稳定版 .NET 10 SDK，基线为 `10.0.100`，`rollForward=latestFeature`。Bridge Binary SDK 以 .NET 8 为最低基线，实际兼容范围由 Contract 中的 `supportedConsumerFrameworks` / `supportedDesktopConsumerFrameworks` 决定。
 
 ## 当前 Viewport 契约
 
-三个 UI Host 现在统一消费同一套 Bridge Viewport 模型，不再各自维护框架特有的生命周期逻辑：
+三个 UI Host 统一消费同一套 Bridge Viewport 模型：
 
 - `OcctViewportInteractionFeatures` 控制 Hover、点选/框选、旋转、平移和缩放；
 - `PreviewPointerInput / PointerInput`、`PreviewKeyInput / KeyInput` 提供平台无关输入；
 - `HostState`、`EngineGeneration`、`EngineRecreated`、`EngineDisposing`、`Faulted` 定义 Native Host 生命周期；
-- `InitialOptions`、`RenderReady`、`FirstFrameRendered` 定义首帧配置和真正可显示状态；
-- `NativeHandleChanged` 只用于高级宿主集成/诊断中的 HWND/XID 变化通知；
-- `HoverHitChanged` 直接报告 Owner/Subshape 身份变化，应用无需反复调用 `DetectAt`；
-- 批量场景/视图配置统一使用已有的 `BeginDisplayBatch()`；
-- Samples 菜单增加 transient **Viewer 投影测试**，实际调用 `ProjectPointToEdge`、`ProjectPointToFace` 并验证参数回代。
+- `InitialOptions`、`RenderReady`、`FirstFrameRendered` 定义首帧就绪状态；
+- `NativeHandleChanged` 用于高级宿主集成与诊断；
+- `HoverHitChanged` 直接报告 Owner/Subshape 身份变化；
+- 批量场景/视图更新统一使用 `BeginDisplayBatch()`；
+- Samples 菜单包含使用 `ProjectPointToEdge` / `ProjectPointToFace` 的 Viewer 投影测试。
 
-共享快捷键映射直接消费 `OcctKeyInputEventArgs`，因此 Viewport 获得焦点后，Ctrl+Z/Y/N/O/S、Delete、F、0/1/2/3、Escape 不再依赖 WinForms/WPF/Avalonia 各自的 Key 枚举。窗口级快捷键只保留为焦点不在 Viewport 时的 fallback。
+## SDK 同步模型
 
-## Binary SDK 流程
+`dist/` 是本地生成状态，全部由 Git 忽略。`demo-dev` 现在会从**同一个 `main-dev` sourceCommit** 同步两类 Bridge 产物：
 
-`dist/` 只作为本地构建状态存在并被 Git 忽略。Windows 同步脚本使用仓库内固定的 `.cache/main-sdk-source/` 作为可复用源码克隆：首次同步只克隆一次，后续仅 fetch/checkout 到目标 `main` 或 `main-dev` commit，并复用被忽略的构建缓存，不再在仓库旁边创建 `.OcctCSharpBridge-main-sdk-<guid>` 临时 worktree。`.cache/` 整体由 Git 忽略。
+```text
+dist/win-x64/                  # 严格最小 Binary SDK，用于编译引用
+└─ ABI5 7 文件 Payload
 
-Windows 从源码同步时，如果所选 Bridge Source Revision 已提供 **`build.ps1 sdk Release`**，就直接执行该完整 Release Gate；对于尚未包含 `sdk` Target 的旧 Source Revision，`sync.ps1` 会执行等价的 **`all Release` → `dist Release`** 完整验证序列。因此迁移期间默认 `SourceBranch=main` 仍然可用，但不会退回成“只编译就打包”的未验证流程。新的 `sdk` Gate 会编译 .NET 8/9/10 Consumer Matrix、运行 ManagedTests、Core Native Smoke 与三套 Windows Viewport Host Smoke，全部通过后才用已经验证过的 Bridge 输出生成 `dist/win-x64`。
+dist/portable/win-x64/         # 已验证 Portable Runtime，仅用于发布
+├─ runtime/                     # OcctNative + OCCT/第三方/VC Runtime Closure
+├─ occt/resources/              # OCCT 资源
+├─ package-manifest.json
+└─ Bridge License/Notice/元数据
+```
 
-Windows Binary SDK Payload 是严格、扁平的 7 个文件；Demo 只接受以下内容，`-SdkRoot` 同样不允许额外文件或目录：
+Linux 对应：
+
+```text
+dist/linux-x64/
+dist/portable/linux-x64/
+```
+
+最小 Windows Binary SDK 契约保持不变，仍严格只允许以下 7 个文件：
 
 ```text
 OcctNative.dll
@@ -55,84 +67,153 @@ bridge-contract.json
 bridge-manifest.json
 ```
 
-这样可以防止旧 DLL、未 Hash 文件混入一个表面上 Manifest 合法的 SDK。复制前会校验 contract schema 3、manifest schema 2、ABI5-only、Consumer TFM 支持列表、C# 14、`sourceCommit` 和全部 SHA-256；当本地 `manifest.sourceCommit` 与目标 SDK Source Commit 一致时直接复用，不重复构建。
+这样 Demo 编译引用和 Consumer 校验不会因为 Portable Runtime 中的大量 OCCT DLL 而被污染。
 
-正式 `demo` 在 Windows 上消费 `main`：
+Windows `sync.ps1` 继续复用 `.cache/main-sdk-source/` Bridge 源码克隆。当前 `main-dev` 会先执行完整 `build.ps1 sdk Release` Gate，再直接调用 Bridge 自己的 `tools/package-portable-sdk.ps1`，由同一个已验证 Binary SDK 生成 Portable Runtime。同步完成后再次校验 Binary SDK 与 Portable SDK 的 `sourceCommit`、Bridge 版本以及 Manifest SHA-256。
+
+Linux `sync.sh` 使用同样的思路：Binary SDK 构建完成后调用 Bridge 的 `tools/package-portable-sdk.sh`。因此 `ldd`、OCCT/TBB 等依赖筛选、`$ORIGIN` RPATH 修正、OCCT Resource 收集全部由 Bridge 负责，Demo 不再维护第二套逻辑。
+
+开发分支默认来源已经是 `main-dev`：
 
 ```powershell
-.\sync.ps1
+.\sync.ps1 -ForceRebuild
+```
+
+也可以显式指定：
+
+```powershell
+.\sync.ps1 -SourceBranch main-dev -ForceRebuild
+```
+
+如果使用外部预构建产物，必须同时提供完全匹配的 Binary SDK 与 Portable SDK：
+
+```powershell
+.\sync.ps1 -SdkRoot <binary-sdk> -PortableRoot <portable-sdk>
+```
+
+Linux：
+
+```bash
+./sync.sh --force-rebuild
+./sync.sh --sdk-root <binary-sdk> --portable-root <portable-sdk>
+```
+
+## 构建与开发运行
+
+Windows：
+
+```powershell
 .\build.ps1 all Release
 .\run.ps1 winform Release
 .\run.ps1 wpf Release
 .\run.ps1 avalonia Release
-.\publish.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-`publish.ps1 all` 默认输出一个**framework-dependent** 统一目录：
+`run.ps1` 是开发运行入口，仍可以依赖本机 OCCT 安装。Portable OCCT Runtime 只属于正式发布阶段。
+
+Linux：
+
+```bash
+./build.sh all Release
+./run.sh Release
+```
+
+Linux 只构建 `OcctDemo.Common` 与 `OcctDemo.Avalonia`；交互 Viewer 需要 X11/XWayland。
+
+## 发布逻辑
+
+`demo-dev` 发布脚本已经不再自行收集 OCCT 依赖。
+
+旧流程：
+
+```text
+Demo publish
+→ 自己 dumpbin / ldd
+→ 自己分析 OCCT/TBB 等依赖
+→ 自己复制 OCCT resources
+```
+
+当前流程：
+
+```text
+main-dev Bridge sync
+→ 已验证最小 Binary SDK
+→ Bridge 自己生成 Portable SDK
+→ Demo .NET publish
+→ 复用完全匹配的 Portable Runtime / resources
+→ Demo 最终包
+```
+
+`publish.ps1` / `publish.sh` 会在打包前确认 Portable SDK 的 `bridgeSourceCommit`、`bridgeVersion` 与当前同步的最小 Binary SDK 完全一致，并再次校验 Portable Manifest 中的所有文件哈希。
+
+### Windows 统一包
+
+```powershell
+.\publish.ps1 all Release -Zip
+```
+
+输出结构：
 
 ```text
 artifacts/publish/CAD-Demo-win-x64/
 ├─ CAD-Winform.exe
 ├─ CAD-WPF.exe
 ├─ CAD-Avalonia.exe
+├─ OcctNet*.dll
+├─ runtime/
+│  ├─ OcctNative.dll
+│  ├─ TKernel.dll
+│  ├─ TK*.dll
+│  └─ 必需第三方 / VC Runtime DLL
+├─ occt/resources/...
+├─ bridge-contract.json
+├─ bridge-manifest.json
+├─ bridge-portable-manifest.json
 ├─ run-winform.cmd
 ├─ run-wpf.cmd
 ├─ run-avalonia.cmd
-├─ Bridge / OCCT / 应用公共依赖（单份）
-├─ occt/resources/...
 └─ package-manifest.json
 ```
 
-统一包**不携带 .NET Runtime**，目标机器需要安装 **.NET 10 Desktop Runtime x64**。三个应用共享一份应用公共依赖、Bridge DLL、OCCT DLL 和 OCCT 资源，不再生成三个包含大量重复框架/Bridge/OCCT DLL 的目录。
+Demo Project Publish 过程中如果在根目录复制了最小 `OcctNative.dll`，发布脚本会主动删除它，避免 Runtime Resolver 优先加载一个没有相邻依赖 Closure 的 Native Bridge。最终只使用 `runtime/OcctNative.dll`。
 
-发布前脚本只运行一次 Demo Build Gate：统一包执行 `all`，单目标包只执行对应目标；各 staging publish 不再额外重复调用 `build.ps1`。生成的 `package-manifest.json` 会记录 Bridge Source Commit、发布模式/所需 Runtime，以及包内每个文件的 SHA-256 和大小。
+`run-*.cmd` 会设置：
 
-只发布单个前端时仍生成独立包。单目标默认 self-contained，也可以显式改为 framework-dependent：
-
-```powershell
-.\publish.ps1 wpf Release -SelfContained -OcctRoot "D:\tools\occt-vc144-64"
-.\publish.ps1 avalonia Release -FrameworkDependent -OcctRoot "D:\tools\occt-vc144-64"
+```text
+OCCT_BRIDGE_NATIVE_DIR=<app>/runtime
+OCCT_ROOT=<app>/occt
+CASROOT=<app>/occt
+PATH=<app>/runtime;...
+CSF_* resource variables
 ```
 
-统一 `all` 不允许 self-contained，因为 WinForms/WPF/Avalonia 的 Windows Desktop Runtime Closure 中存在同名但内容不同的 Framework DLL；包装脚本会在真正 publish 前直接拒绝该组合。
+统一 `all` 仍为 framework-dependent，因为 WinForms/WPF/Avalonia 的 Windows Desktop Self-contained Closure 不适合合并为一套共享 Framework DLL。目标机器需要安装 **.NET 10 Desktop Runtime x64**。
 
-开发阶段验证 `demo-dev` 对尚未合并的 `main-dev` SDK 时，必须显式指定来源：
+单目标默认 self-contained：
 
 ```powershell
-.\sync.ps1 -SourceBranch main-dev -ForceRebuild
-.\build.ps1 validate Release
-.\build.ps1 all Release
+.\publish.ps1 wpf Release -SelfContained -Zip
+.\publish.ps1 avalonia Release -FrameworkDependent -Zip
 ```
 
-不要修改 `sync.ps1` 的默认 `SourceBranch=main`；正式 `demo` 必须始终消费正式 `main`。
+现在 Demo 发布命令**不再需要也不接受 `-OcctRoot`**；OCCT Runtime 已在 `sync` 阶段由 Bridge Portable Packager 生成并验证。
 
-Linux：
+### Linux 发布
 
 ```bash
-./sync.sh
-./build.sh all Release
-./run.sh Release
 ./publish.sh Release
 ```
 
-Linux 只构建 `OcctDemo.Common` 和 `OcctDemo.Avalonia`，绝不构建 WinForms/WPF。当前 Avalonia Viewer 交互运行需要 X11/XWayland。
-
-平台细节见 [LINUX.md](LINUX.md) 和 [docs/platform-matrix.md](docs/platform-matrix.md)。
-
-## Demo 预览
-
-- WinForms / Windows：`assets/previews/winform-demo-zh.png`
-- WPF / Windows：`assets/previews/wpf-demo-zh.png`
-- Avalonia / Windows：`assets/previews/avalonia-win-demo-zh.png`
-- Avalonia / Linux：`assets/previews/avalonia-linux-demo-zh.png`
+Linux 发布会删除根目录可能存在的 `libOcctNative.so`，直接复用 `dist/portable/linux-x64/runtime` 和匹配的 OCCT Resources；Bridge Portable Runtime 中的共享库已经由 Bridge Packager 写入 `$ORIGIN` RPATH。最终 Demo 还会生成自己的 `package-manifest.json`。
 
 ## 分支职责
 
-- `main` / `main-dev`：Bridge SDK 源码与开发。
-- `demo` / `demo-dev`：统一的 Windows/Linux Demo Consumer。
-- `website`：双语项目官网。
-- 历史备份分支如存在，不参与日常开发并保持不变。
+- `main-dev`：Bridge 开发源码和 Portable Runtime 来源；
+- `demo-dev`：开发 Demo Consumer，默认消费 `main-dev`；
+- `main`：正式 Bridge SDK；
+- `demo`：正式 Demo Consumer，当前仍应保持默认消费 `main`，待开发方案验证后再单独升级；
+- `website`：双语官网。
 
-当前不存在独立 Avalonia 源码分支。Avalonia 已属于 `main` 和统一 `demo`。
+当前不存在独立 Avalonia 源码分支，Avalonia 属于统一 Bridge/Demo 分支体系。
 
-许可证为 GNU LGPL 2.1 + OcctCSharpBridge Exception 1.0。
+许可证为 GNU LGPL 2.1 + OcctCSharpBridge Exception 1.0；具体见仓库 License 文件。
