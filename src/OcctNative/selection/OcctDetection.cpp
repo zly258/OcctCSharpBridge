@@ -2,7 +2,6 @@
 #include "core/OcctInternal.hxx"
 
 #include <Graphic3d_Camera.hxx>
-#include <Graphic3d_Vec2.hxx>
 #include <SelectMgr_SortCriterion.hxx>
 #include <StdSelect_BRepOwner.hxx>
 #include <StdSelect_ViewerSelector3d.hxx>
@@ -218,13 +217,15 @@ extern "C"
 
             const Handle(StdSelect_ViewerSelector3d)& selector =
                 engine->viewerContext.context->MainSelector();
-            const Graphic3d_Vec2i minPoint(std::min(x1, x2), std::min(y1, y2));
-            const Graphic3d_Vec2i maxPoint(std::max(x1, x2), std::max(y1, y2));
+            const int minX = std::min(x1, x2);
+            const int minY = std::min(y1, y2);
+            const int maxX = std::max(x1, x2);
+            const int maxY = std::max(y1, y2);
 
             selector->AllowOverlapDetection(allowOverlap != 0);
             try
             {
-                selector->Pick(minPoint, maxPoint, engine->viewerContext.view);
+                selector->Pick(minX, minY, maxX, maxY, engine->viewerContext.view);
             }
             catch (...)
             {
