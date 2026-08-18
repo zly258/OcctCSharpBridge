@@ -9,21 +9,40 @@ public sealed class ViewerAnnotationContractTests
     [TestMethod]
     public void LengthDimensionSupportsHostOwnedDraftingPlane()
     {
-        var overload = typeof(OcctEngine)
-            .GetMethods()
-            .SingleOrDefault(method =>
-            {
-                if (!string.Equals(method.Name, nameof(OcctEngine.AddLengthDimension), StringComparison.Ordinal))
-                    return false;
-                var parameters = method.GetParameters();
-                return parameters.Length == 4 &&
-                       parameters[0].ParameterType == typeof(OcctShape) &&
-                       parameters[1].ParameterType == typeof(OcctVector3d) &&
-                       parameters[2].ParameterType == typeof(double) &&
-                       parameters[3].ParameterType == typeof(System.Drawing.Color?);
-            });
+        var overload = FindOverload(
+            nameof(OcctEngine.AddLengthDimension),
+            typeof(OcctShape),
+            typeof(OcctVector3d),
+            typeof(double),
+            typeof(System.Drawing.Color?));
 
         Assert.IsNotNull(overload, "Viewer length dimensions must expose an explicit drafting-plane overload.");
         Assert.AreEqual(typeof(OcctDimension), overload.ReturnType);
     }
+
+    [TestMethod]
+    public void AngleDimensionSupportsHostOwnedDraftingPlane()
+    {
+        var overload = FindOverload(
+            nameof(OcctEngine.AddAngleDimension),
+            typeof(OcctShape),
+            typeof(OcctShape),
+            typeof(OcctVector3d),
+            typeof(double),
+            typeof(System.Drawing.Color?));
+
+        Assert.IsNotNull(overload, "Viewer angle dimensions must expose an explicit drafting-plane overload.");
+        Assert.AreEqual(typeof(OcctDimension), overload.ReturnType);
+    }
+
+    private static System.Reflection.MethodInfo? FindOverload(string name, params Type[] parameterTypes) =>
+        typeof(OcctEngine)
+            .GetMethods()
+            .SingleOrDefault(method =>
+            {
+                if (!string.Equals(method.Name, name, StringComparison.Ordinal)) return false;
+                var parameters = method.GetParameters();
+                return parameters.Length == parameterTypes.Length &&
+                       parameters.Select(parameter => parameter.ParameterType).SequenceEqual(parameterTypes);
+            });
 }
