@@ -1,10 +1,24 @@
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Threading;
 using OcctNet;
 
 internal static class Program
 {
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetClientRect(IntPtr hwnd, out NativeRect rect);
+
     [STAThread]
     private static int Main()
     {
@@ -135,11 +149,19 @@ internal static class Program
                 viewport.Engine.ClearSelection();
                 if (viewport.Engine.SelectedObjects.Count != 0)
                     throw new InvalidOperationException("WPF rectangle-query smoke did not start with an empty selection.");
-                var width = Math.Max(1, (int)Math.Ceiling(viewport.ActualWidth));
-                var height = Math.Max(1, (int)Math.Ceiling(viewport.ActualHeight));
-                var queried = viewport.Engine.QueryRectangle(0, 0, width - 1, height - 1, allowOverlap: false);
+
+                var (nativeWidth, nativeHeight) = GetNativeClientSize(viewport.NativeHandle);
+                var queried = viewport.Engine.QueryRectangle(
+                    0,
+                    0,
+                    nativeWidth - 1,
+                    nativeHeight - 1,
+                    allowOverlap: false);
                 if (!queried.Any(item => item.Id == box.Id))
-                    throw new InvalidOperationException("QueryRectangle did not return the visible fitted box.");
+                {
+                    throw new InvalidOperationException(
+                        $"QueryRectangle did not return the visible fitted box within native client {nativeWidth}x{nativeHeight}.");
+                }
                 if (viewport.Engine.SelectedObjects.Count != 0)
                     throw new InvalidOperationException("QueryRectangle mutated the native selection set.");
 
@@ -174,5 +196,25 @@ internal static class Program
 
         application.Run(window);
         return exitCode;
+    }
+
+    private static (int Width, int Height) GetNativeClientSize(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero)
+            throw new InvalidOperationException("WPF rectangle-query smoke has no native viewport handle.");
+        if (!GetClientRect(hwnd, out var rect))
+        {
+            var error = Marshal.GetLastWin32Error();
+            throw new InvalidOperationException($"GetClientRect failed for the WPF native viewport (Win32 error {error}).");
+        }
+
+        var width = rect.Right - rect.Left;
+        var height = rect.Bottom - rect.Top;
+        if (width <= 0 || height <= 0)
+        {
+            throw new InvalidOperationException(
+                $"WPF native viewport has an invalid client size: {width}x{height}.");
+        }
+        return (width, height);
     }
 }
