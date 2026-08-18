@@ -35,6 +35,18 @@ public sealed class ViewerAnnotationContractTests
         Assert.AreEqual(typeof(OcctDimension), overload.ReturnType);
     }
 
+    [TestMethod]
+    public void DimensionTextHeightIsAnExplicitViewerStyleOperation()
+    {
+        var method = FindOverload(
+            nameof(OcctEngine.SetDimensionTextHeight),
+            typeof(OcctDimension),
+            typeof(double));
+
+        Assert.IsNotNull(method, "Viewer dimensions must expose a text-height style setter.");
+        Assert.AreEqual(typeof(void), method.ReturnType);
+    }
+
     private static System.Reflection.MethodInfo? FindOverload(string name, params Type[] parameterTypes) =>
         typeof(OcctEngine)
             .GetMethods()
