@@ -196,7 +196,7 @@ function Copy-Portable {
     [void](Read-ValidatedPortable $Source $ExpectedSourceCommit $ExpectedBridgeVersion)
     if (Test-Path -LiteralPath $PortableDestination -PathType Container) { Remove-Item -LiteralPath $PortableDestination -Recurse -Force }
     New-Item -ItemType Directory -Path $PortableDestination -Force | Out-Null
-    Copy-Item -LiteralPath (Join-Path $Source "*") -Destination $PortableDestination -Recurse -Force
+    Get-ChildItem -LiteralPath $Source -Force | Copy-Item -Destination $PortableDestination -Recurse -Force
     [void](Read-ValidatedPortable $PortableDestination $ExpectedSourceCommit $ExpectedBridgeVersion)
     Write-Host "Portable Bridge runtime synchronized." -ForegroundColor Green
     Write-Host "Path:   $PortableDestination" -ForegroundColor DarkGray
