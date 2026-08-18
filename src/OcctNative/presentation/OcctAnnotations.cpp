@@ -26,6 +26,7 @@ namespace
 {
     constexpr std::uint32_t TextOptionsApiVersion = 1;
     constexpr std::uint32_t DimensionOptionsApiVersion = 1;
+    constexpr double DimensionPlaneDotTolerance = 1.0e-8;
     constexpr std::uint32_t AllTextUpdateBits =
         OcctViewerTextUpdate_Content |
         OcctViewerTextUpdate_Position |
@@ -173,6 +174,33 @@ namespace
         return gp_Pln(first, edgeDirection.Crossed(reference));
     }
 
+    gp_Pln dimensionPlaneForEdge(const TopoDS_Edge& edge, const OcctVector3d& planeNormal)
+    {
+        if (!std::isfinite(planeNormal.x) ||
+            !std::isfinite(planeNormal.y) ||
+            !std::isfinite(planeNormal.z))
+        {
+            throw std::invalid_argument("Dimension plane normal must be finite.");
+        }
+
+        const gp_Vec normalVector(planeNormal.x, planeNormal.y, planeNormal.z);
+        if (normalVector.SquareMagnitude() <= 1.0e-30)
+            throw std::invalid_argument("Dimension plane normal must be non-zero.");
+        const gp_Dir normalDirection(normalVector);
+
+        BRepAdaptor_Curve curve(edge);
+        const gp_Pnt first = curve.Value(curve.FirstParameter());
+        const gp_Pnt last = curve.Value(curve.LastParameter());
+        const gp_Vec edgeVector(first, last);
+        if (edgeVector.SquareMagnitude() <= Precision::SquareConfusion())
+            throw std::runtime_error("Edge has zero length.");
+        const gp_Dir edgeDirection(edgeVector);
+        if (std::abs(edgeDirection.Dot(normalDirection)) > DimensionPlaneDotTolerance)
+            throw std::invalid_argument("Length dimension edge must lie in the requested dimension plane.");
+
+        return gp_Pln(first, normalDirection);
+    }
+
     template<typename Function>
     OcctStatus executeStatus(Engine* engine, Function&& function)
     {
@@ -314,6 +342,30 @@ extern "C"
 
             configureDimension(dimension, *options);
             return engine->addPresentation(dimension, OcctObject_Dimension, name);
+        });
+    }
+
+    OcctStatus occt_engine_length_dimension_create_in_plane(
+        OcctEngineHandle handle,
+        OcctObjectId edgeShapeId,
+        OcctVector3d planeNormal,
+        const OcctViewerDimensionOptions* options,
+        OcctObjectId* resultDimensionId)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeObjectStatus(engine, resultDimensionId, [&]
+        {
+            validateDimensionOptions(options, false);
+            ObjectEntry& edge = requiredShape(engine, edgeShapeId);
+            if (edge.shape.ShapeType() != TopAbs_EDGE)
+                throw std::invalid_argument("Length dimension input must be an edge.");
+
+            const TopoDS_Edge topologicalEdge = TopoDS::Edge(edge.shape);
+            Handle(PrsDim_Dimension) dimension = new PrsDim_LengthDimension(
+                topologicalEdge,
+                dimensionPlaneForEdge(topologicalEdge, planeNormal));
+            configureDimension(dimension, *options);
+            return engine->addPresentation(dimension, OcctObject_Dimension, "LengthDimension");
         });
     }
 
