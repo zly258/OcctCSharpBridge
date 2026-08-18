@@ -51,9 +51,8 @@ Makefile
 *.so
 *.dylib
 
-# Local/generated Binary SDK output. Keep only the policy README in source control.
-/dist/*
-!/dist/README.md
+# Local/generated Binary SDK output
+/dist/
 
 # CAD test and generated files
 *.brep
