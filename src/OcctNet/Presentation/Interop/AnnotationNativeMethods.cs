@@ -115,4 +115,11 @@ internal static partial class AnnotationNativeMethods
         OcctEngineSafeHandle engine,
         long dimensionId,
         in NativeViewerDimensionOptions options);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_dimension_set_text_height(
+        OcctEngineSafeHandle engine,
+        long dimensionId,
+        double textHeight);
 }
