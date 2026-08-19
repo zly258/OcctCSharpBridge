@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OcctNet;
 
@@ -10,9 +11,10 @@ public sealed class AppearanceContractTests
     [TestMethod]
     public void HighlightModesAndStylesRemainStable()
     {
-        Assert.AreEqual(0, (int)OcctHighlightMode.BoundingBox);
-        Assert.AreEqual(1, (int)OcctHighlightMode.Wireframe);
-        Assert.AreEqual(2, (int)OcctHighlightMode.Shaded);
+        var enumValues = EnumValues<OcctHighlightMode>();
+        Assert.AreEqual(0, enumValues[nameof(OcctHighlightMode.BoundingBox)]);
+        Assert.AreEqual(1, enumValues[nameof(OcctHighlightMode.Wireframe)]);
+        Assert.AreEqual(2, enumValues[nameof(OcctHighlightMode.Shaded)]);
 
         var style = new OcctViewerHighlightStyle(OcctHighlightMode.Shaded, Color.Orange);
         Assert.AreEqual(OcctHighlightMode.Shaded, style.Mode);
@@ -25,6 +27,14 @@ public sealed class AppearanceContractTests
         RequireEngineMethod(nameof(OcctEngine.SetSelectionHighlightStyle), typeof(OcctViewerHighlightStyle));
         RequireEngineMethod(nameof(OcctEngine.SetHoverHighlightStyle), typeof(OcctViewerHighlightStyle));
     }
+
+    private static IReadOnlyDictionary<string, int> EnumValues<TEnum>()
+        where TEnum : struct, Enum =>
+        typeof(TEnum)
+            .GetFields(BindingFlags.Public | BindingFlags.Static)
+            .ToDictionary(
+                field => field.Name,
+                field => Convert.ToInt32(field.GetRawConstantValue(), null));
 
     private static void RequireEngineMethod(string name, params Type[] parameterTypes)
     {
