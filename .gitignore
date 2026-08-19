@@ -5,10 +5,31 @@ publish/
 [Bb]in/
 [Oo]bj/
 TestResults/
+coverage/
 *.log
+*.coverage
+*.coveragexml
+coverage*.xml
+coverage*.json
 
 # Local reusable source/build cache
 .cache/
+
+# Generated packages / archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.rar
+*.nupkg
+*.snupkg
+
+# Local scratch / backup files
+*.tmp
+*.bak
+*.old
+*.orig
 
 # Visual Studio / MSBuild
 .vs/
@@ -68,6 +89,8 @@ Makefile
 *.ply
 *.gltf
 *.glb
+
+# Canonical Demo screenshots under assets/previews/ are intentionally tracked.
 
 # OS files
 .DS_Store
