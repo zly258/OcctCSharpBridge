@@ -1,158 +1,108 @@
 # Build, Test and Publish
 
-Bridge 3 maintains Windows x64 and Linux x64 from the same ABI5-only source tree. `bridge-contract.json` is the machine-readable source of truth for Bridge, ABI, OCCT, .NET and platform requirements.
+Bridge 3 maintains Windows x64 and Linux x64 from one ABI5-only source contract. This guide deliberately separates **consumer artifact production** from **Bridge quality validation/publication** so downstream projects do not pay the cost of the full QA gate whenever they refresh an SDK.
 
-## 1. Prerequisites
+`bridge-contract.json` is the machine-readable source of truth for Bridge version, ABI, OCCT, .NET, C# and supported consumer frameworks.
+
+## 1. Toolchain contract
 
 Windows x64:
 
-- Visual Studio 2022 / MSVC x64 C++ toolchain;
-- CMake at or above the minimum declared by `bridge-contract.json`;
-- OCCT **7.9.0** x64;
-- a stable **.NET 10 SDK** compatible with the repository baseline (`10.0.100` or later in the 10.0 line);
-- C# 14 and PowerShell.
+- Visual Studio 2022 / MSVC x64 C++ toolchain
+- CMake at or above the contract minimum
+- OCCT 7.9.0 x64
+- stable .NET 10 SDK selected from baseline `10.0.100` with `latestFeature` roll-forward
+- PowerShell
 
 Linux x64:
 
-- C++17 compiler and CMake;
-- OCCT 7.9.0;
-- a stable .NET 10 SDK compatible with the repository baseline.
+- C++17 compiler and CMake
+- OCCT 7.9.0
+- stable .NET 10 SDK compatible with the same baseline
+- standard ELF tooling for Portable SDK packaging (`ldd`, `realpath`, `patchelf`, `sha256sum`, `python3`)
 
-The root `global.json` uses `version: 10.0.100`, `rollForward: latestFeature` and `allowPrerelease: false`. The build therefore accepts later stable .NET 10 feature bands and patches, such as `10.0.302`, instead of requiring one exact SDK patch.
+The managed Binary SDK targets .NET 8 (`net8.0` / `net8.0-windows`) as the minimum runtime baseline. The same managed assemblies are intended for .NET 8, .NET 9 and .NET 10 consumers. A stable later .NET 10 SDK such as `10.0.302` is valid; exact `10.0.303` is not required.
 
-The managed Binary SDK targets **.NET 8** (`net8.0` / `net8.0-windows`) as its minimum runtime baseline. The same managed SDK is intended for .NET 8, .NET 9 and .NET 10 consumers. The repository still builds with .NET 10 because the source language contract is C# 14.
+## 2. Two production levels
 
-Default Windows OCCT root:
+### 2.1 Consumer Artifact Fast Path — `dist`
 
-```text
-D:\tools\occt-vc144-64
-```
+Use `dist` when the caller needs a current Binary SDK from a known source revision but does **not** need to re-certify Bridge itself.
 
-## 2. Windows build.ps1
-
-```powershell
-.\build.ps1 [Target] [Configuration] [-OcctRoot <path>]
-```
-
-Targets:
-
-| Target | Behavior |
-| --- | --- |
-| `validate` | repository static contract checks |
-| `native` | build `OcctNative.dll` |
-| `managed` | build Core, WinForms, WPF and Avalonia |
-| `consumer` | compile Core/Avalonia and WinForms/WPF consumers for every supported .NET 8/9/10 TFM |
-| `test` | build/run managed regression tests |
-| `smoke` | Native + Managed + real Core Native Smoke |
-| `viewport-smoke` | run WinForms, WPF and Avalonia native-host smoke tests |
-| `dist` | lower-level Release Binary SDK packaging; does not run consumer/regression/smoke gates |
-| `sdk` | validated Release Binary SDK: full Windows gate, then package already validated Native/Managed outputs into `dist/win-x64` |
-| `clean` | remove generated outputs |
-| `all` | full local validation including consumer matrix, Core Smoke and all three Viewport Host smokes; does not create `dist` |
-
-Recommended full validation without writing a Binary SDK:
+Windows:
 
 ```powershell
-.\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
+.\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-Focused compatibility and viewport gates:
+Linux:
 
-```powershell
-.\build.ps1 consumer Release
-.\build.ps1 viewport-smoke Release -OcctRoot "D:\tools\occt-vc144-64"
+```bash
+./build.sh dist Release
 ```
 
-Generate a **validated Windows Binary SDK**:
+The fast path performs the static/source checks required by the build script, compiles Native + Managed, creates the platform-specialized contract/manifest, records the exact source commit, and hashes the payload.
+
+It intentionally skips:
+
+- .NET 8/9/10 Consumer Matrix;
+- Managed Regression Tests;
+- Core Native Smoke;
+- WinForms/WPF/Avalonia Viewport Smoke;
+- Linux Avalonia graphical smoke.
+
+This is the correct path for Demo SDK refreshes and controlled internal/third-party source builds.
+
+### 2.2 Full Bridge Gate — `sdk`, `all`, `publish`
+
+Use the full gate when validating a Bridge candidate or producing a formal distribution.
+
+Windows validated Binary SDK:
 
 ```powershell
 .\build.ps1 sdk Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-`sdk` is Release-only and requires a clean source tree when the Binary SDK is written. It runs a clean-tree preflight before the expensive Native/Smoke work begins and prints the exact `git status --porcelain` entries when local source/configuration changes block reproducible packaging. After the preflight it runs Native/Managed build, the .NET 8/9/10 consumer matrix, ManagedTests, Core Native Smoke and all three Viewport Host smokes before packaging. The package step reuses those validated Native/Managed outputs rather than rebuilding them, then verifies that the tree and source commit are still unchanged before writing `dist/win-x64`.
+Windows publication:
 
-The lower-level `dist` target remains available when only packaging is needed, but it does not establish the full release gate and is not the preferred entry point for Demo source synchronization or formal Windows SDK validation.
+```powershell
+.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64" -Zip
+```
 
-## 3. Static contract checks
+Linux headless validation/publication:
 
-Every non-`clean` Windows target runs the repository invariant checks first:
+```bash
+./build.sh all Release
+./publish.sh
+```
 
-| Script | Responsibility |
+The full Windows gate includes Native + Managed, Consumer Matrix, ManagedTests, Core Native Smoke, and all three viewport-host smokes. The formal publish path then creates/validates the Binary SDK and Portable SDK. Linux formal publication runs the headless test/smoke gate; `avalonia-smoke` remains a separate display-dependent test.
+
+**Rule:** a downstream consumer refreshing an SDK must not invoke the full Bridge gate unless it is explicitly acting as a Bridge release validator.
+
+## 3. Windows build.ps1 targets
+
+```powershell
+.\build.ps1 [Target] [Configuration] [-OcctRoot <path>]
+```
+
+| Target | Purpose |
 | --- | --- |
-| `tests/check-version-contract.ps1` | Bridge/ABI/OCCT/.NET/CMake/TFM/platform contract and rolling SDK policy |
-| `tests/check-architecture-boundaries.ps1` | Native/Managed and UI/Core dependency boundaries |
-| `tests/check-abi5-contract.ps1` | ABI5-only; reject pre-ABI5 compatibility residue |
-| `tests/check-bulk-abi.ps1` | keep bulk collections on Snapshot/Buffer ABI |
-| `tests/check-native-build-structure.ps1` | Native CMake inventory and platform isolation |
-| `tests/check-api-surface.ps1` | exact Native declaration/definition and Core `LibraryImport + Cdecl` parity |
-| `tests/check-consumer-matrix.ps1` | require the matrix projects to exactly match `supportedConsumerFrameworks` and `supportedDesktopConsumerFrameworks` from `bridge-contract.json` |
+| `validate` | static repository/contract checks |
+| `native` | build `OcctNative.dll` |
+| `managed` | build Core, WinForms, WPF and Avalonia managed assemblies |
+| `consumer` | compile supported .NET 8/9/10 consumer matrix |
+| `test` | managed regression tests |
+| `smoke` | Core native-backed smoke scenarios |
+| `viewport-smoke` | WinForms/WPF/Avalonia native-host smoke tests |
+| `dist` | **fast consumer Binary SDK**; Native + Managed + package, no regression/smoke gate |
+| `sdk` | **validated Release Binary SDK**; full Windows gate, then package validated outputs |
+| `clean` | remove generated outputs |
+| `all` | complete local validation without writing the Binary SDK |
 
-These checks do not replace compiler validation, managed regression tests or Native Smoke.
+`dist` and `sdk` are Release-only.
 
-## 4. Consumer compatibility, Managed regression and Native/Viewport Smoke
-
-The compatibility projects are compile-only consumers. They do not load OCCT or create a native viewer:
-
-```text
-tests/OcctNet.ConsumerMatrix/OcctNet.ConsumerMatrix.csproj
-  net8.0;net9.0;net10.0
-  references OcctNet + OcctNet.Avalonia
-
-tests/OcctNet.DesktopConsumerMatrix/OcctNet.DesktopConsumerMatrix.csproj
-  net8.0-windows;net9.0-windows;net10.0-windows
-  references OcctNet.WinForms + OcctNet.Wpf
-```
-
-Run the matrix directly through the repository gate:
-
-```powershell
-.\build.ps1 consumer Release
-```
-
-This is intentionally a **consumer compilation matrix**, not three Binary SDK builds. `OcctNet*` still targets the single .NET 8 baseline and produces one managed DLL set.
-
-Managed-only regression project:
-
-```text
-tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj
-```
-
-Run:
-
-```powershell
-.\build.ps1 test Release
-```
-
-Core Native Smoke:
-
-```powershell
-.\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-Viewport Host Smoke:
-
-```powershell
-.\build.ps1 viewport-smoke Release -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-The Viewport gate creates real WinForms/WPF/Avalonia native hosts and checks host state, engine generation, first-frame readiness, native handle lifecycle and core viewer operations. Avalonia also exercises `ProjectPointToEdge` / `ProjectPointToFace` parameter round trips.
-
-For the complete Windows validation gate use `build.ps1 all Release`. For a complete gate followed by Binary SDK production use `build.ps1 sdk Release`.
-
-## 5. Rolling .NET 10 SDK resolution
-
-Managed-dependent targets resolve a `dotnet` host from the repository root and validate it against the SDK baseline and roll-forward policy:
-
-```text
-SDK contract:  10.0.100 + latestFeature
-SDK resolved:  <installed stable 10.0.x SDK>
-```
-
-The resolved SDK must be a stable .NET 10 SDK at or above the `10.0.100` baseline. Exact feature-band/patch equality is intentionally not required. For example, `10.0.302` satisfies the contract.
-
-If resolution fails, install a stable .NET 10 SDK or fix `DOTNET_ROOT` / `PATH`. Do not enable prerelease SDKs as a workaround.
-
-## 6. Linux build.sh
+## 4. Linux build.sh targets
 
 ```bash
 ./build.sh [target] [configuration]
@@ -172,22 +122,28 @@ clean
 all
 ```
 
-Common commands:
+Linux `dist` builds Core + Avalonia managed assemblies and `libOcctNative.so`, then writes the minimal linux-x64 SDK. It does not run tests or smokes. `all` runs managed regression and headless Core Native Smoke. `avalonia-smoke` requires an X11/XWayland `DISPLAY` and is not part of ordinary consumer synchronization.
 
-```bash
-./build.sh validate Release
-./build.sh managed Release
-./build.sh test Release
-./build.sh all Release
-./build.sh avalonia-smoke Release
-./build.sh dist Release
+## 5. Static contract checks
+
+Windows targets run repository invariants covering version/TFM policy, architecture boundaries, ABI5-only rules, bulk ABI shape, native build inventory, API declaration/binding parity and the consumer-framework matrix.
+
+These checks are deliberately cheap relative to real native/UI smoke tests. They are not a substitute for the full release gate, but they remain appropriate when generating a deterministic consumer artifact.
+
+## 6. Consumer compatibility matrix
+
+Bridge managed assemblies target one .NET 8 baseline. The repository verifies that this single DLL set can be referenced by:
+
+```text
+Core/Avalonia: net8.0; net9.0; net10.0
+WinForms/WPF:  net8.0-windows; net9.0-windows; net10.0-windows
 ```
 
-Linux `managed` builds `OcctNet` and `OcctNet.Avalonia`; WinForms and WPF are Windows-only. `avalonia-smoke` requires an X11/XWayland `DISPLAY`; regular Native Smoke is headless. The new desktop .NET 8/9/10 compilation matrix is a Windows gate because it references WinForms and WPF.
+The matrix is a Bridge QA activity. A Demo or third-party consumer does not need to rebuild the matrix every time it refreshes an already selected Bridge source commit.
 
-## 7. Binary SDK layout
+## 7. Minimal Binary SDK layout
 
-Windows `dist/win-x64` contains exactly:
+Windows `dist/win-x64`:
 
 ```text
 OcctNative.dll
@@ -199,7 +155,7 @@ bridge-contract.json
 bridge-manifest.json
 ```
 
-Linux `dist/linux-x64` contains:
+Linux `dist/linux-x64`:
 
 ```text
 libOcctNative.so
@@ -209,80 +165,85 @@ bridge-contract.json
 bridge-manifest.json
 ```
 
-The Binary SDK managed assemblies target the .NET 8 baseline. The manifest uses schema 2 with nested ABI5 metadata and records the exact `sourceCommit`, SHA-256 for every payload file, the SDK baseline, and the actual `resolvedSdkVersion` used to build the package. The retired flat `nativeAbiVersion` field must not return.
+The manifest records:
 
-## 8. Binary SDK source-control and consumer-sync policy
+- schema version;
+- author and Bridge version;
+- ABI `current` / `minimumSupported`;
+- OCCT version;
+- platform and managed target framework;
+- SDK baseline and actual resolved SDK;
+- exact `sourceCommit`;
+- SHA-256 for every payload file.
 
-`dist/win-x64` and `dist/linux-x64` are **generated artifacts, not tracked source files**. The repository keeps only `dist/README.md`; generated DLL/SO packages stay ignored by Git.
+The minimal SDK is deliberately small and does not include the OCCT native runtime closure.
 
-`.cache/` is also ignored on both the Bridge and Demo source lines. The Demo Windows synchronizer keeps its reusable Bridge clone under `.cache/main-sdk-source/`; because the same local checkout may switch between `demo-dev` and `main-dev`, that cache must remain local build state and must never make the Bridge source tree appear dirty.
+## 8. Generated-artifact policy
 
-This prevents repository growth, stale source/binary mismatches and platform payload churn. Consumers must validate the package contract, manifest, source commit and hashes rather than infer freshness from Git history.
+The entire `dist/` directory is generated state and is ignored by Git. It may be deleted and regenerated at any time. `.cache/`, `build/` and `artifacts/` are also local build state.
 
-The unified `demo` branch follows the same policy and treats `dist/` as disposable local cache state. Windows source synchronization runs the Bridge `sdk` Release gate and accepts only the seven exact `win-x64` SDK files above. Extra files or directories in an externally supplied `-SdkRoot` are rejected so an old/unhashed DLL cannot be mixed into an otherwise valid manifest-controlled SDK.
+Do not commit generated SDK DLL/SO payloads to `main`, `main-dev`, `demo`, or `demo-dev`. Formal external distribution belongs in a reviewed artifact channel such as a release asset or another controlled package store.
 
-A synchronized SDK is reused only when `manifest.sourceCommit`, contract compatibility and all hashes match the selected SDK source revision.
+## 9. Demo consumer synchronization
 
-## 9. Publication validation and formal distribution
+The Demo is a real Binary SDK consumer and must not act as a second Bridge release pipeline.
 
-`publish.ps1` and `publish.sh` accept only the two controlled Bridge branches:
+On a cache hit, Demo sync validates the local Binary SDK and Portable SDK against the selected source commit and hashes, then returns without compiling Bridge.
 
-- `main-dev`: development publication gate for a candidate commit before promotion;
-- `main`: formal publication gate for a formal distribution candidate.
+On a cache miss, Demo sync now follows this path:
 
-The publish scripts detect the current branch and compare it with the matching remote branch (`origin/main-dev` or `origin/main` by default). Other branches and detached HEAD are rejected. Both scripts require a clean working tree and never run `git add`, create a commit or push a branch.
-
-Validate a Windows publication candidate on `main-dev`:
-
-```powershell
-git fetch origin --prune
-git switch main-dev
-git reset --hard origin/main-dev
-.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
+```text
+resolve origin/main or origin/main-dev sourceCommit
+        ↓
+Bridge dist Release
+  Native + Managed + Binary SDK only
+        ↓
+Bridge-owned Portable SDK packager
+        ↓
+validate contract / sourceCommit / hashes
+        ↓
+copy into Demo dist cache
 ```
 
-Windows `publish.ps1` runs the complete `build.ps1 sdk Release` gate. Managed compilation (including XML documentation diagnostics promoted to errors), the .NET 8/9/10 consumer matrix, ManagedTests, Core Native Smoke, WinForms/WPF/Avalonia Viewport Smoke, and Binary SDK packaging must all succeed.
+It does **not** call Bridge `sdk`, `all`, ManagedTests, Core Smoke, or viewport/window smokes.
 
-Validate a Linux publication candidate on `main-dev`:
+When a formal Bridge publish has already produced matching Binary and Portable SDK directories, Demo can skip Bridge compilation entirely and consume them directly through its `-SdkRoot` / `-PortableRoot` (Windows) or `--sdk-root` / `--portable-root` (Linux) options.
 
-```bash
-git fetch origin --prune
-git switch main-dev
-git reset --hard origin/main-dev
-./publish.sh
+## 10. Formal publication
+
+`publish.ps1` / `publish.sh` are the controlled publication entry points for `main-dev` candidate validation and `main` formal artifacts. They require a clean source tree and validate branch ancestry against the matching remote branch.
+
+Recommended promotion model:
+
+```text
+main-dev candidate
+  ↓ full publish gate
+validated exact commit
+  ↓ fast-forward only
+main
+  ↓ formal publish
+reviewed release artifacts
 ```
 
-Linux `publish.sh` first runs the headless `build.sh all Release` gate, then `build.sh dist Release` and validates the manifest, source commit and SHA-256 hashes. `avalonia-smoke` remains an optional additional gate on a machine with an X11/XWayland `DISPLAY`.
+Do not alter source while promoting an already validated candidate.
 
-Only after the development publication gate succeeds should the **same tested `main-dev` commit** be fast-forwarded to `main`. Do not introduce another source change while promoting it. Then run the formal publication entry point again from `main`:
+## 11. Third-party consumer policy
 
-```powershell
-git switch main
-git reset --hard origin/main
-.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
-```
+A third-party project should normally consume a reviewed SDK generated from `main`, not `main-dev`.
 
-```bash
-git switch main
-git reset --hard origin/main
-./publish.sh
-```
+Preferred artifact selection:
 
-Both publish scripts validate the Release Binary SDK, schema-2 manifest, ABI5 metadata, source commit and SHA-256 hashes. After validation, distribute generated binaries through a reviewed artifact channel such as GitHub Release assets or another controlled package location. Do not commit generated Binary SDK payloads to `main`, `main-dev`, `demo` or `demo-dev`. This workflow does not require GitHub Actions.
+- Binary SDK: compile-time reference and CI metadata validation;
+- Portable SDK: deployment-time Native/OCCT closure and resources.
 
-## 10. Demo consumer model
+Third-party projects should validate platform, ABI, Bridge version/source identity and hashes before accepting an SDK, and upgrade Managed + Native + runtime/resources as one coherent unit. Complete examples are in [Third-party SDK Consumption](09_Third-Party-SDK-Consumption.md).
 
-The formal `demo` / `demo-dev` branches are the single application-consumer line:
+## 12. Linux distribution compatibility
 
-- Windows x64: WinForms, WPF and Avalonia;
-- Linux x64: Avalonia only.
+Linux Portable SDK packaging does not make glibc/libstdc++ ABI requirements disappear. The native Bridge and OCCT must be built against an ABI baseline no newer than the oldest Linux distribution the project intends to support. AppImage packaging does not repair a binary already linked against a newer `GLIBC_*`, `GLIBCXX_*`, or `CXXABI_*` baseline.
 
-Demo currently targets .NET 10 so it exercises the latest supported consumer runtime, while the Bridge Binary SDK itself targets .NET 8 and is also valid for .NET 8/9 applications. Demo validates its own `net10.0` / `net10.0-windows` targets against the Bridge contract's supported-consumer lists instead of inferring the Demo runtime path from the Bridge minimum TFM. Demo must not vendor Bridge Native/Core implementation source or declare the `occt_*` ABI directly.
+See [Runtime Deployment and Diagnostics](07_Runtime-Deployment-and-Diagnostics.md) for runtime closure and ABI diagnostics.
 
-During development only, `demo-dev` may explicitly regenerate its local Windows SDK from `main-dev`; the formal default remains `main`.
+## 13. Documentation/API-surface policy
 
-## 11. Documentation and API-surface policy
-
-`docs` contains hand-maintained architecture, usage, build, deployment and design guides only. The repository no longer generates or tracks per-type/per-function API reference pages and no longer contains an API documentation generator.
-
-Native/managed API parity is checked directly from current source by `tests/check-api-surface.ps1`, avoiding a second generated documentation surface and hard-coded API counts that can drift from the source.
+The repository maintains hand-written architecture, integration, build, deployment and migration guides. It does not generate per-type/per-method API reference pages. Native/managed API parity remains a source-level validation responsibility.

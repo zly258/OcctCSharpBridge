@@ -113,4 +113,23 @@ forbid_text "${PUBLISH_SH}" 'git -C "${ROOT_DIR}" add' "Linux publish script mus
 forbid_text "${PUBLISH_SH}" 'git -C "${ROOT_DIR}" commit' "Linux publish script must never create commits."
 forbid_text "${PUBLISH_SH}" 'git -C "${ROOT_DIR}" push' "Linux publish script must never push branches."
 
-printf '[linux-contract] ABI5-only cross-platform source/test/distribution boundaries validated for .NET 8 minimum runtime and rolling .NET 10 SDK.\n'
+# Keep generated payloads and accidental large files out of the source repository.
+while IFS= read -r path; do
+    case "${path}" in
+        dist/*|artifacts/*|build/*|publish/*|.cache/*|*/bin/*|*/obj/*|*/TestResults/*|*/coverage/*)
+            fail "Generated/cache path must not be tracked by the Bridge source branch: ${path}"
+            ;;
+        *.dll|*.exe|*.so|*.dylib|*.pdb|*.ilk|*.exp|*.idb|*.tlog|*.zip|*.tar|*.tar.gz|*.tgz|*.7z|*.rar|*.nupkg|*.snupkg)
+            fail "Generated binary/archive must not be tracked by the Bridge source branch: ${path}"
+            ;;
+    esac
+
+    if [[ -f "${ROOT_DIR}/${path}" ]]; then
+        size="$(stat -c %s "${ROOT_DIR}/${path}")"
+        if (( size > 2097152 )); then
+            fail "Tracked file exceeds the 2 MiB repository hygiene limit: ${path} (${size} bytes). Use Release/Artifacts for large generated payloads or explicitly redesign the source policy before tracking them."
+        fi
+    fi
+done < <(git -C "${ROOT_DIR}" ls-files)
+
+printf '[linux-contract] ABI5-only cross-platform source/test/distribution boundaries and repository hygiene validated for .NET 8 minimum runtime and rolling .NET 10 SDK.\n'

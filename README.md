@@ -1,37 +1,37 @@
 # OcctCSharpBridge
 
-[简体中文](README.zh-CN.md) · [English Docs](docs/en-US/README.md) · [中文文档](docs/zh-CN/README.md) · [Build/Test Guide](docs/en-US/08_Build-Test-and-Publish.md) · [Unified Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo)
+[简体中文](README.zh-CN.md) · [English Docs](docs/en-US/README.md) · [中文文档](docs/zh-CN/README.md) · [Third-party SDK Guide](docs/en-US/09_Third-Party-SDK-Consumption.md) · [第三方 SDK 接入](docs/zh-CN/09_第三方项目消费SDK.md) · [Unified Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
-OcctCSharpBridge is the reusable **Open CASCADE Technology 7.9.0 → .NET 8-10 / C# 14** bridge. `main` owns the formal Native Core, managed API, WinForms/WPF/Avalonia adapters, tests, documentation and platform Binary SDK production.
+OcctCSharpBridge is a reusable **Open CASCADE Technology 7.9.0 → .NET 8-10 / C# 14** bridge for Windows x64 and Linux x64. `main` owns the formal Native Core, managed API, WinForms/WPF/Avalonia adapters, tests, documentation, and platform SDK production.
 
-Bridge 3 is **ABI 5 only**. ABI 4 exports, compatibility shims, legacy handles, compatibility tests, old consumer contracts and old Binary SDK payloads are not part of the current source tree.
+Bridge 3 is **ABI 5 only**. ABI 4 exports, compatibility shims, legacy handles, compatibility tests, old consumer contracts, and old Binary SDK payloads are not part of the current source tree.
 
-> STEP/XDE boundary: XDE is used internally for STEP assembly/product structure, occurrence transforms and presentation metadata. OcctCSharpBridge does not expose OCAF/XDE as the consuming application's document or persistence architecture.
+> STEP/XDE boundary: XDE may be used internally for STEP assembly/product structure, occurrence transforms, and presentation metadata. OcctCSharpBridge does not expose OCAF/XDE as the consuming application's document or persistence architecture.
 
-## Current source contract
+## Current contract
 
-| Item | Current source |
+| Item | Contract |
 | --- | --- |
 | Bridge | **3.0.0-preview.1** |
 | Native ABI | **5 only** |
 | API policy | **abi5-only** |
 | OCCT | **7.9.0** |
 | Build SDK | **stable .NET 10 SDK, baseline `10.0.100`, `latestFeature` roll-forward** |
-| Binary SDK Target Framework | **`net8.0` core/Avalonia · `net8.0-windows` WinForms/WPF** |
+| Binary SDK TFM | **`net8.0` Core/Avalonia · `net8.0-windows` WinForms/WPF** |
 | Supported consumer TFMs | **.NET 8 / .NET 9 / .NET 10** |
 | C# / Native | **14.0 / C++17** |
 | UI adapters | **WinForms / WPF / Avalonia** |
-| Source platforms | **Windows x64 / Linux x64** |
+| Platforms | **Windows x64 / Linux x64** |
 
-`bridge-contract.json` is the machine-readable source of truth. Native declarations, definitions and managed `LibraryImport` bindings are validated directly from current source by `tests/check-api-surface.ps1`; README/docs intentionally do not maintain hard-coded API counts or a generated API reference.
+`bridge-contract.json` is the machine-readable source of truth. Native declarations/definitions and managed `LibraryImport` bindings are checked from source; documentation intentionally does not maintain generated API counts.
 
-The repository intentionally separates the **build SDK** from the **consumer runtime baseline**. A stable .NET 10 SDK is used to compile C# 14 source, while the distributed managed assemblies target .NET 8 so the same Binary SDK can be consumed by .NET 8, .NET 9 and .NET 10 applications without maintaining three duplicate DLL sets. The Windows gate also compiles dedicated Core/Avalonia and WinForms/WPF consumer projects for every supported TFM; `tests/check-consumer-matrix.ps1` keeps those project TFMs identical to the lists declared by `bridge-contract.json`.
+The build toolchain and consumer runtime baseline are intentionally different: the source uses a stable .NET 10 SDK for C# 14, while the distributed managed assemblies target .NET 8 so one Binary SDK can be referenced by .NET 8, .NET 9, and .NET 10 applications.
 
 ## Architecture
 
 ```text
 Your CAD / BIM application
-  Document · Feature Tree · Command/Tool · Undo/Redo · JSON
+  Document · Feature Tree · Commands · Undo/Redo · Persistence
                  │
                  ▼
 OcctNet.WinForms ─┐
@@ -39,73 +39,76 @@ OcctNet.Wpf      ─┼─> OcctNet -> ABI5 C API -> OcctNative -> OCCT 7.9.0
 OcctNet.Avalonia ─┘
 ```
 
-`OcctModelingSession` owns headless modeling/topology resources. `OcctEngine` owns AIS/viewer presentation and interactive scene state. UI adapters depend on `OcctNet` directly and do not reference each other.
+`OcctModelingSession` owns headless modeling/topology resources. `OcctEngine` owns AIS/viewer presentation and interactive scene state. Application documents, feature trees, command systems, undo/redo, snapping, grips, and project persistence remain application responsibilities.
 
-Application documents, feature trees, commands/tools, undo/redo, snapping, grips and project persistence remain application responsibilities.
+## SDK production has two levels
 
-## Viewport host contract
+### Fast consumer artifact build
 
-WinForms, WPF and Avalonia now share one platform-neutral host/input lifecycle instead of exposing framework-specific interaction requirements to applications:
-
-- `OcctViewportInteractionFeatures` enables hover detection, point/rectangle selection, rotate, pan and zoom independently;
-- `PreviewPointerInput / PointerInput` and `PreviewKeyInput / KeyInput` normalize Windows and Linux input and support preview cancellation through `Handled`;
-- `OcctViewportHostState`, `HostStateChanged`, `Faulted`, `EngineGeneration`, `EngineDisposing` and `EngineRecreated` define native-host recreation safely;
-- `OcctViewportInitializationOptions`, `RenderReady` and `FirstFrameRendered` allow background/view/projection/Triedron/ViewCube configuration before the first presented frame;
-- `HoverHitChanged` provides owner/subshape identity changes without application-side repeated detection queries;
-- `NativeHandleChanged` reports HWND/XID replacement for advanced hosting/diagnostics; ordinary application interaction should not depend on the native handle;
-- existing `BeginDisplayBatch()` remains the single batched refresh API; no duplicate `BeginUpdate`/`DeferRefresh` surface is introduced;
-- `ProjectPointToEdge` and `ProjectPointToFace` provide nearest point plus reusable edge parameter or face UV for snapping/work-plane style application features.
-
-See [Viewer, Selection and Interaction](docs/en-US/05_Viewer-Selection-and-Interaction.md) for event ordering and usage boundaries.
-
-## Build and validation
-
-Windows full validation without producing `dist`:
+Use `dist` when a local consumer such as the Demo, an integration test project, or a controlled third-party build only needs a fresh SDK from a known source revision:
 
 ```powershell
-.\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
+.\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
-
-`all` includes the .NET 8/9/10 consumer compilation matrix, managed regression tests, Core Native Smoke and WinForms/WPF/Avalonia Viewport Host Smoke. The focused consumer and viewport targets are:
-
-```powershell
-.\build.ps1 consumer Release
-.\build.ps1 viewport-smoke Release -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-For a **validated Windows Binary SDK**, use the Release gate:
-
-```powershell
-.\build.ps1 sdk Release -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-`sdk` runs the full Windows gate and only then writes `dist/win-x64` from those already validated Native/Managed outputs. `dist` remains available as a lower-level Release packaging target, but it does not run the consumer matrix, regression tests or smoke tests and is not the preferred release/consumer-sync entry point.
-
-Linux x64:
 
 ```bash
-./build.sh validate Release
-./build.sh managed Release
-./build.sh test Release
-./build.sh all Release
-./build.sh avalonia-smoke Release
 ./build.sh dist Release
 ```
 
-The repository accepts any stable .NET 10 SDK selected from the `10.0.100` baseline by `latestFeature` roll-forward. For example, `10.0.302` is valid; an exact patch/feature-band match is not required.
+`dist` performs the source/contract checks required to create a reproducible Binary SDK, then builds Native + Managed and writes `dist/<rid>`. It intentionally **does not run** the consumer matrix, ManagedTests, Core Native Smoke, or UI viewport smoke tests.
 
-See [Build, Test and Publish](docs/en-US/08_Build-Test-and-Publish.md) for target details, static contract checks, consumer compatibility compilation, managed tests, Native Smoke and publication rules.
+### Full Bridge validation and publication
 
-## Binary SDK policy
+Use the complete gate when validating or publishing Bridge itself:
 
-`dist/win-x64` and `dist/linux-x64` are generated Release artifacts, not source-controlled SDK payloads. Source branches do **not** commit Binary SDK files. Each package records its source commit and SHA-256 hashes in `bridge-manifest.json` and is validated before local consumption or external distribution. The manifest also records the actual resolved build SDK separately from the rolling SDK baseline.
+```powershell
+.\build.ps1 sdk Release -OcctRoot "D:\tools\occt-vc144-64"
+.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64" -Zip
+```
 
-The unified `demo` branch consumes these generated SDKs by `sourceCommit` and manifest hash. Windows source synchronization invokes the validated `sdk` Release gate rather than the lower-level `dist` target, and the Demo copies only the exact manifest-controlled Binary SDK payload. Formal binary distribution can use reviewed GitHub Release assets or another controlled artifact channel; no GitHub Actions pipeline is required.
+```bash
+./build.sh all Release
+./publish.sh
+```
 
-## Usage
+The Windows `sdk`/publish path retains the .NET 8/9/10 consumer compilation matrix, ManagedTests, Core Native Smoke, and WinForms/WPF/Avalonia viewport smoke tests. Linux formal publication retains the headless validation gate; graphical Avalonia smoke remains an explicit display-dependent test.
+
+Consumer synchronization must not repeat this full Bridge QA gate on every SDK refresh. The Demo therefore uses the `dist` fast path on a cache miss and validates `sourceCommit` plus SHA-256 before accepting the result.
+
+## Binary SDK and Portable SDK
+
+The minimal Binary SDK is intended for compile-time references and controlled automation:
+
+```text
+Windows: dist/win-x64/
+  OcctNative.dll
+  OcctNet.dll
+  OcctNet.WinForms.dll
+  OcctNet.Wpf.dll
+  OcctNet.Avalonia.dll
+  bridge-contract.json
+  bridge-manifest.json
+
+Linux: dist/linux-x64/
+  libOcctNative.so
+  OcctNet.dll
+  OcctNet.Avalonia.dll
+  bridge-contract.json
+  bridge-manifest.json
+```
+
+`dist/` is fully generated and ignored by Git.
+
+For application deployment and external distribution, use the **Portable SDK** produced by `publish.ps1` / `publish.sh` or another reviewed artifact created from the same source commit. The Portable SDK adds `runtime/`, `occt/resources/`, licenses/notices, and a recursive package manifest. It does not bundle the consuming application's .NET runtime.
+
+Third-party projects should start with [Third-party SDK Consumption](docs/en-US/09_Third-Party-SDK-Consumption.md) / [第三方项目消费 SDK](docs/zh-CN/09_第三方项目消费SDK.md).
+
+## Minimal use
 
 ```csharp
 using OcctNet;
+
+OcctRuntime.Configure();
 
 using var model = new OcctModelingSession();
 var plate = model.MakeBox(100, 80, 10);
@@ -114,10 +117,14 @@ var cut = model.Cut(plate, hole);
 model.ExportStep(cut.Shape, "plate.step");
 ```
 
+Call `OcctRuntime.Configure()` before the first `OcctEngine` or `OcctModelingSession` when deploying with the Portable SDK layout.
+
 ## Branch responsibilities
 
-- `main` — sole formal Bridge SDK source and Binary SDK producer.
-- `main-dev` — Bridge SDK development and validation before PR to `main`.
-- `demo` / `demo-dev` — the single Binary SDK consumer: Windows x64 has WinForms, WPF and Avalonia; Linux x64 has Avalonia only.
+- `main` — formal Bridge source and release SDK producer.
+- `main-dev` — Bridge development and candidate validation.
+- `demo` — formal Binary/Portable SDK consumer.
+- `demo-dev` — development consumer; normally follows `main-dev`.
 - `website` — bilingual project website.
-- historical backup branches, when present, remain outside normal development and are left unchanged.
+
+Generated Binary SDKs and Portable SDKs are artifacts, not source-controlled payloads. Formal external distribution should use reviewed `main` artifacts rather than `main-dev` development output.

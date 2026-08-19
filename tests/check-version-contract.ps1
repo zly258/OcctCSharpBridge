@@ -189,7 +189,42 @@ foreach ($token in @(
     if (-not $nativeCmake.Contains($token)) { throw "Native CMake version contract is missing: $token" }
 }
 
-Write-Host ("[version] Bridge {0}, ABI {1} only, OCCT {2}, platform {3}, target {4}, consumers .NET 8-10, SDK baseline {5} ({6}), C# {7}." -f
+# Repository hygiene is part of the source contract. Generated SDKs, caches, runtime binaries,
+# package archives and unexpectedly large tracked files belong in build/artifact storage, not Git.
+$trackedFiles = @(& git -C $RepositoryRoot ls-files)
+if ($LASTEXITCODE -ne 0) { throw "Unable to inspect tracked repository files." }
+$forbiddenTrackedPathPatterns = @(
+    '^(?:dist|artifacts|build|publish|\.cache)/',
+    '(?:^|/)(?:bin|obj|TestResults|coverage)/'
+)
+$forbiddenTrackedExtensions = @(
+    '.dll', '.exe', '.so', '.dylib', '.pdb', '.ilk', '.exp', '.idb', '.tlog',
+    '.zip', '.tar', '.tgz', '.7z', '.rar', '.nupkg', '.snupkg'
+)
+$maxTrackedFileBytes = 2MB
+foreach ($relativePath in $trackedFiles) {
+    $normalized = ([string]$relativePath).Replace('\', '/')
+    foreach ($pattern in $forbiddenTrackedPathPatterns) {
+        if ($normalized -match $pattern) {
+            throw "Generated/cache path must not be tracked by the Bridge source branch: $normalized"
+        }
+    }
+
+    $extension = [System.IO.Path]::GetExtension($normalized).ToLowerInvariant()
+    if ($extension -in $forbiddenTrackedExtensions -or $normalized.EndsWith('.tar.gz', [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Generated binary/archive must not be tracked by the Bridge source branch: $normalized"
+    }
+
+    $fullPath = Join-Path $RepositoryRoot $relativePath
+    if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
+        $length = (Get-Item -LiteralPath $fullPath).Length
+        if ($length -gt $maxTrackedFileBytes) {
+            throw "Tracked file exceeds the 2 MiB repository hygiene limit: $normalized ($length bytes). Use Release/Artifacts for large generated payloads or explicitly redesign the source policy before tracking them."
+        }
+    }
+}
+
+Write-Host ("[version] Bridge {0}, ABI {1} only, OCCT {2}, platform {3}, target {4}, consumers .NET 8-10, SDK baseline {5} ({6}), C# {7}; repository hygiene validated." -f
     $expectedVersion,
     $expectedAbiVersion,
     $expectedOcctVersion,

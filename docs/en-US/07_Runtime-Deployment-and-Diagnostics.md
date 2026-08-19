@@ -1,60 +1,121 @@
 # Runtime Deployment and Diagnostics
 
-Bridge 3 is an **ABI5-only, cross-platform x64 SDK**. The source contract supports `windows-x64` and `linux-x64`; platform-specific UI adapters remain separated by framework.
+Bridge 3 is an **ABI5-only x64 SDK** for Windows and Linux. Runtime deployment has two distinct layers:
 
-Native bridge and OCCT kernel names are platform-specific and are not compatibility aliases:
+1. the consuming application's .NET deployment (`framework-dependent`, `self-contained`, or an application-specific private runtime);
+2. the Bridge native deployment (`OcctNative` + OCCT/third-party closure + OCCT resources).
+
+The Portable SDK addresses the second layer. It does not choose the application's .NET deployment mode.
+
+## Native library names
 
 ```text
-Windows x64: OcctNative.dll     / TKernel.dll
-Linux x64:   libOcctNative.so   / libTKernel.so
+Windows x64: OcctNative.dll   / TKernel.dll
+Linux x64:   libOcctNative.so / libTKernel.so
 ```
 
-`OcctRuntime` resolves only the current platform layout. Native bridge candidates include the application directory, the application-local `runtime/` directory, `runtimes/<rid>/native`, the configured bridge directory, `OCCT_BRIDGE_NATIVE_DIR`, the legacy relative portable runtime directory, and—when repository probing is enabled—the current repository build output. The RID is `win-x64` on Windows and `linux-x64` on Linux; no old library-name fallback is used.
+`OcctRuntime` resolves the current platform only. It probes the application directory, `runtime/`, `runtimes/<rid>/native`, explicit configuration, `OCCT_BRIDGE_NATIVE_DIR`, supported portable relative layouts, and repository output only when repository probing is enabled.
 
-The Portable SDK is intended to be copied as one layout beside the application executable:
+## Recommended Portable SDK application layout
 
 ```text
 <app>/
+  <application executable and managed files>
   OcctNet.dll
-  OcctNet.WinForms.dll        # Windows only
-  OcctNet.Wpf.dll             # Windows only
-  OcctNet.Avalonia.dll
+  OcctNet.WinForms.dll        # Windows only, if used
+  OcctNet.Wpf.dll             # Windows only, if used
+  OcctNet.Avalonia.dll        # if used
   bridge-contract.json
   bridge-manifest.json
-  package-manifest.json
+  package-manifest.json       # optional to keep in the application package, recommended
   runtime/
     OcctNative.dll            # Windows
     libOcctNative.so          # Linux
-    <OCCT/third-party native dependency closure>
+    <OCCT and packaged third-party native closure>
   occt/
     resources/
       ...
 ```
 
-With this layout, call the following before creating the first `OcctEngine` or `OcctModelingSession`:
+Call runtime configuration before creating the first native-backed object:
 
 ```csharp
 OcctRuntime.Configure();
 ```
 
-`OcctRuntime` automatically resolves `<app>/runtime` and `<app>/occt`, so a target machine does not need the developer machine's `OCCT_ROOT` / `CASROOT`. The Windows Portable SDK also collects the VC Runtime DLLs actually imported by the native closure. The Linux Portable SDK collects OCCT/TBB/FreeImage and other non-system runtime libraries and rewrites the packaged ELF RPATH to `$ORIGIN`. Linux system libraries such as glibc, OpenGL and X11/Wayland components remain target-system dependencies rather than private SDK payload.
+This must happen before the first `OcctEngine` or `OcctModelingSession`. Explicit configuration is also available when an application deliberately uses another layout.
 
-Default Windows developer OCCT layout:
+## Do not mix minimal and portable native payloads
+
+The minimal `dist/<rid>` SDK exists primarily for compile-time references, sourceCommit/hash validation, and controlled consumer builds. Its flat `OcctNative` file does **not** carry the complete OCCT runtime closure.
+
+When publishing an application with the Portable SDK layout:
+
+- keep the managed `OcctNet*.dll` assemblies required by the project;
+- use the native Bridge from `runtime/` together with that runtime directory;
+- do not leave an unrelated or stale flat `OcctNative.dll` / `libOcctNative.so` beside the application executable;
+- keep `runtime/`, `occt/`, the managed assemblies, and metadata from one coherent SDK build.
+
+`OcctNet.dll` and the native Bridge must come from the same Bridge build. ABI 5 is mandatory, and Bridge version/source identity must not be reconstructed by manually editing manifests.
+
+## Windows runtime closure
+
+The Windows Portable SDK collects the Bridge native DLL, the OCCT DLLs it depends on, required third-party runtime files, and the relevant VC Runtime dependencies. The target application should copy the Portable SDK runtime directory as a unit rather than resolving OCCT from a developer installation.
+
+## Linux runtime closure and ABI baseline
+
+The Linux Portable SDK collects the Bridge native library, OCCT/TBB/FreeImage dependencies selected by the packager, and OCCT resources. Packaged ELF shared libraries use `$ORIGIN` so peer libraries in `runtime/` can resolve each other.
+
+The Portable SDK intentionally does **not** bundle the Linux C runtime or the complete desktop stack. In particular, the target system still supplies system ABI/runtime components such as:
 
 ```text
-D:\tools\occt-vc144-64\inc
-D:\tools\occt-vc144-64\win64\vc14\lib
-D:\tools\occt-vc144-64\win64\vc14\bin
+glibc / libm
+libstdc++ / libgcc_s
+OpenGL / X11 / XWayland related system libraries
+other platform desktop libraries
 ```
 
-Default Linux OCCT layout uses `/usr/local/include/opencascade` and `/usr/local/lib` unless overridden by the build environment. Linux runtime probing uses the configured OCCT library directories rather than Windows `win64/vc14` paths.
+Therefore a Linux package is only as portable as the native ABI baseline used to build `libOcctNative.so` and OCCT. Building on a very new Linux distribution can produce requirements such as a newer `GLIBC_*`, `GLIBCXX_*`, or `CXXABI_*` than an older target distribution provides.
 
-`OcctRuntime` requires a supported 64-bit process and reports the effective platform, configured Native bridge/OCCT paths, candidate bridge paths and loaded runtime modules through its diagnostic APIs.
+For broad Linux compatibility, build OCCT and `OcctNative` on the **oldest Linux/glibc baseline that the project intends to support**, then test the resulting Portable SDK on each supported distribution family. Wrapping a newer native build in an AppImage does not by itself lower its glibc/libstdc++ ABI requirements.
 
-`OcctNet.dll` and the Native bridge must come from the **same Bridge build**. Runtime validation requires ABI 5 and an exact Bridge version match; newer or older Native bridge versions are not accepted as compatibility substitutes.
+Useful target-machine diagnostics:
 
-`dist/win-x64` and `dist/linux-x64` remain the **minimal Binary SDK** used by machine validation and Demo synchronization, and intentionally do not contain the OCCT runtime closure. Human distribution should use `publish.ps1` / `publish.sh`; after the complete Release gate they create `artifacts/publish/OcctCSharpBridge-<version>-<rid>-portable` with licenses/notices and a recursive SHA-256 `package-manifest.json`.
+```bash
+LD_LIBRARY_PATH="$PWD/runtime" ldd runtime/libOcctNative.so
+readelf -d runtime/libOcctNative.so | grep -E 'RPATH|RUNPATH'
+```
 
-The Portable SDK does **not** bundle the .NET runtime. It makes the Bridge + OCCT native runtime portable; applications can independently choose framework-dependent or self-contained .NET publishing.
+For every packaged shared library:
 
-WinForms and WPF adapters are Windows-only. Core `OcctNet` and the Avalonia adapter are the cross-platform managed surfaces used by Linux consumers.
+```bash
+for f in runtime/*.so*; do
+  result=$(LD_LIBRARY_PATH="$PWD/runtime" ldd "$f" 2>&1)
+  if echo "$result" | grep -Eq 'not found|version .* not found'; then
+    echo "===== $f ====="
+    echo "$result" | grep -E 'not found|version .* not found'
+  fi
+done
+```
+
+`GLIBC_x.y not found` means the native build baseline is newer than the target libc. `GLIBCXX_*` / `CXXABI_* not found` indicates a C++ runtime ABI mismatch. These are native deployment issues, not .NET/Avalonia assembly-resolution problems.
+
+## OCCT resources
+
+The Portable SDK carries OCCT resources under `occt/resources`. `OcctRuntime.Configure()` configures available resource paths, including STEP/IGES defaults, message catalogs, shaders, textures, and unit resources. A package that contains the native libraries but omits required resources can load successfully and still fail later in import/export or presentation operations.
+
+## Diagnostics
+
+When native loading fails, inspect in this order:
+
+1. process architecture is x64;
+2. `runtime/OcctNative.dll` or `runtime/libOcctNative.so` exists;
+3. the native dependency closure is complete;
+4. Binary/Portable manifests point to the expected source commit and hashes;
+5. OCCT resources exist under `occt/resources`;
+6. Linux system ABI versions satisfy the packaged binaries;
+7. the application called `OcctRuntime.Configure()` before the first native-backed object.
+
+The diagnostic API reports configured native/root paths, candidate native Bridge locations, resource variables, and loaded runtime modules. Treat root-level “app-local” diagnostics separately from the portable `runtime/` candidate: the Portable SDK is expected to load from `runtime/`, not from a flat developer layout.
+
+For a complete external application layout and MSBuild reference examples, see [Third-party SDK Consumption](09_Third-Party-SDK-Consumption.md).
