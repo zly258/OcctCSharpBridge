@@ -16,6 +16,7 @@ public sealed partial class MainForm : Form
     private bool _autoZFitEnabled = true;
     private bool _initialPanelLayoutApplied;
     private bool _initialPanelLayoutScheduled;
+    private bool _sessionInitializationQueued;
     private Color _selectionHighlightColor = Color.FromArgb(255, 155, 0);
     private Color _hoverHighlightColor = Color.FromArgb(0, 185, 255);
     private OcctSceneLightingSettings _lightingSettings = OcctLightingPresets.Create(OcctLightingPreset.Studio);
@@ -50,7 +51,7 @@ public sealed partial class MainForm : Form
 
     private void WireEvents()
     {
-        _viewport.EngineRecreated += (_, args) => InitializeSession(args.Engine, args.Generation);
+        _viewport.EngineRecreated += (_, args) => QueueSessionInitialization(args.Engine, args.Generation);
         _viewport.EngineDisposing += (_, args) =>
         {
             if (_session?.Engine == args.Engine) _session = null;
@@ -89,12 +90,26 @@ public sealed partial class MainForm : Form
         KeyDown += MainFormKeyDown;
     }
 
+    private void QueueSessionInitialization(OcctEngine engine, long generation)
+    {
+        if (_sessionInitializationQueued) return;
+        _sessionInitializationQueued = true;
+        _commandStatus.Text = Local("Initializing viewport...", "正在初始化视口...");
+
+        BeginInvoke(new Action(() =>
+        {
+            if (IsDisposed) return;
+            _sessionInitializationQueued = false;
+            InitializeSession(engine, generation);
+        }));
+    }
+
     private void InitializeSession(OcctEngine engine, long generation)
     {
         _depthDefaultsApplied = false;
         _session = new DemoSession(engine);
-        _session.ModelChanged += (_, _) => RefreshObjectTree();
-        _session.HistoryChanged += (_, _) => UpdateHistoryUi();
+        _session.ModelChanged += (_, _) => BeginInvoke(new Action(RefreshObjectTree));
+        _session.HistoryChanged += (_, _) => BeginInvoke(new Action(UpdateHistoryUi));
         _session.StatusChanged += (_, message) =>
         {
             _commandStatus.Text = message;
@@ -120,8 +135,12 @@ public sealed partial class MainForm : Form
         _commandStatus.Text = DemoLocalization.Text("Status.Ready", OcctEngine.OcctVersion);
         _selectionStatus.Text = DemoLocalization.Text("Status.NoneSelected");
         Log($"Viewport ready on engine generation {generation}.");
-        RefreshObjectTree();
-        UpdateHistoryUi();
+        BeginInvoke(new Action(() =>
+        {
+            RefreshObjectTree();
+            UpdateHistoryUi();
+            _viewport.Invalidate();
+        }));
     }
 
     private void ExecuteSafe(Action action)

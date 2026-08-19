@@ -8,6 +8,19 @@ public sealed partial class MainForm
 
     protected override void OnLoad(EventArgs e)
     {
+        base.OnLoad(e);
+    }
+
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+        BeginInvoke(new Action(ApplyDeferredStartupLayout));
+    }
+
+    private void ApplyDeferredStartupLayout()
+    {
+        if (IsDisposed) return;
+
         SuspendLayout();
         try
         {
@@ -19,7 +32,8 @@ public sealed partial class MainForm
             ResumeLayout(performLayout: true);
         }
 
-        base.OnLoad(e);
+        Refresh();
+        _viewport.Invalidate();
     }
 
     private void ApplyDepthDisplayDefaults()
