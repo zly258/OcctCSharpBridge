@@ -22,6 +22,27 @@ function Get-ProjectProperty {
     return [string]$node.InnerText
 }
 
+function Get-ProjectFrameworks {
+    param([Parameter(Mandatory = $true)][xml]$Project)
+    $targetFrameworks = Get-ProjectProperty $Project "TargetFrameworks"
+    if (-not [string]::IsNullOrWhiteSpace($targetFrameworks)) {
+        return @($targetFrameworks.Split(';', [System.StringSplitOptions]::RemoveEmptyEntries) | ForEach-Object { $_.Trim() })
+    }
+
+    $targetFramework = Get-ProjectProperty $Project "TargetFramework"
+    if (-not [string]::IsNullOrWhiteSpace($targetFramework)) { return @($targetFramework.Trim()) }
+    return @()
+}
+
+function Assert-ExactSet {
+    param([string]$Name, [string[]]$Expected, [string[]]$Actual)
+    $missing = @($Expected | Where-Object { $_ -notin $Actual })
+    $extra = @($Actual | Where-Object { $_ -notin $Expected })
+    if ($Expected.Count -ne $Actual.Count -or $missing.Count -gt 0 -or $extra.Count -gt 0) {
+        throw "$Name must exactly match bridge-contract.json. Expected: $($Expected -join ', '); actual: $($Actual -join ', ')."
+    }
+}
+
 function Convert-ToSdkVersion {
     param([Parameter(Mandatory = $true)][string]$Value, [Parameter(Mandatory = $true)][string]$Source)
     try { return [version]$Value }
@@ -43,6 +64,8 @@ $expectedCmakeVersion = [string]$contract.cmakeMinimumVersion
 $expectedAuthor = [string]$contract.author
 $expectedTargetFramework = [string]$contract.dotnet.targetFramework
 $expectedDesktopTargetFramework = [string]$contract.dotnet.desktopTargetFramework
+$expectedDefaultRuntimeFramework = [string]$contract.dotnet.defaultRuntimeFramework
+$expectedDefaultDesktopRuntimeFramework = [string]$contract.dotnet.defaultDesktopRuntimeFramework
 $supportedConsumerFrameworks = @($contract.dotnet.supportedConsumerFrameworks | ForEach-Object { [string]$_ })
 $supportedDesktopConsumerFrameworks = @($contract.dotnet.supportedDesktopConsumerFrameworks | ForEach-Object { [string]$_ })
 $expectedSdkVersion = [string]$contract.dotnet.sdkVersion
@@ -57,6 +80,8 @@ foreach ($entry in ([ordered]@{
     author = $expectedAuthor
     targetFramework = $expectedTargetFramework
     desktopTargetFramework = $expectedDesktopTargetFramework
+    defaultRuntimeFramework = $expectedDefaultRuntimeFramework
+    defaultDesktopRuntimeFramework = $expectedDefaultDesktopRuntimeFramework
     sdkVersion = $expectedSdkVersion
     sdkRollForward = $expectedSdkRollForward
     languageVersion = $expectedLanguageVersion
@@ -90,33 +115,18 @@ if ($expectedPlatform -ne "cross-platform-x64") {
     throw "Source bridge contract platform must be cross-platform-x64; found '$expectedPlatform'."
 }
 $requiredPlatforms = @("windows-x64", "linux-x64")
-if ($supportedPlatforms.Count -ne $requiredPlatforms.Count) {
-    throw "Bridge contract supportedPlatforms must contain exactly windows-x64 and linux-x64."
-}
-foreach ($platform in $requiredPlatforms) {
-    if ($platform -notin $supportedPlatforms) { throw "Bridge contract supportedPlatforms is missing '$platform'." }
-}
-if (@($supportedPlatforms | Group-Object | Where-Object Count -gt 1).Count -gt 0) {
-    throw "Bridge contract supportedPlatforms must not contain duplicates."
-}
+Assert-ExactSet "Bridge contract supportedPlatforms" $requiredPlatforms $supportedPlatforms
 
-if ($expectedTargetFramework -ne "net8.0" -or $expectedDesktopTargetFramework -ne "net8.0-windows") {
-    throw "Bridge Binary SDK must use the .NET 8 minimum target framework baseline."
+if ($expectedTargetFramework -ne "net10.0" -or $expectedDesktopTargetFramework -ne "net10.0-windows") {
+    throw "Bridge Binary SDK default target framework must be net10.0 / net10.0-windows."
+}
+if ($expectedDefaultRuntimeFramework -ne "net10.0" -or $expectedDefaultDesktopRuntimeFramework -ne "net10.0-windows") {
+    throw "Bridge development, regression and smoke execution must default to .NET 10."
 }
 $requiredConsumerFrameworks = @("net8.0", "net9.0", "net10.0")
-if ($supportedConsumerFrameworks.Count -ne $requiredConsumerFrameworks.Count) {
-    throw "supportedConsumerFrameworks must contain exactly net8.0, net9.0 and net10.0."
-}
-foreach ($framework in $requiredConsumerFrameworks) {
-    if ($framework -notin $supportedConsumerFrameworks) { throw "supportedConsumerFrameworks is missing '$framework'." }
-}
+Assert-ExactSet "supportedConsumerFrameworks" $requiredConsumerFrameworks $supportedConsumerFrameworks
 $requiredDesktopConsumerFrameworks = @("net8.0-windows", "net9.0-windows", "net10.0-windows")
-if ($supportedDesktopConsumerFrameworks.Count -ne $requiredDesktopConsumerFrameworks.Count) {
-    throw "supportedDesktopConsumerFrameworks must contain exactly the .NET 8/9/10 Windows TFMs."
-}
-foreach ($framework in $requiredDesktopConsumerFrameworks) {
-    if ($framework -notin $supportedDesktopConsumerFrameworks) { throw "supportedDesktopConsumerFrameworks is missing '$framework'." }
-}
+Assert-ExactSet "supportedDesktopConsumerFrameworks" $requiredDesktopConsumerFrameworks $supportedDesktopConsumerFrameworks
 
 $minimumSdkVersion = Convert-ToSdkVersion $expectedSdkVersion "bridge-contract.json"
 if ($minimumSdkVersion.Major -ne 10 -or $minimumSdkVersion.Minor -ne 0) {
@@ -133,24 +143,48 @@ $bridgeInfo = Read-Text "src/OcctNet/Core/OcctBridgeInfo.cs"
 if (-not $bridgeInfo.Contains("ExpectedAbiVersion = $expectedAbiVersion")) { throw "Managed ABI expectation differs from bridge-contract.json." }
 if (-not $bridgeInfo.Contains("ManagedVersion = `"$expectedVersion`"")) { throw "Managed bridge version differs from bridge-contract.json." }
 
-$projectFiles = [ordered]@{
-    "src/OcctNet/OcctNet.csproj" = $expectedTargetFramework
-    "src/OcctNet.Avalonia/OcctNet.Avalonia.csproj" = $expectedTargetFramework
-    "tests/OcctNet.AvaloniaSmoke/OcctNet.AvaloniaSmoke.csproj" = $expectedTargetFramework
-    "tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj" = $expectedTargetFramework
-    "tests/OcctNet.Smoke/OcctNet.Smoke.csproj" = $expectedTargetFramework
-    "src/OcctNet.WinForms/OcctNet.WinForms.csproj" = $expectedDesktopTargetFramework
-    "src/OcctNet.Wpf/OcctNet.Wpf.csproj" = $expectedDesktopTargetFramework
-    "tests/OcctNet.WinFormsSmoke/OcctNet.WinFormsSmoke.csproj" = $expectedDesktopTargetFramework
-    "tests/OcctNet.WpfSmoke/OcctNet.WpfSmoke.csproj" = $expectedDesktopTargetFramework
+$coreProjectFiles = @(
+    "src/OcctNet/OcctNet.csproj",
+    "src/OcctNet.Avalonia/OcctNet.Avalonia.csproj"
+)
+foreach ($relativePath in $coreProjectFiles) {
+    [xml]$project = Read-Text $relativePath
+    $frameworks = @(Get-ProjectFrameworks $project)
+    Assert-ExactSet "$relativePath TargetFrameworks" $supportedConsumerFrameworks $frameworks
+    if ($expectedTargetFramework -notin $frameworks) { throw "$relativePath must include the default Binary SDK target $expectedTargetFramework." }
+    if ($frameworks[0] -ne $expectedTargetFramework) { throw "$relativePath must list $expectedTargetFramework first as the default build target." }
+    $platformTarget = Get-ProjectProperty $project "PlatformTarget"
+    if ($platformTarget -ne "x64") { throw "$relativePath PlatformTarget is '$platformTarget'; expected 'x64'." }
 }
-foreach ($entry in $projectFiles.GetEnumerator()) {
+
+$desktopProjectFiles = @(
+    "src/OcctNet.WinForms/OcctNet.WinForms.csproj",
+    "src/OcctNet.Wpf/OcctNet.Wpf.csproj"
+)
+foreach ($relativePath in $desktopProjectFiles) {
+    [xml]$project = Read-Text $relativePath
+    $frameworks = @(Get-ProjectFrameworks $project)
+    Assert-ExactSet "$relativePath TargetFrameworks" $supportedDesktopConsumerFrameworks $frameworks
+    if ($expectedDesktopTargetFramework -notin $frameworks) { throw "$relativePath must include the default Binary SDK target $expectedDesktopTargetFramework." }
+    if ($frameworks[0] -ne $expectedDesktopTargetFramework) { throw "$relativePath must list $expectedDesktopTargetFramework first as the default build target." }
+    $platformTarget = Get-ProjectProperty $project "PlatformTarget"
+    if ($platformTarget -ne "x64") { throw "$relativePath PlatformTarget is '$platformTarget'; expected 'x64'." }
+}
+
+$runtimeProjectFiles = [ordered]@{
+    "tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj" = $expectedDefaultRuntimeFramework
+    "tests/OcctNet.Smoke/OcctNet.Smoke.csproj" = $expectedDefaultRuntimeFramework
+    "tests/OcctNet.AvaloniaSmoke/OcctNet.AvaloniaSmoke.csproj" = $expectedDefaultRuntimeFramework
+    "tests/OcctNet.WinFormsSmoke/OcctNet.WinFormsSmoke.csproj" = $expectedDefaultDesktopRuntimeFramework
+    "tests/OcctNet.WpfSmoke/OcctNet.WpfSmoke.csproj" = $expectedDefaultDesktopRuntimeFramework
+}
+foreach ($entry in $runtimeProjectFiles.GetEnumerator()) {
     $relativePath = [string]$entry.Key
     $expectedProjectFramework = [string]$entry.Value
     [xml]$project = Read-Text $relativePath
-    $targetFramework = Get-ProjectProperty $project "TargetFramework"
+    $frameworks = @(Get-ProjectFrameworks $project)
+    if ($frameworks.Count -ne 1 -or $frameworks[0] -ne $expectedProjectFramework) { throw "$relativePath target framework is '$($frameworks -join ';')'; expected '$expectedProjectFramework'." }
     $platformTarget = Get-ProjectProperty $project "PlatformTarget"
-    if ($targetFramework -ne $expectedProjectFramework) { throw "$relativePath target framework is '$targetFramework'; expected '$expectedProjectFramework'." }
     if ($platformTarget -ne "x64") { throw "$relativePath PlatformTarget is '$platformTarget'; expected 'x64'." }
 }
 
@@ -189,8 +223,6 @@ foreach ($token in @(
     if (-not $nativeCmake.Contains($token)) { throw "Native CMake version contract is missing: $token" }
 }
 
-# Repository hygiene is part of the source contract. Generated SDKs, caches, runtime binaries,
-# package archives and unexpectedly large tracked files belong in build/artifact storage, not Git.
 $trackedFiles = @(& git -C $RepositoryRoot ls-files)
 if ($LASTEXITCODE -ne 0) { throw "Unable to inspect tracked repository files." }
 $forbiddenTrackedPathPatterns = @(
@@ -224,7 +256,7 @@ foreach ($relativePath in $trackedFiles) {
     }
 }
 
-Write-Host ("[version] Bridge {0}, ABI {1} only, OCCT {2}, platform {3}, target {4}, consumers .NET 8-10, SDK baseline {5} ({6}), C# {7}; repository hygiene validated." -f
+Write-Host ("[version] Bridge {0}, ABI {1} only, OCCT {2}, platform {3}, Binary SDK default {4}, consumers .NET 8-10, SDK baseline {5} ({6}), C# {7}; repository hygiene validated." -f
     $expectedVersion,
     $expectedAbiVersion,
     $expectedOcctVersion,

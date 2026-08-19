@@ -1,51 +1,53 @@
 # OcctCSharpBridge
 
-[简体中文](README.zh-CN.md) · [English Docs](docs/en-US/README.md) · [中文文档](docs/zh-CN/README.md) · [Third-party SDK Guide](docs/en-US/09_Third-Party-SDK-Consumption.md) · [第三方 SDK 接入](docs/zh-CN/09_第三方项目消费SDK.md) · [Unified Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo)
+[简体中文](README.zh-CN.md) · [English Docs](docs/en-US/README.md) · [中文文档](docs/zh-CN/README.md) · [Third-party SDK Guide](docs/en-US/09_Third-Party-SDK-Consumption.md) · [Stable Support Policy](docs/en-US/10_Stable-Support-and-Compatibility.md) · [Unified Demo](https://github.com/zly258/OcctCSharpBridge/tree/demo)
 
-OcctCSharpBridge is a reusable **Open CASCADE Technology 7.9.0 → .NET 8-10 / C# 14** bridge for Windows x64 and Linux x64. `main` owns the formal Native Core, managed API, WinForms/WPF/Avalonia adapters, tests, documentation, and platform SDK production.
+OcctCSharpBridge 3.0 is a reusable **Open CASCADE Technology 7.9.0 → .NET** bridge for CAD/BIM/engineering applications. The source tree supports Windows x64 and Linux x64. **Official prebuilt 3.x SDK assets are published for Windows x64 only**; Linux remains a supported source-build and Avalonia runtime platform.
 
-Bridge 3 is **ABI 5 only**. ABI 4 exports, compatibility shims, legacy handles, compatibility tests, old consumer contracts, and old Binary SDK payloads are not part of the current source tree.
+Bridge 3 supports **Native ABI 5 only**. ABI 4 exports, compatibility shims, legacy handles, and retired Binary SDK payloads are outside the stable 3.x contract.
 
-> STEP/XDE boundary: XDE may be used internally for STEP assembly/product structure, occurrence transforms, and presentation metadata. OcctCSharpBridge does not expose OCAF/XDE as the consuming application's document or persistence architecture.
-
-## Current contract
+## 3.0 Stable contract
 
 | Item | Contract |
 | --- | --- |
-| Bridge | **3.0.0-preview.1** |
-| Native ABI | **5 only** |
-| API policy | **abi5-only** |
-| OCCT | **7.9.0** |
-| Build SDK | **stable .NET 10 SDK, baseline `10.0.100`, `latestFeature` roll-forward** |
-| Binary SDK TFM | **`net8.0` Core/Avalonia · `net8.0-windows` WinForms/WPF** |
-| Supported consumer TFMs | **.NET 8 / .NET 9 / .NET 10** |
-| C# / Native | **14.0 / C++17** |
-| UI adapters | **WinForms / WPF / Avalonia** |
-| Platforms | **Windows x64 / Linux x64** |
+| Bridge | **3.0.0** |
+| Native ABI | **ABI 5 only** |
+| OCCT | **7.9.0 exact** |
+| Build SDK | stable .NET 10 SDK, baseline `10.0.100`, `latestFeature` |
+| Default regression/smoke runtime | **.NET 10** |
+| Managed Binary compatibility TFM | Core/Avalonia `net8.0`; WinForms/WPF `net8.0-windows` |
+| Consumers | **.NET 8 / 9 / 10** |
+| Windows UI | WinForms / WPF / Avalonia |
+| Linux UI | Avalonia, source build |
+| Official prebuilt release | **Windows x64** |
+| Source-build support | Windows x64 / Linux x64 |
+| Native / C# | C++17 / C# 14 |
 
-`bridge-contract.json` is the machine-readable source of truth. Native declarations/definitions and managed `LibraryImport` bindings are checked from source; documentation intentionally does not maintain generated API counts.
+`bridge-contract.json` is the machine-readable source of truth. **.NET 10 is the normal development, regression-test, and smoke-test execution target.** The published managed assemblies keep the .NET 8 TFM as the minimum compatibility baseline so one flat Binary SDK remains consumable by .NET 8, 9, and 10 applications. Stable release validation additionally executes native-backed smoke tests on actual .NET 8, 9, and 10 runtimes.
 
-The build toolchain and consumer runtime baseline are intentionally different: the source uses a stable .NET 10 SDK for C# 14, while the distributed managed assemblies target .NET 8 so one Binary SDK can be referenced by .NET 8, .NET 9, and .NET 10 applications.
+## Platform distribution
 
-## Architecture
+### Windows x64 — official prebuilt support
 
-```text
-Your CAD / BIM application
-  Document · Feature Tree · Commands · Undo/Redo · Persistence
-                 │
-                 ▼
-OcctNet.WinForms ─┐
-OcctNet.Wpf      ─┼─> OcctNet -> ABI5 C API -> OcctNative -> OCCT 7.9.0
-OcctNet.Avalonia ─┘
+The formal Release provides a Windows Portable SDK containing the managed assemblies, `runtime/` native closure, `occt/resources/`, manifests, and license/notice material. Managed assemblies, native runtime files, resources, and manifests from different builds or `sourceCommit` values must not be mixed.
+
+### Linux x64 — source-build support
+
+Linux source, Core, Avalonia adapter, tests, and build scripts remain maintained:
+
+```bash
+./build.sh validate Release
+./build.sh all Release
+./build.sh avalonia-smoke Release   # requires a usable DISPLAY
 ```
 
-`OcctModelingSession` owns headless modeling/topology resources. `OcctEngine` owns AIS/viewer presentation and interactive scene state. Application documents, feature trees, command systems, undo/redo, snapping, grips, and project persistence remain application responsibilities.
+Official 3.x Releases do **not** publish Linux Binary/Portable assets. Linux consumers should build against OCCT 7.9.0 and the C/C++ runtime baseline appropriate for their target distribution instead of assuming a prebuilt glibc/libstdc++ ABI is portable across distributions.
 
-## SDK production has two levels
+## SDK production levels
 
-### Fast consumer artifact build
+### Fast consumer artifact
 
-Use `dist` when a local consumer such as the Demo, an integration test project, or a controlled third-party build only needs a fresh SDK from a known source revision:
+For Demo synchronization, internal consumers, or controlled third-party source builds:
 
 ```powershell
 .\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
@@ -55,53 +57,36 @@ Use `dist` when a local consumer such as the Demo, an integration test project, 
 ./build.sh dist Release
 ```
 
-`dist` performs the source/contract checks required to create a reproducible Binary SDK, then builds Native + Managed and writes `dist/<rid>`. It intentionally **does not run** the consumer matrix, ManagedTests, Core Native Smoke, or UI viewport smoke tests.
+`dist` performs the required contract checks, builds Native + Managed, and writes the Binary SDK plus source identity/hashes. It intentionally skips ManagedTests, the consumer matrix, Core smoke, and viewport/window smoke tests.
 
-### Full Bridge validation and publication
+### Complete Windows Bridge gate
 
-Use the complete gate when validating or publishing Bridge itself:
+Normal local validation:
 
 ```powershell
-.\build.ps1 sdk Release -OcctRoot "D:\tools\occt-vc144-64"
-.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64" -Zip
+.\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-```bash
-./build.sh all Release
-./publish.sh
+Formal Stable publishing uses the single release entry point:
+
+```powershell
+.\publish.ps1 `
+  -OcctRoot "D:\tools\occt-vc144-64" `
+  -Zip
 ```
 
-The Windows `sdk`/publish path retains the .NET 8/9/10 consumer compilation matrix, ManagedTests, Core Native Smoke, and WinForms/WPF/Avalonia viewport smoke tests. Linux formal publication retains the headless validation gate; graphical Avalonia smoke remains an explicit display-dependent test.
+For a Stable contract, `publish.ps1` covers:
 
-Consumer synchronization must not repeat this full Bridge QA gate on every SDK refresh. The Demo therefore uses the `dist` fast path on a cache miss and validates `sourceCommit` plus SHA-256 before accepting the result.
+1. Windows Native Release under `/W4 /WX`;
+2. managed warnings-as-errors;
+3. default ManagedTests/Core/WinForms/WPF/Avalonia smoke on **.NET 10**;
+4. .NET 8/9/10 consumer compilation matrix;
+5. Windows Binary and Portable SDK creation;
+6. native execution on actual .NET 8, 9, and 10 runtimes;
+7. isolated execution from the extracted Portable ZIP with development OCCT paths removed;
+8. frozen Stable Managed API / Native ABI compatibility validation.
 
-## Binary SDK and Portable SDK
-
-The minimal Binary SDK is intended for compile-time references and controlled automation:
-
-```text
-Windows: dist/win-x64/
-  OcctNative.dll
-  OcctNet.dll
-  OcctNet.WinForms.dll
-  OcctNet.Wpf.dll
-  OcctNet.Avalonia.dll
-  bridge-contract.json
-  bridge-manifest.json
-
-Linux: dist/linux-x64/
-  libOcctNative.so
-  OcctNet.dll
-  OcctNet.Avalonia.dll
-  bridge-contract.json
-  bridge-manifest.json
-```
-
-`dist/` is fully generated and ignored by Git.
-
-For application deployment and external distribution, use the **Portable SDK** produced by `publish.ps1` / `publish.sh` or another reviewed artifact created from the same source commit. The Portable SDK adds `runtime/`, `occt/resources/`, licenses/notices, and a recursive package manifest. It does not bundle the consuming application's .NET runtime.
-
-Third-party projects should start with [Third-party SDK Consumption](docs/en-US/09_Third-Party-SDK-Consumption.md) / [第三方项目消费 SDK](docs/zh-CN/09_第三方项目消费SDK.md).
+The Stable gate requires Microsoft.NETCore.App 8.x, 9.x, and 10.x x64 runtimes to be installed. A missing runtime fails the gate instead of being hidden by major-version roll-forward.
 
 ## Minimal use
 
@@ -117,14 +102,26 @@ var cut = model.Cut(plate, hole);
 model.ExportStep(cut.Shape, "plate.step");
 ```
 
-Call `OcctRuntime.Configure()` before the first `OcctEngine` or `OcctModelingSession` when deploying with the Portable SDK layout.
+Call `OcctRuntime.Configure()` before the first `OcctEngine` or `OcctModelingSession` when using the Portable SDK layout.
+
+For complete MSBuild references, deployment, source identity validation, and upgrade rules, see [Third-party SDK Consumption](docs/en-US/09_Third-Party-SDK-Consumption.md).
+
+## Stable compatibility boundaries
+
+- `OcctEngine`, `OcctModelingSession`, and their owned native objects are **not concurrent thread-safe objects by default**; calls against one instance must be serialized.
+- WinForms/WPF/Avalonia viewer hosts follow the UI-thread lifecycle rules of their framework.
+- Modeling values use the application's consistent unit convention; ordinary modeling APIs do not silently switch project units.
+- Handles/IDs are owner-bound and must not be mixed across engines or modeling sessions.
+- 3.x does not remove or break already released managed public APIs. Existing ABI 5 entry points and ABI layouts do not receive breaking changes; such changes require a new major/ABI strategy.
+
+See [Stable Support and Compatibility](docs/en-US/10_Stable-Support-and-Compatibility.md).
 
 ## Branch responsibilities
 
-- `main` — formal Bridge source and release SDK producer.
-- `main-dev` — Bridge development and candidate validation.
-- `demo` — formal Binary/Portable SDK consumer.
-- `demo-dev` — development consumer; normally follows `main-dev`.
-- `website` — bilingual project website.
+- `main` — stable source and official Windows Release SDK producer.
+- `main-dev` — Bridge development and Stable candidate validation.
+- `demo` — formal SDK consumer.
+- `demo-dev` — development consumer.
+- `website` — project website.
 
-Generated Binary SDKs and Portable SDKs are artifacts, not source-controlled payloads. Formal external distribution should use reviewed `main` artifacts rather than `main-dev` development output.
+Generated `dist/`, `artifacts/`, Portable SDKs, and release archives are build artifacts and are not committed to source branches.

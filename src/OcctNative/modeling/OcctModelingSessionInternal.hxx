@@ -32,6 +32,22 @@ namespace OcctModelingInternal
         bool hasWarnings = false;
         bool hasErrors = false;
         std::unordered_map<OcctObjectId, HistoryLineage> lineageBySource;
+
+        OperationRecord() = default;
+
+        OperationRecord(
+            const Handle(BRepTools_History)& operationHistory,
+            std::string operationReport,
+            bool operationHasWarnings,
+            bool operationHasErrors,
+            std::unordered_map<OcctObjectId, HistoryLineage> operationLineageBySource = {})
+            : history(operationHistory),
+              report(std::move(operationReport)),
+              hasWarnings(operationHasWarnings),
+              hasErrors(operationHasErrors),
+              lineageBySource(std::move(operationLineageBySource))
+        {
+        }
     };
 
     struct ModelSession

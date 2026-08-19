@@ -45,6 +45,8 @@ $Author = [string]$Contract.author
 $RequiredOcctVersion = [string]$Contract.occtVersion
 $TargetFramework = [string]$Contract.dotnet.targetFramework
 $DesktopTargetFramework = [string]$Contract.dotnet.desktopTargetFramework
+$DefaultRuntimeFramework = [string]$Contract.dotnet.defaultRuntimeFramework
+$DefaultDesktopRuntimeFramework = [string]$Contract.dotnet.defaultDesktopRuntimeFramework
 $SdkVersion = [string]$Contract.dotnet.sdkVersion
 $SdkRollForward = [string]$Contract.dotnet.sdkRollForward
 
@@ -338,7 +340,7 @@ function Run-Smoke {
     Assert-Path $NativeDll
     Build-Project "Smoke"
     $smokeProject = Join-Path $RepoRoot $Projects.Smoke
-    $smokeOutput = Prepare-SmokeOutput "Smoke" $TargetFramework
+    $smokeOutput = Prepare-SmokeOutput "Smoke" $DefaultRuntimeFramework
 
     Invoke-WithOcctRuntime $smokeOutput {
         Write-Host "[smoke] Running ABI5 native modeling scenarios..." -ForegroundColor Cyan
@@ -378,9 +380,9 @@ function Run-ViewportSmokeProject {
 }
 
 function Run-ViewportSmokes {
-    Run-ViewportSmokeProject "WinFormsSmoke" $DesktopTargetFramework
-    Run-ViewportSmokeProject "WpfSmoke" $DesktopTargetFramework
-    Run-ViewportSmokeProject "AvaloniaSmoke" $TargetFramework
+    Run-ViewportSmokeProject "WinFormsSmoke" $DefaultDesktopRuntimeFramework
+    Run-ViewportSmokeProject "WpfSmoke" $DefaultDesktopRuntimeFramework
+    Run-ViewportSmokeProject "AvaloniaSmoke" $DefaultRuntimeFramework
 }
 
 function Clean-Outputs {
@@ -504,6 +506,9 @@ Write-Host "Configuration: $Configuration"
 Write-Host "Bridge:        $BridgeVersion"
 Write-Host "ABI:           $($Contract.nativeAbi.current) only"
 Write-Host "Author:        $Author"
+Write-Host "Binary SDK:    $TargetFramework / $DesktopTargetFramework compatibility baseline" -ForegroundColor DarkGray
+Write-Host "Default runtime: $DefaultRuntimeFramework / $DefaultDesktopRuntimeFramework" -ForegroundColor DarkGray
+Write-Host "Consumers:     .NET 8 / 9 / 10" -ForegroundColor DarkGray
 Write-Host "SDK contract:  $SdkVersion + $SdkRollForward" -ForegroundColor DarkGray
 $occtRootSource = if ($env:OCCT_ROOT) { "environment" } elseif ($OcctRoot -eq $DefaultOcctRoot) { "default" } else { "argument" }
 Write-Host "OCCT root:     $OcctRoot ($occtRootSource)" -ForegroundColor DarkGray

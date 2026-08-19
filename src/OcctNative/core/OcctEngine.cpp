@@ -362,14 +362,14 @@ extern "C"
 
     const char* occt_bridge_version()
     {
-        return "3.0.0-preview.1";
+        return "3.0.0";
     }
 
     const char* occt_bridge_build_info()
     {
         static const std::string info = []
         {
-            std::string value = std::string("OcctCSharpBridge/3.0.0-preview.1; ABI=5; OCCT=") + OCC_VERSION_COMPLETE;
+            std::string value = std::string("OcctCSharpBridge/3.0.0; ABI=5; OCCT=") + OCC_VERSION_COMPLETE;
 #if defined(_M_X64) || defined(__x86_64__)
             value += "; Arch=x64";
 #elif defined(_M_ARM64) || defined(__aarch64__)

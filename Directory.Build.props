@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningLevel>7</WarningLevel>
-    <Version>3.0.0-preview.1</Version>
+    <Version>3.0.0</Version>
     <Authors>zly258</Authors>
     <Company>zly258</Company>
     <Product>OcctCSharpBridge</Product>

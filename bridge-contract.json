@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "bridgeVersion": "3.0.0-preview.1",
+  "bridgeVersion": "3.0.0",
   "nativeAbi": {
     "current": 5,
     "minimumSupported": 5
@@ -8,12 +8,26 @@
   "occtVersion": "7.9.0",
   "platform": "cross-platform-x64",
   "supportedPlatforms": ["windows-x64", "linux-x64"],
+  "distribution": {
+    "officialPrebuiltPlatforms": ["windows-x64"],
+    "sourceBuildPlatforms": ["windows-x64", "linux-x64"],
+    "linuxPrebuiltRelease": false
+  },
+  "release": {
+    "channel": "stable",
+    "compatibilityLine": "3.x",
+    "nativeAbiPolicy": "abi5-stable",
+    "managedCompatibilityPolicy": "no-breaking-changes-within-3.x",
+    "apiBaselineCommit": "aad8d4e82c3b97920fb4d8abcc7c2816f419881b"
+  },
   "cmakeMinimumVersion": "3.21",
   "author": "zly258",
   "contactEmail": "zhangly1403@gmail.com",
   "dotnet": {
-    "targetFramework": "net8.0",
-    "desktopTargetFramework": "net8.0-windows",
+    "targetFramework": "net10.0",
+    "desktopTargetFramework": "net10.0-windows",
+    "defaultRuntimeFramework": "net10.0",
+    "defaultDesktopRuntimeFramework": "net10.0-windows",
     "supportedConsumerFrameworks": ["net8.0", "net9.0", "net10.0"],
     "supportedDesktopConsumerFrameworks": ["net8.0-windows", "net9.0-windows", "net10.0-windows"],
     "sdkVersion": "10.0.100",

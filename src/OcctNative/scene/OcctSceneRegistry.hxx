@@ -7,6 +7,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace OcctBridge
@@ -31,6 +32,48 @@ namespace OcctBridge
         int stepDocumentIndex = -1;
         std::string stepNodeId;
         int presentationSubtype = 0;
+
+        ObjectEntry() = default;
+
+        ObjectEntry(
+            int objectKind,
+            const TopoDS_Shape& objectShape,
+            const Handle(AIS_InteractiveObject)& objectPresentation,
+            std::string objectName,
+            std::string objectApplicationTag = {},
+            std::vector<std::string> objectStepHierarchyPath = {},
+            bool objectHasStoredColor = false,
+            double objectStoredColorR = 0.0,
+            double objectStoredColorG = 0.0,
+            double objectStoredColorB = 0.0,
+            bool objectSelectable = true,
+            double objectStoredColorA = 1.0,
+            bool objectHasStoredAlpha = false,
+            bool objectStoredVisible = true,
+            bool objectHasStoredVisibility = false,
+            int objectStepDocumentIndex = -1,
+            std::string objectStepNodeId = {},
+            int objectPresentationSubtype = 0)
+            : kind(objectKind),
+              shape(objectShape),
+              presentation(objectPresentation),
+              name(std::move(objectName)),
+              applicationTag(std::move(objectApplicationTag)),
+              stepHierarchyPath(std::move(objectStepHierarchyPath)),
+              hasStoredColor(objectHasStoredColor),
+              storedColorR(objectStoredColorR),
+              storedColorG(objectStoredColorG),
+              storedColorB(objectStoredColorB),
+              selectable(objectSelectable),
+              storedColorA(objectStoredColorA),
+              hasStoredAlpha(objectHasStoredAlpha),
+              storedVisible(objectStoredVisible),
+              hasStoredVisibility(objectHasStoredVisibility),
+              stepDocumentIndex(objectStepDocumentIndex),
+              stepNodeId(std::move(objectStepNodeId)),
+              presentationSubtype(objectPresentationSubtype)
+        {
+        }
     };
 
     class SceneRegistry

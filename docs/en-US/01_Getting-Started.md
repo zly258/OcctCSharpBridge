@@ -1,68 +1,81 @@
 # Getting Started
 
-OcctCSharpBridge is distributed as a platform Binary SDK plus an optional Portable SDK runtime closure. Application teams normally consume the SDK as binaries; they do not need to build or vendor Bridge implementation source.
+OcctCSharpBridge 3.0 Stable officially distributes **Windows x64** prebuilt SDK assets. Linux x64 remains a maintained source-build platform for Core and Avalonia, but official 3.x Releases do not provide Linux prebuilt SDK assets.
 
-## 1. Choose the artifact
+## 1. Current contract
 
-Use the **minimal Binary SDK** for compile-time references and controlled build automation:
+- Bridge: `3.0.0`
+- Native ABI: ABI 5 only
+- OCCT: 7.9.0 exact
+- official Windows prebuilt platform: x64
+- Linux: source-build support
+- Binary SDK minimum TFMs: `net8.0` / `net8.0-windows`
+- supported consumers: .NET 8 / 9 / 10
+- WinForms/WPF: Windows
+- Avalonia: Windows; Linux source build
+
+Bridge source uses a stable .NET 10 SDK with baseline `10.0.100` and `rollForward=latestFeature`.
+
+## 2. Windows artifacts
+
+### Binary SDK
+
+Use for compile-time references and contract/manifest/hash validation:
 
 ```text
-win-x64: OcctNative.dll + OcctNet*.dll + contract/manifest
-linux-x64: libOcctNative.so + OcctNet.dll + OcctNet.Avalonia.dll + contract/manifest
+dist/win-x64/
+  OcctNative.dll
+  OcctNet.dll
+  OcctNet.WinForms.dll
+  OcctNet.Wpf.dll
+  OcctNet.Avalonia.dll
+  bridge-contract.json
+  bridge-manifest.json
 ```
 
-Use the **Portable SDK** for application deployment. It adds the OCCT/native runtime closure and resources:
+### Portable SDK
+
+Use for formal Windows deployment:
 
 ```text
-runtime/
-occt/resources/
-package-manifest.json
-licenses/notices
+OcctCSharpBridge-<version>-win-x64-portable/
+  OcctNet*.dll
+  runtime/
+  occt/resources/
+  bridge-contract.json
+  bridge-manifest.json
+  package-manifest.json
+  licenses / notices
 ```
 
-For formal third-party use, prefer a reviewed Portable SDK produced from `main`. For detailed integration, see [Third-party SDK Consumption](09_Third-Party-SDK-Consumption.md).
+Formal third-party applications should prefer the Windows Release asset produced from `main`. See [Third-party SDK Consumption](09_Third-Party-SDK-Consumption.md).
 
-## 2. Compatibility
+## 3. Managed references
 
-Current Bridge contract:
-
-- Bridge `3.0.0-preview.1`
-- ABI 5 only
-- OCCT 7.9.0
-- Windows x64 / Linux x64
-- Binary SDK minimum TFM: .NET 8
-- supported consumer runtimes: .NET 8, 9 and 10
-- WinForms/WPF: Windows only
-- Avalonia/Core: Windows and Linux managed surface
-
-Bridge source is built with a stable .NET 10 SDK using baseline `10.0.100` and `latestFeature` roll-forward. An exact SDK patch such as `10.0.303` is not required.
-
-## 3. Reference the managed assemblies
-
-A headless/Core project needs only `OcctNet.dll`:
+Headless/Core:
 
 ```xml
 <ItemGroup>
   <Reference Include="OcctNet">
-    <HintPath>$(OcctBridgeSdkRoot)/OcctNet.dll</HintPath>
+    <HintPath>$(OcctBridgeSdkRoot)\OcctNet.dll</HintPath>
     <Private>true</Private>
   </Reference>
 </ItemGroup>
 ```
 
-Avalonia adds `OcctNet.Avalonia.dll`; WinForms adds `OcctNet.WinForms.dll`; WPF adds `OcctNet.Wpf.dll`. Do not reference UI adapters that the application does not use.
+Add only the adapter used by the application:
 
-Example property:
-
-```xml
-<PropertyGroup>
-  <OcctBridgeSdkRoot>$(MSBuildThisFileDirectory)external/OcctCSharpBridge/win-x64</OcctBridgeSdkRoot>
-</PropertyGroup>
+```text
+OcctNet.WinForms.dll
+OcctNet.Wpf.dll
+OcctNet.Avalonia.dll
 ```
 
-## 4. Configure the runtime
+Consumer applications may target .NET 8, 9, or 10; a separate Bridge managed payload is not required for each runtime major.
 
-When using the Portable SDK layout, copy the managed assemblies plus `runtime/` and `occt/` into the final application package and configure Bridge before creating the first native-backed object:
+## 4. Runtime initialization
+
+With the Portable SDK layout:
 
 ```csharp
 using OcctNet;
@@ -74,41 +87,48 @@ var box = model.MakeBox(100, 80, 10);
 model.ExportStep(box, "box.step");
 ```
 
-`OcctRuntime.Configure()` resolves the application-local runtime and OCCT resource layout. Do not mix the native library or runtime directory from one SDK with managed assemblies from another source commit.
+Call `OcctRuntime.Configure()` before the first `OcctEngine`, `OcctModelingSession`, or other native-backed operation.
 
-## 5. Building Bridge from source
+Managed assemblies, `runtime/`, `occt/resources/`, and manifests must come from the same Bridge build/source commit.
 
-Bridge contributors or controlled internal consumers may generate a fresh Binary SDK without running the full release QA gate:
+## 5. No formal Release asset available
 
-Windows:
-
-```powershell
-.\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-Linux:
-
-```bash
-./build.sh dist Release
-```
-
-This is the **consumer artifact fast path**: Native + Managed + manifest/package construction, with no ManagedTests, consumer matrix, Core Smoke, or viewport/window smokes.
-
-Bridge validation/publication remains separate:
+Generate a consumer SDK from an explicitly approved formal `main` commit:
 
 ```powershell
-.\build.ps1 sdk Release -OcctRoot "D:\tools\occt-vc144-64"
-.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64" -Zip
+.\build.ps1 dist Release `
+  -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
+Use the Windows Portable SDK packager when a runtime closure is also required. `dist` intentionally skips ManagedTests, the Consumer Matrix, Core Smoke, and viewport/window smokes.
+
+Bridge maintainers validate a Stable candidate with:
+
+```powershell
+.\tools\validate-stable-release.ps1 `
+  -OcctRoot "D:\tools\occt-vc144-64"
+```
+
+## 6. Linux
+
+Linux consumers build from source:
+
 ```bash
+./build.sh validate Release
 ./build.sh all Release
-./publish.sh
 ```
+
+With a graphical environment:
+
+```bash
+./build.sh avalonia-smoke Release
+```
+
+Build Linux native binaries against OCCT 7.9.0 and the C/C++ runtime environment appropriate for the target distribution.
 
 ## Next steps
 
-- External application integration: [Third-party SDK Consumption](09_Third-Party-SDK-Consumption.md)
-- Runtime packaging and diagnostics: [Runtime Deployment and Diagnostics](07_Runtime-Deployment-and-Diagnostics.md)
-- Bridge contributor workflow: [Build, Test and Publish](08_Build-Test-and-Publish.md)
-- Architecture: [Architecture and Boundaries](02_Architecture-and-Boundaries.md)
+- [Third-party SDK Consumption](09_Third-Party-SDK-Consumption.md)
+- [Stable Support and Compatibility](10_Stable-Support-and-Compatibility.md)
+- [Runtime Deployment and Diagnostics](07_Runtime-Deployment-and-Diagnostics.md)
+- [Build, Test and Publish](08_Build-Test-and-Publish.md)

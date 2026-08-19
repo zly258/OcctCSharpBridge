@@ -1,20 +1,22 @@
 # OcctCSharpBridge Documentation
 
-This documentation describes the supported Bridge 3 ABI5-only architecture, SDK consumption, runtime deployment, build/test boundaries, and migration rules. `bridge-contract.json` is the machine-readable source of truth.
+This documentation describes the supported Bridge 3 ABI5-only architecture, SDK consumption, runtime deployment, build/test boundaries, and Stable compatibility rules. `bridge-contract.json` is the machine-readable source of truth.
 
-## Current contract
+## Current 3.0 Stable contract
 
-- Bridge: `3.0.0-preview.1`
+- Bridge: `3.0.0`
 - Native ABI: **5 only** (`current = 5`, `minimumSupported = 5`)
 - API policy: `abi5-only`
 - OCCT: `7.9.0`
-- Build SDK: stable **.NET 10**, baseline `10.0.100`, `rollForward=latestFeature`, no prerelease SDKs
+- Build SDK: stable .NET 10, baseline `10.0.100`, `rollForward=latestFeature`
 - Managed Binary SDK: `net8.0` Core/Avalonia and `net8.0-windows` WinForms/WPF
-- Supported consumer TFMs: .NET 8 / 9 / 10; desktop .NET 8 / 9 / 10 on Windows
+- Supported consumers: .NET 8 / 9 / 10
 - Public managed assemblies: `OcctNet`, `OcctNet.WinForms`, `OcctNet.Wpf`, `OcctNet.Avalonia`
-- Platforms: Windows x64 / Linux x64
+- Official prebuilt distribution: **Windows x64**
+- Source-build support: Windows x64 / Linux x64
+- Linux UI: Avalonia, source build only; no official prebuilt asset
 
-`main` / `main-dev` are the Bridge source lines. `demo` / `demo-dev` are reference Binary SDK consumers, not a second Bridge implementation.
+`main` / `main-dev` are the Bridge source lines. `demo` / `demo-dev` are reference SDK consumers rather than a second Bridge implementation.
 
 ## Guide
 
@@ -25,12 +27,15 @@ This documentation describes the supported Bridge 3 ABI5-only architecture, SDK 
 5. [Viewer, Selection and Interaction](05_Viewer-Selection-and-Interaction.md) — host lifecycle and interaction contract.
 6. [Mesh and Data Exchange](06_Mesh-and-Data-Exchange.md) — mesh and exchange boundaries.
 7. [Runtime Deployment and Diagnostics](07_Runtime-Deployment-and-Diagnostics.md) — Native/OCCT deployment and troubleshooting.
-8. [Build, Test and Publish](08_Build-Test-and-Publish.md) — fast consumer artifact production versus full release validation.
-9. [Third-party SDK Consumption](09_Third-Party-SDK-Consumption.md) — detailed external project integration for Core, WinForms, WPF and Avalonia.
-10. [Bridge 3 ABI5 Migration](bridge-migration.md) — migration from older Bridge contracts.
+8. [Build, Test and Publish](08_Build-Test-and-Publish.md) — fast consumer artifacts, Windows Stable gate, and Linux source validation.
+9. [Third-party SDK Consumption](09_Third-Party-SDK-Consumption.md) — external Core, WinForms, WPF and Avalonia integration, deployment, and upgrades.
+10. [Stable Support and Compatibility](10_Stable-Support-and-Compatibility.md) — platform, .NET, ABI, threading, lifetime, unit, tolerance, and version compatibility boundaries.
+11. [Bridge 3 ABI5 Migration](bridge-migration.md) — migration from older Bridge contracts.
 
-## Documentation policy
+The repository-root [CHANGELOG](../../CHANGELOG.md) records release-line changes.
 
-The repository maintains architectural and operational documentation rather than generated per-type/per-method API pages. Native/managed API-surface parity is validated from current source so documentation does not become a second, stale source of truth.
+## Reading path
 
-For most application teams, start with **09 Third-party SDK Consumption**. Bridge contributors should additionally read **08 Build, Test and Publish** before changing SDK production or release behavior.
+Application teams: **01 → 09 → 10 → 07**.
+
+Bridge maintainers should additionally read **02, 03 and 08** and run `tools/validate-stable-release.ps1` for a Stable candidate.

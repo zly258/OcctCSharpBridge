@@ -39,6 +39,7 @@ require_text "${CONTRACT}" '"current": 5' "Current native ABI must remain ABI 5.
 require_text "${CONTRACT}" '"minimumSupported": 5' "Minimum supported native ABI must be ABI 5."
 require_text "${CONTRACT}" '"policy": "abi5-only"' "API policy must remain ABI5-only."
 require_text "${CONTRACT}" '"targetFramework": "net8.0"' "Binary SDK minimum target framework must be net8.0."
+require_text "${CONTRACT}" '"defaultRuntimeFramework": "net10.0"' "Default cross-platform execution target must be net10.0."
 require_text "${CONTRACT}" '"sdkRollForward": "latestFeature"' "SDK contract must allow stable .NET 10 feature-band/patch roll-forward."
 forbid_text "${CONTRACT}" '"legacy"' "Legacy ABI metadata must not be reintroduced."
 forbid_text "${CONTRACT}" '"compatibility"' "Compatibility metadata must not be reintroduced."
@@ -57,9 +58,14 @@ for file in "${CORE_PROJECT}" "${AVALONIA_PROJECT}" "${MANAGED_TESTS}" "${SMOKE_
     require_file "${file}"
 done
 
-for project in "${CORE_PROJECT}" "${AVALONIA_PROJECT}" "${MANAGED_TESTS}" "${SMOKE_PROJECT}" "${AVALONIA_SMOKE_PROJECT}"; do
-    require_text "${project}" '<TargetFramework>net8.0</TargetFramework>' "Cross-platform project must target the net8.0 minimum baseline: ${project#${ROOT_DIR}/}"
+for project in "${CORE_PROJECT}" "${AVALONIA_PROJECT}"; do
+    require_text "${project}" '<TargetFramework>net8.0</TargetFramework>' "Published cross-platform managed SDK must keep the net8.0 compatibility baseline: ${project#${ROOT_DIR}/}"
     forbid_text "${project}" 'net8.0-windows' "Windows-only TFM escaped into a Linux/core project: ${project#${ROOT_DIR}/}"
+done
+
+for project in "${MANAGED_TESTS}" "${SMOKE_PROJECT}" "${AVALONIA_SMOKE_PROJECT}"; do
+    require_text "${project}" '<TargetFramework>net10.0</TargetFramework>' "Default Linux regression/smoke execution must target net10.0: ${project#${ROOT_DIR}/}"
+    forbid_text "${project}" 'net10.0-windows' "Windows-only TFM escaped into a Linux/core test project: ${project#${ROOT_DIR}/}"
 done
 
 require_text "${MANAGED_TESTS}" '..\..\src\OcctNet\OcctNet.csproj' "Managed tests must reference OcctNet core."
@@ -132,4 +138,4 @@ while IFS= read -r path; do
     fi
 done < <(git -C "${ROOT_DIR}" ls-files)
 
-printf '[linux-contract] ABI5-only cross-platform source/test/distribution boundaries and repository hygiene validated for .NET 8 minimum runtime and rolling .NET 10 SDK.\n'
+printf '[linux-contract] ABI5-only cross-platform source/test/distribution boundaries validated: net8.0 Binary SDK compatibility baseline, net10.0 default execution, .NET 10 SDK.\n'

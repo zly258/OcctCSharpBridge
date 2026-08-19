@@ -1,89 +1,125 @@
 # Third-party SDK Consumption
 
-This guide is for external CAD/BIM/engineering applications that **consume OcctCSharpBridge without participating in Bridge source development**. It defines how to reference, validate, deploy, and upgrade an SDK produced from formal `main`.
+This guide is for CAD/BIM/engineering applications that **consume OcctCSharpBridge without developing the Bridge itself**. It describes how to reference, validate, deploy, and upgrade the 3.x Stable SDK.
 
-Core rule:
+Core principle:
 
-> A third-party project consumes a versioned, platform-specific, ABI/source-identified SDK artifact. It should not assemble a runtime by copying arbitrary Bridge/OCCT binaries from different builds.
+> A consumer accepts a versioned, platform-specific SDK artifact constrained by ABI, source commit, and hashes. It does not assemble a runtime by copying arbitrary DLLs from a Bridge repository or development machine.
 
-## 1. Which artifact should an application use?
+## 1. 3.0 support model
 
-OcctCSharpBridge exposes two related artifact types.
+| Item | 3.0 Stable |
+| --- | --- |
+| Bridge | `3.0.0` |
+| Native ABI | ABI 5 only |
+| OCCT | 7.9.0 exact |
+| Core/Avalonia Binary TFM | `net8.0` |
+| WinForms/WPF Binary TFM | `net8.0-windows` |
+| Consumers | .NET 8 / 9 / 10 |
+| Official prebuilt SDK | **Windows x64** |
+| Linux | source build support, Avalonia |
 
-### 1.1 Minimal Binary SDK
+Windows is the official prebuilt distribution platform. Linux does not receive an official 3.x Binary/Portable Release asset; Linux consumers build in an environment compatible with the target distribution.
+
+## 2. Preferred Windows acquisition order
+
+```text
+Windows Release asset produced from formal main
+        ↓ if unavailable
+an explicitly approved main source commit
+        ↓
+build.ps1 dist Release
+        ↓
+Windows Portable SDK packager
+```
+
+### 2.1 Formal Release asset available
+
+Prefer:
+
+```text
+OcctCSharpBridge-<version>-win-x64-portable.zip
+```
+
+A third-party consumer does not rerun Bridge ManagedTests, the consumer matrix, or viewport/window smoke for every SDK refresh. Full Bridge QA belongs to the release-production stage.
+
+### 2.2 No formal Release asset
+
+For a controlled build from an approved formal `main` commit:
+
+```powershell
+git switch main
+git reset --hard <approved-main-commit>
+
+.\build.ps1 dist Release `
+  -OcctRoot "D:\tools\occt-vc144-64"
+
+.\tools\package-portable-sdk.ps1 `
+  -SdkRoot .\dist\win-x64 `
+  -OcctRoot "D:\tools\occt-vc144-64" `
+  -OutputDirectory .\artifacts\consumer-sdk `
+  -Zip
+```
+
+`dist` is the Consumer Artifact fast path: it builds Native + Managed and writes the contract/manifest/hashes without rerunning the complete regression/smoke gate.
+
+Record the exact `sourceCommit`. If the commit has not been confirmed through the Bridge release QA process, the output is a local consumer build rather than an official Release artifact.
+
+## 3. Binary versus Portable SDK
+
+### Binary SDK
+
+```text
+dist/win-x64/
+  OcctNative.dll
+  OcctNet.dll
+  OcctNet.WinForms.dll
+  OcctNet.Wpf.dll
+  OcctNet.Avalonia.dll
+  bridge-contract.json
+  bridge-manifest.json
+```
 
 Use it for:
 
-- compile-time `<Reference>` inputs;
+- compile-time `<Reference>` values;
 - CI contract/manifest/hash validation;
-- Demo or controlled internal consumer synchronization;
-- application builds pinned to a known Bridge source revision.
+- Demo/internal consumer synchronization;
+- builds from a known Bridge source revision.
 
-Windows x64:
+The root `OcctNative.dll` by itself is **not a complete deployment runtime closure**.
 
-```text
-OcctNative.dll
-OcctNet.dll
-OcctNet.WinForms.dll
-OcctNet.Wpf.dll
-OcctNet.Avalonia.dll
-bridge-contract.json
-bridge-manifest.json
-```
+### Portable SDK
 
-Linux x64:
+Formal Windows deployment uses:
 
 ```text
-libOcctNative.so
-OcctNet.dll
-OcctNet.Avalonia.dll
-bridge-contract.json
-bridge-manifest.json
+OcctCSharpBridge-<version>-win-x64-portable/
+  OcctNet.dll
+  OcctNet.WinForms.dll
+  OcctNet.Wpf.dll
+  OcctNet.Avalonia.dll
+  bridge-contract.json
+  bridge-manifest.json
+  package-manifest.json
+  runtime/
+    OcctNative.dll
+    OCCT runtime closure
+    required redistributable native dependencies
+  occt/
+    resources/
+  LICENSE / NOTICE ...
 ```
 
-The minimal Binary SDK is **not a complete runtime package**. It does not contain the OCCT native dependency closure or the complete OCCT resource tree.
+Recommended model:
 
-### 1.2 Portable SDK
+> Binary SDK for compilation and identity validation; Portable SDK for Windows deployment.
 
-Use it for final application deployment and redistribution. In addition to the managed assemblies it contains:
+Both must come from one Bridge build/source commit.
 
-```text
-runtime/
-  OcctNative / libOcctNative
-  OCCT native libraries
-  packaged third-party native dependencies
-occt/resources/
-package-manifest.json
-licenses/notices
-```
+## 4. Consumer repository layout
 
-A formal third-party application should prefer a Portable SDK produced from formal `main` by `publish.ps1` / `publish.sh`, or the corresponding reviewed release asset.
-
-**Recommended model: use the Binary SDK for compilation and the Portable SDK for deployment.** Both artifacts must originate from the same Bridge build/source commit.
-
-## 2. Current compatibility contract
-
-Before integration, verify at least:
-
-| Item | Current contract |
-| --- | --- |
-| Bridge | `3.0.0-preview.1` |
-| Native ABI | ABI 5 only |
-| OCCT | 7.9.0 |
-| Architecture | x64 |
-| Core/Avalonia Binary TFM | `net8.0` |
-| WinForms/WPF Binary TFM | `net8.0-windows` |
-| Supported consumers | .NET 8 / 9 / 10 |
-| Windows UI | WinForms / WPF / Avalonia |
-| Linux UI | Avalonia |
-
-A consuming project does not need to target the same TFM as the Bridge binary. For example, a `net10.0` application can reference the `net8.0` Bridge assemblies. Windows desktop consumers may use supported `net8.0-windows`, `net9.0-windows`, or `net10.0-windows` targets.
-
-The stable .NET 10 SDK used to compile Bridge source is not the third-party application's runtime requirement. Binary consumers do not need an exact `10.0.303` SDK merely because Bridge source uses C# 14.
-
-## 3. Recommended third-party repository layout
-
-Do not scatter Bridge files across business projects. Define one external SDK root:
+Do not scatter SDK files through business source folders. Prefer an explicit SDK root:
 
 ```text
 MyCadApp/
@@ -98,48 +134,101 @@ MyCadApp/
         ...
         bridge-contract.json
         bridge-manifest.json
-      linux-x64/
-        OcctNet.dll
-        OcctNet.Avalonia.dll
-        ...
-  build/
   artifacts/
+  build/
 ```
 
-The SDK can also live in a company artifact/cache directory instead of business Git. The important point is to make the SDK root configurable and identify it from its manifest rather than from a folder name.
+An enterprise artifact cache is also appropriate; the SDK does not need to be committed into the business Git repository.
 
-A shared `Directory.Build.props` can define the root:
+A shared MSBuild property can define the SDK root:
 
 ```xml
 <Project>
   <PropertyGroup>
-    <OcctBridgeRid Condition="$([MSBuild]::IsOSPlatform('Windows'))">win-x64</OcctBridgeRid>
-    <OcctBridgeRid Condition="$([MSBuild]::IsOSPlatform('Linux'))">linux-x64</OcctBridgeRid>
-    <OcctBridgeSdkRoot>$(MSBuildThisFileDirectory)external/OcctCSharpBridge/$(OcctBridgeRid)</OcctBridgeSdkRoot>
+    <OcctBridgeSdkRoot>$(MSBuildThisFileDirectory)external/OcctCSharpBridge/win-x64</OcctBridgeSdkRoot>
   </PropertyGroup>
 </Project>
 ```
 
-CI can override it:
-
-```bash
-dotnet build -p:OcctBridgeSdkRoot=/opt/company-sdk/OcctCSharpBridge/linux-x64
-```
-
-## 4. Headless/Core application
-
-A project that uses geometry/modeling/topology/mesh/exchange without a Bridge UI host references only `OcctNet.dll`:
+## 5. Core reference
 
 ```xml
 <ItemGroup>
   <Reference Include="OcctNet">
-    <HintPath>$(OcctBridgeSdkRoot)/OcctNet.dll</HintPath>
+    <HintPath>$(OcctBridgeSdkRoot)\OcctNet.dll</HintPath>
     <Private>true</Private>
   </Reference>
 </ItemGroup>
 ```
 
-Minimal code:
+Consumer projects may target `net8.0`, `net9.0`, or `net10.0`. One net8-based Bridge managed assembly set is used; there is not a different Binary SDK for each runtime major.
+
+## 6. WPF
+
+```xml
+<PropertyGroup>
+  <TargetFramework>net8.0-windows</TargetFramework>
+  <UseWPF>true</UseWPF>
+  <PlatformTarget>x64</PlatformTarget>
+</PropertyGroup>
+
+<ItemGroup>
+  <Reference Include="OcctNet">
+    <HintPath>$(OcctBridgeSdkRoot)\OcctNet.dll</HintPath>
+    <Private>true</Private>
+  </Reference>
+  <Reference Include="OcctNet.Wpf">
+    <HintPath>$(OcctBridgeSdkRoot)\OcctNet.Wpf.dll</HintPath>
+    <Private>true</Private>
+  </Reference>
+</ItemGroup>
+```
+
+Windows Desktop consumers may also use `net9.0-windows` or `net10.0-windows`.
+
+## 7. WinForms
+
+```xml
+<PropertyGroup>
+  <TargetFramework>net8.0-windows</TargetFramework>
+  <UseWindowsForms>true</UseWindowsForms>
+  <PlatformTarget>x64</PlatformTarget>
+</PropertyGroup>
+
+<ItemGroup>
+  <Reference Include="OcctNet">
+    <HintPath>$(OcctBridgeSdkRoot)\OcctNet.dll</HintPath>
+    <Private>true</Private>
+  </Reference>
+  <Reference Include="OcctNet.WinForms">
+    <HintPath>$(OcctBridgeSdkRoot)\OcctNet.WinForms.dll</HintPath>
+    <Private>true</Private>
+  </Reference>
+</ItemGroup>
+```
+
+## 8. Avalonia
+
+Windows Avalonia:
+
+```xml
+<ItemGroup>
+  <Reference Include="OcctNet">
+    <HintPath>$(OcctBridgeSdkRoot)\OcctNet.dll</HintPath>
+    <Private>true</Private>
+  </Reference>
+  <Reference Include="OcctNet.Avalonia">
+    <HintPath>$(OcctBridgeSdkRoot)\OcctNet.Avalonia.dll</HintPath>
+    <Private>true</Private>
+  </Reference>
+</ItemGroup>
+```
+
+A Linux Avalonia application must not consume the Windows SDK. Build the Linux Binary SDK from Bridge source in the Linux target environment and apply the same source-identity rules to `OcctNet.dll` / `OcctNet.Avalonia.dll`.
+
+## 9. Runtime initialization
+
+With the Portable SDK layout, configure the runtime before creating the first native-backed object:
 
 ```csharp
 using OcctNet;
@@ -147,301 +236,129 @@ using OcctNet;
 OcctRuntime.Configure();
 
 using var model = new OcctModelingSession();
-var box = model.MakeBox(100, 80, 10);
-model.ExportStep(box, "box.step");
+var box = model.MakeBox(100, 80, 20);
 ```
 
-## 5. Avalonia application
+This must happen before the first `OcctEngine`, `OcctModelingSession`, or other operation that causes `OcctNative` to load.
 
-Avalonia requires Core plus the Avalonia adapter:
-
-```xml
-<ItemGroup>
-  <Reference Include="OcctNet">
-    <HintPath>$(OcctBridgeSdkRoot)/OcctNet.dll</HintPath>
-    <Private>true</Private>
-  </Reference>
-  <Reference Include="OcctNet.Avalonia">
-    <HintPath>$(OcctBridgeSdkRoot)/OcctNet.Avalonia.dll</HintPath>
-    <Private>true</Private>
-  </Reference>
-</ItemGroup>
-```
-
-The consuming application owns its Avalonia framework package versions. Do not vendor the Demo project merely to use `OcctNet.Avalonia`.
-
-Linux exposes Core + Avalonia managed surfaces only; WinForms/WPF are outside the Linux contract.
-
-## 6. WinForms application
-
-Windows WinForms:
-
-```xml
-<ItemGroup>
-  <Reference Include="OcctNet">
-    <HintPath>$(OcctBridgeSdkRoot)/OcctNet.dll</HintPath>
-    <Private>true</Private>
-  </Reference>
-  <Reference Include="OcctNet.WinForms">
-    <HintPath>$(OcctBridgeSdkRoot)/OcctNet.WinForms.dll</HintPath>
-    <Private>true</Private>
-  </Reference>
-</ItemGroup>
-```
-
-Example framework settings:
-
-```xml
-<TargetFramework>net10.0-windows</TargetFramework>
-<UseWindowsForms>true</UseWindowsForms>
-```
-
-## 7. WPF application
-
-Windows WPF:
-
-```xml
-<ItemGroup>
-  <Reference Include="OcctNet">
-    <HintPath>$(OcctBridgeSdkRoot)/OcctNet.dll</HintPath>
-    <Private>true</Private>
-  </Reference>
-  <Reference Include="OcctNet.Wpf">
-    <HintPath>$(OcctBridgeSdkRoot)/OcctNet.Wpf.dll</HintPath>
-    <Private>true</Private>
-  </Reference>
-</ItemGroup>
-```
-
-Example:
-
-```xml
-<TargetFramework>net10.0-windows</TargetFramework>
-<UseWPF>true</UseWPF>
-```
-
-Do not reference WinForms, WPF and Avalonia adapters together merely for convenience. Reference only the UI surface the application uses.
-
-## 8. Compile-time references and deployment are different concerns
-
-MSBuild `<Reference Private="true">` copies managed assemblies to output and may also leave the flat native Bridge from a minimal SDK in ordinary build output. The **final deployed application must not rely on only the flat native file from the minimal SDK**.
-
-Formal deployment should merge the Portable SDK runtime layout:
+Recommended application layout:
 
 ```text
 MyCadApp/
-  MyCadApp.exe                   # or Linux apphost
-  MyCadApp.dll
-  OcctNet.dll
-  OcctNet.Wpf.dll                # example
+  MyCadApp.exe / .dll
+  OcctNet*.dll
   runtime/
-    OcctNative.dll               # Windows
-    TKernel.dll
-    TK*.dll
-    ...
-  occt/
-    resources/
-      ...
-```
-
-Linux:
-
-```text
-MyCadApp/
-  MyCadApp
-  MyCadApp.dll
-  OcctNet.dll
-  OcctNet.Avalonia.dll
-  runtime/
-    libOcctNative.so
-    libTKernel.so*
-    libTK*.so*
-    ...
   occt/resources/
+  bridge-contract.json
+  bridge-manifest.json
+  package-manifest.json
 ```
 
-If ordinary `dotnet publish` places a flat `OcctNative.dll` / `libOcctNative.so` from the minimal SDK at the application root and the final package also merges Portable `runtime/`, remove the root-level flat native Bridge from the final package. This avoids selecting a native file that does not have the adjacent OCCT closure expected by the deployment layout.
+Do not leave a stale root-level `OcctNative.dll` that competes with `runtime/OcctNative.dll`.
 
-## 9. Runtime initialization
+## 10. Validate an SDK before accepting it
 
-Call this very early in application startup, before any native-backed Bridge object is created:
+At minimum inspect:
+
+```text
+bridgeVersion
+nativeAbi.current
+nativeAbi.minimumSupported
+occtVersion
+platform
+sourceCommit
+configuration
+files[].sha256
+```
+
+A Windows 3.0 Stable SDK should satisfy:
+
+```text
+Bridge version: compatible 3.0.x line
+ABI:            5 / 5
+Platform:       win-x64
+OCCT:           7.9.0
+Configuration:  Release
+```
+
+Do not edit manifests to bypass managed/native version mismatches.
+
+## 11. Upgrade as one payload
+
+Replace together:
+
+```text
+OcctNet*.dll
+runtime/
+occt/resources/
+bridge-contract.json
+bridge-manifest.json
+package-manifest.json
+```
+
+Do not combine:
+
+```text
+old OcctNet.dll + new OcctNative.dll
+new managed assemblies + old runtime/
+runtime/ and resources/ from different source commits
+```
+
+Record the accepted Bridge version and source commit in the business application's build log or artifact metadata.
+
+## 12. Threading and lifetime
+
+Consumers must follow [Stable Support and Compatibility](10_Stable-Support-and-Compatibility.md):
+
+- one `OcctEngine` / `OcctModelingSession` is not a concurrent thread-safe object by default;
+- UI host lifecycle operations follow the UI thread;
+- Engine/Session IDs are not mixed across owners;
+- `IDisposable` owned resources are released according to their contract;
+- stale native handles are not retained across host recreation.
+
+## 13. Units and exchange
+
+Ordinary modeling APIs do not silently switch project units. The application Document/Project layer owns a consistent unit and coordinate policy.
+
+STEP/IGES unit behavior also involves file metadata and the OCCT translator. Engineering applications with strict unit requirements should validate import/export boundaries explicitly.
+
+## 14. Linux consumers
+
+The 3.x Linux position is:
+
+```text
+source builds
+Core runs
+Avalonia runs
+no official prebuilt Binary/Portable Release asset
+```
+
+Typical validation:
+
+```bash
+./build.sh validate Release
+./build.sh all Release
+./build.sh avalonia-smoke Release   # requires DISPLAY
+```
+
+Build Linux binaries for the intended distribution, OCCT 7.9.0 installation, and C/C++ runtime baseline.
+
+## 15. Troubleshooting
+
+Start with:
 
 ```csharp
-OcctRuntime.Configure();
+Console.WriteLine(OcctRuntime.GetDiagnosticReport());
 ```
 
-This includes the first:
+Then verify:
 
-- `OcctModelingSession`;
-- `OcctEngine`;
-- WinForms/WPF/Avalonia viewport host.
+1. x64 process;
+2. `runtime/OcctNative.dll` exists;
+3. OCCT/VC native closure is complete;
+4. managed/native versions and ABI match;
+5. `occt/resources` is complete;
+6. no stale second SDK is being loaded;
+7. `sourceCommit` and hashes match.
 
-The default Portable layout does not require the target machine to reproduce the developer machine's `OCCT_ROOT` / `CASROOT`.
-
-An enterprise application may explicitly configure another install layout, but the native directory and OCCT root must still belong to one coherent SDK payload.
-
-## 10. The application's own .NET deployment
-
-The Portable SDK does not bundle the consuming application's .NET runtime. The application chooses independently.
-
-Framework-dependent:
-
-```bash
-dotnet publish -c Release --self-contained false
-```
-
-Self-contained Windows:
-
-```bash
-dotnet publish -c Release -r win-x64 --self-contained true
-```
-
-Self-contained Linux:
-
-```bash
-dotnet publish -c Release -r linux-x64 --self-contained true
-```
-
-Then merge the matching Bridge Portable SDK runtime/resources into the application package.
-
-Bridge Portable deployment and .NET self-contained deployment solve different problems: the first provides the Bridge/OCCT native closure; the second provides the .NET runtime.
-
-## 11. CI checks before accepting an SDK
-
-A third-party CI should verify at least:
-
-1. `bridge-contract.json` exists;
-2. `bridge-manifest.json` exists;
-3. `platform` matches the target RID;
-4. ABI `current = 5` and `minimumSupported = 5`;
-5. Bridge version satisfies the application's pinned policy;
-6. `sourceCommit` is non-empty and is an approved formal source revision;
-7. every SHA-256 in the Binary SDK manifest matches the local file;
-8. Portable `bridgeSourceCommit` / `bridgeVersion` exactly match the Binary SDK;
-9. every Portable package-manifest hash matches.
-
-Do not identify an SDK by file names, directory timestamps, or an arbitrary DLL version alone.
-
-## 12. Recommended version-pinning policy
-
-An enterprise build can pin:
-
-```text
-BridgeVersion = 3.0.0-preview.1
-SourceCommit   = <reviewed main commit>
-NativeAbi      = 5
-Platform       = win-x64 / linux-x64
-```
-
-Upgrade as one transaction:
-
-```text
-download new Binary + Portable SDK
-        ↓
-validate contract / manifest / hashes
-        ↓
-replace all OcctNet*.dll
-        ↓
-replace runtime/
-        ↓
-replace occt/
-        ↓
-rebuild the application
-        ↓
-run application regression tests
-```
-
-Never:
-
-```text
-replace only OcctNet.dll
-keep an old OcctNative
-keep old runtime/TK*.dll
-mix win-x64 and linux-x64 payloads
-assemble one package from two source commits
-```
-
-## 13. Building an SDK from Bridge source
-
-Most external teams should consume formal release artifacts. If an enterprise build must generate an SDK from an approved Bridge source revision, use the consumer artifact fast path.
-
-Windows:
-
-```powershell
-git switch main
-git reset --hard <approved-main-commit>
-.\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-Linux:
-
-```bash
-git switch main
-git reset --hard <approved-main-commit>
-./build.sh dist Release
-```
-
-`dist` generates the consumer Binary SDK; it does not certify that the complete Bridge release gate has passed. Formal external artifacts should still come from Bridge `publish` or an equivalent controlled enterprise gate.
-
-If a validated SDK already exists, the consuming project has no reason to compile Bridge again.
-
-## 14. Linux compatibility requirements
-
-Linux Portable Runtime carries OCCT and selected non-system native libraries, but it does not make glibc/libstdc++ ABI requirements disappear.
-
-Errors such as:
-
-```text
-GLIBC_2.xx not found
-GLIBCXX_3.4.xx not found
-CXXABI_1.x.x not found
-```
-
-mean the native Bridge/OCCT build baseline is newer than the target system. The correct solution is to rebuild OCCT and `libOcctNative.so` against an older supported ABI baseline, not to copy an arbitrary `libc.so.6` into the application package.
-
-AppImage improves distribution convenience but does not automatically transform an ELF already linked against a newer glibc into an old-glibc-compatible binary.
-
-If a product claims support for a Debian/Ubuntu/Kylin matrix, define the oldest native build baseline and run real launch/render/modeling tests on that support matrix.
-
-## 15. Common failures
-
-### `DllNotFoundException` / unable to load OcctNative
-
-Check:
-
-- `OcctRuntime.Configure()` runs early enough;
-- `runtime/` exists;
-- the native closure is complete;
-- process and package are x64;
-- Windows loader dependencies are available;
-- Linux `ldd runtime/libOcctNative.so` has no `not found` or ABI-version errors.
-
-### Native loads, but STEP/IGES/shader operations fail
-
-Check `occt/resources/` and the effective `CSF_*` resource configuration.
-
-### Compile-time `OcctNet.*` reference failure
-
-Check `OcctBridgeSdkRoot` and `<HintPath>`. Do not use Portable `runtime/` as the managed reference root.
-
-### ABI/version mismatch
-
-Do not suppress the error or edit a manifest. Redeploy Managed + Native + runtime + resources from one build.
-
-## 16. License and third-party notices
-
-If an application redistributes Bridge/OCCT/third-party native files from the Portable SDK, preserve the applicable license and third-party notice material and comply with the project license/exception and the licenses of packaged third-party components.
-
-The authoritative terms are the repository `LICENSE`, LGPL text, OcctCSharpBridge exception, `COMMERCIAL.md`, `THIRD_PARTY_NOTICES.md`, and the relevant third-party licenses.
-
-## 17. Role of the Demo
-
-`demo` / `demo-dev` are reference consumers useful for studying:
-
-- Binary SDK `<Reference HintPath>` integration;
-- WinForms/WPF/Avalonia hosts;
-- `OcctRuntime` configuration;
-- Portable Runtime merging;
-- contract/sourceCommit/hash validation.
-
-A third-party project should not copy the Demo's menu/command/business UI as its application architecture. The Demo is an SDK consumer example, not an application framework.
+Bridge maintainer release validation is described in [Build, Test and Publish](08_Build-Test-and-Publish.md).
