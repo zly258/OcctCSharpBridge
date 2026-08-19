@@ -25,6 +25,54 @@ public sealed partial class OcctEngine
             AppearanceNativeMethods.occt_engine_highlight_colors_set(_handle, in options));
     }
 
+    public void SetSelectionHighlightMode(OcctHighlightMode mode)
+    {
+        ValidateHighlightMode(mode, nameof(mode));
+        EnsureInitialized();
+        var options = HighlightStyleOptions(
+            NativeViewerHighlightStyleUpdateMask.SelectionMode,
+            selectionMode: mode);
+        CheckAppearanceStatus(
+            AppearanceNativeMethods.occt_engine_highlight_style_set(_handle, in options));
+    }
+
+    public void SetHoverHighlightMode(OcctHighlightMode mode)
+    {
+        ValidateHighlightMode(mode, nameof(mode));
+        EnsureInitialized();
+        var options = HighlightStyleOptions(
+            NativeViewerHighlightStyleUpdateMask.HoverMode,
+            hoverMode: mode);
+        CheckAppearanceStatus(
+            AppearanceNativeMethods.occt_engine_highlight_style_set(_handle, in options));
+    }
+
+    public void SetSelectionHighlightStyle(OcctViewerHighlightStyle style)
+    {
+        ValidateHighlightMode(style.Mode, $"{nameof(style)}.{nameof(style.Mode)}");
+        EnsureInitialized();
+        var options = HighlightStyleOptions(
+            NativeViewerHighlightStyleUpdateMask.SelectionColor |
+            NativeViewerHighlightStyleUpdateMask.SelectionMode,
+            selectionColor: style.Color,
+            selectionMode: style.Mode);
+        CheckAppearanceStatus(
+            AppearanceNativeMethods.occt_engine_highlight_style_set(_handle, in options));
+    }
+
+    public void SetHoverHighlightStyle(OcctViewerHighlightStyle style)
+    {
+        ValidateHighlightMode(style.Mode, $"{nameof(style)}.{nameof(style.Mode)}");
+        EnsureInitialized();
+        var options = HighlightStyleOptions(
+            NativeViewerHighlightStyleUpdateMask.HoverColor |
+            NativeViewerHighlightStyleUpdateMask.HoverMode,
+            hoverColor: style.Color,
+            hoverMode: style.Mode);
+        CheckAppearanceStatus(
+            AppearanceNativeMethods.occt_engine_highlight_style_set(_handle, in options));
+    }
+
     public void SetSceneLighting(OcctSceneLightingSettings settings)
     {
         ValidateLightIntensity(settings.AmbientIntensity, nameof(settings.AmbientIntensity));
@@ -82,6 +130,30 @@ public sealed partial class OcctEngine
         HoverColor = ToNativeColor(hoverColor ?? Color.Black)
     };
 
+    private static AppearanceNativeMethods.NativeViewerHighlightStyleOptions HighlightStyleOptions(
+        NativeViewerHighlightStyleUpdateMask updateMask,
+        Color? selectionColor = null,
+        Color? hoverColor = null,
+        OcctHighlightMode selectionMode = OcctHighlightMode.Wireframe,
+        OcctHighlightMode hoverMode = OcctHighlightMode.Wireframe) => new()
+    {
+        StructSize = (uint)Marshal.SizeOf<AppearanceNativeMethods.NativeViewerHighlightStyleOptions>(),
+        ApiVersion = 1,
+        UpdateMask = updateMask,
+        SelectionColor = ToNativeColor(selectionColor ?? Color.Black),
+        HoverColor = ToNativeColor(hoverColor ?? Color.Black),
+        SelectionMode = ToNativeHighlightMode(selectionMode),
+        HoverMode = ToNativeHighlightMode(hoverMode)
+    };
+
+    private static NativeHighlightMode ToNativeHighlightMode(OcctHighlightMode mode) => mode switch
+    {
+        OcctHighlightMode.BoundingBox => NativeHighlightMode.BoundingBox,
+        OcctHighlightMode.Wireframe => NativeHighlightMode.Wireframe,
+        OcctHighlightMode.Shaded => NativeHighlightMode.Shaded,
+        _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Highlight mode is out of range.")
+    };
+
     private static AppearanceNativeMethods.NativeColorRgb ToNativeColor(Color color) => new()
     {
         R = color.R / 255.0,
@@ -92,6 +164,12 @@ public sealed partial class OcctEngine
     private void CheckAppearanceStatus(OcctStatus status)
     {
         if (status != OcctStatus.Ok) throw CreateException();
+    }
+
+    private static void ValidateHighlightMode(OcctHighlightMode mode, string name)
+    {
+        if (!Enum.IsDefined(mode))
+            throw new ArgumentOutOfRangeException(name, mode, "Highlight mode must be BoundingBox, Wireframe, or Shaded.");
     }
 
     private static void ValidateDirectionalLight(OcctDirectionalLightSettings light, string name)

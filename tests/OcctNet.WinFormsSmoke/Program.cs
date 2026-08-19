@@ -70,6 +70,7 @@ internal static class Program
                         Console.WriteLine($"Engine generation: {viewport.EngineGeneration}");
                         Console.WriteLine($"Native handle: 0x{viewport.NativeHandle.ToInt64():X}");
                         Console.WriteLine("WinForms minimize/restore exposure path exercised without pointer input.");
+                        Console.WriteLine("WinForms highlight mode/color style calls passed.");
                         Console.WriteLine("WinForms viewport lifecycle/render/native-handle smoke passed.");
                         form.Close();
                         break;
@@ -123,6 +124,15 @@ internal static class Program
                 var box = viewport.Engine.MakeBox(100, 80, 60);
                 if (!box.IsValid)
                     throw new InvalidOperationException("WinForms viewport smoke created an invalid OCCT box.");
+
+                viewport.Engine.SetSelectionHighlightStyle(new OcctViewerHighlightStyle(OcctHighlightMode.BoundingBox, Color.Orange));
+                viewport.Engine.SetHoverHighlightStyle(new OcctViewerHighlightStyle(OcctHighlightMode.Wireframe, Color.Cyan));
+                viewport.Engine.SetSelectionHighlightMode(OcctHighlightMode.Shaded);
+                viewport.Engine.SetHoverHighlightMode(OcctHighlightMode.BoundingBox);
+                viewport.Engine.SetSelectionHighlightColor(Color.Gold);
+                viewport.Engine.SetHoverHighlightColor(Color.DeepSkyBlue);
+                viewport.Engine.SetSelectionHighlightMode(OcctHighlightMode.Wireframe);
+                viewport.Engine.SetHoverHighlightMode(OcctHighlightMode.Wireframe);
 
                 viewport.Engine.Fit(box);
                 viewport.Engine.Redraw();

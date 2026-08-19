@@ -2,6 +2,14 @@
 
 All notable release-line changes are recorded here. The machine-readable compatibility contract remains `bridge-contract.json`.
 
+## Unreleased
+
+### Viewer presentation
+
+- Added independent selected-object and hover highlight styles.
+- Highlight styles now support `BoundingBox`, `Wireframe`, and `Shaded` modes in addition to the existing color configuration APIs.
+- Existing color-only APIs remain available and preserve the configured highlight mode.
+
 ## 3.0.0
 
 ### Stable contract
@@ -9,7 +17,7 @@ All notable release-line changes are recorded here. The machine-readable compati
 - Promoted Bridge 3 from preview to the `3.0.0` stable version line.
 - Native ABI 5 remains the only supported ABI.
 - OCCT remains fixed to 7.9.0.
-- Managed Binary SDK remains based on `net8.0` / `net8.0-windows` and supports .NET 8, .NET 9, and .NET 10 consumers.
+- Managed SDK default build/runtime validation uses .NET 10 while the consumer compatibility matrix covers .NET 8, .NET 9, and .NET 10.
 - Official prebuilt release assets are defined for Windows x64 only.
 - Linux x64 remains a maintained source-build platform with Avalonia support; no official Linux prebuilt binary compatibility guarantee is made.
 
