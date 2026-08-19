@@ -41,7 +41,9 @@
       "viewer.dimension.text-height",
       "viewer.selection.rectangle-query",
       "viewer.highlight.selection-mode",
-      "viewer.highlight.hover-mode"
+      "viewer.highlight.hover-mode",
+      "viewer.triedron.position-scale-color",
+      "viewer.viewcube.position-size-offset"
     ],
     "nativeHeaders": [
       "OcctNative.h",

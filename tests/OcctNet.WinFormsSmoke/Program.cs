@@ -71,6 +71,7 @@ internal static class Program
                         Console.WriteLine($"Native handle: 0x{viewport.NativeHandle.ToInt64():X}");
                         Console.WriteLine("WinForms minimize/restore exposure path exercised without pointer input.");
                         Console.WriteLine("WinForms highlight mode/color style calls passed.");
+                        Console.WriteLine("WinForms triedron/view-cube position style calls passed.");
                         Console.WriteLine("WinForms viewport lifecycle/render/native-handle smoke passed.");
                         form.Close();
                         break;
@@ -133,6 +134,40 @@ internal static class Program
                 viewport.Engine.SetHoverHighlightColor(Color.DeepSkyBlue);
                 viewport.Engine.SetSelectionHighlightMode(OcctHighlightMode.Wireframe);
                 viewport.Engine.SetHoverHighlightMode(OcctHighlightMode.Wireframe);
+
+                foreach (var corner in Enum.GetValues<OcctCornerPosition>())
+                {
+                    viewport.Engine.SetTriedronPosition(corner);
+                    viewport.Engine.SetViewCubePosition(corner);
+                }
+                viewport.Engine.SetTriedron(new OcctTriedronOptions
+                {
+                    Visible = true,
+                    Position = OcctCornerPosition.RightLower,
+                    Scale = 0.10,
+                    Color = Color.White
+                });
+                viewport.Engine.SetTriedronScale(0.08);
+                viewport.Engine.SetTriedronColor(Color.White);
+                viewport.Engine.SetViewCube(new OcctViewCubeOptions
+                {
+                    Visible = true,
+                    Position = OcctCornerPosition.RightUpper,
+                    SizePixels = 96,
+                    OffsetX = 12,
+                    OffsetY = 12
+                });
+                viewport.Engine.SetViewCubeOptions(new OcctViewCubeOptions
+                {
+                    Visible = true,
+                    Position = OcctCornerPosition.RightUpper,
+                    SizePixels = 90,
+                    OffsetX = 10,
+                    OffsetY = 10
+                });
+                viewport.Engine.SetViewCubeSize(92);
+                viewport.Engine.SetViewCubeOffset(10, 10);
+                viewport.Engine.SetViewCubePosition(OcctCornerPosition.RightUpper);
 
                 viewport.Engine.Fit(box);
                 viewport.Engine.Redraw();

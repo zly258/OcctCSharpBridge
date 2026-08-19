@@ -28,6 +28,52 @@ public sealed class AppearanceContractTests
         RequireEngineMethod(nameof(OcctEngine.SetHoverHighlightStyle), typeof(OcctViewerHighlightStyle));
     }
 
+    [TestMethod]
+    public void ViewerDecorationPositionApisRemainStable()
+    {
+        var corners = EnumValues<OcctCornerPosition>();
+        Assert.AreEqual(0, corners[nameof(OcctCornerPosition.LeftLower)]);
+        Assert.AreEqual(1, corners[nameof(OcctCornerPosition.LeftUpper)]);
+        Assert.AreEqual(2, corners[nameof(OcctCornerPosition.RightLower)]);
+        Assert.AreEqual(3, corners[nameof(OcctCornerPosition.RightUpper)]);
+
+        var triedron = new OcctTriedronOptions
+        {
+            Visible = true,
+            Position = OcctCornerPosition.RightLower,
+            Scale = 0.12,
+            Color = Color.White
+        };
+        Assert.IsTrue(triedron.Visible);
+        Assert.AreEqual(OcctCornerPosition.RightLower, triedron.Position);
+        Assert.AreEqual(0.12, triedron.Scale, 1e-12);
+        Assert.AreEqual(Color.White.ToArgb(), triedron.Color.ToArgb());
+
+        var viewCube = new OcctViewCubeOptions
+        {
+            Visible = true,
+            Position = OcctCornerPosition.LeftUpper,
+            SizePixels = 100,
+            OffsetX = 12,
+            OffsetY = 16
+        };
+        Assert.IsTrue(viewCube.Visible);
+        Assert.AreEqual(OcctCornerPosition.LeftUpper, viewCube.Position);
+        Assert.AreEqual(100, viewCube.SizePixels);
+        Assert.AreEqual(12, viewCube.OffsetX);
+        Assert.AreEqual(16, viewCube.OffsetY);
+
+        RequireEngineMethod(nameof(OcctEngine.SetTriedron), typeof(OcctTriedronOptions));
+        RequireEngineMethod(nameof(OcctEngine.SetTriedronPosition), typeof(OcctCornerPosition));
+        RequireEngineMethod(nameof(OcctEngine.SetTriedronScale), typeof(double));
+        RequireEngineMethod(nameof(OcctEngine.SetTriedronColor), typeof(Color));
+        RequireEngineMethod(nameof(OcctEngine.SetViewCube), typeof(OcctViewCubeOptions));
+        RequireEngineMethod(nameof(OcctEngine.SetViewCubeOptions), typeof(OcctViewCubeOptions));
+        RequireEngineMethod(nameof(OcctEngine.SetViewCubePosition), typeof(OcctCornerPosition));
+        RequireEngineMethod(nameof(OcctEngine.SetViewCubeSize), typeof(int));
+        RequireEngineMethod(nameof(OcctEngine.SetViewCubeOffset), typeof(int), typeof(int));
+    }
+
     private static IReadOnlyDictionary<string, int> EnumValues<TEnum>()
         where TEnum : struct, Enum =>
         typeof(TEnum)
