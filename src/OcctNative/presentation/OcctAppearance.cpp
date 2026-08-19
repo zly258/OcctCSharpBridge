@@ -1,6 +1,8 @@
 #include "presentation/OcctAppearance.h"
 #include "core/OcctInternal.hxx"
 
+#include <AIS_DisplayMode.hxx>
+#include <Aspect_TypeOfHighlightMethod.hxx>
 #include <Aspect_TypeOfLine.hxx>
 #include <Prs3d_Drawer.hxx>
 #include <Prs3d_LineAspect.hxx>
@@ -17,9 +19,15 @@ namespace
 {
     constexpr std::uint32_t LightingOptionsApiVersion = 1;
     constexpr std::uint32_t HighlightOptionsApiVersion = 1;
+    constexpr std::uint32_t HighlightStyleOptionsApiVersion = 1;
     constexpr std::uint32_t AllHighlightUpdateBits =
         OcctViewerHighlightUpdate_Selection |
         OcctViewerHighlightUpdate_Hover;
+    constexpr std::uint32_t AllHighlightStyleUpdateBits =
+        OcctViewerHighlightStyleUpdate_SelectionColor |
+        OcctViewerHighlightStyleUpdate_HoverColor |
+        OcctViewerHighlightStyleUpdate_SelectionMode |
+        OcctViewerHighlightStyleUpdate_HoverMode;
 
     void requireIntensity(double value, const char* name)
     {
@@ -84,6 +92,48 @@ namespace
         if (settings.fillLightEnabled != 0) (void)direction(settings.fillLightDirection);
     }
 
+    void validateHighlightOptions(const OcctViewerHighlightOptions* options)
+    {
+        if (options == nullptr) throw std::invalid_argument("Viewer highlight options are null.");
+        if (options->structSize < sizeof(OcctViewerHighlightOptions) ||
+            options->apiVersion != HighlightOptionsApiVersion)
+        {
+            throw std::invalid_argument("Unsupported viewer highlight options size or version.");
+        }
+        if (options->updateMask == 0 || (options->updateMask & ~AllHighlightUpdateBits) != 0)
+            throw std::invalid_argument("Viewer highlight update mask is invalid.");
+        if ((options->updateMask & OcctViewerHighlightUpdate_Selection) != 0)
+            (void)lightColor(options->selectionColor);
+        if ((options->updateMask & OcctViewerHighlightUpdate_Hover) != 0)
+            (void)lightColor(options->hoverColor);
+    }
+
+    void validateHighlightMode(int mode)
+    {
+        if (mode < OcctHighlight_BoundingBox || mode > OcctHighlight_Shaded)
+            throw std::invalid_argument("Highlight mode is out of range.");
+    }
+
+    void validateHighlightStyleOptions(const OcctViewerHighlightStyleOptions* options)
+    {
+        if (options == nullptr) throw std::invalid_argument("Viewer highlight style options are null.");
+        if (options->structSize < sizeof(OcctViewerHighlightStyleOptions) ||
+            options->apiVersion != HighlightStyleOptionsApiVersion)
+        {
+            throw std::invalid_argument("Unsupported viewer highlight style options size or version.");
+        }
+        if (options->updateMask == 0 || (options->updateMask & ~AllHighlightStyleUpdateBits) != 0)
+            throw std::invalid_argument("Viewer highlight style update mask is invalid.");
+        if ((options->updateMask & OcctViewerHighlightStyleUpdate_SelectionColor) != 0)
+            (void)lightColor(options->selectionColor);
+        if ((options->updateMask & OcctViewerHighlightStyleUpdate_HoverColor) != 0)
+            (void)lightColor(options->hoverColor);
+        if ((options->updateMask & OcctViewerHighlightStyleUpdate_SelectionMode) != 0)
+            validateHighlightMode(options->selectionMode);
+        if ((options->updateMask & OcctViewerHighlightStyleUpdate_HoverMode) != 0)
+            validateHighlightMode(options->hoverMode);
+    }
+
     void applyLighting(Engine* engine, const OcctSceneLightingSettings& settings)
     {
         removeAllLights(engine);
@@ -144,6 +194,60 @@ namespace
         engine->viewerContext.viewer->SetLightOn();
         engine->viewerContext.viewer->UpdateLights();
         engine->requestRedraw();
+    }
+
+    void setHighlightColor(const Handle(Prs3d_Drawer)& style, const Quantity_Color& value)
+    {
+        if (style.IsNull()) throw std::runtime_error("Viewer highlight style is not available.");
+        style->SetColor(value);
+    }
+
+    void setHighlightMode(const Handle(Prs3d_Drawer)& style, int mode)
+    {
+        if (style.IsNull()) throw std::runtime_error("Viewer highlight style is not available.");
+        switch (mode)
+        {
+            case OcctHighlight_BoundingBox:
+                style->SetMethod(Aspect_TOHM_BOUNDBOX);
+                style->SetDisplayMode(-1);
+                break;
+            case OcctHighlight_Wireframe:
+                style->SetMethod(Aspect_TOHM_COLOR);
+                style->SetDisplayMode(AIS_WireFrame);
+                break;
+            case OcctHighlight_Shaded:
+                style->SetMethod(Aspect_TOHM_COLOR);
+                style->SetDisplayMode(AIS_Shaded);
+                break;
+            default:
+                throw std::invalid_argument("Highlight mode is out of range.");
+        }
+    }
+
+    void setSelectionHighlightColor(Engine* engine, const Quantity_Color& value)
+    {
+        setHighlightColor(engine->viewerContext.context->HighlightStyle(Prs3d_TypeOfHighlight_Selected), value);
+        setHighlightColor(engine->viewerContext.context->HighlightStyle(Prs3d_TypeOfHighlight_LocalSelected), value);
+        engine->viewerContext.context->UpdateSelected(Standard_False);
+    }
+
+    void setHoverHighlightColor(Engine* engine, const Quantity_Color& value)
+    {
+        setHighlightColor(engine->viewerContext.context->HighlightStyle(Prs3d_TypeOfHighlight_Dynamic), value);
+        setHighlightColor(engine->viewerContext.context->HighlightStyle(Prs3d_TypeOfHighlight_LocalDynamic), value);
+    }
+
+    void setSelectionHighlightMode(Engine* engine, int mode)
+    {
+        setHighlightMode(engine->viewerContext.context->HighlightStyle(Prs3d_TypeOfHighlight_Selected), mode);
+        setHighlightMode(engine->viewerContext.context->HighlightStyle(Prs3d_TypeOfHighlight_LocalSelected), mode);
+        engine->viewerContext.context->UpdateSelected(Standard_False);
+    }
+
+    void setHoverHighlightMode(Engine* engine, int mode)
+    {
+        setHighlightMode(engine->viewerContext.context->HighlightStyle(Prs3d_TypeOfHighlight_Dynamic), mode);
+        setHighlightMode(engine->viewerContext.context->HighlightStyle(Prs3d_TypeOfHighlight_LocalDynamic), mode);
     }
 
     Aspect_TypeOfLine standardLineType(int lineStyle)
@@ -219,28 +323,31 @@ extern "C"
         Engine* engine = reinterpret_cast<Engine*>(handle);
         return executeAppearanceStatus(engine, [&]
         {
-            if (options == nullptr) throw std::invalid_argument("Viewer highlight options are null.");
-            if (options->structSize < sizeof(OcctViewerHighlightOptions) ||
-                options->apiVersion != HighlightOptionsApiVersion)
-            {
-                throw std::invalid_argument("Unsupported viewer highlight options size or version.");
-            }
-            if (options->updateMask == 0 || (options->updateMask & ~AllHighlightUpdateBits) != 0)
-                throw std::invalid_argument("Viewer highlight update mask is invalid.");
-
+            validateHighlightOptions(options);
             if ((options->updateMask & OcctViewerHighlightUpdate_Selection) != 0)
-            {
-                const Quantity_Color value = lightColor(options->selectionColor);
-                engine->viewerContext.context->HighlightStyle(Prs3d_TypeOfHighlight_Selected)->SetColor(value);
-                engine->viewerContext.context->HighlightStyle(Prs3d_TypeOfHighlight_LocalSelected)->SetColor(value);
-                engine->viewerContext.context->UpdateSelected(Standard_False);
-            }
+                setSelectionHighlightColor(engine, lightColor(options->selectionColor));
             if ((options->updateMask & OcctViewerHighlightUpdate_Hover) != 0)
-            {
-                const Quantity_Color value = lightColor(options->hoverColor);
-                engine->viewerContext.context->HighlightStyle(Prs3d_TypeOfHighlight_Dynamic)->SetColor(value);
-                engine->viewerContext.context->HighlightStyle(Prs3d_TypeOfHighlight_LocalDynamic)->SetColor(value);
-            }
+                setHoverHighlightColor(engine, lightColor(options->hoverColor));
+            engine->requestRedraw();
+        });
+    }
+
+    OcctStatus occt_engine_highlight_style_set(
+        OcctEngineHandle handle,
+        const OcctViewerHighlightStyleOptions* options)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeAppearanceStatus(engine, [&]
+        {
+            validateHighlightStyleOptions(options);
+            if ((options->updateMask & OcctViewerHighlightStyleUpdate_SelectionColor) != 0)
+                setSelectionHighlightColor(engine, lightColor(options->selectionColor));
+            if ((options->updateMask & OcctViewerHighlightStyleUpdate_HoverColor) != 0)
+                setHoverHighlightColor(engine, lightColor(options->hoverColor));
+            if ((options->updateMask & OcctViewerHighlightStyleUpdate_SelectionMode) != 0)
+                setSelectionHighlightMode(engine, options->selectionMode);
+            if ((options->updateMask & OcctViewerHighlightStyleUpdate_HoverMode) != 0)
+                setHoverHighlightMode(engine, options->hoverMode);
             engine->requestRedraw();
         });
     }

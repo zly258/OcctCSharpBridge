@@ -10,6 +10,22 @@ internal enum NativeViewerHighlightUpdateMask : uint
     Hover = 1u << 1
 }
 
+[Flags]
+internal enum NativeViewerHighlightStyleUpdateMask : uint
+{
+    SelectionColor = 1u << 0,
+    HoverColor = 1u << 1,
+    SelectionMode = 1u << 2,
+    HoverMode = 1u << 3
+}
+
+internal enum NativeHighlightMode
+{
+    BoundingBox = 0,
+    Wireframe = 1,
+    Shaded = 2
+}
+
 internal static partial class AppearanceNativeMethods
 {
     private const string LibraryName = "OcctNative";
@@ -59,6 +75,18 @@ internal static partial class AppearanceNativeMethods
         internal NativeColorRgb HoverColor;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct NativeViewerHighlightStyleOptions
+    {
+        internal uint StructSize;
+        internal uint ApiVersion;
+        internal NativeViewerHighlightStyleUpdateMask UpdateMask;
+        internal NativeColorRgb SelectionColor;
+        internal NativeColorRgb HoverColor;
+        internal NativeHighlightMode SelectionMode;
+        internal NativeHighlightMode HoverMode;
+    }
+
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_engine_scene_lighting_set(
@@ -75,6 +103,12 @@ internal static partial class AppearanceNativeMethods
     internal static partial OcctStatus occt_engine_highlight_colors_set(
         OcctEngineSafeHandle handle,
         in NativeViewerHighlightOptions options);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_highlight_style_set(
+        OcctEngineSafeHandle handle,
+        in NativeViewerHighlightStyleOptions options);
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]

@@ -11,6 +11,17 @@ public enum OcctLineStyle
     Center = 4
 }
 
+public enum OcctHighlightMode
+{
+    BoundingBox = 0,
+    Wireframe = 1,
+    Shaded = 2
+}
+
+public readonly record struct OcctViewerHighlightStyle(
+    OcctHighlightMode Mode,
+    Color Color);
+
 public enum OcctLightingPreset
 {
     Neutral = 0,

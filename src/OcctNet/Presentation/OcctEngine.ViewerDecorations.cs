@@ -33,11 +33,25 @@ public sealed partial class OcctEngine
         return (OcctZLayer)layer;
     }
 
+    public void SetTriedronPosition(OcctCornerPosition position)
+    {
+        ValidateCornerPosition(position, nameof(position));
+        SetTriedron(new OcctTriedronOptions { Position = position });
+    }
+
+    public void SetTriedronScale(double scale)
+    {
+        OcctGuard.Positive(scale, nameof(scale));
+        SetTriedron(new OcctTriedronOptions { Scale = scale });
+    }
+
+    public void SetTriedronColor(Color color) =>
+        SetTriedron(new OcctTriedronOptions { Color = color });
+
     public void SetTriedron(OcctTriedronOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        if (!Enum.IsDefined(options.Position))
-            throw new ArgumentOutOfRangeException(nameof(options), "Triedron position is invalid.");
+        ValidateCornerPosition(options.Position, nameof(options));
         OcctGuard.Positive(options.Scale, nameof(options.Scale));
 
         var native = new NativeViewerTriedronOptionsV1
@@ -53,15 +67,13 @@ public sealed partial class OcctEngine
         CheckDecorationsStatus(ViewerDecorationsNativeMethods.occt_engine_triedron_update(_handle, in native));
     }
 
-    public void SetViewCubeOptions(OcctViewCubeOptions options)
+    public void SetViewCube(OcctViewCubeOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        if (!Enum.IsDefined(options.Position))
-            throw new ArgumentOutOfRangeException(nameof(options), "View cube position is invalid.");
-        if (options.SizePixels <= 0 || options.SizePixels > 4096)
-            throw new ArgumentOutOfRangeException(nameof(options), "View cube size must be between 1 and 4096 pixels.");
-        if (options.OffsetX < 0 || options.OffsetY < 0)
-            throw new ArgumentOutOfRangeException(nameof(options), "View cube offsets must not be negative.");
+        ValidateCornerPosition(options.Position, nameof(options));
+        ValidateViewCubeSize(options.SizePixels, nameof(options));
+        ValidateViewCubeOffset(options.OffsetX, nameof(options));
+        ValidateViewCubeOffset(options.OffsetY, nameof(options));
 
         var native = new NativeViewerViewCubeOptionsV1
         {
@@ -75,6 +87,27 @@ public sealed partial class OcctEngine
         };
         EnsureInitialized();
         CheckDecorationsStatus(ViewerDecorationsNativeMethods.occt_engine_view_cube_update(_handle, in native));
+    }
+
+    public void SetViewCubeOptions(OcctViewCubeOptions options) => SetViewCube(options);
+
+    public void SetViewCubePosition(OcctCornerPosition position)
+    {
+        ValidateCornerPosition(position, nameof(position));
+        SetViewCube(new OcctViewCubeOptions { Position = position });
+    }
+
+    public void SetViewCubeSize(int sizePixels)
+    {
+        ValidateViewCubeSize(sizePixels, nameof(sizePixels));
+        SetViewCube(new OcctViewCubeOptions { SizePixels = sizePixels });
+    }
+
+    public void SetViewCubeOffset(int offsetX, int offsetY)
+    {
+        ValidateViewCubeOffset(offsetX, nameof(offsetX));
+        ValidateViewCubeOffset(offsetY, nameof(offsetY));
+        SetViewCube(new OcctViewCubeOptions { OffsetX = offsetX, OffsetY = offsetY });
     }
 
     public void SetFaceBoundaryStyle(OcctShape shape, bool visible, Color color, double width = 1.0)
@@ -162,6 +195,23 @@ public sealed partial class OcctEngine
     private static void ValidateZLayer(OcctZLayer layer)
     {
         if (!Enum.IsDefined(layer)) throw new ArgumentOutOfRangeException(nameof(layer));
+    }
+
+    private static void ValidateCornerPosition(OcctCornerPosition position, string name)
+    {
+        if (!Enum.IsDefined(position)) throw new ArgumentOutOfRangeException(name, position, "Corner position is out of range.");
+    }
+
+    private static void ValidateViewCubeSize(int sizePixels, string name)
+    {
+        if (sizePixels <= 0 || sizePixels > 4096)
+            throw new ArgumentOutOfRangeException(name, sizePixels, "View cube size must be between 1 and 4096 pixels.");
+    }
+
+    private static void ValidateViewCubeOffset(int offset, string name)
+    {
+        if (offset < 0)
+            throw new ArgumentOutOfRangeException(name, offset, "View cube offsets must not be negative.");
     }
 
     private void CheckDecorationsStatus(OcctStatus status)
