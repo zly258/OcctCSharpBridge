@@ -116,12 +116,15 @@ For complete MSBuild references, deployment, source identity validation, and upg
 
 See [Stable Support and Compatibility](docs/en-US/10_Stable-Support-and-Compatibility.md).
 
-## Branch responsibilities
+## Demo previews
 
-- `main` — stable source and official Windows Release SDK producer.
-- `main-dev` — Bridge development and Stable candidate validation.
-- `demo` — formal SDK consumer.
-- `demo-dev` — development consumer.
-- `website` — project website.
+The unified [demo](https://github.com/zly258/OcctCSharpBridge/tree/demo) branch provides WinForms, WPF and Avalonia reference hosts on Windows, plus an Avalonia host on Linux. Canonical full-resolution screenshots live under `assets/previews/`.
+
+| Host | Screenshot |
+| --- | --- |
+| WinForms (Windows) | ![WinForms demo](assets/previews/winform-demo-en.png) |
+| WPF (Windows) | ![WPF demo](assets/previews/wpf-demo-en.png) |
+| Avalonia (Windows) | ![Avalonia demo](assets/previews/avalonia-win-demo-en.png) |
+| Avalonia (Linux) | ![Avalonia Linux demo](assets/previews/avalonia-linux-demo-en.png) |
 
 Generated `dist/`, `artifacts/`, Portable SDKs, and release archives are build artifacts and are not committed to source branches.

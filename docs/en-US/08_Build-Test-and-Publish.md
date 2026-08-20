@@ -155,13 +155,11 @@ OcctCSharpBridge-<version>-win-x64-portable/
 ## 8. Formal release sequence
 
 ```text
-main-dev Stable candidate
+main stable candidate
         ↓
 publish.ps1 -Zip
         ↓
 0 warnings / 0 test failures / 0 smoke failures
-        ↓
-promote the exact validated commit to main
         ↓
 run publish.ps1 -Zip again on main
         ↓

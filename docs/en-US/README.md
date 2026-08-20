@@ -16,7 +16,7 @@ This documentation describes the supported Bridge 3 ABI5-only architecture, SDK 
 - Source-build support: Windows x64 / Linux x64
 - Linux UI: Avalonia, source build only; no official prebuilt asset
 
-`main` / `main-dev` are the Bridge source lines. `demo` / `demo-dev` are reference SDK consumers rather than a second Bridge implementation.
+`main` is the formal SDK source line. `demo` is the reference SDK consumer rather than a second Bridge implementation; the `website` branch hosts the project site.
 
 ## Guide
 
@@ -30,12 +30,4 @@ This documentation describes the supported Bridge 3 ABI5-only architecture, SDK 
 8. [Build, Test and Publish](08_Build-Test-and-Publish.md) — fast consumer artifacts, Windows Stable gate, and Linux source validation.
 9. [Third-party SDK Consumption](09_Third-Party-SDK-Consumption.md) — external Core, WinForms, WPF and Avalonia integration, deployment, and upgrades.
 10. [Stable Support and Compatibility](10_Stable-Support-and-Compatibility.md) — platform, .NET, ABI, threading, lifetime, unit, tolerance, and version compatibility boundaries.
-11. [Bridge 3 ABI5 Migration](bridge-migration.md) — migration from older Bridge contracts.
-
-The repository-root [CHANGELOG](../../CHANGELOG.md) records release-line changes.
-
-## Reading path
-
-Application teams: **01 → 09 → 10 → 07**.
-
-Bridge maintainers should additionally read **02, 03 and 08** and run `tools/validate-stable-release.ps1` for a Stable candidate.
+11. [Demo previews](../../README.md#demo-previews) — canonical screenshots of the unified demo branch.

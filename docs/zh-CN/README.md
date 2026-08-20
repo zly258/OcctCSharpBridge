@@ -16,7 +16,7 @@
 - 源码构建支持：Windows x64 / Linux x64
 - Linux UI：Avalonia（源码构建，不发布官方预编译包）
 
-`main` / `main-dev` 是 Bridge SDK 源码线；`demo` / `demo-dev` 是参考 SDK Consumer，不维护第二套 Bridge 实现。
+`main` 是正式 SDK 源码线；`demo` 是参考 SDK Consumer，不维护第二套 Bridge 实现；`website` 分支承载项目官网。
 
 ## 文档目录
 
@@ -30,12 +30,4 @@
 8. [构建、测试与发布](08_构建测试与发布.md) — Consumer 快路径、Windows Stable Gate 与 Linux 源码验证。
 9. [第三方项目消费 SDK](09_第三方项目消费SDK.md) — Core、WinForms、WPF、Avalonia 的第三方接入、部署和升级。
 10. [Stable 支持与兼容策略](10_稳定版支持与兼容策略.md) — 平台、.NET、ABI、线程、生命周期、单位、容差与版本兼容边界。
-11. [Bridge 3 ABI5 迁移](bridge-migration.md) — 从旧 Bridge 契约迁移。
-
-根目录 [CHANGELOG](../../CHANGELOG.md) 记录正式版本线变更。
-
-## 阅读建议
-
-第三方应用团队：**01 → 09 → 10 → 07**。
-
-Bridge 维护者：在上述基础上阅读 **02、03、08**，并在 Stable 候选上运行 `tools/validate-stable-release.ps1`。
+11. [Demo 预览](../../README.md#demo-previews) — 统一 demo 分支的规范截图。

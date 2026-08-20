@@ -2,6 +2,7 @@
 build/
 artifacts/
 publish/
+.*/
 .cache/
 [Bb]in/
 [Oo]bj/
@@ -28,6 +29,9 @@ coverage*.json
 *.bak
 *.old
 *.orig
+
+# WorkBuddy project metadata
+.workbuddy/
 
 # Visual Studio / MSBuild
 .vs/
@@ -89,6 +93,9 @@ Makefile
 *.glb
 *.png
 *.bmp
+
+# Keep canonical Demo preview screenshots tracked
+!assets/previews/*.png
 
 # OS files
 .DS_Store

@@ -135,12 +135,15 @@ model.ExportStep(cut.Shape, "plate.step");
 
 详细规则见：[稳定版支持与兼容策略](docs/zh-CN/10_稳定版支持与兼容策略.md)。
 
-## 分支职责
+## Demo 预览
 
-- `main`：正式稳定源码与 Windows Release SDK 生产分支；
-- `main-dev`：Bridge 开发与 Stable 候选验证；
-- `demo`：正式 SDK Consumer；
-- `demo-dev`：开发 Consumer；
-- `website`：项目官网。
+统一 [demo](https://github.com/zly258/OcctCSharpBridge/tree/demo) 分支提供 Windows 上的 WinForms、WPF、Avalonia 参考 Host，以及 Linux 上的 Avalonia Host。规范全分辨率截图存放于 `assets/previews/`。
+
+| Host | 截图 |
+| --- | --- |
+| WinForms (Windows) | ![WinForms demo](assets/previews/winform-demo-zh.png) |
+| WPF (Windows) | ![WPF demo](assets/previews/wpf-demo-zh.png) |
+| Avalonia (Windows) | ![Avalonia demo](assets/previews/avalonia-win-demo-zh.png) |
+| Avalonia (Linux) | ![Avalonia Linux demo](assets/previews/avalonia-linux-demo-zh.png) |
 
 生成的 `dist/`、`artifacts/`、Portable SDK 和发布压缩包不提交到源码分支。
