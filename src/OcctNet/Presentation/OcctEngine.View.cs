@@ -98,10 +98,13 @@ public sealed partial class OcctEngine
             NativeViewerViewStateUpdateMask.TriedronVisible,
             triedronVisible: visible));
 
-    public void SetViewCubeVisible(bool visible) =>
+    public void SetViewCubeVisible(bool visible)
+    {
+        _viewCubeOptions = _viewCubeOptions with { Visible = visible };
         UpdateViewState(ViewStateOptions(
             NativeViewerViewStateUpdateMask.ViewCubeVisible,
             viewCubeVisible: visible));
+    }
 
     public void SetViewCubeLanguage(OcctViewCubeLanguage language)
     {
