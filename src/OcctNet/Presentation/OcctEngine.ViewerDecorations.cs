@@ -5,6 +5,11 @@ namespace OcctNet;
 
 public sealed partial class OcctEngine
 {
+    // Tracked ViewCube state so the individual SetViewCube* APIs read-modify-write
+    // instead of sending a partial OcctViewCubeOptions (which reset every other
+    // field back to its default value on the native side).
+    private OcctViewCubeOptions _viewCubeOptions = new();
+
     public void SetZLayer(IOcctObject value, OcctZLayer layer)
     {
         EnsureObject(value);
@@ -75,6 +80,8 @@ public sealed partial class OcctEngine
         ValidateViewCubeOffset(options.OffsetX, nameof(options));
         ValidateViewCubeOffset(options.OffsetY, nameof(options));
 
+        _viewCubeOptions = options;
+
         var native = new NativeViewerViewCubeOptionsV1
         {
             StructSize = (uint)Marshal.SizeOf<NativeViewerViewCubeOptionsV1>(),
@@ -94,20 +101,20 @@ public sealed partial class OcctEngine
     public void SetViewCubePosition(OcctCornerPosition position)
     {
         ValidateCornerPosition(position, nameof(position));
-        SetViewCube(new OcctViewCubeOptions { Position = position });
+        SetViewCube(_viewCubeOptions with { Position = position });
     }
 
     public void SetViewCubeSize(int sizePixels)
     {
         ValidateViewCubeSize(sizePixels, nameof(sizePixels));
-        SetViewCube(new OcctViewCubeOptions { SizePixels = sizePixels });
+        SetViewCube(_viewCubeOptions with { SizePixels = sizePixels });
     }
 
     public void SetViewCubeOffset(int offsetX, int offsetY)
     {
         ValidateViewCubeOffset(offsetX, nameof(offsetX));
         ValidateViewCubeOffset(offsetY, nameof(offsetY));
-        SetViewCube(new OcctViewCubeOptions { OffsetX = offsetX, OffsetY = offsetY });
+        SetViewCube(_viewCubeOptions with { OffsetX = offsetX, OffsetY = offsetY });
     }
 
     public void SetFaceBoundaryStyle(OcctShape shape, bool visible, Color color, double width = 1.0)
