@@ -5,7 +5,7 @@
 | Windows x64 | yes | yes | yes | yes |
 | Linux x64 | yes | no | no | yes |
 
-The Demo is a Binary/Portable SDK consumer. `main` / `main-dev` own Bridge implementation and SDK production; Demo never vendors Bridge Native/Core source.
+The Demo is a Binary/Portable SDK consumer. `main` / `main` own Bridge implementation and SDK production; Demo never vendors Bridge Native/Core source.
 
 | Capability | Windows x64 | Linux x64 |
 |---|---|---|
@@ -91,7 +91,7 @@ Linux publishes Avalonia and merges the matching Bridge Portable Runtime/resourc
 
 ## Branch use
 
-- `demo-dev` defaults to `main-dev` while validating unreleased Bridge changes.
+- `demo` defaults to `main` while validating unreleased Bridge changes.
 - formal `demo` should consume formal `main` artifacts.
 - WinForms/WPF remain Windows-only.
 - Avalonia is the Linux UI host.

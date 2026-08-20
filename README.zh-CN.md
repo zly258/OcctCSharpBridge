@@ -1,8 +1,8 @@
 # OcctCSharpBridge Demo 开发分支
 
-[English](README.md) · [Bridge Development SDK](https://github.com/zly258/OcctCSharpBridge/tree/main-dev) · [Bridge 第三方 SDK 接入说明](https://github.com/zly258/OcctCSharpBridge/blob/main-dev/docs/zh-CN/09_%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E6%B6%88%E8%B4%B9SDK.md)
+[English](README.md) · [Bridge Development SDK](https://github.com/zly258/OcctCSharpBridge/tree/main) · [Bridge 第三方 SDK 接入说明](https://github.com/zly258/OcctCSharpBridge/blob/main/docs/zh-CN/09_%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E6%B6%88%E8%B4%B9SDK.md)
 
-`demo-dev` 是 Bridge Binary/Portable SDK 的开发 Consumer，默认跟随 `main-dev`。它不维护 `OcctNative` / `OcctNet*` 实现源码，也不直接调用 `occt_*` Native ABI。
+`demo` 是 Bridge Binary/Portable SDK 的开发 Consumer，默认跟随 `main`。它不维护 `OcctNative` / `OcctNet*` 实现源码，也不直接调用 `occt_*` Native ABI。
 
 ```text
 OcctDemo.Common
@@ -62,7 +62,7 @@ Demo 本地 dist Cache
 - WinForms/WPF/Avalonia Viewport Smoke；
 - Linux Avalonia 图形 Smoke。
 
-完整 QA 属于 Bridge `main-dev/main` 自己的 `sdk` / `publish` 流程，不属于 Consumer 刷新 SDK 的职责。
+完整 QA 属于 Bridge `main/main` 自己的 `sdk` / `publish` 流程，不属于 Consumer 刷新 SDK 的职责。
 
 Windows：
 
@@ -79,7 +79,7 @@ Windows：
 显式来源：
 
 ```powershell
-.\sync.ps1 -SourceBranch main-dev -ForceRebuild
+.\sync.ps1 -SourceBranch main -ForceRebuild
 ```
 
 Linux：
@@ -223,8 +223,8 @@ Demo 只允许通过 Managed SDK 使用 Bridge：
 
 ## 分支职责
 
-- `main-dev`：Bridge 开发源码与候选 SDK；
-- `demo-dev`：开发 Consumer，默认消费 `main-dev`；
+- `main`：Bridge 开发源码与候选 SDK；
+- `demo`：开发 Consumer，默认消费 `main`；
 - `main`：正式 Bridge SDK；
 - `demo`：正式 Consumer，应消费正式 `main` 制品；
 - `website`：双语官网。

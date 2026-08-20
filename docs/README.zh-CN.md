@@ -1,6 +1,6 @@
 # Demo 分支说明
 
-`demo` / `demo-dev` 是 OcctCSharpBridge Binary/Portable SDK 的参考 Consumer，不包含 Bridge 实现源码。
+`demo` / `demo` 是 OcctCSharpBridge Binary/Portable SDK 的参考 Consumer，不包含 Bridge 实现源码。
 
 ## 项目
 
@@ -59,4 +59,4 @@ Windows `publish.ps1 all Release` 默认生成统一包：`apps/` 下放三个�
 
 Linux 发布 Avalonia，并合并匹配的 Bridge Portable Runtime/Resources。Linux Native 兼容范围仍由 OCCT 与 `libOcctNative.so` 的 glibc/libstdc++ ABI 构建基线决定。
 
-第三方项目的工程结构、引用、部署与版本锁定应以正式 Bridge `main` / `main-dev` 文档中的 `09_第三方项目消费SDK.md` 为准。
+第三方项目的工程结构、引用、部署与版本锁定应以正式 Bridge `main` / `main` 文档中的 `09_第三方项目消费SDK.md` 为准。

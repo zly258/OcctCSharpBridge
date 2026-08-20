@@ -1,8 +1,8 @@
 # OcctCSharpBridge Demo Development
 
-[简体中文](README.zh-CN.md) · [Bridge Development SDK](https://github.com/zly258/OcctCSharpBridge/tree/main-dev) · [Third-party SDK Guide](https://github.com/zly258/OcctCSharpBridge/blob/main-dev/docs/en-US/09_Third-Party-SDK-Consumption.md)
+[简体中文](README.zh-CN.md) · [Bridge Development SDK](https://github.com/zly258/OcctCSharpBridge/tree/main) · [Third-party SDK Guide](https://github.com/zly258/OcctCSharpBridge/blob/main/docs/en-US/09_Third-Party-SDK-Consumption.md)
 
-`demo-dev` is a development consumer of the Bridge Binary/Portable SDK and follows `main-dev` by default. It does not contain `OcctNative` / `OcctNet*` implementation source and does not call the native `occt_*` ABI directly.
+`demo` is a development consumer of the Bridge Binary/Portable SDK and follows `main` by default. It does not contain `OcctNative` / `OcctNet*` implementation source and does not call the native `occt_*` ABI directly.
 
 ```text
 OcctDemo.Common
@@ -61,14 +61,14 @@ Synchronization intentionally does **not** run:
 - WinForms/WPF/Avalonia viewport smoke;
 - Linux graphical Avalonia smoke.
 
-Full QA belongs to Bridge `main-dev/main` `sdk` / `publish` workflows, not to downstream SDK refreshes.
+Full QA belongs to Bridge `main/main` `sdk` / `publish` workflows, not to downstream SDK refreshes.
 
 Windows:
 
 ```powershell
 .\sync.ps1
 .\sync.ps1 -ForceRebuild
-.\sync.ps1 -SourceBranch main-dev -ForceRebuild
+.\sync.ps1 -SourceBranch main -ForceRebuild
 ```
 
 Linux:
@@ -209,8 +209,8 @@ The Demo may use Bridge only through its managed SDK:
 
 ## Branch responsibilities
 
-- `main-dev` — Bridge development source and candidate SDK;
-- `demo-dev` — development consumer, defaults to `main-dev`;
+- `main` — Bridge development source and candidate SDK;
+- `demo` — development consumer, defaults to `main`;
 - `main` — formal Bridge SDK;
 - `demo` — formal consumer and should consume formal `main` artifacts;
 - `website` — bilingual website.

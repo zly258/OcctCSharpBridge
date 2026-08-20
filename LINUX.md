@@ -4,7 +4,7 @@ Linux x64 builds and publishes only `OcctDemo.Common` and `OcctDemo.Avalonia`. W
 
 ## SDK synchronization
 
-Development `demo-dev` follows `main-dev` by default:
+Development `demo` follows `main` by default:
 
 ```bash
 ./sync.sh
@@ -28,7 +28,7 @@ Bridge build.sh dist Release
 
 It does not run Bridge ManagedTests, Core Smoke or graphical Avalonia smoke. Those belong to Bridge release validation.
 
-A formal Demo should consume formal `main` artifacts; while working on `demo-dev`, this can be tested explicitly with:
+A formal Demo should consume formal `main` artifacts; while working on `demo`, this can be tested explicitly with:
 
 ```bash
 ./sync.sh --source main --force-rebuild

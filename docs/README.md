@@ -1,6 +1,6 @@
 # Unified Demo Branch Notes
 
-`demo` / `demo-dev` are reference consumers of the OcctCSharpBridge Binary/Portable SDK. They do not contain Bridge implementation source.
+`demo` / `demo` are reference consumers of the OcctCSharpBridge Binary/Portable SDK. They do not contain Bridge implementation source.
 
 ## Projects
 
@@ -59,4 +59,4 @@ Windows `publish.ps1 all Release` defaults to a unified package with nested `app
 
 Linux publishes Avalonia and merges the matching Bridge Portable Runtime/resources. Linux native compatibility still depends on the glibc/libstdc++ ABI baseline used to build OCCT and `libOcctNative.so`.
 
-For third-party project architecture and deployment guidance, use the formal Bridge documentation under `main` / `main-dev`, especially `docs/*/09_Third-Party-SDK-Consumption`.
+For third-party project architecture and deployment guidance, use the formal Bridge documentation under `main` / `main`, especially `docs/*/09_Third-Party-SDK-Consumption`.

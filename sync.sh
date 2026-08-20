@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REMOTE="origin"
-SOURCE_BRANCH="main-dev"
+SOURCE_BRANCH="main"
 SDK_ROOT=""
 PORTABLE_ROOT=""
 FORCE_REBUILD=false
@@ -14,7 +14,7 @@ Usage: ./sync.sh [options]
 
 Options:
   --remote <name>              Git remote (default: origin)
-  --source <branch>            Bridge SDK source branch (default: main-dev)
+  --source <branch>            Bridge SDK source branch (default: main)
   --sdk-root <directory>       Use an already generated linux-x64 Binary SDK
   --portable-root <directory>  Matching Portable SDK (required with --sdk-root)
   --force-rebuild              Ignore the local sourceCommit cache and rebuild dist

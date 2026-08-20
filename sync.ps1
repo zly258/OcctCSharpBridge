@@ -1,6 +1,6 @@
 param(
     [string]$Remote = "origin",
-    [string]$SourceBranch = "main-dev",
+    [string]$SourceBranch = "main",
     [string]$OcctRoot = $env:OCCT_ROOT,
     [string]$SdkRoot = "",
     [string]$PortableRoot = "",
