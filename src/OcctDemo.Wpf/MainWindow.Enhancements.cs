@@ -26,16 +26,8 @@ public partial class MainWindow
                 (_, _) => RunModelingTest(Session.RunViewerProjectionTest)));
         }
 
-        var view = MainMenu.Items
-            .OfType<Controls.MenuItem>()
-            .FirstOrDefault(item => Equals(item.Header, MenuHeader("Menu.View")));
-        if (view is not null)
-        {
-            view.Items.Add(new Controls.Separator());
-            view.Items.Add(MenuItem(
-                Local("Zoom Sensitivity...", "缩放灵敏度..."),
-                (_, _) => SetZoomSensitivity()));
-        }
+        // The View menu stays as built by BuildViewMenu() — fully flattened,
+        // with the "View Settings..." entry at the end.
     }
 
     private void RunModelingTest(Func<DemoCommandResult> test)

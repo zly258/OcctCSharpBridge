@@ -28,16 +28,8 @@ public sealed partial class MainForm
                 (_, _) => RunModelingTest(Session.RunViewerProjectionTest)));
         }
 
-        var view = _menu.Items
-            .OfType<ToolStripMenuItem>()
-            .FirstOrDefault(item => item.Text == DemoLocalization.Text("Menu.View"));
-        if (view is not null)
-        {
-            view.DropDownItems.Add(new ToolStripSeparator());
-            view.DropDownItems.Add(MenuItem(
-                Local("Zoom Sensitivity...", "缩放灵敏度..."),
-                (_, _) => SetZoomSensitivity()));
-        }
+        // The View menu stays as built by BuildViewMenu() — fully flattened,
+        // with the "View Settings..." entry at the end.
     }
 
     private void SelectionComboSelectedIndexChanged(object? sender, EventArgs e)

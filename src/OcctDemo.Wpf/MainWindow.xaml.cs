@@ -100,7 +100,9 @@ public partial class MainWindow : System.Windows.Window
         {
             engine.SetGradientBackground(DrawingColor.White, DrawingColor.FromArgb(202, 221, 238));
             engine.SetTriedronVisible(true);
-            engine.SetViewCubeVisible(true);
+            // Apply the full ViewCube options so the scene starts in sync with the
+            // values shown in the View Settings window (size/offset/position).
+            ApplyViewCubeOptions(refresh: false);
             ApplyViewCubeLanguage();
             engine.SetAntialiasing(true);
             engine.SetFaceBoundariesVisible(true, applyExisting: true);

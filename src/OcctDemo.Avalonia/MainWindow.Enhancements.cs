@@ -1,6 +1,7 @@
-﻿using System.Globalization;
+using System.Globalization;
 using Avalonia.Controls;
 using OcctDemo.Common;
+using OcctNet;
 using MenuItem = Avalonia.Controls.MenuItem;
 
 namespace OcctDemo.Avalonia;
@@ -30,18 +31,8 @@ public sealed partial class MainWindow
             samples.ItemsSource = items;
         }
 
-        var view = rootItems
-            .OfType<MenuItem>()
-            .FirstOrDefault(item => Equals(item.Header, MenuHeader("Menu.View")));
-        if (view is not null)
-        {
-            var items = (view.ItemsSource as IEnumerable<object>)?.ToList() ?? new List<object>();
-            items.Add(new Separator());
-            items.Add(AsyncMenuItem(
-                Local("Zoom Sensitivity...", "缩放灵敏度..."),
-                SetZoomSensitivityAsync));
-            view.ItemsSource = items;
-        }
+        // The View menu stays as built by BuildViewMenu() — fully flattened,
+        // with the "View Settings..." entry at the end.
     }
 
     private void RunModelingTest(Func<DemoCommandResult> test)

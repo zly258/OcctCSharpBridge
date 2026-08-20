@@ -53,20 +53,16 @@ public sealed partial class MainWindow
         AddCommands(drawItems, DemoCommandId.Rectangle, DemoCommandId.Polygon, DemoCommandId.Bezier, DemoCommandId.BSpline);
         var draw = Menu(MenuHeader("Menu.Draw"), drawItems.ToArray());
 
-        var primitives = new List<object>();
-        AddCommands(primitives, DemoCommandId.Box, DemoCommandId.Cylinder, DemoCommandId.Frustum, DemoCommandId.Cone,
+        var solidItems = new List<object>();
+        AddCommands(solidItems, DemoCommandId.Box, DemoCommandId.Cylinder, DemoCommandId.Frustum, DemoCommandId.Cone,
             DemoCommandId.Torus, DemoCommandId.Sphere, DemoCommandId.Wedge, DemoCommandId.Pipe);
-        var features = new List<object>();
-        AddCommands(features, DemoCommandId.Extrude, DemoCommandId.Revolve, DemoCommandId.Sweep, DemoCommandId.Loft);
-        var booleans = new List<object>();
-        AddCommands(booleans, DemoCommandId.Fuse, DemoCommandId.Cut, DemoCommandId.Common, DemoCommandId.Section);
-        var details = new List<object>();
-        AddCommands(details, DemoCommandId.Fillet, DemoCommandId.Chamfer, DemoCommandId.Offset, DemoCommandId.Shell, DemoCommandId.Drill);
-        var solid = Menu(MenuHeader("Menu.Solid"),
-            Menu(MenuHeader("Menu.Primitives"), primitives.ToArray()),
-            Menu(MenuHeader("Menu.Features"), features.ToArray()),
-            Menu(MenuHeader("Menu.Boolean"), booleans.ToArray()),
-            Menu(MenuHeader("Menu.Details"), details.ToArray()));
+        solidItems.Add(new Separator());
+        AddCommands(solidItems, DemoCommandId.Extrude, DemoCommandId.Revolve, DemoCommandId.Sweep, DemoCommandId.Loft);
+        solidItems.Add(new Separator());
+        AddCommands(solidItems, DemoCommandId.Fuse, DemoCommandId.Cut, DemoCommandId.Common, DemoCommandId.Section);
+        solidItems.Add(new Separator());
+        AddCommands(solidItems, DemoCommandId.Fillet, DemoCommandId.Chamfer, DemoCommandId.Offset, DemoCommandId.Shell, DemoCommandId.Drill);
+        var solid = Menu(MenuHeader("Menu.Solid"), solidItems.ToArray());
 
         var annotateItems = new List<object>();
         AddCommands(annotateItems, DemoCommandId.Text);
@@ -106,142 +102,33 @@ public sealed partial class MainWindow
 
     private MenuItem BuildViewMenu()
     {
-        var display = Menu(MenuHeader("Menu.Display"),
-            MenuItem(DemoLocalization.Text("Menu.Shaded"), () => Session.Engine.SetDisplayMode(OcctDisplayMode.Shaded)),
-            CheckMenuItem(DemoLocalization.Text("Menu.ShadedEdges"), true,
-                item => ExecuteSafe(() => Session.Engine.SetFaceBoundariesVisible(item.IsChecked))),
-            MenuItem(DemoLocalization.Text("Menu.Wireframe"), () => Session.Engine.SetDisplayMode(OcctDisplayMode.Wireframe)),
-            CheckMenuItem(DemoLocalization.Text("Menu.Hlr"), false,
-                item => ExecuteSafe(() => Session.Engine.SetComputedHlr(item.IsChecked))),
-            CheckMenuItem(DemoLocalization.Text("Menu.Antialiasing"), true,
-                item => ExecuteSafe(() => Session.Engine.SetAntialiasing(item.IsChecked))),
-            CheckMenuItem(DemoLocalization.Text("Menu.Triedron"), true,
-                item => ExecuteSafe(() => Session.Engine.SetTriedronVisible(item.IsChecked))),
-            CheckMenuItem(DemoLocalization.Text("Menu.ViewCube"), true,
-                item => ExecuteSafe(() => Session.Engine.SetViewCubeVisible(item.IsChecked))));
-
-        var standard = Menu(MenuHeader("Menu.StandardViews"),
-            MenuItem(DemoLocalization.Text("Menu.Front"), () => Session.Engine.SetView(OcctViewOrientation.Front), Shortcut(Key.D1)),
-            MenuItem(DemoLocalization.Text("Menu.Back"), () => Session.Engine.SetView(OcctViewOrientation.Back)),
-            MenuItem(DemoLocalization.Text("Menu.Left"), () => Session.Engine.SetView(OcctViewOrientation.Left), Shortcut(Key.D2)),
-            MenuItem(DemoLocalization.Text("Menu.Right"), () => Session.Engine.SetView(OcctViewOrientation.Right)),
-            MenuItem(DemoLocalization.Text("Menu.Top"), () => Session.Engine.SetView(OcctViewOrientation.Top), Shortcut(Key.D3)),
+        var items = new List<object>
+        {
+            // Standard views (flattened)
+            MenuItem(DemoLocalization.Text("Menu.Front"),  () => Session.Engine.SetView(OcctViewOrientation.Front),  Shortcut(Key.D1)),
+            MenuItem(DemoLocalization.Text("Menu.Back"),   () => Session.Engine.SetView(OcctViewOrientation.Back)),
+            MenuItem(DemoLocalization.Text("Menu.Left"),   () => Session.Engine.SetView(OcctViewOrientation.Left),   Shortcut(Key.D2)),
+            MenuItem(DemoLocalization.Text("Menu.Right"),  () => Session.Engine.SetView(OcctViewOrientation.Right)),
+            MenuItem(DemoLocalization.Text("Menu.Top"),    () => Session.Engine.SetView(OcctViewOrientation.Top),    Shortcut(Key.D3)),
             MenuItem(DemoLocalization.Text("Menu.Bottom"), () => Session.Engine.SetView(OcctViewOrientation.Bottom)),
             new Separator(),
-            MenuItem(DemoLocalization.Text("Menu.Isometric"), () => Session.Engine.SetView(OcctViewOrientation.Isometric), Shortcut(Key.D0)),
-            MenuItem(DemoLocalization.Text("Menu.NorthEast"), () => Session.SetIsoView(DemoIsoView.NorthEast)),
-            MenuItem(DemoLocalization.Text("Menu.NorthWest"), () => Session.SetIsoView(DemoIsoView.NorthWest)),
-            MenuItem(DemoLocalization.Text("Menu.SouthEast"), () => Session.SetIsoView(DemoIsoView.SouthEast)),
-            MenuItem(DemoLocalization.Text("Menu.SouthWest"), () => Session.SetIsoView(DemoIsoView.SouthWest)));
-
-        var projection = Menu(MenuHeader("Menu.Projection"),
-            MenuItem(DemoLocalization.Text("Menu.Orthographic"), () => Session.Engine.SetProjection(OcctProjectionType.Orthographic)),
-            MenuItem(DemoLocalization.Text("Menu.Perspective"), () => Session.Engine.SetProjection(OcctProjectionType.Perspective)),
-            AsyncMenuItem(DemoLocalization.Text("Menu.PerspectiveFov"), SetPerspectiveFovAsync));
-
-        var rectangleSelectionEnabled =
-            (_viewport.InteractionFeatures & OcctViewportInteractionFeatures.RectangleSelection) != 0;
-
-        return Menu(MenuHeader("Menu.View"),
-            MenuItem(DemoLocalization.Text("Menu.FitAll"), () => Session.Engine.FitAll(), Shortcut(Key.F)),
-            MenuItem(DemoLocalization.Text("Menu.FitSelected"), () =>
-            {
-                var shape = ActiveShape();
-                if (shape is not null) Session.Engine.Fit(shape.Value);
-            }),
+            MenuItem(DemoLocalization.Text("Menu.Isometric"),  () => Session.Engine.SetView(OcctViewOrientation.Isometric), Shortcut(Key.D0)),
+            MenuItem(DemoLocalization.Text("Menu.NorthEast"),  () => Session.SetIsoView(DemoIsoView.NorthEast)),
+            MenuItem(DemoLocalization.Text("Menu.NorthWest"),  () => Session.SetIsoView(DemoIsoView.NorthWest)),
+            MenuItem(DemoLocalization.Text("Menu.SouthEast"),  () => Session.SetIsoView(DemoIsoView.SouthEast)),
+            MenuItem(DemoLocalization.Text("Menu.SouthWest"),  () => Session.SetIsoView(DemoIsoView.SouthWest)),
             new Separator(),
-            display,
-            BuildDepthMenu(),
-            standard,
-            projection,
-            AsyncMenuItem(DemoLocalization.Text("Menu.DisplayPrecision"), SetDisplayPrecisionAsync),
-            BuildLightingMenu(),
-            BuildMaterialMenu(),
-            BuildSelectionMenu(),
-            BuildSelectionAppearanceMenu(),
-            CheckMenuItem(DemoLocalization.Text("Menu.WindowSelection"), rectangleSelectionEnabled, item =>
-            {
-                if (item.IsChecked)
-                    _viewport.InteractionFeatures |= OcctViewportInteractionFeatures.RectangleSelection;
-                else
-                    _viewport.InteractionFeatures &= ~OcctViewportInteractionFeatures.RectangleSelection;
-                _commandStatus.Text = DemoLocalization.Text(item.IsChecked ? "Status.WindowSelectionOn" : "Status.WindowSelectionOff");
-            }),
-            AsyncMenuItem(DemoLocalization.Text("Menu.SelectionTolerance"), SetSelectionToleranceAsync),
-            AsyncMenuItem(DemoLocalization.Text("Menu.Background"), SetBackgroundColorAsync),
-            MenuItem(DemoLocalization.Text("Menu.GradientBackground"), () =>
-                Session.Engine.SetGradientBackground(DrawingColor.White, DrawingColor.LightSteelBlue)));
-    }
-
-    private MenuItem BuildDepthMenu()
-    {
-        return Menu(MenuHeader("Menu.DepthHandling"),
-            CheckMenuItem(DemoLocalization.Text("Menu.AutoZFit"), _autoZFitEnabled, item => ExecuteSafe(() =>
-            {
-                _autoZFitEnabled = item.IsChecked;
-                Session.Engine.SetAutoZFitMode(_autoZFitEnabled, 1.0);
-                var message = DemoLocalization.Text(_autoZFitEnabled ? "Status.AutoZFitOn" : "Status.AutoZFitOff");
-                _commandStatus.Text = message;
-                Log(message);
-            })),
-            MenuItem(DemoLocalization.Text("Menu.AutoZFitNow"), () => ExecuteSafe(Session.Engine.AutoZFit)),
+            // Display style (flattened)
+            CheckMenuItem(DemoLocalization.Text("Menu.Shaded"), _displayMode == OcctDisplayMode.Shaded, _ => SetDisplayStyle(OcctDisplayMode.Shaded), radio: true, groupName: "display-style"),
+            CheckMenuItem(DemoLocalization.Text("Menu.Wireframe"), _displayMode == OcctDisplayMode.Wireframe, _ => SetDisplayStyle(OcctDisplayMode.Wireframe), radio: true, groupName: "display-style"),
+            CheckMenuItem(DemoLocalization.Text("Menu.ShadedEdges"), true,
+                item => ExecuteSafe(() => Session.Engine.SetFaceBoundariesVisible(item.IsChecked))),
             new Separator(),
-            MenuItem(DemoLocalization.Text("Menu.DepthForward"), () => ApplyDepthBias(DemoDepthBiasPreset.Forward)),
-            MenuItem(DemoLocalization.Text("Menu.DepthBackward"), () => ApplyDepthBias(DemoDepthBiasPreset.Backward)),
-            MenuItem(DemoLocalization.Text("Menu.DepthReset"), () => ApplyDepthBias(DemoDepthBiasPreset.Default)));
-    }
+            // Everything else lives in the non-modal View Settings window.
+            MenuItem(Local("View Settings...", "视图设置..."), ShowAdvancedViewSettingsWindow)
+        };
 
-    private MenuItem BuildLightingMenu()
-    {
-        var items = new List<object>();
-        foreach (var preset in Enum.GetValues<OcctLightingPreset>())
-        {
-            var captured = preset;
-            items.Add(MenuItem(LightingPresetName(captured), () => ApplyLightingPreset(captured)));
-        }
-        items.Add(new Separator());
-        items.Add(AsyncMenuItem(Local("Custom Lighting...", "自定义灯光..."), SetAdvancedLightingAsync));
-        items.Add(MenuItem(Local("OCCT Default Lights", "恢复 OCCT 默认灯光"), () => ExecuteSafe(Session.Engine.ResetSceneLighting)));
-        return Menu(Local("Lighting", "灯光"), items.ToArray());
-    }
-
-    private MenuItem BuildMaterialMenu()
-    {
-        var items = new List<object>();
-        foreach (var material in Enum.GetValues<OcctMaterial>())
-        {
-            var captured = material;
-            items.Add(AsyncMenuItem(MaterialDisplayName(captured), async () =>
-            {
-                var answer = await DialogService.ShowQuestionAsync(
-                    this,
-                    DemoLocalization.Text("Menu.Material"),
-                    DemoLocalization.Text("Dialog.ApplyExistingMaterial"),
-                    includeCancel: false);
-                var apply = answer == DemoDialogChoice.Yes;
-                ExecuteSafe(() => Session.Engine.SetDefaultMaterial(captured, apply));
-                Log($"{DemoLocalization.Text("Menu.Material")}: {MaterialDisplayName(captured)}");
-            }));
-        }
-        return Menu(MenuHeader("Menu.Material"), items.ToArray());
-    }
-
-    private MenuItem BuildSelectionMenu()
-    {
-        var items = new List<object>();
-        foreach (var mode in Enum.GetValues<OcctSelectionMode>())
-        {
-            var captured = mode;
-            items.Add(MenuItem(SelectionModeName(captured), () => SetSelectionMode(captured)));
-        }
-        return Menu(MenuHeader("Menu.SelectionMode"), items.ToArray());
-    }
-
-    private MenuItem BuildSelectionAppearanceMenu()
-    {
-        return Menu(Local("Selection Appearance", "选择外观"),
-            AsyncMenuItem(Local("Selected Color...", "选中高亮颜色..."), SetSelectionHighlightColorAsync),
-            AsyncMenuItem(Local("Hover Color...", "悬浮高亮颜色..."), SetHoverHighlightColorAsync));
+        return Menu(MenuHeader("Menu.View"), items.ToArray());
     }
 
     private void BuildToolbar()
