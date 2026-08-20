@@ -120,7 +120,9 @@ public sealed partial class MainForm : Form
         {
             engine.SetGradientBackground(Color.White, Color.FromArgb(202, 221, 238));
             engine.SetTriedronVisible(true);
-            engine.SetViewCubeVisible(true);
+            // Apply the full ViewCube options so the scene starts in sync with the
+            // values shown in the View Settings window (size/offset/position).
+            ApplyViewCubeOptions(refresh: false);
             ApplyViewCubeLanguage();
             engine.SetAntialiasing(true);
             engine.SetAutoZFitMode(true, 1.0);

@@ -43,15 +43,13 @@ public sealed partial class MainForm
         AddCommands(draw, DemoCommandId.Rectangle, DemoCommandId.Polygon, DemoCommandId.Bezier, DemoCommandId.BSpline);
 
         var solid = new ToolStripMenuItem(DemoLocalization.Text("Menu.Solid"));
-        var primitives = new ToolStripMenuItem(DemoLocalization.Text("Menu.Primitives"));
-        AddCommands(primitives, DemoCommandId.Box, DemoCommandId.Cylinder, DemoCommandId.Frustum, DemoCommandId.Cone, DemoCommandId.Torus, DemoCommandId.Sphere, DemoCommandId.Wedge, DemoCommandId.Pipe);
-        var features = new ToolStripMenuItem(DemoLocalization.Text("Menu.Features"));
-        AddCommands(features, DemoCommandId.Extrude, DemoCommandId.Revolve, DemoCommandId.Sweep, DemoCommandId.Loft);
-        var booleans = new ToolStripMenuItem(DemoLocalization.Text("Menu.Boolean"));
-        AddCommands(booleans, DemoCommandId.Fuse, DemoCommandId.Cut, DemoCommandId.Common, DemoCommandId.Section);
-        var details = new ToolStripMenuItem(DemoLocalization.Text("Menu.Details"));
-        AddCommands(details, DemoCommandId.Fillet, DemoCommandId.Chamfer, DemoCommandId.Offset, DemoCommandId.Shell, DemoCommandId.Drill);
-        solid.DropDownItems.AddRange(new ToolStripItem[] { primitives, features, booleans, details });
+        AddCommands(solid, DemoCommandId.Box, DemoCommandId.Cylinder, DemoCommandId.Frustum, DemoCommandId.Cone, DemoCommandId.Torus, DemoCommandId.Sphere, DemoCommandId.Wedge, DemoCommandId.Pipe);
+        solid.DropDownItems.Add(new ToolStripSeparator());
+        AddCommands(solid, DemoCommandId.Extrude, DemoCommandId.Revolve, DemoCommandId.Sweep, DemoCommandId.Loft);
+        solid.DropDownItems.Add(new ToolStripSeparator());
+        AddCommands(solid, DemoCommandId.Fuse, DemoCommandId.Cut, DemoCommandId.Common, DemoCommandId.Section);
+        solid.DropDownItems.Add(new ToolStripSeparator());
+        AddCommands(solid, DemoCommandId.Fillet, DemoCommandId.Chamfer, DemoCommandId.Offset, DemoCommandId.Shell, DemoCommandId.Drill);
 
         var annotate = new ToolStripMenuItem(DemoLocalization.Text("Menu.Annotate"));
         AddCommands(annotate, DemoCommandId.Text);
@@ -85,121 +83,38 @@ public sealed partial class MainForm
     private ToolStripMenuItem BuildViewMenu()
     {
         var view = new ToolStripMenuItem(DemoLocalization.Text("Menu.View"));
-        view.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.FitAll"), (_, _) => Session.Engine.FitAll(), "F"));
-        view.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.FitSelected"), (_, _) => { var shape = ActiveShape(); if (shape is not null) Session.Engine.Fit(shape.Value); }));
+
+        // Standard views (flattened)
+        view.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Front"), (_, _) => Session.Engine.SetView(OcctViewOrientation.Front), "1"));
+        view.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Back"), (_, _) => Session.Engine.SetView(OcctViewOrientation.Back)));
+        view.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Left"), (_, _) => Session.Engine.SetView(OcctViewOrientation.Left), "2"));
+        view.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Right"), (_, _) => Session.Engine.SetView(OcctViewOrientation.Right)));
+        view.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Top"), (_, _) => Session.Engine.SetView(OcctViewOrientation.Top), "3"));
+        view.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Bottom"), (_, _) => Session.Engine.SetView(OcctViewOrientation.Bottom)));
+        view.DropDownItems.Add(new ToolStripSeparator());
+        view.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Isometric"), (_, _) => Session.Engine.SetView(OcctViewOrientation.Isometric), "0"));
+        view.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.NorthEast"), (_, _) => Session.SetIsoView(DemoIsoView.NorthEast)));
+        view.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.NorthWest"), (_, _) => Session.SetIsoView(DemoIsoView.NorthWest)));
+        view.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.SouthEast"), (_, _) => Session.SetIsoView(DemoIsoView.SouthEast)));
+        view.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.SouthWest"), (_, _) => Session.SetIsoView(DemoIsoView.SouthWest)));
         view.DropDownItems.Add(new ToolStripSeparator());
 
-        var display = new ToolStripMenuItem(DemoLocalization.Text("Menu.Display"));
-        display.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Shaded"), (_, _) => Session.Engine.SetDisplayMode(OcctDisplayMode.Shaded)));
-        display.DropDownItems.Add(CheckMenuItem(DemoLocalization.Text("Menu.ShadedEdges"), true, (_, item) => ExecuteSafe(() => Session.Engine.SetFaceBoundariesVisible(item.Checked))));
-        display.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Wireframe"), (_, _) => Session.Engine.SetDisplayMode(OcctDisplayMode.Wireframe)));
-        display.DropDownItems.Add(CheckMenuItem(DemoLocalization.Text("Menu.Hlr"), false, (_, item) => Session.Engine.SetComputedHlr(item.Checked)));
-        display.DropDownItems.Add(CheckMenuItem(DemoLocalization.Text("Menu.Antialiasing"), true, (_, item) => Session.Engine.SetAntialiasing(item.Checked)));
-        display.DropDownItems.Add(CheckMenuItem(DemoLocalization.Text("Menu.Triedron"), true, (_, item) => ExecuteSafe(() => Session.Engine.SetTriedronVisible(item.Checked))));
-        display.DropDownItems.Add(CheckMenuItem(DemoLocalization.Text("Menu.ViewCube"), true, (_, item) => ExecuteSafe(() => Session.Engine.SetViewCubeVisible(item.Checked))));
-        view.DropDownItems.Add(display);
-        view.DropDownItems.Add(BuildDepthMenu());
+        // Display style (flattened)
+        view.DropDownItems.Add(RadioMenuItem(DemoLocalization.Text("Menu.Shaded"), _displayMode == OcctDisplayMode.Shaded, (_, _) => SetDisplayStyle(OcctDisplayMode.Shaded)));
+        view.DropDownItems.Add(RadioMenuItem(DemoLocalization.Text("Menu.Wireframe"), _displayMode == OcctDisplayMode.Wireframe, (_, _) => SetDisplayStyle(OcctDisplayMode.Wireframe)));
+        view.DropDownItems.Add(CheckMenuItem(DemoLocalization.Text("Menu.ShadedEdges"), true, (_, item) => ExecuteSafe(() => Session.Engine.SetFaceBoundariesVisible(item.Checked))));
+        view.DropDownItems.Add(new ToolStripSeparator());
 
-        var standard = new ToolStripMenuItem(DemoLocalization.Text("Menu.StandardViews"));
-        standard.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Front"), (_, _) => Session.Engine.SetView(OcctViewOrientation.Front), "1"));
-        standard.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Back"), (_, _) => Session.Engine.SetView(OcctViewOrientation.Back)));
-        standard.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Left"), (_, _) => Session.Engine.SetView(OcctViewOrientation.Left), "2"));
-        standard.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Right"), (_, _) => Session.Engine.SetView(OcctViewOrientation.Right)));
-        standard.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Top"), (_, _) => Session.Engine.SetView(OcctViewOrientation.Top), "3"));
-        standard.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Bottom"), (_, _) => Session.Engine.SetView(OcctViewOrientation.Bottom)));
-        standard.DropDownItems.Add(new ToolStripSeparator());
-        standard.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Isometric"), (_, _) => Session.Engine.SetView(OcctViewOrientation.Isometric), "0"));
-        standard.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.NorthEast"), (_, _) => Session.SetIsoView(DemoIsoView.NorthEast)));
-        standard.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.NorthWest"), (_, _) => Session.SetIsoView(DemoIsoView.NorthWest)));
-        standard.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.SouthEast"), (_, _) => Session.SetIsoView(DemoIsoView.SouthEast)));
-        standard.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.SouthWest"), (_, _) => Session.SetIsoView(DemoIsoView.SouthWest)));
-        view.DropDownItems.Add(standard);
-
-        var projection = new ToolStripMenuItem(DemoLocalization.Text("Menu.Projection"));
-        projection.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Orthographic"), (_, _) => Session.Engine.SetProjection(OcctProjectionType.Orthographic)));
-        projection.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Perspective"), (_, _) => Session.Engine.SetProjection(OcctProjectionType.Perspective)));
-        projection.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.PerspectiveFov"), (_, _) => SetPerspectiveFov()));
-        view.DropDownItems.Add(projection);
-
-        view.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.DisplayPrecision"), (_, _) => SetDisplayPrecision()));
-        view.DropDownItems.Add(BuildLightingMenu());
-        view.DropDownItems.Add(BuildMaterialMenu());
-        view.DropDownItems.Add(BuildSelectionMenu());
-        view.DropDownItems.Add(BuildSelectionAppearanceMenu());
-        var rectangleSelectionEnabled =
-            (_viewport.InteractionFeatures & OcctViewportInteractionFeatures.RectangleSelection) != 0;
-        view.DropDownItems.Add(CheckMenuItem(DemoLocalization.Text("Menu.WindowSelection"), rectangleSelectionEnabled, (_, item) =>
-        {
-            if (item.Checked)
-                _viewport.InteractionFeatures |= OcctViewportInteractionFeatures.RectangleSelection;
-            else
-                _viewport.InteractionFeatures &= ~OcctViewportInteractionFeatures.RectangleSelection;
-            _commandStatus.Text = DemoLocalization.Text(item.Checked ? "Status.WindowSelectionOn" : "Status.WindowSelectionOff");
-        }));
-        view.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.SelectionTolerance"), (_, _) => SetSelectionTolerance()));
-        view.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Background"), (_, _) => SetBackgroundColor()));
-        view.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.GradientBackground"), (_, _) => Session.Engine.SetGradientBackground(Color.White, Color.LightSteelBlue)));
+        // Everything else lives in the non-modal View Settings window.
+        view.DropDownItems.Add(MenuItem(Local("View Settings...", "视图设置..."), (_, _) => ShowAdvancedViewSettingsWindow()));
         return view;
     }
 
-    private ToolStripMenuItem BuildDepthMenu()
+    private static ToolStripMenuItem RadioMenuItem(string text, bool checkedState, EventHandler click)
     {
-        var menu = new ToolStripMenuItem(DemoLocalization.Text("Menu.DepthHandling"));
-        menu.DropDownItems.Add(CheckMenuItem(
-            DemoLocalization.Text("Menu.AutoZFit"),
-            _autoZFitEnabled,
-            (_, item) => ExecuteSafe(() =>
-            {
-                _autoZFitEnabled = item.Checked;
-                Session.Engine.SetAutoZFitMode(_autoZFitEnabled, 1.0);
-                var message = DemoLocalization.Text(
-                    _autoZFitEnabled ? "Status.AutoZFitOn" : "Status.AutoZFitOff");
-                _commandStatus.Text = message;
-                Log(message);
-            })));
-        menu.DropDownItems.Add(MenuItem(
-            DemoLocalization.Text("Menu.AutoZFitNow"),
-            (_, _) => ExecuteSafe(Session.Engine.AutoZFit)));
-        menu.DropDownItems.Add(new ToolStripSeparator());
-        menu.DropDownItems.Add(MenuItem(
-            DemoLocalization.Text("Menu.DepthForward"),
-            (_, _) => ApplyDepthBias(DemoDepthBiasPreset.Forward)));
-        menu.DropDownItems.Add(MenuItem(
-            DemoLocalization.Text("Menu.DepthBackward"),
-            (_, _) => ApplyDepthBias(DemoDepthBiasPreset.Backward)));
-        menu.DropDownItems.Add(MenuItem(
-            DemoLocalization.Text("Menu.DepthReset"),
-            (_, _) => ApplyDepthBias(DemoDepthBiasPreset.Default)));
-        return menu;
-    }
-
-    private ToolStripMenuItem BuildMaterialMenu()
-    {
-        var menu = new ToolStripMenuItem(DemoLocalization.Text("Menu.Material"));
-        foreach (OcctMaterial material in Enum.GetValues<OcctMaterial>())
-        {
-            var item = new ToolStripMenuItem(MaterialDisplayName(material)) { Tag = material };
-            item.Click += (_, _) =>
-            {
-                var apply = MessageBox.Show(this, DemoLocalization.Text("Dialog.ApplyExistingMaterial"), DemoLocalization.Text("Menu.Material"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
-                Session.Engine.SetDefaultMaterial((OcctMaterial)item.Tag!, apply);
-                Log($"{DemoLocalization.Text("Menu.Material")}: {item.Text}");
-            };
-            menu.DropDownItems.Add(item);
-        }
-        return menu;
-    }
-
-    private ToolStripMenuItem BuildSelectionMenu()
-    {
-        var menu = new ToolStripMenuItem(DemoLocalization.Text("Menu.SelectionMode"));
-        foreach (OcctSelectionMode mode in Enum.GetValues<OcctSelectionMode>())
-        {
-            var item = new ToolStripMenuItem(SelectionModeName(mode)) { Tag = mode, CheckOnClick = true };
-            item.Click += (_, _) => SetSelectionMode((OcctSelectionMode)item.Tag!);
-            menu.DropDownItems.Add(item);
-        }
-        return menu;
+        var item = new ToolStripMenuItem(text) { Checked = checkedState };
+        item.Click += click;
+        return item;
     }
 
     private void BuildToolBar()
@@ -243,27 +158,5 @@ public sealed partial class MainForm
             item.Click += (_, _) => RunCommand((DemoCommandId)item.Tag!);
             parent.DropDownItems.Add(item);
         }
-    }
-
-    private ToolStripMenuItem BuildLightingMenu()
-    {
-        var menu = new ToolStripMenuItem(Local("Lighting", "灯光"));
-        foreach (var preset in Enum.GetValues<OcctLightingPreset>())
-        {
-            var captured = preset;
-            menu.DropDownItems.Add(MenuItem(LightingPresetName(captured), (_, _) => ApplyLightingPreset(captured)));
-        }
-        menu.DropDownItems.Add(new ToolStripSeparator());
-        menu.DropDownItems.Add(MenuItem(Local("Custom Lighting...", "自定义灯光..."), (_, _) => SetAdvancedLighting()));
-        menu.DropDownItems.Add(MenuItem(Local("OCCT Default Lights", "恢复 OCCT 默认灯光"), (_, _) => ExecuteSafe(Session.Engine.ResetSceneLighting)));
-        return menu;
-    }
-
-    private ToolStripMenuItem BuildSelectionAppearanceMenu()
-    {
-        var menu = new ToolStripMenuItem(Local("Selection Appearance", "选择外观"));
-        menu.DropDownItems.Add(MenuItem(Local("Selected Color...", "选中高亮颜色..."), (_, _) => SetSelectionHighlightColor()));
-        menu.DropDownItems.Add(MenuItem(Local("Hover Color...", "悬浮高亮颜色..."), (_, _) => SetHoverHighlightColor()));
-        return menu;
     }
 }

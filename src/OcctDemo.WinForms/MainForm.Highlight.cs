@@ -11,38 +11,9 @@ public sealed partial class MainForm
     private OcctHighlightMode _hoverHighlightMode = OcctHighlightMode.Wireframe;
     private OcctCornerPosition _triedronPosition = OcctCornerPosition.LeftLower;
     private OcctCornerPosition _viewCubePosition = OcctCornerPosition.RightUpper;
-
-    private ToolStripMenuItem BuildSelectionHighlightModeMenu() =>
-        BuildHighlightModeMenu(
-            Local("Selected Mode", "选中高亮模式"),
-            _selectionHighlightMode,
-            SetSelectionHighlightMode);
-
-    private ToolStripMenuItem BuildHoverHighlightModeMenu() =>
-        BuildHighlightModeMenu(
-            Local("Hover Mode", "悬浮高亮模式"),
-            _hoverHighlightMode,
-            SetHoverHighlightMode);
-
-    private ToolStripMenuItem BuildViewHelpersMenu()
-    {
-        var menu = new ToolStripMenuItem(Local("View Helpers", "视图辅助"));
-        menu.DropDownItems.Add(BuildCornerPositionMenu(
-            Local("Triedron Position", "坐标轴位置"),
-            _triedronPosition,
-            SetTriedronPosition));
-        menu.DropDownItems.Add(BuildCornerPositionMenu(
-            Local("ViewCube Position", "ViewCube 位置"),
-            _viewCubePosition,
-            SetViewCubePosition));
-        menu.DropDownItems.Add(new ToolStripSeparator());
-        menu.DropDownItems.Add(MenuItem(Local("ViewCube Small", "ViewCube 小"), (_, _) => SetViewCubeSize(72)));
-        menu.DropDownItems.Add(MenuItem(Local("ViewCube Normal", "ViewCube 正常"), (_, _) => SetViewCubeSize(90)));
-        menu.DropDownItems.Add(MenuItem(Local("ViewCube Large", "ViewCube 大"), (_, _) => SetViewCubeSize(120)));
-        menu.DropDownItems.Add(MenuItem(Local("ViewCube Offset 10 px", "ViewCube 偏移 10 px"), (_, _) => SetViewCubeOffset(10, 10)));
-        menu.DropDownItems.Add(MenuItem(Local("ViewCube Offset 20 px", "ViewCube 偏移 20 px"), (_, _) => SetViewCubeOffset(20, 20)));
-        return menu;
-    }
+    private bool _viewCubeVisible = true;
+    private int _viewCubeSize = 90;
+    private int _viewCubeOffset = 10;
 
     private void SetDisplayStyle(OcctDisplayMode mode)
     {
@@ -71,44 +42,6 @@ public sealed partial class MainForm
         else
             _viewport.InteractionFeatures &= ~OcctViewportInteractionFeatures.RectangleSelection;
         _commandStatus.Text = DemoLocalization.Text(enabled ? "Status.WindowSelectionOn" : "Status.WindowSelectionOff");
-    }
-
-    private ToolStripMenuItem BuildHighlightModeMenu(
-        string text,
-        OcctHighlightMode currentMode,
-        Action<OcctHighlightMode> apply)
-    {
-        var menu = new ToolStripMenuItem(text);
-        foreach (var mode in Enum.GetValues<OcctHighlightMode>())
-        {
-            var captured = mode;
-            var item = new ToolStripMenuItem(HighlightModeName(captured))
-            {
-                Checked = captured == currentMode
-            };
-            item.Click += (_, _) => apply(captured);
-            menu.DropDownItems.Add(item);
-        }
-        return menu;
-    }
-
-    private ToolStripMenuItem BuildCornerPositionMenu(
-        string text,
-        OcctCornerPosition currentPosition,
-        Action<OcctCornerPosition> apply)
-    {
-        var menu = new ToolStripMenuItem(text);
-        foreach (var position in Enum.GetValues<OcctCornerPosition>())
-        {
-            var captured = position;
-            var item = new ToolStripMenuItem(CornerPositionName(captured))
-            {
-                Checked = captured == currentPosition
-            };
-            item.Click += (_, _) => apply(captured);
-            menu.DropDownItems.Add(item);
-        }
-        return menu;
     }
 
     private void SetSelectionHighlightMode(OcctHighlightMode mode)
@@ -153,38 +86,61 @@ public sealed partial class MainForm
         });
     }
 
-    private void SetViewCubePosition(OcctCornerPosition position)
+    private void ApplyViewCubeOptions(bool refresh = true)
     {
         ExecuteSafe(() =>
         {
-            _viewCubePosition = position;
-            Session.Engine.SetViewCubePosition(position);
-            var message = Local($"ViewCube position: {CornerPositionName(position)}", $"ViewCube 位置：{CornerPositionName(position)}");
-            _commandStatus.Text = message;
-            Log(message);
+            // The bridge's individual SetViewCube* APIs build a PARTIAL
+            // OcctViewCubeOptions and reset every other field back to its default
+            // (e.g. SetViewCubeOffset resets SizePixels to 90). Always send the
+            // full options object built from the tracked state instead.
+            Session.Engine.SetViewCubeOptions(new OcctViewCubeOptions
+            {
+                Visible = _viewCubeVisible,
+                Position = _viewCubePosition,
+                SizePixels = _viewCubeSize,
+                OffsetX = _viewCubeOffset,
+                OffsetY = _viewCubeOffset
+            });
+            if (refresh) _viewport.Invalidate();
         });
+    }
+
+    private void SetViewCubeVisible(bool visible)
+    {
+        _viewCubeVisible = visible;
+        ApplyViewCubeOptions();
+        var message = Local(visible ? "ViewCube visible" : "ViewCube hidden",
+            visible ? "ViewCube 显示" : "ViewCube 隐藏");
+        _commandStatus.Text = message;
+        Log(message);
+    }
+
+    private void SetViewCubePosition(OcctCornerPosition position)
+    {
+        _viewCubePosition = position;
+        ApplyViewCubeOptions();
+        var message = Local($"ViewCube position: {CornerPositionName(position)}", $"ViewCube 位置：{CornerPositionName(position)}");
+        _commandStatus.Text = message;
+        Log(message);
     }
 
     private void SetViewCubeSize(int sizePixels)
     {
-        ExecuteSafe(() =>
-        {
-            Session.Engine.SetViewCubeSize(sizePixels);
-            var message = Local($"ViewCube size: {sizePixels}px", $"ViewCube 大小：{sizePixels}px");
-            _commandStatus.Text = message;
-            Log(message);
-        });
+        _viewCubeSize = sizePixels;
+        ApplyViewCubeOptions();
+        var message = Local($"ViewCube size: {sizePixels}px", $"ViewCube 大小：{sizePixels}px");
+        _commandStatus.Text = message;
+        Log(message);
     }
 
     private void SetViewCubeOffset(int offsetX, int offsetY)
     {
-        ExecuteSafe(() =>
-        {
-            Session.Engine.SetViewCubeOffset(offsetX, offsetY);
-            var message = Local($"ViewCube offset: {offsetX}px, {offsetY}px", $"ViewCube 偏移：{offsetX}px，{offsetY}px");
-            _commandStatus.Text = message;
-            Log(message);
-        });
+        _viewCubeOffset = offsetX;
+        ApplyViewCubeOptions();
+        var message = Local($"ViewCube offset: {offsetX}px, {offsetY}px", $"ViewCube 偏移：{offsetX}px，{offsetY}px");
+        _commandStatus.Text = message;
+        Log(message);
     }
 
     private static string HighlightModeName(OcctHighlightMode mode) => mode switch

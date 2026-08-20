@@ -31,45 +31,9 @@ public sealed partial class MainWindow
             samples.ItemsSource = items;
         }
 
-        var view = rootItems
-            .OfType<MenuItem>()
-            .FirstOrDefault(item => Equals(item.Header, MenuHeader("Menu.View")));
-        if (view is not null)
-        {
-            RebuildCompactViewMenu(view);
-        }
+        // The View menu stays as built by BuildViewMenu() — fully flattened,
+        // with the "View Settings..." entry at the end.
     }
-
-    private void RebuildCompactViewMenu(MenuItem view)
-    {
-        view.ItemsSource = new object[]
-        {
-            BuildCompactStandardViewsMenu(),
-            BuildCompactDisplayStyleMenu(),
-            new Separator(),
-            MenuItem(Local("View Settings...", "视图设置..."), ShowAdvancedViewSettingsWindow)
-        };
-    }
-
-    private MenuItem BuildCompactStandardViewsMenu() => Menu(
-        DemoLocalization.Text("Menu.StandardViews"),
-        MenuItem(DemoLocalization.Text("Menu.Front"), () => Session.Engine.SetView(OcctViewOrientation.Front)),
-        MenuItem(DemoLocalization.Text("Menu.Back"), () => Session.Engine.SetView(OcctViewOrientation.Back)),
-        MenuItem(DemoLocalization.Text("Menu.Left"), () => Session.Engine.SetView(OcctViewOrientation.Left)),
-        MenuItem(DemoLocalization.Text("Menu.Right"), () => Session.Engine.SetView(OcctViewOrientation.Right)),
-        MenuItem(DemoLocalization.Text("Menu.Top"), () => Session.Engine.SetView(OcctViewOrientation.Top)),
-        MenuItem(DemoLocalization.Text("Menu.Bottom"), () => Session.Engine.SetView(OcctViewOrientation.Bottom)),
-        new Separator(),
-        MenuItem(DemoLocalization.Text("Menu.Isometric"), () => Session.Engine.SetView(OcctViewOrientation.Isometric)),
-        MenuItem(DemoLocalization.Text("Menu.NorthEast"), () => Session.SetIsoView(DemoIsoView.NorthEast)),
-        MenuItem(DemoLocalization.Text("Menu.NorthWest"), () => Session.SetIsoView(DemoIsoView.NorthWest)),
-        MenuItem(DemoLocalization.Text("Menu.SouthEast"), () => Session.SetIsoView(DemoIsoView.SouthEast)),
-        MenuItem(DemoLocalization.Text("Menu.SouthWest"), () => Session.SetIsoView(DemoIsoView.SouthWest)));
-
-    private MenuItem BuildCompactDisplayStyleMenu() => Menu(
-        Local("Display Style", "显示样式"),
-        CheckMenuItem(DemoLocalization.Text("Menu.Shaded"), _displayMode == OcctDisplayMode.Shaded, _ => SetDisplayStyle(OcctDisplayMode.Shaded), radio: true, groupName: "display-style"),
-        CheckMenuItem(DemoLocalization.Text("Menu.Wireframe"), _displayMode == OcctDisplayMode.Wireframe, _ => SetDisplayStyle(OcctDisplayMode.Wireframe), radio: true, groupName: "display-style"));
 
     private void RunModelingTest(Func<DemoCommandResult> test)
     {

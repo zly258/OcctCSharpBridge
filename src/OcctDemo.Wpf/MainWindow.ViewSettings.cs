@@ -22,48 +22,80 @@ public partial class MainWindow
         }
 
         var tabs = new Controls.TabControl();
+
+        // ── Camera tab ──────────────────────────────────────────────────────────
         tabs.Items.Add(ViewSettingsTab(Local("Camera", "相机"),
-            ViewSettingsButton(DemoLocalization.Text("Menu.FitAll"), () => Session.Engine.FitAll()),
-            ViewSettingsButton(DemoLocalization.Text("Menu.FitSelected"), () => { var shape = ActiveShape(); if (shape is not null) Session.Engine.Fit(shape.Value); }),
-            ViewSettingsButton(Local("Zoom In", "放大"), () => Session.Engine.Zoom(1.2)),
-            ViewSettingsButton(Local("Zoom Out", "缩小"), () => Session.Engine.Zoom(1.0 / 1.2)),
-            EnumCombo(Local("Projection", "投影"), _projectionType, SetProjectionMode),
-            ViewSettingsButton(DemoLocalization.Text("Menu.PerspectiveFov"), SetPerspectiveFov),
-            ViewSettingsButton(Local("Zoom Sensitivity...", "缩放灵敏度..."), SetZoomSensitivity)));
+            Row(ViewSettingsButton(DemoLocalization.Text("Menu.FitAll"),     () => Session.Engine.FitAll()),
+                ViewSettingsButton(DemoLocalization.Text("Menu.FitSelected"),() => { var s = ActiveShape(); if (s is not null) Session.Engine.Fit(s.Value); })),
+            Row(ViewSettingsButton(Local("Zoom In",  "放大"), () => Session.Engine.Zoom(1.2)),
+                ViewSettingsButton(Local("Zoom Out", "缩小"), () => Session.Engine.Zoom(1.0 / 1.2))),
+            Row(EnumCombo(Local("Projection", "投影"), _projectionType, SetProjectionMode)),
+            Row(ViewSettingsButton(DemoLocalization.Text("Menu.PerspectiveFov"),      SetPerspectiveFov),
+                ViewSettingsButton(Local("Zoom Sensitivity...", "缩放灵敏度..."),      SetZoomSensitivity))));
 
+        // ── Display tab ──────────────────────────────────────────────────────────
         tabs.Items.Add(ViewSettingsTab(Local("Display", "显示"),
-            EnumCombo(Local("Display Style", "显示样式"), _displayMode, SetDisplayStyle),
-            ViewSettingsCheckBox(DemoLocalization.Text("Menu.ShadedEdges"), true, value => Session.Engine.SetFaceBoundariesVisible(value)),
-            ViewSettingsCheckBox(DemoLocalization.Text("Menu.Hlr"), false, value => Session.Engine.SetComputedHlr(value)),
-            ViewSettingsCheckBox(DemoLocalization.Text("Menu.Antialiasing"), true, value => Session.Engine.SetAntialiasing(value)),
-            ViewSettingsButton(DemoLocalization.Text("Menu.DisplayPrecision"), SetDisplayPrecision),
-            ViewSettingsButton(DemoLocalization.Text("Menu.Background"), SetBackgroundColor),
-            ViewSettingsButton(Local("Gradient First Color...", "渐变颜色一..."), () => PickGradientColor(true)),
-            ViewSettingsButton(Local("Gradient Second Color...", "渐变颜色二..."), () => PickGradientColor(false)),
-            EnumCombo(Local("Gradient Method", "渐变方式"), _gradientFillMethod, value => { _gradientFillMethod = value; ApplyGradientBackground(); }),
-            ViewSettingsButton(DemoLocalization.Text("Menu.GradientBackground"), ApplyGradientBackground)));
+            Row(EnumCombo(Local("Display Style", "显示样式"), _displayMode, SetDisplayStyle)),
+            Row(ViewSettingsCheckBox(DemoLocalization.Text("Menu.ShadedEdges"),  true,  v => Session.Engine.SetFaceBoundariesVisible(v)),
+                ViewSettingsCheckBox(DemoLocalization.Text("Menu.Hlr"),          false, v => Session.Engine.SetComputedHlr(v))),
+            Row(ViewSettingsCheckBox(DemoLocalization.Text("Menu.Antialiasing"), true,  v => Session.Engine.SetAntialiasing(v))),
+            Row(ViewSettingsButton(DemoLocalization.Text("Menu.DisplayPrecision"), SetDisplayPrecision)),
+            Row(ViewSettingsButton(DemoLocalization.Text("Menu.Background"),       SetBackgroundColor),
+                ViewSettingsButton(Local("Gradient First Color...", "渐变颜色一..."),  () => PickGradientColor(true))),
+            Row(ViewSettingsButton(Local("Gradient Second Color...", "渐变颜色二..."), () => PickGradientColor(false)),
+                ViewSettingsButton(DemoLocalization.Text("Menu.GradientBackground"),  ApplyGradientBackground)),
+            Row(EnumCombo(Local("Gradient Method", "渐变方式"), _gradientFillMethod,
+                    v => { _gradientFillMethod = v; ApplyGradientBackground(); }))));
 
+        // ── Selection tab ────────────────────────────────────────────────────────
         tabs.Items.Add(ViewSettingsTab(Local("Selection", "选择"),
-            EnumCombo(DemoLocalization.Text("Menu.SelectionMode"), (OcctSelectionMode)0, SetSelectionMode),
-            ViewSettingsCheckBox(DemoLocalization.Text("Menu.WindowSelection"), (Viewport.InteractionFeatures & OcctViewportInteractionFeatures.RectangleSelection) != 0, SetWindowSelectionEnabled),
-            ViewSettingsButton(DemoLocalization.Text("Menu.SelectionTolerance"), SetSelectionTolerance),
-            ViewSettingsButton(Local("Selected Color...", "选中高亮颜色..."), SetSelectionHighlightColor),
-            ViewSettingsButton(Local("Hover Color...", "悬浮高亮颜色..."), SetHoverHighlightColor),
-            EnumCombo(Local("Selected Highlight Mode", "选中高亮模式"), _selectionHighlightMode, SetSelectionHighlightMode),
-            EnumCombo(Local("Hover Highlight Mode", "悬浮高亮模式"), _hoverHighlightMode, SetHoverHighlightMode)));
+            Row(EnumCombo(DemoLocalization.Text("Menu.SelectionMode"), (OcctSelectionMode)0, SetSelectionMode)),
+            Row(ViewSettingsCheckBox(DemoLocalization.Text("Menu.WindowSelection"),
+                    (Viewport.InteractionFeatures & OcctViewportInteractionFeatures.RectangleSelection) != 0,
+                    SetWindowSelectionEnabled)),
+            Row(ViewSettingsButton(DemoLocalization.Text("Menu.SelectionTolerance"), SetSelectionTolerance)),
+            Row(ViewSettingsButton(Local("Selected Color...", "选中高亮颜色..."), SetSelectionHighlightColor),
+                ViewSettingsButton(Local("Hover Color...", "悬浮高亮颜色..."),   SetHoverHighlightColor)),
+            Row(EnumCombo(Local("Selected Highlight Mode", "选中高亮模式"), _selectionHighlightMode, SetSelectionHighlightMode)),
+            Row(EnumCombo(Local("Hover Highlight Mode",    "悬浮高亮模式"), _hoverHighlightMode,    SetHoverHighlightMode))));
 
+        // ── Helpers tab ──────────────────────────────────────────────────────────
         tabs.Items.Add(ViewSettingsTab(Local("Helpers", "辅助"),
-            ViewSettingsCheckBox(DemoLocalization.Text("Menu.Triedron"), true, value => Session.Engine.SetTriedronVisible(value)),
-            ViewSettingsCheckBox(DemoLocalization.Text("Menu.ViewCube"), true, value => Session.Engine.SetViewCubeVisible(value)),
-            EnumCombo(Local("Triedron Position", "坐标轴位置"), _triedronPosition, SetTriedronPosition),
-            EnumCombo(Local("ViewCube Position", "ViewCube 位置"), _viewCubePosition, SetViewCubePosition),
-            EnumCombo(Local("ViewCube Size", "ViewCube 大小"), 90, SetViewCubeSize, 72, 90, 120),
-            EnumCombo(Local("ViewCube Offset", "ViewCube 偏移"), 10, value => SetViewCubeOffset(value, value), 0, 10, 20, 40)));
+            Row(ViewSettingsCheckBox(DemoLocalization.Text("Menu.Triedron"),  true, v => Session.Engine.SetTriedronVisible(v)),
+                ViewSettingsCheckBox(DemoLocalization.Text("Menu.ViewCube"),  true, v => SetViewCubeVisible(v))),
+            Row(EnumCombo(Local("Triedron Position",    "坐标轴位置"),    _triedronPosition,  SetTriedronPosition)),
+            Row(EnumCombo(Local("ViewCube Position",    "ViewCube 位置"), _viewCubePosition,  SetViewCubePosition)),
+            Row(IntInput(Local("ViewCube Size (px)",    "ViewCube 大小(px)"),    _viewCubeSize,  10, 300, SetViewCubeSize),
+                IntInput(Local("ViewCube Offset (px)",  "ViewCube 偏移(px)"),    _viewCubeOffset, 0, 200, v => SetViewCubeOffset(v, v)))));
 
+        // ── Appearance tab ───────────────────────────────────────────────────────
         tabs.Items.Add(ViewSettingsTab(Local("Appearance", "外观"),
-            BuildLightingMenu(),
-            BuildMaterialMenu(),
-            BuildDepthMenu()));
+            Row(EnumCombo(Local("Lighting Preset", "灯光预设"), OcctLightingPreset.Studio,
+                    p => ExecuteSafe(() => ApplyLightingPreset(p)))),
+            Row(ViewSettingsButton(Local("Custom Lighting...",  "自定义灯光..."),   SetAdvancedLighting),
+                ViewSettingsButton(Local("Reset Lighting",      "重置灯光"),        () => ExecuteSafe(Session.Engine.ResetSceneLighting))),
+            Row(EnumCombo(Local("Material", "材质"), OcctMaterial.Default, material =>
+                {
+                    var apply = System.Windows.MessageBox.Show(this,
+                        DemoLocalization.Text("Dialog.ApplyExistingMaterial"),
+                        DemoLocalization.Text("Menu.Material"),
+                        System.Windows.MessageBoxButton.YesNo,
+                        System.Windows.MessageBoxImage.Question) == System.Windows.MessageBoxResult.Yes;
+                    ExecuteSafe(() => Session.Engine.SetDefaultMaterial(material, apply));
+                    Log($"{DemoLocalization.Text("Menu.Material")}: {MaterialDisplayName(material)}");
+                })),
+            Row(ViewSettingsCheckBox(DemoLocalization.Text("Menu.AutoZFit"), _autoZFitEnabled, v =>
+                    ExecuteSafe(() =>
+                    {
+                        _autoZFitEnabled = v;
+                        Session.Engine.SetAutoZFitMode(_autoZFitEnabled, 1.0);
+                        var msg = DemoLocalization.Text(_autoZFitEnabled ? "Status.AutoZFitOn" : "Status.AutoZFitOff");
+                        CommandStatus.Text = msg;
+                        Log(msg);
+                    })),
+                ViewSettingsButton(DemoLocalization.Text("Menu.AutoZFitNow"), () => ExecuteSafe(Session.Engine.AutoZFit))),
+            Row(EnumCombo(Local("Depth Bias", "深度偏移"), DemoDepthBiasPreset.Default,
+                    p => ExecuteSafe(() => ApplyDepthBias(p))))));
 
         var window = new Window
         {
@@ -79,15 +111,26 @@ public partial class MainWindow
         window.Show();
     }
 
-    private static Controls.TabItem ViewSettingsTab(string text, params System.Windows.UIElement[] controls)
+    // ── Layout helpers ───────────────────────────────────────────────────────────
+
+    /// <summary>One grid row: up to two cells side by side, each cell 260 px wide.</summary>
+    private static Controls.Grid Row(params System.Windows.UIElement[] cells)
+    {
+        var grid = new Controls.Grid { Margin = new System.Windows.Thickness(0, 3, 0, 3) };
+        grid.ColumnDefinitions.Add(new Controls.ColumnDefinition { Width = new System.Windows.GridLength(260) });
+        grid.ColumnDefinitions.Add(new Controls.ColumnDefinition { Width = new System.Windows.GridLength(260) });
+        for (var i = 0; i < cells.Length && i < 2; i++)
+        {
+            Controls.Grid.SetColumn(cells[i], i);
+            grid.Children.Add(cells[i]);
+        }
+        return grid;
+    }
+
+    private static Controls.TabItem ViewSettingsTab(string text, params Controls.Grid[] rows)
     {
         var panel = new Controls.StackPanel { Margin = new System.Windows.Thickness(12) };
-        foreach (var control in controls)
-        {
-            if (control is System.Windows.FrameworkElement fe)
-                fe.Margin = new System.Windows.Thickness(4);
-            panel.Children.Add(control);
-        }
+        foreach (var row in rows) panel.Children.Add(row);
         return new Controls.TabItem
         {
             Header = text,
@@ -97,54 +140,97 @@ public partial class MainWindow
 
     private static Controls.Button ViewSettingsButton(string text, Action action)
     {
-        var button = new Controls.Button { Content = text, Width = 240, Height = 30, HorizontalAlignment = System.Windows.HorizontalAlignment.Left };
+        var button = new Controls.Button
+        {
+            Content = text,
+            Height = 28,
+            Margin = new System.Windows.Thickness(0, 0, 6, 0),
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch
+        };
         button.Click += (_, _) => action();
         return button;
     }
 
     private static Controls.CheckBox ViewSettingsCheckBox(string text, bool initialValue, Action<bool> action)
     {
-        var box = new Controls.CheckBox { Content = text, IsChecked = initialValue, Width = 300, Height = 28 };
-        box.Checked += (_, _) => action(true);
+        var box = new Controls.CheckBox
+        {
+            Content = text,
+            IsChecked = initialValue,
+            Height = 28,
+            VerticalContentAlignment = System.Windows.VerticalAlignment.Center
+        };
+        box.Checked   += (_, _) => action(true);
         box.Unchecked += (_, _) => action(false);
         return box;
     }
 
-    private static System.Windows.UIElement EnumCombo<TEnum>(string label, TEnum current, Action<TEnum> apply, params TEnum[] values)
+    private static Controls.StackPanel EnumCombo<TEnum>(string label, TEnum current, Action<TEnum> apply, params TEnum[] values)
         where TEnum : struct, Enum
     {
-        var panel = new Controls.StackPanel { Orientation = Controls.Orientation.Horizontal, Width = 500 };
-        panel.Children.Add(new Controls.TextBlock { Text = label, Width = 170, VerticalAlignment = System.Windows.VerticalAlignment.Center });
-        var combo = new Controls.ComboBox { Width = 220 };
-        foreach (var value in values.Length == 0 ? Enum.GetValues<TEnum>() : values) combo.Items.Add(value);
+        var panel = new Controls.StackPanel { Orientation = Controls.Orientation.Vertical, Margin = new System.Windows.Thickness(0, 0, 6, 0) };
+        panel.Children.Add(new Controls.TextBlock { Text = label, Margin = new System.Windows.Thickness(0, 0, 0, 2) });
+        var combo = new Controls.ComboBox { HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch };
+        foreach (var v in values.Length == 0 ? Enum.GetValues<TEnum>() : values) combo.Items.Add(v);
         combo.SelectedItem = current;
-        combo.SelectionChanged += (_, _) =>
-        {
-            if (combo.SelectedItem is TEnum value) apply(value);
-        };
+        combo.SelectionChanged += (_, _) => { if (combo.SelectedItem is TEnum v) apply(v); };
         panel.Children.Add(combo);
         return panel;
     }
 
-    private static System.Windows.UIElement EnumCombo(string label, int current, Action<int> apply, params int[] values)
+    private static Controls.StackPanel IntInput(string label, int initial, int min, int max, Action<int> apply)
     {
-        var panel = new Controls.StackPanel { Orientation = Controls.Orientation.Horizontal, Width = 500 };
-        panel.Children.Add(new Controls.TextBlock { Text = label, Width = 170, VerticalAlignment = System.Windows.VerticalAlignment.Center });
-        var combo = new Controls.ComboBox { Width = 220 };
-        foreach (var value in values) combo.Items.Add(value);
-        combo.SelectedItem = current;
-        combo.SelectionChanged += (_, _) =>
+        var panel = new Controls.StackPanel { Orientation = Controls.Orientation.Vertical, Margin = new System.Windows.Thickness(0, 0, 6, 0) };
+        panel.Children.Add(new Controls.TextBlock { Text = label, Margin = new System.Windows.Thickness(0, 0, 0, 2) });
+
+        // Row: text box + up/down buttons
+        var row = new Controls.StackPanel { Orientation = Controls.Orientation.Horizontal };
+        var box = new Controls.TextBox
         {
-            if (combo.SelectedItem is int value) apply(value);
+            Text = initial.ToString(),
+            Width = 70,
+            Height = 26,
+            VerticalContentAlignment = System.Windows.VerticalAlignment.Center
         };
-        panel.Children.Add(combo);
+        void TryApply()
+        {
+            if (int.TryParse(box.Text, out var v))
+            {
+                v = Math.Clamp(v, min, max);
+                box.Text = v.ToString();
+                apply(v);
+            }
+        }
+        void Step(int delta)
+        {
+            if (int.TryParse(box.Text, out var v))
+                box.Text = Math.Clamp(v + delta, min, max).ToString();
+            TryApply();
+        }
+        box.LostFocus += (_, _) => TryApply();
+        box.KeyDown   += (_, e) => { if (e.Key == System.Windows.Input.Key.Enter) TryApply(); };
+
+        var up   = new Controls.Button { Content = "▲", Width = 22, Height = 13, Padding = new System.Windows.Thickness(0), FontSize = 8 };
+        var down = new Controls.Button { Content = "▼", Width = 22, Height = 13, Padding = new System.Windows.Thickness(0), FontSize = 8 };
+        up.Click   += (_, _) => Step(1);
+        down.Click += (_, _) => Step(-1);
+
+        var btns = new Controls.StackPanel { Orientation = Controls.Orientation.Vertical, Margin = new System.Windows.Thickness(2, 0, 0, 0) };
+        btns.Children.Add(up);
+        btns.Children.Add(down);
+
+        row.Children.Add(box);
+        row.Children.Add(btns);
+        panel.Children.Add(row);
         return panel;
     }
 
     private void PickGradientColor(bool first)
     {
         var initial = first ? _gradientFirstColor : _gradientSecondColor;
-        if (!WpfColorDialog.TryPick(this, first ? Local("Gradient First Color", "渐变颜色一") : Local("Gradient Second Color", "渐变颜色二"), initial, out var color)) return;
+        if (!WpfColorDialog.TryPick(this,
+                first ? Local("Gradient First Color", "渐变颜色一") : Local("Gradient Second Color", "渐变颜色二"),
+                initial, out var color)) return;
         if (first) _gradientFirstColor = color; else _gradientSecondColor = color;
         ApplyGradientBackground();
     }
