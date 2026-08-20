@@ -207,12 +207,4 @@ The Demo may use Bridge only through its managed SDK:
 
 `tests/check-sdk-consumer.ps1` / `.sh` enforce these boundaries and verify that source synchronization uses the `dist` consumer fast path.
 
-## Branch responsibilities
-
-- `main` — Bridge development source and candidate SDK;
-- `demo` — development consumer, defaults to `main`;
-- `main` — formal Bridge SDK;
-- `demo` — formal consumer and should consume formal `main` artifacts;
-- `website` — bilingual website.
-
 The Demo is an SDK consumer example, not a third-party application framework. External projects should follow the Bridge SDK consumption guide for their own repository layout, runtime packaging, and version pinning.

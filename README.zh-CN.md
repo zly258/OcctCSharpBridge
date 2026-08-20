@@ -221,12 +221,4 @@ Demo 只允许通过 Managed SDK 使用 Bridge：
 
 `tests/check-sdk-consumer.ps1` / `.sh` 会静态守住这些边界，并检查同步脚本只能使用 `dist` Consumer 快路径。
 
-## 分支职责
-
-- `main`：Bridge 开发源码与候选 SDK；
-- `demo`：开发 Consumer，默认消费 `main`；
-- `main`：正式 Bridge SDK；
-- `demo`：正式 Consumer，应消费正式 `main` 制品；
-- `website`：双语官网。
-
 Demo 是 SDK 消费示例，不是第三方应用框架。第三方项目应按 Bridge 的 SDK Consumer 文档组织自己的工程、Runtime 和版本锁定策略。
