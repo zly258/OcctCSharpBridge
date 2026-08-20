@@ -1,5 +1,7 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using OcctDemo.Common;
 using OcctNet;
 using DrawingColor = System.Drawing.Color;
 using MenuItem = Avalonia.Controls.MenuItem;
@@ -127,7 +129,7 @@ public sealed partial class MainWindow
 
     private static TabItem SettingsTab(string text, params Control[] controls)
     {
-        var panel = new StackPanel { Margin = new Avalonia.Thickness(12), Spacing = 6 };
+        var panel = new StackPanel { Margin = new Thickness(12), Spacing = 6 };
         foreach (var control in controls) panel.Children.Add(control);
         return new TabItem
         {

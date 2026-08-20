@@ -1,4 +1,5 @@
 using System.Drawing;
+using OcctDemo.Common;
 using OcctNet;
 using Controls = System.Windows.Controls;
 using Window = System.Windows.Window;
@@ -78,12 +79,13 @@ public partial class MainWindow
         window.Show();
     }
 
-    private static Controls.TabItem ViewSettingsTab(string text, params Controls.Control[] controls)
+    private static Controls.TabItem ViewSettingsTab(string text, params System.Windows.UIElement[] controls)
     {
         var panel = new Controls.StackPanel { Margin = new System.Windows.Thickness(12) };
         foreach (var control in controls)
         {
-            control.Margin = new System.Windows.Thickness(4);
+            if (control is System.Windows.FrameworkElement fe)
+                fe.Margin = new System.Windows.Thickness(4);
             panel.Children.Add(control);
         }
         return new Controls.TabItem
@@ -108,7 +110,7 @@ public partial class MainWindow
         return box;
     }
 
-    private static Controls.Control EnumCombo<TEnum>(string label, TEnum current, Action<TEnum> apply, params TEnum[] values)
+    private static System.Windows.UIElement EnumCombo<TEnum>(string label, TEnum current, Action<TEnum> apply, params TEnum[] values)
         where TEnum : struct, Enum
     {
         var panel = new Controls.StackPanel { Orientation = Controls.Orientation.Horizontal, Width = 500 };
@@ -119,6 +121,21 @@ public partial class MainWindow
         combo.SelectionChanged += (_, _) =>
         {
             if (combo.SelectedItem is TEnum value) apply(value);
+        };
+        panel.Children.Add(combo);
+        return panel;
+    }
+
+    private static System.Windows.UIElement EnumCombo(string label, int current, Action<int> apply, params int[] values)
+    {
+        var panel = new Controls.StackPanel { Orientation = Controls.Orientation.Horizontal, Width = 500 };
+        panel.Children.Add(new Controls.TextBlock { Text = label, Width = 170, VerticalAlignment = System.Windows.VerticalAlignment.Center });
+        var combo = new Controls.ComboBox { Width = 220 };
+        foreach (var value in values) combo.Items.Add(value);
+        combo.SelectedItem = current;
+        combo.SelectionChanged += (_, _) =>
+        {
+            if (combo.SelectedItem is int value) apply(value);
         };
         panel.Children.Add(combo);
         return panel;

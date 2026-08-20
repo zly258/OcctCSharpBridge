@@ -1,5 +1,7 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using OcctDemo.Common;
 using OcctNet;
 using DrawingColor = System.Drawing.Color;
 
@@ -80,7 +82,7 @@ public sealed partial class MainWindow
 
     private static TabItem ViewSettingsTab(string text, params Control[] controls)
     {
-        var panel = new StackPanel { Margin = new Avalonia.Thickness(12), Spacing = 6 };
+        var panel = new StackPanel { Margin = new Thickness(12), Spacing = 6 };
         foreach (var control in controls) panel.Children.Add(control);
         return new TabItem
         {
@@ -120,6 +122,20 @@ public sealed partial class MainWindow
         combo.SelectionChanged += (_, _) =>
         {
             if (combo.SelectedItem is TEnum value) apply(value);
+        };
+        panel.Children.Add(combo);
+        return panel;
+    }
+
+    private static Control EnumCombo(string label, int current, Action<int> apply, params int[] values)
+    {
+        var panel = new StackPanel { Orientation = Orientation.Horizontal, Width = 500, Spacing = 8 };
+        panel.Children.Add(new TextBlock { Text = label, Width = 170, VerticalAlignment = VerticalAlignment.Center });
+        var combo = new ComboBox { Width = 220, ItemsSource = values };
+        combo.SelectedItem = current;
+        combo.SelectionChanged += (_, _) =>
+        {
+            if (combo.SelectedItem is int value) apply(value);
         };
         panel.Children.Add(combo);
         return panel;
