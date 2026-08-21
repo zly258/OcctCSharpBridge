@@ -1,4 +1,4 @@
-﻿namespace OcctNet;
+namespace OcctNet;
 
 /// <summary>
 /// Configures the OCCT runtime before the native bridge is loaded.
@@ -38,7 +38,8 @@ public static partial class OcctRuntime
     public static string? ConfiguredNativeDirectory { get; private set; }
 
     /// <summary>
-    /// Configures the runtime using the portable package layout, OCCT_ROOT, or CASROOT.
+    /// Configures OcctRuntime with default options. Safe to call multiple times and from
+    /// multiple threads — actual configuration is applied at most once, protected by a lock.
     /// </summary>
     public static void Configure()
     {
@@ -61,6 +62,11 @@ public static partial class OcctRuntime
             NativeBridgeDirectory = nativeBridgeDirectory
         });
 
+    /// <summary>
+    /// Configures OcctRuntime with the specified options. Safe to call multiple times;
+    /// after the first successful configuration, subsequent calls validate that the same
+    /// root path is used (controlled by <see cref="OcctRuntimeOptions.ThrowOnConfigurationConflict"/>).
+    /// </summary>
     internal static void Configure(OcctRuntimeOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
