@@ -41,24 +41,19 @@ The site reflects the formal source contract from `main`:
 2. **Repository model** — responsibilities of SDK, Demo and website branches.
 3. **Platform matrix** — explicit Windows/Linux host, publish and Viewer backend coverage.
 4. **Bridge capabilities** — concise reusable SDK capability overview.
-5. **Demo previews** — canonical WinForms/WPF/Avalonia screenshots from the formal `demo` branch.
+5. **Demo previews** — canonical WinForms/WPF/Avalonia (Windows x64) screenshots from the formal `demo` branch.
 6. **Consumer workflow** — SDK generation → synchronization → build/run → publish.
 7. **Documentation** — authoritative links to SDK docs, Demo docs, source contract and license.
 8. **Licensing** — concise separation between Bridge license and the project linking exception.
 
 ## Canonical preview sources
 
-All screenshots must come from the formal `demo` branch:
+All screenshots must come from the formal `demo` branch. The current set keeps one English PNG per supported Windows host; the Simplified-Chinese and Linux variants are no longer maintained.
 
 ```text
 demo/assets/previews/winform-demo-en.png
-demo/assets/previews/winform-demo-zh.png
 demo/assets/previews/wpf-demo-en.png
-demo/assets/previews/wpf-demo-zh.png
 demo/assets/previews/avalonia-win-demo-en.png
-demo/assets/previews/avalonia-win-demo-zh.png
-demo/assets/previews/avalonia-linux-demo-en.png
-demo/assets/previews/avalonia-linux-demo-zh.png
 ```
 
 Do not duplicate those images into `website`.

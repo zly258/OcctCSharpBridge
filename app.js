@@ -72,11 +72,10 @@ const translations = {
 
     demoEyebrow: 'DEMO PREVIEWS',
     demoTitle: 'One consumer tree across Windows and Linux',
-    demoLead: 'The four screenshots below are canonical assets from the formal demo branch. Language switching loads the matching English or Simplified Chinese preview.',
+    demoLead: 'The three screenshots below are canonical assets from the formal demo branch, captured on Windows x64 for the WinForms, WPF and Avalonia hosts.',
     winformsCaption: 'Classic Windows CAD host.',
     wpfCaption: 'Native HWND viewport host.',
     avaloniaWinCaption: 'Cross-platform UI over the Windows Viewer backend.',
-    avaloniaLinuxCaption: 'X11/XWayland desktop Viewer host.',
 
     workflowEyebrow: 'CONSUMER WORKFLOW',
     workflowTitle: 'Build the SDK, validate it, then consume it',
@@ -191,11 +190,10 @@ const translations = {
 
     demoEyebrow: '案例预览',
     demoTitle: '一套 Consumer 工程覆盖 Windows 与 Linux',
-    demoLead: '以下四张截图全部来自正式 demo 分支。切换语言时会自动加载对应的英文或简体中文正式截图。',
+    demoLead: '以下三张截图全部来自正式 demo 分支，分别在 Windows x64 上截取 WinForms、WPF 与 Avalonia 三个 Host。',
     winformsCaption: '经典 Windows CAD Host。',
     wpfCaption: 'Native HWND Viewport Host。',
     avaloniaWinCaption: 'Avalonia UI + Windows Viewer Backend。',
-    avaloniaLinuxCaption: 'X11/XWayland 桌面 Viewer Host。',
 
     workflowEyebrow: 'CONSUMER 流程',
     workflowTitle: '先构建 SDK，再校验并由 Demo 消费',
@@ -271,10 +269,6 @@ function applyLanguage(next) {
   document.querySelectorAll('[data-i18n]').forEach(node => {
     const value = t[node.dataset.i18n];
     if (value !== undefined) node.textContent = value;
-  });
-
-  document.querySelectorAll('img[data-src-en]').forEach(img => {
-    img.src = language === 'zh' ? img.dataset.srcZh : img.dataset.srcEn;
   });
 
   if (languageToggle) languageToggle.textContent = language === 'zh' ? 'EN' : '中文';

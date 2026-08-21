@@ -41,24 +41,19 @@
 2. **仓库模型**：SDK、Demo、website 三类职责。
 3. **平台矩阵**：明确列出 Windows/Linux Host、发布和 Viewer Backend 支持范围。
 4. **Bridge 能力**：简洁说明可复用 SDK 能力。
-5. **Demo 预览**：正式 `demo` 分支中的 WinForms/WPF/Avalonia 截图。
+5. **Demo 预览**：正式 `demo` 分支中的 WinForms/WPF/Avalonia（Windows x64）截图。
 6. **Consumer 流程**：SDK 生成 → 同步校验 → 构建运行 → 发布。
 7. **文档入口**：SDK 文档、Demo 文档、源码 Contract 与许可证。
 8. **许可证**：区分 Bridge License 与项目 Linking Exception。
 
 ## 正式截图来源
 
-所有截图必须直接来自正式 `demo` 分支：
+所有截图必须直接来自正式 `demo` 分支。当前只保留每个 Windows Host 的一张英文截图；简体中文与 Linux 截图变体不再维护。
 
 ```text
 demo/assets/previews/winform-demo-en.png
-demo/assets/previews/winform-demo-zh.png
 demo/assets/previews/wpf-demo-en.png
-demo/assets/previews/wpf-demo-zh.png
 demo/assets/previews/avalonia-win-demo-en.png
-demo/assets/previews/avalonia-win-demo-zh.png
-demo/assets/previews/avalonia-linux-demo-en.png
-demo/assets/previews/avalonia-linux-demo-zh.png
 ```
 
 不要把这些图片再复制一份到 `website`。

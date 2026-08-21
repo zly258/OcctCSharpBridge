@@ -260,13 +260,16 @@ pre { margin: 0; }
   transition: transform .18s ease, border-color .18s ease, background .18s ease;
 }
 .button:hover { transform: translateY(-1px); }
+.button:active { transform: translateY(0); }
 .button.primary {
   border-color: var(--text);
   background: var(--text);
   color: var(--bg);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--text) 16%, transparent);
 }
+.button.primary:hover { box-shadow: 0 16px 38px color-mix(in srgb, var(--text) 22%, transparent); }
 .button.secondary { background: var(--surface); }
-.button.secondary:hover { border-color: var(--line-strong); }
+.button.secondary:hover { border-color: var(--line-strong); background: var(--surface-muted); }
 
 .contract-strip {
   max-width: 790px;
@@ -394,6 +397,12 @@ pre { margin: 0; }
   background: var(--surface);
   padding: 25px;
   box-shadow: var(--shadow-sm);
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.branch-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+  box-shadow: 0 20px 52px color-mix(in srgb, var(--accent) 9%, transparent);
 }
 .branch-card.featured {
   border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
@@ -555,6 +564,12 @@ pre { margin: 0; }
   border-radius: 14px;
   background: var(--surface);
   padding: 22px;
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.cap-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--line));
+  box-shadow: 0 18px 46px color-mix(in srgb, var(--accent) 8%, transparent);
 }
 .cap-card > span {
   display: block;
@@ -579,7 +594,7 @@ pre { margin: 0; }
 /* Previews */
 .preview-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
   margin-top: 42px;
 }
@@ -593,9 +608,9 @@ pre { margin: 0; }
   transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
 }
 .preview-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--line-strong);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+  box-shadow: 0 22px 56px color-mix(in srgb, var(--accent) 10%, transparent);
 }
 .preview-card img {
   width: 100%;
@@ -913,7 +928,6 @@ code {
   .contract-strip > div:nth-child(2n) { border-right: 0; }
   .contract-strip > div:last-child { border-bottom: 0; }
   .matrix-notes,
-  .preview-grid,
   .workflow-grid,
   .command-grid,
   .license-grid { grid-template-columns: 1fr; }
@@ -922,6 +936,7 @@ code {
 
 @media (max-width: 680px) {
   .shell { width: min(100% - 28px, 1200px); }
+  .preview-grid { grid-template-columns: 1fr; }
   .site-header { position: static; }
   .header-shell { min-height: 66px; gap: 10px; }
   .brand-copy small { display: none; }
