@@ -1,41 +1,92 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
+/// <summary>Describes the containment state of a point or shape relative to another shape.</summary>
 public enum OcctModelState
 {
+    /// <summary>The containment state could not be determined.</summary>
     Unknown = 0,
+    /// <summary>The point or shape is inside the reference shape.</summary>
     Inside = 1,
+    /// <summary>The point or shape is outside the reference shape.</summary>
     Outside = 2,
+    /// <summary>The point or shape lies on the boundary of the reference shape.</summary>
     On = 3
 }
 
+/// <summary>Orientation of a topological sub-shape within its parent shape.</summary>
 public enum OcctModelOrientation
 {
+    /// <summary>The sub-shape is oriented in the same direction as its parent.</summary>
     Forward = 0,
+    /// <summary>The sub-shape is oriented in the opposite direction to its parent.</summary>
     Reversed = 1,
+    /// <summary>The sub-shape is internal (e.g. a seam edge).</summary>
     Internal = 2,
+    /// <summary>The sub-shape is external.</summary>
     External = 3
 }
 
+/// <summary>
+/// Glue mode hint for OCCT Boolean operations.
+/// Can significantly accelerate operations on shapes that share faces.
+/// </summary>
 public enum OcctModelBooleanGlue
 {
+    /// <summary>No glue \u2014 standard Boolean algorithm (default).</summary>
     Off = 0,
+    /// <summary>Shift glue \u2014 use when one shape lies fully outside the other.</summary>
     Shift = 1,
+    /// <summary>Full glue \u2014 use when shapes share a full coincident face set.</summary>
     Full = 2
 }
 
+/// <summary>
+/// Configuration for OCCT Boolean operations (Fuse, Cut, Common, Section, Split).
+/// Use <see cref="Default"/> or <see cref="CreateDefault"/> as the starting point
+/// and adjust individual properties as needed.
+/// </summary>
 public struct OcctModelBooleanOptions
 {
+    /// <summary>
+    /// Fuzzy tolerance applied to coincident geometry detection.
+    /// Use a small positive value (e.g. 1e-6) when shapes have near-coincident faces.
+    /// Default: 0 (automatic).
+    /// </summary>
     public double FuzzyValue { get; set; }
+
+    /// <summary>
+    /// Angular tolerance used when simplifying the result shape.
+    /// Default: 1e-7 radians.
+    /// </summary>
     public double AngularTolerance { get; set; }
+
+    /// <summary>Enables multi-threaded OCCT Boolean execution. Default: <see langword="true"/>.</summary>
     public bool RunParallel { get; set; }
+
+    /// <summary>
+    /// Preserves the input shapes unchanged (non-destructive mode).
+    /// Default: <see langword="true"/>.
+    /// </summary>
     public bool NonDestructive { get; set; }
+
+    /// <summary>Glue hint for coincident geometry. Default: <see cref="OcctModelBooleanGlue.Off"/>.</summary>
     public OcctModelBooleanGlue Glue { get; set; }
+
+    /// <summary>Checks for inverted (inside-out) solids in the result. Default: <see langword="true"/>.</summary>
     public bool CheckInverted { get; set; }
+
+    /// <summary>Removes redundant edges from the result shape. Default: <see langword="true"/>.</summary>
     public bool SimplifyEdges { get; set; }
+
+    /// <summary>Merges coplanar faces in the result shape. Default: <see langword="true"/>.</summary>
     public bool SimplifyFaces { get; set; }
 
+    /// <summary>
+    /// Returns a <see cref="OcctModelBooleanOptions"/> instance initialized with recommended defaults.
+    /// This property returns a value-type copy; modify the returned value freely.
+    /// </summary>
     public static OcctModelBooleanOptions Default => new()
     {
         FuzzyValue = 0.0,
@@ -47,6 +98,13 @@ public struct OcctModelBooleanOptions
         SimplifyEdges = true,
         SimplifyFaces = true
     };
+
+    /// <summary>
+    /// Returns a new <see cref="OcctModelBooleanOptions"/> with recommended defaults.
+    /// Prefer this over the <see cref="Default"/> property when the result will be
+    /// mutated, to avoid accidental struct-copy pitfalls.
+    /// </summary>
+    public static OcctModelBooleanOptions CreateDefault() => Default;
 
     internal readonly NativeModelBooleanOptions ToNative() => new()
     {
@@ -60,6 +118,7 @@ public struct OcctModelBooleanOptions
         SimplifyFaces = SimplifyFaces ? 1 : 0
     };
 }
+
 
 [StructLayout(LayoutKind.Sequential)]
 internal struct NativeModelBooleanOptions
@@ -265,7 +324,9 @@ public readonly record struct OcctModelShape
 
 public sealed class OcctModelAlgorithmResult
 {
-    private readonly string _report;
+    private readonly OcctModelingSession? _session;
+    private readonly long _operationId;
+    private string? _report;
 
     internal OcctModelAlgorithmResult(OcctModelingSession session, NativeModelAlgorithmResult native)
     {
@@ -274,7 +335,19 @@ public sealed class OcctModelAlgorithmResult
         Succeeded = native.Succeeded != 0;
         HasWarnings = native.HasWarnings != 0;
         HasErrors = native.HasErrors != 0;
-        _report = session.GetOperationReport(native.OperationId);
+        _operationId = native.OperationId;
+
+        // Eagerly fetch the report when there are diagnostics, because the session
+        // might be disposed before the caller accesses Report.
+        if (HasWarnings || HasErrors)
+        {
+            _report = FetchReport(session, native.OperationId);
+            _session = null; // No need to hold the session reference.
+        }
+        else
+        {
+            _session = session;
+        }
     }
 
     public OcctModelShape Shape { get; }
@@ -282,7 +355,34 @@ public sealed class OcctModelAlgorithmResult
     public bool Succeeded { get; }
     public bool HasWarnings { get; }
     public bool HasErrors { get; }
-    public string Report => _report;
+
+    /// <summary>
+    /// Gets the OCCT algorithm operation report (errors and warnings).
+    /// Lazily fetched on first access when there are no diagnostics;
+    /// eagerly fetched during construction when warnings or errors are present.
+    /// </summary>
+    public string Report
+    {
+        get
+        {
+            if (_report is not null) return _report;
+            if (_session is null || _session.IsDisposed) return string.Empty;
+            return _report ??= FetchReport(_session, _operationId);
+        }
+    }
+
+    private static string FetchReport(OcctModelingSession session, long operationId)
+    {
+        try
+        {
+            return session.GetOperationReport(operationId);
+        }
+        catch
+        {
+            // Best-effort: return empty string if the session is disposed or the report is unavailable.
+            return string.Empty;
+        }
+    }
 }
 
 public sealed class OcctMesh

@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -189,8 +189,17 @@ public static partial class OcctRuntime
 
     private static string? DiagnosticTryFindLoadedRuntimeModule(string moduleName)
     {
+        // Process.Modules can be very slow or unavailable in containers and sandboxes.
+        // We apply a best-effort approach with a tight time budget.
         try
         {
+            if (OperatingSystem.IsLinux())
+            {
+                // On Linux, prefer parsing /proc/self/maps which is fast, unprivileged,
+                // and works in containers.
+                return DiagnosticFindModuleInProcMaps(moduleName);
+            }
+
             using var process = Process.GetCurrentProcess();
             foreach (ProcessModule module in process.Modules)
             {
@@ -203,6 +212,29 @@ public static partial class OcctRuntime
             // Diagnostics must remain available even when module enumeration is restricted.
         }
 
+        return null;
+    }
+
+    private static string? DiagnosticFindModuleInProcMaps(string moduleName)
+    {
+        try
+        {
+            foreach (var line in File.ReadLines("/proc/self/maps"))
+            {
+                // Format: address perms offset dev inode pathname
+                var lastSpace = line.LastIndexOf(' ');
+                if (lastSpace < 0) continue;
+                var path = line[(lastSpace + 1)..];
+                if (string.IsNullOrEmpty(path) || path[0] != '/') continue;
+                var fileName = Path.GetFileName(path);
+                if (string.Equals(fileName, moduleName, StringComparison.OrdinalIgnoreCase))
+                    return path;
+            }
+        }
+        catch (Exception)
+        {
+            // /proc/self/maps not available — fall back to null.
+        }
         return null;
     }
 }

@@ -121,13 +121,17 @@ public sealed partial class OcctEngine : IDisposable
             throw new ArgumentException("Object no longer exists in this OcctEngine.", nameof(value));
     }
 
+    // NOTE: ObjectExists + QueryObjectKind are two separate native calls.
+    // Future optimization: merge into a single occt_engine_object_info_get call.
     private void EnsureShape(OcctShape shape)
     {
         EnsureNotDisposed();
         if (!shape.IsValid || shape.OwnerId != _ownerId)
             throw new ArgumentException("Shape does not belong to this OcctEngine.", nameof(shape));
-        if (!ObjectExists(shape.Id) || QueryObjectKind(shape.Id) != OcctObjectKind.Shape)
+        if (!ObjectExists(shape.Id))
             throw new ArgumentException("Shape no longer exists in this OcctEngine.", nameof(shape));
+        if (QueryObjectKind(shape.Id) != OcctObjectKind.Shape)
+            throw new ArgumentException("Object ID exists but is not a Shape in this OcctEngine.", nameof(shape));
     }
 
     private void EnsureText(OcctText text)
@@ -168,16 +172,20 @@ public sealed partial class OcctEngine : IDisposable
         OcctPoint item => item.OwnerId,
         OcctOverlay item => item.OwnerId,
         OcctManipulator item => item.OwnerId,
-        _ => long.MinValue
+        null => throw new ArgumentNullException(nameof(value)),
+        _ => throw new NotSupportedException(
+            $"Object type '{value.GetType().Name}' is not recognized by this version of OcctEngine. " +
+            "Update GetOwnerId to handle the new type.")
     };
 
     private long[] GetObjectIds(IEnumerable<IOcctObject> values, string parameterName)
     {
         ArgumentNullException.ThrowIfNull(values);
-        var ids = new HashSet<long>();
+        var ids = new List<long>();
+        var seen = new HashSet<long>();
         foreach (var value in values)
         {
-            ArgumentNullException.ThrowIfNull(value);
+            ArgumentNullException.ThrowIfNull(value, parameterName);
             try
             {
                 EnsureObject(value);
@@ -186,6 +194,9 @@ public sealed partial class OcctEngine : IDisposable
             {
                 throw new ArgumentException(exception.Message, parameterName, exception);
             }
+            if (!seen.Add(value.Id))
+                throw new ArgumentException(
+                    $"Duplicate object ID {value.Id} in collection.", parameterName);
             ids.Add(value.Id);
         }
         return ids.ToArray();

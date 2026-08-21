@@ -5,7 +5,13 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
+    <!-- XML documentation generated for IDE intellisense and NuGet consumers.    -->
+    <!-- CS1591 is suppressed here (not globally) because TreatWarningsAsErrors is -->
+    <!-- set in Directory.Build.props and XML doc coverage is being added          -->
+    <!-- incrementally. Remove ;1591 once all public APIs are documented.          -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
   </PropertyGroup>
 </Project>
+
+

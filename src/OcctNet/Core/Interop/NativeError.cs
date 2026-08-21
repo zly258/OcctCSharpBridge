@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Text;
 
 namespace OcctNet;
@@ -34,11 +35,19 @@ internal static class NativeError
         if (queryStatus != OcctStatus.Ok || required <= 1)
             return null;
 
-        var buffer = new byte[required];
-        var copyStatus = copy(buffer, buffer.Length, out var copiedRequired);
-        if (copyStatus != OcctStatus.Ok || copiedRequired <= 1 || copiedRequired > buffer.Length)
-            return null;
+        // Use ArrayPool to avoid a heap allocation for each error-message read.
+        var buffer = ArrayPool<byte>.Shared.Rent(required);
+        try
+        {
+            var copyStatus = copy(buffer, required, out var copiedRequired);
+            if (copyStatus != OcctStatus.Ok || copiedRequired <= 1 || copiedRequired > required)
+                return null;
 
-        return Encoding.UTF8.GetString(buffer, 0, copiedRequired - 1);
+            return Encoding.UTF8.GetString(buffer, 0, copiedRequired - 1);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 }
