@@ -12,8 +12,8 @@ public sealed partial class MainForm
     private OcctCornerPosition _triedronPosition = OcctCornerPosition.LeftLower;
     private OcctCornerPosition _viewCubePosition = OcctCornerPosition.RightUpper;
     private bool _viewCubeVisible = true;
-    private int _viewCubeSize = 90;
-    private int _viewCubeOffset = 10;
+    private int _viewCubeSize = 72;
+    private int _viewCubeOffset = 82;
 
     private void SetDisplayStyle(OcctDisplayMode mode)
     {
