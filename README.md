@@ -81,9 +81,7 @@ Do not duplicate those images into `website`.
 
 ## Files
 
-- `index.html` — semantic page structure and canonical repository/document links.
-- `app.js` — bilingual copy, theme state, preview lightbox and copy controls.
-- `styles.css` — responsive visual system.
+- `index.html` — self-contained minimalist static website with embedded styles, bilingual scripts, theme detection, and canonical links.
 - `.nojekyll` — static hosting marker.
 
 When SDK or Demo architecture changes, update the source branches first and update the website only after the formal branch state is known.

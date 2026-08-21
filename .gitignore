@@ -1,0 +1,21 @@
+# Build and cache directories
+.cache/
+build/
+dist/
+src/
+[Bb]in/
+[Oo]bj/
+*.tmp
+*.log
+
+# IDE & Editor files
+.vs/
+.idea/
+.vscode/
+*.suo
+*.user
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini

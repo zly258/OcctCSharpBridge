@@ -79,11 +79,9 @@ demo/assets/previews/avalonia-win-demo-en.png
 - Binary SDK 是构建/发布产物，不是第二套源码树；
 - 不重新引入 Generated API Reference 或硬编码 API 数量。
 
-## 文件
+## 文件结构
 
-- `index.html`：语义化页面结构与正式仓库/文档链接。
-- `app.js`：中英文文案、主题状态、截图 Lightbox 与复制按钮。
-- `styles.css`：响应式视觉系统。
+- `index.html`：极简自包含静态单页官网（内嵌样式、双语切换、系统主题适配及预览交互）。
 - `.nojekyll`：静态托管标记。
 
 当 SDK 或 Demo 架构发生变化时，应先更新并确认正式源码分支，再更新官网。

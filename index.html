@@ -1,281 +1,1252 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="auto">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light dark" />
-  <meta name="theme-color" content="#f6f8fb" />
-  <meta name="description" content="OcctCSharpBridge — Bridge OCCT 7.9.0 for .NET 10, with WinForms, WPF and Avalonia on Windows and Linux." />
-  <title>OcctCSharpBridge · OCCT for .NET</title>
-  <link rel="stylesheet" href="styles.css" />
-  <script>
-    (() => {
-      const saved = localStorage.getItem('occt-theme');
-      const theme = saved === 'dark' || saved === 'light'
-        ? saved
-        : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-      document.documentElement.dataset.theme = theme;
-    })();
-  </script>
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="description" content="OcctCSharpBridge — Minimalist .NET 10 Bridge for Open CASCADE Technology (OCCT 7.9.0) with WinForms, WPF and Avalonia." />
+  <title>OcctCSharpBridge · OCCT 7.9.0 for .NET 10</title>
+  <style>
+    /* === 基础变量与极简主题 === */
+    :root {
+      --bg: #ffffff;
+      --bg-subtle: #f8fafc;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --text-dim: #94a3b8;
+      --line: #e2e8f0;
+      --line-strong: #cbd5e1;
+      --accent: #0284c7;
+      --accent-hover: #0369a1;
+      --accent-bg: #f0f9ff;
+      --code-bg: #0f172a;
+      --code-text: #e2e8f0;
+      --tag-bg: #f1f5f9;
+      --tag-text: #475569;
+      --success: #16a34a;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+      --font-mono: "Cascadia Code", "JetBrains Mono", "Fira Code", Consolas, Menlo, monospace;
+    }
+
+    [data-theme="dark"],
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0b0f17;
+        --bg-subtle: #111827;
+        --text: #f1f5f9;
+        --text-muted: #94a3b8;
+        --text-dim: #64748b;
+        --line: #1e293b;
+        --line-strong: #334155;
+        --accent: #38bdf8;
+        --accent-hover: #7dd3fc;
+        --accent-bg: #0c2336;
+        --code-bg: #05080e;
+        --code-text: #e2e8f0;
+        --tag-bg: #1e293b;
+        --tag-text: #cbd5e1;
+        --success: #4ade80;
+      }
+    }
+
+    [data-theme="dark"] {
+      --bg: #0b0f17;
+      --bg-subtle: #111827;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --line: #1e293b;
+      --line-strong: #334155;
+      --accent: #38bdf8;
+      --accent-hover: #7dd3fc;
+      --accent-bg: #0c2336;
+      --code-bg: #05080e;
+      --code-text: #e2e8f0;
+      --tag-bg: #1e293b;
+      --tag-text: #cbd5e1;
+      --success: #4ade80;
+    }
+
+    [data-theme="light"] {
+      --bg: #ffffff;
+      --bg-subtle: #f8fafc;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --text-dim: #94a3b8;
+      --line: #e2e8f0;
+      --line-strong: #cbd5e1;
+      --accent: #0284c7;
+      --accent-hover: #0369a1;
+      --accent-bg: #f0f9ff;
+      --code-bg: #0f172a;
+      --code-text: #e2e8f0;
+      --tag-bg: #f1f5f9;
+      --tag-text: #475569;
+      --success: #16a34a;
+    }
+
+    /* === 全局重置与极简排版 === */
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.7;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+      transition: background-color .15s ease, color .15s ease;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color .15s ease, color .15s ease;
+    }
+    a:hover {
+      color: var(--accent-hover);
+      border-bottom-color: var(--accent-hover);
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* === 顶部导航与操作栏 === */
+    .site-nav {
+      border-bottom: 1px solid var(--line);
+      background-color: var(--bg);
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+    .nav-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 58px;
+      gap: 16px;
+    }
+    .nav-brand {
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--text);
+      border-bottom: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .nav-brand:hover {
+      border-bottom: none;
+      color: var(--accent);
+    }
+    .nav-brand span {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: normal;
+      color: var(--text-muted);
+      border: 1px solid var(--line);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+    .nav-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-toggle {
+      background: var(--bg-subtle);
+      border: 1px solid var(--line);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all .15s ease;
+    }
+    .btn-toggle:hover {
+      border-color: var(--line-strong);
+      background: var(--line);
+    }
+    .nav-gh {
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 4px 8px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--bg-subtle);
+    }
+    .nav-gh:hover {
+      border-color: var(--line-strong);
+      color: var(--accent);
+    }
+
+    /* === 纯文本主内容 === */
+    main {
+      padding: 48px 0 80px;
+    }
+
+    .hero {
+      margin-bottom: 48px;
+    }
+    .hero-title {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+      margin: 0 0 12px 0;
+    }
+    .hero-desc {
+      font-size: 17px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin: 0 0 24px 0;
+    }
+    .badge-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 24px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+    .badge {
+      background: var(--tag-bg);
+      color: var(--tag-text);
+      border: 1px solid var(--line);
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    .badge.accent {
+      background: var(--accent-bg);
+      color: var(--accent);
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+    .quick-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+    }
+    .quick-links a {
+      font-weight: 600;
+    }
+
+    /* === 分节极简排版 === */
+    hr.sep {
+      border: 0;
+      border-top: 1px solid var(--line);
+      margin: 48px 0;
+    }
+
+    section {
+      margin-bottom: 40px;
+    }
+    .section-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0 0 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title::before {
+      content: "#";
+      color: var(--accent);
+      font-family: var(--font-mono);
+      font-size: 18px;
+      font-weight: normal;
+    }
+    .section-lead {
+      color: var(--text-muted);
+      margin: 0 0 20px 0;
+      font-size: 14px;
+    }
+
+    /* === 分支与架构列表 === */
+    .branch-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .branch-item {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 14px 18px;
+      background: var(--bg-subtle);
+    }
+    .branch-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+    }
+    .branch-name {
+      font-weight: 700;
+      color: var(--text);
+    }
+    .branch-tag {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: var(--tag-bg);
+      color: var(--tag-text);
+      border: 1px solid var(--line);
+    }
+    .branch-desc {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 13.5px;
+    }
+
+    /* === 平台表格 === */
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      margin-bottom: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+      text-align: left;
+    }
+    th, td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    th {
+      background: var(--bg-subtle);
+      font-weight: 600;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    td.status-yes {
+      color: var(--success);
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+    td.status-no {
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+    }
+
+    /* === 核心能力网格 === */
+    .caps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+      gap: 12px;
+    }
+    @media (max-width: 600px) {
+      .caps-grid { grid-template-columns: 1fr; }
+    }
+    .cap-item {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 14px 16px;
+      background: var(--bg-subtle);
+    }
+    .cap-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin: 0 0 6px 0;
+      color: var(--text);
+      font-family: var(--font-mono);
+    }
+    .cap-desc {
+      margin: 0;
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* === 轮播大图预览 === */
+    .carousel-container {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--bg-subtle);
+      outline: none;
+      transition: border-color .15s ease;
+    }
+    .carousel-container:focus-visible {
+      border-color: var(--accent);
+    }
+    .carousel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--bg);
+      gap: 12px;
+    }
+    .carousel-tabs {
+      display: flex;
+      gap: 6px;
+    }
+    .carousel-tab {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all .15s ease;
+    }
+    .carousel-tab:hover {
+      color: var(--text);
+      background: var(--bg-subtle);
+    }
+    .carousel-tab.active {
+      color: var(--accent);
+      background: var(--accent-bg);
+      border-color: var(--accent);
+    }
+    .carousel-nav-btns {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+    .carousel-counter {
+      color: var(--text-dim);
+      margin-right: 4px;
+    }
+    .carousel-btn {
+      background: var(--bg-subtle);
+      border: 1px solid var(--line);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 3px 9px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all .15s ease;
+    }
+    .carousel-btn:hover {
+      border-color: var(--line-strong);
+      background: var(--line);
+    }
+    .carousel-viewport {
+      position: relative;
+      background: #000000;
+      cursor: zoom-in;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 280px;
+    }
+    .carousel-viewport img {
+      width: 100%;
+      height: auto;
+      max-height: 520px;
+      object-fit: contain;
+      display: block;
+      transition: opacity .2s ease;
+    }
+    .carousel-zoom-hint {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      background: rgba(0, 0, 0, 0.7);
+      color: #ffffff;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      pointer-events: none;
+      backdrop-filter: blur(4px);
+    }
+    .carousel-footer {
+      padding: 14px 18px;
+      border-top: 1px solid var(--line);
+      background: var(--bg);
+    }
+    .carousel-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      gap: 12px;
+    }
+    .carousel-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      font-family: var(--font-mono);
+    }
+    .carousel-sub {
+      color: var(--text-dim);
+      font-size: 12px;
+      font-family: var(--font-mono);
+    }
+    .carousel-desc {
+      margin: 0;
+      font-size: 13.5px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* === 代码与命令框 === */
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+    .code-btn {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--code-text);
+      border-radius: 3px;
+      padding: 2px 8px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      cursor: pointer;
+    }
+    .code-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    pre {
+      margin: 0;
+      padding: 14px;
+      overflow-x: auto;
+    }
+    code {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: var(--code-text);
+      line-height: 1.6;
+    }
+
+    /* === 许可证与文档卡片 === */
+    .docs-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+    }
+    .doc-card {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 12px 16px;
+      background: var(--bg-subtle);
+      display: block;
+      color: inherit;
+    }
+    .doc-card:hover {
+      border-color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .doc-card-title {
+      font-weight: 700;
+      font-family: var(--font-mono);
+      font-size: 13.5px;
+      color: var(--text);
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .doc-card-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    /* === 底部 Footer === */
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 32px 0 48px;
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+    .footer-inner {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+    .footer-links {
+      display: flex;
+      gap: 16px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    /* === Lightbox 预览弹窗 === */
+    .lightbox-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.88);
+      z-index: 100;
+      display: none;
+      place-items: center;
+      padding: 24px;
+      cursor: zoom-out;
+    }
+    .lightbox-modal.active {
+      display: grid;
+    }
+    .lightbox-img {
+      max-width: 95vw;
+      max-height: 92vh;
+      object-fit: contain;
+      border-radius: 4px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+      cursor: default;
+    }
+    .lightbox-close {
+      position: absolute;
+      top: 16px;
+      right: 20px;
+      color: #ffffff;
+      font-size: 28px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-family: var(--font-mono);
+    }
+  </style>
 </head>
 <body>
-  <a class="skip-link" href="#main" data-i18n="skipContent">Skip to content</a>
 
-  <header class="site-header">
-    <div class="header-shell shell">
-      <a class="brand" href="#top" aria-label="OcctCSharpBridge home">
-        <span class="brand-copy"><strong>OcctCSharpBridge</strong><small>OCCT × .NET</small></span>
+  <!-- 顶部导航 -->
+  <nav class="site-nav">
+    <div class="container nav-inner">
+      <a href="#" class="nav-brand">
+        <strong>OcctCSharpBridge</strong>
+        <span>OCCT 7.9.0</span>
       </a>
-
-      <nav class="nav" aria-label="Primary navigation">
-        <a href="#branches" data-i18n="navBranches">Branches</a>
-        <a href="#platforms" data-i18n="navPlatforms">Platforms</a>
-        <a href="#capabilities" data-i18n="navCapabilities">Capabilities</a>
-        <a href="#demo" data-i18n="navDemo">Demo</a>
-        <a href="#docs" data-i18n="navDocs">Docs</a>
-      </nav>
-
-      <div class="header-actions">
-        <button id="themeToggle" class="text-button" type="button" aria-label="Toggle color theme"><span id="themeLabel">Dark</span></button>
-        <button id="languageToggle" class="text-button" type="button" aria-label="Switch language">中文</button>
-        <span class="header-sep" aria-hidden="true"></span>
-        <a class="github-link" href="https://github.com/zly258/OcctCSharpBridge" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+      <div class="nav-controls">
+        <button id="langBtn" class="btn-toggle" type="button" aria-label="Toggle Language">
+          🌐 <span id="langText">中文</span>
+        </button>
+        <button id="themeBtn" class="btn-toggle" type="button" aria-label="Toggle Theme">
+          🌓 <span id="themeText">Auto</span>
+        </button>
+        <a class="nav-gh" href="https://github.com/zly258/OcctCSharpBridge" target="_blank" rel="noreferrer">
+          GitHub ↗
+        </a>
       </div>
     </div>
-  </header>
+  </nav>
 
-  <main id="main">
-    <section id="top" class="hero shell">
-      <div class="hero-copy">
-        <div class="eyebrow" data-i18n="heroEyebrow">BRIDGE 3 · ABI5-ONLY</div>
-        <h1 data-i18n="heroTitle">A focused OCCT bridge for .NET desktop CAD</h1>
-        <p class="hero-lead" data-i18n="heroLead">One SDK, one Demo, clear Windows/Linux boundaries — typed modeling, topology, exchange and Viewer APIs over OCCT 7.9.0.</p>
+  <!-- 主体内容 -->
+  <main class="container">
+    
+    <!-- Hero 标题与契约 -->
+    <header class="hero">
+      <h1 class="hero-title" data-i18n="heroTitle">A focused OCCT 7.9.0 bridge for .NET 10 desktop CAD</h1>
+      <p class="hero-desc" data-i18n="heroDesc">
+        Cross-platform Native C++ ABI5 Core with typed C# 14 bindings, headless BRep modeling, and hardware-accelerated 3D viewport adapters for WinForms, WPF, and Avalonia.
+      </p>
+      <div class="badge-bar">
+        <span class="badge accent">Bridge 3.0.0-preview.1</span>
+        <span class="badge">ABI 5 Only</span>
+        <span class="badge">OCCT 7.9.0</span>
+        <span class="badge">.NET 10.0.303</span>
+        <span class="badge">C# 14</span>
+        <span class="badge">Windows x64 / Linux x64</span>
+      </div>
+      <div class="quick-links">
+        <a href="https://github.com/zly258/OcctCSharpBridge" target="_blank" rel="noreferrer">→ GitHub Repo</a>
+        <a href="https://github.com/zly258/OcctCSharpBridge/tree/main" target="_blank" rel="noreferrer" data-i18n="quickMain">→ SDK Source (main)</a>
+        <a href="https://github.com/zly258/OcctCSharpBridge/tree/demo" target="_blank" rel="noreferrer" data-i18n="quickDemo">→ Consumer Demo (demo)</a>
+        <a href="#license" data-i18n="quickLicense">→ License (LGPL 2.1)</a>
+      </div>
+    </header>
 
-        <div class="hero-actions">
-          <a class="button primary" href="https://github.com/zly258/OcctCSharpBridge/tree/main" target="_blank" rel="noreferrer" data-i18n="viewMain">SDK</a>
-          <a class="button secondary" href="https://github.com/zly258/OcctCSharpBridge/tree/demo" target="_blank" rel="noreferrer" data-i18n="viewDemo">Demo</a>
+    <hr class="sep" />
+
+    <!-- 仓库分支分工 -->
+    <section id="branches">
+      <h2 class="section-title" data-i18n="branchesTitle">Repository Architecture</h2>
+      <p class="section-lead" data-i18n="branchesLead">Three independent responsibilities with zero duplicated Bridge implementation.</p>
+      
+      <div class="branch-list">
+        <div class="branch-item">
+          <div class="branch-header">
+            <span class="branch-name"><a href="https://github.com/zly258/OcctCSharpBridge/tree/main" target="_blank" rel="noreferrer">main / main-dev</a></span>
+            <span class="branch-tag">SDK SOURCE</span>
+          </div>
+          <p class="branch-desc" data-i18n="branchMainDesc">
+            The sole Bridge SDK source tree: Native C++ Core (ABI5), OcctNet, WinForms/WPF/Avalonia adapters, ABI compatibility verification, and Binary SDK packaging.
+          </p>
         </div>
 
-        <div class="contract-strip" aria-label="Current source contract">
-          <div><span data-i18n="contractBridge">Bridge</span><strong>3.0.0-preview.1</strong></div>
-          <div><span data-i18n="contractAbi">Native ABI</span><strong>5 only</strong></div>
-          <div><span>OCCT</span><strong>7.9.0</strong></div>
-          <div><span>.NET SDK</span><strong>10.0.303</strong></div>
-          <div><span>C#</span><strong>14</strong></div>
+        <div class="branch-item">
+          <div class="branch-header">
+            <span class="branch-name"><a href="https://github.com/zly258/OcctCSharpBridge/tree/demo" target="_blank" rel="noreferrer">demo / demo-dev</a></span>
+            <span class="branch-tag">CONSUMER APPS</span>
+          </div>
+          <p class="branch-desc" data-i18n="branchDemoDesc">
+            Single consumer application tree. Windows hosts WinForms, WPF, and Avalonia; Linux hosts Avalonia. Consumes Binary SDK dist payloads with runtime verification.
+          </p>
+        </div>
+
+        <div class="branch-item">
+          <div class="branch-header">
+            <span class="branch-name"><a href="https://github.com/zly258/OcctCSharpBridge/tree/website" target="_blank" rel="noreferrer">website</a></span>
+            <span class="branch-tag">PORTAL</span>
+          </div>
+          <p class="branch-desc" data-i18n="branchWebDesc">
+            Minimalist static presentation portal: contract specs, platform matrix, capabilities, demo previews, and documentation index.
+          </p>
         </div>
       </div>
     </section>
 
-    <section id="branches" class="section section-soft">
-      <div class="shell">
-        <div class="section-heading">
-          <div class="eyebrow" data-i18n="branchEyebrow">REPOSITORY</div>
-          <h2 data-i18n="branchTitle">Three responsibilities, one Bridge</h2>
-          <p data-i18n="branchLead">SDK, consumer app and website stay separate — never duplicating the Bridge implementation.</p>
-        </div>
+    <hr class="sep" />
 
-        <div class="branch-grid">
-          <article class="branch-card">
-            <div class="card-index">01</div>
-            <div class="branch-title-row"><h3>main / main-dev</h3><span class="pill">SDK</span></div>
-            <p data-i18n="mainText">The sole Bridge SDK source: Native Core, OcctNet and the WinForms/WPF/Avalonia adapters.</p>
-            <a href="https://github.com/zly258/OcctCSharpBridge/tree/main" target="_blank" rel="noreferrer" data-i18n="openBranch">Open ↗</a>
-          </article>
+    <!-- 平台支持矩阵 -->
+    <section id="platforms">
+      <h2 class="section-title" data-i18n="platformTitle">Platform Support Matrix</h2>
+      <p class="section-lead" data-i18n="platformLead">Strict platform boundaries between headless modeling and UI viewports.</p>
 
-          <article class="branch-card featured">
-            <div class="card-index">02</div>
-            <div class="branch-title-row"><h3>demo / demo-dev</h3><span class="pill">CONSUMER</span></div>
-            <p data-i18n="demoBranchText">The single consumer app. Windows ships three hosts; Linux ships Avalonia only.</p>
-            <a href="https://github.com/zly258/OcctCSharpBridge/tree/demo" target="_blank" rel="noreferrer" data-i18n="openBranch">Open ↗</a>
-          </article>
-
-          <article class="branch-card">
-            <div class="card-index">03</div>
-            <div class="branch-title-row"><h3>website</h3><span class="pill">DOCS</span></div>
-            <p data-i18n="websiteText">This bilingual static site: contract, matrix, previews and docs.</p>
-            <a href="https://github.com/zly258/OcctCSharpBridge/tree/website" target="_blank" rel="noreferrer" data-i18n="openBranch">Open ↗</a>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <section id="platforms" class="section shell">
-      <div class="section-heading">
-        <div class="eyebrow" data-i18n="platformEyebrow">PLATFORM MATRIX</div>
-        <h2 data-i18n="platformTitle">Platform support, explicit</h2>
-        <p data-i18n="platformLead">Cross-platform x64 SDK; desktop frameworks differ by OS.</p>
-      </div>
-
-      <div class="matrix-wrap" role="region" aria-label="Platform support matrix" tabindex="0">
-        <table class="platform-matrix">
+      <div class="table-wrap">
+        <table>
           <thead>
             <tr>
-              <th scope="col" data-i18n="matrixArea">Area</th>
-              <th scope="col">Windows x64</th>
-              <th scope="col">Linux x64</th>
+              <th data-i18n="thArea">Capability / Module</th>
+              <th>Windows x64</th>
+              <th>Linux x64</th>
             </tr>
           </thead>
           <tbody>
-            <tr><th scope="row">OcctNative + OcctNet</th><td><span class="support yes" data-i18n="supported">Yes</span></td><td><span class="support yes" data-i18n="supported">Yes</span></td></tr>
-            <tr><th scope="row">WinForms</th><td><span class="support yes" data-i18n="supported">Yes</span></td><td><span class="support no" data-i18n="notApplicable">—</span></td></tr>
-            <tr><th scope="row">WPF</th><td><span class="support yes" data-i18n="supported">Yes</span></td><td><span class="support no" data-i18n="notApplicable">—</span></td></tr>
-            <tr><th scope="row">Avalonia</th><td><span class="support yes" data-i18n="supported">Yes</span></td><td><span class="support yes" data-i18n="supported">Yes</span></td></tr>
-            <tr><th scope="row" data-i18n="demoHosts">Demo hosts</th><td>WinForms · WPF · Avalonia</td><td>Avalonia</td></tr>
-            <tr><th scope="row" data-i18n="publishFlow">Publish</th><td>3 packages</td><td>1 package</td></tr>
-            <tr><th scope="row" data-i18n="viewerBackend">Viewer</th><td>Win32 / WNT</td><td>X11 / XWayland</td></tr>
+            <tr>
+              <td><strong>Native Core + OcctNet</strong> (<span data-i18n="rowHeadless">Headless BRep Modeling</span>)</td>
+              <td class="status-yes" data-i18n="yes">Yes</td>
+              <td class="status-yes" data-i18n="yes">Yes</td>
+            </tr>
+            <tr>
+              <td><strong>OcctNet.WinForms</strong> (<span data-i18n="rowWinForms">WinForms Host</span>)</td>
+              <td class="status-yes" data-i18n="yes">Yes (Win32 / WNT)</td>
+              <td class="status-no" data-i18n="na">N/A</td>
+            </tr>
+            <tr>
+              <td><strong>OcctNet.Wpf</strong> (<span data-i18n="rowWpf">WPF Host</span>)</td>
+              <td class="status-yes" data-i18n="yes">Yes (Win32 / WNT)</td>
+              <td class="status-no" data-i18n="na">N/A</td>
+            </tr>
+            <tr>
+              <td><strong>OcctNet.Avalonia</strong> (<span data-i18n="rowAvalonia">Avalonia Host</span>)</td>
+              <td class="status-yes" data-i18n="yes">Yes (Win32 / WNT)</td>
+              <td class="status-yes" data-i18n="yesLinux">Yes (X11 / XWayland)</td>
+            </tr>
+            <tr>
+              <td><strong>Interactive 3D Viewport Backend</strong></td>
+              <td>WNT / OpenGL</td>
+              <td>Xw_Window / OpenGL</td>
+            </tr>
           </tbody>
         </table>
       </div>
+    </section>
 
-      <div class="matrix-notes">
-        <article><strong data-i18n="windowsNoteTitle">Windows</strong><p data-i18n="windowsNote">WinForms, WPF and Avalonia are independent hosts over one Bridge SDK.</p></article>
-        <article><strong data-i18n="linuxNoteTitle">Linux</strong><p data-i18n="linuxNote">Core + Avalonia only. The Viewer needs X11/XWayland; headless modeling does not.</p></article>
+    <hr class="sep" />
+
+    <!-- 核心能力 -->
+    <section id="capabilities">
+      <h2 class="section-title" data-i18n="capsTitle">Core Capabilities</h2>
+      <p class="section-lead" data-i18n="capsLead">Comprehensive geometry, topology, exchange, and visualization engine.</p>
+
+      <div class="caps-grid">
+        <div class="cap-item">
+          <div class="cap-title">01. Viewer &amp; AIS Viewport</div>
+          <p class="cap-desc" data-i18n="cap1">Hardware-accelerated 3D viewport, camera projections, Triedron coordinate system, ViewCube navigation cube, ray picking, and dynamic highlighting.</p>
+        </div>
+        <div class="cap-item">
+          <div class="cap-title">02. Headless BRep Modeling</div>
+          <p class="cap-desc" data-i18n="cap2">Full BRep primitives (box, cylinder, sphere, torus, prism, revolution), boolean operations (fuse, cut, common), fillets, and chamfers without UI context.</p>
+        </div>
+        <div class="cap-item">
+          <div class="cap-title">03. Topology &amp; Measurement</div>
+          <p class="cap-desc" data-i18n="cap3">TopoDS entity traversal (compound, solid, shell, face, wire, edge, vertex), bounding box, surface area, volume, and center of mass calculations.</p>
+        </div>
+        <div class="cap-item">
+          <div class="cap-title">04. Meshing &amp; Tessellation</div>
+          <p class="cap-desc" data-i18n="cap4">High-performance BRepMesh triangulation with configurable linear deflection and angular deflection tolerances for rendering and analysis.</p>
+        </div>
+        <div class="cap-item">
+          <div class="cap-title">05. STEP Assembly Exchange</div>
+          <p class="cap-desc" data-i18n="cap5">STEP AP214 and AP242 reader and writer supporting assembly tree hierarchy, color preservation, item naming, and metadata exchange.</p>
+        </div>
+        <div class="cap-item">
+          <div class="cap-title">06. Runtime Contract Check</div>
+          <p class="cap-desc" data-i18n="cap6">Automated runtime validation against bridge-contract.json ensuring strict ABI5 compliance and zero binary drift across platforms.</p>
+        </div>
       </div>
     </section>
 
-    <section id="capabilities" class="section section-soft">
-      <div class="shell">
-        <div class="section-heading">
-          <div class="eyebrow" data-i18n="capEyebrow">CAPABILITIES</div>
-          <h2 data-i18n="capTitle">What the Bridge covers</h2>
-          <p data-i18n="capLead">Reusable geometry and Viewer semantics — app concerns stay above the Bridge.</p>
+    <hr class="sep" />
+
+    <!-- Demo 轮播大图预览 (demo 分支资源) -->
+    <section id="demo">
+      <h2 class="section-title" data-i18n="demoTitle">Demo Previews</h2>
+      <p class="section-lead" data-i18n="demoLead">Canonical preview screenshots from the official demo branch on Windows x64.</p>
+
+      <!-- 轮播大图容器 -->
+      <div class="carousel-container" tabindex="0" role="region" aria-label="Demo Previews Carousel" id="demoCarousel">
+        <div class="carousel-header">
+          <div class="carousel-tabs" role="tablist">
+            <button class="carousel-tab active" data-index="0" role="tab" aria-selected="true" onclick="setSlide(0)">WinForms</button>
+            <button class="carousel-tab" data-index="1" role="tab" aria-selected="false" onclick="setSlide(1)">WPF</button>
+            <button class="carousel-tab" data-index="2" role="tab" aria-selected="false" onclick="setSlide(2)">Avalonia</button>
+          </div>
+          <div class="carousel-nav-btns">
+            <span class="carousel-counter" id="carouselCounter">1 / 3</span>
+            <button class="carousel-btn" onclick="prevSlide()" aria-label="Previous Slide">←</button>
+            <button class="carousel-btn" onclick="nextSlide()" aria-label="Next Slide">→</button>
+          </div>
         </div>
 
-        <div class="capability-grid">
-          <article class="cap-card"><span>01</span><h3 data-i18n="f1Title">Viewer &amp; AIS</h3></article>
-          <article class="cap-card"><span>02</span><h3 data-i18n="f2Title">Headless modeling</h3></article>
-          <article class="cap-card"><span>03</span><h3 data-i18n="f3Title">Selection &amp; interaction</h3></article>
-          <article class="cap-card"><span>04</span><h3 data-i18n="f4Title">Geometry &amp; topology</h3></article>
-          <article class="cap-card"><span>05</span><h3 data-i18n="f5Title">Meshing</h3></article>
-          <article class="cap-card"><span>06</span><h3 data-i18n="f6Title">STEP assembly exchange</h3></article>
-          <article class="cap-card"><span>07</span><h3 data-i18n="f7Title">Runtime diagnostics</h3></article>
-          <article class="cap-card"><span>08</span><h3 data-i18n="f8Title">ABI contract checks</h3></article>
+        <div class="carousel-viewport" onclick="openLightboxFromCarousel()" title="Click to view full size">
+          <img id="carouselImg" src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-en.png" alt="WinForms Demo Preview" loading="lazy" />
+          <div class="carousel-zoom-hint" data-i18n="zoomHint">⛶ Click to expand</div>
+        </div>
+
+        <div class="carousel-footer">
+          <div class="carousel-info">
+            <strong id="carouselTitle" class="carousel-title">WinForms Host</strong>
+            <span id="carouselSub" class="carousel-sub">Windows x64 · WNT Backend</span>
+          </div>
+          <p id="carouselDesc" class="carousel-desc" data-i18n="slideWinDesc">
+            Classic Windows Forms CAD viewport with interactive Triedron, ViewCube, ray selection, and STEP assembly hierarchy.
+          </p>
         </div>
       </div>
     </section>
 
-    <section id="demo" class="section shell">
-      <div class="section-heading">
-        <div class="eyebrow" data-i18n="demoEyebrow">DEMO</div>
-        <h2 data-i18n="demoTitle">Demo previews</h2>
-        <p data-i18n="demoLead">Canonical screenshots from the demo branch, on Windows x64.</p>
-      </div>
+    <hr class="sep" />
 
-      <div class="preview-grid">
-        <figure class="preview-card">
-          <img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-en.png" alt="WinForms demo preview" loading="lazy">
-          <figcaption><div><strong>WinForms</strong><span>Windows x64</span></div></figcaption>
-        </figure>
-        <figure class="preview-card">
-          <img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-en.png" alt="WPF demo preview" loading="lazy">
-          <figcaption><div><strong>WPF</strong><span>Windows x64</span></div></figcaption>
-        </figure>
-        <figure class="preview-card">
-          <img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-win-demo-en.png" alt="Avalonia Windows x64 preview" loading="lazy">
-          <figcaption><div><strong>Avalonia</strong><span>Windows x64</span></div></figcaption>
-        </figure>
-      </div>
-    </section>
+    <!-- 快速命令 -->
+    <section id="workflow">
+      <h2 class="section-title" data-i18n="flowTitle">Workflow &amp; Commands</h2>
+      <p class="section-lead" data-i18n="flowLead">Build Binary SDK from main, sync into demo, validate, and publish.</p>
 
-    <section id="workflow" class="section section-soft">
-      <div class="shell">
-        <div class="section-heading">
-          <div class="eyebrow" data-i18n="workflowEyebrow">WORKFLOW</div>
-          <h2 data-i18n="workflowTitle">Build, validate, consume</h2>
-          <p data-i18n="workflowLead">Demo verifies the contract before building or publishing.</p>
+      <div class="code-block">
+        <div class="code-header">
+          <span>Windows x64 · PowerShell</span>
+          <button class="code-btn" onclick="copyCode(this, 'codeWin')">Copy</button>
         </div>
-
-        <div class="workflow-grid">
-          <article><span>01</span><strong data-i18n="flow1Title">Build SDK</strong><p data-i18n="flow1Text">Generate the Binary SDK from main.</p></article>
-          <article><span>02</span><strong data-i18n="flow2Title">Sync</strong><p data-i18n="flow2Text">Copy the SDK into demo/dist/&lt;rid&gt;.</p></article>
-          <article><span>03</span><strong data-i18n="flow3Title">Build &amp; run</strong><p data-i18n="flow3Text">Compile the hosts for the current OS.</p></article>
-          <article><span>04</span><strong data-i18n="flow4Title">Publish</strong><p data-i18n="flow4Text">Package apps with their runtime closure.</p></article>
-        </div>
-
-        <div class="command-grid">
-          <article class="code-window">
-            <div class="code-tabs"><span>Windows x64 · PowerShell</span><button type="button" data-copy-target="windowsCode" data-i18n="copy">Copy</button></div>
-            <pre><code id="windowsCode"># SDK
+        <pre><code id="codeWin"># 1. Build SDK on main
 git switch main
 .\build.ps1 dist Release
 
-# Demo
+# 2. Sync and run Demo on demo
 git switch demo
 .\sync.ps1
 .\build.ps1 all Release
 .\publish.ps1 all Release</code></pre>
-          </article>
-          <article class="code-window">
-            <div class="code-tabs"><span>Linux x64 · Bash</span><button type="button" data-copy-target="linuxCode" data-i18n="copy">Copy</button></div>
-            <pre><code id="linuxCode"># SDK
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span>Linux x64 · Bash</span>
+          <button class="code-btn" onclick="copyCode(this, 'codeLinux')">Copy</button>
+        </div>
+        <pre><code id="codeLinux"># 1. Build SDK on main
 git switch main
 ./build.sh dist Release
 
-# Demo
+# 2. Sync and run Demo on demo
 git switch demo
 ./sync.sh
 ./build.sh all Release
 ./publish.sh Release</code></pre>
-          </article>
-        </div>
       </div>
     </section>
 
-    <section id="docs" class="section shell">
-      <div class="docs-layout">
-        <div class="section-heading">
-          <div class="eyebrow" data-i18n="docsEyebrow">DOCS</div>
-          <h2 data-i18n="docsTitle">Documentation</h2>
-          <p data-i18n="docsLead">Read the source of truth for your layer.</p>
-        </div>
+    <hr class="sep" />
 
-        <div class="link-grid">
-          <a href="https://github.com/zly258/OcctCSharpBridge/blob/main/docs/en-US/README.md" target="_blank" rel="noreferrer"><span class="link-kicker">SDK</span><strong data-i18n="mainDocs">SDK docs</strong><small data-i18n="mainDocsNote">Architecture, API, build, deploy</small></a>
-          <a href="https://github.com/zly258/OcctCSharpBridge/blob/demo/README.md" target="_blank" rel="noreferrer"><span class="link-kicker">DEMO</span><strong data-i18n="demoDocs">Demo docs</strong><small data-i18n="demoDocsNote">Sync, build, run, publish</small></a>
-          <a href="https://github.com/zly258/OcctCSharpBridge/blob/main/bridge-contract.json" target="_blank" rel="noreferrer"><span class="link-kicker">CONTRACT</span><strong data-i18n="contractDocs">Bridge contract</strong><small>schema 3 · ABI5-only</small></a>
-          <a href="https://github.com/zly258/OcctCSharpBridge/blob/main/LICENSE" target="_blank" rel="noreferrer"><span class="link-kicker">LICENSE</span><strong data-i18n="licenseDocs">License</strong><small data-i18n="licenseDocsNote">LGPL 2.1 + Exception 1.0</small></a>
-        </div>
+    <!-- 许可证与文档索引 -->
+    <section id="license">
+      <h2 class="section-title" data-i18n="licenseTitle">License &amp; Documentation</h2>
+      <p class="section-lead" data-i18n="licenseLead">Open source under GNU LGPL 2.1 with OcctCSharpBridge Linking Exception 1.0.</p>
+
+      <div class="docs-list">
+        <a class="doc-card" href="https://github.com/zly258/OcctCSharpBridge/blob/main/LICENSE" target="_blank" rel="noreferrer">
+          <div class="doc-card-title"><span>LGPL 2.1 License</span> <span>↗</span></div>
+          <p class="doc-card-desc" data-i18n="docLicDesc">Terms for project source code and redistributed modifications.</p>
+        </a>
+
+        <a class="doc-card" href="https://github.com/zly258/OcctCSharpBridge/blob/main/OcctCSharpBridge_LGPL_EXCEPTION.txt" target="_blank" rel="noreferrer">
+          <div class="doc-card-title"><span>Linking Exception 1.0</span> <span>↗</span></div>
+          <p class="doc-card-desc" data-i18n="docExpDesc">Explicit permission for standard .NET and P/Invoke runtime linking.</p>
+        </a>
+
+        <a class="doc-card" href="https://github.com/zly258/OcctCSharpBridge/blob/main/docs/en-US/README.md" target="_blank" rel="noreferrer">
+          <div class="doc-card-title"><span data-i18n="docSdkTitle">SDK Documentation</span> <span>↗</span></div>
+          <p class="doc-card-desc" data-i18n="docSdkDesc">Architecture, API reference, native interop, build instructions.</p>
+        </a>
+
+        <a class="doc-card" href="https://github.com/zly258/OcctCSharpBridge/blob/main/bridge-contract.json" target="_blank" rel="noreferrer">
+          <div class="doc-card-title"><span>bridge-contract.json</span> <span>↗</span></div>
+          <p class="doc-card-desc" data-i18n="docConDesc">Formal machine-readable ABI 5 contract specification.</p>
+        </a>
       </div>
     </section>
 
-    <section id="license" class="section license-section">
-      <div class="shell">
-        <div class="section-heading centered-heading">
-          <div class="eyebrow" data-i18n="licenseEyebrow">LICENSE</div>
-          <h2 data-i18n="licenseTitle">Licensing</h2>
-          <p data-i18n="licenseLead">LGPL 2.1 with the OcctCSharpBridge linking Exception 1.0.</p>
-        </div>
-
-        <div class="license-grid">
-          <article class="license-card">
-            <span class="license-kicker">GNU LGPL 2.1</span>
-            <h3 data-i18n="licenseCardTitle">Bridge license</h3>
-            <p data-i18n="licenseCardText">Terms for the project and redistributed modifications.</p>
-            <a href="https://github.com/zly258/OcctCSharpBridge/blob/main/LICENSE" target="_blank" rel="noreferrer" data-i18n="readLicense">Read ↗</a>
-          </article>
-          <article class="license-card accent-license">
-            <span class="license-kicker">EXCEPTION</span>
-            <h3 data-i18n="exceptionCardTitle">Linking exception</h3>
-            <p data-i18n="exceptionCardText">Covers normal .NET and P/Invoke runtime linking.</p>
-            <a href="https://github.com/zly258/OcctCSharpBridge/blob/main/OcctCSharpBridge_LGPL_EXCEPTION.txt" target="_blank" rel="noreferrer" data-i18n="readException">Read ↗</a>
-          </article>
-        </div>
-      </div>
-    </section>
   </main>
 
-  <footer class="site-footer">
-    <div class="shell footer-shell">
-      <div class="footer-brand"><strong>OcctCSharpBridge</strong><span data-i18n="footerLead">OCCT 7.9.0 · .NET 10 · Windows / Linux</span></div>
-      <div class="footer-meta"><span>3.0.0-preview.1</span><span>ABI 5 only</span><a href="https://github.com/zly258/OcctCSharpBridge" target="_blank" rel="noreferrer">GitHub ↗</a></div>
+  <!-- 底部页脚 -->
+  <footer>
+    <div class="container footer-inner">
+      <div>
+        <strong>OcctCSharpBridge</strong> · OCCT 7.9.0 × .NET 10
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/zly258/OcctCSharpBridge" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="https://github.com/zly258/OcctCSharpBridge/tree/main" target="_blank" rel="noreferrer">SDK</a>
+        <a href="https://github.com/zly258/OcctCSharpBridge/tree/demo" target="_blank" rel="noreferrer">Demo</a>
+        <a href="https://github.com/zly258/OcctCSharpBridge/blob/main/LICENSE" target="_blank" rel="noreferrer">LGPL 2.1</a>
+      </div>
     </div>
   </footer>
 
-  <div id="previewLightbox" class="preview-lightbox" hidden aria-hidden="true">
-    <button id="previewClose" type="button" aria-label="Close preview">×</button>
-    <img id="previewLightboxImage" alt="Demo preview" />
+  <!-- Lightbox 预览弹窗 -->
+  <div id="lightboxModal" class="lightbox-modal" onclick="closeLightbox(event)">
+    <button class="lightbox-close" onclick="closeLightbox(event)" aria-label="Close">×</button>
+    <img id="lightboxImg" class="lightbox-img" alt="Preview Fullscreen" />
   </div>
 
-  <script src="app.js"></script>
+  <!-- 内嵌脚本：语言、主题与轮播逻辑 -->
+  <script>
+    // === 双语数据字典 ===
+    const i18n = {
+      en: {
+        heroTitle: "A focused OCCT 7.9.0 bridge for .NET 10 desktop CAD",
+        heroDesc: "Cross-platform Native C++ ABI5 Core with typed C# 14 bindings, headless BRep modeling, and hardware-accelerated 3D viewport adapters for WinForms, WPF, and Avalonia.",
+        quickMain: "→ SDK Source (main)",
+        quickDemo: "→ Consumer Demo (demo)",
+        quickLicense: "→ License (LGPL 2.1)",
+        branchesTitle: "Repository Architecture",
+        branchesLead: "Three independent responsibilities with zero duplicated Bridge implementation.",
+        branchMainDesc: "The sole Bridge SDK source tree: Native C++ Core (ABI5), OcctNet, WinForms/WPF/Avalonia adapters, ABI compatibility verification, and Binary SDK packaging.",
+        branchDemoDesc: "Single consumer application tree. Windows hosts WinForms, WPF, and Avalonia; Linux hosts Avalonia. Consumes Binary SDK dist payloads with runtime verification.",
+        branchWebDesc: "Minimalist static presentation portal: contract specs, platform matrix, capabilities, demo previews, and documentation index.",
+        platformTitle: "Platform Support Matrix",
+        platformLead: "Strict platform boundaries between headless modeling and UI viewports.",
+        thArea: "Capability / Module",
+        rowHeadless: "Headless BRep Modeling",
+        rowWinForms: "WinForms Host",
+        rowWpf: "WPF Host",
+        rowAvalonia: "Avalonia Host",
+        yes: "Yes",
+        yesLinux: "Yes (X11 / XWayland)",
+        na: "—",
+        capsTitle: "Core Capabilities",
+        capsLead: "Comprehensive geometry, topology, exchange, and visualization engine.",
+        cap1: "Hardware-accelerated 3D viewport, camera projections, Triedron coordinate system, ViewCube navigation cube, ray picking, and dynamic highlighting.",
+        cap2: "Full BRep primitives (box, cylinder, sphere, torus, prism, revolution), boolean operations (fuse, cut, common), fillets, and chamfers without UI context.",
+        cap3: "TopoDS entity traversal (compound, solid, shell, face, wire, edge, vertex), bounding box, surface area, volume, and center of mass calculations.",
+        cap4: "High-performance BRepMesh triangulation with configurable linear deflection and angular deflection tolerances for rendering and analysis.",
+        cap5: "STEP AP214 and AP242 reader and writer supporting assembly tree hierarchy, color preservation, item naming, and metadata exchange.",
+        cap6: "Automated runtime validation against bridge-contract.json ensuring strict ABI5 compliance and zero binary drift across platforms.",
+        demoTitle: "Demo Previews",
+        demoLead: "Canonical preview screenshots from the official demo branch on Windows x64.",
+        zoomHint: "⛶ Click to expand",
+        slideWinDesc: "Classic Windows Forms CAD viewport with interactive Triedron, ViewCube, ray selection, and STEP assembly hierarchy.",
+        slideWpfDesc: "Modern WPF desktop viewport using HwndHost with smooth pan/orbit/zoom, dynamic highlighting, and mesh tessellation.",
+        slideAvaDesc: "Cross-platform desktop viewport running on Windows (WNT) and Linux (X11 / XWayland via Xw_Window).",
+        flowTitle: "Workflow & Commands",
+        flowLead: "Build Binary SDK from main, sync into demo, validate, and publish.",
+        licenseTitle: "License & Documentation",
+        licenseLead: "Open source under GNU LGPL 2.1 with OcctCSharpBridge Linking Exception 1.0.",
+        docLicDesc: "Terms for project source code and redistributed modifications.",
+        docExpDesc: "Explicit permission for standard .NET and P/Invoke runtime linking.",
+        docSdkTitle: "SDK Documentation",
+        docSdkDesc: "Architecture, API reference, native interop, build instructions.",
+        docConDesc: "Formal machine-readable ABI 5 contract specification.",
+        langBtnText: "中文",
+        themeAuto: "Auto",
+        themeDark: "Dark",
+        themeLight: "Light"
+      },
+      zh: {
+        heroTitle: "面向 .NET 10 桌面 CAD 的现代 OCCT 7.9.0 桥接层",
+        heroDesc: "跨平台原生 C++ ABI5 核心，强类型 C# 14 绑定，支持 Headless 拓扑几何建模，以及面向 WinForms、WPF 和 Avalonia 的硬件加速 3D 交互视口。",
+        quickMain: "→ SDK 源码 (main)",
+        quickDemo: "→ 示例应用 (demo)",
+        quickLicense: "→ 开源协议 (LGPL 2.1)",
+        branchesTitle: "仓库架构与分工",
+        branchesLead: "三类职责清晰分离，绝不重复 Bridge 实现。",
+        branchMainDesc: "唯一 Bridge SDK 源码树：Native C++ 核心 (ABI5)、OcctNet、WinForms/WPF/Avalonia 适配层、ABI 契约自动化校验与 Binary SDK 构建打包。",
+        branchDemoDesc: "唯一 Consumer 示例应用树。Windows 包含 WinForms、WPF、Avalonia；Linux 包含 Avalonia。消费 Binary SDK 并进行运行时契约校验。",
+        branchWebDesc: "极简静态主页：契约规格、平台矩阵、核心能力、Demo 截图预览与文档索引。",
+        platformTitle: "平台支持矩阵",
+        platformLead: "明确区分 Headless 几何建模与 UI 视口平台边界。",
+        thArea: "能力 / 模块",
+        rowHeadless: "Headless 几何建模",
+        rowWinForms: "WinForms 宿主",
+        rowWpf: "WPF 宿主",
+        rowAvalonia: "Avalonia 宿主",
+        yes: "支持",
+        yesLinux: "支持 (X11 / XWayland)",
+        na: "—",
+        capsTitle: "核心能力",
+        capsLead: "完整的几何建模、拓扑分析、数据交换与三维渲染引擎。",
+        cap1: "硬件加速三维视口，相机视角与投影控制，Triedron 坐标轴指示器，ViewCube 导航立方体，高精度拾取与动态高亮。",
+        cap2: "完整 BRep 几何体生成（长方体、圆柱、球体、圆环、拉伸、旋转），布尔运算（求并、求差、求交），倒角与圆角，无需 UI 运行环境。",
+        cap3: "TopoDS 拓扑层级遍历（复合体、实体、壳体、面、线框、边、顶点），包围盒计算，表面积、体积与质心精确测量。",
+        cap4: "高性能 BRepMesh 网格三角剖分，支持自定义线性挠度与角度公差，满足实时渲染与有限元前处理需求。",
+        cap5: "STEP AP214 / AP242 读写器，完整保留装配树层级、面与体颜色、零部件名称与自定义元数据属性。",
+        cap6: "基于 bridge-contract.json 的运行时 ABI 契约自动化验证，严格保证跨平台 ABI5 兼容性与零二进制漂移。",
+        demoTitle: "示例程序预览",
+        demoLead: "来自官方 demo 分支的真实运行截图（Windows x64）。",
+        zoomHint: "⛶ 点击查看大图",
+        slideWinDesc: "经典 Windows Forms CAD 视口，集成 Triedron 坐标轴、ViewCube 导航立方体、高精度射线拾取与 STEP 装配树展示。",
+        slideWpfDesc: "现代 WPF 桌面视口，基于 HwndHost 实现流畅的平移/旋转/缩放、动态高亮与网格离散化剖分。",
+        slideAvaDesc: "跨平台桌面视口，在 Windows (WNT) 与 Linux (X11 / XWayland / Xw_Window) 下提供一致的 3D CAD 交互体验。",
+        flowTitle: "工作流程与命令",
+        flowLead: "在 main 分支生成 SDK，同步至 demo 分支，校验并打包发布。",
+        licenseTitle: "许可证与文档",
+        licenseLead: "基于 GNU LGPL 2.1 开源协议，并附加 OcctCSharpBridge 链接例外条款 1.0。",
+        docLicDesc: "项目源代码与分发修改版本遵循的开源条款。",
+        docExpDesc: "明确允许标准 .NET 引用与 P/Invoke 动态运行时链接，适用于商业及非商业应用。",
+        docSdkTitle: "SDK 文档 (中文)",
+        docSdkDesc: "架构设计、API 参考、Native 互操作、构建与部署说明。",
+        docConDesc: "机器可读的正式 ABI 5 规范契约文件。",
+        langBtnText: "EN",
+        themeAuto: "系统",
+        themeDark: "深色",
+        themeLight: "浅色"
+      }
+    };
+
+    // === 轮播大图数据与控制 ===
+    const slides = [
+      {
+        src: "https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-en.png",
+        titleEn: "WinForms Host",
+        titleZh: "WinForms 宿主",
+        subEn: "Windows x64 · WNT Native Viewport",
+        subZh: "Windows x64 · WNT 原生视口",
+        descKey: "slideWinDesc"
+      },
+      {
+        src: "https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-en.png",
+        titleEn: "WPF Host",
+        titleZh: "WPF 宿主",
+        subEn: "Windows x64 · WNT HwndHost Viewport",
+        subZh: "Windows x64 · WNT HwndHost 视口",
+        descKey: "slideWpfDesc"
+      },
+      {
+        src: "https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-win-demo-en.png",
+        titleEn: "Avalonia Host",
+        titleZh: "Avalonia 宿主",
+        subEn: "Windows x64 & Linux x64 · Cross-Platform Viewport",
+        subZh: "Windows x64 & Linux x64 · 跨平台桌面视口",
+        descKey: "slideAvaDesc"
+      }
+    ];
+
+    let currentSlide = 0;
+
+    // 预加载所有轮播图片
+    slides.forEach(s => {
+      const img = new Image();
+      img.src = s.src;
+    });
+
+    function setSlide(idx) {
+      if (idx < 0) idx = slides.length - 1;
+      if (idx >= slides.length) idx = 0;
+      currentSlide = idx;
+
+      const slide = slides[idx];
+      const img = document.getElementById('carouselImg');
+      const counter = document.getElementById('carouselCounter');
+      const title = document.getElementById('carouselTitle');
+      const sub = document.getElementById('carouselSub');
+      const desc = document.getElementById('carouselDesc');
+
+      if (img) {
+        img.src = slide.src;
+        img.alt = currentLang === 'zh' ? slide.titleZh : slide.titleEn;
+      }
+      if (counter) counter.textContent = `${idx + 1} / ${slides.length}`;
+      if (title) title.textContent = currentLang === 'zh' ? slide.titleZh : slide.titleEn;
+      if (sub) sub.textContent = currentLang === 'zh' ? slide.subZh : slide.subEn;
+      if (desc) desc.textContent = i18n[currentLang][slide.descKey];
+
+      // 更新选项卡状态
+      document.querySelectorAll('.carousel-tab').forEach((tab, i) => {
+        const active = i === idx;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+    }
+
+    function prevSlide() { setSlide(currentSlide - 1); }
+    function nextSlide() { setSlide(currentSlide + 1); }
+
+    function openLightboxFromCarousel() {
+      const slide = slides[currentSlide];
+      if (!lightboxModal || !lightboxImg) return;
+      lightboxImg.src = slide.src;
+      lightboxModal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    // 键盘左右方向键切换轮播
+    document.getElementById('demoCarousel')?.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') prevSlide();
+      if (e.key === 'ArrowRight') nextSlide();
+    });
+
+    // === 语言自动检测与切换 ===
+    function detectLanguage() {
+      const saved = localStorage.getItem('occt_lang');
+      if (saved === 'zh' || saved === 'en') return saved;
+      const navLang = (navigator.languages && navigator.languages[0]) || navigator.language || '';
+      return navLang.toLowerCase().startsWith('zh') ? 'zh' : 'en';
+    }
+
+    let currentLang = detectLanguage();
+
+    function setLanguage(lang, save = true) {
+      currentLang = lang;
+      if (save) localStorage.setItem('occt_lang', lang);
+      document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+      
+      // 更新所有带 data-i18n 的文本
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.dataset.i18n;
+        if (i18n[lang] && i18n[lang][key]) {
+          el.textContent = i18n[lang][key];
+        }
+      });
+
+      // 更新语言按钮文字
+      const langText = document.getElementById('langText');
+      if (langText) langText.textContent = i18n[lang].langBtnText;
+      updateThemeButtonText();
+      setSlide(currentSlide);
+    }
+
+    document.getElementById('langBtn')?.addEventListener('click', () => {
+      setLanguage(currentLang === 'zh' ? 'en' : 'zh', true);
+    });
+
+    // === 主题自动检测与切换 ===
+    let themeMode = localStorage.getItem('occt_theme') || 'auto';
+
+    function getSystemTheme() {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    function applyTheme() {
+      if (themeMode === 'auto') {
+        document.documentElement.removeAttribute('data-theme');
+      } else {
+        document.documentElement.setAttribute('data-theme', themeMode);
+      }
+      updateThemeButtonText();
+    }
+
+    function updateThemeButtonText() {
+      const themeText = document.getElementById('themeText');
+      if (!themeText) return;
+      if (themeMode === 'auto') {
+        themeText.textContent = i18n[currentLang].themeAuto;
+      } else if (themeMode === 'dark') {
+        themeText.textContent = i18n[currentLang].themeDark;
+      } else {
+        themeText.textContent = i18n[currentLang].themeLight;
+      }
+    }
+
+    document.getElementById('themeBtn')?.addEventListener('click', () => {
+      if (themeMode === 'auto') {
+        themeMode = 'dark';
+      } else if (themeMode === 'dark') {
+        themeMode = 'light';
+      } else {
+        themeMode = 'auto';
+      }
+      localStorage.setItem('occt_theme', themeMode);
+      applyTheme();
+    });
+
+    // 监听系统主题变化
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (themeMode === 'auto') {
+        applyTheme();
+      }
+    });
+
+    // === 代码复制功能 ===
+    function copyCode(btn, codeId) {
+      const codeEl = document.getElementById(codeId);
+      if (!codeEl) return;
+      navigator.clipboard.writeText(codeEl.innerText).then(() => {
+        const original = btn.textContent;
+        btn.textContent = currentLang === 'zh' ? '已复制' : 'Copied';
+        setTimeout(() => { btn.textContent = original; }, 1500);
+      });
+    }
+
+    // === Lightbox 预览大图 ===
+    const lightboxModal = document.getElementById('lightboxModal');
+    const lightboxImg = document.getElementById('lightboxImg');
+
+    function closeLightbox(e) {
+      if (e.target === lightboxImg) return;
+      lightboxModal.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && lightboxModal.classList.contains('active')) {
+        lightboxModal.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+    });
+
+    // === 页面初始化 ===
+    applyTheme();
+    setLanguage(currentLang, false);
+  </script>
 </body>
 </html>
