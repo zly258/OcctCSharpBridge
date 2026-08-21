@@ -1,4 +1,4 @@
-﻿namespace OcctNet;
+namespace OcctNet;
 
 public sealed partial class OcctModelingSession
 {
@@ -70,8 +70,7 @@ public sealed partial class OcctModelingSession
     {
         EnsureShape(shape);
         OcctGuard.Positive(radius, nameof(radius));
-        var indices = RequiredArray(edgeIndices, nameof(edgeIndices)).Distinct().ToArray();
-        foreach (var index in indices) OcctGuard.PositiveIndex(index, nameof(edgeIndices));
+        var indices = ValidatedUniqueIndices(edgeIndices, nameof(edgeIndices));
         var status = ModelNativeMethods.occt_model_feature_fillet_edges_execute(
             _handle,
             shape.Id,
@@ -89,8 +88,7 @@ public sealed partial class OcctModelingSession
     {
         EnsureShape(shape);
         OcctGuard.Positive(distance, nameof(distance));
-        var indices = RequiredArray(edgeIndices, nameof(edgeIndices)).Distinct().ToArray();
-        foreach (var index in indices) OcctGuard.PositiveIndex(index, nameof(edgeIndices));
+        var indices = ValidatedUniqueIndices(edgeIndices, nameof(edgeIndices));
         var status = ModelNativeMethods.occt_model_feature_chamfer_edges_execute(
             _handle,
             shape.Id,
@@ -131,8 +129,7 @@ public sealed partial class OcctModelingSession
         if (Math.Abs(thickness) <= double.Epsilon)
             throw new ArgumentOutOfRangeException(nameof(thickness), thickness, "Thickness must be non-zero.");
         OcctGuard.Positive(tolerance, nameof(tolerance));
-        var indices = RequiredArray(faceIndicesToRemove, nameof(faceIndicesToRemove)).Distinct().ToArray();
-        foreach (var index in indices) OcctGuard.PositiveIndex(index, nameof(faceIndicesToRemove));
+        var indices = ValidatedUniqueIndices(faceIndicesToRemove, nameof(faceIndicesToRemove));
         var status = ModelNativeMethods.occt_model_feature_thick_solid_execute(
             _handle,
             solid.Id,
@@ -142,5 +139,24 @@ public sealed partial class OcctModelingSession
             tolerance,
             out var result);
         return CheckAlgorithm(status, result);
+    }
+
+    /// <summary>
+    /// Validates, de-duplicates, and returns a non-empty index array in a single pass.
+    /// Each index must be non-negative. Throws <see cref="ArgumentException"/> if the
+    /// input is null, empty, or contains a negative value.
+    /// </summary>
+    private static int[] ValidatedUniqueIndices(IEnumerable<int> indices, string parameterName)
+    {
+        var source = RequiredArray(indices, parameterName);
+        var seen = new HashSet<int>(source.Length);
+        var result = new List<int>(source.Length);
+        foreach (var index in source)
+        {
+            OcctGuard.PositiveIndex(index, parameterName);
+            if (seen.Add(index))
+                result.Add(index);
+        }
+        return result.ToArray();
     }
 }

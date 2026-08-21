@@ -10,18 +10,28 @@ public sealed partial class OcctEngine
         if (!double.IsFinite(margin) || margin < 0.0 || margin >= 1.0)
             throw new ArgumentOutOfRangeException(nameof(margin), margin, "Fit margin must be in the range [0, 1).");
 
-        var ids = shapes.Select(shape => shape.Id).Where(id => id > 0).Distinct().ToArray();
-        if (ids.Length == 0) throw new ArgumentException("At least one valid shape is required.", nameof(shapes));
+        // Validate shapes and collect IDs in a single pass.
+        var ids = new List<long>();
+        var seen = new HashSet<long>();
+        foreach (var shape in shapes)
+        {
+            EnsureShape(shape);
+            if (seen.Add(shape.Id))
+                ids.Add(shape.Id);
+        }
+        if (ids.Count == 0)
+            throw new ArgumentException("At least one valid shape is required.", nameof(shapes));
 
-        var buffer = Marshal.AllocHGlobal(sizeof(long) * ids.Length);
+        var idArray = ids.ToArray();
+        var buffer = Marshal.AllocHGlobal(sizeof(long) * idArray.Length);
         try
         {
-            Marshal.Copy(ids, 0, buffer, ids.Length);
+            Marshal.Copy(idArray, 0, buffer, idArray.Length);
             EnsureInitialized();
             CheckViewportStatus(ViewportNativeMethods.occt_engine_viewport_fit_objects(
                 _handle,
                 buffer,
-                ids.Length,
+                idArray.Length,
                 margin));
         }
         finally

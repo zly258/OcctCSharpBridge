@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -160,8 +161,13 @@ public sealed partial class OcctModelingSession : IDisposable
     private long[] ShapeIds(IEnumerable<OcctModelShape> shapes)
     {
         var array = RequiredArray(shapes, nameof(shapes));
-        foreach (var shape in array) EnsureShape(shape);
-        return array.Select(shape => shape.Id).ToArray();
+        var ids = new long[array.Length];
+        for (var i = 0; i < array.Length; i++)
+        {
+            EnsureShape(array[i]);
+            ids[i] = array[i].Id;
+        }
+        return ids;
     }
 
     private void EnsureShape(OcctModelShape shape)
@@ -236,16 +242,28 @@ public sealed partial class OcctModelingSession : IDisposable
             throw new OcctException("Unable to query native UTF-8 buffer size.", status);
         if (required <= 1) return string.Empty;
 
-        var buffer = new byte[required];
-        status = call(buffer, buffer.Length, out var copiedRequired);
-        if (status != OcctStatus.Ok)
-            throw new OcctException("Unable to read native UTF-8 buffer.", status);
-        if (copiedRequired <= 0 || copiedRequired > buffer.Length)
-            throw new InvalidOperationException("Native UTF-8 buffer size is invalid.");
-        return Encoding.UTF8.GetString(buffer, 0, copiedRequired - 1);
+        // Use ArrayPool to avoid per-call heap allocation for UTF-8 string reads.
+        var buffer = ArrayPool<byte>.Shared.Rent(required);
+        try
+        {
+            status = call(buffer, required, out var copiedRequired);
+            if (status != OcctStatus.Ok)
+                throw new OcctException("Unable to read native UTF-8 buffer.", status);
+            if (copiedRequired <= 0 || copiedRequired > required)
+                throw new InvalidOperationException("Native UTF-8 buffer size is invalid.");
+            return Encoding.UTF8.GetString(buffer, 0, copiedRequired - 1);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 
-    private void EnsureNotDisposed() => ObjectDisposedException.ThrowIf(IsDisposed, this);
+    private void EnsureNotDisposed()
+    {
+        if (IsDisposed)
+            throw new ObjectDisposedException(nameof(OcctModelingSession), "The modeling session has been disposed.");
+    }
 
     public void Dispose()
     {
