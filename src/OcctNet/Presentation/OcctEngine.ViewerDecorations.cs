@@ -101,14 +101,14 @@ public sealed partial class OcctEngine
                 OffsetY = options.OffsetY,
                 FontHeight = options.FontHeight > 0.0 ? options.FontHeight : 12.0,
                 FontName = fontNamePtr,
-                HasTextColor = options.TextColor.HasValue ? 1 : 0,
-                TextColor = options.TextColor.HasValue ? ToNativeViewColor(options.TextColor.Value) : default,
-                HasBoxColor = options.BoxColor.HasValue ? 1 : 0,
-                BoxColor = options.BoxColor.HasValue ? ToNativeViewColor(options.BoxColor.Value) : default,
-                HasFacetColor = options.FacetColor.HasValue ? 1 : 0,
-                FacetColor = options.FacetColor.HasValue ? ToNativeViewColor(options.FacetColor.Value) : default,
-                CornerRadius = options.CornerRadius ?? 0.12,
-                EdgeWidth = options.EdgeWidth ?? 1.0
+                HasTextColor = 1,
+                TextColor = ToNativeViewColor(options.TextColor),
+                HasBoxColor = 1,
+                BoxColor = ToNativeViewColor(options.BoxColor),
+                HasFacetColor = 1,
+                FacetColor = ToNativeViewColor(options.FacetColor),
+                CornerRadius = options.CornerRadius,
+                EdgeWidth = options.EdgeWidth
             };
             EnsureInitialized();
             CheckDecorationsStatus(ViewerDecorationsNativeMethods.occt_engine_view_cube_update(_handle, in native));
