@@ -299,7 +299,7 @@ extern "C"
             {
                 engine->viewerContext.context->Display(engine->viewerContext.viewCube, Standard_False);
                 engine->viewerContext.context->Redisplay(engine->viewerContext.viewCube, Standard_False, Standard_True);
-                engine->viewerContext.context->RecomputePrsOnly(engine->viewerContext.viewCube);
+                engine->viewerContext.context->RecomputePrsOnly(engine->viewerContext.viewCube, Standard_False, Standard_True);
             }
             else
             {

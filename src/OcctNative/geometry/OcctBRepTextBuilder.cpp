@@ -127,7 +127,7 @@ namespace
 
             if (candidate.find('/') != std::string::npos || candidate.find('\\') != std::string::npos)
             {
-                if (font.Init(TCollection_AsciiString(candidate.c_str()), aspect, height))
+                if (font.Init(NCollection_String(candidate.c_str()), height, 0))
                 {
                     return true;
                 }
@@ -178,15 +178,17 @@ namespace OcctModelingInternal
 
         // Normalize text: if the current font is missing CJK punctuation such as full-width
         // parentheses '（' (U+FF08) / '）' (U+FF09), fallback to standard punctuation so it never disappears.
-        NCollection_Utf32String normalizedText;
+        NCollection_Utf8String normalizedText;
         NCollection_UtfIterator<Standard_Utf8Char> iter(reinterpret_cast<const Standard_Utf8Char*>(utf8Text));
         while (*iter != 0)
         {
             const Standard_Utf32Char ch = *iter;
-            if (!font.HasGlyph(ch))
+            const bool hasSymbol = font.FTFont().IsNull() || font.FTFont()->HasSymbol(ch);
+            if (!hasSymbol)
             {
                 const Standard_Utf32Char fallback = fallbackPunctuation(ch);
-                normalizedText += (fallback != 0 && font.HasGlyph(fallback)) ? fallback : ch;
+                const Standard_Utf32Char chosen = (fallback != 0) ? fallback : ch;
+                normalizedText += chosen;
             }
             else
             {
@@ -199,7 +201,7 @@ namespace OcctModelingInternal
         const gp_Ax3 placement(point(position), normalDirection, xAxisDirection);
         TopoDS_Shape result = builder.Perform(
             font,
-            normalizedText,
+            NCollection_String(normalizedText),
             placement,
             horizontalAlignment,
             verticalAlignment);
