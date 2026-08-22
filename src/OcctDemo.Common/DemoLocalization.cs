@@ -269,16 +269,11 @@ public static class DemoLocalization
             [DemoCommandId.Mirror] = ("Mirror", "Mirrors the selected object about a plane."),
             [DemoCommandId.Copy] = ("Copy", "Creates a copy of the selected object."),
             [DemoCommandId.Delete] = ("Erase", "Erases the selected objects."),
-            [DemoCommandId.NativeText] = ("Native Text Label", "Creates an interactive viewport text label (AIS_TextLabel)."),
-            [DemoCommandId.NativeLengthDimension] = ("Native Length Dimension", "Creates an interactive viewport length dimension (PrsDim_LengthDimension)."),
-            [DemoCommandId.NativeAngleDimension] = ("Native Angle Dimension", "Creates an interactive viewport angle dimension (PrsDim_AngleDimension)."),
-            [DemoCommandId.NativeRadiusDimension] = ("Native Radius Dimension", "Creates an interactive viewport radius dimension (PrsDim_RadiusDimension)."),
-            [DemoCommandId.NativeDiameterDimension] = ("Native Diameter Dimension", "Creates an interactive viewport diameter dimension (PrsDim_DiameterDimension)."),
-            [DemoCommandId.BRepText] = ("BRep Vector Text", "Creates AutoCAD-style 2D/3D BRep vector text solid/face geometry (AIS_Shape)."),
-            [DemoCommandId.BRepLengthDimension] = ("BRep Length Annotation", "Creates an AutoCAD-style BRep geometric length annotation compound (AIS_Shape)."),
-            [DemoCommandId.BRepAngleDimension] = ("BRep Angle Annotation", "Creates an AutoCAD-style BRep geometric angle annotation compound (AIS_Shape)."),
-            [DemoCommandId.BRepRadiusDimension] = ("BRep Radius Annotation", "Creates an AutoCAD-style BRep geometric radius annotation compound (AIS_Shape)."),
-            [DemoCommandId.BRepDiameterDimension] = ("BRep Diameter Annotation", "Creates an AutoCAD-style BRep geometric diameter annotation compound (AIS_Shape)."),
+            [DemoCommandId.Text] = ("3D Text", "Creates AutoCAD-style 3D vector BRep text solid geometry (AIS_Shape)."),
+            [DemoCommandId.LengthDimension] = ("Linear Dimension", "Creates an AutoCAD-style BRep geometric linear dimension compound (AIS_Shape)."),
+            [DemoCommandId.AngleDimension] = ("Angle Dimension", "Creates an AutoCAD-style BRep geometric angle dimension compound (AIS_Shape)."),
+            [DemoCommandId.RadiusDimension] = ("Radius Dimension", "Creates an AutoCAD-style BRep geometric radius dimension compound (AIS_Shape)."),
+            [DemoCommandId.DiameterDimension] = ("Diameter Dimension", "Creates an AutoCAD-style BRep geometric diameter dimension compound (AIS_Shape)."),
             [DemoCommandId.AnalyzeBounds] = ("Extents", "Reports the bounding box of the selected shape."),
             [DemoCommandId.AnalyzeMass] = ("Mass Properties", "Reports length, area, volume, and centroid."),
             [DemoCommandId.AnalyzeTopology] = ("Topology Statistics", "Counts vertices, edges, wires, faces, shells, and solids."),
@@ -296,8 +291,7 @@ public static class DemoLocalization
             [DemoCommandId.DemoGear] = ("Complex Gear", "Creates a complete gear with teeth, a bore, and relief holes."),
             [DemoCommandId.DemoManifold] = ("Multi-Port Manifold", "Creates a complex body with multi-directional ports and internal channels."),
             [DemoCommandId.DemoTwistedDuct] = ("Twisted Duct", "Creates a hollow multi-section twisted transition duct."),
-            [DemoCommandId.DemoNativeAnnotations] = ("Native Annotations Gallery", "Creates an interactive test scene with native text labels and dimension presentations."),
-            [DemoCommandId.DemoBRepAnnotations] = ("BRep Annotations Gallery", "Creates an AutoCAD-style test scene with 3D text and BRep geometric annotation shapes.")
+            [DemoCommandId.DemoAnnotations] = ("Annotations Gallery", "Creates an AutoCAD-style test scene with 3D text and BRep geometric annotation shapes.")
         });
 
     private static readonly IReadOnlyDictionary<string, string> EnglishParameterLabels = new ReadOnlyDictionary<string, string>(

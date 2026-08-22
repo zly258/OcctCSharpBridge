@@ -60,27 +60,12 @@ public partial class MainWindow
         AddCommands(solid, DemoCommandId.Fillet, DemoCommandId.Chamfer, DemoCommandId.Offset, DemoCommandId.Shell, DemoCommandId.Drill);
 
         var annotate = Menu(MenuHeader("Menu.Annotate"));
-
-        var nativeGroup = Menu(MenuHeader("Menu.NativeAnnotations"));
-        AddCommands(nativeGroup, DemoCommandId.NativeText);
-        nativeGroup.Items.Add(new Controls.Separator());
-        AddCommands(nativeGroup, DemoCommandId.NativeLengthDimension, DemoCommandId.NativeAngleDimension,
-            DemoCommandId.NativeRadiusDimension, DemoCommandId.NativeDiameterDimension);
-        nativeGroup.Items.Add(new Controls.Separator());
-        AddCommands(nativeGroup, DemoCommandId.DemoNativeAnnotations);
-
-        var brepGroup = Menu(MenuHeader("Menu.BRepAnnotations"));
-        AddCommands(brepGroup, DemoCommandId.BRepText);
-        brepGroup.Items.Add(new Controls.Separator());
-        AddCommands(brepGroup, DemoCommandId.BRepLengthDimension, DemoCommandId.BRepAngleDimension,
-            DemoCommandId.BRepRadiusDimension, DemoCommandId.BRepDiameterDimension);
-        brepGroup.Items.Add(new Controls.Separator());
-        AddCommands(brepGroup, DemoCommandId.DemoBRepAnnotations);
-
-        annotate.Items.Add(nativeGroup);
-        annotate.Items.Add(brepGroup);
+        AddCommands(annotate, DemoCommandId.Text);
         annotate.Items.Add(new Controls.Separator());
-        AddCommands(annotate, DemoCommandId.DemoNativeAnnotations, DemoCommandId.DemoBRepAnnotations);
+        AddCommands(annotate, DemoCommandId.LengthDimension, DemoCommandId.AngleDimension,
+            DemoCommandId.RadiusDimension, DemoCommandId.DiameterDimension);
+        annotate.Items.Add(new Controls.Separator());
+        AddCommands(annotate, DemoCommandId.DemoAnnotations);
 
         var tools = Menu(MenuHeader("Menu.Tools"));
         AddCommands(tools, DemoCommandId.AnalyzeBounds, DemoCommandId.AnalyzeMass, DemoCommandId.AnalyzeTopology,
@@ -92,7 +77,7 @@ public partial class MainWindow
         samples.Items.Add(new Controls.Separator());
         AddCommands(samples, DemoCommandId.DemoBracket, DemoCommandId.DemoFlange);
         samples.Items.Add(new Controls.Separator());
-        AddCommands(samples, DemoCommandId.DemoNativeAnnotations, DemoCommandId.DemoBRepAnnotations);
+        AddCommands(samples, DemoCommandId.DemoAnnotations);
 
         var language = Menu(MenuHeader("Menu.Language"));
         var english = MenuItem(DemoLocalization.Text("Menu.English"), (_, _) => SetLanguage(DemoLanguage.English));

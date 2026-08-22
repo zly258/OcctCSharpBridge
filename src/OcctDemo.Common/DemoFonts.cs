@@ -17,19 +17,45 @@ public static class DemoFonts
     public const string DefaultUiFontFamily = "Segoe UI, Microsoft YaHei, Ubuntu, Noto Sans CJK SC, WenQuanYi Zen Hei, DejaVu Sans, sans-serif";
 
     /// <summary>
-    /// Resolves font names to OCCT-compatible font aliases.
+    /// Resolves font names to valid system TrueType fonts supporting CJK and Latin characters.
     /// </summary>
     public static string ResolveOcctFont(string? fontName)
     {
-        if (string.IsNullOrWhiteSpace(fontName)) return OcctSansSerif;
-        var value = fontName.Trim();
-        if (value.Equals("Microsoft YaHei UI", StringComparison.OrdinalIgnoreCase) ||
-            value.Equals("Microsoft YaHei", StringComparison.OrdinalIgnoreCase) ||
-            value.Equals("Segoe UI", StringComparison.OrdinalIgnoreCase))
+        if (OperatingSystem.IsWindows())
         {
-            return OcctSansSerif;
+            var fontsDir = Environment.GetFolderPath(Environment.SpecialFolder.Fonts);
+            if (!string.IsNullOrWhiteSpace(fontName))
+            {
+                var trimmed = fontName.Trim();
+                if (File.Exists(trimmed)) return trimmed;
+
+                if (trimmed.Equals("SimSun", StringComparison.OrdinalIgnoreCase) || trimmed.Equals("宋体", StringComparison.OrdinalIgnoreCase))
+                {
+                    var simsun = Path.Combine(fontsDir, "simsun.ttc");
+                    if (File.Exists(simsun)) return simsun;
+                }
+                if (trimmed.Equals("SimHei", StringComparison.OrdinalIgnoreCase) || trimmed.Equals("黑体", StringComparison.OrdinalIgnoreCase))
+                {
+                    var simhei = Path.Combine(fontsDir, "simhei.ttf");
+                    if (File.Exists(simhei)) return simhei;
+                }
+                if (trimmed.Equals("Microsoft YaHei", StringComparison.OrdinalIgnoreCase) ||
+                    trimmed.Equals("Microsoft YaHei UI", StringComparison.OrdinalIgnoreCase) ||
+                    trimmed.Equals("微软雅黑", StringComparison.OrdinalIgnoreCase))
+                {
+                    var msyh = Path.Combine(fontsDir, "msyh.ttc");
+                    if (File.Exists(msyh)) return msyh;
+                }
+            }
+
+            // Default Windows fallback: Microsoft YaHei has complete CJK + Latin glyphs
+            var defaultMsyh = Path.Combine(fontsDir, "msyh.ttc");
+            if (File.Exists(defaultMsyh)) return defaultMsyh;
+            var defaultSimsun = Path.Combine(fontsDir, "simsun.ttc");
+            if (File.Exists(defaultSimsun)) return defaultSimsun;
         }
 
-        return value;
+        if (string.IsNullOrWhiteSpace(fontName)) return OcctSansSerif;
+        return fontName.Trim();
     }
 }

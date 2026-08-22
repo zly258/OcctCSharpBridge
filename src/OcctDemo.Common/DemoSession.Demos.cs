@@ -332,127 +332,100 @@ public sealed partial class DemoSession
         return DemoCommandResult.Created(Local("Twisted transition duct result created.", "已生成扭转过渡风管结果。"), duct);
     }
 
-    private DemoCommandResult DemoNativeAnnotations()
+    private DemoCommandResult DemoAnnotations()
     {
         var results = new List<IOcctObject>();
 
+        var font = DemoFonts.ResolveOcctFont("Microsoft YaHei");
+
+        // 1. Machined Base Part
         var block = Engine.MakeBox(160, 100, 40, -80, -50, 0);
         var hole = Engine.MakeCylinder(new OcctPoint3d(25, 0, -2), OcctVector3d.UnitZ, 18, 44);
         block = Engine.Cut(block, hole, true);
         Engine.SetObjectMaterial(block, OcctMaterial.Steel);
         results.Add(Name(block, Local("Machined Base", "机械底座")));
 
-        var label = Engine.AddText(
-            Local("NATIVE OCCT VIEWPORT ANNOTATIONS (AIS_TextLabel & PrsDim)", "原生 OCCT 视口标注（AIS_TextLabel 与 PrsDim）"),
-            new OcctPoint3d(-80, 65, 42),
-            15,
-            Color.DarkBlue,
-            true);
-        results.Add(Name(label, Local("Native Viewport Title", "原生视口标题")));
-
-        var edge1 = Engine.GetSubshapeAt(block, OcctShapeType.Edge, 0);
-        var edge2 = Engine.GetSubshapeAt(block, OcctShapeType.Edge, 1);
-        var edgeHole = Engine.GetSubshapeAt(block, OcctShapeType.Edge, 4);
-
-        var lengthDim = Engine.AddLengthDimension(edge1, 20);
-        results.Add(Name(lengthDim, Local("Native Length Dimension", "原生长度尺寸")));
-
-        var angleDim = Engine.AddAngleDimension(edge1, edge2, 30);
-        results.Add(Name(angleDim, Local("Native Angle Dimension", "原生角度尺寸")));
-
-        var radiusDim = Engine.AddRadiusDimension(edgeHole, 20);
-        results.Add(Name(radiusDim, Local("Native Radius Dimension", "原生半径尺寸")));
-
-        var diameterDim = Engine.AddDiameterDimension(edgeHole, 20);
-        results.Add(Name(diameterDim, Local("Native Diameter Dimension", "原生直径尺寸")));
-
-        Engine.FitAll();
-        return new(
-            Local("Native OCCT annotation test results created.", "已生成原生 OCCT 视口标注测试结果。"),
-            results);
-    }
-
-    private DemoCommandResult DemoBRepAnnotations()
-    {
+        // 2. AutoCAD-style BRep Title 3D Text
         using var model = new OcctModelingSession();
-        var lengthSource = model.MakeLine(new(-190, -90, 0), new(-40, -90, 0));
-        var angleFirst = model.MakeLine(new(-180, 15, 0), new(-70, 15, 0));
-        var angleSecond = model.MakeLine(new(-180, 15, 0), new(-105, 82, 0));
-        var radiusSource = model.MakeCircle(new(70, 55, 0), OcctVector3d.UnitZ, 38);
-        var diameterSource = model.MakeCircle(new(185, -65, 0), OcctVector3d.UnitZ, 34);
+        var titleModel = model.MakeBRepText(
+            Local("AUTOCAD-STYLE BREP ANNOTATIONS (AIS_Shape)", "AutoCAD 风格 BRep 几何实体标注（AIS_Shape）"),
+            OcctBRepTextOptions.Default with
+            {
+                Position = new OcctPoint3d(-80, 65, 42),
+                Height = 14,
+                ExtrusionDepth = 1.5,
+                FontName = font,
+                Bold = true
+            });
+        var titleShape = DisplayModelShape(model, titleModel);
+        Engine.SetObjectColor(titleShape, Color.DarkBlue);
+        results.Add(Name(titleShape, Local("BRep Title Text", "BRep 标题文字")));
 
-        var length = DisplayModelShape(
-            model,
-            model.MakeLengthAnnotation(
-                lengthSource,
-                OcctBRepAnnotationOptions.Default with
-                {
-                    Offset = 26,
-                    TextHeight = 9,
-                    ArrowSize = 6,
-                    FontName = DemoFonts.OcctSansSerif
-                }));
-        var angle = DisplayModelShape(
-            model,
-            model.MakeAngleAnnotation(
-                angleFirst,
-                angleSecond,
-                OcctBRepAnnotationOptions.Default with
-                {
-                    Offset = 46,
-                    TextHeight = 9,
-                    ArrowSize = 6,
-                    FontName = DemoFonts.OcctSansSerif
-                }));
-        var radius = DisplayModelShape(
-            model,
-            model.MakeRadiusAnnotation(
-                radiusSource,
-                OcctBRepAnnotationOptions.Default with
-                {
-                    Offset = 28,
-                    TextHeight = 9,
-                    ArrowSize = 6,
-                    FontName = DemoFonts.OcctSansSerif
-                }));
-        var diameter = DisplayModelShape(
-            model,
-            model.MakeDiameterAnnotation(
-                diameterSource,
-                OcctBRepAnnotationOptions.Default with
-                {
-                    Offset = 24,
-                    TextHeight = 9,
-                    ArrowSize = 6,
-                    FontName = DemoFonts.OcctSansSerif
-                }));
-        var text = DisplayModelShape(
-            model,
-            model.MakeBRepText(
-                Local("BREP VECTOR ANNOTATIONS (AIS_Shape)", "BREP 几何实体标注（AIS_Shape）"),
-                OcctBRepTextOptions.Default with
-                {
-                    Position = new OcctPoint3d(-190, 135, 0),
-                    Height = 22,
-                    ExtrusionDepth = 1.5,
-                    FontName = DemoFonts.OcctSansSerif,
-                    Bold = true
-                }));
+        // 3. Length Dimension
+        var lengthSource = model.MakeLine(new(-80, -50, 40), new(80, -50, 40));
+        var lengthModel = model.MakeLengthAnnotation(
+            lengthSource,
+            OcctBRepAnnotationOptions.Default with
+            {
+                Offset = 22,
+                TextHeight = 6.5,
+                ArrowSize = 4.5,
+                FontName = font
+            });
+        var lengthShape = DisplayModelShape(model, lengthModel);
+        Engine.SetObjectColor(lengthShape, Color.DarkBlue);
+        results.Add(Name(lengthShape, Local("Length Dimension", "线性尺寸")));
 
-        Name(length, Local("BRep Linear Dimension", "BRep 线性尺寸"));
-        Name(angle, Local("BRep Angular Dimension", "BRep 角度尺寸"));
-        Name(radius, Local("BRep Radius Dimension", "BRep 半径尺寸"));
-        Name(diameter, Local("BRep Diameter Dimension", "BRep 直径尺寸"));
-        Name(text, Local("BRep Note Text", "BRep 说明文字"));
-        Engine.SetObjectColor(length, Color.DarkBlue);
-        Engine.SetObjectColor(angle, Color.DarkGreen);
-        Engine.SetObjectColor(radius, Color.DarkRed);
-        Engine.SetObjectColor(diameter, Color.Purple);
-        Engine.SetObjectColor(text, Color.Black);
+        // 4. Angle Dimension
+        var angleFirst = model.MakeLine(new(-80, -50, 0), new(-80, 50, 0));
+        var angleSecond = model.MakeLine(new(-80, -50, 0), new(80, -50, 0));
+        var angleModel = model.MakeAngleAnnotation(
+            angleFirst,
+            angleSecond,
+            OcctBRepAnnotationOptions.Default with
+            {
+                Offset = 32,
+                TextHeight = 6.5,
+                ArrowSize = 4.5,
+                FontName = font
+            });
+        var angleShape = DisplayModelShape(model, angleModel);
+        Engine.SetObjectColor(angleShape, Color.DarkGreen);
+        results.Add(Name(angleShape, Local("Angle Dimension", "角度尺寸")));
+
+        // 5. Radius Dimension
+        var radiusSource = model.MakeCircle(new(25, 0, 40), OcctVector3d.UnitZ, 18);
+        var radiusModel = model.MakeRadiusAnnotation(
+            radiusSource,
+            OcctBRepAnnotationOptions.Default with
+            {
+                Offset = 20,
+                TextHeight = 6.5,
+                ArrowSize = 4.5,
+                FontName = font
+            });
+        var radiusShape = DisplayModelShape(model, radiusModel);
+        Engine.SetObjectColor(radiusShape, Color.DarkRed);
+        results.Add(Name(radiusShape, Local("Radius Dimension", "半径尺寸")));
+
+        // 6. Diameter Dimension
+        var diameterModel = model.MakeDiameterAnnotation(
+            radiusSource,
+            OcctBRepAnnotationOptions.Default with
+            {
+                Offset = 22,
+                TextHeight = 6.5,
+                ArrowSize = 4.5,
+                FontName = font
+            });
+        var diameterShape = DisplayModelShape(model, diameterModel);
+        Engine.SetObjectColor(diameterShape, Color.Purple);
+        results.Add(Name(diameterShape, Local("Diameter Dimension", "直径尺寸")));
+
         Engine.FitAll();
         return new(
-            Local("BRep geometric annotation test results created.", "已生成 BRep 几何实体标注测试结果。"),
-            new IOcctObject[] { length, angle, radius, diameter, text });
+            Local("AutoCAD-style BRep annotation test results created.", "已生成 AutoCAD 风格 BRep 几何实体标注测试结果。"),
+            results);
     }
 
     private void RemoveDemoProcessObjects(
@@ -479,6 +452,5 @@ public sealed partial class DemoSession
             or DemoCommandId.DemoGear
             or DemoCommandId.DemoManifold
             or DemoCommandId.DemoTwistedDuct
-            or DemoCommandId.DemoNativeAnnotations
-            or DemoCommandId.DemoBRepAnnotations;
+            or DemoCommandId.DemoAnnotations;
 }

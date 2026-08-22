@@ -59,20 +59,16 @@ public sealed partial class DemoSession
         if (commandId == DemoCommandId.Delete)
             return RequireObjectCount(commandId, selectedEntries.Count, 1, exactly: false);
 
-        if (commandId is DemoCommandId.NativeLengthDimension
-            or DemoCommandId.NativeAngleDimension
-            or DemoCommandId.NativeRadiusDimension
-            or DemoCommandId.NativeDiameterDimension
-            or DemoCommandId.BRepLengthDimension
-            or DemoCommandId.BRepAngleDimension
-            or DemoCommandId.BRepRadiusDimension
-            or DemoCommandId.BRepDiameterDimension)
+        if (commandId is DemoCommandId.LengthDimension
+            or DemoCommandId.AngleDimension
+            or DemoCommandId.RadiusDimension
+            or DemoCommandId.DiameterDimension)
         {
             var selectedHits = Engine.GetSelectedHits()
                 .Where(hit => Engine.ContainsObject(hit.Owner.Id))
                 .DistinctBy(hit => (hit.Owner.Id, hit.SubshapeType, hit.SubshapeIndex))
                 .ToArray();
-            var required = (commandId is DemoCommandId.NativeAngleDimension or DemoCommandId.BRepAngleDimension) ? 2 : 1;
+            var required = (commandId is DemoCommandId.AngleDimension) ? 2 : 1;
             return RequireSubshapeHits(commandId, selectedHits, required, OcctShapeType.Edge);
         }
 
