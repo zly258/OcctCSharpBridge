@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using OcctDemo.Common;
@@ -64,11 +64,31 @@ public sealed partial class MainWindow
         AddCommands(solidItems, DemoCommandId.Fillet, DemoCommandId.Chamfer, DemoCommandId.Offset, DemoCommandId.Shell, DemoCommandId.Drill);
         var solid = Menu(MenuHeader("Menu.Solid"), solidItems.ToArray());
 
-        var annotateItems = new List<object>();
-        AddCommands(annotateItems, DemoCommandId.Text);
-        annotateItems.Add(new Separator());
-        AddCommands(annotateItems, DemoCommandId.LengthDimension, DemoCommandId.AngleDimension,
-            DemoCommandId.RadiusDimension, DemoCommandId.DiameterDimension);
+        var nativeGroupItems = new List<object>();
+        AddCommands(nativeGroupItems, DemoCommandId.NativeText);
+        nativeGroupItems.Add(new Separator());
+        AddCommands(nativeGroupItems, DemoCommandId.NativeLengthDimension, DemoCommandId.NativeAngleDimension,
+            DemoCommandId.NativeRadiusDimension, DemoCommandId.NativeDiameterDimension);
+        nativeGroupItems.Add(new Separator());
+        AddCommands(nativeGroupItems, DemoCommandId.DemoNativeAnnotations);
+        var nativeGroup = Menu(MenuHeader("Menu.NativeAnnotations"), nativeGroupItems.ToArray());
+
+        var brepGroupItems = new List<object>();
+        AddCommands(brepGroupItems, DemoCommandId.BRepText);
+        brepGroupItems.Add(new Separator());
+        AddCommands(brepGroupItems, DemoCommandId.BRepLengthDimension, DemoCommandId.BRepAngleDimension,
+            DemoCommandId.BRepRadiusDimension, DemoCommandId.BRepDiameterDimension);
+        brepGroupItems.Add(new Separator());
+        AddCommands(brepGroupItems, DemoCommandId.DemoBRepAnnotations);
+        var brepGroup = Menu(MenuHeader("Menu.BRepAnnotations"), brepGroupItems.ToArray());
+
+        var annotateItems = new List<object>
+        {
+            nativeGroup,
+            brepGroup,
+            new Separator()
+        };
+        AddCommands(annotateItems, DemoCommandId.DemoNativeAnnotations, DemoCommandId.DemoBRepAnnotations);
         var annotate = Menu(MenuHeader("Menu.Annotate"), annotateItems.ToArray());
 
         var toolItems = new List<object>();
@@ -80,7 +100,9 @@ public sealed partial class MainWindow
         AddCommands(sampleItems, DemoCommandId.DemoElements, DemoCommandId.DemoGear, DemoCommandId.DemoManifold,
             DemoCommandId.DemoTwistedDuct);
         sampleItems.Add(new Separator());
-        AddCommands(sampleItems, DemoCommandId.DemoBracket, DemoCommandId.DemoFlange, DemoCommandId.DemoAnnotations);
+        AddCommands(sampleItems, DemoCommandId.DemoBracket, DemoCommandId.DemoFlange);
+        sampleItems.Add(new Separator());
+        AddCommands(sampleItems, DemoCommandId.DemoNativeAnnotations, DemoCommandId.DemoBRepAnnotations);
         var samples = Menu(MenuHeader("Menu.Samples"), sampleItems.ToArray());
 
         var language = Menu(MenuHeader("Menu.Language"),

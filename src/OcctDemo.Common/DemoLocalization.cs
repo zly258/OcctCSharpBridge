@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 
 namespace OcctDemo.Common;
 
@@ -22,6 +22,8 @@ public static class DemoLocalization
             ["Menu.Draw"] = "&Draw",
             ["Menu.Solid"] = "&Solid",
             ["Menu.Annotate"] = "&Annotate",
+            ["Menu.NativeAnnotations"] = "Native Annotations",
+            ["Menu.BRepAnnotations"] = "BRep Annotations",
             ["Menu.View"] = "&View",
             ["Menu.Tools"] = "&Tools",
             ["Menu.Samples"] = "&Samples",
@@ -182,7 +184,7 @@ public static class DemoLocalization
             ["AppTitle.WinForms"] = "OCCT CAD - WinForms",
             ["AppTitle.Wpf"] = "OCCT CAD - WPF",
             ["Menu.File"] = "文件(&F)", ["Menu.Edit"] = "编辑(&E)", ["Menu.Draw"] = "绘图(&D)", ["Menu.Solid"] = "实体(&S)",
-            ["Menu.Annotate"] = "注释(&A)", ["Menu.View"] = "视图(&V)", ["Menu.Tools"] = "工具(&T)", ["Menu.Samples"] = "示例(&X)",
+            ["Menu.Annotate"] = "注释(&A)", ["Menu.NativeAnnotations"] = "原生视口标注", ["Menu.BRepAnnotations"] = "BRep 几何实体标注", ["Menu.View"] = "视图(&V)", ["Menu.Tools"] = "工具(&T)", ["Menu.Samples"] = "示例(&X)",
             ["Menu.Help"] = "帮助(&H)", ["Menu.Language"] = "语言(&L)", ["Menu.New"] = "新建", ["Menu.Open"] = "打开...", ["Menu.Save"] = "保存",
             ["Menu.SaveAs"] = "另存为...", ["Menu.Import"] = "导入...", ["Menu.ExportSelected"] = "导出选中对象...", ["Menu.ExportImage"] = "导出视图图片...",
             ["Menu.Exit"] = "退出", ["Menu.Undo"] = "撤销", ["Menu.Redo"] = "重做", ["Menu.ClearSelection"] = "取消全部选择", ["Menu.ShowAll"] = "全部显示",
@@ -264,11 +266,16 @@ public static class DemoLocalization
             [DemoCommandId.Mirror] = ("Mirror", "Mirrors the selected object about a plane."),
             [DemoCommandId.Copy] = ("Copy", "Creates a copy of the selected object."),
             [DemoCommandId.Delete] = ("Erase", "Erases the selected objects."),
-            [DemoCommandId.Text] = ("Vector Text", "Creates scalable BRep vector text that stays sharp when zoomed."),
-            [DemoCommandId.LengthDimension] = ("Vector Linear Dimension", "Creates one BRep result containing dimension lines, arrows, and vector text."),
-            [DemoCommandId.AngleDimension] = ("Vector Angular Dimension", "Creates one BRep result containing an arc, arrows, and vector text."),
-            [DemoCommandId.RadiusDimension] = ("Vector Radius Dimension", "Creates one BRep result containing a leader, arrow, and vector text."),
-            [DemoCommandId.DiameterDimension] = ("Vector Diameter Dimension", "Creates one BRep result containing dimension lines, arrows, and vector text."),
+            [DemoCommandId.NativeText] = ("Native Text Label", "Creates an interactive viewport text label (AIS_TextLabel)."),
+            [DemoCommandId.NativeLengthDimension] = ("Native Length Dimension", "Creates an interactive viewport length dimension (PrsDim_LengthDimension)."),
+            [DemoCommandId.NativeAngleDimension] = ("Native Angle Dimension", "Creates an interactive viewport angle dimension (PrsDim_AngleDimension)."),
+            [DemoCommandId.NativeRadiusDimension] = ("Native Radius Dimension", "Creates an interactive viewport radius dimension (PrsDim_RadiusDimension)."),
+            [DemoCommandId.NativeDiameterDimension] = ("Native Diameter Dimension", "Creates an interactive viewport diameter dimension (PrsDim_DiameterDimension)."),
+            [DemoCommandId.BRepText] = ("BRep Vector Text", "Creates AutoCAD-style 2D/3D BRep vector text solid/face geometry (AIS_Shape)."),
+            [DemoCommandId.BRepLengthDimension] = ("BRep Length Annotation", "Creates an AutoCAD-style BRep geometric length annotation compound (AIS_Shape)."),
+            [DemoCommandId.BRepAngleDimension] = ("BRep Angle Annotation", "Creates an AutoCAD-style BRep geometric angle annotation compound (AIS_Shape)."),
+            [DemoCommandId.BRepRadiusDimension] = ("BRep Radius Annotation", "Creates an AutoCAD-style BRep geometric radius annotation compound (AIS_Shape)."),
+            [DemoCommandId.BRepDiameterDimension] = ("BRep Diameter Annotation", "Creates an AutoCAD-style BRep geometric diameter annotation compound (AIS_Shape)."),
             [DemoCommandId.AnalyzeBounds] = ("Extents", "Reports the bounding box of the selected shape."),
             [DemoCommandId.AnalyzeMass] = ("Mass Properties", "Reports length, area, volume, and centroid."),
             [DemoCommandId.AnalyzeTopology] = ("Topology Statistics", "Counts vertices, edges, wires, faces, shells, and solids."),
@@ -286,7 +293,8 @@ public static class DemoLocalization
             [DemoCommandId.DemoGear] = ("Complex Gear", "Creates a complete gear with teeth, a bore, and relief holes."),
             [DemoCommandId.DemoManifold] = ("Multi-Port Manifold", "Creates a complex body with multi-directional ports and internal channels."),
             [DemoCommandId.DemoTwistedDuct] = ("Twisted Duct", "Creates a hollow multi-section twisted transition duct."),
-            [DemoCommandId.DemoAnnotations] = ("Vector Annotations", "Creates BRep text and linear, angular, radius, and diameter annotations.")
+            [DemoCommandId.DemoNativeAnnotations] = ("Native Annotations Gallery", "Creates an interactive test scene with native text labels and dimension presentations."),
+            [DemoCommandId.DemoBRepAnnotations] = ("BRep Annotations Gallery", "Creates an AutoCAD-style test scene with 3D text and BRep geometric annotation shapes.")
         });
 
     private static readonly IReadOnlyDictionary<string, string> EnglishParameterLabels = new ReadOnlyDictionary<string, string>(
@@ -401,6 +409,8 @@ public static class DemoLocalization
         "三维" => "Solid",
         "编辑" => "Modify",
         "注释" => "Annotate",
+        "原生标注" => "Native Annotations",
+        "BRep标注" => "BRep Annotations",
         "工具" => "Tools",
         "示例" => "Samples",
         _ => category

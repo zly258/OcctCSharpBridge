@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using OcctDemo.Common;
 using OcctNet;
 
@@ -52,9 +52,25 @@ public sealed partial class MainForm
         AddCommands(solid, DemoCommandId.Fillet, DemoCommandId.Chamfer, DemoCommandId.Offset, DemoCommandId.Shell, DemoCommandId.Drill);
 
         var annotate = new ToolStripMenuItem(DemoLocalization.Text("Menu.Annotate"));
-        AddCommands(annotate, DemoCommandId.Text);
+
+        var nativeGroup = new ToolStripMenuItem(DemoLocalization.Text("Menu.NativeAnnotations"));
+        AddCommands(nativeGroup, DemoCommandId.NativeText);
+        nativeGroup.DropDownItems.Add(new ToolStripSeparator());
+        AddCommands(nativeGroup, DemoCommandId.NativeLengthDimension, DemoCommandId.NativeAngleDimension, DemoCommandId.NativeRadiusDimension, DemoCommandId.NativeDiameterDimension);
+        nativeGroup.DropDownItems.Add(new ToolStripSeparator());
+        AddCommands(nativeGroup, DemoCommandId.DemoNativeAnnotations);
+
+        var brepGroup = new ToolStripMenuItem(DemoLocalization.Text("Menu.BRepAnnotations"));
+        AddCommands(brepGroup, DemoCommandId.BRepText);
+        brepGroup.DropDownItems.Add(new ToolStripSeparator());
+        AddCommands(brepGroup, DemoCommandId.BRepLengthDimension, DemoCommandId.BRepAngleDimension, DemoCommandId.BRepRadiusDimension, DemoCommandId.BRepDiameterDimension);
+        brepGroup.DropDownItems.Add(new ToolStripSeparator());
+        AddCommands(brepGroup, DemoCommandId.DemoBRepAnnotations);
+
+        annotate.DropDownItems.Add(nativeGroup);
+        annotate.DropDownItems.Add(brepGroup);
         annotate.DropDownItems.Add(new ToolStripSeparator());
-        AddCommands(annotate, DemoCommandId.LengthDimension, DemoCommandId.AngleDimension, DemoCommandId.RadiusDimension, DemoCommandId.DiameterDimension);
+        AddCommands(annotate, DemoCommandId.DemoNativeAnnotations, DemoCommandId.DemoBRepAnnotations);
 
         var tools = new ToolStripMenuItem(DemoLocalization.Text("Menu.Tools"));
         AddCommands(tools, DemoCommandId.AnalyzeBounds, DemoCommandId.AnalyzeMass, DemoCommandId.AnalyzeTopology, DemoCommandId.AnalyzeDistance, DemoCommandId.ValidateShape);
@@ -62,7 +78,9 @@ public sealed partial class MainForm
         var samples = new ToolStripMenuItem(DemoLocalization.Text("Menu.Samples"));
         AddCommands(samples, DemoCommandId.DemoElements, DemoCommandId.DemoGear, DemoCommandId.DemoManifold, DemoCommandId.DemoTwistedDuct);
         samples.DropDownItems.Add(new ToolStripSeparator());
-        AddCommands(samples, DemoCommandId.DemoBracket, DemoCommandId.DemoFlange, DemoCommandId.DemoAnnotations);
+        AddCommands(samples, DemoCommandId.DemoBracket, DemoCommandId.DemoFlange);
+        samples.DropDownItems.Add(new ToolStripSeparator());
+        AddCommands(samples, DemoCommandId.DemoNativeAnnotations, DemoCommandId.DemoBRepAnnotations);
 
         var language = new ToolStripMenuItem(DemoLocalization.Text("Menu.Language"));
         var english = new ToolStripMenuItem(DemoLocalization.Text("Menu.English")) { Checked = DemoLocalization.CurrentLanguage == DemoLanguage.English };

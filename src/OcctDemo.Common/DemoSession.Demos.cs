@@ -332,7 +332,73 @@ public sealed partial class DemoSession
         return DemoCommandResult.Created(Local("Twisted transition duct result created.", "已生成扭转过渡风管结果。"), duct);
     }
 
-    private DemoCommandResult DemoAnnotations()
+    private DemoCommandResult DemoNativeAnnotations()
+    {
+        var results = new List<IOcctObject>();
+
+        var block = Engine.MakeBox(160, 100, 40, -80, -50, 0);
+        var hole = Engine.MakeCylinder(new OcctPoint3d(25, 0, -2), OcctVector3d.UnitZ, 18, 44);
+        block = Engine.Cut(block, hole, true);
+        Engine.SetObjectMaterial(block, OcctMaterial.Steel);
+        results.Add(Name(block, Local("Machined Base", "机械底座")));
+
+        var label = Engine.AddText(
+            Local("NATIVE OCCT VIEWPORT ANNOTATIONS (AIS_TextLabel & PrsDim)", "原生 OCCT 视口标注（AIS_TextLabel 与 PrsDim）"),
+            new OcctPoint3d(-80, 65, 42),
+            15,
+            "Segoe UI");
+        Engine.SetTextColor(label, Color.DarkBlue);
+        Engine.SetTextZoomable(label, true);
+        results.Add(Name(label, Local("Native Viewport Title", "原生视口标题")));
+
+        var lengthDim = Engine.AddLengthDimension(
+            new OcctPoint3d(-80, -50, 0),
+            new OcctPoint3d(80, -50, 0),
+            OcctVector3d.UnitZ,
+            "160.00 mm",
+            -25);
+        results.Add(Name(lengthDim, Local("Native Length Dimension", "原生长度尺寸")));
+
+        var widthDim = Engine.AddLengthDimension(
+            new OcctPoint3d(80, -50, 0),
+            new OcctPoint3d(80, 50, 0),
+            OcctVector3d.UnitZ,
+            "100.00 mm",
+            25);
+        results.Add(Name(widthDim, Local("Native Width Dimension", "原生宽度尺寸")));
+
+        var angleDim = Engine.AddAngleDimension(
+            new OcctPoint3d(-80, -50, 0),
+            new OcctPoint3d(0, -50, 0),
+            new OcctPoint3d(-80, 0, 0),
+            OcctVector3d.UnitZ,
+            "90.0°",
+            30);
+        results.Add(Name(angleDim, Local("Native Angle Dimension", "原生角度尺寸")));
+
+        var radiusDim = Engine.AddRadiusDimension(
+            new OcctPoint3d(25, 0, 40),
+            new OcctPoint3d(43, 0, 40),
+            OcctVector3d.UnitZ,
+            "R 18.00 mm",
+            22);
+        results.Add(Name(radiusDim, Local("Native Radius Dimension", "原生半径尺寸")));
+
+        var diameterDim = Engine.AddDiameterDimension(
+            new OcctPoint3d(25, 0, 40),
+            new OcctPoint3d(25, 18, 40),
+            OcctVector3d.UnitZ,
+            "Ø 36.00 mm",
+            26);
+        results.Add(Name(diameterDim, Local("Native Diameter Dimension", "原生直径尺寸")));
+
+        Engine.FitAll();
+        return new(
+            Local("Native OCCT annotation test results created.", "已生成原生 OCCT 视口标注测试结果。"),
+            results);
+    }
+
+    private DemoCommandResult DemoBRepAnnotations()
     {
         using var model = new OcctModelingSession();
         var lengthSource = model.MakeLine(new(-190, -90, 0), new(-40, -90, 0));
@@ -389,20 +455,20 @@ public sealed partial class DemoSession
         var text = DisplayModelShape(
             model,
             model.MakeBRepText(
-                Local("VECTOR ANNOTATIONS", "矢量注释标注"),
+                Local("BREP VECTOR ANNOTATIONS (AIS_Shape)", "BREP 几何实体标注（AIS_Shape）"),
                 OcctBRepTextOptions.Default with
                 {
                     Position = new OcctPoint3d(-190, 135, 0),
-                    Height = 24,
+                    Height = 22,
                     ExtrusionDepth = 1.5,
                     FontName = DemoFonts.OcctSansSerif,
                     Bold = true
                 }));
 
-        Name(length, Local("Vector Linear Dimension", "矢量线性尺寸"));
-        Name(angle, Local("Vector Angular Dimension", "矢量角度尺寸"));
-        Name(radius, Local("Vector Radius Dimension", "矢量半径尺寸"));
-        Name(diameter, Local("Vector Diameter Dimension", "矢量直径尺寸"));
+        Name(length, Local("BRep Linear Dimension", "BRep 线性尺寸"));
+        Name(angle, Local("BRep Angular Dimension", "BRep 角度尺寸"));
+        Name(radius, Local("BRep Radius Dimension", "BRep 半径尺寸"));
+        Name(diameter, Local("BRep Diameter Dimension", "BRep 直径尺寸"));
         Name(text, Local("BRep Note Text", "BRep 说明文字"));
         Engine.SetObjectColor(length, Color.DarkBlue);
         Engine.SetObjectColor(angle, Color.DarkGreen);
@@ -411,7 +477,7 @@ public sealed partial class DemoSession
         Engine.SetObjectColor(text, Color.Black);
         Engine.FitAll();
         return new(
-            Local("Vector annotation results created.", "已生成矢量注释标注结果。"),
+            Local("BRep geometric annotation test results created.", "已生成 BRep 几何实体标注测试结果。"),
             new IOcctObject[] { length, angle, radius, diameter, text });
     }
 
@@ -439,5 +505,6 @@ public sealed partial class DemoSession
             or DemoCommandId.DemoGear
             or DemoCommandId.DemoManifold
             or DemoCommandId.DemoTwistedDuct
-            or DemoCommandId.DemoAnnotations;
+            or DemoCommandId.DemoNativeAnnotations
+            or DemoCommandId.DemoBRepAnnotations;
 }

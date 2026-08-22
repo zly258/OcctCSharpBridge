@@ -74,11 +74,19 @@ public sealed partial class DemoSession
             DemoCommandId.Copy => CreateShape(DemoLocalization.CommandText(commandId), Engine.Copy(RequireShape(), values.Boolean("hide"))),
             DemoCommandId.Delete => DeleteSelected(),
 
-            DemoCommandId.Text => CreateText(values),
-            DemoCommandId.LengthDimension => CreateLengthDimension(values),
-            DemoCommandId.AngleDimension => CreateAngleDimension(values),
-            DemoCommandId.RadiusDimension => CreateRadiusDimension(values, false),
-            DemoCommandId.DiameterDimension => CreateRadiusDimension(values, true),
+            // Native Annotations
+            DemoCommandId.NativeText => CreateNativeText(values),
+            DemoCommandId.NativeLengthDimension => CreateNativeLengthDimension(values),
+            DemoCommandId.NativeAngleDimension => CreateNativeAngleDimension(values),
+            DemoCommandId.NativeRadiusDimension => CreateNativeRadiusDimension(values, false),
+            DemoCommandId.NativeDiameterDimension => CreateNativeRadiusDimension(values, true),
+
+            // BRep Geometric Annotations
+            DemoCommandId.BRepText => CreateBRepText(values),
+            DemoCommandId.BRepLengthDimension => CreateBRepLengthDimension(values),
+            DemoCommandId.BRepAngleDimension => CreateBRepAngleDimension(values),
+            DemoCommandId.BRepRadiusDimension => CreateBRepRadiusDimension(values, false),
+            DemoCommandId.BRepDiameterDimension => CreateBRepRadiusDimension(values, true),
 
             DemoCommandId.AnalyzeBounds => AnalyzeBounds(),
             DemoCommandId.AnalyzeMass => AnalyzeMass(),
@@ -98,7 +106,8 @@ public sealed partial class DemoSession
             DemoCommandId.DemoGear => DemoGear(),
             DemoCommandId.DemoManifold => DemoManifold(),
             DemoCommandId.DemoTwistedDuct => DemoTwistedDuct(),
-            DemoCommandId.DemoAnnotations => DemoAnnotations(),
+            DemoCommandId.DemoNativeAnnotations => DemoNativeAnnotations(),
+            DemoCommandId.DemoBRepAnnotations => DemoBRepAnnotations(),
             _ => throw new NotSupportedException(Local($"Command is not implemented: {commandId}", $"未实现命令：{commandId}"))
             };
 
@@ -181,28 +190,21 @@ public sealed partial class DemoSession
         return CreateShape(name, Engine.Boolean(operation, shapes[0], shapes[1], values.Boolean("hide", operation != OcctBooleanOperation.Section)));
     }
 
-    private DemoCommandResult CreateText(DemoValues values)
+    private DemoCommandResult CreateNativeText(DemoValues values)
     {
-        using var model = new OcctModelingSession();
-        var modelText = model.MakeBRepText(
-            values.Text("text", "OCCT CAD"),
-            OcctBRepTextOptions.Default with
-            {
-                Position = values.Point(),
-                Height = values.Number("height", 18),
-                ExtrusionDepth = values.Number("depth", 0),
-                FontName = DemoFonts.ResolveOcctFont(values.Text("font", DemoFonts.OcctSansSerif)),
-                Bold = values.Boolean("bold"),
-                Italic = values.Boolean("italic")
-            });
-        var text = DisplayModelShape(model, modelText);
-        Engine.SetObjectColor(text, Color.DarkSlateGray);
-        SetGeneratedName(text, DemoLocalization.CommandText(DemoCommandId.Text));
+        var text = Engine.AddText(
+            values.Text("text", "OCCT 视口标签"),
+            values.Point(),
+            values.Number("height", 14),
+            values.Text("font", "Segoe UI"));
+        Engine.SetTextZoomable(text, values.Boolean("zoomable", true));
+        Engine.SetTextColor(text, Color.DarkBlue);
+        SetGeneratedName(text, DemoLocalization.CommandText(DemoCommandId.NativeText));
         ActiveObject = text;
-        return DemoCommandResult.Created(DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(DemoCommandId.Text)), text);
+        return DemoCommandResult.Created(DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(DemoCommandId.NativeText)), text);
     }
 
-    private DemoCommandResult CreateLengthDimension(DemoValues values)
+    private DemoCommandResult CreateNativeLengthDimension(DemoValues values)
     {
         var edge = CopySelectedSubshape(0);
         Engine.SetObjectVisible(edge, false);
@@ -210,15 +212,15 @@ public sealed partial class DemoSession
         SetGeneratedName(edge, Local("Linear Dimension Source", "线性尺寸源边"));
 
         var dimension = Engine.AddLengthDimension(edge, values.Number("flyout", 20));
-        SetGeneratedName(dimension, DemoLocalization.CommandText(DemoCommandId.LengthDimension));
+        SetGeneratedName(dimension, DemoLocalization.CommandText(DemoCommandId.NativeLengthDimension));
         ActiveObject = dimension;
         return DemoCommandResult.Created(
-            DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(DemoCommandId.LengthDimension)),
+            DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(DemoCommandId.NativeLengthDimension)),
             dimension,
             edge);
     }
 
-    private DemoCommandResult CreateAngleDimension(DemoValues values)
+    private DemoCommandResult CreateNativeAngleDimension(DemoValues values)
     {
         var first = CopySelectedSubshape(0);
         var second = CopySelectedSubshape(1);
@@ -230,16 +232,16 @@ public sealed partial class DemoSession
         SetGeneratedName(second, Local("Angle Dimension Source B", "角度尺寸源边 B"));
 
         var dimension = Engine.AddAngleDimension(first, second, values.Number("flyout", 30));
-        SetGeneratedName(dimension, DemoLocalization.CommandText(DemoCommandId.AngleDimension));
+        SetGeneratedName(dimension, DemoLocalization.CommandText(DemoCommandId.NativeAngleDimension));
         ActiveObject = dimension;
         return DemoCommandResult.Created(
-            DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(DemoCommandId.AngleDimension)),
+            DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(DemoCommandId.NativeAngleDimension)),
             dimension,
             first,
             second);
     }
 
-    private DemoCommandResult CreateRadiusDimension(DemoValues values, bool diameter)
+    private DemoCommandResult CreateNativeRadiusDimension(DemoValues values, bool diameter)
     {
         var edge = CopySelectedSubshape(0);
         Engine.SetObjectVisible(edge, false);
@@ -249,12 +251,148 @@ public sealed partial class DemoSession
         var dimension = diameter
             ? Engine.AddDiameterDimension(edge, values.Number("flyout", 20))
             : Engine.AddRadiusDimension(edge, values.Number("flyout", 20));
-        var commandId = diameter ? DemoCommandId.DiameterDimension : DemoCommandId.RadiusDimension;
+        var commandId = diameter ? DemoCommandId.NativeDiameterDimension : DemoCommandId.NativeRadiusDimension;
         SetGeneratedName(dimension, DemoLocalization.CommandText(commandId));
         ActiveObject = dimension;
         return DemoCommandResult.Created(
             DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(commandId)),
             dimension,
+            edge);
+    }
+
+    private DemoCommandResult CreateBRepText(DemoValues values)
+    {
+        using var model = new OcctModelingSession();
+        var modelText = model.MakeBRepText(
+            values.Text("text", "OCCT CAD"),
+            OcctBRepTextOptions.Default with
+            {
+                Position = values.Point(),
+                Height = values.Number("height", 18),
+                ExtrusionDepth = values.Number("depth", 2),
+                FontName = DemoFonts.ResolveOcctFont(values.Text("font", DemoFonts.OcctSansSerif)),
+                Bold = values.Boolean("bold"),
+                Italic = values.Boolean("italic")
+            });
+        var text = DisplayModelShape(model, modelText);
+        Engine.SetObjectColor(text, Color.DarkSlateGray);
+        SetGeneratedName(text, DemoLocalization.CommandText(DemoCommandId.BRepText));
+        ActiveObject = text;
+        return DemoCommandResult.Created(DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(DemoCommandId.BRepText)), text);
+    }
+
+    private DemoCommandResult CreateBRepLengthDimension(DemoValues values)
+    {
+        var edge = CopySelectedSubshape(0);
+        Engine.SetObjectVisible(edge, false);
+        Engine.SetObjectSelectable(edge, false);
+        SetGeneratedName(edge, Local("BRep Linear Dimension Source", "BRep 线性尺寸源边"));
+
+        using var model = new OcctModelingSession();
+        var p1 = Engine.EvaluateEdge(edge, 0.0).Point;
+        var p2 = Engine.EvaluateEdge(edge, 1.0).Point;
+        var modelEdge = model.MakeLine(p1, p2);
+        var modelDim = model.MakeLengthAnnotation(
+            modelEdge,
+            OcctBRepAnnotationOptions.Default with
+            {
+                Offset = values.Number("offset", 20),
+                TextHeight = values.Number("textHeight", 8),
+                ArrowSize = values.Number("arrowSize", 5),
+                FontName = DemoFonts.OcctSansSerif
+            });
+        var dimShape = DisplayModelShape(model, modelDim);
+        Engine.SetObjectColor(dimShape, Color.DarkBlue);
+        SetGeneratedName(dimShape, DemoLocalization.CommandText(DemoCommandId.BRepLengthDimension));
+        ActiveObject = dimShape;
+        return DemoCommandResult.Created(
+            DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(DemoCommandId.BRepLengthDimension)),
+            dimShape,
+            edge);
+    }
+
+    private DemoCommandResult CreateBRepAngleDimension(DemoValues values)
+    {
+        var first = CopySelectedSubshape(0);
+        var second = CopySelectedSubshape(1);
+        Engine.SetObjectVisible(first, false);
+        Engine.SetObjectVisible(second, false);
+        Engine.SetObjectSelectable(first, false);
+        Engine.SetObjectSelectable(second, false);
+        SetGeneratedName(first, Local("BRep Angle Source A", "BRep 角度源边 A"));
+        SetGeneratedName(second, Local("BRep Angle Source B", "BRep 角度源边 B"));
+
+        using var model = new OcctModelingSession();
+        var p1Start = Engine.EvaluateEdge(first, 0.0).Point;
+        var p1End = Engine.EvaluateEdge(first, 1.0).Point;
+        var p2Start = Engine.EvaluateEdge(second, 0.0).Point;
+        var p2End = Engine.EvaluateEdge(second, 1.0).Point;
+        var modelFirst = model.MakeLine(p1Start, p1End);
+        var modelSecond = model.MakeLine(p2Start, p2End);
+        var modelDim = model.MakeAngleAnnotation(
+            modelFirst,
+            modelSecond,
+            OcctBRepAnnotationOptions.Default with
+            {
+                Offset = values.Number("offset", 35),
+                TextHeight = values.Number("textHeight", 8),
+                ArrowSize = values.Number("arrowSize", 5),
+                FontName = DemoFonts.OcctSansSerif
+            });
+        var dimShape = DisplayModelShape(model, modelDim);
+        Engine.SetObjectColor(dimShape, Color.DarkGreen);
+        SetGeneratedName(dimShape, DemoLocalization.CommandText(DemoCommandId.BRepAngleDimension));
+        ActiveObject = dimShape;
+        return DemoCommandResult.Created(
+            DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(DemoCommandId.BRepAngleDimension)),
+            dimShape,
+            first,
+            second);
+    }
+
+    private DemoCommandResult CreateBRepRadiusDimension(DemoValues values, bool diameter)
+    {
+        var edge = CopySelectedSubshape(0);
+        Engine.SetObjectVisible(edge, false);
+        Engine.SetObjectSelectable(edge, false);
+        SetGeneratedName(edge, Local("BRep Circular Dimension Source", "BRep 圆尺寸源边"));
+
+        using var model = new OcctModelingSession();
+        var p0 = Engine.EvaluateEdge(edge, 0.0).Point;
+        var p1 = Engine.EvaluateEdge(edge, 0.5).Point;
+        var p2 = Engine.EvaluateEdge(edge, 1.0).Point;
+        var modelCircle = (p0.DistanceTo(p2) < 1e-5)
+            ? model.MakeCircle(new OcctPoint3d((p0.X + p1.X) / 2, (p0.Y + p1.Y) / 2, (p0.Z + p1.Z) / 2), OcctVector3d.UnitZ, p0.DistanceTo(p1) / 2.0)
+            : model.MakeArcThreePoints(p0, p1, p2);
+
+        var modelDim = diameter
+            ? model.MakeDiameterAnnotation(
+                modelCircle,
+                OcctBRepAnnotationOptions.Default with
+                {
+                    Offset = values.Number("offset", 20),
+                    TextHeight = values.Number("textHeight", 8),
+                    ArrowSize = values.Number("arrowSize", 5),
+                    FontName = DemoFonts.OcctSansSerif
+                })
+            : model.MakeRadiusAnnotation(
+                modelCircle,
+                OcctBRepAnnotationOptions.Default with
+                {
+                    Offset = values.Number("offset", 20),
+                    TextHeight = values.Number("textHeight", 8),
+                    ArrowSize = values.Number("arrowSize", 5),
+                    FontName = DemoFonts.OcctSansSerif
+                });
+
+        var dimShape = DisplayModelShape(model, modelDim);
+        var commandId = diameter ? DemoCommandId.BRepDiameterDimension : DemoCommandId.BRepRadiusDimension;
+        Engine.SetObjectColor(dimShape, diameter ? Color.Purple : Color.DarkRed);
+        SetGeneratedName(dimShape, DemoLocalization.CommandText(commandId));
+        ActiveObject = dimShape;
+        return DemoCommandResult.Created(
+            DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(commandId)),
+            dimShape,
             edge);
     }
 

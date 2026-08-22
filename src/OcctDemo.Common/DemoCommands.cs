@@ -1,4 +1,4 @@
-﻿using OcctNet;
+using OcctNet;
 
 namespace OcctDemo.Common;
 
@@ -8,10 +8,25 @@ public enum DemoCommandId
     Box, Cylinder, Frustum, Cone, Torus, Sphere, Wedge, Pipe,
     Extrude, Revolve, Sweep, Loft, Fuse, Cut, Common, Section, Fillet, Chamfer, Offset, Shell, Drill,
     Translate, Rotate, Scale, Mirror, Copy, Delete,
-    Text, LengthDimension, AngleDimension, RadiusDimension, DiameterDimension,
+
+    // Native OCCT Viewer Annotations (原生视口交互标注与文字)
+    NativeText, NativeLengthDimension, NativeAngleDimension, NativeRadiusDimension, NativeDiameterDimension,
+
+    // AutoCAD-style BRep Geometric Annotations (封装 BRep 几何实体标注与文字)
+    BRepText, BRepLengthDimension, BRepAngleDimension, BRepRadiusDimension, BRepDiameterDimension,
+
+    // Backward-compatibility aliases
+    Text = BRepText,
+    LengthDimension = NativeLengthDimension,
+    AngleDimension = NativeAngleDimension,
+    RadiusDimension = NativeRadiusDimension,
+    DiameterDimension = NativeDiameterDimension,
+
     AnalyzeBounds, AnalyzeMass, AnalyzeTopology, AnalyzeDistance, ValidateShape,
     DemoPrimitives, DemoBracket, DemoFlange, DemoPipe, DemoTee, DemoReducer, DemoLoft, DemoBoolean,
-    DemoElements, DemoGear, DemoManifold, DemoTwistedDuct, DemoAnnotations
+    DemoElements, DemoGear, DemoManifold, DemoTwistedDuct,
+    DemoNativeAnnotations, DemoBRepAnnotations,
+    DemoAnnotations = DemoBRepAnnotations
 }
 
 public enum DemoParameterKind { Number, Integer, Text, Boolean, Choice }
@@ -91,11 +106,19 @@ public static class DemoCommandCatalog
         new(DemoCommandId.Copy, "编辑", "复制", "复制当前选择形体。", new[] { B("hide","隐藏原对象",false) }),
         new(DemoCommandId.Delete, "编辑", "删除", "删除全部选中对象。", Array.Empty<DemoParameterDefinition>(), "Delete"),
 
-        new(DemoCommandId.Text, "注释", "矢量文字", "通过 Headless Modeling 生成 BRep 矢量文字并显示到 Viewer。", new[] { T("text","文字","OCCT CAD"), N("x","X",0), N("y","Y",0), N("z","Z",0), N("height","文字高度",18), N("depth","挤出厚度",0), T("font","字体",DemoFonts.OcctSansSerif), B("bold","粗体",false), B("italic","斜体",false) }),
-        new(DemoCommandId.LengthDimension, "注释", "线性尺寸", "基于当前选中边创建交互式 Viewer 线性尺寸。", new[] { N("flyout","引出距离",20) }),
-        new(DemoCommandId.AngleDimension, "注释", "角度尺寸", "基于当前选择的两条边创建交互式 Viewer 角度尺寸。", new[] { N("flyout","圆弧半径",30) }),
-        new(DemoCommandId.RadiusDimension, "注释", "半径尺寸", "基于当前选中圆边创建交互式 Viewer 半径尺寸。", new[] { N("flyout","引出距离",20) }),
-        new(DemoCommandId.DiameterDimension, "注释", "直径尺寸", "基于当前选中圆边创建交互式 Viewer 直径尺寸。", new[] { N("flyout","引出距离",20) }),
+        // Native Annotations (原生视口标注)
+        new(DemoCommandId.NativeText, "原生标注", "原生文本标签", "创建 OCCT 原生视口交互式文本标签（AIS_TextLabel）。", new[] { T("text","文字","OCCT 视口标签"), N("x","X",0), N("y","Y",0), N("z","Z",50), N("height","文字高度",14), T("font","字体","Segoe UI"), B("zoomable","随视口缩放",true) }),
+        new(DemoCommandId.NativeLengthDimension, "原生标注", "原生线性尺寸", "基于当前选中边创建 OCCT 原生交互式线性尺寸（PrsDim_LengthDimension）。", new[] { N("flyout","引出距离",20) }),
+        new(DemoCommandId.NativeAngleDimension, "原生标注", "原生角度尺寸", "基于当前选择的两条边创建 OCCT 原生交互式角度尺寸（PrsDim_AngleDimension）。", new[] { N("flyout","圆弧半径",30) }),
+        new(DemoCommandId.NativeRadiusDimension, "原生标注", "原生半径尺寸", "基于当前选中圆边创建 OCCT 原生交互式半径尺寸（PrsDim_RadiusDimension）。", new[] { N("flyout","引出距离",20) }),
+        new(DemoCommandId.NativeDiameterDimension, "原生标注", "原生直径尺寸", "基于当前选中圆边创建 OCCT 原生交互式直径尺寸（PrsDim_DiameterDimension）。", new[] { N("flyout","引出距离",20) }),
+
+        // BRep Geometric Annotations (AutoCAD 风格实体标注)
+        new(DemoCommandId.BRepText, "BRep标注", "BRep 矢量文字", "通过 Headless Modeling 生成 AutoCAD 风格 2D/3D BRep 矢量文字（AIS_Shape）。", new[] { T("text","文字","OCCT CAD"), N("x","X",0), N("y","Y",0), N("z","Z",0), N("height","文字高度",18), N("depth","挤出厚度",2), T("font","字体",DemoFonts.OcctSansSerif), B("bold","粗体",false), B("italic","斜体",false) }),
+        new(DemoCommandId.BRepLengthDimension, "BRep标注", "BRep 几何线性标注", "基于当前选中边生成包含尺寸线、尺寸界线、箭头头锥和 BRep 文字的几何实体（AIS_Shape）。", new[] { N("offset","偏移距离",20), N("textHeight","文字高度",8), N("arrowSize","箭头尺寸",5) }),
+        new(DemoCommandId.BRepAngleDimension, "BRep标注", "BRep 几何角度标注", "基于当前选择的两条边生成包含弧线、箭头和文字的 BRep 几何实体（AIS_Shape）。", new[] { N("offset","圆弧半径",35), N("textHeight","文字高度",8), N("arrowSize","箭头尺寸",5) }),
+        new(DemoCommandId.BRepRadiusDimension, "BRep标注", "BRep 几何半径标注", "基于当前选中圆边生成包含引线、箭头和文字的 BRep 几何实体（AIS_Shape）。", new[] { N("offset","引出距离",20), N("textHeight","文字高度",8), N("arrowSize","箭头尺寸",5) }),
+        new(DemoCommandId.BRepDiameterDimension, "BRep标注", "BRep 几何直径标注", "基于当前选中圆边生成包含直径全长线、双箭头和文字的 BRep 几何实体（AIS_Shape）。", new[] { N("offset","偏移距离",20), N("textHeight","文字高度",8), N("arrowSize","箭头尺寸",5) }),
 
         new(DemoCommandId.AnalyzeBounds, "工具", "包围盒", "查询当前形体包围盒。", Array.Empty<DemoParameterDefinition>()),
         new(DemoCommandId.AnalyzeMass, "工具", "几何属性", "查询长度、面积、体积和重心。", Array.Empty<DemoParameterDefinition>()),
@@ -115,7 +138,8 @@ public static class DemoCommandCatalog
         new(DemoCommandId.DemoGear, "示例", "复杂齿轮", "生成带轮齿、中心孔和减重孔的完整齿轮。", Array.Empty<DemoParameterDefinition>()),
         new(DemoCommandId.DemoManifold, "示例", "多通道阀体", "生成带多方向接口和内部孔道的复杂阀体。", Array.Empty<DemoParameterDefinition>()),
         new(DemoCommandId.DemoTwistedDuct, "示例", "扭转风管", "生成多截面扭转过渡的中空风管。", Array.Empty<DemoParameterDefinition>()),
-        new(DemoCommandId.DemoAnnotations, "示例", "矢量注释标注", "通过 Headless Modeling 生成 BRep 文字、线性、角度、半径和直径标注。", Array.Empty<DemoParameterDefinition>())
+        new(DemoCommandId.DemoNativeAnnotations, "示例", "原生视口标注测试", "生成带原生文本标签（AIS_TextLabel）与全套交互式尺寸标注（PrsDim_Dimension）的测试场景。", Array.Empty<DemoParameterDefinition>()),
+        new(DemoCommandId.DemoBRepAnnotations, "示例", "BRep 几何标注测试", "生成 AutoCAD 风格带 3D 实体文字与线框/箭头/界线 Compound 几何实体（AIS_Shape）的测试场景。", Array.Empty<DemoParameterDefinition>())
     };
 
     public static DemoCommandDefinition Get(DemoCommandId id) => All.First(command => command.Id == id);
