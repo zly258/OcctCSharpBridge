@@ -117,6 +117,19 @@ public sealed partial class OcctEngine
         SetViewCube(_viewCubeOptions with { OffsetX = offsetX, OffsetY = offsetY });
     }
 
+    public void SetViewCubeFontHeight(double fontHeight)
+    {
+        OcctGuard.Positive(fontHeight, nameof(fontHeight));
+        SetViewCube(_viewCubeOptions with { FontHeight = fontHeight });
+    }
+
+    public void SetViewCubeFont(string fontName, double fontHeight = 12.0)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fontName);
+        OcctGuard.Positive(fontHeight, nameof(fontHeight));
+        SetViewCube(_viewCubeOptions with { FontName = fontName, FontHeight = fontHeight });
+    }
+
     public void SetFaceBoundaryStyle(OcctShape shape, bool visible, Color color, double width = 1.0)
     {
         EnsureShape(shape);

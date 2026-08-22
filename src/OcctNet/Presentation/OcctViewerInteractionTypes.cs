@@ -46,6 +46,13 @@ public sealed record OcctViewCubeOptions
     public int SizePixels { get; init; } = 90;
     public int OffsetX { get; init; } = 10;
     public int OffsetY { get; init; } = 10;
+    public double FontHeight { get; init; } = 12.0;
+    public string FontName { get; init; } = "Segoe UI";
+    public Color TextColor { get; init; } = Color.FromArgb(40, 40, 40);
+    public Color BoxColor { get; init; } = Color.FromArgb(230, 230, 230);
+    public Color FacetColor { get; init; } = Color.FromArgb(245, 245, 245);
+    public double CornerRadius { get; init; } = 0.0;
+    public double EdgeWidth { get; init; } = 1.0;
 }
 
 public readonly record struct OcctSelectionHitDetail(

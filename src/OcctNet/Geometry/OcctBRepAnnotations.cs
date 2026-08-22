@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
@@ -45,9 +45,13 @@ public readonly record struct OcctBRepAnnotationOptions(
     double Offset,
     double TextHeight,
     double ArrowSize,
-    string FontName)
+    string FontName,
+    double ExtensionOvershoot = 2.0,
+    double ExtensionOffset = 1.0,
+    double TextOffset = 2.0,
+    double ExtrusionDepth = 0.0)
 {
-    public static OcctBRepAnnotationOptions Default => new(20, 5, 3, string.Empty);
+    public static OcctBRepAnnotationOptions Default => new(20, 6, 4, string.Empty, 2.0, 1.0, 2.0, 0.0);
 }
 
 [StructLayout(LayoutKind.Sequential)]
