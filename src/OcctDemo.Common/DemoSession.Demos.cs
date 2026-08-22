@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+using System.Drawing;
 using OcctNet;
 
 namespace OcctDemo.Common;
@@ -29,7 +29,7 @@ public sealed partial class DemoSession
         body = Engine.DrillHole(body, new(-55, 0, -1), OcctVector3d.UnitZ, 12, 25, true);
         body = Engine.DrillHole(body, new(55, 0, -1), OcctVector3d.UnitZ, 12, 25, true);
         body = Engine.DrillHole(body, new(-91, 0, 70), OcctVector3d.UnitX, 18, 25, true);
-        try { body = Engine.FilletAllEdges(body, 3, true); } catch (OcctException) { }
+        try { body = Engine.FilletAllEdges(body, 3, true); } catch (OcctException ex) { CrashReporter.WriteMessage("DemoSession", "DemoBracket", $"Fillet fallback: {ex.Message}"); }
         SetGeneratedName(body, Local("Mechanical Bracket", "机械支架"));
         Engine.SetObjectMaterial(body, OcctMaterial.Steel);
         Engine.FitAll();
@@ -47,7 +47,7 @@ public sealed partial class DemoSession
             var center = new OcctPoint3d(Math.Cos(angle) * pitchRadius, Math.Sin(angle) * pitchRadius, -1);
             body = Engine.DrillHole(body, center, OcctVector3d.UnitZ, 6.5, 20, true);
         }
-        try { body = Engine.FilletAllEdges(body, 1.5, true); } catch (OcctException) { }
+        try { body = Engine.FilletAllEdges(body, 1.5, true); } catch (OcctException ex) { CrashReporter.WriteMessage("DemoSession", "DemoFlange", $"Fillet fallback: {ex.Message}"); }
         SetGeneratedName(body, Local("Eight-Hole Flange", "八孔法兰"));
         Engine.SetObjectMaterial(body, OcctMaterial.Steel);
         Engine.FitAll();
@@ -245,7 +245,7 @@ public sealed partial class DemoSession
                 thickness + 2,
                 true);
         }
-        try { gear = Engine.ChamferAllEdges(gear, 0.8, true); } catch (OcctException) { }
+        try { gear = Engine.ChamferAllEdges(gear, 0.8, true); } catch (OcctException ex) { CrashReporter.WriteMessage("DemoSession", "DemoGear", $"Chamfer fallback: {ex.Message}"); }
         SetGeneratedName(gear, Local("Complex Gear", "复杂齿轮"));
         Engine.SetObjectMaterial(gear, OcctMaterial.Steel);
         Engine.FitAll();
@@ -275,7 +275,7 @@ public sealed partial class DemoSession
         {
             body = Engine.DrillHole(body, point, OcctVector3d.UnitZ, 6.5, 82, true);
         }
-        try { body = Engine.FilletAllEdges(body, 2.0, true); } catch (OcctException) { }
+        try { body = Engine.FilletAllEdges(body, 2.0, true); } catch (OcctException ex) { CrashReporter.WriteMessage("DemoSession", "DemoManifold", $"Fillet fallback: {ex.Message}"); }
         SetGeneratedName(body, Local("Multi-Port Manifold", "多通道阀体"));
         Engine.SetObjectMaterial(body, OcctMaterial.Steel);
         Engine.FitAll();

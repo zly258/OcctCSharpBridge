@@ -49,4 +49,28 @@
     <Message Importance="high"
              Text="[self-contained-gate] $(AssemblyName): local .NET runtime payload verified in $(PublishDir)." />
   </Target>
+
+  <Target Name="VerifyLinuxSelfContainedPublish"
+          AfterTargets="Publish"
+          Condition="'$(RuntimeIdentifier)' == 'linux-x64' and '$(SelfContained)' == 'true' and '$(OutputType)' == 'Exe'">
+    <PropertyGroup>
+      <_PublishedRuntimeConfig>$(PublishDir)$(AssemblyName).runtimeconfig.json</_PublishedRuntimeConfig>
+    </PropertyGroup>
+
+    <Error Condition="!Exists('$(PublishDir)$(AssemblyName)')"
+           Text="Self-contained publish gate failed: $(AssemblyName) binary is missing from $(PublishDir)." />
+    <Error Condition="!Exists('$(_PublishedRuntimeConfig)')"
+           Text="Self-contained publish gate failed: $(AssemblyName).runtimeconfig.json is missing from $(PublishDir)." />
+    <Error Condition="!Exists('$(PublishDir)libhostfxr.so')"
+           Text="Self-contained publish gate failed: libhostfxr.so is missing from $(PublishDir). The package would require an installed .NET runtime." />
+    <Error Condition="!Exists('$(PublishDir)libhostpolicy.so')"
+           Text="Self-contained publish gate failed: libhostpolicy.so is missing from $(PublishDir)." />
+    <Error Condition="!Exists('$(PublishDir)libcoreclr.so')"
+           Text="Self-contained publish gate failed: libcoreclr.so is missing from $(PublishDir)." />
+    <Error Condition="!Exists('$(PublishDir)System.Private.CoreLib.dll')"
+           Text="Self-contained publish gate failed: System.Private.CoreLib.dll is missing from $(PublishDir)." />
+
+    <Message Importance="high"
+             Text="[self-contained-gate] $(AssemblyName): local Linux .NET runtime payload verified in $(PublishDir)." />
+  </Target>
 </Project>

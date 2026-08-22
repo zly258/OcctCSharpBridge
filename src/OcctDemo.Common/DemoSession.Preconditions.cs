@@ -1,4 +1,4 @@
-﻿using OcctNet;
+using OcctNet;
 
 namespace OcctDemo.Common;
 
@@ -39,16 +39,25 @@ public sealed partial class DemoSession
 
     public CadCommandAvailability GetCommandAvailability(DemoCommandId commandId)
     {
-        var selectedEntries = Engine.SelectedObjects
-            .Where(value => Engine.ContainsObject(value.Id))
-            .ToArray();
-        var selectedShapes = selectedEntries
-            .OfType<OcctShape>()
-            .DistinctBy(value => value.Id)
-            .ToArray();
+        var rawSelected = Engine.SelectedObjects;
+        var selectedEntries = new List<IOcctObject>(rawSelected.Count);
+        var selectedShapes = new List<OcctShape>(rawSelected.Count);
+        var seenShapeIds = new HashSet<long>();
+
+        foreach (var value in rawSelected)
+        {
+            if (Engine.ContainsObject(value.Id))
+            {
+                selectedEntries.Add(value);
+                if (value is OcctShape shape && seenShapeIds.Add(shape.Id))
+                {
+                    selectedShapes.Add(shape);
+                }
+            }
+        }
 
         if (commandId == DemoCommandId.Delete)
-            return RequireObjectCount(commandId, selectedEntries.Length, 1, exactly: false);
+            return RequireObjectCount(commandId, selectedEntries.Count, 1, exactly: false);
 
         if (commandId is DemoCommandId.LengthDimension
             or DemoCommandId.AngleDimension
@@ -65,7 +74,7 @@ public sealed partial class DemoSession
 
         if (commandId is DemoCommandId.Extrude or DemoCommandId.Revolve)
         {
-            var countCheck = RequireShapeCount(commandId, selectedShapes.Length, 1, exactly: true);
+            var countCheck = RequireShapeCount(commandId, selectedShapes.Count, 1, exactly: true);
             if (!countCheck.CanExecute) return countCheck;
             var type = Engine.GetShapeType(selectedShapes[0]);
             return IsProfileType(type)
@@ -77,7 +86,7 @@ public sealed partial class DemoSession
 
         if (commandId == DemoCommandId.Sweep)
         {
-            var countCheck = RequireShapeCount(commandId, selectedShapes.Length, 2, exactly: true);
+            var countCheck = RequireShapeCount(commandId, selectedShapes.Count, 2, exactly: true);
             if (!countCheck.CanExecute) return countCheck;
             var pathType = Engine.GetShapeType(selectedShapes[0]);
             var profileType = Engine.GetShapeType(selectedShapes[1]);
@@ -96,7 +105,7 @@ public sealed partial class DemoSession
 
         if (commandId == DemoCommandId.Loft)
         {
-            var countCheck = RequireShapeCount(commandId, selectedShapes.Length, 2, exactly: false);
+            var countCheck = RequireShapeCount(commandId, selectedShapes.Count, 2, exactly: false);
             if (!countCheck.CanExecute) return countCheck;
             return selectedShapes.All(shape => IsProfileType(Engine.GetShapeType(shape)))
                 ? CadCommandAvailability.Available
@@ -107,7 +116,7 @@ public sealed partial class DemoSession
 
         if (commandId is DemoCommandId.Shell or DemoCommandId.Drill)
         {
-            var countCheck = RequireShapeCount(commandId, selectedShapes.Length, 1, exactly: true);
+            var countCheck = RequireShapeCount(commandId, selectedShapes.Count, 1, exactly: true);
             if (!countCheck.CanExecute) return countCheck;
             var type = Engine.GetShapeType(selectedShapes[0]);
             return type is OcctShapeType.Solid or OcctShapeType.CompSolid
@@ -119,7 +128,7 @@ public sealed partial class DemoSession
 
         if (commandId is DemoCommandId.Fillet or DemoCommandId.Chamfer)
         {
-            var countCheck = RequireShapeCount(commandId, selectedShapes.Length, 1, exactly: true);
+            var countCheck = RequireShapeCount(commandId, selectedShapes.Count, 1, exactly: true);
             if (!countCheck.CanExecute) return countCheck;
             return Engine.GetTopologyCount(selectedShapes[0], OcctShapeType.Edge) > 0
                 ? CadCommandAvailability.Available
@@ -129,10 +138,10 @@ public sealed partial class DemoSession
         }
 
         if (SingleShapeCommands.Contains(commandId))
-            return RequireShapeCount(commandId, selectedShapes.Length, 1, exactly: true);
+            return RequireShapeCount(commandId, selectedShapes.Count, 1, exactly: true);
 
         if (TwoShapeCommands.Contains(commandId))
-            return RequireShapeCount(commandId, selectedShapes.Length, 2, exactly: true);
+            return RequireShapeCount(commandId, selectedShapes.Count, 2, exactly: true);
 
         return CadCommandAvailability.Available;
     }

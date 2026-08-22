@@ -52,6 +52,8 @@ internal static class Program
 
     private static void InstallGlobalDiagnostics()
     {
+        CrashReporter.Initialize(ApplicationName);
+
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
         {
             var exception = args.ExceptionObject as Exception

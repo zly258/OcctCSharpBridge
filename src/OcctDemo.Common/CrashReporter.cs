@@ -6,6 +6,22 @@ namespace OcctDemo.Common;
 public static class CrashReporter
 {
     private static readonly object SyncRoot = new();
+    private static string _currentApplicationName = "CAD";
+
+    /// <summary>
+    /// Initializes global exception monitoring and registers the unhandled exception handlers.
+    /// </summary>
+    public static void Initialize(string applicationName = "CAD")
+    {
+        _currentApplicationName = applicationName;
+        OcctExceptionHandler.RegisterGlobalHandler();
+        OcctExceptionHandler.ExceptionObserved += OnExceptionObserved;
+    }
+
+    private static void OnExceptionObserved(OcctExceptionEventArgs args)
+    {
+        Write(_currentApplicationName, args.Exception, args.Context ?? "OcctExceptionHandler");
+    }
 
     public static string Write(string applicationName, Exception exception, string source)
     {

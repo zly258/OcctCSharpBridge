@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+using System.Drawing;
 using System.Globalization;
 using OcctNet;
 
@@ -330,25 +330,61 @@ public sealed partial class DemoSession
         finally { Engine.Delete(compound); }
     }
 
+    private static bool TryComputeSceneBounds(IReadOnlyList<OcctShape> shapes, OcctEngine engine, out OcctBounds combined)
+    {
+        if (shapes.Count == 0)
+        {
+            combined = default;
+            return false;
+        }
+
+        var minX = double.PositiveInfinity;
+        var minY = double.PositiveInfinity;
+        var minZ = double.PositiveInfinity;
+        var maxX = double.NegativeInfinity;
+        var maxY = double.NegativeInfinity;
+        var maxZ = double.NegativeInfinity;
+
+        foreach (var shape in shapes)
+        {
+            var b = engine.GetShapeBounds(shape);
+            if (b.MinX < minX) minX = b.MinX;
+            if (b.MinY < minY) minY = b.MinY;
+            if (b.MinZ < minZ) minZ = b.MinZ;
+            if (b.MaxX > maxX) maxX = b.MaxX;
+            if (b.MaxY > maxY) maxY = b.MaxY;
+            if (b.MaxZ > maxZ) maxZ = b.MaxZ;
+        }
+
+        combined = new OcctBounds
+        {
+            MinX = minX,
+            MinY = minY,
+            MinZ = minZ,
+            MaxX = maxX,
+            MaxY = maxY,
+            MaxZ = maxZ
+        };
+        return true;
+    }
+
     private OcctPoint3d GetSceneCenter()
     {
         var shapes = GetSceneShapes();
-        if (shapes.Count == 0) return OcctPoint3d.Origin;
-        var bounds = shapes.Select(Engine.GetShapeBounds).ToArray();
+        if (!TryComputeSceneBounds(shapes, Engine, out var bounds)) return OcctPoint3d.Origin;
         return new(
-            (bounds.Min(item => item.MinX) + bounds.Max(item => item.MaxX)) / 2,
-            (bounds.Min(item => item.MinY) + bounds.Max(item => item.MaxY)) / 2,
-            (bounds.Min(item => item.MinZ) + bounds.Max(item => item.MaxZ)) / 2);
+            (bounds.MinX + bounds.MaxX) / 2,
+            (bounds.MinY + bounds.MaxY) / 2,
+            (bounds.MinZ + bounds.MaxZ) / 2);
     }
 
     private double GetSceneDiagonal()
     {
         var shapes = GetSceneShapes();
-        if (shapes.Count == 0) return 100;
-        var bounds = shapes.Select(Engine.GetShapeBounds).ToArray();
-        var dx = bounds.Max(item => item.MaxX) - bounds.Min(item => item.MinX);
-        var dy = bounds.Max(item => item.MaxY) - bounds.Min(item => item.MinY);
-        var dz = bounds.Max(item => item.MaxZ) - bounds.Min(item => item.MinZ);
+        if (!TryComputeSceneBounds(shapes, Engine, out var bounds)) return 100;
+        var dx = bounds.MaxX - bounds.MinX;
+        var dy = bounds.MaxY - bounds.MinY;
+        var dz = bounds.MaxZ - bounds.MinZ;
         return Math.Sqrt(dx * dx + dy * dy + dz * dz);
     }
 }

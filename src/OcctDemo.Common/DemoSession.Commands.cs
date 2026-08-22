@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+using System.Drawing;
 using OcctNet;
 
 namespace OcctDemo.Common;
@@ -12,12 +12,21 @@ public sealed partial class DemoSession
         var storedValues = rawValues is null
             ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             : new Dictionary<string, string>(rawValues, StringComparer.OrdinalIgnoreCase);
-        var selectedObjectIds = Engine.SelectedObjects.Select(item => item.Id).Distinct().ToList();
+
+        var selectedObjects = Engine.SelectedObjects;
+        var selectedObjectIds = new List<long>(selectedObjects.Count);
+        var seenIds = new HashSet<long>();
+        foreach (var item in selectedObjects)
+        {
+            if (seenIds.Add(item.Id))
+                selectedObjectIds.Add(item.Id);
+        }
+
         var values = new DemoValues(storedValues);
         var isDemoCommand = IsDemoCommand(commandId);
         var displayBatch = isDemoCommand ? Engine.BeginDisplayBatch() : null;
         var demoInitialObjectIds = isDemoCommand
-            ? Engine.GetObjects().Select(item => item.Id).ToHashSet()
+            ? new HashSet<long>(Engine.GetObjects().Select(item => item.Id))
             : null;
         DemoCommandResult result;
         try

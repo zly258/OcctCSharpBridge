@@ -1,4 +1,4 @@
-﻿using System.Threading;
+using System.Threading;
 using System.Threading.Tasks;
 using OcctDemo.Common;
 
@@ -11,6 +11,7 @@ internal static class Program
     [STAThread]
     private static void Main()
     {
+        CrashReporter.Initialize(ApplicationName);
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
         Application.ThreadException += OnThreadException;
         AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandledException;
