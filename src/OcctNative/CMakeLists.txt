@@ -91,35 +91,24 @@ if(NOT _occt_version_header MATCHES "#define[ \t]+OCC_VERSION_MAJOR[ \t]+${REQUI
     message(FATAL_ERROR "OcctCSharpBridge requires exactly OCCT ${REQUIRED_OCCT_VERSION}.")
 endif()
 
-
-# ---------------------------------------------------------------------------
-# Source file lists grouped by domain.
-# glob is intentionally NOT used (generic Extension/Extensions names are
-# forbidden above). Add new files to the appropriate group below.
-# ---------------------------------------------------------------------------
-
-set(OCCT_SOURCES_CORE
-    core/OcctEngine.cpp)
-
-set(OCCT_SOURCES_VIEWER
+add_library(OcctNative SHARED
+    core/OcctEngine.cpp
     viewer/OcctViewerContext.cpp
-    viewer/OcctViewerUpdate.cpp)
-
-set(OCCT_SOURCES_SCENE
+    viewer/OcctViewerUpdate.cpp
     scene/OcctSceneRegistry.cpp
-    scene/OcctObjectUpdate.cpp)
-
-set(OCCT_SOURCES_PLATFORM
+    scene/OcctObjectUpdate.cpp
     platform/OcctPlatformWindow.cpp
-    platform/OcctNativeSurface.cpp)
-
-set(OCCT_SOURCES_PRESENTATION
+    platform/OcctNativeSurface.cpp
     presentation/OcctView.cpp
+    selection/OcctEngineSelection.cpp
+    selection/OcctSelectionConvenience.cpp
+    selection/OcctSelectionModes.cpp
     presentation/OcctObjects.cpp
     presentation/OcctObjectState.cpp
     presentation/OcctAppearance.cpp
     presentation/OcctViewCube.cpp
     presentation/OcctViewerDecorations.cpp
+    selection/OcctSelectionOverlay.cpp
     presentation/OcctViewport.cpp
     presentation/OcctClipPlanes.cpp
     presentation/OcctViewportState.cpp
@@ -128,19 +117,10 @@ set(OCCT_SOURCES_PRESENTATION
     presentation/OcctObjectPresentation.cpp
     presentation/OcctOverlay.cpp
     presentation/OcctPresentation.cpp
-    presentation/OcctAnnotations.cpp
-    presentation/OcctDepth.cpp)
-
-set(OCCT_SOURCES_SELECTION
-    selection/OcctEngineSelection.cpp
-    selection/OcctSelectionConvenience.cpp
-    selection/OcctSelectionModes.cpp
-    selection/OcctSelectionOverlay.cpp
     selection/OcctDetection.cpp
     selection/OcctManipulator.cpp
-    selection/OcctSelectionState.cpp)
-
-set(OCCT_SOURCES_GEOMETRY
+    selection/OcctSelectionState.cpp
+    presentation/OcctDepth.cpp
     geometry/OcctViewerGeometry.cpp
     geometry/OcctViewerShapeQueries.cpp
     geometry/OcctViewerShapeProjection.cpp
@@ -148,69 +128,54 @@ set(OCCT_SOURCES_GEOMETRY
     geometry/OcctViewerGeometryCreation.cpp
     geometry/OcctBRepTextBuilder.cpp
     geometry/OcctBRepAnnotationBuilder.cpp
+    presentation/OcctAnnotations.cpp
     geometry/OcctPoints.cpp
     geometry/OcctPointBatch.cpp
+    exchange/OcctIO.cpp
+    exchange/OcctStepDocument.cpp
+    modeling/OcctModelingCore.cpp
+    modeling/OcctModelingAnnotations.cpp
+    topology/OcctModelingShapeQueries.cpp
     geometry/OcctModelingGeometryQueries.cpp
+    topology/OcctModelingTopology.cpp
     geometry/OcctModelingCurves.cpp
     geometry/OcctModelingPlanar.cpp
     geometry/OcctModelingPrimitives.cpp
     geometry/OcctModelingAssembly.cpp
     geometry/OcctModelingTransform.cpp
-    geometry/OcctModelingAnalyticGeometry.cpp
-    geometry/OcctModelingDifferentialGeometry.cpp
-    geometry/OcctModelingPlanarOperations.cpp
-    geometry/OcctModelingBSpline.cpp)
-
-set(OCCT_SOURCES_EXCHANGE
-    exchange/OcctIO.cpp
-    exchange/OcctStepDocument.cpp
-    exchange/OcctModelingExchange.cpp)
-
-set(OCCT_SOURCES_MODELING
-    modeling/OcctModelingCore.cpp
-    modeling/OcctModelingAnnotations.cpp
     modeling/OcctModelingBoolean.cpp
     modeling/OcctModelingFeatures.cpp
     modeling/OcctModelingHealing.cpp
     modeling/OcctAlgorithmResource.cpp
-    modeling/OcctModelingAnalysis.cpp
-    modeling/OcctModelingInertia.cpp
-    modeling/OcctModelingIntersection.cpp)
-
-set(OCCT_SOURCES_TOPOLOGY
-    topology/OcctModelingShapeQueries.cpp
-    topology/OcctModelingTopology.cpp
     topology/OcctModelingHistory.cpp
+    modeling/OcctModelingAnalysis.cpp
+    mesh/OcctModelingMesh.cpp
+    mesh/OcctMeshResource.cpp
+    exchange/OcctModelingExchange.cpp
+    geometry/OcctModelingAnalyticGeometry.cpp
+    geometry/OcctModelingDifferentialGeometry.cpp
     topology/OcctModelingShapeProperties.cpp
+    geometry/OcctModelingPlanarOperations.cpp
+    geometry/OcctModelingBSpline.cpp
     topology/OcctModelingTopologyAnalysis.cpp
     topology/OcctModelingFaceAnalysis.cpp
+    modeling/OcctModelingInertia.cpp
+    modeling/OcctModelingIntersection.cpp
     topology/OcctModelingTopologyReference.cpp
-    topology/OcctShapeResource.cpp)
-
-set(OCCT_SOURCES_MESH
-    mesh/OcctModelingMesh.cpp
-    mesh/OcctMeshResource.cpp)
-
-set(OCCT_HEADERS_CORE
+    topology/OcctShapeResource.cpp
     core/OcctInternal.hxx
-    core/OcctErrorContext.hxx)
-
-set(OCCT_HEADERS_VIEWER
+    core/OcctErrorContext.hxx
     viewer/OcctViewerContext.hxx
-    viewer/OcctViewerUpdate.h)
-
-set(OCCT_HEADERS_SCENE
+    viewer/OcctViewerUpdate.h
     scene/OcctSceneRegistry.hxx
-    scene/OcctViewerModelInterop.h)
-
-set(OCCT_HEADERS_PLATFORM
+    scene/OcctViewerModelInterop.h
     platform/OcctPlatformWindow.hxx
-    platform/OcctNativeSurface.h)
-
-set(OCCT_HEADERS_MODELING
+    platform/OcctNativeSurface.h
     modeling/OcctModelingSessionInternal.hxx
     modeling/OcctModelingSession.h
-    modeling/OcctModeling.h
+    geometry/OcctBRepTextBuilder.hxx
+    geometry/OcctBRepAnnotationBuilder.hxx
+    exchange/OcctDocumentStore.hxx
     modeling/OcctModelingShapeInternal.hxx
     modeling/OcctModelingAlgorithmInternal.hxx
     modeling/OcctModelingBoolean.h
@@ -218,13 +183,14 @@ set(OCCT_HEADERS_MODELING
     modeling/OcctModelingHealing.h
     modeling/OcctAlgorithmResource.h
     modeling/OcctModelingAnnotations.h
-    modeling/OcctModelingAnalysis.h
-    modeling/OcctModelingInertia.h
-    modeling/OcctModelingIntersection.h)
-
-set(OCCT_HEADERS_GEOMETRY
-    geometry/OcctBRepTextBuilder.hxx
-    geometry/OcctBRepAnnotationBuilder.hxx
+    mesh/OcctModelingMeshInternal.hxx
+    mesh/OcctMeshResource.h
+    exchange/OcctModelingExchangeInternal.hxx
+    exchange/OcctModelingExchange.h
+    exchange/OcctExchangePath.hxx
+    exchange/OcctStepDocument.h
+    exchange/OcctViewerExchange.h
+    OcctNative.h
     geometry/OcctPoints.h
     geometry/OcctViewerGeometry.h
     geometry/OcctViewerShapeQueries.h
@@ -235,20 +201,9 @@ set(OCCT_HEADERS_GEOMETRY
     geometry/OcctModelingPrimitives.h
     geometry/OcctModelingAssembly.h
     geometry/OcctModelingTransform.h
-    geometry/OcctModelingGeometryQueries.h
-    geometry/OcctModelingPlanarOperations.h
-    geometry/OcctModelingBSpline.h
-    geometry/OcctModelingAnalyticGeometry.h
-    geometry/OcctModelingDifferentialGeometry.h)
-
-set(OCCT_HEADERS_SELECTION
     selection/OcctSelection.h
     selection/OcctSelectionOverlay.h
     selection/OcctSelectionState.h
-    selection/OcctDetection.h
-    selection/OcctManipulator.h)
-
-set(OCCT_HEADERS_PRESENTATION
     presentation/OcctAppearance.h
     presentation/OcctAnnotations.h
     presentation/OcctDepth.h
@@ -259,32 +214,19 @@ set(OCCT_HEADERS_PRESENTATION
     presentation/OcctObjectTransform.h
     presentation/OcctViewerDecorations.h
     presentation/OcctOverlay.h
-    presentation/OcctPresentation.h)
-
-set(OCCT_HEADERS_TOPOLOGY
+    presentation/OcctPresentation.h
+    selection/OcctDetection.h
+    selection/OcctManipulator.h
+    modeling/OcctModeling.h
     topology/OcctModelingShapeProperties.h
-    topology/OcctModelingShapeQueries.h
-    topology/OcctModelingHistory.h
-    topology/OcctModelingTopology.h
+    geometry/OcctModelingPlanarOperations.h
+    geometry/OcctModelingBSpline.h
     topology/OcctModelingTopologyAnalysis.h
     topology/OcctModelingFaceAnalysis.h
+    modeling/OcctModelingInertia.h
+    modeling/OcctModelingIntersection.h
     topology/OcctModelingTopologyReference.h
-    topology/OcctShapeResource.h)
-
-set(OCCT_HEADERS_EXCHANGE
-    exchange/OcctDocumentStore.hxx
-    exchange/OcctModelingExchangeInternal.hxx
-    exchange/OcctModelingExchange.h
-    exchange/OcctExchangePath.hxx
-    exchange/OcctStepDocument.h
-    exchange/OcctViewerExchange.h)
-
-set(OCCT_HEADERS_MESH
-    mesh/OcctModelingMeshInternal.hxx
-    mesh/OcctMeshResource.h)
-
-set(OCCT_HEADERS_PUBLIC
-    OcctNative.h
+    topology/OcctShapeResource.h
     OcctStatus.h
     include/occt_bridge/api.h
     include/occt_bridge/status.h
@@ -292,32 +234,6 @@ set(OCCT_HEADERS_PUBLIC
     include/occt_bridge/viewer.h
     include/occt_bridge/modeling.h
     include/occt_bridge/occt_bridge.h)
-
-add_library(OcctNative SHARED
-    ${OCCT_SOURCES_CORE}
-    ${OCCT_SOURCES_VIEWER}
-    ${OCCT_SOURCES_SCENE}
-    ${OCCT_SOURCES_PLATFORM}
-    ${OCCT_SOURCES_PRESENTATION}
-    ${OCCT_SOURCES_SELECTION}
-    ${OCCT_SOURCES_GEOMETRY}
-    ${OCCT_SOURCES_EXCHANGE}
-    ${OCCT_SOURCES_MODELING}
-    ${OCCT_SOURCES_TOPOLOGY}
-    ${OCCT_SOURCES_MESH}
-    ${OCCT_HEADERS_CORE}
-    ${OCCT_HEADERS_VIEWER}
-    ${OCCT_HEADERS_SCENE}
-    ${OCCT_HEADERS_PLATFORM}
-    ${OCCT_HEADERS_MODELING}
-    ${OCCT_HEADERS_GEOMETRY}
-    ${OCCT_HEADERS_SELECTION}
-    ${OCCT_HEADERS_PRESENTATION}
-    ${OCCT_HEADERS_TOPOLOGY}
-    ${OCCT_HEADERS_EXCHANGE}
-    ${OCCT_HEADERS_MESH}
-    ${OCCT_HEADERS_PUBLIC})
-
 
 if(WIN32)
     target_compile_definitions(OcctNative PRIVATE NOMINMAX _CRT_SECURE_NO_WARNINGS)
