@@ -52,6 +52,37 @@ namespace
         return gp_Dir(vector);
     }
 
+    Standard_Utf32Char fallbackPunctuation(Standard_Utf32Char ch)
+    {
+        switch (ch)
+        {
+        case 0xFF08: return '(';  // Full-width （ -> (
+        case 0xFF09: return ')';  // Full-width ） -> )
+        case 0xFF1A: return ':';  // Full-width ： -> :
+        case 0xFF0C: return ',';  // Full-width ， -> ,
+        case 0xFF1B: return ';';  // Full-width ； -> ;
+        case 0xFF01: return '!';  // Full-width ！ -> !
+        case 0xFF1F: return '?';  // Full-width ？ -> ?
+        case 0x3010: return '[';  // 【 -> [
+        case 0x3011: return ']';  // 】 -> ]
+        case 0xFF3B: return '[';  // ［ -> [
+        case 0xFF3D: return ']';  // ］ -> ]
+        case 0x3008: return '<';  // 〈 -> <
+        case 0x3009: return '>';  // 〉 -> >
+        case 0x300A: return '<';  // 《 -> <
+        case 0x300B: return '>';  // 》 -> >
+        case 0x201C: case 0x201D: return '"';  // “ ” -> "
+        case 0x2018: case 0x2019: return '\''; // ‘ ’ -> '
+        case 0x3001: return ',';  // 、 -> ,
+        case 0x3002: return '.';  // 。 -> .
+        case 0x2014: return '-';  // — -> -
+        case 0x2026: return '.';  // … -> .
+        case 0x00B7: return '.';  // · -> .
+        case 0xFFE5: return '$';  // ￥ -> $
+        default: return 0;
+        }
+    }
+
     bool initializeFont(
         StdPrs_BRepFont& font,
         const char* fontName,
@@ -62,11 +93,21 @@ namespace
         std::vector<std::string> candidates;
         if (!requested.empty()) candidates.push_back(requested);
 #if defined(_WIN32)
-        candidates.emplace_back("Microsoft YaHei UI");
         candidates.emplace_back("Microsoft YaHei");
+        candidates.emplace_back("Microsoft YaHei UI");
+        candidates.emplace_back("SimSun");
+        candidates.emplace_back("SimHei");
+        candidates.emplace_back("KaiTi");
+        candidates.emplace_back("FangSong");
+        candidates.emplace_back("C:\\Windows\\Fonts\\msyh.ttc");
+        candidates.emplace_back("C:\\Windows\\Fonts\\simsun.ttc");
+        candidates.emplace_back("C:\\Windows\\Fonts\\simhei.ttf");
+        candidates.emplace_back("Segoe UI");
         candidates.emplace_back("Arial");
 #elif defined(__linux__)
         candidates.emplace_back("Noto Sans CJK SC");
+        candidates.emplace_back("WenQuanYi Micro Hei");
+        candidates.emplace_back("AR PL UMing CN");
         candidates.emplace_back("Noto Sans");
         candidates.emplace_back("DejaVu Sans");
 #else
@@ -83,6 +124,15 @@ namespace
             }
 
             attempted.push_back(candidate);
+
+            if (candidate.find('/') != std::string::npos || candidate.find('\\') != std::string::npos)
+            {
+                if (font.Init(TCollection_AsciiString(candidate.c_str()), aspect, height))
+                {
+                    return true;
+                }
+            }
+
             if (font.FindAndInit(
                     TCollection_AsciiString(candidate.c_str()),
                     aspect,
@@ -126,11 +176,30 @@ namespace OcctModelingInternal
         if (std::abs(normalDirection.Dot(xAxisDirection)) > 1.0 - Precision::Angular())
             throw std::invalid_argument("Text x-direction must not be parallel to the text normal.");
 
+        // Normalize text: if the current font is missing CJK punctuation such as full-width
+        // parentheses '（' (U+FF08) / '）' (U+FF09), fallback to standard punctuation so it never disappears.
+        NCollection_Utf32String normalizedText;
+        NCollection_UtfIterator<Standard_Utf8Char> iter(reinterpret_cast<const Standard_Utf8Char*>(utf8Text));
+        while (*iter != 0)
+        {
+            const Standard_Utf32Char ch = *iter;
+            if (!font.HasGlyph(ch))
+            {
+                const Standard_Utf32Char fallback = fallbackPunctuation(ch);
+                normalizedText += (fallback != 0 && font.HasGlyph(fallback)) ? fallback : ch;
+            }
+            else
+            {
+                normalizedText += ch;
+            }
+            ++iter;
+        }
+
         StdPrs_BRepTextBuilder builder;
         const gp_Ax3 placement(point(position), normalDirection, xAxisDirection);
         TopoDS_Shape result = builder.Perform(
             font,
-            NCollection_String(utf8Text),
+            normalizedText,
             placement,
             horizontalAlignment,
             verticalAlignment);
