@@ -213,6 +213,22 @@ public sealed partial class MainForm
         Log(message);
     }
 
+    private void ApplyDepthBias(OcctDepthBiasPreset preset)
+    {
+        Session.Engine.SetDepthBiasPreset(preset);
+        var message = Local($"Global Depth Bias: {preset}", $"全局深度偏移/防闪烁：{DepthBiasName(preset)}");
+        _commandStatus.Text = message;
+        Log(message);
+    }
+
+    private static string DepthBiasName(OcctDepthBiasPreset preset) => preset switch
+    {
+        OcctDepthBiasPreset.None => Local("None (Off)", "关闭偏移"),
+        OcctDepthBiasPreset.CoincidentFaces => Local("Coincident Faces (Anti-flicker)", "重合面防闪烁 (推荐)"),
+        OcctDepthBiasPreset.Aggressive => Local("Aggressive", "强力偏移"),
+        _ => Local("Default", "默认标准")
+    };
+
     private static string HighlightModeName(OcctHighlightMode mode) => mode switch
     {
         OcctHighlightMode.BoundingBox => Local("Bounding Box", "包围盒"),

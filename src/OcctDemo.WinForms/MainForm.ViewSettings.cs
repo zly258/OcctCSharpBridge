@@ -108,7 +108,7 @@ public sealed partial class MainForm
                         Log(msg);
                     })),
                 ViewSettingsButton(DemoLocalization.Text("Menu.AutoZFitNow"), () => ExecuteSafe(Session.Engine.AutoZFit))),
-            Row(EnumCombo(Local("Depth Bias", "深度偏移"), DemoDepthBiasPreset.Default,
+            Row(EnumCombo(Local("Depth Bias", "深度偏移/防闪烁"), OcctDepthBiasPreset.Default,
                     p => ExecuteSafe(() => ApplyDepthBias(p))))));
 
         window.Controls.Add(tabs);
