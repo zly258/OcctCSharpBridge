@@ -1,4 +1,4 @@
-﻿using OcctDemo.Common;
+using OcctDemo.Common;
 using OcctNet;
 
 namespace OcctDemo.WinForms;
@@ -126,12 +126,43 @@ public sealed partial class MainForm
         ExecuteSafe(() => Session.Engine.SetObjectVisible(value, node.Checked));
     }
 
-    private void ShowObjectProperties(IOcctObject? value)
+    private readonly HashSet<long> _expandedGeometryIds = new();
+
+    private void ShowObjectProperties(IOcctObject? value, bool? forceExpand = null)
     {
         _propertyGrid.Rows.Clear();
         if (_session is null || value is null) return;
-        foreach (var property in Session.DescribeObjectLightweight(value))
-            _propertyGrid.Rows.Add(property.Key, property.Value);
+
+        if (forceExpand.HasValue)
+        {
+            if (forceExpand.Value) _expandedGeometryIds.Add(value.Id);
+            else _expandedGeometryIds.Remove(value.Id);
+        }
+
+        var includeGeometry = _expandedGeometryIds.Contains(value.Id);
+        foreach (var property in Session.DescribeObject(value, includeGeometry))
+        {
+            var rowIndex = _propertyGrid.Rows.Add(property.Key, property.Value);
+            if (!includeGeometry && property.Key == DemoLocalization.Text("Object.GeometryDetails"))
+            {
+                var row = _propertyGrid.Rows[rowIndex];
+                row.Cells[1].Style.ForeColor = Color.Blue;
+                row.Cells[1].Style.Font = new Font(_propertyGrid.Font, FontStyle.Underline);
+            }
+        }
+    }
+
+    private void PropertyGridCellClick(object? sender, DataGridViewCellEventArgs e)
+    {
+        if (e.RowIndex < 0 || _session is null) return;
+        var active = Session.ActiveObject;
+        if (active is null) return;
+
+        var key = _propertyGrid.Rows[e.RowIndex].Cells[0].Value?.ToString();
+        if (string.Equals(key, DemoLocalization.Text("Object.GeometryDetails"), StringComparison.OrdinalIgnoreCase))
+        {
+            ShowObjectProperties(active, forceExpand: true);
+        }
     }
 
     private void SelectTreeNode(IOcctObject? value)

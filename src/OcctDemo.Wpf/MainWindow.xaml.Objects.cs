@@ -1,4 +1,4 @@
-﻿using OcctDemo.Common;
+using OcctDemo.Common;
 using OcctNet;
 using Controls = System.Windows.Controls;
 
@@ -162,11 +162,35 @@ public partial class MainWindow
         };
     }
 
-    private void ShowObjectProperties(IOcctObject? value)
+    private readonly HashSet<long> _expandedGeometryIds = new();
+
+    private void ShowObjectProperties(IOcctObject? value, bool? forceExpand = null)
     {
-        PropertyGrid.ItemsSource = value is null || _session is null
-            ? null
-            : Session.DescribeObjectLightweight(value);
+        if (value is null || _session is null)
+        {
+            PropertyGrid.ItemsSource = null;
+            return;
+        }
+
+        if (forceExpand.HasValue)
+        {
+            if (forceExpand.Value) _expandedGeometryIds.Add(value.Id);
+            else _expandedGeometryIds.Remove(value.Id);
+        }
+
+        var includeGeometry = _expandedGeometryIds.Contains(value.Id);
+        PropertyGrid.ItemsSource = Session.DescribeObject(value, includeGeometry);
+    }
+
+    private void PropertyGridPreviewMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (_session?.ActiveObject is not IOcctObject value) return;
+        var element = e.OriginalSource as System.Windows.FrameworkElement;
+        if (element?.DataContext is KeyValuePair<string, string> pair &&
+            string.Equals(pair.Key, DemoLocalization.Text("Object.GeometryDetails"), StringComparison.OrdinalIgnoreCase))
+        {
+            ShowObjectProperties(value, forceExpand: true);
+        }
     }
 
     private void SelectTreeNode(IOcctObject? value)

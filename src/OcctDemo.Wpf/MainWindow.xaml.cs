@@ -81,6 +81,7 @@ public partial class MainWindow : System.Windows.Window
         Viewport.WorldPointChanged += (_, args) => Dispatcher.InvokeAsync(() =>
             CoordinateStatus.Text = $"X {args.WorldPoint.X:F3}  Y {args.WorldPoint.Y:F3}  Z {args.WorldPoint.Z:F3}");
         ObjectTree.SelectedItemChanged += ObjectTreeSelectedItemChanged;
+        PropertyGrid.PreviewMouseDown += PropertyGridPreviewMouseDown;
         Closing += MainWindowClosing;
         PreviewKeyDown += MainWindowPreviewKeyDown;
     }

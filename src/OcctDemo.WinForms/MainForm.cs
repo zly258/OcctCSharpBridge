@@ -86,6 +86,7 @@ public sealed partial class MainForm : Form
             if (args.Button == MouseButtons.Right) _objectTree.SelectedNode = args.Node;
         };
         _objectTree.ContextMenuStrip = BuildTreeContextMenu();
+        _propertyGrid.CellClick += PropertyGridCellClick;
         FormClosing += MainFormClosing;
         KeyDown += MainFormKeyDown;
     }

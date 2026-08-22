@@ -175,7 +175,9 @@ public static class DemoLocalization
             ["Object.Center"] = "Center",
             ["Object.Vertices"] = "Vertices",
             ["Object.Edges"] = "Edges",
-            ["Object.Faces"] = "Faces"
+            ["Object.Faces"] = "Faces",
+            ["Object.GeometryDetails"] = "Geometry Details",
+            ["Object.ClickToLoadDetails"] = "Click to load details"
         });
 
     private static readonly IReadOnlyDictionary<string, string> ChineseUi = new ReadOnlyDictionary<string, string>(
@@ -222,7 +224,8 @@ public static class DemoLocalization
             ["Session.UnsupportedExport"] = "导出格式仅支持 STEP、IGES、BREP 和 STL。", ["Object.Id"] = "ID", ["Object.Name"] = "名称",
             ["Object.Kind"] = "对象类型", ["Object.Topology"] = "拓扑类型", ["Object.Validity"] = "有效性", ["Object.Valid"] = "有效", ["Object.Invalid"] = "无效",
             ["Object.SizeX"] = "尺寸 X", ["Object.SizeY"] = "尺寸 Y", ["Object.SizeZ"] = "尺寸 Z", ["Object.Center"] = "中心",
-            ["Object.Vertices"] = "顶点数", ["Object.Edges"] = "边数", ["Object.Faces"] = "面数"
+            ["Object.Vertices"] = "顶点数", ["Object.Edges"] = "边数", ["Object.Faces"] = "面数",
+            ["Object.GeometryDetails"] = "几何详情", ["Object.ClickToLoadDetails"] = "点击加载几何详情"
         });
 
     private static readonly IReadOnlyDictionary<DemoCommandId, (string Text, string Description)> EnglishCommands =

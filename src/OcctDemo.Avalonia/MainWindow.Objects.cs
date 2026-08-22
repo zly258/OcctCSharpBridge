@@ -182,16 +182,60 @@ public sealed partial class MainWindow
             Local($"{selectedObjects.Count} objects selected", $"已选择 {selectedObjects.Count} 个对象"));
     }
 
-    private void ShowObjectProperties(IOcctObject? value)
+    private readonly HashSet<long> _expandedGeometryIds = new();
+
+    private void ShowObjectProperties(IOcctObject? value, bool? forceExpand = null)
     {
         _propertyPanel.Children.Clear();
         AddPropertyHeader();
         if (value is null || _session is null) return;
 
-        foreach (var property in Session.DescribeObjectLightweight(value))
+        if (forceExpand.HasValue)
         {
-            AddPropertyRow(property.Key, property.Value);
+            if (forceExpand.Value) _expandedGeometryIds.Add(value.Id);
+            else _expandedGeometryIds.Remove(value.Id);
         }
+
+        var includeGeometry = _expandedGeometryIds.Contains(value.Id);
+        foreach (var property in Session.DescribeObject(value, includeGeometry))
+        {
+            if (!includeGeometry && property.Key == DemoLocalization.Text("Object.GeometryDetails"))
+            {
+                AddInteractivePropertyRow(property.Key, property.Value, () =>
+                {
+                    ShowObjectProperties(value, forceExpand: true);
+                });
+            }
+            else
+            {
+                AddPropertyRow(property.Key, property.Value);
+            }
+        }
+    }
+
+    private void AddInteractivePropertyRow(string nameText, string valueText, Action onClick)
+    {
+        var row = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("2*,3*"),
+            Background = AvaloniaBrushes.White,
+            Margin = new Thickness(0, 0, 0, 1)
+        };
+        var name = new TextBlock { Text = nameText, Margin = new Thickness(6, 4), TextWrapping = TextWrapping.Wrap };
+        var button = new Button
+        {
+            Content = valueText,
+            Padding = new Thickness(4, 2),
+            Margin = new Thickness(4, 2),
+            Background = AvaloniaBrushes.Transparent,
+            Foreground = AvaloniaBrushes.RoyalBlue,
+            Cursor = new global::Avalonia.Input.Cursor(global::Avalonia.Input.StandardCursorType.Hand)
+        };
+        button.Click += (_, _) => onClick();
+        Grid.SetColumn(button, 1);
+        row.Children.Add(name);
+        row.Children.Add(button);
+        _propertyPanel.Children.Add(row);
     }
 
     private void AddPropertyHeader()
