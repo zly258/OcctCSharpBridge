@@ -346,50 +346,25 @@ public sealed partial class DemoSession
             Local("NATIVE OCCT VIEWPORT ANNOTATIONS (AIS_TextLabel & PrsDim)", "原生 OCCT 视口标注（AIS_TextLabel 与 PrsDim）"),
             new OcctPoint3d(-80, 65, 42),
             15,
+            Color.DarkBlue,
+            true,
             "Segoe UI");
-        Engine.SetTextColor(label, Color.DarkBlue);
-        Engine.SetTextZoomable(label, true);
         results.Add(Name(label, Local("Native Viewport Title", "原生视口标题")));
 
-        var lengthDim = Engine.AddLengthDimension(
-            new OcctPoint3d(-80, -50, 0),
-            new OcctPoint3d(80, -50, 0),
-            OcctVector3d.UnitZ,
-            "160.00 mm",
-            -25);
+        var edge1 = Engine.GetSubshapeAt(block, OcctShapeType.Edge, 0);
+        var edge2 = Engine.GetSubshapeAt(block, OcctShapeType.Edge, 1);
+        var edgeHole = Engine.GetSubshapeAt(block, OcctShapeType.Edge, 4);
+
+        var lengthDim = Engine.AddLengthDimension(edge1, 20);
         results.Add(Name(lengthDim, Local("Native Length Dimension", "原生长度尺寸")));
 
-        var widthDim = Engine.AddLengthDimension(
-            new OcctPoint3d(80, -50, 0),
-            new OcctPoint3d(80, 50, 0),
-            OcctVector3d.UnitZ,
-            "100.00 mm",
-            25);
-        results.Add(Name(widthDim, Local("Native Width Dimension", "原生宽度尺寸")));
-
-        var angleDim = Engine.AddAngleDimension(
-            new OcctPoint3d(-80, -50, 0),
-            new OcctPoint3d(0, -50, 0),
-            new OcctPoint3d(-80, 0, 0),
-            OcctVector3d.UnitZ,
-            "90.0°",
-            30);
+        var angleDim = Engine.AddAngleDimension(edge1, edge2, 30);
         results.Add(Name(angleDim, Local("Native Angle Dimension", "原生角度尺寸")));
 
-        var radiusDim = Engine.AddRadiusDimension(
-            new OcctPoint3d(25, 0, 40),
-            new OcctPoint3d(43, 0, 40),
-            OcctVector3d.UnitZ,
-            "R 18.00 mm",
-            22);
+        var radiusDim = Engine.AddRadiusDimension(edgeHole, 20);
         results.Add(Name(radiusDim, Local("Native Radius Dimension", "原生半径尺寸")));
 
-        var diameterDim = Engine.AddDiameterDimension(
-            new OcctPoint3d(25, 0, 40),
-            new OcctPoint3d(25, 18, 40),
-            OcctVector3d.UnitZ,
-            "Ø 36.00 mm",
-            26);
+        var diameterDim = Engine.AddDiameterDimension(edgeHole, 20);
         results.Add(Name(diameterDim, Local("Native Diameter Dimension", "原生直径尺寸")));
 
         Engine.FitAll();

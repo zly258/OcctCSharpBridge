@@ -15,18 +15,10 @@ public enum DemoCommandId
     // AutoCAD-style BRep Geometric Annotations (封装 BRep 几何实体标注与文字)
     BRepText, BRepLengthDimension, BRepAngleDimension, BRepRadiusDimension, BRepDiameterDimension,
 
-    // Backward-compatibility aliases
-    Text = BRepText,
-    LengthDimension = NativeLengthDimension,
-    AngleDimension = NativeAngleDimension,
-    RadiusDimension = NativeRadiusDimension,
-    DiameterDimension = NativeDiameterDimension,
-
     AnalyzeBounds, AnalyzeMass, AnalyzeTopology, AnalyzeDistance, ValidateShape,
     DemoPrimitives, DemoBracket, DemoFlange, DemoPipe, DemoTee, DemoReducer, DemoLoft, DemoBoolean,
     DemoElements, DemoGear, DemoManifold, DemoTwistedDuct,
-    DemoNativeAnnotations, DemoBRepAnnotations,
-    DemoAnnotations = DemoBRepAnnotations
+    DemoNativeAnnotations, DemoBRepAnnotations
 }
 
 public enum DemoParameterKind { Number, Integer, Text, Boolean, Choice }

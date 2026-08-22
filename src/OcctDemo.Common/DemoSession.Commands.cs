@@ -196,9 +196,9 @@ public sealed partial class DemoSession
             values.Text("text", "OCCT 视口标签"),
             values.Point(),
             values.Number("height", 14),
+            Color.DarkBlue,
+            values.Boolean("zoomable", true),
             values.Text("font", "Segoe UI"));
-        Engine.SetTextZoomable(text, values.Boolean("zoomable", true));
-        Engine.SetTextColor(text, Color.DarkBlue);
         SetGeneratedName(text, DemoLocalization.CommandText(DemoCommandId.NativeText));
         ActiveObject = text;
         return DemoCommandResult.Created(DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(DemoCommandId.NativeText)), text);
@@ -363,7 +363,7 @@ public sealed partial class DemoSession
         var p2 = Engine.EvaluateEdge(edge, 1.0).Point;
         var modelCircle = (p0.DistanceTo(p2) < 1e-5)
             ? model.MakeCircle(new OcctPoint3d((p0.X + p1.X) / 2, (p0.Y + p1.Y) / 2, (p0.Z + p1.Z) / 2), OcctVector3d.UnitZ, p0.DistanceTo(p1) / 2.0)
-            : model.MakeArcThreePoints(p0, p1, p2);
+            : model.MakeArc(p0, p1, p2);
 
         var modelDim = diameter
             ? model.MakeDiameterAnnotation(
