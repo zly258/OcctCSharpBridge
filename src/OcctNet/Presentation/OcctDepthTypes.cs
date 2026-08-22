@@ -10,6 +10,14 @@ public enum OcctPolygonOffsetMode
     All = Fill | Line | Point
 }
 
+public enum OcctDepthBiasPreset
+{
+    None = 0,
+    Default = 1,
+    CoincidentFaces = 2,
+    Aggressive = 3
+}
+
 public readonly record struct OcctPolygonOffsetSettings(
     OcctPolygonOffsetMode Mode,
     double Factor,

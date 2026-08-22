@@ -24,6 +24,16 @@ internal struct NativeViewerViewCubeOptionsV1
     internal int SizePixels;
     internal int OffsetX;
     internal int OffsetY;
+    internal double FontHeight;
+    internal IntPtr FontName;
+    internal int HasTextColor;
+    internal NativeViewColorRgb TextColor;
+    internal int HasBoxColor;
+    internal NativeViewColorRgb BoxColor;
+    internal int HasFacetColor;
+    internal NativeViewColorRgb FacetColor;
+    internal double CornerRadius;
+    internal double EdgeWidth;
 }
 
 [StructLayout(LayoutKind.Sequential)]

@@ -39,6 +39,16 @@ extern "C"
         int sizePixels;
         int offsetX;
         int offsetY;
+        double fontHeight;
+        const char* fontName;
+        int hasTextColor;
+        OcctColorRgb textColor;
+        int hasBoxColor;
+        OcctColorRgb boxColor;
+        int hasFacetColor;
+        OcctColorRgb facetColor;
+        double cornerRadius;
+        double edgeWidth;
     };
 
     struct OcctViewerFaceBoundaryOptions

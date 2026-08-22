@@ -147,6 +147,9 @@ namespace
             throw std::invalid_argument("View cube size must be between 1 and 4096 pixels.");
         if (options->offsetX < 0 || options->offsetY < 0)
             throw std::invalid_argument("View cube offsets must not be negative.");
+        if (options->hasTextColor != 0) validateColor(options->textColor);
+        if (options->hasBoxColor != 0) validateColor(options->boxColor);
+        if (options->hasFacetColor != 0) validateColor(options->facetColor);
     }
 
     void validateFaceBoundaryOptions(const OcctViewerFaceBoundaryOptions* options)
@@ -258,12 +261,45 @@ extern "C"
                     Graphic3d_Vec2i(
                         halfSize + options->offsetX,
                         halfSize + options->offsetY)));
+
+            if (options->fontHeight > 0.0)
+            {
+                engine->viewerContext.viewCube->SetFontHeight(options->fontHeight);
+            }
+            if (options->fontName != nullptr && options->fontName[0] != '\0')
+            {
+                engine->viewerContext.viewCube->SetFont(TCollection_AsciiString(options->fontName));
+            }
+            if (options->hasTextColor != 0)
+            {
+                engine->viewerContext.viewCube->SetTextColor(color(options->textColor.r, options->textColor.g, options->textColor.b));
+            }
+            if (options->hasBoxColor != 0)
+            {
+                engine->viewerContext.viewCube->SetBoxColor(color(options->boxColor.r, options->boxColor.g, options->boxColor.b));
+            }
+            if (options->hasFacetColor != 0)
+            {
+                const Quantity_Color facetCol = color(options->facetColor.r, options->facetColor.g, options->facetColor.b);
+                engine->viewerContext.viewCube->DynamicHilightAttributes()->SetColor(facetCol);
+                if (!engine->viewerContext.viewCube->DynamicHilightAttributes()->ShadingAspect().IsNull())
+                {
+                    engine->viewerContext.viewCube->DynamicHilightAttributes()->ShadingAspect()->SetColor(facetCol);
+                }
+            }
+            if (options->cornerRadius >= 0.0 && options->cornerRadius <= 0.5)
+            {
+                engine->viewerContext.viewCube->SetRoundRadius(options->cornerRadius);
+            }
+
+            engine->viewerContext.viewCube->SynchronizeAspects();
             engine->viewerContext.viewCube->SetToUpdate();
 
             if (options->visible != 0)
             {
                 engine->viewerContext.context->Display(engine->viewerContext.viewCube, Standard_False);
-                engine->viewerContext.context->Redisplay(engine->viewerContext.viewCube, Standard_False);
+                engine->viewerContext.context->Redisplay(engine->viewerContext.viewCube, Standard_False, Standard_True);
+                engine->viewerContext.context->RecomputePrsOnly(engine->viewerContext.viewCube);
             }
             else
             {

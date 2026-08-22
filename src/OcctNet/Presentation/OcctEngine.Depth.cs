@@ -30,6 +30,32 @@ public sealed partial class OcctEngine
         UpdateMask = NativeViewerDepthUpdateMask.AutoZFitNow
     });
 
+    /// <summary>
+    /// Applies a global depth bias / polygon offset preset across the entire scene.
+    /// This resolves Z-fighting and flickering between coincident/coplanar faces
+    /// globally without needing to configure individual shapes.
+    /// </summary>
+    public void SetDepthBiasPreset(OcctDepthBiasPreset preset)
+    {
+        switch (preset)
+        {
+            case OcctDepthBiasPreset.None:
+                SetDefaultPolygonOffsets(OcctPolygonOffsetMode.Off, 0.0, 0.0, applyExisting: true);
+                break;
+            case OcctDepthBiasPreset.CoincidentFaces:
+                SetDefaultPolygonOffsets(OcctPolygonOffsetMode.Fill | OcctPolygonOffsetMode.Line, 2.0, 2.0, applyExisting: true);
+                break;
+            case OcctDepthBiasPreset.Aggressive:
+                SetDefaultPolygonOffsets(OcctPolygonOffsetMode.Fill | OcctPolygonOffsetMode.Line, 4.0, 4.0, applyExisting: true);
+                break;
+            case OcctDepthBiasPreset.Default:
+            default:
+                SetDefaultPolygonOffsets(OcctPolygonOffsetMode.Fill | OcctPolygonOffsetMode.Line, 1.0, 1.0, applyExisting: true);
+                break;
+        }
+        AutoZFit();
+    }
+
     public void SetDefaultPolygonOffsets(
         OcctPolygonOffsetMode mode,
         double factor = 1.0,

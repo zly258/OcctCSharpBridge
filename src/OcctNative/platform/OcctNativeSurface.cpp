@@ -27,10 +27,12 @@ namespace OcctBridge
         engine->viewerContext.context = new AIS_InteractiveContext(engine->viewerContext.viewer);
         engine->viewerContext.view = engine->viewerContext.viewer->CreateView();
         engine->viewerContext.view->SetAutoZFitMode(Standard_True, 1.0);
+        engine->viewerContext.view->ChangeRenderingParams().ToEnableDepthPrepass = Standard_True;
+        engine->viewerContext.view->ChangeRenderingParams().ToEnableAlphaToCoverage = Standard_True;
 
         const Handle(Prs3d_Drawer)& defaultDrawer = engine->viewerContext.context->DefaultDrawer();
         defaultDrawer->SetupOwnShadingAspect();
-        defaultDrawer->ShadingAspect()->Aspect()->SetPolygonOffsets(Aspect_POM_Fill, 1.0f, 1.0f);
+        defaultDrawer->ShadingAspect()->Aspect()->SetPolygonOffsets(Aspect_POM_Fill | Aspect_POM_Line, 1.0f, 1.0f);
 
         engine->viewerContext.window = createPlatformWindow(
             engine->viewerContext.displayConnection,
