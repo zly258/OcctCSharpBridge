@@ -75,7 +75,13 @@ public sealed partial class MainForm
             Row(EnumCombo(Local("Triedron Position",  "坐标轴位置"),    _triedronPosition,  SetTriedronPosition)),
             Row(EnumCombo(Local("ViewCube Position",  "ViewCube 位置"), _viewCubePosition,  SetViewCubePosition)),
             Row(IntInput(Local("ViewCube Size (px)",  "ViewCube 大小(px)"), _viewCubeSize,  10, 300, SetViewCubeSize),
-                IntInput(Local("ViewCube Offset (px)","ViewCube 偏移(px)"), _viewCubeOffset, 0, 200, v => SetViewCubeOffset(v, v)))));
+                IntInput(Local("ViewCube Offset (px)","ViewCube 偏移(px)"), _viewCubeOffset, 0, 200, v => SetViewCubeOffset(v, v))),
+            Row(IntInput(Local("ViewCube Font Size (pt)", "ViewCube 字体大小(pt)"), (int)_viewCubeFontHeight, 6, 36, v => SetViewCubeFontHeight(v)),
+                FontCombo(Local("ViewCube Font", "ViewCube 字体"), _viewCubeFontName, SetViewCubeFontName)),
+            Row(ViewSettingsButton(Local("ViewCube Text Color...", "文字颜色..."), () => PickViewCubeColor(0)),
+                ViewSettingsButton(Local("ViewCube Box Color...", "背景颜色..."), () => PickViewCubeColor(1))),
+            Row(ViewSettingsButton(Local("ViewCube Facet Color...", "面高亮颜色..."), () => PickViewCubeColor(2)),
+                ViewSettingsButton(Local("Reset ViewCube", "重置 ViewCube"), ResetViewCubeAppearance))));
 
         // ── Appearance tab ────────────────────────────────────────────────────────
         tabs.TabPages.Add(ViewSettingsTab(Local("Appearance", "外观"),
@@ -203,6 +209,41 @@ public sealed partial class MainForm
         nud.ValueChanged += (_, _) => apply((int)nud.Value);
         p.Controls.AddRange(new Control[] { lbl, nud });
         return p;
+    }
+
+    private static Panel FontCombo(string label, string current, Action<string> apply)
+    {
+        var p = new Panel { Height = 50, AutoSize = false };
+        var lbl = new Label { Text = label, Left = 0, Top = 0, Width = ColWidth - 4, Height = 18 };
+        var cb  = new ComboBox
+        {
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Left = 0, Top = 20, Width = ColWidth - 8, Height = 24
+        };
+        var fonts = new[] { "Segoe UI", "Microsoft YaHei", "Arial", "Calibri", "Tahoma", "Consolas", "SimSun", "SimHei" };
+        foreach (var f in fonts) cb.Items.Add(f);
+        cb.SelectedItem = fonts.Contains(current) ? current : "Segoe UI";
+        cb.SelectedIndexChanged += (_, _) => { if (cb.SelectedItem is string f) apply(f); };
+        p.Controls.AddRange(new Control[] { lbl, cb });
+        return p;
+    }
+
+    private void PickViewCubeColor(int type)
+    {
+        var current = type switch
+        {
+            0 => _viewCubeTextColor,
+            1 => _viewCubeBoxColor,
+            _ => _viewCubeFacetColor
+        };
+        using var dialog = new ColorDialog { FullOpen = true, Color = current };
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        switch (type)
+        {
+            case 0: SetViewCubeTextColor(dialog.Color); break;
+            case 1: SetViewCubeBoxColor(dialog.Color); break;
+            default: SetViewCubeFacetColor(dialog.Color); break;
+        }
     }
 
     private void PickGradientColor(bool first)

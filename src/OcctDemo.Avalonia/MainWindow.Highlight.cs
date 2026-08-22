@@ -19,6 +19,13 @@ public sealed partial class MainWindow
     private bool _viewCubeVisible = true;
     private int _viewCubeSize = 72;
     private int _viewCubeOffset = 82;
+    private double _viewCubeFontHeight = 12.0;
+    private string _viewCubeFontName = "Segoe UI";
+    private DrawingColor _viewCubeTextColor = DrawingColor.Black;
+    private DrawingColor _viewCubeBoxColor = DrawingColor.LightGray;
+    private DrawingColor _viewCubeFacetColor = DrawingColor.SteelBlue;
+    private double _viewCubeCornerRadius = 0.12;
+    private double _viewCubeEdgeWidth = 1.0;
 
     private void SetDisplayStyle(OcctDisplayMode mode)
     {
@@ -95,17 +102,20 @@ public sealed partial class MainWindow
     {
         ExecuteSafe(() =>
         {
-            // The bridge's individual SetViewCube* APIs build a PARTIAL
-            // OcctViewCubeOptions and reset every other field back to its default
-            // (e.g. SetViewCubeOffset resets SizePixels to 90). Always send the
-            // full options object built from the tracked state instead.
             Session.Engine.SetViewCubeOptions(new OcctViewCubeOptions
             {
                 Visible = _viewCubeVisible,
                 Position = _viewCubePosition,
                 SizePixels = _viewCubeSize,
                 OffsetX = _viewCubeOffset,
-                OffsetY = _viewCubeOffset
+                OffsetY = _viewCubeOffset,
+                FontHeight = _viewCubeFontHeight,
+                FontName = _viewCubeFontName,
+                TextColor = _viewCubeTextColor,
+                BoxColor = _viewCubeBoxColor,
+                FacetColor = _viewCubeFacetColor,
+                CornerRadius = _viewCubeCornerRadius,
+                EdgeWidth = _viewCubeEdgeWidth
             });
             if (refresh) _viewport.RefreshNativeView();
         });
@@ -144,6 +154,66 @@ public sealed partial class MainWindow
         _viewCubeOffset = offsetX;
         ApplyViewCubeOptions();
         var message = Local($"ViewCube offset: {offsetX}px, {offsetY}px", $"ViewCube 偏移：{offsetX}px，{offsetY}px");
+        _commandStatus.Text = message;
+        Log(message);
+    }
+
+    private void SetViewCubeFontHeight(double fontHeight)
+    {
+        _viewCubeFontHeight = fontHeight;
+        ApplyViewCubeOptions();
+        var message = Local($"ViewCube font height: {fontHeight:F1}pt", $"ViewCube 字体大小：{fontHeight:F1}pt");
+        _commandStatus.Text = message;
+        Log(message);
+    }
+
+    private void SetViewCubeFontName(string fontName)
+    {
+        _viewCubeFontName = fontName;
+        ApplyViewCubeOptions();
+        var message = Local($"ViewCube font: {fontName}", $"ViewCube 字体：{fontName}");
+        _commandStatus.Text = message;
+        Log(message);
+    }
+
+    private void SetViewCubeTextColor(DrawingColor color)
+    {
+        _viewCubeTextColor = color;
+        ApplyViewCubeOptions();
+        var message = Local($"ViewCube text color: {color.Name}", $"ViewCube 文字颜色：{color.Name}");
+        _commandStatus.Text = message;
+        Log(message);
+    }
+
+    private void SetViewCubeBoxColor(DrawingColor color)
+    {
+        _viewCubeBoxColor = color;
+        ApplyViewCubeOptions();
+        var message = Local($"ViewCube box color: {color.Name}", $"ViewCube 背景颜色：{color.Name}");
+        _commandStatus.Text = message;
+        Log(message);
+    }
+
+    private void SetViewCubeFacetColor(DrawingColor color)
+    {
+        _viewCubeFacetColor = color;
+        ApplyViewCubeOptions();
+        var message = Local($"ViewCube facet color: {color.Name}", $"ViewCube 面高亮颜色：{color.Name}");
+        _commandStatus.Text = message;
+        Log(message);
+    }
+
+    private void ResetViewCubeAppearance()
+    {
+        _viewCubeFontHeight = 12.0;
+        _viewCubeFontName = "Segoe UI";
+        _viewCubeTextColor = DrawingColor.Black;
+        _viewCubeBoxColor = DrawingColor.LightGray;
+        _viewCubeFacetColor = DrawingColor.SteelBlue;
+        _viewCubeCornerRadius = 0.12;
+        _viewCubeEdgeWidth = 1.0;
+        ApplyViewCubeOptions();
+        var message = Local("ViewCube appearance reset to defaults", "ViewCube 外观已重置为默认值");
         _commandStatus.Text = message;
         Log(message);
     }

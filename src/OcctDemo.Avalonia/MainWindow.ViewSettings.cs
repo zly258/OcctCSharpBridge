@@ -66,7 +66,13 @@ public sealed partial class MainWindow
             Row(EnumCombo(Local("Triedron Position",  "坐标轴位置"),    _triedronPosition,  SetTriedronPosition)),
             Row(EnumCombo(Local("ViewCube Position",  "ViewCube 位置"), _viewCubePosition,  SetViewCubePosition)),
             Row(IntInput(Local("ViewCube Size (px)",  "ViewCube 大小(px)"),   _viewCubeSize,  10, 300, SetViewCubeSize),
-                IntInput(Local("ViewCube Offset (px)","ViewCube 偏移(px)"),   _viewCubeOffset, 0, 200, v => SetViewCubeOffset(v, v))));
+                IntInput(Local("ViewCube Offset (px)","ViewCube 偏移(px)"),   _viewCubeOffset, 0, 200, v => SetViewCubeOffset(v, v))),
+            Row(IntInput(Local("ViewCube Font Size (pt)", "ViewCube 字体大小(pt)"), (int)_viewCubeFontHeight, 6, 36, v => SetViewCubeFontHeight(v)),
+                FontCombo(Local("ViewCube Font", "ViewCube 字体"), _viewCubeFontName, SetViewCubeFontName)),
+            Row(AsyncViewSettingsButton(Local("ViewCube Text Color...", "文字颜色..."), () => PickViewCubeColorAsync(0)),
+                AsyncViewSettingsButton(Local("ViewCube Box Color...", "背景颜色..."), () => PickViewCubeColorAsync(1))),
+            Row(AsyncViewSettingsButton(Local("ViewCube Facet Color...", "面高亮颜色..."), () => PickViewCubeColorAsync(2)),
+                ViewSettingsButton(Local("Reset ViewCube", "重置 ViewCube"), ResetViewCubeAppearance)));
 
         // ── Appearance tab ────────────────────────────────────────────────────────
         var appearanceTab = ViewSettingsTab(Local("Appearance", "外观"),
@@ -218,6 +224,45 @@ public sealed partial class MainWindow
         p.Children.Add(new TextBlock { Text = label, Margin = new Thickness(0, 0, 0, 2) });
         p.Children.Add(nud);
         return p;
+    }
+
+    private static StackPanel FontCombo(string label, string current, Action<string> apply)
+    {
+        var p     = new StackPanel { Orientation = Orientation.Vertical };
+        var combo = new ComboBox
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            ItemsSource         = new[] { "Segoe UI", "Microsoft YaHei", "Arial", "Calibri", "Tahoma", "Consolas", "SimSun", "SimHei" }
+        };
+        combo.SelectedItem      = current;
+        combo.SelectionChanged += (_, _) => { if (combo.SelectedItem is string f) apply(f); };
+        p.Children.Add(new TextBlock { Text = label, Margin = new Thickness(0, 0, 0, 2) });
+        p.Children.Add(combo);
+        return p;
+    }
+
+    private async Task PickViewCubeColorAsync(int type)
+    {
+        var current = type switch
+        {
+            0 => _viewCubeTextColor,
+            1 => _viewCubeBoxColor,
+            _ => _viewCubeFacetColor
+        };
+        var title = type switch
+        {
+            0 => Local("ViewCube Text Color", "ViewCube 文字颜色"),
+            1 => Local("ViewCube Box Color", "ViewCube 背景颜色"),
+            _ => Local("ViewCube Facet Color", "ViewCube 面高亮颜色")
+        };
+        var color = await ClassicColorDialog.ShowAsync(this, title, current);
+        if (color is null) return;
+        switch (type)
+        {
+            case 0: SetViewCubeTextColor(color.Value); break;
+            case 1: SetViewCubeBoxColor(color.Value); break;
+            default: SetViewCubeFacetColor(color.Value); break;
+        }
     }
 
     private async Task PickGradientColorAsync(bool first)

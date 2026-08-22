@@ -185,7 +185,7 @@ public sealed partial class DemoSession
                     Position = new OcctPoint3d(-80, 120, 0),
                     Height = 28,
                     ExtrusionDepth = 2,
-                    FontName = DemoFonts.OcctSansSerif,
+                    FontName = DemoFonts.ResolveOcctFont("Microsoft YaHei"),
                     Bold = true
                 });
             var vectorText = DisplayModelShape(model, modelText);

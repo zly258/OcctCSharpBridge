@@ -21,41 +21,56 @@ public static class DemoFonts
     /// </summary>
     public static string ResolveOcctFont(string? fontName)
     {
-        if (OperatingSystem.IsWindows())
+        if (string.IsNullOrWhiteSpace(fontName))
         {
-            var fontsDir = Environment.GetFolderPath(Environment.SpecialFolder.Fonts);
-            if (!string.IsNullOrWhiteSpace(fontName))
-            {
-                var trimmed = fontName.Trim();
-                if (File.Exists(trimmed)) return trimmed;
-
-                if (trimmed.Equals("SimSun", StringComparison.OrdinalIgnoreCase) || trimmed.Equals("宋体", StringComparison.OrdinalIgnoreCase))
-                {
-                    var simsun = Path.Combine(fontsDir, "simsun.ttc");
-                    if (File.Exists(simsun)) return simsun;
-                }
-                if (trimmed.Equals("SimHei", StringComparison.OrdinalIgnoreCase) || trimmed.Equals("黑体", StringComparison.OrdinalIgnoreCase))
-                {
-                    var simhei = Path.Combine(fontsDir, "simhei.ttf");
-                    if (File.Exists(simhei)) return simhei;
-                }
-                if (trimmed.Equals("Microsoft YaHei", StringComparison.OrdinalIgnoreCase) ||
-                    trimmed.Equals("Microsoft YaHei UI", StringComparison.OrdinalIgnoreCase) ||
-                    trimmed.Equals("微软雅黑", StringComparison.OrdinalIgnoreCase))
-                {
-                    var msyh = Path.Combine(fontsDir, "msyh.ttc");
-                    if (File.Exists(msyh)) return msyh;
-                }
-            }
-
-            // Default Windows fallback: Microsoft YaHei has complete CJK + Latin glyphs
-            var defaultMsyh = Path.Combine(fontsDir, "msyh.ttc");
-            if (File.Exists(defaultMsyh)) return defaultMsyh;
-            var defaultSimsun = Path.Combine(fontsDir, "simsun.ttc");
-            if (File.Exists(defaultSimsun)) return defaultSimsun;
+            return OperatingSystem.IsWindows() ? "Microsoft YaHei" : OcctSansSerif;
         }
 
-        if (string.IsNullOrWhiteSpace(fontName)) return OcctSansSerif;
-        return fontName.Trim();
+        var trimmed = fontName.Trim();
+
+        // If it's an existing physical font file path, keep it
+        if (File.Exists(trimmed))
+        {
+            return trimmed;
+        }
+
+        // Map Chinese / Windows font aliases to standard family names recognized by OCCT Font_FontMgr
+        if (trimmed.Equals("Microsoft YaHei", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("Microsoft YaHei UI", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("微软雅黑", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("msyh", StringComparison.OrdinalIgnoreCase))
+        {
+            return OperatingSystem.IsWindows() ? "Microsoft YaHei" : "Noto Sans CJK SC";
+        }
+
+        if (trimmed.Equals("SimSun", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("宋体", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("simsun", StringComparison.OrdinalIgnoreCase))
+        {
+            return OperatingSystem.IsWindows() ? "SimSun" : "Noto Serif CJK SC";
+        }
+
+        if (trimmed.Equals("SimHei", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("黑体", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("simhei", StringComparison.OrdinalIgnoreCase))
+        {
+            return OperatingSystem.IsWindows() ? "SimHei" : "Noto Sans CJK SC";
+        }
+
+        if (trimmed.Equals("KaiTi", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("楷体", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("simkai", StringComparison.OrdinalIgnoreCase))
+        {
+            return OperatingSystem.IsWindows() ? "KaiTi" : "AR PL UKai CN";
+        }
+
+        if (trimmed.Equals("FangSong", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("仿宋", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("simfang", StringComparison.OrdinalIgnoreCase))
+        {
+            return OperatingSystem.IsWindows() ? "FangSong" : "Noto Serif CJK SC";
+        }
+
+        return trimmed;
     }
 }

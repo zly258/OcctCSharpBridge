@@ -14,6 +14,13 @@ public sealed partial class MainForm
     private bool _viewCubeVisible = true;
     private int _viewCubeSize = 72;
     private int _viewCubeOffset = 82;
+    private double _viewCubeFontHeight = 12.0;
+    private string _viewCubeFontName = "Segoe UI";
+    private Color _viewCubeTextColor = Color.Black;
+    private Color _viewCubeBoxColor = Color.LightGray;
+    private Color _viewCubeFacetColor = Color.SteelBlue;
+    private double _viewCubeCornerRadius = 0.12;
+    private double _viewCubeEdgeWidth = 1.0;
 
     private void SetDisplayStyle(OcctDisplayMode mode)
     {
@@ -90,17 +97,20 @@ public sealed partial class MainForm
     {
         ExecuteSafe(() =>
         {
-            // The bridge's individual SetViewCube* APIs build a PARTIAL
-            // OcctViewCubeOptions and reset every other field back to its default
-            // (e.g. SetViewCubeOffset resets SizePixels to 90). Always send the
-            // full options object built from the tracked state instead.
             Session.Engine.SetViewCubeOptions(new OcctViewCubeOptions
             {
                 Visible = _viewCubeVisible,
                 Position = _viewCubePosition,
                 SizePixels = _viewCubeSize,
                 OffsetX = _viewCubeOffset,
-                OffsetY = _viewCubeOffset
+                OffsetY = _viewCubeOffset,
+                FontHeight = _viewCubeFontHeight,
+                FontName = _viewCubeFontName,
+                TextColor = _viewCubeTextColor,
+                BoxColor = _viewCubeBoxColor,
+                FacetColor = _viewCubeFacetColor,
+                CornerRadius = _viewCubeCornerRadius,
+                EdgeWidth = _viewCubeEdgeWidth
             });
             if (refresh) _viewport.Invalidate();
         });
@@ -139,6 +149,66 @@ public sealed partial class MainForm
         _viewCubeOffset = offsetX;
         ApplyViewCubeOptions();
         var message = Local($"ViewCube offset: {offsetX}px, {offsetY}px", $"ViewCube 偏移：{offsetX}px，{offsetY}px");
+        _commandStatus.Text = message;
+        Log(message);
+    }
+
+    private void SetViewCubeFontHeight(double fontHeight)
+    {
+        _viewCubeFontHeight = fontHeight;
+        ApplyViewCubeOptions();
+        var message = Local($"ViewCube font height: {fontHeight:F1}pt", $"ViewCube 字体大小：{fontHeight:F1}pt");
+        _commandStatus.Text = message;
+        Log(message);
+    }
+
+    private void SetViewCubeFontName(string fontName)
+    {
+        _viewCubeFontName = fontName;
+        ApplyViewCubeOptions();
+        var message = Local($"ViewCube font: {fontName}", $"ViewCube 字体：{fontName}");
+        _commandStatus.Text = message;
+        Log(message);
+    }
+
+    private void SetViewCubeTextColor(Color color)
+    {
+        _viewCubeTextColor = color;
+        ApplyViewCubeOptions();
+        var message = Local($"ViewCube text color: {color.Name}", $"ViewCube 文字颜色：{color.Name}");
+        _commandStatus.Text = message;
+        Log(message);
+    }
+
+    private void SetViewCubeBoxColor(Color color)
+    {
+        _viewCubeBoxColor = color;
+        ApplyViewCubeOptions();
+        var message = Local($"ViewCube box color: {color.Name}", $"ViewCube 背景颜色：{color.Name}");
+        _commandStatus.Text = message;
+        Log(message);
+    }
+
+    private void SetViewCubeFacetColor(Color color)
+    {
+        _viewCubeFacetColor = color;
+        ApplyViewCubeOptions();
+        var message = Local($"ViewCube facet color: {color.Name}", $"ViewCube 面高亮颜色：{color.Name}");
+        _commandStatus.Text = message;
+        Log(message);
+    }
+
+    private void ResetViewCubeAppearance()
+    {
+        _viewCubeFontHeight = 12.0;
+        _viewCubeFontName = "Segoe UI";
+        _viewCubeTextColor = Color.Black;
+        _viewCubeBoxColor = Color.LightGray;
+        _viewCubeFacetColor = Color.SteelBlue;
+        _viewCubeCornerRadius = 0.12;
+        _viewCubeEdgeWidth = 1.0;
+        ApplyViewCubeOptions();
+        var message = Local("ViewCube appearance reset to defaults", "ViewCube 外观已重置为默认值");
         _commandStatus.Text = message;
         Log(message);
     }
