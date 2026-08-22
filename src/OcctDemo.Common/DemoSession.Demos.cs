@@ -347,8 +347,7 @@ public sealed partial class DemoSession
             new OcctPoint3d(-80, 65, 42),
             15,
             Color.DarkBlue,
-            true,
-            "Segoe UI");
+            true);
         results.Add(Name(label, Local("Native Viewport Title", "原生视口标题")));
 
         var edge1 = Engine.GetSubshapeAt(block, OcctShapeType.Edge, 0);

@@ -197,8 +197,7 @@ public sealed partial class DemoSession
             values.Point(),
             values.Number("height", 14),
             Color.DarkBlue,
-            values.Boolean("zoomable", true),
-            values.Text("font", "Segoe UI"));
+            values.Boolean("zoomable", true));
         SetGeneratedName(text, DemoLocalization.CommandText(DemoCommandId.NativeText));
         ActiveObject = text;
         return DemoCommandResult.Created(DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(DemoCommandId.NativeText)), text);
