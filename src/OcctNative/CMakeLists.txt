@@ -146,17 +146,23 @@ add_library(OcctNative SHARED
     modeling/OcctModelingBoolean.cpp
     modeling/OcctModelingFeatures.cpp
     modeling/OcctModelingHealing.cpp
+    modeling/OcctModelingPipeShell.cpp
+    modeling/OcctModelingPipeShell.h
     modeling/OcctAlgorithmResource.cpp
     topology/OcctModelingHistory.cpp
     modeling/OcctModelingAnalysis.cpp
     mesh/OcctModelingMesh.cpp
     mesh/OcctMeshResource.cpp
     exchange/OcctModelingExchange.cpp
+    exchange/OcctObjGltfExchange.cpp
+    exchange/OcctObjGltfExchange.h
     geometry/OcctModelingAnalyticGeometry.cpp
     geometry/OcctModelingDifferentialGeometry.cpp
     topology/OcctModelingShapeProperties.cpp
     geometry/OcctModelingPlanarOperations.cpp
     geometry/OcctModelingBSpline.cpp
+    geometry/OcctModelingCurveFit.cpp
+    geometry/OcctModelingCurveFit.h
     topology/OcctModelingTopologyAnalysis.cpp
     topology/OcctModelingFaceAnalysis.cpp
     modeling/OcctModelingInertia.cpp
@@ -254,7 +260,7 @@ set(occt_required_libraries
     TKernel TKMath TKG2d TKG3d TKGeomBase TKBRep TKGeomAlgo TKTopAlgo
     TKLCAF TKCAF TKXCAF
     TKPrim TKBO TKBool TKFillet TKOffset TKMesh TKShHealing
-    TKService TKV3d TKOpenGl TKXSBase TKDE TKDESTEP TKDEIGES TKDESTL)
+    TKService TKV3d TKOpenGl TKXSBase TKDE TKDESTEP TKDEIGES TKDESTL TKDEOBJ TKDEGLTF)
 
 set(occt_link_libraries)
 foreach(library_name IN LISTS occt_required_libraries)

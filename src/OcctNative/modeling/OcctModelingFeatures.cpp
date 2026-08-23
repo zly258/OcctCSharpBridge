@@ -1,4 +1,4 @@
-﻿#include "modeling/OcctModelingFeatures.h"
+#include "modeling/OcctModelingFeatures.h"
 #include "modeling/OcctModelingAlgorithmInternal.hxx"
 
 #include <BRepFilletAPI_MakeChamfer.hxx>
@@ -7,11 +7,13 @@
 #include <BRepOffsetAPI_MakePipe.hxx>
 #include <BRepOffsetAPI_MakeThickSolid.hxx>
 #include <BRepOffsetAPI_ThruSections.hxx>
+#include <BRepOffsetAPI_DraftAngle.hxx>
 #include <BRepOffset_Mode.hxx>
 #include <BRepPrimAPI_MakePrism.hxx>
 #include <BRepPrimAPI_MakeRevol.hxx>
 #include <GeomAbs_JoinType.hxx>
 #include <gp_Ax1.hxx>
+#include <gp_Pln.hxx>
 
 #include <cmath>
 
@@ -238,6 +240,110 @@ extern "C"
             const OcctObjectId outputId = model->addShape(algorithm.Shape());
             const OcctOperationId operationId = model->addOperation(history, {}, false, false);
             return {outputId, operationId, 1, 0, 0};
+        });
+    }
+
+    OcctStatus occt_model_feature_draft_execute(
+        OcctModelingSessionHandle handle,
+        OcctObjectId solidId,
+        const int* faceIndices, int faceCount,
+        const OcctDraftOptions* options,
+        OcctModelAlgorithmResult* result)
+    {
+        ModelSession* model = sessionOf(handle);
+        return executeAlgorithmStatus(model, result, [&]() -> OcctModelAlgorithmResult
+        {
+            constexpr uint32_t kApiVersion = 1;
+            if (options == nullptr) throw std::invalid_argument("Draft options are null.");
+            if (options->structSize < sizeof(OcctDraftOptions))
+                throw std::invalid_argument("Unsupported draft options size.");
+            if (options->apiVersion != kApiVersion)
+                throw std::invalid_argument("Unsupported draft options API version.");
+            requireCount(faceCount, 1, "Draft face list");
+            if (faceIndices == nullptr) throw std::invalid_argument("Face index array is null.");
+
+            const double angleRad = options->angleDegrees * M_PI / 180.0;
+            const gp_Dir pullDir = toDirection(options->pullDirection);
+            const gp_Pln neutralPlane(
+                toPoint(options->neutralPlanePoint),
+                toDirection(options->neutralPlaneNormal));
+
+            const TopoDS_Shape& source = model->requireShape(solidId);
+            BRepOffsetAPI_DraftAngle algorithm(source);
+
+            for (int i = 0; i < faceCount; ++i) {
+                const TopoDS_Face face = indexedFace(source, faceIndices[i]);
+                algorithm.Add(face, pullDir, angleRad, neutralPlane);
+            }
+
+            TopTools_ListOfShape arguments;
+            arguments.Append(source);
+            return finishMakeShapeAlgorithm(model, algorithm, arguments, "Draft angle operation failed.");
+        });
+    }
+
+    OcctStatus occt_model_feature_fillet_variable_execute(
+        OcctModelingSessionHandle handle,
+        OcctObjectId shapeId,
+        const OcctEdgeFilletSpec* specs,
+        int count,
+        OcctModelAlgorithmResult* result)
+    {
+        ModelSession* model = sessionOf(handle);
+        return executeAlgorithmStatus(model, result, [&]() -> OcctModelAlgorithmResult
+        {
+            requireCount(count, 1, "Variable fillet spec list");
+            if (specs == nullptr) throw std::invalid_argument("Fillet spec array is null.");
+            const TopoDS_Shape& source = model->requireShape(shapeId);
+            BRepFilletAPI_MakeFillet algorithm(source);
+            for (int i = 0; i < count; ++i) {
+                if (specs[i].r1 <= 0.0 || specs[i].r2 <= 0.0)
+                    throw std::invalid_argument("Fillet radii must be positive.");
+                algorithm.Add(specs[i].r1, specs[i].r2, indexedEdge(source, specs[i].edgeIndex));
+            }
+            TopTools_ListOfShape arguments;
+            arguments.Append(source);
+            return finishMakeShapeAlgorithm(model, algorithm, arguments, "Variable fillet failed.");
+        });
+    }
+
+    OcctStatus occt_model_feature_loft_guided_execute(
+        OcctModelingSessionHandle handle,
+        const OcctObjectId* sectionWireIds, int sectionCount,
+        const OcctObjectId* guideWireIds,   int guideCount,
+        OcctBool makeSolid,
+        double tolerance,
+        OcctModelAlgorithmResult* result)
+    {
+        ModelSession* model = sessionOf(handle);
+        return executeAlgorithmStatus(model, result, [&]() -> OcctModelAlgorithmResult
+        {
+            requireCount(sectionCount, 2, "Guided loft section list");
+            requirePositive(tolerance, "Tolerance");
+            if (sectionWireIds == nullptr) throw std::invalid_argument("Section wire ID array is null.");
+
+            BRepOffsetAPI_ThruSections algorithm(makeSolid != 0, Standard_False, tolerance);
+            TopTools_ListOfShape arguments;
+
+            for (int i = 0; i < sectionCount; ++i) {
+                const TopoDS_Shape& s = model->requireShape(sectionWireIds[i]);
+                if (s.ShapeType() != TopAbs_WIRE)
+                    throw std::invalid_argument("Guided loft sections must be wires.");
+                algorithm.AddWire(TopoDS::Wire(s));
+                arguments.Append(s);
+            }
+
+            if (guideWireIds != nullptr && guideCount > 0) {
+                for (int i = 0; i < guideCount; ++i) {
+                    const TopoDS_Shape& g = model->requireShape(guideWireIds[i]);
+                    if (g.ShapeType() != TopAbs_WIRE)
+                        throw std::invalid_argument("Guided loft guide curves must be wires.");
+                    algorithm.AddGuideWire(TopoDS::Wire(g));
+                    arguments.Append(g);
+                }
+            }
+
+            return finishMakeShapeAlgorithm(model, algorithm, arguments, "Guided loft failed.");
         });
     }
 }
