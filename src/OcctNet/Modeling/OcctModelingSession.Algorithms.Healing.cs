@@ -1,4 +1,4 @@
-﻿namespace OcctNet;
+namespace OcctNet;
 
 public sealed partial class OcctModelingSession
 {
@@ -39,5 +39,29 @@ public sealed partial class OcctModelingSession
             maxTolerance,
             out var result);
         return CheckAlgorithm(status, result);
+    }
+    public OcctModelAlgorithmResult HealingFixTolerance(OcctModelShape shape, double tolerance)
+    {
+        EnsureShape(shape);
+        var status = ModelNativeMethods.occt_model_healing_fix_tolerance_execute(
+            NativeHandle, shape.Id, tolerance, out var r);
+        return CheckAlgorithm(status, r);
+    }
+
+    public OcctModelAlgorithmResult HealingFixGaps(OcctModelShape shape, double gapTolerance)
+    {
+        EnsureShape(shape);
+        var status = ModelNativeMethods.occt_model_healing_fix_gaps_execute(
+            NativeHandle, shape.Id, gapTolerance, out var r);
+        return CheckAlgorithm(status, r);
+    }
+
+    public OcctModelAlgorithmResult HealingReshapeRemove(OcctModelShape shape, IEnumerable<int> subShapeIndices)
+    {
+        EnsureShape(shape);
+        var indices = RequiredArray(subShapeIndices, nameof(subShapeIndices));
+        var status = ModelNativeMethods.occt_model_healing_reshape_remove_execute(
+            NativeHandle, shape.Id, indices, indices.Length, out var r);
+        return CheckAlgorithm(status, r);
     }
 }

@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace OcctNet;
@@ -79,6 +79,16 @@ internal static partial class ModelNativeMethods
         [In] int[] faceIndices,
         int count,
         double thickness,
+        double tolerance,
+        out NativeModelAlgorithmResult result);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_feature_loft_guided_execute(
+        OcctModelingSafeHandle handle,
+        [In] long[] sectionWireIds, int sectionCount,
+        [In] long[]? guideWireIds, int guideCount,
+        int makeSolid,
         double tolerance,
         out NativeModelAlgorithmResult result);
 }

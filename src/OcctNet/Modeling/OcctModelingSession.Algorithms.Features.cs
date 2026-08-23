@@ -141,6 +141,27 @@ public sealed partial class OcctModelingSession
         return CheckAlgorithm(status, result);
     }
 
+    public OcctModelAlgorithmResult LoftGuided(
+        IEnumerable<OcctModelShape> sections,
+        IEnumerable<OcctModelShape>? guides = null,
+        bool solid = true,
+        double tolerance = 1e-6)
+    {
+        EnsureNotDisposed();
+        var sectionIds = ShapeIds(sections);
+        long[]? guideIds = null;
+        int guideCount = 0;
+        if (guides != null) {
+            guideIds = guides.Select(g => { EnsureShape(g); return g.Id; }).ToArray();
+            guideCount = guideIds.Length;
+        }
+        var status = ModelNativeMethods.occt_model_feature_loft_guided_execute(
+            NativeHandle, sectionIds, sectionIds.Length,
+            guideIds, guideCount,
+            solid ? 1 : 0, tolerance, out var native);
+        return CheckAlgorithm(status, native);
+    }
+
     /// <summary>
     /// Validates, de-duplicates, and returns a non-empty index array in a single pass.
     /// Each index must be non-negative. Throws <see cref="ArgumentException"/> if the

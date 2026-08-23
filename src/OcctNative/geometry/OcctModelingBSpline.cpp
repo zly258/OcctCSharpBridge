@@ -1,10 +1,18 @@
-﻿#include "geometry/OcctModelingBSpline.h"
+#include "geometry/OcctModelingBSpline.h"
 #include "modeling/OcctModelingShapeInternal.hxx"
 
 #include <BRepAdaptor_Curve.hxx>
 #include <BRepAdaptor_Surface.hxx>
+#include <BRepBuilderAPI_MakeEdge.hxx>
+#include <BRepBuilderAPI_MakeFace.hxx>
 #include <Geom_BSplineCurve.hxx>
 #include <Geom_BSplineSurface.hxx>
+#include <TColgp_Array1OfPnt.hxx>
+#include <TColgp_Array2OfPnt.hxx>
+#include <TColStd_Array1OfInteger.hxx>
+#include <TColStd_Array1OfReal.hxx>
+#include <TColStd_Array2OfReal.hxx>
+
 
 using namespace OcctModelingInternal;
 
@@ -184,6 +192,129 @@ extern "C"
             const int occtIndex = index + 1;
             *knot = surface->VKnot(occtIndex);
             *multiplicity = surface->VMultiplicity(occtIndex);
+        });
+    }
+
+    OcctStatus occt_model_curve_bspline_explicit_create(
+        OcctModelingSessionHandle handle,
+        const OcctBSplineCurveDefinition* def,
+        const OcctPoint3d* poles,
+        const double* weights,
+        const double* knots,
+        const int* multiplicities,
+        OcctObjectId* result)
+    {
+        ModelSession* model = sessionOf(handle);
+        return executeShapeStatus(model, result, [&]() -> TopoDS_Shape
+        {
+            constexpr uint32_t kApiVersion = 1;
+            if (def == nullptr) throw std::invalid_argument("BSpline definition is null.");
+            if (def->structSize < sizeof(OcctBSplineCurveDefinition))
+                throw std::invalid_argument("Unsupported BSpline definition size.");
+            if (def->apiVersion != kApiVersion)
+                throw std::invalid_argument("Unsupported BSpline definition API version.");
+            if (def->degree < 1) throw std::invalid_argument("BSpline degree must be >= 1.");
+            if (def->poleCount < 2) throw std::invalid_argument("BSpline must have at least 2 poles.");
+            if (def->knotCount < 2) throw std::invalid_argument("BSpline must have at least 2 knots.");
+            if (poles == nullptr) throw std::invalid_argument("BSpline pole array is null.");
+            if (knots == nullptr) throw std::invalid_argument("BSpline knot array is null.");
+            if (multiplicities == nullptr) throw std::invalid_argument("BSpline multiplicity array is null.");
+
+            // Build OCCT arrays (1-based)
+            TColgp_Array1OfPnt occtPoles(1, def->poleCount);
+            for (int i = 0; i < def->poleCount; ++i)
+                occtPoles.SetValue(i + 1, gp_Pnt(poles[i].x, poles[i].y, poles[i].z));
+
+            TColStd_Array1OfReal occtKnots(1, def->knotCount);
+            TColStd_Array1OfInteger occtMults(1, def->knotCount);
+            for (int i = 0; i < def->knotCount; ++i) {
+                occtKnots.SetValue(i + 1, knots[i]);
+                occtMults.SetValue(i + 1, multiplicities[i]);
+            }
+
+            Handle(Geom_BSplineCurve) curve;
+            if (def->rational != 0 && weights != nullptr) {
+                TColStd_Array1OfReal occtWeights(1, def->poleCount);
+                for (int i = 0; i < def->poleCount; ++i)
+                    occtWeights.SetValue(i + 1, weights[i]);
+                curve = new Geom_BSplineCurve(
+                    occtPoles, occtWeights, occtKnots, occtMults,
+                    def->degree, def->periodic != 0);
+            } else {
+                curve = new Geom_BSplineCurve(
+                    occtPoles, occtKnots, occtMults,
+                    def->degree, def->periodic != 0);
+            }
+
+            BRepBuilderAPI_MakeEdge edgeMaker(curve);
+            if (!edgeMaker.IsDone()) throw std::runtime_error("Failed to create BSpline edge.");
+            return edgeMaker.Edge();
+        });
+    }
+
+    OcctStatus occt_model_face_bspline_explicit_create(
+        OcctModelingSessionHandle handle,
+        const OcctBSplineSurfaceDefinition* def,
+        const OcctPoint3d* poles,
+        const double* weights,
+        const double* uKnots, const int* uMults,
+        const double* vKnots, const int* vMults,
+        OcctObjectId* result)
+    {
+        ModelSession* model = sessionOf(handle);
+        return executeShapeStatus(model, result, [&]() -> TopoDS_Shape
+        {
+            constexpr uint32_t kApiVersion = 1;
+            if (def == nullptr) throw std::invalid_argument("BSpline definition is null.");
+            if (def->structSize < sizeof(OcctBSplineSurfaceDefinition))
+                throw std::invalid_argument("Unsupported BSpline surface definition size.");
+            if (def->apiVersion != kApiVersion)
+                throw std::invalid_argument("Unsupported BSpline surface definition API version.");
+            if (poles == nullptr) throw std::invalid_argument("Poles array is null.");
+            
+            TColgp_Array2OfPnt poles2d(1, def->uPoleCount, 1, def->vPoleCount);
+            for (int u = 0; u < def->uPoleCount; ++u) {
+                for (int v = 0; v < def->vPoleCount; ++v) {
+                    int idx = u * def->vPoleCount + v;
+                    poles2d.SetValue(u + 1, v + 1, gp_Pnt(poles[idx].x, poles[idx].y, poles[idx].z));
+                }
+            }
+
+            TColStd_Array1OfReal occtUKnots(1, def->uKnotCount);
+            TColStd_Array1OfInteger occtUMults(1, def->uKnotCount);
+            for (int i = 0; i < def->uKnotCount; ++i) {
+                occtUKnots.SetValue(i + 1, uKnots[i]);
+                occtUMults.SetValue(i + 1, uMults[i]);
+            }
+
+            TColStd_Array1OfReal occtVKnots(1, def->vKnotCount);
+            TColStd_Array1OfInteger occtVMults(1, def->vKnotCount);
+            for (int i = 0; i < def->vKnotCount; ++i) {
+                occtVKnots.SetValue(i + 1, vKnots[i]);
+                occtVMults.SetValue(i + 1, vMults[i]);
+            }
+
+            Handle(Geom_BSplineSurface) surface;
+            if ((def->uRational != 0 || def->vRational != 0) && weights != nullptr) {
+                TColStd_Array2OfReal weights2d(1, def->uPoleCount, 1, def->vPoleCount);
+                for (int u = 0; u < def->uPoleCount; ++u) {
+                    for (int v = 0; v < def->vPoleCount; ++v) {
+                        int idx = u * def->vPoleCount + v;
+                        weights2d.SetValue(u + 1, v + 1, weights[idx]);
+                    }
+                }
+                surface = new Geom_BSplineSurface(
+                    poles2d, weights2d, occtUKnots, occtVKnots, occtUMults, occtVMults,
+                    def->uDegree, def->vDegree, def->uPeriodic != 0, def->vPeriodic != 0);
+            } else {
+                surface = new Geom_BSplineSurface(
+                    poles2d, occtUKnots, occtVKnots, occtUMults, occtVMults,
+                    def->uDegree, def->vDegree, def->uPeriodic != 0, def->vPeriodic != 0);
+            }
+
+            BRepBuilderAPI_MakeFace faceMaker(surface, Precision::Confusion());
+            if (!faceMaker.IsDone()) throw std::runtime_error("Failed to create BSpline face.");
+            return faceMaker.Face();
         });
     }
 }
