@@ -260,7 +260,7 @@ set(occt_required_libraries
     TKernel TKMath TKG2d TKG3d TKGeomBase TKBRep TKGeomAlgo TKTopAlgo
     TKLCAF TKCAF TKXCAF
     TKPrim TKBO TKBool TKFillet TKOffset TKMesh TKShHealing
-    TKService TKV3d TKOpenGl TKXSBase TKDE TKDESTEP TKDEIGES TKDESTL TKDEOBJ TKDEGLTF)
+    TKService TKV3d TKOpenGl TKXSBase TKDE TKDESTEP TKDEIGES TKDESTL TKDEOBJ TKDEGLTF TKRWMesh)
 
 set(occt_link_libraries)
 foreach(library_name IN LISTS occt_required_libraries)

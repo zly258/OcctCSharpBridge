@@ -3,7 +3,7 @@ using System.Threading;
 
 namespace OcctNet;
 
-public sealed partial class OcctEngine : IDisposable
+public sealed partial class OcctEngine : IOcctEngine, IDisposable
 {
     private static long s_nextOwnerId;
 

@@ -102,6 +102,9 @@
       "topology/OcctShapeResource.h",
       "mesh/OcctMeshResource.h",
       "mesh/OcctModelingMesh.h",
+      "geometry/OcctModelingCurveFit.h",
+      "modeling/OcctModelingPipeShell.h",
+      "exchange/OcctObjGltfExchange.h",
       "exchange/OcctModelingExchange.h"
     ]
   }

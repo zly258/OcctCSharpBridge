@@ -5,6 +5,7 @@
 #include <BRepFilletAPI_MakeFillet.hxx>
 #include <BRepOffsetAPI_MakeOffsetShape.hxx>
 #include <BRepOffsetAPI_MakePipe.hxx>
+#include <BRepOffsetAPI_MakePipeShell.hxx>
 #include <BRepOffsetAPI_MakeThickSolid.hxx>
 #include <BRepOffsetAPI_ThruSections.hxx>
 #include <BRepOffsetAPI_DraftAngle.hxx>
@@ -322,28 +323,59 @@ extern "C"
             requirePositive(tolerance, "Tolerance");
             if (sectionWireIds == nullptr) throw std::invalid_argument("Section wire ID array is null.");
 
-            BRepOffsetAPI_ThruSections algorithm(makeSolid != 0, Standard_False, tolerance);
             TopTools_ListOfShape arguments;
 
-            for (int i = 0; i < sectionCount; ++i) {
-                const TopoDS_Shape& s = model->requireShape(sectionWireIds[i]);
-                if (s.ShapeType() != TopAbs_WIRE)
-                    throw std::invalid_argument("Guided loft sections must be wires.");
-                algorithm.AddWire(TopoDS::Wire(s));
-                arguments.Append(s);
-            }
-
             if (guideWireIds != nullptr && guideCount > 0) {
-                for (int i = 0; i < guideCount; ++i) {
-                    const TopoDS_Shape& g = model->requireShape(guideWireIds[i]);
-                    if (g.ShapeType() != TopAbs_WIRE)
-                        throw std::invalid_argument("Guided loft guide curves must be wires.");
-                    algorithm.AddGuideWire(TopoDS::Wire(g));
-                    arguments.Append(g);
-                }
-            }
+                const TopoDS_Shape& spineShape = model->requireShape(guideWireIds[0]);
+                if (spineShape.ShapeType() != TopAbs_WIRE)
+                    throw std::invalid_argument("Guided loft guide curves must be wires.");
 
-            return finishMakeShapeAlgorithm(model, algorithm, arguments, "Guided loft failed.");
+                BRepOffsetAPI_MakePipeShell pipeShell(TopoDS::Wire(spineShape));
+                arguments.Append(spineShape);
+
+                if (guideCount > 1) {
+                    const TopoDS_Shape& auxGuide = model->requireShape(guideWireIds[1]);
+                    if (auxGuide.ShapeType() != TopAbs_WIRE)
+                        throw std::invalid_argument("Guided loft auxiliary guide must be a wire.");
+                    pipeShell.SetMode(TopoDS::Wire(auxGuide), Standard_True, BRepFill_ContactOnBorder);
+                    arguments.Append(auxGuide);
+                } else {
+                    pipeShell.SetMode(Standard_False);
+                }
+
+                for (int i = 0; i < sectionCount; ++i) {
+                    const TopoDS_Shape& s = model->requireShape(sectionWireIds[i]);
+                    if (s.ShapeType() != TopAbs_WIRE)
+                        throw std::invalid_argument("Guided loft sections must be wires.");
+                    pipeShell.Add(TopoDS::Wire(s));
+                    arguments.Append(s);
+                }
+
+                if (!pipeShell.IsReady())
+                    throw std::runtime_error("Guided loft algorithm is not ready.");
+
+                pipeShell.Build();
+                if (!pipeShell.IsDone() || pipeShell.Shape().IsNull())
+                    throw std::runtime_error("Guided loft failed.");
+
+                if (makeSolid != 0)
+                    pipeShell.MakeSolid();
+
+                Handle(BRepTools_History) history = new BRepTools_History(arguments, pipeShell);
+                const OcctObjectId outputId = model->addShape(pipeShell.Shape());
+                const OcctOperationId opId = model->addOperation(history, {}, false, false);
+                return {outputId, opId, 1, 0, 0};
+            } else {
+                BRepOffsetAPI_ThruSections algorithm(makeSolid != 0, Standard_False, tolerance);
+                for (int i = 0; i < sectionCount; ++i) {
+                    const TopoDS_Shape& s = model->requireShape(sectionWireIds[i]);
+                    if (s.ShapeType() != TopAbs_WIRE)
+                        throw std::invalid_argument("Guided loft sections must be wires.");
+                    algorithm.AddWire(TopoDS::Wire(s));
+                    arguments.Append(s);
+                }
+                return finishMakeShapeAlgorithm(model, algorithm, arguments, "Guided loft failed.");
+            }
         });
     }
 }

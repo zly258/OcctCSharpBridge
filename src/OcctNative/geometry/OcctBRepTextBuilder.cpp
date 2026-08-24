@@ -178,7 +178,7 @@ namespace OcctModelingInternal
 
         // Normalize text: if the current font is missing CJK punctuation such as full-width
         // parentheses '（' (U+FF08) / '）' (U+FF09), fallback to standard punctuation so it never disappears.
-        NCollection_Utf8String normalizedText;
+        std::vector<Standard_Utf32Char> u32chars;
         NCollection_UtfIterator<Standard_Utf8Char> iter(reinterpret_cast<const Standard_Utf8Char*>(utf8Text));
         while (*iter != 0)
         {
@@ -187,15 +187,16 @@ namespace OcctModelingInternal
             if (!hasSymbol)
             {
                 const Standard_Utf32Char fallback = fallbackPunctuation(ch);
-                const Standard_Utf32Char chosen = (fallback != 0) ? fallback : ch;
-                normalizedText += chosen;
+                u32chars.push_back((fallback != 0) ? fallback : ch);
             }
             else
             {
-                normalizedText += ch;
+                u32chars.push_back(ch);
             }
             ++iter;
         }
+        u32chars.push_back(0);
+        NCollection_Utf8String normalizedText(u32chars.data());
 
         StdPrs_BRepTextBuilder builder;
         const gp_Ax3 placement(point(position), normalDirection, xAxisDirection);
