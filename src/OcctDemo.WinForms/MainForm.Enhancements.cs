@@ -21,6 +21,18 @@ public sealed partial class MainForm
                 Local("B-Spline Surface Test", "B 样条曲面测试"),
                 (_, _) => RunModelingTest(Session.RunBSplineSurfaceTest)));
             samples.DropDownItems.Add(MenuItem(
+                Local("B-Spline Curve Fit Test", "B 样条曲线拟合测试"),
+                (_, _) => RunModelingTest(Session.RunCurveFitTest)));
+            samples.DropDownItems.Add(MenuItem(
+                Local("PipeShell Sweep Test", "PipeShell 高级扫掠测试"),
+                (_, _) => RunModelingTest(Session.RunPipeShellTest)));
+            samples.DropDownItems.Add(MenuItem(
+                Local("Edge Intersection Test", "几何边求交测试"),
+                (_, _) => RunModelingTest(Session.RunEdgeIntersectionTest)));
+            samples.DropDownItems.Add(MenuItem(
+                Local("glTF / OBJ Exchange Test", "glTF / OBJ 数据交换测试"),
+                (_, _) => RunModelingTest(Session.RunObjGltfExchangeTest)));
+            samples.DropDownItems.Add(MenuItem(
                 Local("Mesh Generation Test", "网格生成测试"),
                 (_, _) => RunModelingTest(Session.RunMeshGenerationTest)));
             samples.DropDownItems.Add(MenuItem(

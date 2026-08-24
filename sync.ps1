@@ -217,9 +217,15 @@ function Get-OrCreateSourceClone {
         [Parameter(Mandatory = $true)][string]$ExpectedCommit
     )
 
-    $remoteUrl = ([string](& git -C $RepoRoot remote get-url $RemoteName)).Trim()
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($remoteUrl)) {
-        throw "Unable to resolve URL for Git remote '$RemoteName'."
+    $remoteUrl = if ($RemoteName -eq "." -or $RemoteName -eq "local") {
+        $RepoRoot
+    }
+    else {
+        $resolved = ([string](& git -C $RepoRoot remote get-url $RemoteName)).Trim()
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($resolved)) {
+            throw "Unable to resolve URL for Git remote '$RemoteName'."
+        }
+        $resolved
     }
 
     if (-not (Test-Path -LiteralPath (Join-Path $SourceRepoRoot ".git") -PathType Container)) {
@@ -270,10 +276,15 @@ if (-not [string]::IsNullOrWhiteSpace($PortableRoot)) {
 
 if ($null -eq (Get-Command git -ErrorAction SilentlyContinue)) { throw "git was not found in PATH." }
 
-Write-Host "[sync] Fetching $Remote/$SourceBranch..." -ForegroundColor Cyan
-& git -C $RepoRoot fetch --quiet $Remote $SourceBranch
-if ($LASTEXITCODE -ne 0) { throw "Unable to fetch $Remote/$SourceBranch." }
-$sourceCommit = ([string](& git -C $RepoRoot rev-parse "$Remote/$SourceBranch")).Trim()
+if ($Remote -eq "." -or $Remote -eq "local") {
+    $sourceCommit = ([string](& git -C $RepoRoot rev-parse $SourceBranch)).Trim()
+}
+else {
+    Write-Host "[sync] Fetching $Remote/$SourceBranch..." -ForegroundColor Cyan
+    & git -C $RepoRoot fetch --quiet $Remote $SourceBranch
+    if ($LASTEXITCODE -ne 0) { throw "Unable to fetch $Remote/$SourceBranch." }
+    $sourceCommit = ([string](& git -C $RepoRoot rev-parse "$Remote/$SourceBranch")).Trim()
+}
 if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($sourceCommit)) {
     throw "Unable to resolve $Remote/$SourceBranch."
 }

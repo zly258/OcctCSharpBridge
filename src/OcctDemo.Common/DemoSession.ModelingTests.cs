@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+using System.Drawing;
 using OcctNet;
 
 namespace OcctDemo.Common;
@@ -7,10 +7,22 @@ public sealed partial class DemoSession
 {
     private const string BSplineSurfaceTestId = "bspline-surface";
     private const string MeshGenerationTestId = "mesh-generation";
+    private const string CurveFitTestId = "curve-fit";
+    private const string PipeShellTestId = "pipe-shell";
+    private const string EdgeIntersectionTestId = "edge-intersection";
+    private const string ObjGltfExchangeTestId = "exchange-gltf-obj";
 
     public DemoCommandResult RunBSplineSurfaceTest() => ExecuteModelingTest(BSplineSurfaceTestId);
 
     public DemoCommandResult RunMeshGenerationTest() => ExecuteModelingTest(MeshGenerationTestId);
+
+    public DemoCommandResult RunCurveFitTest() => ExecuteModelingTest(CurveFitTestId);
+
+    public DemoCommandResult RunPipeShellTest() => ExecuteModelingTest(PipeShellTestId);
+
+    public DemoCommandResult RunEdgeIntersectionTest() => ExecuteModelingTest(EdgeIntersectionTestId);
+
+    public DemoCommandResult RunObjGltfExchangeTest() => ExecuteModelingTest(ObjGltfExchangeTestId);
 
     private DemoCommandResult ExecuteModelingTest(string testId)
     {
@@ -25,6 +37,10 @@ public sealed partial class DemoSession
                 {
                     BSplineSurfaceTestId => CreateBSplineSurfaceTest(),
                     MeshGenerationTestId => CreateMeshGenerationTest(),
+                    CurveFitTestId => CreateCurveFitTest(),
+                    PipeShellTestId => CreatePipeShellTest(),
+                    EdgeIntersectionTestId => CreateEdgeIntersectionTest(),
+                    ObjGltfExchangeTestId => CreateObjGltfExchangeTest(),
                     _ => throw new ArgumentOutOfRangeException(nameof(testId), testId, "Unknown modeling test.")
                 };
 
@@ -281,10 +297,187 @@ public sealed partial class DemoSession
         }
     }
 
+    private DemoCommandResult CreateCurveFitTest()
+    {
+        using var model = new OcctModelingSession();
+        var points = new List<OcctPoint3d>();
+        const int pointCount = 25;
+        for (var i = 0; i < pointCount; i++)
+        {
+            var t = i / (double)(pointCount - 1);
+            var angle = t * 2.5 * Math.PI;
+            var r = 30 + 20 * t;
+            var x = r * Math.Cos(angle);
+            var y = r * Math.Sin(angle);
+            var z = 80 * t;
+            points.Add(new OcctPoint3d(x, y, z));
+        }
+
+        var fitEdge = model.FitBSplineCurve(points, degMin: 3, degMax: 6, continuity: OcctContinuity.C2, tolerance: 0.1);
+        if (!fitEdge.IsValid)
+        {
+            throw new InvalidOperationException(Local("Curve fitting returned an invalid shape.", "曲线拟合返回了无效形体。"));
+        }
+
+        var fitShape = DisplayModelShape(model, fitEdge);
+        SetGeneratedName(fitShape, Local("Fitted B-Spline Curve", "拟合 B 样条曲线"));
+        Engine.SetObjectColor(fitShape, Color.Cyan);
+        Engine.SetObjectLineWidth(fitShape, 2.5);
+
+        var samplePoints = points.Select(p => Engine.MakeVertex(p)).Cast<OcctShape>().ToList();
+        var pointsCompound = Engine.MakeCompound(samplePoints, hideInputs: true);
+        SetGeneratedName(pointsCompound, Local("Curve Fit Sample Points", "曲线拟合采样点"));
+        Engine.SetObjectColor(pointsCompound, Color.Yellow);
+
+        ActiveObject = fitShape;
+
+        var details = Local(
+            $"B-Spline curve fit test passed: {points.Count} points fitted with C2 continuity and max degree 6. The fitted curve and sample points are displayed in viewport.",
+            $"B 样条曲线拟合测试通过：{points.Count} 个采样点以 C2 连续度、最大 6 次完成拟合。视口已显示拟合曲线与采样点。");
+
+        return new DemoCommandResult(
+            Local("B-Spline curve fit test completed.", "B 样条曲线拟合测试完成。"),
+            new IOcctObject[] { fitShape, pointsCompound },
+            details);
+    }
+
+    private DemoCommandResult CreatePipeShellTest()
+    {
+        using var model = new OcctModelingSession();
+        var spinePoints = new[]
+        {
+            new OcctPoint3d(0, 0, 0),
+            new OcctPoint3d(0, 50, 40),
+            new OcctPoint3d(60, 80, 80),
+            new OcctPoint3d(120, 50, 120),
+            new OcctPoint3d(120, 0, 160)
+        };
+        var spineEdge = model.MakeInterpolatedBSpline(spinePoints);
+        var spineWire = model.MakeWire(new[] { spineEdge });
+
+        var profileEdge = model.MakeCircle(OcctPoint3d.Origin, OcctVector3d.UnitY, 15);
+        var profileWire = model.MakeWire(new[] { profileEdge });
+
+        var sweepResult = model.SweepPipeShell(spineWire, new[] { profileWire }, OcctPipeShellMode.CorrectedFrenet, solid: true);
+        if (!sweepResult.Shape.IsValid)
+        {
+            throw new InvalidOperationException(Local("PipeShell sweep failed to produce a valid shape.", "高级管道扫掠未能生成有效形体。"));
+        }
+
+        var sweptShape = DisplayModelShape(model, sweepResult.Shape);
+        SetGeneratedName(sweptShape, Local("PipeShell Sweep Solid", "PipeShell 扫掠实体"));
+        Engine.SetObjectColor(sweptShape, Color.MediumSeaGreen);
+        Engine.SetObjectMaterial(sweptShape, OcctMaterial.Copper);
+
+        ActiveObject = sweptShape;
+
+        var details = Local(
+            "PipeShell sweep test passed: constructed solid sweep using CorrectedFrenet trihedron along a 3D spline spine. The swept solid is displayed.",
+            "PipeShell 扫掠测试通过：沿三维样条脊线使用 CorrectedFrenet 标架扫掠生成中实实体。视口已显示该扫掠模型。");
+
+        return new DemoCommandResult(
+            Local("PipeShell sweep test completed.", "PipeShell 扫掠测试完成。"),
+            new IOcctObject[] { sweptShape },
+            details);
+    }
+
+    private DemoCommandResult CreateEdgeIntersectionTest()
+    {
+        using var model = new OcctModelingSession();
+        var edge1 = model.MakeLine(new OcctPoint3d(-60, 0, 10), new OcctPoint3d(60, 0, 10));
+        var edge2 = model.MakeLine(new OcctPoint3d(0, -60, 10), new OcctPoint3d(0, 60, 10));
+
+        var intersections = model.IntersectEdges(edge1, edge2, tolerance: 1e-6);
+        if (intersections.Count == 0)
+        {
+            throw new InvalidOperationException(Local("Edge intersection test found no intersection point.", "边求交测试未检测到交点。"));
+        }
+
+        var intersectPoint = intersections[0].StartPoint;
+        if (intersectPoint.DistanceTo(new OcctPoint3d(0, 0, 10)) > 1e-4)
+        {
+            throw new InvalidOperationException(Local("Intersection point coordinate verification failed.", "交点坐标验证失败。"));
+        }
+
+        var line1 = DisplayModelShape(model, edge1);
+        var line2 = DisplayModelShape(model, edge2);
+        SetGeneratedName(line1, Local("Intersection Line 1", "相交直线 1"));
+        SetGeneratedName(line2, Local("Intersection Line 2", "相交直线 2"));
+        Engine.SetObjectColor(line1, Color.OrangeRed);
+        Engine.SetObjectColor(line2, Color.DeepSkyBlue);
+        Engine.SetObjectLineWidth(line1, 2.0);
+        Engine.SetObjectLineWidth(line2, 2.0);
+
+        var pointMarker = Engine.MakeVertex(intersectPoint);
+        SetGeneratedName(pointMarker, Local("Intersection Point", "求交交点"));
+        Engine.SetObjectColor(pointMarker, Color.LimeGreen);
+
+        var details = Local(
+            $"Edge intersection test passed: found {intersections.Count} intersection at ({intersectPoint.X:F3}, {intersectPoint.Y:F3}, {intersectPoint.Z:F3}), parameters ({intersections[0].FirstParameterStart:F3}, {intersections[0].SecondParameterStart:F3}).",
+            $"边求交测试通过：在 ({intersectPoint.X:F3}, {intersectPoint.Y:F3}, {intersectPoint.Z:F3}) 处检测到 {intersections.Count} 个交点，参数分别为 ({intersections[0].FirstParameterStart:F3}, {intersections[0].SecondParameterStart:F3})。");
+
+        return new DemoCommandResult(
+            Local("Edge intersection test completed.", "边求交测试完成。"),
+            new IOcctObject[] { line1, line2, pointMarker },
+            details);
+    }
+
+    private DemoCommandResult CreateObjGltfExchangeTest()
+    {
+        using var model = new OcctModelingSession();
+        var box = model.MakeBox(50, 40, 30, -25, -20, 0);
+        var cyl = model.MakeCylinder(new OcctPoint3d(0, 0, -5), OcctVector3d.UnitZ, 15, 40);
+        var part = model.Cut(box, cyl).Shape;
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "OcctDemo_ExchangeTest_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        var objPath = Path.Combine(tempDir, "test_model.obj");
+        var gltfPath = Path.Combine(tempDir, "test_model.glb");
+
+        try
+        {
+            model.ExportObj(part, objPath);
+            if (!File.Exists(objPath) || new FileInfo(objPath).Length == 0)
+                throw new InvalidOperationException(Local("OBJ export produced an empty file.", "OBJ 导出生成了空文件。"));
+            var importedObj = model.ImportObj(objPath);
+            if (!importedObj.IsValid)
+                throw new InvalidOperationException(Local("OBJ import produced an invalid shape.", "OBJ 导入生成了无效形体。"));
+
+            model.ExportGltf(part, gltfPath, new OcctGltfExportOptions { WriteBinary = true, TransformToGltfCs = true });
+            if (!File.Exists(gltfPath) || new FileInfo(gltfPath).Length == 0)
+                throw new InvalidOperationException(Local("glTF export produced an empty file.", "glTF 导出生成了空文件。"));
+            var importedGltf = model.ImportGltf(gltfPath);
+            if (!importedGltf.IsValid)
+                throw new InvalidOperationException(Local("glTF import produced an invalid shape.", "glTF 导入生成了无效形体。"));
+
+            var displayed = DisplayModelShape(model, importedGltf);
+            SetGeneratedName(displayed, Local("Imported glTF/OBJ Model", "导入的 glTF/OBJ 模型"));
+            Engine.SetObjectColor(displayed, Color.CadetBlue);
+            ActiveObject = displayed;
+
+            var details = Local(
+                $"OBJ and glTF exchange test passed: exported model to OBJ ({new FileInfo(objPath).Length} bytes) and glTF binary ({new FileInfo(gltfPath).Length} bytes), then successfully re-imported and validated shapes.",
+                $"OBJ 与 glTF 数据交换测试通过：成功导出 OBJ（{new FileInfo(objPath).Length} 字节）与 glTF 格式（{new FileInfo(gltfPath).Length} 字节），并成功重新导入且完成形体完整性校验。");
+
+            return new DemoCommandResult(
+                Local("glTF and OBJ exchange test completed.", "glTF 与 OBJ 数据交换测试完成。"),
+                new IOcctObject[] { displayed },
+                details);
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, true); } catch { }
+        }
+    }
+
     private static string GetModelingTestDescription(string testId) => testId switch
     {
         BSplineSurfaceTestId => Local("B-Spline Surface Test", "B 样条曲面测试"),
         MeshGenerationTestId => Local("Mesh Generation Test", "网格生成测试"),
+        CurveFitTestId => Local("B-Spline Curve Fit Test", "B 样条曲线拟合测试"),
+        PipeShellTestId => Local("PipeShell Sweep Test", "PipeShell 高级扫掠测试"),
+        EdgeIntersectionTestId => Local("Edge Intersection Test", "几何边求交测试"),
+        ObjGltfExchangeTestId => Local("glTF and OBJ Exchange Test", "glTF 与 OBJ 交换测试"),
         _ => testId
     };
 }

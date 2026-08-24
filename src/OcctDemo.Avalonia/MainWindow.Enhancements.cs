@@ -18,10 +18,21 @@ public sealed partial class MainWindow
         if (samples is not null)
         {
             var items = (samples.ItemsSource as IEnumerable<object>)?.ToList() ?? new List<object>();
-            items.Add(new Separator());
             items.Add(MenuItem(
                 Local("B-Spline Surface Test", "B 样条曲面测试"),
                 () => RunModelingTest(Session.RunBSplineSurfaceTest)));
+            items.Add(MenuItem(
+                Local("B-Spline Curve Fit Test", "B 样条曲线拟合测试"),
+                () => RunModelingTest(Session.RunCurveFitTest)));
+            items.Add(MenuItem(
+                Local("PipeShell Sweep Test", "PipeShell 高级扫掠测试"),
+                () => RunModelingTest(Session.RunPipeShellTest)));
+            items.Add(MenuItem(
+                Local("Edge Intersection Test", "几何边求交测试"),
+                () => RunModelingTest(Session.RunEdgeIntersectionTest)));
+            items.Add(MenuItem(
+                Local("glTF / OBJ Exchange Test", "glTF / OBJ 数据交换测试"),
+                () => RunModelingTest(Session.RunObjGltfExchangeTest)));
             items.Add(MenuItem(
                 Local("Mesh Generation Test", "网格生成测试"),
                 () => RunModelingTest(Session.RunMeshGenerationTest)));
