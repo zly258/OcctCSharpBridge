@@ -34,7 +34,6 @@ public enum OcctCornerPosition
 public sealed record OcctTriedronOptions
 {
     public bool Visible { get; init; } = true;
-    public bool DrawAxes { get; init; } = true;
     public OcctCornerPosition Position { get; init; } = OcctCornerPosition.LeftLower;
     public double Scale { get; init; } = 0.08;
     public Color Color { get; init; } = Color.White;
@@ -43,6 +42,7 @@ public sealed record OcctTriedronOptions
 public sealed record OcctViewCubeOptions
 {
     public bool Visible { get; init; } = true;
+    public bool DrawAxes { get; init; } = true;
     public OcctCornerPosition Position { get; init; } = OcctCornerPosition.RightUpper;
     public int SizePixels { get; init; } = 90;
     public int OffsetX { get; init; } = 10;
