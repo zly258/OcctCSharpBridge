@@ -215,6 +215,161 @@ internal struct NativeModelCurveContinuityResult
         HasSecondDerivatives != 0);
 }
 
+/// <summary>Measured continuity of two faces along a shared edge.</summary>
+public readonly record struct OcctSurfaceContinuityResult(
+    double MaximumPositionGap,
+    double MaximumNormalAngleRadians,
+    double MaximumCurvatureGap,
+    OcctContinuityLevel DeclaredParametricLevel,
+    OcctContinuityLevel DeclaredGeometricLevel,
+    OcctContinuityLevel MeasuredGeometricLevel,
+    int SampleCount,
+    int InvalidSampleCount);
+
+public readonly record struct OcctCurvatureCombSample(
+    double Parameter,
+    OcctPoint3d Point,
+    OcctVector3d CombVector,
+    double Curvature,
+    bool Valid);
+
+public readonly record struct OcctSurfaceQualityOptions(
+    int USamples,
+    int VSamples,
+    double Resolution,
+    double ZebraFrequency,
+    double ZebraPhase,
+    OcctVector3d ViewDirection)
+{
+    public static OcctSurfaceQualityOptions Default => new(
+        32, 32, 1e-7, 12.0, 0.0, new OcctVector3d(0, 0, -1));
+
+    internal NativeModelSurfaceQualityOptions ToNative() => new()
+    {
+        USamples = USamples,
+        VSamples = VSamples,
+        Resolution = Resolution,
+        ZebraFrequency = ZebraFrequency,
+        ZebraPhase = ZebraPhase,
+        ViewDirection = ViewDirection
+    };
+}
+
+public readonly record struct OcctSurfaceQualitySample(
+    double U,
+    double V,
+    OcctPoint3d Point,
+    OcctVector3d Normal,
+    double MaximumCurvature,
+    double MinimumCurvature,
+    double MeanCurvature,
+    double GaussianCurvature,
+    double ZebraIntensity,
+    bool Valid);
+
+public readonly record struct OcctSurfaceQualitySummary(
+    double MinimumMeanCurvature,
+    double MaximumMeanCurvature,
+    double MinimumGaussianCurvature,
+    double MaximumGaussianCurvature,
+    double MaximumAbsoluteCurvature,
+    int ValidSampleCount,
+    int InvalidSampleCount,
+    int NormalFlipCount);
+
+public sealed record OcctSurfaceQualityAnalysis(
+    OcctSurfaceQualitySummary Summary,
+    IReadOnlyList<OcctSurfaceQualitySample> Samples);
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeModelSurfaceContinuityResult
+{
+    public double MaximumPositionGap;
+    public double MaximumNormalAngleRadians;
+    public double MaximumCurvatureGap;
+    public int DeclaredParametricLevel;
+    public int DeclaredGeometricLevel;
+    public int MeasuredGeometricLevel;
+    public int SampleCount;
+    public int InvalidSampleCount;
+
+    public readonly OcctSurfaceContinuityResult ToManaged() => new(
+        MaximumPositionGap,
+        MaximumNormalAngleRadians,
+        MaximumCurvatureGap,
+        (OcctContinuityLevel)DeclaredParametricLevel,
+        (OcctContinuityLevel)DeclaredGeometricLevel,
+        (OcctContinuityLevel)MeasuredGeometricLevel,
+        SampleCount,
+        InvalidSampleCount);
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeModelCurvatureCombSample
+{
+    public double Parameter;
+    public OcctPoint3d Point;
+    public OcctVector3d CombVector;
+    public double Curvature;
+    public int Valid;
+
+    public readonly OcctCurvatureCombSample ToManaged() =>
+        new(Parameter, Point, CombVector, Curvature, Valid != 0);
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeModelSurfaceQualityOptions
+{
+    public int USamples;
+    public int VSamples;
+    public double Resolution;
+    public double ZebraFrequency;
+    public double ZebraPhase;
+    public OcctVector3d ViewDirection;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeModelSurfaceQualitySample
+{
+    public double U;
+    public double V;
+    public OcctPoint3d Point;
+    public OcctVector3d Normal;
+    public double MaximumCurvature;
+    public double MinimumCurvature;
+    public double MeanCurvature;
+    public double GaussianCurvature;
+    public double ZebraIntensity;
+    public int Valid;
+
+    public readonly OcctSurfaceQualitySample ToManaged() => new(
+        U, V, Point, Normal, MaximumCurvature, MinimumCurvature,
+        MeanCurvature, GaussianCurvature, ZebraIntensity, Valid != 0);
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeModelSurfaceQualitySummary
+{
+    public double MinimumMeanCurvature;
+    public double MaximumMeanCurvature;
+    public double MinimumGaussianCurvature;
+    public double MaximumGaussianCurvature;
+    public double MaximumAbsoluteCurvature;
+    public int ValidSampleCount;
+    public int InvalidSampleCount;
+    public int NormalFlipCount;
+
+    public readonly OcctSurfaceQualitySummary ToManaged() => new(
+        MinimumMeanCurvature,
+        MaximumMeanCurvature,
+        MinimumGaussianCurvature,
+        MaximumGaussianCurvature,
+        MaximumAbsoluteCurvature,
+        ValidSampleCount,
+        InvalidSampleCount,
+        NormalFlipCount);
+}
+
 [StructLayout(LayoutKind.Sequential)]
 internal struct NativeModelAlgorithmResult
 {

@@ -26,4 +26,17 @@ public sealed class ContinuityModelTests
         Assert.AreEqual(2, (int)OcctContinuityLevel.Order1);
         Assert.AreEqual(3, (int)OcctContinuityLevel.Order2);
     }
+    [TestMethod]
+    public void SurfaceQualityDefaultsAreBounded()
+    {
+        var options = OcctSurfaceQualityOptions.Default;
+
+        Assert.IsTrue(options.USamples >= 2);
+        Assert.IsTrue(options.VSamples >= 2);
+        Assert.IsTrue(options.Resolution > 0);
+        Assert.IsTrue(options.ZebraFrequency > 0);
+        Assert.IsTrue(options.ViewDirection.IsFinite);
+        Assert.IsTrue(options.ViewDirection.LengthSquared > 0);
+    }
+
 }

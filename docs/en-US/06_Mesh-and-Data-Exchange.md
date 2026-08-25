@@ -43,3 +43,8 @@ The managed node snapshot is updated after a successful native edit. Export with
 
 
 `SetStepNodeLayer` adds or removes a node assignment in the XDE layer table. `SetStepLayerVisibility` changes the global visibility of an existing layer. Layer names are included in refreshed assembly node snapshots and are preserved by STEP export when supported by the target schema.
+
+
+## Surface continuity and quality
+
+`AnalyzeCurveContinuity` measures C0-C2 and G0-G2 at two edge endpoints. `AnalyzeSurfaceContinuity` combines the XDE/B-Rep declared regularity of a shared edge with sampled maximum position, tangent-plane and principal-curvature gaps. `SampleCurvatureComb` returns one bulk array of curvature vectors. `AnalyzeSurfaceQuality` returns a trimmed-face UV grid containing principal, mean and Gaussian curvature plus view-dependent zebra intensity and a summary of invalid samples and normal flips. Zebra samples are viewer-independent so WinForms, WPF and Avalonia can render the same analysis data.
