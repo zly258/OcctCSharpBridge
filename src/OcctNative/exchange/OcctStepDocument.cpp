@@ -751,7 +751,14 @@ extern "C"
             const Handle(XCAFDoc_ShapeTool) shapeTool =
                 XCAFDoc_DocumentTool::ShapeTool(document->Main());
             if (shapeTool.IsNull()) throw std::logic_error("XDE shape tool is unavailable.");
-            shapeTool->SetLocation(label, TopLoc_Location(stepTransform(*transform)));
+            TDF_Label relocatedLabel;
+        if (!shapeTool->SetLocation(
+                label,
+                TopLoc_Location(stepTransform(*transform)),
+                relocatedLabel))
+        {
+            throw std::runtime_error("XDE occurrence location update failed.");
+        }
         }) != 0 ? OcctStatus_Ok : engine->currentErrorCode();
     }
 
