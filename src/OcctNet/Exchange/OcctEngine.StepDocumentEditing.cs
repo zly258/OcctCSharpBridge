@@ -81,6 +81,31 @@ public sealed partial class OcctEngine
         }
     }
 
+    /// <summary>Adds or removes an XDE layer assignment for a STEP node.</summary>
+    public void SetStepNodeLayer(OcctAssemblyNode node, string layerName, bool assigned = true)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        ArgumentException.ThrowIfNullOrWhiteSpace(layerName);
+        EnsureInitialized();
+        CheckStepNodeEdit(StepDocumentNativeMethods.occt_engine_step_node_layer_set(
+            _handle, node.Id, layerName, assigned ? 1 : 0), nameof(SetStepNodeLayer));
+
+        var layers = node.Layers.ToList();
+        var index = layers.FindIndex(value => string.Equals(value, layerName, StringComparison.Ordinal));
+        if (assigned && index < 0) layers.Add(layerName);
+        if (!assigned && index >= 0) layers.RemoveAt(index);
+        node.Layers = layers;
+    }
+
+    /// <summary>Updates the global XDE visibility state of an existing STEP layer.</summary>
+    public void SetStepLayerVisibility(string layerName, bool visible)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(layerName);
+        EnsureInitialized();
+        CheckStepNodeEdit(StepDocumentNativeMethods.occt_engine_step_layer_visibility_set(
+            _handle, layerName, visible ? 1 : 0), nameof(SetStepLayerVisibility));
+    }
+
     /// <summary>Updates the local XDE location of a component occurrence.</summary>
     public void SetStepOccurrenceTransform(
         OcctAssemblyNode occurrence,

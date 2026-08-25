@@ -89,7 +89,10 @@ public sealed class AssemblyDocumentTests
 
         Assert.AreEqual("After", node.Name);
         Assert.IsFalse(node.Style.Visible);
+        node.Layers = new[] { "Machined", "Purchased" };
+
         Assert.IsTrue(node.LocalTransform.IsFinite);
+        CollectionAssert.AreEqual(new[] { "Machined", "Purchased" }, node.Layers.ToArray());
         Assert.IsFalse(new OcctAssemblyTransform3d(
             double.NaN, 0, 0, 0,
             0, 1, 0, 0,

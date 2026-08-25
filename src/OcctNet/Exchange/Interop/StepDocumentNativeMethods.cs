@@ -56,6 +56,21 @@ internal static partial class StepDocumentNativeMethods
 
     [LibraryImport(NativeMethods.LibraryName, StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_step_node_layer_set(
+        OcctEngineSafeHandle handle,
+        string nodeId,
+        string utf8LayerName,
+        int assigned);
+
+    [LibraryImport(NativeMethods.LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_step_layer_visibility_set(
+        OcctEngineSafeHandle handle,
+        string utf8LayerName,
+        int visible);
+
+    [LibraryImport(NativeMethods.LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_engine_step_node_transform_set(
         OcctEngineSafeHandle handle,
         string nodeId,

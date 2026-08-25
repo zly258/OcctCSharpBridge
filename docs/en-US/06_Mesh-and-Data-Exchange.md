@@ -40,3 +40,6 @@ The managed node snapshot is updated after a successful native edit. Export with
 
 
 `SetStepNodeSurfaceColor` writes XDE surface RGBA, including transparency through alpha. `SetStepNodeCurveColor` writes the curve RGB style. Passing `null` clears the explicit color so XDE style inheritance can apply again. Every component must be finite and between zero and one.
+
+
+`SetStepNodeLayer` adds or removes a node assignment in the XDE layer table. `SetStepLayerVisibility` changes the global visibility of an existing layer. Layer names are included in refreshed assembly node snapshots and are preserved by STEP export when supported by the target schema.

@@ -85,7 +85,8 @@ public sealed class OcctAssemblyNode
         OcctAssemblyStyle style,
         OcctAssemblyTransform3d localTransform,
         OcctAssemblyTransform3d globalTransform,
-        IReadOnlyList<OcctAssemblySubshapeStyle> subshapeStyles)
+        IReadOnlyList<OcctAssemblySubshapeStyle> subshapeStyles,
+        IReadOnlyList<string>? layers = null)
     {
         Id = id;
         Index = index;
@@ -98,6 +99,7 @@ public sealed class OcctAssemblyNode
         LocalTransform = localTransform;
         GlobalTransform = globalTransform;
         SubshapeStyles = subshapeStyles ?? throw new ArgumentNullException(nameof(subshapeStyles));
+        Layers = layers ?? Array.Empty<string>();
     }
 
     public string Id { get; }
@@ -111,6 +113,7 @@ public sealed class OcctAssemblyNode
     public OcctAssemblyTransform3d LocalTransform { get; internal set; }
     public OcctAssemblyTransform3d GlobalTransform { get; }
     public IReadOnlyList<OcctAssemblySubshapeStyle> SubshapeStyles { get; }
+    public IReadOnlyList<string> Layers { get; internal set; }
     public OcctAssemblyNode? Parent { get; internal set; }
     public IReadOnlyList<OcctAssemblyNode> Children => _children;
 

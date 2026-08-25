@@ -36,6 +36,17 @@ extern "C"
         const OcctStepColor* color,
         OcctBool hasColor);
 
+    OCCTBRIDGE_API OcctStatus occt_engine_step_node_layer_set(
+        OcctEngineHandle handle,
+        const char* nodeId,
+        const char* utf8LayerName,
+        OcctBool assigned);
+
+    OCCTBRIDGE_API OcctStatus occt_engine_step_layer_visibility_set(
+        OcctEngineHandle handle,
+        const char* utf8LayerName,
+        OcctBool visible);
+
     OCCTBRIDGE_API OcctStatus occt_engine_step_node_transform_set(
         OcctEngineHandle handle,
         const char* nodeId,

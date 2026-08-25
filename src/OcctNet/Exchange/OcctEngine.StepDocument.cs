@@ -68,7 +68,8 @@ public sealed partial class OcctEngine
                 ToStyle(value.Visible, value.SurfaceColor, value.CurveColor),
                 OcctAssemblyTransform3d.FromArray(value.LocalTransform),
                 OcctAssemblyTransform3d.FromArray(value.GlobalTransform),
-                ToSubshapeStyles(value.SubshapeStyles)));
+                ToSubshapeStyles(value.SubshapeStyles),
+                value.Layers ?? Array.Empty<string>()));
         }
 
         var roots = new List<OcctAssemblyNode>();
@@ -173,6 +174,9 @@ public sealed partial class OcctEngine
 
         [JsonPropertyName("curveColor")]
         public double[]? CurveColor { get; set; }
+
+        [JsonPropertyName("layers")]
+        public string[]? Layers { get; set; }
 
         [JsonPropertyName("localTransform")]
         public double[]? LocalTransform { get; set; }
