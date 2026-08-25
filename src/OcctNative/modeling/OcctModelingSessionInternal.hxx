@@ -8,6 +8,7 @@
 #include <Standard_Failure.hxx>
 #include <TopoDS_Shape.hxx>
 
+#include <mutex>
 #include <new>
 #include <stdexcept>
 #include <string>
@@ -52,6 +53,7 @@ namespace OcctModelingInternal
 
     struct ModelSession
     {
+        mutable std::recursive_mutex mutex;
         OcctBridge::ErrorContext errors;
         std::unordered_map<OcctObjectId, TopoDS_Shape> shapes;
         std::unordered_map<OcctOperationId, OperationRecord> operations;
@@ -105,6 +107,7 @@ namespace OcctModelingInternal
     inline int execute(ModelSession* model, Function&& function)
     {
         if (model == nullptr) return 0;
+        const std::lock_guard<std::recursive_mutex> guard(model->mutex);
         model->errors.clear();
         try
         {
@@ -143,6 +146,7 @@ namespace OcctModelingInternal
     inline OcctStatus executeStatus(ModelSession* model, Function&& function)
     {
         if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        const std::lock_guard<std::recursive_mutex> guard(model->mutex);
         return execute(model, std::forward<Function>(function)) != 0
             ? OcctStatus_Ok
             : model->errors.code;
