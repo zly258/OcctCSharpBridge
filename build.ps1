@@ -70,6 +70,7 @@ $Checks = [ordered]@{
     Abi5 = "tests\check-abi5-contract.ps1"
     BulkAbi = "tests\check-bulk-abi.ps1"
     NativeBuild = "tests\check-native-build-structure.ps1"
+    ExceptionBoundary = "tests\check-native-exception-boundaries.ps1"
     ApiSurface = "tests\check-api-surface.ps1"
     ConsumerMatrix = "tests\check-consumer-matrix.ps1"
 }

@@ -138,4 +138,23 @@ while IFS= read -r path; do
     fi
 done < <(git -C "${ROOT_DIR}" ls-files)
 
+EXCEPTION_CHECK="${ROOT_DIR}/tests/check-native-exception-boundaries.ps1"
+VIEWER_EXECUTOR="${ROOT_DIR}/src/OcctNative/core/OcctInternal.hxx"
+MODEL_EXECUTOR="${ROOT_DIR}/src/OcctNative/modeling/OcctModelingSessionInternal.hxx"
+ENGINE_CORE="${ROOT_DIR}/src/OcctNative/core/OcctEngine.cpp"
+
+require_file "${EXCEPTION_CHECK}"
+for executor in "${VIEWER_EXECUTOR}" "${MODEL_EXECUTOR}"; do
+    require_text "${executor}" 'catch (const Standard_Failure&' "Native ABI executor must catch Standard_Failure."
+    require_text "${executor}" 'catch (const std::bad_alloc&' "Native ABI executor must catch allocation failures."
+    require_text "${executor}" 'catch (...)' "Native ABI executor must contain an unknown-exception boundary."
+done
+require_text "${VIEWER_EXECUTOR}" 'errorsByThread' "Viewer errors must remain isolated by calling thread."
+require_text "${VIEWER_EXECUTOR}" 'currentErrorCode()' "Viewer status returns must use the calling-thread error context."
+require_text "${ENGINE_CORE}" 'OcctStatus_ErrorOutOfMemory' "Engine error-message ABI must translate allocation failures."
+
+if grep -R -E -n --include='*.cpp' 'engine->errors\.(code|message|scratch)' "${ROOT_DIR}/src/OcctNative"; then
+    fail "Native C ABI sources must not read the shared Viewer error shadow directly."
+fi
+
 printf '[linux-contract] ABI5-only cross-platform source/test/distribution boundaries validated: net8.0 Binary SDK compatibility baseline, net10.0 default execution, .NET 10 SDK.\n'
