@@ -74,6 +74,25 @@ extern "C"
         });
     }
 
+    OcctStatus occt_engine_view_cube_axes_set(
+        OcctEngineHandle handle,
+        OcctBool visible)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeViewCubeStatus(engine, [&]
+        {
+            const Handle(AIS_ViewCube)& cube = engine->viewerContext.viewCube;
+            if (cube.IsNull()) throw std::runtime_error("The view cube has not been initialized.");
+            cube->SetDrawAxes(visible != 0);
+            cube->SetToUpdate();
+            engine->viewerContext.context->Redisplay(
+                cube,
+                Standard_False,
+                Standard_True);
+            engine->requestRedraw();
+        });
+    }
+
     OcctStatus occt_engine_view_cube_try_click(
         OcctEngineHandle handle,
         int x,

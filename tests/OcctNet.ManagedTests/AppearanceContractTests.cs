@@ -52,12 +52,14 @@ public sealed class AppearanceContractTests
         var viewCube = new OcctViewCubeOptions
         {
             Visible = true,
+            DrawAxes = false,
             Position = OcctCornerPosition.LeftUpper,
             SizePixels = 100,
             OffsetX = 12,
             OffsetY = 16
         };
         Assert.IsTrue(viewCube.Visible);
+        Assert.IsFalse(viewCube.DrawAxes);
         Assert.AreEqual(OcctCornerPosition.LeftUpper, viewCube.Position);
         Assert.AreEqual(100, viewCube.SizePixels);
         Assert.AreEqual(12, viewCube.OffsetX);
@@ -72,6 +74,7 @@ public sealed class AppearanceContractTests
         RequireEngineMethod(nameof(OcctEngine.SetViewCubePosition), typeof(OcctCornerPosition));
         RequireEngineMethod(nameof(OcctEngine.SetViewCubeSize), typeof(int));
         RequireEngineMethod(nameof(OcctEngine.SetViewCubeOffset), typeof(int), typeof(int));
+        RequireEngineMethod(nameof(OcctEngine.SetViewCubeAxesVisible), typeof(bool));
     }
 
     private static IReadOnlyDictionary<string, int> EnumValues<TEnum>()
