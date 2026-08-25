@@ -9,6 +9,9 @@ public sealed partial class OcctEngine : IOcctEngine, IDisposable
 
     private readonly long _ownerId = Interlocked.Increment(ref s_nextOwnerId);
     private readonly OcctEngineSafeHandle _handle;
+    private readonly object _lifecycleGate = new();
+    private SynchronizationContext? _surfaceContext;
+    private int _surfaceThreadId;
     private bool _initialized;
 
     public OcctEngine()
@@ -209,12 +212,93 @@ public sealed partial class OcctEngine : IOcctEngine, IDisposable
             throw new InvalidOperationException("Initialize the OCCT engine with a valid window handle first.");
     }
 
-    private void EnsureNotDisposed() =>
+    private void EnsureThreadAccess()
+    {
+        var surfaceThreadId = Volatile.Read(ref _surfaceThreadId);
+        if (surfaceThreadId != 0 && surfaceThreadId != Environment.CurrentManagedThreadId)
+        {
+            throw new InvalidOperationException(
+                "OcctEngine is bound to the thread that initialized its native surface. " +
+                "Marshal the operation to the viewport UI thread or use OcctModelingSession for background work.");
+        }
+    }
+
+    private void EnsureNotDisposed()
+    {
         ObjectDisposedException.ThrowIf(IsDisposed, this);
+        EnsureThreadAccess();
+    }
+
+    private Task<T> RunOnSurfaceThreadAsync<T>(Func<T> operation, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+        if (cancellationToken.IsCancellationRequested)
+            return Task.FromCanceled<T>(cancellationToken);
+
+        var context = _surfaceContext;
+        if (context is null)
+        {
+            if (Volatile.Read(ref _surfaceThreadId) != Environment.CurrentManagedThreadId)
+            {
+                return Task.FromException<T>(new InvalidOperationException(
+                    "The OCCT surface thread has no SynchronizationContext. " +
+                    "Invoke the operation on the thread that initialized the engine."));
+            }
+
+            try
+            {
+                return Task.FromResult(operation());
+            }
+            catch (Exception exception)
+            {
+                return Task.FromException<T>(exception);
+            }
+        }
+
+        var completion = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+        context.Post(_ =>
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                completion.TrySetCanceled(cancellationToken);
+                return;
+            }
+
+            try
+            {
+                EnsureThreadAccess();
+                completion.TrySetResult(operation());
+            }
+            catch (Exception exception)
+            {
+                completion.TrySetException(exception);
+            }
+        }, null);
+        return completion.Task;
+    }
+
+    private async Task RunOnSurfaceThreadAsync(Action operation, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+        await RunOnSurfaceThreadAsync(
+            () =>
+            {
+                operation();
+                return true;
+            },
+            cancellationToken).ConfigureAwait(false);
+    }
 
     public void Dispose()
     {
-        Volatile.Write(ref _initialized, false);
-        _handle.Dispose();
+        lock (_lifecycleGate)
+        {
+            if (IsDisposed) return;
+            EnsureThreadAccess();
+            Volatile.Write(ref _initialized, false);
+            _surfaceContext = null;
+            Volatile.Write(ref _surfaceThreadId, 0);
+            _handle.Dispose();
+        }
     }
 }

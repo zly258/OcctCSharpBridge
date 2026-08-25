@@ -131,3 +131,11 @@ var facePoint = engine.EvaluateFace(face, faceProjection.U, faceProjection.V);
 WPF 自己拥有 Native Child HWND，并把 Surface Resize 与 Redraw 分离，以合并连续布局通知。
 
 Avalonia 属于正式 SDK。Windows 使用 HWND Host；Linux 当前使用 X11/XWayland XID Host。两套 Backend 都归一化为同一套托管 Pointer/Keyboard Contract，因此未来即使增加 Native Wayland Host，也不需要修改应用层输入 API。
+
+## Engine 线程亲和性
+
+`OcctEngine` 在成功初始化 Native Surface 时绑定当前线程，并记录当前 `SynchronizationContext`。初始化后的同步 Viewer、AIS、Scene、Selection 和 Exchange 调用必须发生在该线程；跨线程同步调用会抛出明确的 `InvalidOperationException`，而不是继续进入非线程安全的 OCCT Viewer。
+
+`OcctEngine` 的异步导入导出方法会投递到 Surface 初始化线程，不再通过 `Task.Run` 从线程池直接操作 Viewer。此方式保证线程安全，但文件解析期间仍可能占用 UI 线程。需要真正的后台并行交换或建模时，应使用独立的 `OcctModelingSession`，完成后再在 UI 线程更新 Viewer Shape。
+
+`OcctEngine.Dispose()` 也应在 Surface 初始化线程调用。WinForms、WPF 和 Avalonia Adapter 已在各自的 Native Host 生命周期中执行该操作。
