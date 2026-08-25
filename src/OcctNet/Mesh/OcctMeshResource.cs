@@ -62,6 +62,52 @@ public sealed class OcctMeshResource : IDisposable
         return new OcctMesh(nodes, triangles);
     }
 
+    /// <summary>
+    /// Copies vertices directly from the native snapshot into a caller-provided buffer.
+    /// </summary>
+    public unsafe int CopyVertices(Span<OcctMeshVertex> destination)
+    {
+        var (nodeCount, _) = GetCounts();
+        if (destination.Length < nodeCount)
+            throw new ArgumentException("Destination is smaller than the native vertex count.", nameof(destination));
+
+        fixed (OcctMeshVertex* pointer = destination)
+        {
+            var status = ModelNativeMethods.MeshVerticesCopyToPointer(
+                _handle,
+                pointer,
+                destination.Length,
+                out var written);
+            ThrowIfFailed(status, nameof(CopyVertices));
+            if (written != nodeCount)
+                throw new InvalidOperationException("Native mesh-node count changed during direct copy.");
+            return written;
+        }
+    }
+
+    /// <summary>
+    /// Copies triangles directly from the native snapshot into a caller-provided buffer.
+    /// </summary>
+    public unsafe int CopyTriangles(Span<OcctModelMeshTriangle> destination)
+    {
+        var (_, triangleCount) = GetCounts();
+        if (destination.Length < triangleCount)
+            throw new ArgumentException("Destination is smaller than the native triangle count.", nameof(destination));
+
+        fixed (OcctModelMeshTriangle* pointer = destination)
+        {
+            var status = ModelNativeMethods.MeshTrianglesCopyToPointer(
+                _handle,
+                pointer,
+                destination.Length,
+                out var written);
+            ThrowIfFailed(status, nameof(CopyTriangles));
+            if (written != triangleCount)
+                throw new InvalidOperationException("Native mesh-triangle count changed during direct copy.");
+            return written;
+        }
+    }
+
     public void Dispose()
     {
         _handle.Dispose();

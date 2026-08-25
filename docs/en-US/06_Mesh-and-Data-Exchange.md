@@ -17,3 +17,10 @@ These Core exchange semantics are host-independent. WinForms, WPF and Avalonia a
 Applications can also call `CreateShapeFromModel(session, shape)` to add an existing modeling shape to the viewer. Call it on the engine surface thread. The native bridge obtains a shape copy while holding the modeling-session lock before creating the viewer presentation.
 
 Cancellation is honored before parsing starts and before the viewer commit. An OCCT parser already running is not forcibly interrupted, but a cancelled result is not added to the viewer.
+
+
+## Direct mesh buffer copies
+
+`OcctMeshResource.CopyVertices(Span<OcctMeshVertex>)` and `CopyTriangles(Span<OcctModelMeshTriangle>)` write directly into caller-owned pinned buffers. This avoids the intermediate marshalling arrays used by object-oriented mesh snapshots and is recommended for render uploads, large-model processing, and reusable pooled buffers.
+
+Query `NodeCount` and `TriangleCount` before renting or allocating buffers. A destination smaller than the corresponding native count is rejected before entering the copy operation. Existing `GetMesh()` behavior remains compatible.

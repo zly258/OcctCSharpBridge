@@ -238,6 +238,31 @@ internal struct NativeModelMeshParameters
     public int ControlSurfaceDeflection;
 }
 
+/// <summary>
+/// Blittable mesh vertex layout for direct Native-to-managed buffer copies.
+/// </summary>
+[StructLayout(LayoutKind.Sequential)]
+public struct OcctMeshVertex
+{
+    public OcctPoint3d Point;
+    public double U;
+    public double V;
+    public OcctVector3d Normal;
+    private int _hasUv;
+    private int _hasNormal;
+
+    public readonly bool HasUv => _hasUv != 0;
+    public readonly bool HasNormal => _hasNormal != 0;
+
+    internal readonly OcctModelMeshNode ToManaged() => new(
+        Point,
+        U,
+        V,
+        Normal,
+        HasUv,
+        HasNormal);
+}
+
 [StructLayout(LayoutKind.Sequential)]
 internal struct NativeModelMeshNode
 {

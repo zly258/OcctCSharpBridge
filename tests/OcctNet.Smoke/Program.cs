@@ -34,6 +34,17 @@ if (ownedMesh.NodeCount <= 0 ||
         "Owned mesh snapshot did not survive deletion of its source registry entry.");
 }
 
+var directVertices = new OcctMeshVertex[ownedMesh.NodeCount];
+var directTriangles = new OcctModelMeshTriangle[ownedMesh.TriangleCount];
+if (ownedMesh.CopyVertices(directVertices) != directVertices.Length ||
+    ownedMesh.CopyTriangles(directTriangles) != directTriangles.Length)
+{
+    throw new InvalidOperationException("Direct mesh Span copy returned an unexpected element count.");
+}
+if (directVertices.Length == 0 || !directVertices[0].Point.IsFinite)
+    throw new InvalidOperationException("Direct mesh Span copy returned an invalid vertex.");
+
+
 var box = model.MakeBox(100, 80, 60);
 var cylinder = model.MakeCylinder(new OcctPoint3d(50, 40, -10), OcctVector3d.UnitZ, 12, 80);
 var cut = model.Cut(box, cylinder);
