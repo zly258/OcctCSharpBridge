@@ -41,7 +41,7 @@ namespace
     OcctStatus requireInitializedEngine(Engine* engine)
     {
         if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
-        if (!validateInitialized(engine)) return engine->errors.code;
+        if (!validateInitialized(engine)) return engine->currentErrorCode();
         return OcctStatus_Ok;
     }
 
@@ -57,7 +57,7 @@ namespace
             *result = function();
             if (*result <= 0) throw std::runtime_error("Geometry operation did not create a viewer object.");
         });
-        return ok != 0 ? OcctStatus_Ok : engine->errors.code;
+        return ok != 0 ? OcctStatus_Ok : engine->currentErrorCode();
     }
 
     ObjectEntry& requiredShape(Engine* engine, OcctObjectId id)
