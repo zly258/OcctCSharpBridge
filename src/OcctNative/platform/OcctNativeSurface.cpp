@@ -75,7 +75,7 @@ namespace
     OcctStatus requireInitializedEngine(Engine* engine)
     {
         if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
-        if (!validateInitialized(engine)) return engine->errors.code;
+        if (!validateInitialized(engine)) return engine->currentErrorCode();
         return OcctStatus_Ok;
     }
 }
@@ -93,17 +93,17 @@ extern "C"
         if (surface == nullptr)
         {
             engine->setError(OcctStatus_ErrorInvalidArgument, "The native surface descriptor is null.");
-            return engine->errors.code;
+            return engine->currentErrorCode();
         }
         if (surface->structSize < sizeof(OcctNativeSurface) || surface->apiVersion != 1)
         {
             engine->setError(OcctStatus_ErrorInvalidArgument, "Unsupported native surface descriptor size or version.");
-            return engine->errors.code;
+            return engine->currentErrorCode();
         }
         if (surface->handle == nullptr)
         {
             engine->setError(OcctStatus_ErrorInvalidArgument, "The native surface handle is null.");
-            return engine->errors.code;
+            return engine->currentErrorCode();
         }
 
         std::string platformError;
@@ -113,14 +113,14 @@ extern "C"
         if (platformStatus != OcctStatus_Ok)
         {
             engine->setError(platformStatus, platformError);
-            return engine->errors.code;
+            return engine->currentErrorCode();
         }
 
         const int succeeded = execute(engine, [&]
         {
             initializeViewer(engine, surface->handle, surface->display);
         });
-        return succeeded != 0 ? OcctStatus_Ok : engine->errors.code;
+        return succeeded != 0 ? OcctStatus_Ok : engine->currentErrorCode();
     }
 
     OcctStatus occt_engine_surface_resize(OcctEngineHandle handle, int redraw)
@@ -132,7 +132,7 @@ extern "C"
         {
             engine->viewerContext.view->MustBeResized();
             if (redraw != 0) engine->viewerContext.requestRedraw();
-        }) != 0 ? OcctStatus_Ok : engine->errors.code;
+        }) != 0 ? OcctStatus_Ok : engine->currentErrorCode();
     }
 
     OcctStatus occt_engine_surface_redraw(OcctEngineHandle handle)
@@ -142,6 +142,6 @@ extern "C"
         if (initialized != OcctStatus_Ok) return initialized;
         return execute(engine, [&] { engine->requestRedraw(); }) != 0
             ? OcctStatus_Ok
-            : engine->errors.code;
+            : engine->currentErrorCode();
     }
 }

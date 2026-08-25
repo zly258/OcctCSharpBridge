@@ -36,7 +36,7 @@ namespace
     OcctStatus requireInitializedEngine(Engine* engine)
     {
         if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
-        if (!validateInitialized(engine)) return engine->errors.code;
+        if (!validateInitialized(engine)) return engine->currentErrorCode();
         return OcctStatus_Ok;
     }
 
@@ -49,7 +49,7 @@ namespace
         if (status != OcctStatus_Ok) return status;
         return execute(engine, std::forward<Function>(function)) != 0
             ? OcctStatus_Ok
-            : engine->errors.code;
+            : engine->currentErrorCode();
     }
 
     ObjectEntry& requiredObject(Engine* engine, OcctObjectId objectId)

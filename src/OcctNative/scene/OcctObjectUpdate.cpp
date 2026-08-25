@@ -21,7 +21,7 @@ namespace
     OcctStatus requireInitializedEngine(Engine* engine)
     {
         if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
-        if (!validateInitialized(engine)) return engine->errors.code;
+        if (!validateInitialized(engine)) return engine->currentErrorCode();
         return OcctStatus_Ok;
     }
 }
@@ -60,7 +60,7 @@ extern "C"
             }
             *viewerObjectId = engine->addShape(sourceShape);
         });
-        return succeeded != 0 ? OcctStatus_Ok : engine->errors.code;
+        return succeeded != 0 ? OcctStatus_Ok : engine->currentErrorCode();
     }
 
     OcctStatus occt_engine_object_shape_update_from_model(
@@ -133,6 +133,6 @@ extern "C"
 
             engine->requestRedraw();
         });
-        return succeeded != 0 ? OcctStatus_Ok : engine->errors.code;
+        return succeeded != 0 ? OcctStatus_Ok : engine->currentErrorCode();
     }
 }
