@@ -83,6 +83,7 @@
       "geometry/OcctModelingGeometryQueries.h",
       "geometry/OcctModelingAnalyticGeometry.h",
       "geometry/OcctModelingDifferentialGeometry.h",
+      "geometry/OcctModelingContinuity.h",
       "modeling/OcctModelingBoolean.h",
       "modeling/OcctModelingFeatures.h",
       "modeling/OcctModelingHealing.h",
