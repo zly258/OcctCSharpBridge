@@ -27,3 +27,10 @@ Query `NodeCount` and `TriangleCount` before renting or allocating buffers. A de
 
 
 For per-face processing, use `GetFaceMeshCounts` followed by `CopyFaceMesh`. Combined shape meshes now precompute every face range, allocate exact final buffers once, and copy each face directly into its final slice instead of building temporary per-face meshes and growing lists.
+
+
+## Editing imported STEP/XDE nodes
+
+Nodes returned by `ImportStepDocument` can be edited through `SetStepNodeName`, `SetStepNodeVisibility`, and `SetStepOccurrenceTransform`. Node IDs are XDE path identifiers rather than display names, so duplicate names do not make edits ambiguous. Occurrence transforms are limited to component-instance nodes.
+
+The managed node snapshot is updated after a successful native edit. Export with `ExportAllStep` to write the retained XDE document. Global transforms of descendants should be treated as an import-time snapshot until the document is read again.

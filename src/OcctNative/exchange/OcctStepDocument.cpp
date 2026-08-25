@@ -317,6 +317,32 @@ namespace
         }
     }
 
+    TDF_Label findLastStepNode(Engine* engine, const char* nodeId)
+    {
+        if (engine == nullptr || nodeId == nullptr || nodeId[0] == '\0')
+            throw std::invalid_argument("STEP node ID is empty.");
+        if (engine->documents.stepDocuments.empty() || engine->documents.stepDocuments.back().IsNull())
+            throw std::logic_error("No imported STEP/XDE document is available.");
+
+        TopLoc_Location location;
+        const TDF_Label label = XCAFPrs_DocumentExplorer::FindLabelFromPathId(
+            engine->documents.stepDocuments.back(),
+            TCollection_AsciiString(nodeId),
+            location);
+        if (label.IsNull()) throw std::invalid_argument("STEP node ID does not exist.");
+        return label;
+    }
+
+    gp_Trsf stepTransform(const OcctStepTransform3d& value)
+    {
+        gp_Trsf result;
+        result.SetValues(
+            value.m00, value.m01, value.m02, value.m03,
+            value.m10, value.m11, value.m12, value.m13,
+            value.m20, value.m21, value.m22, value.m23);
+        return result;
+    }
+
     std::string buildLastStepDocumentJson(Engine* engine)
     {
         if (engine->documents.stepDocuments.empty() || engine->documents.stepDocuments.back().IsNull())
@@ -462,6 +488,70 @@ namespace OcctBridge
 
 extern "C"
 {
+    OcctStatus occt_engine_step_node_name_set(
+        OcctEngineHandle handle,
+        const char* nodeId,
+        const char* utf8Name)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (!validateInitialized(engine)) return engine == nullptr
+            ? OcctStatus_ErrorInvalidHandle
+            : engine->currentErrorCode();
+        if (utf8Name == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        return execute(engine, [&]
+        {
+            const TDF_Label label = findLastStepNode(engine, nodeId);
+            TDataStd_Name::Set(label, TCollection_ExtendedString(utf8Name, true));
+        }) != 0 ? OcctStatus_Ok : engine->currentErrorCode();
+    }
+
+    OcctStatus occt_engine_step_node_visibility_set(
+        OcctEngineHandle handle,
+        const char* nodeId,
+        OcctBool visible)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (!validateInitialized(engine)) return engine == nullptr
+            ? OcctStatus_ErrorInvalidHandle
+            : engine->currentErrorCode();
+
+        return execute(engine, [&]
+        {
+            const TDF_Label label = findLastStepNode(engine, nodeId);
+            const Handle(TDocStd_Document)& document = engine->documents.stepDocuments.back();
+            const Handle(XCAFDoc_ColorTool) colorTool =
+                XCAFDoc_DocumentTool::ColorTool(document->Main());
+            if (colorTool.IsNull()) throw std::logic_error("XDE color tool is unavailable.");
+            colorTool->SetVisibility(label, visible != 0 ? Standard_True : Standard_False);
+        }) != 0 ? OcctStatus_Ok : engine->currentErrorCode();
+    }
+
+    OcctStatus occt_engine_step_node_transform_set(
+        OcctEngineHandle handle,
+        const char* nodeId,
+        const OcctStepTransform3d* transform)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (!validateInitialized(engine)) return engine == nullptr
+            ? OcctStatus_ErrorInvalidHandle
+            : engine->currentErrorCode();
+        if (transform == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        return execute(engine, [&]
+        {
+            const TDF_Label label = findLastStepNode(engine, nodeId);
+            if (!XCAFDoc_ShapeTool::IsComponent(label))
+                throw std::invalid_argument("Only STEP component occurrences have editable transforms.");
+
+            const Handle(TDocStd_Document)& document = engine->documents.stepDocuments.back();
+            const Handle(XCAFDoc_ShapeTool) shapeTool =
+                XCAFDoc_DocumentTool::ShapeTool(document->Main());
+            if (shapeTool.IsNull()) throw std::logic_error("XDE shape tool is unavailable.");
+            shapeTool->SetLocation(label, TopLoc_Location(stepTransform(*transform)));
+        }) != 0 ? OcctStatus_Ok : engine->currentErrorCode();
+    }
+
     OcctStatus occt_engine_step_document_json_get(
         OcctEngineHandle handle,
         char* utf8Buffer,
