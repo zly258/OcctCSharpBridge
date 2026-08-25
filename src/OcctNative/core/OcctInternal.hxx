@@ -41,9 +41,11 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <new>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
@@ -52,7 +54,11 @@ namespace OcctBridge
     class Engine
     {
     public:
+        // `errors` remains the status shadow used by existing ABI implementations.
+        // Public last-error retrieval uses the calling thread's isolated context.
         ErrorContext errors;
+        mutable std::recursive_mutex errorMutex;
+        mutable std::unordered_map<std::thread::id, ErrorContext> errorsByThread;
         ViewerContext viewerContext;
         SceneRegistry scene;
         DocumentStore documents;
@@ -61,6 +67,8 @@ namespace OcctBridge
         void clearError();
         void setError(const std::string& message);
         void setError(OcctStatus code, const std::string& message);
+        OcctStatus currentErrorCode() const;
+        std::string currentErrorMessage() const;
         ObjectEntry* findObject(OcctObjectId id);
         const ObjectEntry* findObject(OcctObjectId id) const;
         ObjectEntry* findShape(OcctObjectId id);
