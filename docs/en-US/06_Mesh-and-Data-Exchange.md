@@ -37,3 +37,6 @@ The managed node snapshot is updated after a successful native edit. Export with
 
 
 `AddStepComponent` creates another occurrence of an existing XDE definition under an assembly and returns a refreshed document snapshot. `RemoveStepComponent` removes a leaf occurrence and its matching Viewer object. Both operations rebuild the leaf-to-viewer mapping before returning. Use the returned snapshot for subsequent edits; earlier snapshots intentionally remain immutable representations of their read time.
+
+
+`SetStepNodeSurfaceColor` writes XDE surface RGBA, including transparency through alpha. `SetStepNodeCurveColor` writes the curve RGB style. Passing `null` clears the explicit color so XDE style inheritance can apply again. Every component must be finite and between zero and one.

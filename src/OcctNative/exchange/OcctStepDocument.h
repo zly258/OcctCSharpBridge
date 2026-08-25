@@ -21,6 +21,21 @@ extern "C"
         const char* nodeId,
         OcctBool visible);
 
+    struct OcctStepColor
+    {
+        double r;
+        double g;
+        double b;
+        double a;
+    };
+
+    OCCTBRIDGE_API OcctStatus occt_engine_step_node_color_set(
+        OcctEngineHandle handle,
+        const char* nodeId,
+        int colorKind,
+        const OcctStepColor* color,
+        OcctBool hasColor);
+
     OCCTBRIDGE_API OcctStatus occt_engine_step_node_transform_set(
         OcctEngineHandle handle,
         const char* nodeId,

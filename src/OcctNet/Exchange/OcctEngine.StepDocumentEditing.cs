@@ -23,6 +23,64 @@ public sealed partial class OcctEngine
         node.Style = node.Style with { Visible = visible };
     }
 
+    /// <summary>Sets or clears the XDE surface color and transparency of a STEP node.</summary>
+    public void SetStepNodeSurfaceColor(OcctAssemblyNode node, OcctAssemblyColor? color)
+    {
+        SetStepNodeColor(node, color, colorKind: 0, nameof(SetStepNodeSurfaceColor));
+        node.Style = node.Style with { SurfaceColor = color };
+    }
+
+    /// <summary>Sets or clears the XDE curve color of a STEP node.</summary>
+    public void SetStepNodeCurveColor(OcctAssemblyNode node, OcctAssemblyColor? color)
+    {
+        SetStepNodeColor(node, color, colorKind: 1, nameof(SetStepNodeCurveColor));
+        node.Style = node.Style with { CurveColor = color };
+    }
+
+    private void SetStepNodeColor(
+        OcctAssemblyNode node,
+        OcctAssemblyColor? color,
+        int colorKind,
+        string operation)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        var native = default(NativeStepColor);
+        if (color is { } value)
+        {
+            ValidateStepColor(value, nameof(color));
+            native = new NativeStepColor
+            {
+                R = value.R,
+                G = value.G,
+                B = value.B,
+                A = value.A
+            };
+        }
+
+        EnsureInitialized();
+        CheckStepNodeEdit(StepDocumentNativeMethods.occt_engine_step_node_color_set(
+            _handle,
+            node.Id,
+            colorKind,
+            in native,
+            color.HasValue ? 1 : 0), operation);
+    }
+
+    private static void ValidateStepColor(OcctAssemblyColor color, string parameterName)
+    {
+        if (!double.IsFinite(color.R) || !double.IsFinite(color.G) ||
+            !double.IsFinite(color.B) || !double.IsFinite(color.A) ||
+            color.R < 0 || color.R > 1 ||
+            color.G < 0 || color.G > 1 ||
+            color.B < 0 || color.B > 1 ||
+            color.A < 0 || color.A > 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                parameterName,
+                "STEP color components must be finite values from zero to one.");
+        }
+    }
+
     /// <summary>Updates the local XDE location of a component occurrence.</summary>
     public void SetStepOccurrenceTransform(
         OcctAssemblyNode occurrence,

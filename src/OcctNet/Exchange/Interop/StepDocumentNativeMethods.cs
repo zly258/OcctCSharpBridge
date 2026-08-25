@@ -4,6 +4,15 @@ using System.Runtime.InteropServices;
 namespace OcctNet;
 
 [StructLayout(LayoutKind.Sequential)]
+internal struct NativeStepColor
+{
+    public double R;
+    public double G;
+    public double B;
+    public double A;
+}
+
+[StructLayout(LayoutKind.Sequential)]
 internal struct NativeStepTransform3d
 {
     public double M00; public double M01; public double M02; public double M03;
@@ -35,6 +44,15 @@ internal static partial class StepDocumentNativeMethods
         OcctEngineSafeHandle handle,
         string nodeId,
         int visible);
+
+    [LibraryImport(NativeMethods.LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_step_node_color_set(
+        OcctEngineSafeHandle handle,
+        string nodeId,
+        int colorKind,
+        in NativeStepColor color,
+        int hasColor);
 
     [LibraryImport(NativeMethods.LibraryName, StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]

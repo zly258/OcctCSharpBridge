@@ -579,6 +579,58 @@ extern "C"
         }) != 0 ? OcctStatus_Ok : engine->currentErrorCode();
     }
 
+    OcctStatus occt_engine_step_node_color_set(
+        OcctEngineHandle handle,
+        const char* nodeId,
+        int colorKind,
+        const OcctStepColor* value,
+        OcctBool hasColor)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (!validateInitialized(engine)) return engine == nullptr
+            ? OcctStatus_ErrorInvalidHandle
+            : engine->currentErrorCode();
+        if (colorKind < 0 || colorKind > 1) return OcctStatus_ErrorInvalidArgument;
+        if (hasColor != 0 && value == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        return execute(engine, [&]
+        {
+            const TDF_Label label = findLastStepNode(engine, nodeId);
+            const Handle(TDocStd_Document)& document = engine->documents.stepDocuments.back();
+            const Handle(XCAFDoc_ColorTool) colorTool =
+                XCAFDoc_DocumentTool::ColorTool(document->Main());
+            if (colorTool.IsNull()) throw std::logic_error("XDE color tool is unavailable.");
+
+            const XCAFDoc_ColorType type =
+                colorKind == 0 ? XCAFDoc_ColorSurf : XCAFDoc_ColorCurv;
+            if (hasColor == 0)
+            {
+                colorTool->UnSetColor(label, type);
+                return;
+            }
+
+            const double components[] = {value->r, value->g, value->b, value->a};
+            for (const double component : components)
+            {
+                if (!std::isfinite(component) || component < 0.0 || component > 1.0)
+                    throw std::invalid_argument("STEP color components must be finite values from zero to one.");
+            }
+
+            const Quantity_Color rgb(value->r, value->g, value->b, Quantity_TOC_RGB);
+            if (type == XCAFDoc_ColorSurf)
+            {
+                colorTool->SetColor(
+                    label,
+                    Quantity_ColorRGBA(rgb, static_cast<float>(value->a)),
+                    XCAFDoc_ColorSurf);
+            }
+            else
+            {
+                colorTool->SetColor(label, rgb, XCAFDoc_ColorCurv);
+            }
+        }) != 0 ? OcctStatus_Ok : engine->currentErrorCode();
+    }
+
     OcctStatus occt_engine_step_node_transform_set(
         OcctEngineHandle handle,
         const char* nodeId,
