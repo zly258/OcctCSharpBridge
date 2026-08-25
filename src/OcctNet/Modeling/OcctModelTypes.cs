@@ -133,6 +133,88 @@ internal struct NativeModelBooleanOptions
     public int SimplifyFaces;
 }
 
+/// <summary>Continuity level: None, order zero, order one, or order two.</summary>
+public enum OcctContinuityLevel
+{
+    None = 0,
+    Order0 = 1,
+    Order1 = 2,
+    Order2 = 3
+}
+
+/// <summary>Tolerances used for edge-to-edge parametric and geometric continuity checks.</summary>
+public readonly record struct OcctCurveContinuityOptions(
+    double PositionTolerance,
+    double AngularTolerance,
+    double CurvatureTolerance,
+    double FirstDerivativeTolerance,
+    double SecondDerivativeTolerance)
+{
+    public static OcctCurveContinuityOptions Default => new(1e-7, 1e-6, 1e-6, 1e-6, 1e-6);
+
+    internal NativeModelContinuityOptions ToNative() => new()
+    {
+        PositionTolerance = PositionTolerance,
+        AngularTolerance = AngularTolerance,
+        CurvatureTolerance = CurvatureTolerance,
+        FirstDerivativeTolerance = FirstDerivativeTolerance,
+        SecondDerivativeTolerance = SecondDerivativeTolerance
+    };
+}
+
+/// <summary>Measured C0-C2 and G0-G2 continuity at a selected pair of edge endpoints.</summary>
+public readonly record struct OcctCurveContinuityResult(
+    double PositionGap,
+    double TangentAngleRadians,
+    double CurvatureVectorGap,
+    double FirstSpeed,
+    double SecondSpeed,
+    double FirstCurvature,
+    double SecondCurvature,
+    OcctContinuityLevel ParametricLevel,
+    OcctContinuityLevel GeometricLevel,
+    bool HasFirstDerivatives,
+    bool HasSecondDerivatives);
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeModelContinuityOptions
+{
+    public double PositionTolerance;
+    public double AngularTolerance;
+    public double CurvatureTolerance;
+    public double FirstDerivativeTolerance;
+    public double SecondDerivativeTolerance;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeModelCurveContinuityResult
+{
+    public double PositionGap;
+    public double TangentAngleRadians;
+    public double CurvatureVectorGap;
+    public double FirstSpeed;
+    public double SecondSpeed;
+    public double FirstCurvature;
+    public double SecondCurvature;
+    public int ParametricLevel;
+    public int GeometricLevel;
+    public int HasFirstDerivatives;
+    public int HasSecondDerivatives;
+
+    public readonly OcctCurveContinuityResult ToManaged() => new(
+        PositionGap,
+        TangentAngleRadians,
+        CurvatureVectorGap,
+        FirstSpeed,
+        SecondSpeed,
+        FirstCurvature,
+        SecondCurvature,
+        (OcctContinuityLevel)ParametricLevel,
+        (OcctContinuityLevel)GeometricLevel,
+        HasFirstDerivatives != 0,
+        HasSecondDerivatives != 0);
+}
+
 [StructLayout(LayoutKind.Sequential)]
 internal struct NativeModelAlgorithmResult
 {

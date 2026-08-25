@@ -214,6 +214,30 @@ extern "C"
         int hasCenterOfCurvature;
     };
 
+    struct OcctModelContinuityOptions
+    {
+        double positionTolerance;
+        double angularTolerance;
+        double curvatureTolerance;
+        double firstDerivativeTolerance;
+        double secondDerivativeTolerance;
+    };
+
+    struct OcctModelCurveContinuityResult
+    {
+        double positionGap;
+        double tangentAngleRadians;
+        double curvatureVectorGap;
+        double firstSpeed;
+        double secondSpeed;
+        double firstCurvature;
+        double secondCurvature;
+        int parametricLevel;
+        int geometricLevel;
+        int hasFirstDerivatives;
+        int hasSecondDerivatives;
+    };
+
     struct OcctModelSurfacePeriodicity
     {
         int isUClosed;

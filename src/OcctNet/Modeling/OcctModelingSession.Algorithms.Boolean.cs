@@ -56,8 +56,7 @@ public sealed partial class OcctModelingSession
         var shapeIds = ShapeIds(shapes);
         if (shapeIds.Length < 2)
             throw new ArgumentException("General Fuse requires at least two shapes.", nameof(shapes));
-        var actual = options ?? OcctModelBooleanOptions.Default;
-        ValidateAdvancedBooleanOptions(actual, nameof(options));
+        var actual = AdvancedBooleanOptions(options, nameof(options));
         var nativeOptions = actual.ToNative();
         var status = ModelNativeMethods.occt_model_boolean_general_fuse_execute(
             _handle,
@@ -94,8 +93,7 @@ public sealed partial class OcctModelingSession
         if (avoidIds.Any(id => !argumentSet.Contains(id)))
             throw new ArgumentException("Every avoid shape must also be a CellsBuilder argument.", nameof(avoid));
 
-        var actual = options ?? OcctModelBooleanOptions.Default;
-        ValidateAdvancedBooleanOptions(actual, nameof(options));
+        var actual = AdvancedBooleanOptions(options, nameof(options));
         var nativeOptions = actual.ToNative();
         var status = ModelNativeMethods.occt_model_boolean_cells_execute(
             _handle,
@@ -146,14 +144,18 @@ public sealed partial class OcctModelingSession
         return result;
     }
 
-    private static void ValidateAdvancedBooleanOptions(
-        OcctModelBooleanOptions options,
+    private static OcctModelBooleanOptions AdvancedBooleanOptions(
+        OcctModelBooleanOptions? options,
         string parameterName)
     {
-        ValidateBooleanOptions(options, parameterName);
-        if (options.SimplifyEdges || options.SimplifyFaces)
+        var actual = options ?? OcctModelBooleanOptions.Default;
+        if (options.HasValue && (actual.SimplifyEdges || actual.SimplifyFaces))
             throw new NotSupportedException(
                 "BOPAlgo General Fuse and CellsBuilder do not expose BRepAlgoAPI result simplification.");
+        actual.SimplifyEdges = false;
+        actual.SimplifyFaces = false;
+        ValidateBooleanOptions(actual, parameterName);
+        return actual;
     }
 
     private static void ValidateBooleanOptions(OcctModelBooleanOptions options, string parameterName)
