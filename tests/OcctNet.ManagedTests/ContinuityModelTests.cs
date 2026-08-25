@@ -21,11 +21,11 @@ public sealed class ContinuityModelTests
     [TestMethod]
     public void ContinuityLevelsPreserveCAndGOrders()
     {
-        Assert.AreEqual(0, (int)OcctContinuityLevel.None);
-        Assert.AreEqual(1, (int)OcctContinuityLevel.Order0);
-        Assert.AreEqual(2, (int)OcctContinuityLevel.Order1);
-        Assert.AreEqual(3, (int)OcctContinuityLevel.Order2);
+        int[] actualValues = [.. Enum.GetValues<OcctContinuityLevel>().Select(static level => (int)level)];
+
+        CollectionAssert.AreEqual(new[] { 0, 1, 2, 3 }, actualValues);
     }
+
     [TestMethod]
     public void SurfaceQualityDefaultsAreBounded()
     {
@@ -38,5 +38,4 @@ public sealed class ContinuityModelTests
         Assert.IsTrue(options.ViewDirection.IsFinite);
         Assert.IsTrue(options.ViewDirection.LengthSquared > 0);
     }
-
 }
