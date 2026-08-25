@@ -104,35 +104,38 @@ public sealed partial class OcctEngine
     // Use OcctModelingSession for truly parallel, headless file processing.
     // -------------------------------------------------------------------------
 
-    /// <summary>Asynchronously imports a CAD file using automatic format detection.</summary>
+    /// <summary>
+    /// Imports a CAD file on an isolated headless session and creates its viewer shape
+    /// on the native surface thread.
+    /// </summary>
     public Task<OcctShape> ImportAsync(
         string filePath,
         CancellationToken cancellationToken = default) =>
-        RunOnSurfaceThreadAsync(() => Import(filePath), cancellationToken);
+        ImportInBackgroundAsync(filePath, static (session, path) => session.Import(path), cancellationToken);
 
-    /// <summary>Asynchronously imports a STEP file.</summary>
+    /// <summary>Imports a STEP file through an isolated headless session.</summary>
     public Task<OcctShape> ImportStepAsync(
         string filePath,
         CancellationToken cancellationToken = default) =>
-        RunOnSurfaceThreadAsync(() => ImportStep(filePath), cancellationToken);
+        ImportInBackgroundAsync(filePath, static (session, path) => session.ImportStep(path), cancellationToken);
 
-    /// <summary>Asynchronously imports an IGES file.</summary>
+    /// <summary>Imports an IGES file through an isolated headless session.</summary>
     public Task<OcctShape> ImportIgesAsync(
         string filePath,
         CancellationToken cancellationToken = default) =>
-        RunOnSurfaceThreadAsync(() => ImportIges(filePath), cancellationToken);
+        ImportInBackgroundAsync(filePath, static (session, path) => session.ImportIges(path), cancellationToken);
 
-    /// <summary>Asynchronously imports a BRep file.</summary>
+    /// <summary>Imports a BRep file through an isolated headless session.</summary>
     public Task<OcctShape> ImportBrepAsync(
         string filePath,
         CancellationToken cancellationToken = default) =>
-        RunOnSurfaceThreadAsync(() => ImportBrep(filePath), cancellationToken);
+        ImportInBackgroundAsync(filePath, static (session, path) => session.ImportBrep(path), cancellationToken);
 
-    /// <summary>Asynchronously imports an STL file.</summary>
+    /// <summary>Imports an STL file through an isolated headless session.</summary>
     public Task<OcctShape> ImportStlAsync(
         string filePath,
         CancellationToken cancellationToken = default) =>
-        RunOnSurfaceThreadAsync(() => ImportStl(filePath), cancellationToken);
+        ImportInBackgroundAsync(filePath, static (session, path) => session.ImportStl(path), cancellationToken);
 
     /// <summary>Asynchronously exports a shape to a STEP file.</summary>
     public Task ExportStepAsync(
@@ -172,6 +175,30 @@ public sealed partial class OcctEngine
         RunOnSurfaceThreadAsync(() => ExportStl(shape, filePath, linearDeflection, angularDeflection, ascii), cancellationToken);
 
     private delegate OcctStatus ImportCall(OcctEngineSafeHandle handle, string path, out long result);
+    private delegate OcctModelShape BackgroundImport(OcctModelingSession session, string path);
+
+    private async Task<OcctShape> ImportInBackgroundAsync(
+        string filePath,
+        BackgroundImport import,
+        CancellationToken cancellationToken)
+    {
+        ValidatePath(filePath);
+        if (!IsInitialized)
+            throw new InvalidOperationException("Initialize the OCCT engine before starting a background import.");
+        ArgumentNullException.ThrowIfNull(import);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        using var session = new OcctModelingSession();
+        var fullPath = Path.GetFullPath(filePath);
+        var modelShape = await Task.Run(
+            () => import(session, fullPath),
+            CancellationToken.None).ConfigureAwait(false);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        return await RunOnSurfaceThreadAsync(
+            () => CreateShapeFromModel(session, modelShape),
+            cancellationToken).ConfigureAwait(false);
+    }
 
     private OcctShape ImportSpecific(string filePath, ImportCall call)
     {
