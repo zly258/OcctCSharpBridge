@@ -8,6 +8,8 @@ if (!string.Equals(OcctBridgeInfo.NativeVersion, OcctBridgeInfo.ManagedVersion, 
 if (string.IsNullOrWhiteSpace(OcctBridgeInfo.BuildInfo))
     throw new InvalidOperationException("Native bridge build information is empty.");
 
+ConcurrencyStress.Run();
+
 using var model = new OcctModelingSession();
 
 var snapshotSource = model.MakeBox(3, 4, 5);
