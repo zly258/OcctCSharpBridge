@@ -48,6 +48,70 @@ public sealed partial class OcctModelingSession
         OcctModelBooleanOptions? options = null) =>
         Boolean(OcctBooleanOperation.Section, left, right, options);
 
+    /// <summary>Runs OCCT General Fuse for all supplied arguments and returns every split part.</summary>
+    public OcctModelAlgorithmResult GeneralFuse(
+        IEnumerable<OcctModelShape> shapes,
+        OcctModelBooleanOptions? options = null)
+    {
+        var shapeIds = ShapeIds(shapes);
+        if (shapeIds.Length < 2)
+            throw new ArgumentException("General Fuse requires at least two shapes.", nameof(shapes));
+        var actual = options ?? OcctModelBooleanOptions.Default;
+        ValidateAdvancedBooleanOptions(actual, nameof(options));
+        var nativeOptions = actual.ToNative();
+        var status = ModelNativeMethods.occt_model_boolean_general_fuse_execute(
+            _handle,
+            shapeIds,
+            shapeIds.Length,
+            in nativeOptions,
+            out var result);
+        return CheckAlgorithm(status, result);
+    }
+
+    /// <summary>Selects CellsBuilder regions that are inside every take shape and outside every avoid shape.</summary>
+    public OcctModelAlgorithmResult BuildCells(
+        IEnumerable<OcctModelShape> arguments,
+        IEnumerable<OcctModelShape> take,
+        IEnumerable<OcctModelShape>? avoid = null,
+        int material = 0,
+        bool removeInternalBoundaries = false,
+        OcctModelBooleanOptions? options = null)
+    {
+        var argumentIds = ShapeIds(arguments);
+        if (argumentIds.Length < 2)
+            throw new ArgumentException("CellsBuilder requires at least two argument shapes.", nameof(arguments));
+        var takeIds = ShapeIds(take);
+        var avoidIds = OptionalShapeIds(avoid);
+        if (material < 0) throw new ArgumentOutOfRangeException(nameof(material));
+        if (removeInternalBoundaries && material == 0)
+            throw new ArgumentException(
+                "Removing CellsBuilder internal boundaries requires a non-zero material.",
+                nameof(material));
+
+        var argumentSet = argumentIds.ToHashSet();
+        if (takeIds.Any(id => !argumentSet.Contains(id)))
+            throw new ArgumentException("Every take shape must also be a CellsBuilder argument.", nameof(take));
+        if (avoidIds.Any(id => !argumentSet.Contains(id)))
+            throw new ArgumentException("Every avoid shape must also be a CellsBuilder argument.", nameof(avoid));
+
+        var actual = options ?? OcctModelBooleanOptions.Default;
+        ValidateAdvancedBooleanOptions(actual, nameof(options));
+        var nativeOptions = actual.ToNative();
+        var status = ModelNativeMethods.occt_model_boolean_cells_execute(
+            _handle,
+            argumentIds,
+            argumentIds.Length,
+            takeIds,
+            takeIds.Length,
+            avoidIds,
+            avoidIds.Length,
+            material,
+            removeInternalBoundaries ? 1 : 0,
+            in nativeOptions,
+            out var result);
+        return CheckAlgorithm(status, result);
+    }
+
     public OcctModelAlgorithmResult Split(
         IEnumerable<OcctModelShape> objects,
         IEnumerable<OcctModelShape> tools,
@@ -67,6 +131,29 @@ public sealed partial class OcctModelingSession
             in nativeOptions,
             out var result);
         return CheckAlgorithm(status, result);
+    }
+
+    private long[] OptionalShapeIds(IEnumerable<OcctModelShape>? shapes)
+    {
+        if (shapes is null) return Array.Empty<long>();
+        var values = shapes.ToArray();
+        var result = new long[values.Length];
+        for (var index = 0; index < values.Length; index++)
+        {
+            EnsureShape(values[index]);
+            result[index] = values[index].Id;
+        }
+        return result;
+    }
+
+    private static void ValidateAdvancedBooleanOptions(
+        OcctModelBooleanOptions options,
+        string parameterName)
+    {
+        ValidateBooleanOptions(options, parameterName);
+        if (options.SimplifyEdges || options.SimplifyFaces)
+            throw new NotSupportedException(
+                "BOPAlgo General Fuse and CellsBuilder do not expose BRepAlgoAPI result simplification.");
     }
 
     private static void ValidateBooleanOptions(OcctModelBooleanOptions options, string parameterName)

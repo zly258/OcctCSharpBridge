@@ -17,6 +17,30 @@ internal static partial class ModelNativeMethods
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_boolean_general_fuse_execute(
+        OcctModelingSafeHandle handle,
+        [In] long[] shapeIds,
+        int shapeCount,
+        in NativeModelBooleanOptions options,
+        out NativeModelAlgorithmResult result);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_boolean_cells_execute(
+        OcctModelingSafeHandle handle,
+        [In] long[] argumentIds,
+        int argumentCount,
+        [In] long[] takeIds,
+        int takeCount,
+        [In] long[] avoidIds,
+        int avoidCount,
+        int material,
+        int removeInternalBoundaries,
+        in NativeModelBooleanOptions options,
+        out NativeModelAlgorithmResult result);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_model_boolean_split_execute(
         OcctModelingSafeHandle handle,
         [In] long[] objectIds,
