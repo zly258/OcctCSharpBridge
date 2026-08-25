@@ -105,6 +105,15 @@ if (topologyResolution.Status != OcctTopologyReferenceStatus.Resolved ||
 
 model.Triangulate(cut.Shape);
 var faceMesh = model.GetFaceMesh(firstFace);
+var (faceVertexCount, faceTriangleCount) = model.GetFaceMeshCounts(firstFace);
+var directFaceVertices = new OcctMeshVertex[faceVertexCount];
+var directFaceTriangles = new OcctModelMeshTriangle[faceTriangleCount];
+var directFaceWritten = model.CopyFaceMesh(firstFace, directFaceVertices, directFaceTriangles);
+if (directFaceWritten.VerticesWritten != faceVertexCount ||
+    directFaceWritten.TrianglesWritten != faceTriangleCount)
+{
+    throw new InvalidOperationException("Direct face mesh Span copy returned an unexpected element count.");
+}
 var shapeMesh = model.GetShapeMesh(cut.Shape);
 var faceUv = model.GetFaceUvBounds(firstFace);
 var faceU = (faceUv.UMin + faceUv.UMax) * 0.5;

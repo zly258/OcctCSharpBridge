@@ -24,3 +24,6 @@ Cancellation is honored before parsing starts and before the viewer commit. An O
 `OcctMeshResource.CopyVertices(Span<OcctMeshVertex>)` and `CopyTriangles(Span<OcctModelMeshTriangle>)` write directly into caller-owned pinned buffers. This avoids the intermediate marshalling arrays used by object-oriented mesh snapshots and is recommended for render uploads, large-model processing, and reusable pooled buffers.
 
 Query `NodeCount` and `TriangleCount` before renting or allocating buffers. A destination smaller than the corresponding native count is rejected before entering the copy operation. Existing `GetMesh()` behavior remains compatible.
+
+
+For per-face processing, use `GetFaceMeshCounts` followed by `CopyFaceMesh`. Combined shape meshes now precompute every face range, allocate exact final buffers once, and copy each face directly into its final slice instead of building temporary per-face meshes and growing lists.
