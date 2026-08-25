@@ -34,3 +34,6 @@ For per-face processing, use `GetFaceMeshCounts` followed by `CopyFaceMesh`. Com
 Nodes returned by `ImportStepDocument` can be edited through `SetStepNodeName`, `SetStepNodeVisibility`, and `SetStepOccurrenceTransform`. Node IDs are XDE path identifiers rather than display names, so duplicate names do not make edits ambiguous. Occurrence transforms are limited to component-instance nodes.
 
 The managed node snapshot is updated after a successful native edit. Export with `ExportAllStep` to write the retained XDE document. Global transforms of descendants should be treated as an import-time snapshot until the document is read again.
+
+
+`AddStepComponent` creates another occurrence of an existing XDE definition under an assembly and returns a refreshed document snapshot. `RemoveStepComponent` removes a leaf occurrence and its matching Viewer object. Both operations rebuild the leaf-to-viewer mapping before returning. Use the returned snapshot for subsequent edits; earlier snapshots intentionally remain immutable representations of their read time.

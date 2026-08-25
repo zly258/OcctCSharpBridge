@@ -42,4 +42,19 @@ internal static partial class StepDocumentNativeMethods
         OcctEngineSafeHandle handle,
         string nodeId,
         in NativeStepTransform3d transform);
+
+    [LibraryImport(NativeMethods.LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_step_component_add(
+        OcctEngineSafeHandle handle,
+        string parentNodeId,
+        string referenceNodeId,
+        in NativeStepTransform3d transform,
+        out long viewerObjectId);
+
+    [LibraryImport(NativeMethods.LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_step_component_remove(
+        OcctEngineSafeHandle handle,
+        string componentNodeId);
 }

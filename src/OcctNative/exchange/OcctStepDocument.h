@@ -26,6 +26,17 @@ extern "C"
         const char* nodeId,
         const OcctStepTransform3d* transform);
 
+    OCCTBRIDGE_API OcctStatus occt_engine_step_component_add(
+        OcctEngineHandle handle,
+        const char* parentNodeId,
+        const char* referenceNodeId,
+        const OcctStepTransform3d* transform,
+        OcctObjectId* viewerObjectId);
+
+    OCCTBRIDGE_API OcctStatus occt_engine_step_component_remove(
+        OcctEngineHandle handle,
+        const char* componentNodeId);
+
     // Returns a UTF-8 JSON snapshot of the most recently imported STEP/XDE document.
     // Call once with buffer=null/capacity=0 to query requiredBytes, then call again
     // with a buffer of at least requiredBytes bytes including the null terminator.
