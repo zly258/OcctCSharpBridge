@@ -19,10 +19,6 @@ public partial class MainWindow
         file.Items.Add(MenuItem(DemoLocalization.Text("Menu.Save"), (_, _) => SaveDocument(false), "Ctrl+S"));
         file.Items.Add(MenuItem(DemoLocalization.Text("Menu.SaveAs"), (_, _) => SaveDocument(true), "Ctrl+Shift+S"));
         file.Items.Add(new Controls.Separator());
-        file.Items.Add(MenuItem(DemoLocalization.Text("Menu.Import"), (_, _) => ImportDocument()));
-        file.Items.Add(MenuItem(DemoLocalization.Text("Menu.ExportSelected"), (_, _) => ExportSelected()));
-        file.Items.Add(MenuItem(DemoLocalization.Text("Menu.ExportImage"), (_, _) => ExportViewImage()));
-        file.Items.Add(new Controls.Separator());
         file.Items.Add(MenuItem(DemoLocalization.Text("Menu.Exit"), (_, _) => Close(), "Alt+F4"));
 
         var edit = Menu(MenuHeader("Menu.Edit"));
@@ -74,6 +70,29 @@ public partial class MainWindow
             DemoCommandId.DemoTwistedDuct);
         samples.Items.Add(new Controls.Separator());
         AddCommands(samples, DemoCommandId.DemoBracket, DemoCommandId.DemoFlange, DemoCommandId.DemoAnnotations);
+        samples.Items.Add(new Controls.Separator());
+        AddCommands(samples, DemoCommandId.DemoPrimitives, DemoCommandId.DemoPipe, DemoCommandId.DemoTee,
+            DemoCommandId.DemoReducer, DemoCommandId.DemoLoft, DemoCommandId.DemoBoolean);
+
+        var exchange = Menu(MenuHeader("Menu.Exchange"));
+        exchange.Items.Add(MenuItem(DemoLocalization.Text("Menu.Import"), (_, _) => ImportDocument()));
+        exchange.Items.Add(MenuItem(DemoLocalization.Text("Menu.ExportSelected"), (_, _) => ExportSelected()));
+        exchange.Items.Add(MenuItem(DemoLocalization.Text("Menu.ExportImage"), (_, _) => ExportViewImage()));
+        exchange.Items.Add(new Controls.Separator());
+        exchange.Items.Add(MenuItem(DemoLocalization.Text("Menu.ExportObj"), (_, _) => ExportSelectedAs("obj")));
+        exchange.Items.Add(MenuItem(DemoLocalization.Text("Menu.ExportGltf"), (_, _) => ExportSelectedAs("gltf")));
+        exchange.Items.Add(MenuItem(DemoLocalization.Text("Menu.ExportStlBatch"), (_, _) => ExportSelectedAs("stl")));
+
+        var tests = Menu(MenuHeader("Menu.Tests"));
+        tests.Items.Add(MenuItem(Local("B-Spline Surface Test", "B 样条曲面测试"),
+            (_, _) => RunModelingTest(Session.RunBSplineSurfaceTest)));
+        tests.Items.Add(MenuItem(Local("B-Spline Curve Fit Test", "B 样条曲线拟合测试"),
+            (_, _) => RunModelingTest(Session.RunCurveFitTest)));
+        tests.Items.Add(MenuItem(Local("PipeShell Sweep Test", "PipeShell 高级扫掠测试"),
+            (_, _) => RunModelingTest(Session.RunPipeShellTest)));
+        tests.Items.Add(MenuItem(Local("Edge Intersection Test", "几何边求交测试"),
+            (_, _) => RunModelingTest(Session.RunEdgeIntersectionTest)));
+
 
         var language = Menu(MenuHeader("Menu.Language"));
         var english = MenuItem(DemoLocalization.Text("Menu.English"), (_, _) => SetLanguage(DemoLanguage.English));
@@ -94,9 +113,11 @@ public partial class MainWindow
         MainMenu.Items.Add(draw);
         MainMenu.Items.Add(solid);
         MainMenu.Items.Add(annotate);
-        MainMenu.Items.Add(BuildViewMenu());
+        MainMenu.Items.Add(exchange);
         MainMenu.Items.Add(tools);
+        MainMenu.Items.Add(BuildViewMenu());
         MainMenu.Items.Add(samples);
+        MainMenu.Items.Add(tests);
         MainMenu.Items.Add(language);
         MainMenu.Items.Add(help);
         UpdateHistoryUi();
@@ -122,9 +143,10 @@ public partial class MainWindow
         view.Items.Add(new Controls.Separator());
 
         // Display style (flattened)
-        view.Items.Add(RadioMenuItem(DemoLocalization.Text("Menu.Shaded"), _displayMode == OcctDisplayMode.Shaded, () => SetDisplayStyle(OcctDisplayMode.Shaded)));
-        view.Items.Add(RadioMenuItem(DemoLocalization.Text("Menu.Wireframe"), _displayMode == OcctDisplayMode.Wireframe, () => SetDisplayStyle(OcctDisplayMode.Wireframe)));
-        view.Items.Add(CheckMenuItem(DemoLocalization.Text("Menu.ShadedEdges"), true, item => ExecuteSafe(() => Session.Engine.SetFaceBoundariesVisible(item.IsChecked))));
+        view.Items.Add(RadioMenuItem(Local("Wireframe", "线框"), _visualStyle == DemoVisualStyle.Wireframe, () => ApplyVisualStyle(DemoVisualStyle.Wireframe)));
+        view.Items.Add(RadioMenuItem(Local("Shaded", "着色"), _visualStyle == DemoVisualStyle.Shaded, () => ApplyVisualStyle(DemoVisualStyle.Shaded)));
+        view.Items.Add(RadioMenuItem(Local("Shaded + Edges", "着色+边线"), _visualStyle == DemoVisualStyle.ShadedEdges, () => ApplyVisualStyle(DemoVisualStyle.ShadedEdges)));
+        view.Items.Add(RadioMenuItem(Local("Hidden Line Removal", "消隐模式"), _visualStyle == DemoVisualStyle.HiddenLine, () => ApplyVisualStyle(DemoVisualStyle.HiddenLine)));
         view.Items.Add(new Controls.Separator());
 
         // Everything else lives in the non-modal View Settings window.

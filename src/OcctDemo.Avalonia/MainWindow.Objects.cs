@@ -182,16 +182,44 @@ public sealed partial class MainWindow
             Local($"{selectedObjects.Count} objects selected", $"已选择 {selectedObjects.Count} 个对象"));
     }
 
+    private IOcctObject? _propertyTarget;
+    private bool _geometryDetailsExpanded;
+
     private void ShowObjectProperties(IOcctObject? value)
     {
+        _propertyTarget = value;
+        _geometryDetailsExpanded = false;
         _propertyPanel.Children.Clear();
         AddPropertyHeader();
         if (value is null || _session is null) return;
 
         foreach (var property in Session.DescribeObjectLightweight(value))
         {
-            AddPropertyRow(property.Key, property.Value);
+            var isGeometry = property.Key.Contains("Geometry Details", StringComparison.OrdinalIgnoreCase) ||
+                             property.Key.Contains("几何详情", StringComparison.Ordinal);
+            AddPropertyRow(property.Key, property.Value, isGeometry ? OnGeometryDetailsClick : null);
         }
+    }
+
+    private void OnGeometryDetailsClick()
+    {
+        if (_session is null || _propertyTarget is null || _geometryDetailsExpanded) return;
+        ExecuteSafe(() =>
+        {
+            _propertyPanel.Children.Clear();
+            AddPropertyHeader();
+            foreach (var property in Session.DescribeObjectLightweight(_propertyTarget))
+            {
+                if (property.Key.Contains("Geometry Details", StringComparison.OrdinalIgnoreCase) ||
+                    property.Key.Contains("几何详情", StringComparison.Ordinal))
+                    continue;
+                AddPropertyRow(property.Key, property.Value);
+            }
+            AddPropertyRow(Local("Geometry Details", "几何详情"), Local("Queried", "已查询"));
+            foreach (var property in Session.QueryGeometryDetails(_propertyTarget))
+                AddPropertyRow("  " + property.Key, property.Value);
+            _geometryDetailsExpanded = true;
+        });
     }
 
     private void AddPropertyHeader()
@@ -210,7 +238,7 @@ public sealed partial class MainWindow
         _propertyPanel.Children.Add(header);
     }
 
-    private void AddPropertyRow(string nameText, string valueText)
+    private void AddPropertyRow(string nameText, string valueText, Action? onClick = null)
     {
         var row = new Grid
         {
@@ -223,6 +251,11 @@ public sealed partial class MainWindow
         Grid.SetColumn(propertyValue, 1);
         row.Children.Add(name);
         row.Children.Add(propertyValue);
+        if (onClick is not null)
+        {
+            row.Cursor = new global::Avalonia.Input.Cursor(global::Avalonia.Input.StandardCursorType.Hand);
+            row.PointerPressed += (_, _) => onClick();
+        }
         _propertyPanel.Children.Add(row);
     }
 

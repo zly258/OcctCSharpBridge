@@ -20,7 +20,7 @@ public partial class MainWindow : System.Windows.Window
     private bool _autoZFitEnabled = true;
     private DrawingColor _selectionHighlightColor = DrawingColor.FromArgb(255, 155, 0);
     private DrawingColor _hoverHighlightColor = DrawingColor.FromArgb(0, 185, 255);
-    private OcctSceneLightingSettings _lightingSettings = OcctLightingPresets.Create(OcctLightingPreset.Studio);
+    private OcctSceneLightingSettings _lightingSettings = OcctLightingPresets.Create(OcctLightingPreset.Neutral);
 
     public MainWindow()
     {
@@ -46,7 +46,7 @@ public partial class MainWindow : System.Windows.Window
             ViewOrientation = OcctViewOrientation.Isometric,
             Projection = OcctProjectionType.Orthographic,
             TriedronVisible = true,
-            ViewCubeVisible = true
+                            ViewCubeVisible = true
         };
     }
 
@@ -100,6 +100,7 @@ public partial class MainWindow : System.Windows.Window
         {
             engine.SetGradientBackground(DrawingColor.White, DrawingColor.FromArgb(202, 221, 238));
             engine.SetTriedronVisible(true);
+            engine.SetTriedronPosition(OcctCornerPosition.LeftLower);
             // Apply the full ViewCube options so the scene starts in sync with the
             // values shown in the View Settings window (size/offset/position).
             ApplyViewCubeOptions(refresh: false);

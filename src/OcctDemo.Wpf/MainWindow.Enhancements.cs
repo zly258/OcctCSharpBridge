@@ -9,37 +9,7 @@ public partial class MainWindow
 {
     private void ApplyDemoEnhancements()
     {
-        var samples = MainMenu.Items
-            .OfType<Controls.MenuItem>()
-            .FirstOrDefault(item => Equals(item.Header, MenuHeader("Menu.Samples")));
-        if (samples is not null)
-        {
-            samples.Items.Add(new Controls.Separator());
-            samples.Items.Add(MenuItem(
-                Local("B-Spline Surface Test", "B 样条曲面测试"),
-                (_, _) => RunModelingTest(Session.RunBSplineSurfaceTest)));
-            samples.Items.Add(MenuItem(
-                Local("B-Spline Curve Fit Test", "B 样条曲线拟合测试"),
-                (_, _) => RunModelingTest(Session.RunCurveFitTest)));
-            samples.Items.Add(MenuItem(
-                Local("PipeShell Sweep Test", "PipeShell 高级扫掠测试"),
-                (_, _) => RunModelingTest(Session.RunPipeShellTest)));
-            samples.Items.Add(MenuItem(
-                Local("Edge Intersection Test", "几何边求交测试"),
-                (_, _) => RunModelingTest(Session.RunEdgeIntersectionTest)));
-            samples.Items.Add(MenuItem(
-                Local("glTF / OBJ Exchange Test", "glTF / OBJ 数据交换测试"),
-                (_, _) => RunModelingTest(Session.RunObjGltfExchangeTest)));
-            samples.Items.Add(MenuItem(
-                Local("Mesh Generation Test", "网格生成测试"),
-                (_, _) => RunModelingTest(Session.RunMeshGenerationTest)));
-            samples.Items.Add(MenuItem(
-                Local("Viewer Projection Test", "Viewer 投影测试"),
-                (_, _) => RunModelingTest(Session.RunViewerProjectionTest)));
-        }
-
-        // The View menu stays as built by BuildViewMenu() — fully flattened,
-        // with the "View Settings..." entry at the end.
+        // Tests and exchange items are now built directly in BuildMenus().
     }
 
     private void RunModelingTest(Func<DemoCommandResult> test)

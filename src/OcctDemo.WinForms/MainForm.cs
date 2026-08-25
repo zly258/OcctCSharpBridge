@@ -19,7 +19,7 @@ public sealed partial class MainForm : Form
     private bool _sessionInitializationQueued;
     private Color _selectionHighlightColor = Color.FromArgb(255, 155, 0);
     private Color _hoverHighlightColor = Color.FromArgb(0, 185, 255);
-    private OcctSceneLightingSettings _lightingSettings = OcctLightingPresets.Create(OcctLightingPreset.Studio);
+    private OcctSceneLightingSettings _lightingSettings = OcctLightingPresets.Create(OcctLightingPreset.Neutral);
 
     public MainForm()
     {
@@ -120,6 +120,8 @@ public sealed partial class MainForm : Form
         {
             engine.SetGradientBackground(Color.White, Color.FromArgb(202, 221, 238));
             engine.SetTriedronVisible(true);
+            engine.SetTriedronPosition(OcctCornerPosition.LeftLower);
+            _triedronPosition = OcctCornerPosition.LeftLower;
             // Apply the full ViewCube options so the scene starts in sync with the
             // values shown in the View Settings window (size/offset/position).
             ApplyViewCubeOptions(refresh: false);

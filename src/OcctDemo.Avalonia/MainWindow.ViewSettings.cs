@@ -23,66 +23,78 @@ public sealed partial class MainWindow
             return;
         }
 
-        // ── Camera tab ────────────────────────────────────────────────────────────
-        var cameraTab = ViewSettingsTab(Local("Camera", "相机"),
-            Row(ViewSettingsButton(DemoLocalization.Text("Menu.FitAll"),      () => Session.Engine.FitAll()),
-                ViewSettingsButton(DemoLocalization.Text("Menu.FitSelected"), () => { var s = ActiveShape(); if (s is not null) Session.Engine.Fit(s.Value); })),
-            Row(ViewSettingsButton(Local("Zoom In",  "放大"), () => Session.Engine.Zoom(1.2)),
-                ViewSettingsButton(Local("Zoom Out", "缩小"), () => Session.Engine.Zoom(1.0 / 1.2))),
-            Row(EnumCombo(Local("Projection", "投影"), _projectionType, SetProjectionMode)),
-            Row(AsyncViewSettingsButton(DemoLocalization.Text("Menu.PerspectiveFov"),     SetPerspectiveFovAsync),
-                AsyncViewSettingsButton(Local("Zoom Sensitivity...", "缩放灵敏度..."),     SetZoomSensitivityAsync)));
+        var root = new StackPanel { Margin = new Thickness(12), Spacing = 4 };
 
-        // ── Display tab ───────────────────────────────────────────────────────────
-        var displayTab = ViewSettingsTab(Local("Display", "显示"),
-            Row(EnumCombo(Local("Display Style", "显示样式"), _displayMode, SetDisplayStyle)),
-            Row(ViewSettingsCheckBox(DemoLocalization.Text("Menu.ShadedEdges"),  true,  v => Session.Engine.SetFaceBoundariesVisible(v)),
-                ViewSettingsCheckBox(DemoLocalization.Text("Menu.Hlr"),          false, v => Session.Engine.SetComputedHlr(v))),
-            Row(ViewSettingsCheckBox(DemoLocalization.Text("Menu.Antialiasing"), true,  v => Session.Engine.SetAntialiasing(v))),
-            Row(AsyncViewSettingsButton(DemoLocalization.Text("Menu.DisplayPrecision"), SetDisplayPrecisionAsync)),
-            Row(AsyncViewSettingsButton(DemoLocalization.Text("Menu.Background"),       SetBackgroundColorAsync),
-                AsyncViewSettingsButton(Local("Gradient First Color...", "渐变颜色一..."), () => PickGradientColorAsync(true))),
-            Row(AsyncViewSettingsButton(Local("Gradient Second Color...", "渐变颜色二..."), () => PickGradientColorAsync(false)),
-                ViewSettingsButton(DemoLocalization.Text("Menu.GradientBackground"), ApplyGradientBackground)),
+        void AddSection(string title, params Control[] rows)
+        {
+            root.Children.Add(new TextBlock
+            {
+                Text = title,
+                FontWeight = global::Avalonia.Media.FontWeight.SemiBold,
+                Margin = new Thickness(0, 8, 0, 2)
+            });
+            foreach (var row in rows)
+                root.Children.Add(row);
+        }
+
+        AddSection(Local("Display", "显示"),
+            Row(EnumCombo(Local("Display Style", "显示样式"), _visualStyle, ApplyVisualStyle,
+                DemoVisualStyle.Wireframe, DemoVisualStyle.Shaded, DemoVisualStyle.ShadedEdges, DemoVisualStyle.HiddenLine)),
+            Row(ViewSettingsCheckBox(DemoLocalization.Text("Menu.Antialiasing"), true, v => Session.Engine.SetAntialiasing(v))),
+            Row(AsyncViewSettingsButton(DemoLocalization.Text("Menu.DisplayPrecision"), SetDisplayPrecisionAsync),
+                AsyncViewSettingsButton(DemoLocalization.Text("Menu.Background"), SetBackgroundColorAsync)),
+            Row(AsyncViewSettingsButton(Local("Gradient First Color...", "渐变颜色一..."), () => PickGradientColorAsync(true)),
+                AsyncViewSettingsButton(Local("Gradient Second Color...", "渐变颜色二..."), () => PickGradientColorAsync(false))),
             Row(EnumCombo(Local("Gradient Method", "渐变方式"), _gradientFillMethod,
-                    v => { _gradientFillMethod = v; ApplyGradientBackground(); })));
+                    v => { _gradientFillMethod = v; ApplyGradientBackground(); }),
+                ViewSettingsButton(DemoLocalization.Text("Menu.GradientBackground"), ApplyGradientBackground)));
 
-        // ── Selection tab ─────────────────────────────────────────────────────────
-        var selectionTab = ViewSettingsTab(Local("Selection", "选择"),
-            Row(EnumCombo(DemoLocalization.Text("Menu.SelectionMode"), (OcctSelectionMode)0, SetSelectionMode)),
+        AddSection(Local("Camera", "相机"),
+            Row(ViewSettingsButton(DemoLocalization.Text("Menu.FitAll"), () => Session.Engine.FitAll()),
+                ViewSettingsButton(DemoLocalization.Text("Menu.FitSelected"), () =>
+                {
+                    var s = ActiveShape();
+                    if (s is not null) Session.Engine.Fit(s.Value);
+                })),
+            Row(ViewSettingsButton(Local("Zoom In", "放大"), () => Session.Engine.Zoom(1.2)),
+                ViewSettingsButton(Local("Zoom Out", "缩小"), () => Session.Engine.Zoom(1.0 / 1.2))),
+            Row(EnumCombo(Local("Projection", "投影"), _projectionType, SetProjectionMode),
+                AsyncViewSettingsButton(DemoLocalization.Text("Menu.PerspectiveFov"), SetPerspectiveFovAsync)),
+            Row(AsyncViewSettingsButton(Local("Zoom Sensitivity...", "缩放灵敏度..."), SetZoomSensitivityAsync)));
+
+        AddSection(Local("Selection", "选择"),
+            Row(EnumCombo(DemoLocalization.Text("Menu.SelectionMode"), OcctSelectionMode.Object, SetSelectionMode)),
             Row(ViewSettingsCheckBox(DemoLocalization.Text("Menu.WindowSelection"),
                     (_viewport.InteractionFeatures & OcctViewportInteractionFeatures.RectangleSelection) != 0,
-                    SetWindowSelectionEnabled)),
-            Row(AsyncViewSettingsButton(DemoLocalization.Text("Menu.SelectionTolerance"), SetSelectionToleranceAsync)),
+                    SetWindowSelectionEnabled),
+                AsyncViewSettingsButton(DemoLocalization.Text("Menu.SelectionTolerance"), SetSelectionToleranceAsync)),
             Row(AsyncViewSettingsButton(Local("Selected Color...", "选中高亮颜色..."), SetSelectionHighlightColorAsync),
-                AsyncViewSettingsButton(Local("Hover Color...", "悬浮高亮颜色..."),   SetHoverHighlightColorAsync)),
-            Row(EnumCombo(Local("Selected Highlight Mode", "选中高亮模式"), _selectionHighlightMode, SetSelectionHighlightMode)),
-            Row(EnumCombo(Local("Hover Highlight Mode",    "悬浮高亮模式"), _hoverHighlightMode,    SetHoverHighlightMode)));
+                AsyncViewSettingsButton(Local("Hover Color...", "悬浮高亮颜色..."), SetHoverHighlightColorAsync)),
+            Row(EnumCombo(Local("Selected Highlight Mode", "选中高亮模式"), _selectionHighlightMode, SetSelectionHighlightMode),
+                EnumCombo(Local("Hover Highlight Mode", "悬浮高亮模式"), _hoverHighlightMode, SetHoverHighlightMode)));
 
-        // ── Helpers tab ───────────────────────────────────────────────────────────
-        var helpersTab = ViewSettingsTab(Local("Helpers", "辅助"),
+        AddSection(Local("Helpers", "辅助"),
             Row(ViewSettingsCheckBox(DemoLocalization.Text("Menu.Triedron"), true, v => Session.Engine.SetTriedronVisible(v)),
                 ViewSettingsCheckBox(DemoLocalization.Text("Menu.ViewCube"), true, v => SetViewCubeVisible(v))),
-            Row(EnumCombo(Local("Triedron Position",  "坐标轴位置"),    _triedronPosition,  SetTriedronPosition)),
-            Row(EnumCombo(Local("ViewCube Position",  "ViewCube 位置"), _viewCubePosition,  SetViewCubePosition)),
-            Row(IntInput(Local("ViewCube Size (px)",  "ViewCube 大小(px)"),   _viewCubeSize,  10, 300, SetViewCubeSize),
-                IntInput(Local("ViewCube Offset (px)","ViewCube 偏移(px)"),   _viewCubeOffset, 0, 200, v => SetViewCubeOffset(v, v))));
+            Row(EnumCombo(Local("Triedron Position", "坐标轴位置"), _triedronPosition, SetTriedronPosition),
+                EnumCombo(Local("ViewCube Position", "ViewCube 位置"), _viewCubePosition, SetViewCubePosition)),
+            Row(IntInput(Local("ViewCube Size (px)", "ViewCube 大小(px)"), _viewCubeSize, 10, 300, SetViewCubeSize),
+                IntInput(Local("ViewCube Font Height", "ViewCube 文字大小"), _viewCubeFontHeight, 8, 48, SetViewCubeFontHeight)),
+            Row(IntInput(Local("ViewCube Offset X (px)", "ViewCube 偏移 X(px)"), _viewCubeOffsetX, 0, 200, SetViewCubeOffsetX),
+                IntInput(Local("ViewCube Offset Y (px)", "ViewCube 偏移 Y(px)"), _viewCubeOffsetY, 0, 200, SetViewCubeOffsetY)),
+            Row(AsyncViewSettingsButton(Local("ViewCube Face Color...", "ViewCube 面颜色..."), PickViewCubeBoxColorAsync),
+                AsyncViewSettingsButton(Local("ViewCube Highlight Color...", "ViewCube 高亮颜色..."), PickViewCubeFacetColorAsync)),
+            Row(AsyncViewSettingsButton(Local("ViewCube Text Color...", "ViewCube 文字颜色..."), PickViewCubeTextColorAsync)));
 
-        // ── Appearance tab ────────────────────────────────────────────────────────
-        var appearanceTab = ViewSettingsTab(Local("Appearance", "外观"),
-            Row(EnumCombo(Local("Lighting Preset", "灯光预设"), OcctLightingPreset.Studio,
+        AddSection(Local("Appearance", "外观"),
+            Row(EnumCombo(Local("Lighting Preset", "灯光预设"), OcctLightingPreset.Neutral,
                     p => ExecuteSafe(() => ApplyLightingPreset(p)))),
-            Row(AsyncViewSettingsButton(Local("Custom Lighting...", "自定义灯光..."),  SetAdvancedLightingAsync),
-                ViewSettingsButton(Local("Reset Lighting",          "重置灯光"),       () => ExecuteSafe(Session.Engine.ResetSceneLighting))),
-            Row(EnumCombo(Local("Material", "材质"), OcctMaterial.Default, async material =>
+            Row(AsyncViewSettingsButton(Local("Custom Lighting...", "自定义灯光..."), SetAdvancedLightingAsync),
+                ViewSettingsButton(Local("Reset Lighting", "重置灯光"), () => ExecuteSafe(Session.Engine.ResetSceneLighting))),
+            Row(EnumCombo(Local("Material", "材质"), OcctMaterial.Default, material =>
                 {
-                    var answer = await DialogService.ShowQuestionAsync(
-                        this,
-                        DemoLocalization.Text("Menu.Material"),
-                        DemoLocalization.Text("Dialog.ApplyExistingMaterial"),
-                        includeCancel: false);
-                    var apply = answer == DemoDialogChoice.Yes;
-                    ExecuteSafe(() => Session.Engine.SetDefaultMaterial(material, apply));
+                    // apply to default only in Avalonia for simplicity
+                    ExecuteSafe(() => Session.Engine.SetDefaultMaterial(material, false));
                     Log($"{DemoLocalization.Text("Menu.Material")}: {MaterialDisplayName(material)}");
                 })),
             Row(ViewSettingsCheckBox(DemoLocalization.Text("Menu.AutoZFit"), _autoZFitEnabled, v =>
@@ -90,26 +102,24 @@ public sealed partial class MainWindow
                     {
                         _autoZFitEnabled = v;
                         Session.Engine.SetAutoZFitMode(_autoZFitEnabled, 1.0);
-                        var msg = DemoLocalization.Text(_autoZFitEnabled ? "Status.AutoZFitOn" : "Status.AutoZFitOff");
-                        _commandStatus.Text = msg;
-                        Log(msg);
                     })),
                 ViewSettingsButton(DemoLocalization.Text("Menu.AutoZFitNow"), () => ExecuteSafe(Session.Engine.AutoZFit))),
             Row(EnumCombo(Local("Depth Bias", "深度偏移"), DemoDepthBiasPreset.Default,
                     p => ExecuteSafe(() => ApplyDepthBias(p)))));
 
-        var tabs = new TabControl
-        {
-            ItemsSource = new object[] { cameraTab, displayTab, selectionTab, helpersTab, appearanceTab }
-        };
-
         var window = new Window
         {
             Title = Local("View Settings", "视图设置"),
             Width = 560,
-            Height = 660,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Content = tabs
+            Height = 640,
+            MinWidth = 480,
+            MinHeight = 400,
+            Content = new ScrollViewer
+            {
+                Content = root,
+                VerticalScrollBarVisibility = global::Avalonia.Controls.Primitives.ScrollBarVisibility.Auto
+            },
+            WindowStartupLocation = WindowStartupLocation.CenterOwner
         };
         _advancedViewSettingsWindow = window;
         window.Closed += (_, _) => _advancedViewSettingsWindow = null;

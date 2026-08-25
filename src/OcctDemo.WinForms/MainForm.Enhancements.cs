@@ -10,38 +10,7 @@ public sealed partial class MainForm
     {
         _selectionCombo.SelectedIndexChanged -= SelectionComboSelectedIndexChanged;
         _selectionCombo.SelectedIndexChanged += SelectionComboSelectedIndexChanged;
-
-        var samples = _menu.Items
-            .OfType<ToolStripMenuItem>()
-            .FirstOrDefault(item => item.Text == DemoLocalization.Text("Menu.Samples"));
-        if (samples is not null)
-        {
-            samples.DropDownItems.Add(new ToolStripSeparator());
-            samples.DropDownItems.Add(MenuItem(
-                Local("B-Spline Surface Test", "B 样条曲面测试"),
-                (_, _) => RunModelingTest(Session.RunBSplineSurfaceTest)));
-            samples.DropDownItems.Add(MenuItem(
-                Local("B-Spline Curve Fit Test", "B 样条曲线拟合测试"),
-                (_, _) => RunModelingTest(Session.RunCurveFitTest)));
-            samples.DropDownItems.Add(MenuItem(
-                Local("PipeShell Sweep Test", "PipeShell 高级扫掠测试"),
-                (_, _) => RunModelingTest(Session.RunPipeShellTest)));
-            samples.DropDownItems.Add(MenuItem(
-                Local("Edge Intersection Test", "几何边求交测试"),
-                (_, _) => RunModelingTest(Session.RunEdgeIntersectionTest)));
-            samples.DropDownItems.Add(MenuItem(
-                Local("glTF / OBJ Exchange Test", "glTF / OBJ 数据交换测试"),
-                (_, _) => RunModelingTest(Session.RunObjGltfExchangeTest)));
-            samples.DropDownItems.Add(MenuItem(
-                Local("Mesh Generation Test", "网格生成测试"),
-                (_, _) => RunModelingTest(Session.RunMeshGenerationTest)));
-            samples.DropDownItems.Add(MenuItem(
-                Local("Viewer Projection Test", "Viewer 投影测试"),
-                (_, _) => RunModelingTest(Session.RunViewerProjectionTest)));
-        }
-
-        // The View menu stays as built by BuildViewMenu() — fully flattened,
-        // with the "View Settings..." entry at the end.
+        // Tests and exchange items are now built directly in BuildMenus().
     }
 
     private void SelectionComboSelectedIndexChanged(object? sender, EventArgs e)

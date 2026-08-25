@@ -101,6 +101,20 @@ public sealed partial class MainForm
         ExecuteSafe(() => { Session.Engine.DumpView(dialog.FileName); Log(DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified ? $"已导出视图图片：{dialog.FileName}" : $"View image exported: {dialog.FileName}"); });
     }
 
+    private void ExportSelectedAs(string format)
+    {
+        var (filter, ext) = format.ToLowerInvariant() switch
+        {
+            "obj" => (DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified ? "OBJ 文件|*.obj" : "OBJ Files|*.obj", "obj"),
+            "gltf" => (DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified ? "glTF 文件|*.gltf;*.glb" : "glTF Files|*.gltf;*.glb", "gltf"),
+            "stl" => (DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified ? "STL 文件|*.stl" : "STL Files|*.stl", "stl"),
+            _ => (SaveFileFilter(), "step")
+        };
+        using var dialog = new SaveFileDialog { Filter = filter, Title = DemoLocalization.Text("Dialog.ExportTitle"), DefaultExt = ext, AddExtension = true };
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        ExecuteSafe(() => Session.ExportSelected(dialog.FileName));
+    }
+
     private void SetPerspectiveFov()
     {
         var parameters = new[] { new DemoParameterDefinition("fov", DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified ? "垂直视场角" : "Vertical Field of View", DemoParameterKind.Number, "45", "°") };

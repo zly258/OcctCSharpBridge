@@ -1,79 +1,95 @@
-using System.Drawing;
+using System.Globalization;
 using OcctDemo.Common;
 using OcctNet;
+using DrawingColor = System.Drawing.Color;
 using Controls = System.Windows.Controls;
-using Window = System.Windows.Window;
+using System.Windows;
 
 namespace OcctDemo.Wpf;
 
 public partial class MainWindow
 {
     private Window? _advancedViewSettingsWindow;
-    private Color _gradientFirstColor = Color.White;
-    private Color _gradientSecondColor = Color.LightSteelBlue;
+    private DrawingColor _gradientFirstColor = DrawingColor.White;
+    private DrawingColor _gradientSecondColor = DrawingColor.LightSteelBlue;
     private OcctGradientFillMethod _gradientFillMethod = OcctGradientFillMethod.Vertical;
 
     private void ShowAdvancedViewSettingsWindow()
     {
-        if (_advancedViewSettingsWindow is { IsVisible: true })
+        if (_advancedViewSettingsWindow is not null)
         {
             _advancedViewSettingsWindow.Activate();
             return;
         }
 
-        var tabs = new Controls.TabControl();
+        var root = new Controls.StackPanel { Margin = new System.Windows.Thickness(12) };
 
-        // ── Camera tab ──────────────────────────────────────────────────────────
-        tabs.Items.Add(ViewSettingsTab(Local("Camera", "相机"),
-            Row(ViewSettingsButton(DemoLocalization.Text("Menu.FitAll"),     () => Session.Engine.FitAll()),
-                ViewSettingsButton(DemoLocalization.Text("Menu.FitSelected"),() => { var s = ActiveShape(); if (s is not null) Session.Engine.Fit(s.Value); })),
-            Row(ViewSettingsButton(Local("Zoom In",  "放大"), () => Session.Engine.Zoom(1.2)),
-                ViewSettingsButton(Local("Zoom Out", "缩小"), () => Session.Engine.Zoom(1.0 / 1.2))),
-            Row(EnumCombo(Local("Projection", "投影"), _projectionType, SetProjectionMode)),
-            Row(ViewSettingsButton(DemoLocalization.Text("Menu.PerspectiveFov"),      SetPerspectiveFov),
-                ViewSettingsButton(Local("Zoom Sensitivity...", "缩放灵敏度..."),      SetZoomSensitivity))));
+        void AddSection(string title, params Controls.Grid[] rows)
+        {
+            root.Children.Add(new Controls.TextBlock
+            {
+                Text = title,
+                FontWeight = System.Windows.FontWeights.SemiBold,
+                Margin = new System.Windows.Thickness(0, 10, 0, 4)
+            });
+            foreach (var row in rows)
+                root.Children.Add(row);
+        }
 
-        // ── Display tab ──────────────────────────────────────────────────────────
-        tabs.Items.Add(ViewSettingsTab(Local("Display", "显示"),
-            Row(EnumCombo(Local("Display Style", "显示样式"), _displayMode, SetDisplayStyle)),
-            Row(ViewSettingsCheckBox(DemoLocalization.Text("Menu.ShadedEdges"),  true,  v => Session.Engine.SetFaceBoundariesVisible(v)),
-                ViewSettingsCheckBox(DemoLocalization.Text("Menu.Hlr"),          false, v => Session.Engine.SetComputedHlr(v))),
-            Row(ViewSettingsCheckBox(DemoLocalization.Text("Menu.Antialiasing"), true,  v => Session.Engine.SetAntialiasing(v))),
-            Row(ViewSettingsButton(DemoLocalization.Text("Menu.DisplayPrecision"), SetDisplayPrecision)),
-            Row(ViewSettingsButton(DemoLocalization.Text("Menu.Background"),       SetBackgroundColor),
-                ViewSettingsButton(Local("Gradient First Color...", "渐变颜色一..."),  () => PickGradientColor(true))),
-            Row(ViewSettingsButton(Local("Gradient Second Color...", "渐变颜色二..."), () => PickGradientColor(false)),
-                ViewSettingsButton(DemoLocalization.Text("Menu.GradientBackground"),  ApplyGradientBackground)),
+        AddSection(Local("Display", "显示"),
+            Row(EnumCombo(Local("Display Style", "显示样式"), _visualStyle, ApplyVisualStyle,
+                DemoVisualStyle.Wireframe, DemoVisualStyle.Shaded, DemoVisualStyle.ShadedEdges, DemoVisualStyle.HiddenLine)),
+            Row(ViewSettingsCheckBox(DemoLocalization.Text("Menu.Antialiasing"), true, v => Session.Engine.SetAntialiasing(v))),
+            Row(ViewSettingsButton(DemoLocalization.Text("Menu.DisplayPrecision"), SetDisplayPrecision),
+                ViewSettingsButton(DemoLocalization.Text("Menu.Background"), SetBackgroundColor)),
+            Row(ViewSettingsButton(Local("Gradient First Color...", "渐变颜色一..."), () => PickGradientColor(true)),
+                ViewSettingsButton(Local("Gradient Second Color...", "渐变颜色二..."), () => PickGradientColor(false))),
             Row(EnumCombo(Local("Gradient Method", "渐变方式"), _gradientFillMethod,
-                    v => { _gradientFillMethod = v; ApplyGradientBackground(); }))));
+                    v => { _gradientFillMethod = v; ApplyGradientBackground(); }),
+                ViewSettingsButton(DemoLocalization.Text("Menu.GradientBackground"), ApplyGradientBackground)));
 
-        // ── Selection tab ────────────────────────────────────────────────────────
-        tabs.Items.Add(ViewSettingsTab(Local("Selection", "选择"),
-            Row(EnumCombo(DemoLocalization.Text("Menu.SelectionMode"), (OcctSelectionMode)0, SetSelectionMode)),
+        AddSection(Local("Camera", "相机"),
+            Row(ViewSettingsButton(DemoLocalization.Text("Menu.FitAll"), () => Session.Engine.FitAll()),
+                ViewSettingsButton(DemoLocalization.Text("Menu.FitSelected"), () =>
+                {
+                    var s = ActiveShape();
+                    if (s is not null) Session.Engine.Fit(s.Value);
+                })),
+            Row(ViewSettingsButton(Local("Zoom In", "放大"), () => Session.Engine.Zoom(1.2)),
+                ViewSettingsButton(Local("Zoom Out", "缩小"), () => Session.Engine.Zoom(1.0 / 1.2))),
+            Row(EnumCombo(Local("Projection", "投影"), _projectionType, SetProjectionMode),
+                ViewSettingsButton(DemoLocalization.Text("Menu.PerspectiveFov"), SetPerspectiveFov)),
+            Row(ViewSettingsButton(Local("Zoom Sensitivity...", "缩放灵敏度..."), SetZoomSensitivity)));
+
+        AddSection(Local("Selection", "选择"),
+            Row(EnumCombo(DemoLocalization.Text("Menu.SelectionMode"), OcctSelectionMode.Object, SetSelectionMode)),
             Row(ViewSettingsCheckBox(DemoLocalization.Text("Menu.WindowSelection"),
                     (Viewport.InteractionFeatures & OcctViewportInteractionFeatures.RectangleSelection) != 0,
-                    SetWindowSelectionEnabled)),
-            Row(ViewSettingsButton(DemoLocalization.Text("Menu.SelectionTolerance"), SetSelectionTolerance)),
+                    SetWindowSelectionEnabled),
+                ViewSettingsButton(DemoLocalization.Text("Menu.SelectionTolerance"), SetSelectionTolerance)),
             Row(ViewSettingsButton(Local("Selected Color...", "选中高亮颜色..."), SetSelectionHighlightColor),
-                ViewSettingsButton(Local("Hover Color...", "悬浮高亮颜色..."),   SetHoverHighlightColor)),
-            Row(EnumCombo(Local("Selected Highlight Mode", "选中高亮模式"), _selectionHighlightMode, SetSelectionHighlightMode)),
-            Row(EnumCombo(Local("Hover Highlight Mode",    "悬浮高亮模式"), _hoverHighlightMode,    SetHoverHighlightMode))));
+                ViewSettingsButton(Local("Hover Color...", "悬浮高亮颜色..."), SetHoverHighlightColor)),
+            Row(EnumCombo(Local("Selected Highlight Mode", "选中高亮模式"), _selectionHighlightMode, SetSelectionHighlightMode),
+                EnumCombo(Local("Hover Highlight Mode", "悬浮高亮模式"), _hoverHighlightMode, SetHoverHighlightMode)));
 
-        // ── Helpers tab ──────────────────────────────────────────────────────────
-        tabs.Items.Add(ViewSettingsTab(Local("Helpers", "辅助"),
-            Row(ViewSettingsCheckBox(DemoLocalization.Text("Menu.Triedron"),  true, v => Session.Engine.SetTriedronVisible(v)),
-                ViewSettingsCheckBox(DemoLocalization.Text("Menu.ViewCube"),  true, v => SetViewCubeVisible(v))),
-            Row(EnumCombo(Local("Triedron Position",    "坐标轴位置"),    _triedronPosition,  SetTriedronPosition)),
-            Row(EnumCombo(Local("ViewCube Position",    "ViewCube 位置"), _viewCubePosition,  SetViewCubePosition)),
-            Row(IntInput(Local("ViewCube Size (px)",    "ViewCube 大小(px)"),    _viewCubeSize,  10, 300, SetViewCubeSize),
-                IntInput(Local("ViewCube Offset (px)",  "ViewCube 偏移(px)"),    _viewCubeOffset, 0, 200, v => SetViewCubeOffset(v, v)))));
+        AddSection(Local("Helpers", "辅助"),
+            Row(ViewSettingsCheckBox(DemoLocalization.Text("Menu.Triedron"), true, v => Session.Engine.SetTriedronVisible(v)),
+                ViewSettingsCheckBox(DemoLocalization.Text("Menu.ViewCube"), true, v => SetViewCubeVisible(v))),
+            Row(EnumCombo(Local("Triedron Position", "坐标轴位置"), _triedronPosition, SetTriedronPosition),
+                EnumCombo(Local("ViewCube Position", "ViewCube 位置"), _viewCubePosition, SetViewCubePosition)),
+            Row(IntInput(Local("ViewCube Size (px)", "ViewCube 大小(px)"), _viewCubeSize, 10, 300, SetViewCubeSize),
+                IntInput(Local("ViewCube Font Height", "ViewCube 文字大小"), _viewCubeFontHeight, 8, 48, SetViewCubeFontHeight)),
+            Row(IntInput(Local("ViewCube Offset X (px)", "ViewCube 偏移 X(px)"), _viewCubeOffsetX, 0, 200, SetViewCubeOffsetX),
+                IntInput(Local("ViewCube Offset Y (px)", "ViewCube 偏移 Y(px)"), _viewCubeOffsetY, 0, 200, SetViewCubeOffsetY)),
+            Row(ViewSettingsButton(Local("ViewCube Face Color...", "ViewCube 面颜色..."), PickViewCubeBoxColor),
+                ViewSettingsButton(Local("ViewCube Highlight Color...", "ViewCube 高亮颜色..."), PickViewCubeFacetColor)),
+            Row(ViewSettingsButton(Local("ViewCube Text Color...", "ViewCube 文字颜色..."), PickViewCubeTextColor)));
 
-        // ── Appearance tab ───────────────────────────────────────────────────────
-        tabs.Items.Add(ViewSettingsTab(Local("Appearance", "外观"),
-            Row(EnumCombo(Local("Lighting Preset", "灯光预设"), OcctLightingPreset.Studio,
+        AddSection(Local("Appearance", "外观"),
+            Row(EnumCombo(Local("Lighting Preset", "灯光预设"), OcctLightingPreset.Neutral,
                     p => ExecuteSafe(() => ApplyLightingPreset(p)))),
-            Row(ViewSettingsButton(Local("Custom Lighting...",  "自定义灯光..."),   SetAdvancedLighting),
-                ViewSettingsButton(Local("Reset Lighting",      "重置灯光"),        () => ExecuteSafe(Session.Engine.ResetSceneLighting))),
+            Row(ViewSettingsButton(Local("Custom Lighting...", "自定义灯光..."), SetAdvancedLighting),
+                ViewSettingsButton(Local("Reset Lighting", "重置灯光"), () => ExecuteSafe(Session.Engine.ResetSceneLighting))),
             Row(EnumCombo(Local("Material", "材质"), OcctMaterial.Default, material =>
                 {
                     var apply = System.Windows.MessageBox.Show(this,
@@ -95,15 +111,21 @@ public partial class MainWindow
                     })),
                 ViewSettingsButton(DemoLocalization.Text("Menu.AutoZFitNow"), () => ExecuteSafe(Session.Engine.AutoZFit))),
             Row(EnumCombo(Local("Depth Bias", "深度偏移"), DemoDepthBiasPreset.Default,
-                    p => ExecuteSafe(() => ApplyDepthBias(p))))));
+                    p => ExecuteSafe(() => ApplyDepthBias(p)))));
 
         var window = new Window
         {
             Title = Local("View Settings", "视图设置"),
             Owner = this,
             Width = 560,
-            Height = 660,
-            Content = tabs,
+            Height = 640,
+            MinWidth = 480,
+            MinHeight = 400,
+            Content = new Controls.ScrollViewer
+            {
+                VerticalScrollBarVisibility = Controls.ScrollBarVisibility.Auto,
+                Content = root
+            },
             WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner
         };
         _advancedViewSettingsWindow = window;

@@ -126,12 +126,56 @@ public sealed partial class MainForm
         ExecuteSafe(() => Session.Engine.SetObjectVisible(value, node.Checked));
     }
 
+    private IOcctObject? _propertyTarget;
+    private bool _geometryDetailsExpanded;
+
     private void ShowObjectProperties(IOcctObject? value)
     {
+        _propertyTarget = value;
+        _geometryDetailsExpanded = false;
         _propertyGrid.Rows.Clear();
         if (_session is null || value is null) return;
         foreach (var property in Session.DescribeObjectLightweight(value))
             _propertyGrid.Rows.Add(property.Key, property.Value);
+        EnsurePropertyGridClickHandler();
+    }
+
+    private void EnsurePropertyGridClickHandler()
+    {
+        _propertyGrid.CellClick -= PropertyGridOnCellClick;
+        _propertyGrid.CellClick += PropertyGridOnCellClick;
+    }
+
+    private void PropertyGridOnCellClick(object? sender, DataGridViewCellEventArgs e)
+    {
+        if (e.RowIndex < 0 || _session is null || _propertyTarget is null) return;
+        var key = _propertyGrid.Rows[e.RowIndex].Cells[0].Value?.ToString() ?? "";
+        var isGeometry =
+            key.Contains("Geometry Details", StringComparison.OrdinalIgnoreCase) ||
+            key.Contains("几何详情", StringComparison.Ordinal);
+        if (!isGeometry || _geometryDetailsExpanded) return;
+
+        ExecuteSafe(() =>
+        {
+            var details = Session.QueryGeometryDetails(_propertyTarget);
+            if (details.Count == 0) return;
+            // Replace the placeholder row with detailed rows
+            _propertyGrid.Rows.Clear();
+            foreach (var property in Session.DescribeObjectLightweight(_propertyTarget))
+            {
+                if (property.Key.Contains("Geometry Details", StringComparison.OrdinalIgnoreCase) ||
+                    property.Key.Contains("几何详情", StringComparison.Ordinal))
+                    continue;
+                _propertyGrid.Rows.Add(property.Key, property.Value);
+            }
+            _propertyGrid.Rows.Add(
+                Local("Geometry Details", "几何详情"),
+                Local("Queried", "已查询"));
+            foreach (var property in details)
+                _propertyGrid.Rows.Add("  " + property.Key, property.Value);
+            _geometryDetailsExpanded = true;
+            _commandStatus.Text = Local("Geometry details loaded.", "几何详情已加载。");
+        });
     }
 
     private void SelectTreeNode(IOcctObject? value)

@@ -1,3 +1,4 @@
+using System.Linq;
 ﻿using OcctDemo.Common;
 using OcctNet;
 using Controls = System.Windows.Controls;
@@ -162,11 +163,40 @@ public partial class MainWindow
         };
     }
 
+    private IOcctObject? _propertyTarget;
+    private bool _geometryDetailsExpanded;
+
     private void ShowObjectProperties(IOcctObject? value)
     {
+        _propertyTarget = value;
+        _geometryDetailsExpanded = false;
         PropertyGrid.ItemsSource = value is null || _session is null
             ? null
             : Session.DescribeObjectLightweight(value);
+        PropertyGrid.MouseDoubleClick -= PropertyGridOnDoubleClick;
+        PropertyGrid.MouseDoubleClick += PropertyGridOnDoubleClick;
+    }
+
+    private void PropertyGridOnDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (_session is null || _propertyTarget is null || _geometryDetailsExpanded) return;
+        if (PropertyGrid.SelectedItem is not System.Collections.Generic.KeyValuePair<string, string> row) return;
+        var key = row.Key ?? "";
+        if (!key.Contains("Geometry Details", StringComparison.OrdinalIgnoreCase) &&
+            !key.Contains("几何详情", StringComparison.Ordinal))
+            return;
+
+        ExecuteSafe(() =>
+        {
+            var baseRows = Session.DescribeObjectLightweight(_propertyTarget)
+                .Where(p => !p.Key.Contains("Geometry Details", StringComparison.OrdinalIgnoreCase) &&
+                            !p.Key.Contains("几何详情", StringComparison.Ordinal))
+                .ToList();
+            baseRows.Add(new(Local("Geometry Details", "几何详情"), Local("Queried", "已查询")));
+            baseRows.AddRange(Session.QueryGeometryDetails(_propertyTarget));
+            PropertyGrid.ItemsSource = baseRows;
+            _geometryDetailsExpanded = true;
+        });
     }
 
     private void SelectTreeNode(IOcctObject? value)

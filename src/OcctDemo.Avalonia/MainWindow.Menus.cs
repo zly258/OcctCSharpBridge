@@ -19,10 +19,6 @@ public sealed partial class MainWindow
             AsyncMenuItem(DemoLocalization.Text("Menu.Save"), () => SaveDocumentAsync(false), Shortcut(Key.S, KeyModifiers.Control)),
             AsyncMenuItem(DemoLocalization.Text("Menu.SaveAs"), () => SaveDocumentAsync(true), Shortcut(Key.S, KeyModifiers.Control | KeyModifiers.Shift)),
             new Separator(),
-            AsyncMenuItem(DemoLocalization.Text("Menu.Import"), ImportDocumentAsync),
-            AsyncMenuItem(DemoLocalization.Text("Menu.ExportSelected"), ExportSelectedAsync),
-            AsyncMenuItem(DemoLocalization.Text("Menu.ExportImage"), ExportViewImageAsync),
-            new Separator(),
             MenuItem(DemoLocalization.Text("Menu.Exit"), Close));
 
         _undoMenuItem = MenuItem(DemoLocalization.Text("Menu.Undo"), Undo, Shortcut(Key.Z, KeyModifiers.Control));
@@ -81,7 +77,31 @@ public sealed partial class MainWindow
             DemoCommandId.DemoTwistedDuct);
         sampleItems.Add(new Separator());
         AddCommands(sampleItems, DemoCommandId.DemoBracket, DemoCommandId.DemoFlange, DemoCommandId.DemoAnnotations);
+        sampleItems.Add(new Separator());
+        AddCommands(sampleItems, DemoCommandId.DemoPrimitives, DemoCommandId.DemoPipe, DemoCommandId.DemoTee,
+            DemoCommandId.DemoReducer, DemoCommandId.DemoLoft, DemoCommandId.DemoBoolean);
         var samples = Menu(MenuHeader("Menu.Samples"), sampleItems.ToArray());
+
+        var exchangeItems = new List<object>
+        {
+            AsyncMenuItem(DemoLocalization.Text("Menu.Import"), ImportDocumentAsync),
+            AsyncMenuItem(DemoLocalization.Text("Menu.ExportSelected"), ExportSelectedAsync),
+            AsyncMenuItem(DemoLocalization.Text("Menu.ExportImage"), ExportViewImageAsync),
+            new Separator(),
+            AsyncMenuItem(DemoLocalization.Text("Menu.ExportObj"), () => ExportSelectedAsAsync("obj")),
+            AsyncMenuItem(DemoLocalization.Text("Menu.ExportGltf"), () => ExportSelectedAsAsync("gltf")),
+            AsyncMenuItem(DemoLocalization.Text("Menu.ExportStlBatch"), () => ExportSelectedAsAsync("stl")),
+        };
+        var exchange = Menu(MenuHeader("Menu.Exchange"), exchangeItems.ToArray());
+
+        var testItems = new List<object>
+        {
+            MenuItem(Local("B-Spline Surface Test", "B 样条曲面测试"), () => RunModelingTest(Session.RunBSplineSurfaceTest)),
+            MenuItem(Local("B-Spline Curve Fit Test", "B 样条曲线拟合测试"), () => RunModelingTest(Session.RunCurveFitTest)),
+            MenuItem(Local("PipeShell Sweep Test", "PipeShell 高级扫掠测试"), () => RunModelingTest(Session.RunPipeShellTest)),
+            MenuItem(Local("Edge Intersection Test", "几何边求交测试"), () => RunModelingTest(Session.RunEdgeIntersectionTest))
+        };
+        var tests = Menu(MenuHeader("Menu.Tests"), testItems.ToArray());
 
         var language = Menu(MenuHeader("Menu.Language"),
             CheckMenuItem(DemoLocalization.Text("Menu.English"), DemoLocalization.CurrentLanguage == DemoLanguage.English,
@@ -95,7 +115,7 @@ public sealed partial class MainWindow
 
         _mainMenu.ItemsSource = new object[]
         {
-            file, edit, draw, solid, annotate, BuildViewMenu(), tools, samples, language, help
+            file, edit, draw, solid, annotate, exchange, tools, BuildViewMenu(), samples, tests, language, help
         };
         UpdateHistoryUi();
     }
@@ -118,11 +138,10 @@ public sealed partial class MainWindow
             MenuItem(DemoLocalization.Text("Menu.SouthEast"),  () => Session.SetIsoView(DemoIsoView.SouthEast)),
             MenuItem(DemoLocalization.Text("Menu.SouthWest"),  () => Session.SetIsoView(DemoIsoView.SouthWest)),
             new Separator(),
-            // Display style (flattened)
-            CheckMenuItem(DemoLocalization.Text("Menu.Shaded"), _displayMode == OcctDisplayMode.Shaded, _ => SetDisplayStyle(OcctDisplayMode.Shaded), radio: true, groupName: "display-style"),
-            CheckMenuItem(DemoLocalization.Text("Menu.Wireframe"), _displayMode == OcctDisplayMode.Wireframe, _ => SetDisplayStyle(OcctDisplayMode.Wireframe), radio: true, groupName: "display-style"),
-            CheckMenuItem(DemoLocalization.Text("Menu.ShadedEdges"), true,
-                item => ExecuteSafe(() => Session.Engine.SetFaceBoundariesVisible(item.IsChecked))),
+            CheckMenuItem(Local("Wireframe", "线框"), _visualStyle == DemoVisualStyle.Wireframe, _ => ApplyVisualStyle(DemoVisualStyle.Wireframe), radio: true, groupName: "display-style"),
+            CheckMenuItem(Local("Shaded", "着色"), _visualStyle == DemoVisualStyle.Shaded, _ => ApplyVisualStyle(DemoVisualStyle.Shaded), radio: true, groupName: "display-style"),
+            CheckMenuItem(Local("Shaded + Edges", "着色+边线"), _visualStyle == DemoVisualStyle.ShadedEdges, _ => ApplyVisualStyle(DemoVisualStyle.ShadedEdges), radio: true, groupName: "display-style"),
+            CheckMenuItem(Local("Hidden Line Removal", "消隐模式"), _visualStyle == DemoVisualStyle.HiddenLine, _ => ApplyVisualStyle(DemoVisualStyle.HiddenLine), radio: true, groupName: "display-style"),
             new Separator(),
             // Everything else lives in the non-modal View Settings window.
             MenuItem(Local("View Settings...", "视图设置..."), ShowAdvancedViewSettingsWindow)

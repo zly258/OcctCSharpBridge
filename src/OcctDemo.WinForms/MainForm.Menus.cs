@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using OcctDemo.Common;
 using OcctNet;
 
@@ -15,10 +15,6 @@ public sealed partial class MainForm
         file.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Open"), (_, _) => OpenDocument(), "Ctrl+O"));
         file.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Save"), (_, _) => SaveDocument(false), "Ctrl+S"));
         file.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.SaveAs"), (_, _) => SaveDocument(true), "Ctrl+Shift+S"));
-        file.DropDownItems.Add(new ToolStripSeparator());
-        file.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Import"), (_, _) => ImportDocument()));
-        file.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.ExportSelected"), (_, _) => ExportSelected()));
-        file.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.ExportImage"), (_, _) => ExportViewImage()));
         file.DropDownItems.Add(new ToolStripSeparator());
         file.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Exit"), (_, _) => Close(), "Alt+F4"));
 
@@ -56,6 +52,15 @@ public sealed partial class MainForm
         annotate.DropDownItems.Add(new ToolStripSeparator());
         AddCommands(annotate, DemoCommandId.LengthDimension, DemoCommandId.AngleDimension, DemoCommandId.RadiusDimension, DemoCommandId.DiameterDimension);
 
+        var exchange = new ToolStripMenuItem(DemoLocalization.Text("Menu.Exchange"));
+        exchange.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Import"), (_, _) => ImportDocument()));
+        exchange.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.ExportSelected"), (_, _) => ExportSelected()));
+        exchange.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.ExportImage"), (_, _) => ExportViewImage()));
+        exchange.DropDownItems.Add(new ToolStripSeparator());
+        exchange.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.ExportObj"), (_, _) => ExportSelectedAs("obj")));
+        exchange.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.ExportGltf"), (_, _) => ExportSelectedAs("gltf")));
+        exchange.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.ExportStlBatch"), (_, _) => ExportSelectedAs("stl")));
+
         var tools = new ToolStripMenuItem(DemoLocalization.Text("Menu.Tools"));
         AddCommands(tools, DemoCommandId.AnalyzeBounds, DemoCommandId.AnalyzeMass, DemoCommandId.AnalyzeTopology, DemoCommandId.AnalyzeDistance, DemoCommandId.ValidateShape);
 
@@ -63,6 +68,22 @@ public sealed partial class MainForm
         AddCommands(samples, DemoCommandId.DemoElements, DemoCommandId.DemoGear, DemoCommandId.DemoManifold, DemoCommandId.DemoTwistedDuct);
         samples.DropDownItems.Add(new ToolStripSeparator());
         AddCommands(samples, DemoCommandId.DemoBracket, DemoCommandId.DemoFlange, DemoCommandId.DemoAnnotations);
+        samples.DropDownItems.Add(new ToolStripSeparator());
+        AddCommands(samples, DemoCommandId.DemoPrimitives, DemoCommandId.DemoPipe, DemoCommandId.DemoTee, DemoCommandId.DemoReducer, DemoCommandId.DemoLoft, DemoCommandId.DemoBoolean);
+
+        var tests = new ToolStripMenuItem(DemoLocalization.Text("Menu.Tests"));
+        tests.DropDownItems.Add(MenuItem(
+            Local("B-Spline Surface Test", "B 样条曲面测试"),
+            (_, _) => RunModelingTest(Session.RunBSplineSurfaceTest)));
+        tests.DropDownItems.Add(MenuItem(
+            Local("B-Spline Curve Fit Test", "B 样条曲线拟合测试"),
+            (_, _) => RunModelingTest(Session.RunCurveFitTest)));
+        tests.DropDownItems.Add(MenuItem(
+            Local("PipeShell Sweep Test", "PipeShell 高级扫掠测试"),
+            (_, _) => RunModelingTest(Session.RunPipeShellTest)));
+        tests.DropDownItems.Add(MenuItem(
+            Local("Edge Intersection Test", "几何边求交测试"),
+            (_, _) => RunModelingTest(Session.RunEdgeIntersectionTest)));
 
         var language = new ToolStripMenuItem(DemoLocalization.Text("Menu.Language"));
         var english = new ToolStripMenuItem(DemoLocalization.Text("Menu.English")) { Checked = DemoLocalization.CurrentLanguage == DemoLanguage.English };
@@ -76,7 +97,7 @@ public sealed partial class MainForm
         help.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.MouseHelp"), (_, _) => ShowMouseHelp()));
         help.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.About"), (_, _) => ShowAbout()));
 
-        _menu.Items.AddRange(new ToolStripItem[] { file, edit, draw, solid, annotate, BuildViewMenu(), tools, samples, language, help });
+        _menu.Items.AddRange(new ToolStripItem[] { file, edit, draw, solid, annotate, exchange, tools, BuildViewMenu(), samples, tests, language, help });
         UpdateHistoryUi();
     }
 
@@ -84,7 +105,6 @@ public sealed partial class MainForm
     {
         var view = new ToolStripMenuItem(DemoLocalization.Text("Menu.View"));
 
-        // Standard views (flattened)
         view.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Front"), (_, _) => Session.Engine.SetView(OcctViewOrientation.Front), "1"));
         view.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Back"), (_, _) => Session.Engine.SetView(OcctViewOrientation.Back)));
         view.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.Left"), (_, _) => Session.Engine.SetView(OcctViewOrientation.Left), "2"));
@@ -99,13 +119,12 @@ public sealed partial class MainForm
         view.DropDownItems.Add(MenuItem(DemoLocalization.Text("Menu.SouthWest"), (_, _) => Session.SetIsoView(DemoIsoView.SouthWest)));
         view.DropDownItems.Add(new ToolStripSeparator());
 
-        // Display style (flattened)
-        view.DropDownItems.Add(RadioMenuItem(DemoLocalization.Text("Menu.Shaded"), _displayMode == OcctDisplayMode.Shaded, (_, _) => SetDisplayStyle(OcctDisplayMode.Shaded)));
-        view.DropDownItems.Add(RadioMenuItem(DemoLocalization.Text("Menu.Wireframe"), _displayMode == OcctDisplayMode.Wireframe, (_, _) => SetDisplayStyle(OcctDisplayMode.Wireframe)));
-        view.DropDownItems.Add(CheckMenuItem(DemoLocalization.Text("Menu.ShadedEdges"), true, (_, item) => ExecuteSafe(() => Session.Engine.SetFaceBoundariesVisible(item.Checked))));
+        view.DropDownItems.Add(RadioMenuItem(Local("Wireframe", "线框"), _visualStyle == DemoVisualStyle.Wireframe, (_, _) => ApplyVisualStyle(DemoVisualStyle.Wireframe)));
+        view.DropDownItems.Add(RadioMenuItem(Local("Shaded", "着色"), _visualStyle == DemoVisualStyle.Shaded, (_, _) => ApplyVisualStyle(DemoVisualStyle.Shaded)));
+        view.DropDownItems.Add(RadioMenuItem(Local("Shaded + Edges", "着色+边线"), _visualStyle == DemoVisualStyle.ShadedEdges, (_, _) => ApplyVisualStyle(DemoVisualStyle.ShadedEdges)));
+        view.DropDownItems.Add(RadioMenuItem(Local("Hidden Line Removal", "消隐模式"), _visualStyle == DemoVisualStyle.HiddenLine, (_, _) => ApplyVisualStyle(DemoVisualStyle.HiddenLine)));
         view.DropDownItems.Add(new ToolStripSeparator());
 
-        // Everything else lives in the non-modal View Settings window.
         view.DropDownItems.Add(MenuItem(Local("View Settings...", "视图设置..."), (_, _) => ShowAdvancedViewSettingsWindow()));
         return view;
     }

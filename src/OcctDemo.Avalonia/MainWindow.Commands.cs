@@ -189,6 +189,40 @@ public sealed partial class MainWindow
         });
     }
 
+    private async Task ExportSelectedAsAsync(string format)
+    {
+        if (!StorageProvider.CanSave)
+        {
+            await DialogService.ShowMessageAsync(this, DemoLocalization.Text("Dialog.ExportTitle"),
+                Local("The current platform does not provide a file-save picker.", "当前平台不支持文件保存选择器。"));
+            return;
+        }
+
+        var (ext, patterns) = format.ToLowerInvariant() switch
+        {
+            "obj" => ("obj", new[] { "*.obj" }),
+            "gltf" => ("gltf", new[] { "*.gltf", "*.glb" }),
+            "stl" => ("stl", new[] { "*.stl" }),
+            _ => ("step", new[] { "*.step", "*.stp" })
+        };
+        var picked = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = DemoLocalization.Text("Dialog.ExportTitle"),
+            SuggestedFileName = "selection." + ext,
+            DefaultExtension = ext,
+            ShowOverwritePrompt = true,
+            FileTypeChoices = new[]
+            {
+                new FilePickerFileType(ext.ToUpperInvariant()) { Patterns = patterns }
+            }
+        });
+        if (picked is null) return;
+        var path = await RequireLocalPathAsync(picked);
+        if (path is null) return;
+        ExecuteSafe(() => Session.ExportSelected(path));
+    }
+
+
     private async Task<string?> RequireLocalPathAsync(IStorageItem item)
     {
         var path = item.TryGetLocalPath();
