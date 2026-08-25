@@ -131,3 +131,11 @@ These queries form the geometry foundation for nearest/perpendicular/tangent sna
 WPF owns a native child HWND and separates surface resize from redraw so repeated layout notifications can be coalesced.
 
 Avalonia is part of the formal SDK. Windows uses an HWND host; Linux currently uses an X11/XWayland XID host. Both backends normalize pointer and keyboard input into the same managed Bridge contracts. Native Wayland hosting can be added later without changing application-level input APIs.
+
+## Engine thread affinity
+
+`OcctEngine` binds itself to the current thread after the native surface is initialized successfully and captures the current `SynchronizationContext`. Subsequent synchronous Viewer, AIS, Scene, Selection, and Exchange calls must run on that thread. A cross-thread synchronous call throws a descriptive `InvalidOperationException` instead of entering the non-thread-safe OCCT viewer.
+
+Asynchronous import and export methods on `OcctEngine` are posted to the surface thread rather than invoking the viewer from `Task.Run`. This preserves thread safety, but file parsing can still occupy the UI thread. Use a separate `OcctModelingSession` for true background exchange or modeling, then update the viewer shape on the UI thread.
+
+Call `OcctEngine.Dispose()` on the surface thread. The WinForms, WPF, and Avalonia adapters already dispose their engines as part of the native host lifecycle.

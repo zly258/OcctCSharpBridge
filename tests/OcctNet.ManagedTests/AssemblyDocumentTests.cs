@@ -76,6 +76,29 @@ public sealed class AssemblyDocumentTests
         Assert.AreEqual(0.2, node.SubshapeStyles[0].Style.Transparency, 1e-12);
     }
 
+    [TestMethod]
+    public void AssemblyNodeEditableSnapshotPropertiesRemainConsistent()
+    {
+        var node = Node("0:1:1", 0, -1, OcctAssemblyNodeKind.Instance, "Before");
+        node.Name = "After";
+        node.Style = node.Style with { Visible = false };
+        node.LocalTransform = new OcctAssemblyTransform3d(
+            1, 0, 0, 10,
+            0, 1, 0, 20,
+            0, 0, 1, 30);
+
+        Assert.AreEqual("After", node.Name);
+        Assert.IsFalse(node.Style.Visible);
+        node.Layers = new[] { "Machined", "Purchased" };
+
+        Assert.IsTrue(node.LocalTransform.IsFinite);
+        CollectionAssert.AreEqual(new[] { "Machined", "Purchased" }, node.Layers.ToArray());
+        Assert.IsFalse(new OcctAssemblyTransform3d(
+            double.NaN, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0).IsFinite);
+    }
+
     private static OcctAssemblyNode Node(
         string id,
         int index,

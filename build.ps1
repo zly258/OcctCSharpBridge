@@ -70,6 +70,7 @@ $Checks = [ordered]@{
     Abi5 = "tests\check-abi5-contract.ps1"
     BulkAbi = "tests\check-bulk-abi.ps1"
     NativeBuild = "tests\check-native-build-structure.ps1"
+    ExceptionBoundary = "tests\check-native-exception-boundaries.ps1"
     ApiSurface = "tests\check-api-surface.ps1"
     ConsumerMatrix = "tests\check-consumer-matrix.ps1"
 }
@@ -93,8 +94,42 @@ function Invoke-Checked {
         [Parameter(Mandatory = $true)][object[]]$Arguments,
         [Parameter(Mandatory = $true)][string]$ErrorMessage
     )
-    & $Command @Arguments
-    if ($LASTEXITCODE -ne 0) { throw $ErrorMessage }
+
+    $recentOutput = [System.Collections.Generic.Queue[string]]::new()
+    $errorOutput = [System.Collections.Generic.List[string]]::new()
+    $diagnosticPattern = '(?i)(fatal error|error C\d+|error LNK\d+|error MSB\d+|error NETSDK\d+|:\s*error\s)'
+
+    & $Command @Arguments 2>&1 | ForEach-Object {
+        $line = [string]$_
+        Write-Host $line
+
+        $recentOutput.Enqueue($line)
+        if ($recentOutput.Count -gt 80) { [void]$recentOutput.Dequeue() }
+        if ($line -match $diagnosticPattern -and $errorOutput.Count -lt 80) {
+            $errorOutput.Add($line)
+        }
+    }
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -eq 0) { return }
+
+    $diagnostics = if ($errorOutput.Count -gt 0) {
+        @($errorOutput)
+    }
+    else {
+        @($recentOutput)
+    }
+    $commandLine = (@($Command) + @($Arguments | ForEach-Object {
+        $argument = [string]$_
+        if ($argument -match '\s') { '"{0}"' -f $argument } else { $argument }
+    })) -join ' '
+    $diagnosticText = if ($diagnostics.Count -gt 0) {
+        $diagnostics -join [Environment]::NewLine
+    }
+    else {
+        '<no command output>'
+    }
+
+    throw "$ErrorMessage`nCommand: $commandLine`nExit code: $exitCode`nRelevant output:`n$diagnosticText"
 }
 
 function Get-DotNetCandidates {

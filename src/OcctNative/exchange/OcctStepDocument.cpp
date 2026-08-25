@@ -5,11 +5,13 @@
 #include <TCollection_AsciiString.hxx>
 #include <TCollection_ExtendedString.hxx>
 #include <TDataStd_Name.hxx>
+#include <TDF_LabelSequence.hxx>
 #include <TopExp.hxx>
 #include <TopLoc_Location.hxx>
 #include <TopTools_IndexedMapOfShape.hxx>
 #include <XCAFDoc_ColorTool.hxx>
 #include <XCAFDoc_DocumentTool.hxx>
+#include <XCAFDoc_LayerTool.hxx>
 #include <XCAFDoc_ShapeTool.hxx>
 #include <XCAFPrs.hxx>
 #include <XCAFPrs_DocumentExplorer.hxx>
@@ -58,6 +60,7 @@ namespace
         gp_Trsf localTransform;
         gp_Trsf globalTransform;
         std::vector<StepSubshapeStyleSnapshot> subshapeStyles;
+        std::vector<std::string> layers;
     };
 
     std::string extendedStringToUtf8(const TCollection_ExtendedString& value)
@@ -175,6 +178,32 @@ namespace
             snapshot.style = captureStyle(iterator.Value());
             result.push_back(std::move(snapshot));
         }
+        return result;
+    }
+
+    std::vector<std::string> captureLayers(
+        const Handle(TDocStd_Document)& document,
+        const XCAFPrs_DocumentNode& node)
+    {
+        const Handle(XCAFDoc_LayerTool) layerTool =
+            XCAFDoc_DocumentTool::LayerTool(document->Main());
+        if (layerTool.IsNull()) return {};
+
+        std::vector<std::string> result;
+        const auto append = [&](const TDF_Label& shapeLabel)
+        {
+            if (shapeLabel.IsNull()) return;
+            TDF_LabelSequence labels;
+            layerTool->GetLayers(shapeLabel, labels);
+            for (Standard_Integer index = 1; index <= labels.Length(); ++index)
+            {
+                const std::string name = labelName(labels.Value(index));
+                if (!name.empty() && std::find(result.begin(), result.end(), name) == result.end())
+                    result.push_back(name);
+            }
+        };
+        append(node.Label);
+        if (node.RefLabel != node.Label) append(node.RefLabel);
         return result;
     }
 
@@ -317,6 +346,84 @@ namespace
         }
     }
 
+    TDF_Label findLastStepNode(Engine* engine, const char* nodeId)
+    {
+        if (engine == nullptr || nodeId == nullptr || nodeId[0] == '\0')
+            throw std::invalid_argument("STEP node ID is empty.");
+        if (engine->documents.stepDocuments.empty() || engine->documents.stepDocuments.back().IsNull())
+            throw std::logic_error("No imported STEP/XDE document is available.");
+
+        TopLoc_Location location;
+        const TDF_Label label = XCAFPrs_DocumentExplorer::FindLabelFromPathId(
+            engine->documents.stepDocuments.back(),
+            TCollection_AsciiString(nodeId),
+            location);
+        if (label.IsNull()) throw std::invalid_argument("STEP node ID does not exist.");
+        return label;
+    }
+
+    gp_Trsf stepTransform(const OcctStepTransform3d& value)
+    {
+        gp_Trsf result;
+        result.SetValues(
+            value.m00, value.m01, value.m02, value.m03,
+            value.m10, value.m11, value.m12, value.m13,
+            value.m20, value.m21, value.m22, value.m23);
+        return result;
+    }
+
+    std::unordered_map<std::string, OcctObjectId> stepLeafObjects(Engine* engine)
+    {
+        std::unordered_map<std::string, OcctObjectId> result;
+        const Handle(TDocStd_Document)& document = engine->documents.stepDocuments.back();
+        std::size_t leafIndex = 0;
+        XCAFPrs_DocumentExplorer explorer(document, XCAFPrs_DocumentExplorerFlags_None);
+        for (; explorer.More(); explorer.Next())
+        {
+            const XCAFPrs_DocumentNode& node = explorer.Current();
+            if (node.IsAssembly) continue;
+            if (leafIndex >= engine->documents.lastStepImportObjectIds.size())
+                throw std::logic_error("STEP leaf-to-viewer mapping is incomplete.");
+            result.emplace(node.Id.ToCString(), engine->documents.lastStepImportObjectIds[leafIndex++]);
+        }
+        if (leafIndex != engine->documents.lastStepImportObjectIds.size())
+            throw std::logic_error("STEP leaf-to-viewer mapping contains stale objects.");
+        return result;
+    }
+
+    void rebuildStepLeafObjects(
+        Engine* engine,
+        const std::unordered_map<std::string, OcctObjectId>& objectsByPath)
+    {
+        std::vector<OcctObjectId> result;
+        const Handle(TDocStd_Document)& document = engine->documents.stepDocuments.back();
+        XCAFPrs_DocumentExplorer explorer(document, XCAFPrs_DocumentExplorerFlags_None);
+        for (; explorer.More(); explorer.Next())
+        {
+            const XCAFPrs_DocumentNode& node = explorer.Current();
+            if (node.IsAssembly) continue;
+            const auto iterator = objectsByPath.find(node.Id.ToCString());
+            if (iterator == objectsByPath.end())
+                throw std::logic_error("STEP leaf has no matching Viewer object.");
+            result.push_back(iterator->second);
+            ObjectEntry* entry = engine->findShape(iterator->second);
+            if (entry != nullptr)
+            {
+                entry->stepDocumentIndex = static_cast<int>(engine->documents.stepDocuments.size() - 1U);
+                entry->stepNodeId = node.Id.ToCString();
+            }
+        }
+        engine->documents.lastStepImportObjectIds = std::move(result);
+    }
+
+    TDF_Label referredDefinition(const Handle(XCAFDoc_ShapeTool)& shapeTool, const TDF_Label& label)
+    {
+        TDF_Label definition;
+        if (XCAFDoc_ShapeTool::IsReference(label) && shapeTool->GetReferredShape(label, definition))
+            return definition;
+        return label;
+    }
+
     std::string buildLastStepDocumentJson(Engine* engine)
     {
         if (engine->documents.stepDocuments.empty() || engine->documents.stepDocuments.back().IsNull())
@@ -355,6 +462,7 @@ namespace
                 snapshot.objectId = engine->documents.lastStepImportObjectIds[leafIndex++];
                 snapshot.subshapeStyles = captureSubshapeStyles(node);
             }
+            snapshot.layers = captureLayers(document, node);
 
             const int nodeIndex = static_cast<int>(nodes.size());
             nodes.push_back(std::move(snapshot));
@@ -384,7 +492,13 @@ namespace
             appendTransform(stream, node.localTransform);
             stream << ",\"globalTransform\":";
             appendTransform(stream, node.globalTransform);
-            stream << ",\"subshapeStyles\":[";
+            stream << ",\"layers\":[";
+            for (std::size_t layerIndex = 0; layerIndex < node.layers.size(); ++layerIndex)
+            {
+                if (layerIndex != 0U) stream << ',';
+                stream << '\"' << jsonEscape(node.layers[layerIndex]) << '\"';
+            }
+            stream << "],\"subshapeStyles\":[";
             for (std::size_t styleIndex = 0; styleIndex < node.subshapeStyles.size(); ++styleIndex)
             {
                 if (styleIndex != 0U) stream << ',';
@@ -462,6 +576,292 @@ namespace OcctBridge
 
 extern "C"
 {
+    OcctStatus occt_engine_step_node_name_set(
+        OcctEngineHandle handle,
+        const char* nodeId,
+        const char* utf8Name)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (!validateInitialized(engine)) return engine == nullptr
+            ? OcctStatus_ErrorInvalidHandle
+            : engine->currentErrorCode();
+        if (utf8Name == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        return execute(engine, [&]
+        {
+            const TDF_Label label = findLastStepNode(engine, nodeId);
+            TDataStd_Name::Set(label, TCollection_ExtendedString(utf8Name, true));
+        }) != 0 ? OcctStatus_Ok : engine->currentErrorCode();
+    }
+
+    OcctStatus occt_engine_step_node_visibility_set(
+        OcctEngineHandle handle,
+        const char* nodeId,
+        OcctBool visible)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (!validateInitialized(engine)) return engine == nullptr
+            ? OcctStatus_ErrorInvalidHandle
+            : engine->currentErrorCode();
+
+        return execute(engine, [&]
+        {
+            const TDF_Label label = findLastStepNode(engine, nodeId);
+            const Handle(TDocStd_Document)& document = engine->documents.stepDocuments.back();
+            const Handle(XCAFDoc_ColorTool) colorTool =
+                XCAFDoc_DocumentTool::ColorTool(document->Main());
+            if (colorTool.IsNull()) throw std::logic_error("XDE color tool is unavailable.");
+            colorTool->SetVisibility(label, visible != 0 ? Standard_True : Standard_False);
+        }) != 0 ? OcctStatus_Ok : engine->currentErrorCode();
+    }
+
+    OcctStatus occt_engine_step_node_color_set(
+        OcctEngineHandle handle,
+        const char* nodeId,
+        int colorKind,
+        const OcctStepColor* value,
+        OcctBool hasColor)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (!validateInitialized(engine)) return engine == nullptr
+            ? OcctStatus_ErrorInvalidHandle
+            : engine->currentErrorCode();
+        if (colorKind < 0 || colorKind > 1) return OcctStatus_ErrorInvalidArgument;
+        if (hasColor != 0 && value == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        return execute(engine, [&]
+        {
+            const TDF_Label label = findLastStepNode(engine, nodeId);
+            const Handle(TDocStd_Document)& document = engine->documents.stepDocuments.back();
+            const Handle(XCAFDoc_ColorTool) colorTool =
+                XCAFDoc_DocumentTool::ColorTool(document->Main());
+            if (colorTool.IsNull()) throw std::logic_error("XDE color tool is unavailable.");
+
+            const XCAFDoc_ColorType type =
+                colorKind == 0 ? XCAFDoc_ColorSurf : XCAFDoc_ColorCurv;
+            if (hasColor == 0)
+            {
+                colorTool->UnSetColor(label, type);
+                return;
+            }
+
+            const double components[] = {value->r, value->g, value->b, value->a};
+            for (const double component : components)
+            {
+                if (!std::isfinite(component) || component < 0.0 || component > 1.0)
+                    throw std::invalid_argument("STEP color components must be finite values from zero to one.");
+            }
+
+            const Quantity_Color rgb(value->r, value->g, value->b, Quantity_TOC_RGB);
+            if (type == XCAFDoc_ColorSurf)
+            {
+                colorTool->SetColor(
+                    label,
+                    Quantity_ColorRGBA(rgb, static_cast<float>(value->a)),
+                    XCAFDoc_ColorSurf);
+            }
+            else
+            {
+                colorTool->SetColor(label, rgb, XCAFDoc_ColorCurv);
+            }
+        }) != 0 ? OcctStatus_Ok : engine->currentErrorCode();
+    }
+
+    OcctStatus occt_engine_step_node_layer_set(
+        OcctEngineHandle handle,
+        const char* nodeId,
+        const char* utf8LayerName,
+        OcctBool assigned)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (!validateInitialized(engine)) return engine == nullptr
+            ? OcctStatus_ErrorInvalidHandle
+            : engine->currentErrorCode();
+        if (utf8LayerName == nullptr || utf8LayerName[0] == '\0')
+            return OcctStatus_ErrorInvalidArgument;
+
+        return execute(engine, [&]
+        {
+            const TDF_Label node = findLastStepNode(engine, nodeId);
+            const Handle(TDocStd_Document)& document = engine->documents.stepDocuments.back();
+            const Handle(XCAFDoc_LayerTool) layerTool =
+                XCAFDoc_DocumentTool::LayerTool(document->Main());
+            if (layerTool.IsNull()) throw std::logic_error("XDE layer tool is unavailable.");
+
+            const TCollection_ExtendedString name(utf8LayerName, true);
+            TDF_Label layer;
+            const bool exists = layerTool->FindLayer(name, layer);
+            if (assigned != 0)
+            {
+                if (!exists) layer = layerTool->AddLayer(name);
+                if (layer.IsNull()) throw std::runtime_error("XDE layer creation failed.");
+                layerTool->SetLayer(node, layer);
+            }
+            else if (exists)
+            {
+                layerTool->UnSetOneLayer(node, layer);
+            }
+        }) != 0 ? OcctStatus_Ok : engine->currentErrorCode();
+    }
+
+    OcctStatus occt_engine_step_layer_visibility_set(
+        OcctEngineHandle handle,
+        const char* utf8LayerName,
+        OcctBool visible)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (!validateInitialized(engine)) return engine == nullptr
+            ? OcctStatus_ErrorInvalidHandle
+            : engine->currentErrorCode();
+        if (utf8LayerName == nullptr || utf8LayerName[0] == '\0')
+            return OcctStatus_ErrorInvalidArgument;
+
+        return execute(engine, [&]
+        {
+            const Handle(TDocStd_Document)& document = engine->documents.stepDocuments.back();
+            const Handle(XCAFDoc_LayerTool) layerTool =
+                XCAFDoc_DocumentTool::LayerTool(document->Main());
+            if (layerTool.IsNull()) throw std::logic_error("XDE layer tool is unavailable.");
+
+            TDF_Label layer;
+            if (!layerTool->FindLayer(TCollection_ExtendedString(utf8LayerName, true), layer))
+                throw std::invalid_argument("STEP layer does not exist.");
+            layerTool->SetVisibility(layer, visible != 0);
+        }) != 0 ? OcctStatus_Ok : engine->currentErrorCode();
+    }
+
+    OcctStatus occt_engine_step_node_transform_set(
+        OcctEngineHandle handle,
+        const char* nodeId,
+        const OcctStepTransform3d* transform)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (!validateInitialized(engine)) return engine == nullptr
+            ? OcctStatus_ErrorInvalidHandle
+            : engine->currentErrorCode();
+        if (transform == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        return execute(engine, [&]
+        {
+            const TDF_Label label = findLastStepNode(engine, nodeId);
+            if (!XCAFDoc_ShapeTool::IsComponent(label))
+                throw std::invalid_argument("Only STEP component occurrences have editable transforms.");
+
+            const Handle(TDocStd_Document)& document = engine->documents.stepDocuments.back();
+            const Handle(XCAFDoc_ShapeTool) shapeTool =
+                XCAFDoc_DocumentTool::ShapeTool(document->Main());
+            if (shapeTool.IsNull()) throw std::logic_error("XDE shape tool is unavailable.");
+            TDF_Label relocatedLabel;
+        if (!shapeTool->SetLocation(
+                label,
+                TopLoc_Location(stepTransform(*transform)),
+                relocatedLabel))
+        {
+            throw std::runtime_error("XDE occurrence location update failed.");
+        }
+        }) != 0 ? OcctStatus_Ok : engine->currentErrorCode();
+    }
+
+    OcctStatus occt_engine_step_component_add(
+        OcctEngineHandle handle,
+        const char* parentNodeId,
+        const char* referenceNodeId,
+        const OcctStepTransform3d* transform,
+        OcctObjectId* viewerObjectId)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (!validateInitialized(engine)) return engine == nullptr
+            ? OcctStatus_ErrorInvalidHandle
+            : engine->currentErrorCode();
+        if (transform == nullptr || viewerObjectId == nullptr) return OcctStatus_ErrorInvalidArgument;
+        *viewerObjectId = 0;
+
+        return execute(engine, [&]
+        {
+            auto objectsByPath = stepLeafObjects(engine);
+            const Handle(TDocStd_Document)& document = engine->documents.stepDocuments.back();
+            const Handle(XCAFDoc_ShapeTool) shapeTool =
+                XCAFDoc_DocumentTool::ShapeTool(document->Main());
+            if (shapeTool.IsNull()) throw std::logic_error("XDE shape tool is unavailable.");
+
+            const TDF_Label parent = referredDefinition(shapeTool, findLastStepNode(engine, parentNodeId));
+            const TDF_Label reference = referredDefinition(shapeTool, findLastStepNode(engine, referenceNodeId));
+            if (!XCAFDoc_ShapeTool::IsAssembly(parent))
+                throw std::invalid_argument("Parent STEP node is not an assembly definition.");
+
+            const gp_Trsf location = stepTransform(*transform);
+            const TDF_Label component = shapeTool->AddComponent(parent, reference, TopLoc_Location(location));
+            if (component.IsNull()) throw std::runtime_error("XDE component creation failed.");
+
+            OcctObjectId objectId = 0;
+            try
+            {
+                const TopoDS_Shape shape = XCAFDoc_ShapeTool::GetShape(reference);
+                objectId = engine->addShape(shape, false, labelName(reference));
+                ObjectEntry* entry = engine->findShape(objectId);
+                if (entry == nullptr) throw std::logic_error("Created Viewer shape is unavailable.");
+                entry->presentation->SetLocalTransformation(location);
+
+                std::string createdPath;
+                XCAFPrs_DocumentExplorer explorer(document, XCAFPrs_DocumentExplorerFlags_None);
+                for (; explorer.More(); explorer.Next())
+                {
+                    const XCAFPrs_DocumentNode& node = explorer.Current();
+                    if (node.Label == component)
+                    {
+                        createdPath = node.Id.ToCString();
+                        break;
+                    }
+                }
+                if (createdPath.empty()) throw std::logic_error("Created XDE component path was not found.");
+                objectsByPath.emplace(createdPath, objectId);
+                rebuildStepLeafObjects(engine, objectsByPath);
+                engine->documents.pristineStepDocumentMatchesScene = true;
+                *viewerObjectId = objectId;
+            }
+            catch (...)
+            {
+                if (objectId != 0) engine->erase(objectId);
+                shapeTool->RemoveComponent(component);
+                throw;
+            }
+        }) != 0 ? OcctStatus_Ok : engine->currentErrorCode();
+    }
+
+    OcctStatus occt_engine_step_component_remove(
+        OcctEngineHandle handle,
+        const char* componentNodeId)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (!validateInitialized(engine)) return engine == nullptr
+            ? OcctStatus_ErrorInvalidHandle
+            : engine->currentErrorCode();
+
+        return execute(engine, [&]
+        {
+            auto objectsByPath = stepLeafObjects(engine);
+            const auto objectIterator = objectsByPath.find(componentNodeId == nullptr ? "" : componentNodeId);
+            if (objectIterator == objectsByPath.end())
+                throw std::invalid_argument("STEP component does not map to a Viewer leaf object.");
+
+            const Handle(TDocStd_Document)& document = engine->documents.stepDocuments.back();
+            const Handle(XCAFDoc_ShapeTool) shapeTool =
+                XCAFDoc_DocumentTool::ShapeTool(document->Main());
+            if (shapeTool.IsNull()) throw std::logic_error("XDE shape tool is unavailable.");
+            const TDF_Label component = findLastStepNode(engine, componentNodeId);
+            if (!XCAFDoc_ShapeTool::IsComponent(component))
+                throw std::invalid_argument("STEP node is not a removable component occurrence.");
+
+            shapeTool->RemoveComponent(component);
+            const OcctObjectId objectId = objectIterator->second;
+            objectsByPath.erase(objectIterator);
+            engine->erase(objectId);
+            rebuildStepLeafObjects(engine, objectsByPath);
+            engine->documents.pristineStepDocument = document;
+            engine->documents.pristineStepDocumentMatchesScene = true;
+        }) != 0 ? OcctStatus_Ok : engine->currentErrorCode();
+    }
+
     OcctStatus occt_engine_step_document_json_get(
         OcctEngineHandle handle,
         char* utf8Buffer,

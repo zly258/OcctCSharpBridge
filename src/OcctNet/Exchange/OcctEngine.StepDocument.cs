@@ -16,6 +16,20 @@ public sealed partial class OcctEngine
         var fullPath = Path.GetFullPath(filePath);
         var primaryShape = ImportStep(fullPath);
 
+        return ReadStepDocument(fullPath, primaryShape);
+    }
+
+    /// <summary>Reads a fresh managed snapshot of the retained STEP/XDE document.</summary>
+    public OcctAssemblyDocument RefreshStepDocument(OcctAssemblyDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        EnsureShape(document.PrimaryShape);
+        EnsureInitialized();
+        return ReadStepDocument(document.SourcePath, document.PrimaryShape);
+    }
+
+    private OcctAssemblyDocument ReadStepDocument(string sourcePath, OcctShape primaryShape)
+    {
         var json = GetLastStepDocumentJson();
         if (string.IsNullOrWhiteSpace(json)) throw CreateException(nameof(ImportStepDocument));
 
@@ -54,7 +68,8 @@ public sealed partial class OcctEngine
                 ToStyle(value.Visible, value.SurfaceColor, value.CurveColor),
                 OcctAssemblyTransform3d.FromArray(value.LocalTransform),
                 OcctAssemblyTransform3d.FromArray(value.GlobalTransform),
-                ToSubshapeStyles(value.SubshapeStyles)));
+                ToSubshapeStyles(value.SubshapeStyles),
+                value.Layers ?? Array.Empty<string>()));
         }
 
         var roots = new List<OcctAssemblyNode>();
@@ -66,7 +81,8 @@ public sealed partial class OcctEngine
                 roots.Add(node);
         }
 
-        return new OcctAssemblyDocument(fullPath, primaryShape, nodes, roots);
+        return new OcctAssemblyDocument(sourcePath, primaryShape, nodes, roots);
+
     }
 
     private string GetLastStepDocumentJson()
@@ -158,6 +174,9 @@ public sealed partial class OcctEngine
 
         [JsonPropertyName("curveColor")]
         public double[]? CurveColor { get; set; }
+
+        [JsonPropertyName("layers")]
+        public string[]? Layers { get; set; }
 
         [JsonPropertyName("localTransform")]
         public double[]? LocalTransform { get; set; }

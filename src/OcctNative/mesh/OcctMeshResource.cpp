@@ -53,23 +53,14 @@ extern "C"
         OcctMeshHandle* result)
     {
         ModelSession* model = reinterpret_cast<ModelSession*>(session);
-        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
-        model->errors.clear();
-        if (options == nullptr || result == nullptr)
+        return executeStatus(model, [&]
         {
-            model->errors.set(OcctStatus_ErrorInvalidArgument, "Mesh options or handle output is null.");
-            return OcctStatus_ErrorInvalidArgument;
-        }
-        *result = nullptr;
-        if (options->structSize < sizeof(OcctMeshBuildOptions) ||
-            options->apiVersion != MeshOptionsApiVersion)
-        {
-            model->errors.set(OcctStatus_ErrorInvalidArgument, "Mesh options layout or API version is unsupported.");
-            return OcctStatus_ErrorInvalidArgument;
-        }
-
-        if (!execute(model, [&]
-        {
+            if (options == nullptr || result == nullptr)
+                throw std::invalid_argument("Mesh options or handle output is null.");
+            *result = nullptr;
+            if (options->structSize < sizeof(OcctMeshBuildOptions) ||
+                options->apiVersion != MeshOptionsApiVersion)
+                throw std::invalid_argument("Mesh options layout or API version is unsupported.");
             if (options->linearDeflection <= 0.0 || options->angularDeflection <= 0.0)
                 throw std::invalid_argument("Mesh deflections must be positive.");
             if (options->minSize < 0.0)
@@ -161,11 +152,7 @@ extern "C"
                 delete mesh;
                 throw;
             }
-        }))
-        {
-            return model->errors.code;
-        }
-        return OcctStatus_Ok;
+        });
     }
 
     void occt_mesh_release(OcctMeshHandle handle)

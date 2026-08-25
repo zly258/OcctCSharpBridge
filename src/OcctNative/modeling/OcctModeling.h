@@ -214,6 +214,87 @@ extern "C"
         int hasCenterOfCurvature;
     };
 
+    struct OcctModelContinuityOptions
+    {
+        double positionTolerance;
+        double angularTolerance;
+        double curvatureTolerance;
+        double firstDerivativeTolerance;
+        double secondDerivativeTolerance;
+    };
+
+    struct OcctModelCurveContinuityResult
+    {
+        double positionGap;
+        double tangentAngleRadians;
+        double curvatureVectorGap;
+        double firstSpeed;
+        double secondSpeed;
+        double firstCurvature;
+        double secondCurvature;
+        int parametricLevel;
+        int geometricLevel;
+        int hasFirstDerivatives;
+        int hasSecondDerivatives;
+    };
+
+    struct OcctModelSurfaceContinuityResult
+    {
+        double maximumPositionGap;
+        double maximumNormalAngleRadians;
+        double maximumCurvatureGap;
+        int declaredParametricLevel;
+        int declaredGeometricLevel;
+        int measuredGeometricLevel;
+        int sampleCount;
+        int invalidSampleCount;
+    };
+
+    struct OcctModelCurvatureCombSample
+    {
+        double parameter;
+        OcctPoint3d point;
+        OcctVector3d combVector;
+        double curvature;
+        int valid;
+    };
+
+    struct OcctModelSurfaceQualityOptions
+    {
+        int uSamples;
+        int vSamples;
+        double resolution;
+        double zebraFrequency;
+        double zebraPhase;
+        OcctVector3d viewDirection;
+    };
+
+    struct OcctModelSurfaceQualitySample
+    {
+        double u;
+        double v;
+        OcctPoint3d point;
+        OcctVector3d normal;
+        double maximumCurvature;
+        double minimumCurvature;
+        double meanCurvature;
+        double gaussianCurvature;
+        double zebraIntensity;
+        int valid;
+    };
+
+    struct OcctModelSurfaceQualitySummary
+    {
+        double minimumMeanCurvature;
+        double maximumMeanCurvature;
+        double minimumGaussianCurvature;
+        double maximumGaussianCurvature;
+        double maximumAbsoluteCurvature;
+        int validSampleCount;
+        int invalidSampleCount;
+        int normalFlipCount;
+    };
+
     struct OcctModelSurfacePeriodicity
     {
         int isUClosed;

@@ -4,3 +4,4 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("OcctNet.WinForms")]
 [assembly: InternalsVisibleTo("OcctNet.Wpf")]
 [assembly: InternalsVisibleTo("OcctNet.Avalonia")]
+[assembly: InternalsVisibleTo("OcctNet.Smoke")]

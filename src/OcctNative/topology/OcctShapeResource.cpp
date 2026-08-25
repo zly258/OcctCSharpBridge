@@ -24,23 +24,13 @@ extern "C"
         OcctShapeHandle* result)
     {
         ModelSession* model = reinterpret_cast<ModelSession*>(session);
-        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
-        model->errors.clear();
-        if (result == nullptr)
+        return executeStatus(model, [&]
         {
-            model->errors.set(OcctStatus_ErrorInvalidArgument, "Shape handle output is null.");
-            return OcctStatus_ErrorInvalidArgument;
-        }
-
-        *result = nullptr;
-        if (!execute(model, [&]
-        {
+            if (result == nullptr)
+                throw std::invalid_argument("Shape handle output is null.");
+            *result = nullptr;
             *result = new OcctShapeHandle_t(model->requireShape(shapeId));
-        }))
-        {
-            return model->errors.code;
-        }
-        return OcctStatus_Ok;
+        });
     }
 
     void occt_shape_release(OcctShapeHandle handle)

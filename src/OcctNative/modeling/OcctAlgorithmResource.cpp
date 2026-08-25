@@ -28,17 +28,12 @@ extern "C"
         OcctAlgorithmHandle* result)
     {
         ModelSession* model = reinterpret_cast<ModelSession*>(session);
-        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
-        model->errors.clear();
-        if (result == nullptr)
+        return executeStatus(model, [&]
         {
-            model->errors.set(OcctStatus_ErrorInvalidArgument, "Algorithm handle output is null.");
-            return OcctStatus_ErrorInvalidArgument;
-        }
-        *result = nullptr;
+            if (result == nullptr)
+                throw std::invalid_argument("Algorithm handle output is null.");
+            *result = nullptr;
 
-        const int succeeded = execute(model, [&]
-        {
             const OperationRecord& operation = requireOperation(model, operationId);
             auto handle = new OcctAlgorithmHandle_t();
             handle->operationId = operationId;
@@ -47,7 +42,6 @@ extern "C"
             handle->hasErrors = operation.hasErrors ? 1 : 0;
             *result = handle;
         });
-        return succeeded != 0 ? OcctStatus_Ok : model->errors.code;
     }
 
     void occt_algorithm_release(OcctAlgorithmHandle handle)

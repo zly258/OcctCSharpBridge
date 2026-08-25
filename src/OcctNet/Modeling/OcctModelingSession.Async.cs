@@ -2,20 +2,55 @@ namespace OcctNet;
 
 public sealed partial class OcctModelingSession
 {
-    // -------------------------------------------------------------------------
-    // Async wrappers for CPU-intensive modeling operations.
-    // These offload the blocking native call to the thread pool so that
-    // UI threads remain responsive during long-running CAD operations.
-    // IMPORTANT: OcctModelingSession is NOT thread-safe; the caller must ensure
-    // that no other operation runs concurrently on the same session.
-    // -------------------------------------------------------------------------
+    // Async wrappers serialize work submitted through this API so that callers
+    // cannot accidentally execute two native operations on the same session.
+    // Synchronous calls are not included in this gate and must not be mixed with
+    // an in-flight async operation.
+    private readonly SemaphoreSlim _asyncOperationGate = new(1, 1);
+
+    private async Task<T> RunExclusiveAsync<T>(
+        Func<T> operation,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+        await _asyncOperationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Once the native OCCT call has started it cannot be interrupted safely.
+            // Do not pass the token to Task.Run: cancellation remains cooperative
+            // while queued and never reports a running native operation as cancelled.
+            return await Task.Run(operation, CancellationToken.None).ConfigureAwait(false);
+        }
+        finally
+        {
+            _asyncOperationGate.Release();
+        }
+    }
+
+    private async Task RunExclusiveAsync(
+        Action operation,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+        await RunExclusiveAsync(
+            () =>
+            {
+                operation();
+                return true;
+            },
+            cancellationToken).ConfigureAwait(false);
+    }
 
     /// <summary>
     /// Asynchronously executes a boolean operation on the thread pool.
     /// </summary>
     /// <remarks>
-    /// The modeling session is not thread-safe. Ensure no other calls are made
-    /// on this session while the task is running.
+    /// Async operations submitted through this session are serialized. Cancellation
+    /// is honored while the operation is queued; an OCCT call already in progress
+    /// runs to completion. Do not invoke synchronous methods on this session while
+    /// an async operation is running.
     /// </remarks>
     public Task<OcctModelAlgorithmResult> BooleanAsync(
         OcctBooleanOperation operation,
@@ -23,7 +58,7 @@ public sealed partial class OcctModelingSession
         OcctModelShape right,
         OcctModelBooleanOptions? options = null,
         CancellationToken cancellationToken = default) =>
-        Task.Run(() => Boolean(operation, left, right, options), cancellationToken);
+        RunExclusiveAsync(() => Boolean(operation, left, right, options), cancellationToken);
 
     /// <inheritdoc cref="Fuse(OcctModelShape, OcctModelShape, OcctModelBooleanOptions?)"/>
     public Task<OcctModelAlgorithmResult> FuseAsync(
@@ -31,7 +66,7 @@ public sealed partial class OcctModelingSession
         OcctModelShape right,
         OcctModelBooleanOptions? options = null,
         CancellationToken cancellationToken = default) =>
-        Task.Run(() => Fuse(left, right, options), cancellationToken);
+        RunExclusiveAsync(() => Fuse(left, right, options), cancellationToken);
 
     /// <inheritdoc cref="Cut(OcctModelShape, OcctModelShape, OcctModelBooleanOptions?)"/>
     public Task<OcctModelAlgorithmResult> CutAsync(
@@ -39,7 +74,7 @@ public sealed partial class OcctModelingSession
         OcctModelShape right,
         OcctModelBooleanOptions? options = null,
         CancellationToken cancellationToken = default) =>
-        Task.Run(() => Cut(left, right, options), cancellationToken);
+        RunExclusiveAsync(() => Cut(left, right, options), cancellationToken);
 
     /// <inheritdoc cref="Common(OcctModelShape, OcctModelShape, OcctModelBooleanOptions?)"/>
     public Task<OcctModelAlgorithmResult> CommonAsync(
@@ -47,7 +82,7 @@ public sealed partial class OcctModelingSession
         OcctModelShape right,
         OcctModelBooleanOptions? options = null,
         CancellationToken cancellationToken = default) =>
-        Task.Run(() => Common(left, right, options), cancellationToken);
+        RunExclusiveAsync(() => Common(left, right, options), cancellationToken);
 
     /// <inheritdoc cref="Section(OcctModelShape, OcctModelShape, OcctModelBooleanOptions?)"/>
     public Task<OcctModelAlgorithmResult> SectionAsync(
@@ -55,7 +90,7 @@ public sealed partial class OcctModelingSession
         OcctModelShape right,
         OcctModelBooleanOptions? options = null,
         CancellationToken cancellationToken = default) =>
-        Task.Run(() => Section(left, right, options), cancellationToken);
+        RunExclusiveAsync(() => Section(left, right, options), cancellationToken);
 
     /// <inheritdoc cref="Split(System.Collections.Generic.IEnumerable{OcctModelShape}, System.Collections.Generic.IEnumerable{OcctModelShape}, OcctModelBooleanOptions?)"/>
     public Task<OcctModelAlgorithmResult> SplitAsync(
@@ -63,7 +98,7 @@ public sealed partial class OcctModelingSession
         IEnumerable<OcctModelShape> tools,
         OcctModelBooleanOptions? options = null,
         CancellationToken cancellationToken = default) =>
-        Task.Run(() => Split(objects, tools, options), cancellationToken);
+        RunExclusiveAsync(() => Split(objects, tools, options), cancellationToken);
 
     /// <summary>
     /// Asynchronously exports shapes to a STEP file on the thread pool.
@@ -72,7 +107,7 @@ public sealed partial class OcctModelingSession
         OcctModelShape shape,
         string path,
         CancellationToken cancellationToken = default) =>
-        Task.Run(() => ExportStep(shape, path), cancellationToken);
+        RunExclusiveAsync(() => ExportStep(shape, path), cancellationToken);
 
     /// <summary>
     /// Asynchronously imports a STEP file on the thread pool.
@@ -80,5 +115,5 @@ public sealed partial class OcctModelingSession
     public Task<OcctModelShape> ImportStepAsync(
         string path,
         CancellationToken cancellationToken = default) =>
-        Task.Run(() => ImportStep(path), cancellationToken);
+        RunExclusiveAsync(() => ImportStep(path), cancellationToken);
 }

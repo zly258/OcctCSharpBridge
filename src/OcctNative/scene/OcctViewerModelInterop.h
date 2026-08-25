@@ -4,6 +4,12 @@
 
 extern "C"
 {
+    OCCTBRIDGE_API OcctStatus occt_engine_object_shape_create_from_model(
+        OcctEngineHandle engineHandle,
+        OcctModelingSessionHandle modelHandle,
+        OcctObjectId modelShapeId,
+        OcctObjectId* viewerObjectId);
+
     OCCTBRIDGE_API OcctStatus occt_engine_object_shape_update_from_model(
         OcctEngineHandle engineHandle,
         OcctModelingSessionHandle modelHandle,

@@ -8,9 +8,11 @@
 #include <Standard_Failure.hxx>
 #include <TopoDS_Shape.hxx>
 
+#include <mutex>
 #include <new>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -52,13 +54,19 @@ namespace OcctModelingInternal
 
     struct ModelSession
     {
-        OcctBridge::ErrorContext errors;
+        mutable std::recursive_mutex mutex;
+        mutable std::unordered_map<std::thread::id, OcctBridge::ErrorContext> errorsByThread;
         std::unordered_map<OcctObjectId, TopoDS_Shape> shapes;
         std::unordered_map<OcctOperationId, OperationRecord> operations;
         std::vector<OcctModelRayHit> rayHits;
         std::vector<OcctModelEdgeIntersection> edgeIntersections;
         OcctObjectId nextShapeId = 1;
         OcctOperationId nextOperationId = 1;
+
+        OcctBridge::ErrorContext& errorContext() const
+        {
+            return errorsByThread[std::this_thread::get_id()];
+        }
 
         TopoDS_Shape& requireShape(OcctObjectId id)
         {
@@ -105,7 +113,8 @@ namespace OcctModelingInternal
     inline int execute(ModelSession* model, Function&& function)
     {
         if (model == nullptr) return 0;
-        model->errors.clear();
+        const std::lock_guard<std::recursive_mutex> guard(model->mutex);
+        model->errorContext().clear();
         try
         {
             function();
@@ -114,27 +123,27 @@ namespace OcctModelingInternal
         catch (const Standard_Failure& failure)
         {
             const char* message = failure.GetMessageString();
-            model->errors.set(OcctStatus_ErrorOcct, message == nullptr ? "Open CASCADE operation failed." : message);
+            model->errorContext().set(OcctStatus_ErrorOcct, message == nullptr ? "Open CASCADE operation failed." : message);
         }
         catch (const std::invalid_argument& exception)
         {
-            model->errors.set(OcctStatus_ErrorInvalidArgument, exception.what());
+            model->errorContext().set(OcctStatus_ErrorInvalidArgument, exception.what());
         }
         catch (const std::logic_error& exception)
         {
-            model->errors.set(OcctStatus_ErrorInvalidState, exception.what());
+            model->errorContext().set(OcctStatus_ErrorInvalidState, exception.what());
         }
         catch (const std::bad_alloc&)
         {
-            model->errors.set(OcctStatus_ErrorOutOfMemory, "Native memory allocation failed.");
+            model->errorContext().set(OcctStatus_ErrorOutOfMemory, "Native memory allocation failed.");
         }
         catch (const std::exception& exception)
         {
-            model->errors.set(OcctStatus_ErrorUnknown, exception.what());
+            model->errorContext().set(OcctStatus_ErrorUnknown, exception.what());
         }
         catch (...)
         {
-            model->errors.set(OcctStatus_ErrorUnknown, "Unknown native modeling error.");
+            model->errorContext().set(OcctStatus_ErrorUnknown, "Unknown native modeling error.");
         }
         return 0;
     }
@@ -143,9 +152,10 @@ namespace OcctModelingInternal
     inline OcctStatus executeStatus(ModelSession* model, Function&& function)
     {
         if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        const std::lock_guard<std::recursive_mutex> guard(model->mutex);
         return execute(model, std::forward<Function>(function)) != 0
             ? OcctStatus_Ok
-            : model->errors.code;
+            : model->errorContext().code;
     }
 
     template<typename Result, typename Function>

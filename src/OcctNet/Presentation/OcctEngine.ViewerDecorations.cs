@@ -80,8 +80,6 @@ public sealed partial class OcctEngine
         ValidateViewCubeOffset(options.OffsetX, nameof(options));
         ValidateViewCubeOffset(options.OffsetY, nameof(options));
 
-        _viewCubeOptions = options;
-
         var fontNamePtr = IntPtr.Zero;
         try
         {
@@ -112,6 +110,10 @@ public sealed partial class OcctEngine
             };
             EnsureInitialized();
             CheckDecorationsStatus(ViewerDecorationsNativeMethods.occt_engine_view_cube_update(_handle, in native));
+            CheckDecorationsStatus(ViewNativeMethods.occt_engine_view_cube_axes_set(
+                _handle,
+                options.DrawAxes ? 1 : 0));
+            _viewCubeOptions = options;
         }
         finally
         {
@@ -142,6 +144,13 @@ public sealed partial class OcctEngine
         ValidateViewCubeOffset(offsetY, nameof(offsetY));
         SetViewCube(_viewCubeOptions with { OffsetX = offsetX, OffsetY = offsetY });
     }
+
+    /// <summary>
+    /// Shows or hides the X/Y/Z axes drawn as part of the ViewCube.
+    /// The cube faces, edges, corners and navigation behavior remain available.
+    /// </summary>
+    public void SetViewCubeAxesVisible(bool visible) =>
+        SetViewCube(_viewCubeOptions with { DrawAxes = visible });
 
     public void SetViewCubeFontHeight(double fontHeight)
     {

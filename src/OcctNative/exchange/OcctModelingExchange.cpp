@@ -14,7 +14,7 @@
 #include <utility>
 
 using OcctModelingInternal::ModelSession;
-using OcctModelingInternal::execute;
+using OcctModelingInternal::executeStatus;
 using OcctModelingInternal::modelOutputStream;
 using OcctModelingInternal::readModelBrep;
 using OcctModelingInternal::readModelIges;
@@ -38,27 +38,19 @@ namespace
     template<typename Factory>
     OcctStatus importShape(ModelSession* model, OcctObjectId* output, Factory&& factory)
     {
-        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
-        model->errors.clear();
-        if (output == nullptr)
+        return executeStatus(model, [&]
         {
-            model->errors.set(OcctStatus_ErrorInvalidArgument, "Result shape ID output is null.");
-            return OcctStatus_ErrorInvalidArgument;
-        }
-        *output = 0;
-        if (!execute(model, [&] { *output = model->addShape(factory()); }))
-            return model->errors.code;
-        return OcctStatus_Ok;
+            if (output == nullptr)
+                throw std::invalid_argument("Result shape ID output is null.");
+            *output = 0;
+            *output = model->addShape(factory());
+        });
     }
 
     template<typename Action>
     OcctStatus exportShape(ModelSession* model, Action&& action)
     {
-        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
-        model->errors.clear();
-        if (!execute(model, std::forward<Action>(action)))
-            return model->errors.code;
-        return OcctStatus_Ok;
+        return executeStatus(model, std::forward<Action>(action));
     }
 
     void validateStlOptions(const OcctStlExportOptions* options)
@@ -133,10 +125,11 @@ extern "C"
     {
         ModelSession* model = sessionOf(session);
         if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
-        model->errors.clear();
+        const std::lock_guard<std::recursive_mutex> guard(model->mutex);
+        model->errorContext().clear();
         if (resultShapeId == nullptr)
         {
-            model->errors.set(OcctStatus_ErrorInvalidArgument, "Result shape ID output is null.");
+            model->errorContext().set(OcctStatus_ErrorInvalidArgument, "Result shape ID output is null.");
             return OcctStatus_ErrorInvalidArgument;
         }
         *resultShapeId = 0;
@@ -144,7 +137,7 @@ extern "C"
         const auto path = OcctBridge::pathFromUtf8(utf8Path);
         if (path.empty())
         {
-            model->errors.set(OcctStatus_ErrorInvalidArgument, "Path is empty.");
+            model->errorContext().set(OcctStatus_ErrorInvalidArgument, "Path is empty.");
             return OcctStatus_ErrorInvalidArgument;
         }
 
@@ -158,7 +151,7 @@ extern "C"
         if (extension == ".stl")
             return occt_model_stl_import(session, utf8Path, resultShapeId);
 
-        model->errors.set(
+        model->errorContext().set(
             OcctStatus_ErrorFormat,
             "Unsupported file extension. Supported: STEP, IGES, BREP and STL.");
         return OcctStatus_ErrorFormat;

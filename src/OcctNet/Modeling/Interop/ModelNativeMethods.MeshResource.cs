@@ -52,4 +52,20 @@ internal static partial class ModelNativeMethods
         [Out] OcctModelMeshTriangle[] results,
         int capacity,
         out int written);
+
+    [LibraryImport(LibraryName, EntryPoint = "occt_mesh_nodes_copy")]
+    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    internal static unsafe partial OcctStatus MeshVerticesCopyToPointer(
+        OcctMeshSafeHandle handle,
+        OcctMeshVertex* results,
+        int capacity,
+        out int written);
+
+    [LibraryImport(LibraryName, EntryPoint = "occt_mesh_triangles_copy")]
+    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    internal static unsafe partial OcctStatus MeshTrianglesCopyToPointer(
+        OcctMeshSafeHandle handle,
+        OcctModelMeshTriangle* results,
+        int capacity,
+        out int written);
 }

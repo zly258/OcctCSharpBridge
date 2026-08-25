@@ -158,6 +158,7 @@ add_library(OcctNative SHARED
     exchange/OcctObjGltfExchange.h
     geometry/OcctModelingAnalyticGeometry.cpp
     geometry/OcctModelingDifferentialGeometry.cpp
+    geometry/OcctModelingContinuity.cpp
     topology/OcctModelingShapeProperties.cpp
     geometry/OcctModelingPlanarOperations.cpp
     geometry/OcctModelingBSpline.cpp
@@ -227,6 +228,7 @@ add_library(OcctNative SHARED
     topology/OcctModelingShapeProperties.h
     geometry/OcctModelingPlanarOperations.h
     geometry/OcctModelingBSpline.h
+    geometry/OcctModelingContinuity.h
     topology/OcctModelingTopologyAnalysis.h
     topology/OcctModelingFaceAnalysis.h
     modeling/OcctModelingInertia.h

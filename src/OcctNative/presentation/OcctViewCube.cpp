@@ -14,7 +14,7 @@ namespace
     OcctStatus requireInitializedEngine(Engine* engine)
     {
         if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
-        if (!validateInitialized(engine)) return engine->errors.code;
+        if (!validateInitialized(engine)) return engine->currentErrorCode();
         return OcctStatus_Ok;
     }
 
@@ -25,7 +25,7 @@ namespace
         if (initialized != OcctStatus_Ok) return initialized;
         return execute(engine, std::forward<Function>(function)) != 0
             ? OcctStatus_Ok
-            : engine->errors.code;
+            : engine->currentErrorCode();
     }
 
     void setCubeLabels(const Handle(AIS_ViewCube)& cube, int language)
@@ -68,6 +68,25 @@ extern "C"
             setCubeLabels(engine->viewerContext.viewCube, language);
             engine->viewerContext.context->Redisplay(
                 engine->viewerContext.viewCube,
+                Standard_False,
+                Standard_True);
+            engine->requestRedraw();
+        });
+    }
+
+    OcctStatus occt_engine_view_cube_axes_set(
+        OcctEngineHandle handle,
+        OcctBool visible)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeViewCubeStatus(engine, [&]
+        {
+            const Handle(AIS_ViewCube)& cube = engine->viewerContext.viewCube;
+            if (cube.IsNull()) throw std::runtime_error("The view cube has not been initialized.");
+            cube->SetDrawAxes(visible != 0);
+            cube->SetToUpdate();
+            engine->viewerContext.context->Redisplay(
+                cube,
                 Standard_False,
                 Standard_True);
             engine->requestRedraw();

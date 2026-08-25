@@ -172,6 +172,12 @@ internal static partial class ViewNativeMethods
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_view_cube_axes_set(
+        OcctEngineSafeHandle handle,
+        int visible);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_engine_view_cube_try_click(
         OcctEngineSafeHandle handle,
         int x,

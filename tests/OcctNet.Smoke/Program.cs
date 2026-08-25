@@ -8,6 +8,8 @@ if (!string.Equals(OcctBridgeInfo.NativeVersion, OcctBridgeInfo.ManagedVersion, 
 if (string.IsNullOrWhiteSpace(OcctBridgeInfo.BuildInfo))
     throw new InvalidOperationException("Native bridge build information is empty.");
 
+ConcurrencyStress.Run();
+
 using var model = new OcctModelingSession();
 
 var snapshotSource = model.MakeBox(3, 4, 5);
@@ -31,6 +33,17 @@ if (ownedMesh.NodeCount <= 0 ||
     throw new InvalidOperationException(
         "Owned mesh snapshot did not survive deletion of its source registry entry.");
 }
+
+var directVertices = new OcctMeshVertex[ownedMesh.NodeCount];
+var directTriangles = new OcctModelMeshTriangle[ownedMesh.TriangleCount];
+if (ownedMesh.CopyVertices(directVertices) != directVertices.Length ||
+    ownedMesh.CopyTriangles(directTriangles) != directTriangles.Length)
+{
+    throw new InvalidOperationException("Direct mesh Span copy returned an unexpected element count.");
+}
+if (directVertices.Length == 0 || !directVertices[0].Point.IsFinite)
+    throw new InvalidOperationException("Direct mesh Span copy returned an invalid vertex.");
+
 
 var box = model.MakeBox(100, 80, 60);
 var cylinder = model.MakeCylinder(new OcctPoint3d(50, 40, -10), OcctVector3d.UnitZ, 12, 80);
@@ -92,6 +105,15 @@ if (topologyResolution.Status != OcctTopologyReferenceStatus.Resolved ||
 
 model.Triangulate(cut.Shape);
 var faceMesh = model.GetFaceMesh(firstFace);
+var (faceVertexCount, faceTriangleCount) = model.GetFaceMeshCounts(firstFace);
+var directFaceVertices = new OcctMeshVertex[faceVertexCount];
+var directFaceTriangles = new OcctModelMeshTriangle[faceTriangleCount];
+var directFaceWritten = model.CopyFaceMesh(firstFace, directFaceVertices, directFaceTriangles);
+if (directFaceWritten.VerticesWritten != faceVertexCount ||
+    directFaceWritten.TrianglesWritten != faceTriangleCount)
+{
+    throw new InvalidOperationException("Direct face mesh Span copy returned an unexpected element count.");
+}
 var shapeMesh = model.GetShapeMesh(cut.Shape);
 var faceUv = model.GetFaceUvBounds(firstFace);
 var faceU = (faceUv.UMin + faceUv.UMax) * 0.5;

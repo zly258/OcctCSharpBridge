@@ -1,4 +1,4 @@
-﻿namespace OcctNet;
+namespace OcctNet;
 
 public sealed partial class OcctModelingSession
 {
@@ -21,59 +21,54 @@ public sealed partial class OcctModelingSession
         CheckStatus(ModelNativeMethods.occt_model_clear_mesh(_handle, shape.Id));
     }
 
-    public OcctMesh GetFaceMesh(OcctModelShape face)
+    /// <summary>Returns the current triangulation sizes for one face.</summary>
+    public (int VertexCount, int TriangleCount) GetFaceMeshCounts(OcctModelShape face)
     {
         EnsureShape(face);
+        CheckStatus(ModelNativeMethods.occt_model_face_mesh_nodes_snapshot_get(
+            _handle, face.Id, null, 0, out var vertexCount));
+        CheckStatus(ModelNativeMethods.occt_model_face_mesh_triangles_snapshot_get(
+            _handle, face.Id, null, 0, out var triangleCount));
+        return (vertexCount, triangleCount);
+    }
 
-        var status = ModelNativeMethods.occt_model_face_mesh_nodes_snapshot_get(
-            _handle,
-            face.Id,
-            null,
-            0,
-            out var nodeCount);
-        CheckStatus(status);
+    /// <summary>
+    /// Copies one face triangulation directly into caller-provided buffers.
+    /// </summary>
+    public unsafe (int VerticesWritten, int TrianglesWritten) CopyFaceMesh(
+        OcctModelShape face,
+        Span<OcctMeshVertex> vertices,
+        Span<OcctModelMeshTriangle> triangles)
+    {
+        var (vertexCount, triangleCount) = GetFaceMeshCounts(face);
+        if (vertices.Length < vertexCount)
+            throw new ArgumentException("Vertex destination is smaller than the face mesh.", nameof(vertices));
+        if (triangles.Length < triangleCount)
+            throw new ArgumentException("Triangle destination is smaller than the face mesh.", nameof(triangles));
 
-        status = ModelNativeMethods.occt_model_face_mesh_triangles_snapshot_get(
-            _handle,
-            face.Id,
-            null,
-            0,
-            out var triangleCount);
-        CheckStatus(status);
+        fixed (OcctMeshVertex* vertexPointer = vertices)
+        fixed (OcctModelMeshTriangle* trianglePointer = triangles)
+        {
+            CheckStatus(ModelNativeMethods.FaceMeshVerticesCopyToPointer(
+                _handle, face.Id, vertexPointer, vertices.Length, out var verticesWritten));
+            CheckStatus(ModelNativeMethods.FaceMeshTrianglesCopyToPointer(
+                _handle, face.Id, trianglePointer, triangles.Length, out var trianglesWritten));
+            if (verticesWritten != vertexCount || trianglesWritten != triangleCount)
+                throw new InvalidOperationException("Native face mesh changed during direct buffer copy.");
+            return (verticesWritten, trianglesWritten);
+        }
+    }
 
-        var nativeNodes = new NativeModelMeshNode[nodeCount];
+    public OcctMesh GetFaceMesh(OcctModelShape face)
+    {
+        var (vertexCount, triangleCount) = GetFaceMeshCounts(face);
+        var vertices = new OcctMeshVertex[vertexCount];
         var triangles = new OcctModelMeshTriangle[triangleCount];
+        CopyFaceMesh(face, vertices, triangles);
 
-        if (nodeCount > 0)
-        {
-            status = ModelNativeMethods.occt_model_face_mesh_nodes_snapshot_get(
-                _handle,
-                face.Id,
-                nativeNodes,
-                nativeNodes.Length,
-                out var requiredNodes);
-            CheckStatus(status);
-            if (requiredNodes != nodeCount)
-                throw new InvalidOperationException("Native mesh-node count changed during snapshot copy.");
-        }
-
-        if (triangleCount > 0)
-        {
-            status = ModelNativeMethods.occt_model_face_mesh_triangles_snapshot_get(
-                _handle,
-                face.Id,
-                triangles,
-                triangles.Length,
-                out var requiredTriangles);
-            CheckStatus(status);
-            if (requiredTriangles != triangleCount)
-                throw new InvalidOperationException("Native mesh-triangle count changed during snapshot copy.");
-        }
-
-        var nodes = new OcctModelMeshNode[nodeCount];
-        for (var index = 0; index < nodeCount; index++)
-            nodes[index] = nativeNodes[index].ToManaged();
-
+        var nodes = new OcctModelMeshNode[vertexCount];
+        for (var index = 0; index < vertexCount; index++)
+            nodes[index] = vertices[index].ToManaged();
         return new OcctMesh(nodes, triangles);
     }
 
@@ -93,38 +88,54 @@ public sealed partial class OcctModelingSession
         EnsureShape(shape);
         Triangulate(shape, parameters);
 
-        var nodes = new List<OcctModelMeshNode>();
-        var triangles = new List<OcctModelMeshTriangle>();
         var faces = GetSubshapes(shape, OcctShapeType.Face);
-        var ranges = new List<OcctShapeMeshFaceRange>(faces.Count);
-
-        foreach (var face in faces)
+        var counts = new (int VertexCount, int TriangleCount)[faces.Count];
+        var totalVertices = 0;
+        var totalTriangles = 0;
+        for (var index = 0; index < faces.Count; index++)
         {
-            var faceMesh = GetFaceMesh(face);
-            var nodeStart = nodes.Count;
-            var triangleStart = triangles.Count;
-
-            nodes.AddRange(faceMesh.Nodes);
-            foreach (var triangle in faceMesh.Triangles)
-            {
-                triangles.Add(new OcctModelMeshTriangle
-                {
-                    Node1 = triangle.Node1 + nodeStart,
-                    Node2 = triangle.Node2 + nodeStart,
-                    Node3 = triangle.Node3 + nodeStart
-                });
-            }
-
-            ranges.Add(new OcctShapeMeshFaceRange(
-                face,
-                nodeStart,
-                faceMesh.Nodes.Count,
-                triangleStart,
-                faceMesh.Triangles.Count));
+            counts[index] = GetFaceMeshCounts(faces[index]);
+            totalVertices = checked(totalVertices + counts[index].VertexCount);
+            totalTriangles = checked(totalTriangles + counts[index].TriangleCount);
         }
 
-        return new OcctShapeMeshData(
-            new OcctMesh(nodes, triangles),
-            ranges.ToArray());
+        var vertices = new OcctMeshVertex[totalVertices];
+        var triangles = new OcctModelMeshTriangle[totalTriangles];
+        var ranges = new OcctShapeMeshFaceRange[faces.Count];
+        var vertexStart = 0;
+        var triangleStart = 0;
+
+        for (var faceIndex = 0; faceIndex < faces.Count; faceIndex++)
+        {
+            var face = faces[faceIndex];
+            var count = counts[faceIndex];
+            CopyFaceMesh(
+                face,
+                vertices.AsSpan(vertexStart, count.VertexCount),
+                triangles.AsSpan(triangleStart, count.TriangleCount));
+
+            var triangleEnd = triangleStart + count.TriangleCount;
+            for (var triangleIndex = triangleStart; triangleIndex < triangleEnd; triangleIndex++)
+            {
+                triangles[triangleIndex].Node1 += vertexStart;
+                triangles[triangleIndex].Node2 += vertexStart;
+                triangles[triangleIndex].Node3 += vertexStart;
+            }
+
+            ranges[faceIndex] = new OcctShapeMeshFaceRange(
+                face,
+                vertexStart,
+                count.VertexCount,
+                triangleStart,
+                count.TriangleCount);
+            vertexStart += count.VertexCount;
+            triangleStart = triangleEnd;
+        }
+
+        var nodes = new OcctModelMeshNode[totalVertices];
+        for (var index = 0; index < totalVertices; index++)
+            nodes[index] = vertices[index].ToManaged();
+
+        return new OcctShapeMeshData(new OcctMesh(nodes, triangles), ranges);
     }
 }

@@ -36,4 +36,22 @@ internal static partial class ModelNativeMethods
         [Out, MarshalUsing(CountElementName = nameof(capacity))] OcctModelMeshTriangle[]? results,
         int capacity,
         out int required);
+
+    [LibraryImport(LibraryName, EntryPoint = "occt_model_face_mesh_nodes_snapshot_get")]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static unsafe partial OcctStatus FaceMeshVerticesCopyToPointer(
+        OcctModelingSafeHandle handle,
+        long faceId,
+        OcctMeshVertex* results,
+        int capacity,
+        out int required);
+
+    [LibraryImport(LibraryName, EntryPoint = "occt_model_face_mesh_triangles_snapshot_get")]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static unsafe partial OcctStatus FaceMeshTrianglesCopyToPointer(
+        OcctModelingSafeHandle handle,
+        long faceId,
+        OcctModelMeshTriangle* results,
+        int capacity,
+        out int required);
 }

@@ -22,7 +22,7 @@ namespace
     OcctStatus requireInitializedEngine(Engine* engine)
     {
         if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
-        if (!validateInitialized(engine)) return engine->errors.code;
+        if (!validateInitialized(engine)) return engine->currentErrorCode();
         return OcctStatus_Ok;
     }
 
@@ -33,7 +33,7 @@ namespace
         if (initialized != OcctStatus_Ok) return initialized;
         return execute(engine, std::forward<Function>(function)) != 0
             ? OcctStatus_Ok
-            : engine->errors.code;
+            : engine->currentErrorCode();
     }
 
     void validateSelectionMode(int mode)
@@ -314,7 +314,7 @@ extern "C"
             }
             throw std::out_of_range("Selected subshape index is out of range.");
         });
-        if (result == 0) return engine->errors.code;
+        if (result == 0) return engine->currentErrorCode();
         *resultShapeId = result;
         return OcctStatus_Ok;
     }

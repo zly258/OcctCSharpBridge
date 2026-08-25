@@ -14,7 +14,9 @@ namespace OcctBridge
 
     void Engine::clearError()
     {
+        const std::lock_guard<std::recursive_mutex> guard(errorMutex);
         errors.clear();
+        errorsByThread[std::this_thread::get_id()].clear();
     }
 
     void Engine::setError(const std::string& message)
@@ -24,7 +26,23 @@ namespace OcctBridge
 
     void Engine::setError(OcctStatus code, const std::string& message)
     {
+        const std::lock_guard<std::recursive_mutex> guard(errorMutex);
         errors.set(code, message);
+        errorsByThread[std::this_thread::get_id()].set(code, message);
+    }
+
+    OcctStatus Engine::currentErrorCode() const
+    {
+        const std::lock_guard<std::recursive_mutex> guard(errorMutex);
+        const auto iterator = errorsByThread.find(std::this_thread::get_id());
+        return iterator == errorsByThread.end() ? OcctStatus_Ok : iterator->second.code;
+    }
+
+    std::string Engine::currentErrorMessage() const
+    {
+        const std::lock_guard<std::recursive_mutex> guard(errorMutex);
+        const auto iterator = errorsByThread.find(std::this_thread::get_id());
+        return iterator == errorsByThread.end() ? std::string() : iterator->second.message;
     }
 
     bool Engine::isUpdating() const { return viewerContext.isUpdating(); }
@@ -327,7 +345,15 @@ extern "C"
     OcctStatus occt_engine_last_error_code(OcctEngineHandle handle)
     {
         const Engine* engine = reinterpret_cast<const Engine*>(handle);
-        return engine == nullptr ? OcctStatus_ErrorInvalidHandle : engine->errors.code;
+        if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
+        try
+        {
+            return engine->currentErrorCode();
+        }
+        catch (...)
+        {
+            return OcctStatus_ErrorUnknown;
+        }
     }
 
     OcctStatus occt_engine_last_error_message(
@@ -340,14 +366,26 @@ extern "C"
         if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
         if (capacity < 0 || required == nullptr) return OcctStatus_ErrorInvalidArgument;
 
-        const int size = static_cast<int>(engine->errors.message.size()) + 1;
-        *required = size;
-        if (buffer == nullptr)
-            return capacity == 0 ? OcctStatus_Ok : OcctStatus_ErrorInvalidArgument;
-        if (capacity < size) return OcctStatus_ErrorBufferTooSmall;
+        try
+        {
+            const std::string message = engine->currentErrorMessage();
+            const int size = static_cast<int>(message.size()) + 1;
+            *required = size;
+            if (buffer == nullptr)
+                return capacity == 0 ? OcctStatus_Ok : OcctStatus_ErrorInvalidArgument;
+            if (capacity < size) return OcctStatus_ErrorBufferTooSmall;
 
-        std::memcpy(buffer, engine->errors.message.c_str(), static_cast<std::size_t>(size));
-        return OcctStatus_Ok;
+            std::memcpy(buffer, message.c_str(), static_cast<std::size_t>(size));
+            return OcctStatus_Ok;
+        }
+        catch (const std::bad_alloc&)
+        {
+            return OcctStatus_ErrorOutOfMemory;
+        }
+        catch (...)
+        {
+            return OcctStatus_ErrorUnknown;
+        }
     }
 
     const char* occt_version()

@@ -33,6 +33,19 @@ public readonly record struct OcctAssemblyTransform3d(
             values[4], values[5], values[6], values[7],
             values[8], values[9], values[10], values[11]);
     }
+
+
+    public bool IsFinite =>
+        double.IsFinite(M00) && double.IsFinite(M01) && double.IsFinite(M02) && double.IsFinite(M03) &&
+        double.IsFinite(M10) && double.IsFinite(M11) && double.IsFinite(M12) && double.IsFinite(M13) &&
+        double.IsFinite(M20) && double.IsFinite(M21) && double.IsFinite(M22) && double.IsFinite(M23);
+
+    internal NativeStepTransform3d ToNative() => new()
+    {
+        M00 = M00, M01 = M01, M02 = M02, M03 = M03,
+        M10 = M10, M11 = M11, M12 = M12, M13 = M13,
+        M20 = M20, M21 = M21, M22 = M22, M23 = M23
+    };
 }
 
 /// <summary>Presentation style resolved by OCCT for one XDE assembly occurrence.</summary>
@@ -72,7 +85,8 @@ public sealed class OcctAssemblyNode
         OcctAssemblyStyle style,
         OcctAssemblyTransform3d localTransform,
         OcctAssemblyTransform3d globalTransform,
-        IReadOnlyList<OcctAssemblySubshapeStyle> subshapeStyles)
+        IReadOnlyList<OcctAssemblySubshapeStyle> subshapeStyles,
+        IReadOnlyList<string>? layers = null)
     {
         Id = id;
         Index = index;
@@ -85,19 +99,21 @@ public sealed class OcctAssemblyNode
         LocalTransform = localTransform;
         GlobalTransform = globalTransform;
         SubshapeStyles = subshapeStyles ?? throw new ArgumentNullException(nameof(subshapeStyles));
+        Layers = layers ?? Array.Empty<string>();
     }
 
     public string Id { get; }
     public int Index { get; }
     public int ParentIndex { get; }
     public OcctAssemblyNodeKind Kind { get; }
-    public string Name { get; }
+    public string Name { get; internal set; }
     public string ReferenceName { get; }
     public OcctShape? Shape { get; }
-    public OcctAssemblyStyle Style { get; }
-    public OcctAssemblyTransform3d LocalTransform { get; }
+    public OcctAssemblyStyle Style { get; internal set; }
+    public OcctAssemblyTransform3d LocalTransform { get; internal set; }
     public OcctAssemblyTransform3d GlobalTransform { get; }
     public IReadOnlyList<OcctAssemblySubshapeStyle> SubshapeStyles { get; }
+    public IReadOnlyList<string> Layers { get; internal set; }
     public OcctAssemblyNode? Parent { get; internal set; }
     public IReadOnlyList<OcctAssemblyNode> Children => _children;
 
