@@ -52,6 +52,7 @@ public partial class MainWindow
     private OcctCornerPosition _triedronPosition = OcctCornerPosition.LeftLower;
     private OcctCornerPosition _viewCubePosition = OcctCornerPosition.RightUpper;
     private bool _viewCubeVisible = true;
+    private bool _viewCubeAxesVisible = true;
     private int _viewCubeSize = 72;
     private int _viewCubeOffsetX = 82;
     private int _viewCubeOffsetY = 82;
@@ -139,6 +140,7 @@ public partial class MainWindow
             var options = new OcctViewCubeOptions
             {
                 Visible = _viewCubeVisible,
+                DrawAxes = _viewCubeAxesVisible,
                 Position = _viewCubePosition,
                 SizePixels = _viewCubeSize,
                 OffsetX = _viewCubeOffsetX,
@@ -161,6 +163,12 @@ public partial class MainWindow
             visible ? "ViewCube 显示" : "ViewCube 隐藏");
         CommandStatus.Text = message;
         Log(message);
+    }
+
+    private void SetViewCubeAxesVisible(bool visible)
+    {
+        _viewCubeAxesVisible = visible;
+        ApplyViewCubeOptions();
     }
 
     private void SetViewCubePosition(OcctCornerPosition position)

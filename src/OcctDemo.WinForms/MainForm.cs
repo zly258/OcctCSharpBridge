@@ -192,13 +192,6 @@ public sealed partial class MainForm : Form
         return button;
     }
 
-    private ToolStripButton CommandButton(string text, DemoCommandId command)
-    {
-        var button = new ToolStripButton(text) { DisplayStyle = ToolStripItemDisplayStyle.Text, Tag = command };
-        button.Click += (_, _) => RunCommand((DemoCommandId)button.Tag!);
-        return button;
-    }
-
     private static string CadFileFilter() => DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified
         ? "所有支持格式|*.step;*.stp;*.iges;*.igs;*.brep;*.rle;*.stl|STEP 文件|*.step;*.stp|IGES 文件|*.iges;*.igs|BREP 文件|*.brep;*.rle|STL 文件|*.stl|所有文件|*.*"
         : "All Supported Files|*.step;*.stp;*.iges;*.igs;*.brep;*.rle;*.stl|STEP Files|*.step;*.stp|IGES Files|*.iges;*.igs|BREP Files|*.brep;*.rle|STL Files|*.stl|All Files|*.*";

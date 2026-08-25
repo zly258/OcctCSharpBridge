@@ -35,6 +35,7 @@ validate_sdk() {
     [[ "$(uname -s)" == "Linux" ]] || fail "build.sh supports Linux only; use build.ps1 on Windows."
     case "$(uname -m)" in x86_64|amd64) ;; *) fail "Linux x64 is required; detected $(uname -m)." ;; esac
     case "${CONFIGURATION}" in Debug|Release|RelWithDebInfo) ;; *) fail "Unknown configuration: ${CONFIGURATION}" ;; esac
+    bash "${ROOT_DIR}/tests/check-no-reflection-dispatch.sh" "${ROOT_DIR}"
     require_command dotnet
     require_command git
     require_command sha256sum

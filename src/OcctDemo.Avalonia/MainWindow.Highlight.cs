@@ -55,10 +55,11 @@ public sealed partial class MainWindow
     private OcctCornerPosition _triedronPosition = OcctCornerPosition.LeftLower;
     private OcctCornerPosition _viewCubePosition = OcctCornerPosition.RightUpper;
     private bool _viewCubeVisible = true;
+    private bool _viewCubeAxesVisible = true;
     private int _viewCubeSize = 72;
     private int _viewCubeOffsetX = 82;
     private int _viewCubeOffsetY = 82;
-    private int _viewCubeFontHeight = 30;
+    private int _viewCubeFontHeight = 15;
     private System.Drawing.Color _viewCubeBoxColor = System.Drawing.Color.FromArgb(200, 210, 225);
     private System.Drawing.Color _viewCubeFacetColor = System.Drawing.Color.FromArgb(255, 220, 0);
     private System.Drawing.Color _viewCubeTextColor = System.Drawing.Color.Black;
@@ -141,6 +142,7 @@ public sealed partial class MainWindow
             var options = new OcctViewCubeOptions
             {
                 Visible = _viewCubeVisible,
+                DrawAxes = _viewCubeAxesVisible,
                 Position = _viewCubePosition,
                 SizePixels = _viewCubeSize,
                 OffsetX = _viewCubeOffsetX,
@@ -163,6 +165,12 @@ public sealed partial class MainWindow
             visible ? "ViewCube 显示" : "ViewCube 隐藏");
         _commandStatus.Text = message;
         Log(message);
+    }
+
+    private void SetViewCubeAxesVisible(bool visible)
+    {
+        _viewCubeAxesVisible = visible;
+        ApplyViewCubeOptions();
     }
 
     private void SetViewCubePosition(OcctCornerPosition position)

@@ -141,7 +141,7 @@ public sealed partial class DemoSession
     {
         using var model = new OcctModelingSession();
         var source = model.MakeBox(80, 60, 45, -40, -30, 0);
-        var mesh = model.GetShapeMeshData(source, new OcctModelMeshParameters
+        var parameters = new OcctModelMeshParameters
         {
             LinearDeflection = 0.5,
             AngularDeflection = 0.5,
@@ -150,9 +150,36 @@ public sealed partial class DemoSession
             Parallel = false,
             InternalVertices = true,
             ControlSurfaceDeflection = true
-        });
+        };
+        var mesh = model.GetShapeMeshData(source, parameters);
 
         ValidateMeshData(mesh);
+
+        using var ownedMesh = model.CreateMeshResource(source, parameters);
+        var directVertices = new OcctMeshVertex[ownedMesh.NodeCount];
+        var directTriangles = new OcctModelMeshTriangle[ownedMesh.TriangleCount];
+        if (ownedMesh.CopyVertices(directVertices) != directVertices.Length ||
+            ownedMesh.CopyTriangles(directTriangles) != directTriangles.Length ||
+            directVertices.Length == 0 ||
+            !directVertices[0].Point.IsFinite)
+        {
+            throw new InvalidOperationException(Local(
+                "Direct mesh buffer copy returned inconsistent data.",
+                "网格直接缓冲区复制返回了不一致的数据。"));
+        }
+
+        var firstFace = model.GetFaces(source).First();
+        var (faceVertexCount, faceTriangleCount) = model.GetFaceMeshCounts(firstFace);
+        var faceVertices = new OcctMeshVertex[faceVertexCount];
+        var faceTriangles = new OcctModelMeshTriangle[faceTriangleCount];
+        var written = model.CopyFaceMesh(firstFace, faceVertices, faceTriangles);
+        if (written.VerticesWritten != faceVertexCount ||
+            written.TrianglesWritten != faceTriangleCount)
+        {
+            throw new InvalidOperationException(Local(
+                "Direct face mesh buffer copy returned inconsistent data.",
+                "面网格直接缓冲区复制返回了不一致的数据。"));
+        }
 
         var triangleEdges = new List<OcctShape>(mesh.TriangleCount);
         foreach (var triangle in mesh.Mesh.Triangles)
@@ -173,8 +200,8 @@ public sealed partial class DemoSession
         ActiveObject = meshWireframe;
 
         var details = Local(
-            $"Mesh generation test passed: faces {mesh.FaceCount}, nodes {mesh.NodeCount}, triangles {mesh.TriangleCount}, provenance ranges {mesh.FaceRanges.Count}. The viewport displays the actual triangle connectivity returned by GetShapeMeshData.",
-            $"网格生成测试通过：面 {mesh.FaceCount}，节点 {mesh.NodeCount}，三角形 {mesh.TriangleCount}，面来源区间 {mesh.FaceRanges.Count}。视口显示的是 GetShapeMeshData 实际返回的三角形连接关系。" );
+            $"Mesh generation test passed: faces {mesh.FaceCount}, nodes {mesh.NodeCount}, triangles {mesh.TriangleCount}, provenance ranges {mesh.FaceRanges.Count}; owned mesh and direct Span copies also passed. The viewport displays the actual triangle connectivity returned by GetShapeMeshData.",
+            $"网格生成测试通过：面 {mesh.FaceCount}，节点 {mesh.NodeCount}，三角形 {mesh.TriangleCount}，面来源区间 {mesh.FaceRanges.Count}；独立网格资源和 Span 直接复制也已通过。视口显示的是 GetShapeMeshData 实际返回的三角形连接关系。" );
 
         return new DemoCommandResult(
             Local("Mesh generation test completed.", "网格生成测试完成。"),

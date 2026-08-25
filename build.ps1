@@ -28,6 +28,7 @@ $ContractPath = Join-Path $DistRoot "bridge-contract.json"
 $ManifestPath = Join-Path $DistRoot "bridge-manifest.json"
 $GlobalJsonPath = Join-Path $RepoRoot "global.json"
 $ConsumerCheckPath = Join-Path $RepoRoot "tests\check-sdk-consumer.ps1"
+$NoReflectionCheckPath = Join-Path $RepoRoot "tests\check-no-reflection-dispatch.ps1"
 $SdkFileNames = @(
     "OcctNative.dll",
     "OcctNet.dll",
@@ -275,6 +276,10 @@ if ($Target -eq "clean") {
     Write-Host "Build completed." -ForegroundColor Green
     exit 0
 }
+
+Assert-Path $NoReflectionCheckPath
+& $NoReflectionCheckPath -RepositoryRoot $RepoRoot
+if (-not $?) { throw "No-reflection dispatch validation failed." }
 
 Resolve-DotNetSdk
 Write-Host "dotnet:        $script:DotNetCommand" -ForegroundColor DarkGray

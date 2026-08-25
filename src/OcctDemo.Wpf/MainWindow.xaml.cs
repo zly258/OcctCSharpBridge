@@ -174,13 +174,6 @@ public partial class MainWindow : System.Windows.Window
         return button;
     }
 
-    private Controls.Button CommandButton(string text, DemoCommandId command)
-    {
-        var button = new Controls.Button { Content = text, Tag = command, ToolTip = text };
-        button.Click += (_, _) => RunCommand((DemoCommandId)button.Tag!);
-        return button;
-    }
-
     private static Controls.TreeViewItem TreeRoot(string header) => new() { Header = header };
 
     private static string CadFileFilter() => DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified

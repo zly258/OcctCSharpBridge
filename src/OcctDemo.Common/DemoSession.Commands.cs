@@ -255,9 +255,7 @@ public sealed partial class DemoSession
         if (!sourceShape.IsValid)
             throw new ArgumentException("Modeling shape is invalid.", nameof(sourceShape));
 
-        var viewerShape = Engine.MakeVertex(OcctPoint3d.Origin);
-        Engine.UpdateShape(viewerShape, model, sourceShape);
-        return viewerShape;
+        return Engine.CreateShapeFromModel(model, sourceShape);
     }
 
     private DemoCommandResult DeleteSelected()

@@ -314,15 +314,6 @@ public sealed partial class MainWindow : Window
         return button;
     }
 
-    private Button CommandButton(string text, DemoCommandId command)
-    {
-        var button = CreateToolbarButton(text);
-        button.Tag = command;
-        AvaloniaToolTip.SetTip(button, text);
-        button.Click += async (_, _) => await RunCommandAsync((DemoCommandId)button.Tag!);
-        return button;
-    }
-
     private static Border ToolSeparator() => new()
     {
         Width = 1,

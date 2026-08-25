@@ -109,6 +109,7 @@ public sealed partial class MainForm
         AddSection(Local("Helpers", "辅助"),
             Row(ViewSettingsCheckBox(DemoLocalization.Text("Menu.Triedron"), true, v => Session.Engine.SetTriedronVisible(v)),
                 ViewSettingsCheckBox(DemoLocalization.Text("Menu.ViewCube"), true, v => SetViewCubeVisible(v))),
+            Row(ViewSettingsCheckBox(Local("ViewCube Axes", "ViewCube 坐标轴"), _viewCubeAxesVisible, SetViewCubeAxesVisible)),
             Row(EnumCombo(Local("Triedron Position", "坐标轴位置"), _triedronPosition, SetTriedronPosition),
                 EnumCombo(Local("ViewCube Position", "ViewCube 位置"), _viewCubePosition, SetViewCubePosition)),
             Row(IntInput(Local("ViewCube Size (px)", "ViewCube 大小(px)"), _viewCubeSize, 10, 300, SetViewCubeSize),
