@@ -62,7 +62,7 @@ extern "C"
         const ModelSession* model = reinterpret_cast<const ModelSession*>(handle);
         if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
         const std::lock_guard<std::recursive_mutex> guard(model->mutex);
-        return model->errors.code;
+        return model->errorContext().code;
     }
 
     OcctStatus occt_model_session_last_error_message(
@@ -74,7 +74,7 @@ extern "C"
         const ModelSession* model = reinterpret_cast<const ModelSession*>(handle);
         if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
         const std::lock_guard<std::recursive_mutex> guard(model->mutex);
-        return copyUtf8(model->errors.message, buffer, capacity, required);
+        return copyUtf8(model->errorContext().message, buffer, capacity, required);
     }
 
     OcctStatus occt_model_capabilities_get(
@@ -127,7 +127,7 @@ extern "C"
         if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
 
         const std::lock_guard<std::recursive_mutex> guard(model->mutex);
-        model->errors.clear();
+        model->errorContext().clear();
         *result = model->shapes.find(shapeId) != model->shapes.end() ? 1 : 0;
         return OcctStatus_Ok;
     }

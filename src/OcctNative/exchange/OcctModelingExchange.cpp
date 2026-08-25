@@ -126,10 +126,10 @@ extern "C"
         ModelSession* model = sessionOf(session);
         if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
         const std::lock_guard<std::recursive_mutex> guard(model->mutex);
-        model->errors.clear();
+        model->errorContext().clear();
         if (resultShapeId == nullptr)
         {
-            model->errors.set(OcctStatus_ErrorInvalidArgument, "Result shape ID output is null.");
+            model->errorContext().set(OcctStatus_ErrorInvalidArgument, "Result shape ID output is null.");
             return OcctStatus_ErrorInvalidArgument;
         }
         *resultShapeId = 0;
@@ -137,7 +137,7 @@ extern "C"
         const auto path = OcctBridge::pathFromUtf8(utf8Path);
         if (path.empty())
         {
-            model->errors.set(OcctStatus_ErrorInvalidArgument, "Path is empty.");
+            model->errorContext().set(OcctStatus_ErrorInvalidArgument, "Path is empty.");
             return OcctStatus_ErrorInvalidArgument;
         }
 
@@ -151,7 +151,7 @@ extern "C"
         if (extension == ".stl")
             return occt_model_stl_import(session, utf8Path, resultShapeId);
 
-        model->errors.set(
+        model->errorContext().set(
             OcctStatus_ErrorFormat,
             "Unsupported file extension. Supported: STEP, IGES, BREP and STL.");
         return OcctStatus_ErrorFormat;

@@ -12,6 +12,8 @@ High-cardinality results use bulk native APIs where possible to avoid N+1 P/Invo
 
 Native state in `OcctModelingSession` is not thread-safe. Operations submitted through `BooleanAsync`, `FuseAsync`, `CutAsync`, `CommonAsync`, `SectionAsync`, `SplitAsync`, `ImportStepAsync`, or `ExportStepAsync` are executed sequentially for each session, preventing concurrent async mutations of the same native session.
 
-Synchronous methods do not participate in the async queue. Do not call synchronous methods on a session while one of its async operations is running. Create a separate `OcctModelingSession` for each workflow that must run in parallel.
+The native session also serializes synchronous and asynchronous entry points, so a synchronous call cannot mutate shapes, operations, intersection caches, or error state concurrently with an async call. Applications should still avoid mixing synchronous calls with an in-flight async operation because the calling thread may block for a long time. Create a separate `OcctModelingSession` for each workflow that must run in parallel.
+
+Each calling thread has an independent last-error context. A successful or failed call on one thread does not clear an unread error message produced by another thread.
 
 A cancellation token is honored while an operation is waiting to enter the queue. Once a native OCCT algorithm has started, it cannot be interrupted safely and is allowed to run to completion instead of being reported as cancelled.
