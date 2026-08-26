@@ -1,11 +1,15 @@
 ﻿#include "mesh/OcctModelingMesh.h"
 #include "mesh/OcctModelingMeshInternal.hxx"
 #include "modeling/OcctModelingShapeInternal.hxx"
+#include "core/OcctInternal.hxx"
 
+#include <BRepBuilderAPI_MakeShapeOnMesh.hxx>
 #include <BRepLib_ToolTriangulatedShape.hxx>
 #include <BRepMesh_IncrementalMesh.hxx>
 #include <BRepTools.hxx>
 #include <IMeshTools_Parameters.hxx>
+#include <Poly_Triangulation.hxx>
+#include <Poly_Triangle.hxx>
 #include <gp_Pnt2d.hxx>
 
 #include <algorithm>
@@ -15,6 +19,51 @@ using namespace OcctModelingInternal;
 
 extern "C"
 {
+    OcctStatus occt_engine_shape_triangulated_mesh_create(
+        OcctEngineHandle handle,
+        const OcctPoint3d* vertices,
+        int vertexCount,
+        const int* triangleIndices,
+        int triangleIndexCount,
+        OcctObjectId* result)
+    {
+        auto* engine = reinterpret_cast<OcctBridge::Engine*>(handle);
+        if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (!OcctBridge::validateInitialized(engine)) return engine->currentErrorCode();
+        if (vertices == nullptr || vertexCount < 3 || triangleIndices == nullptr ||
+            triangleIndexCount < 3 || triangleIndexCount % 3 != 0 || result == nullptr)
+            return OcctStatus_ErrorInvalidArgument;
+
+        *result = 0;
+        const int ok = OcctBridge::execute(engine, [&]
+        {
+            const int triangleCount = triangleIndexCount / 3;
+            Handle(Poly_Triangulation) triangulation = new Poly_Triangulation(vertexCount, triangleCount, false);
+            for (int index = 0; index < vertexCount; ++index)
+                triangulation->SetNode(index + 1, OcctBridge::point(vertices[index]));
+
+            for (int triangle = 0; triangle < triangleCount; ++triangle)
+            {
+                const int offset = triangle * 3;
+                const int a = triangleIndices[offset];
+                const int b = triangleIndices[offset + 1];
+                const int c = triangleIndices[offset + 2];
+                if (a < 0 || a >= vertexCount || b < 0 || b >= vertexCount || c < 0 || c >= vertexCount)
+                    throw std::invalid_argument("Triangle index is outside the vertex buffer.");
+                if (a == b || b == c || a == c)
+                    throw std::invalid_argument("Triangle indices must reference three distinct vertices.");
+                triangulation->SetTriangle(triangle + 1, Poly_Triangle(a + 1, b + 1, c + 1));
+            }
+
+            BRepBuilderAPI_MakeShapeOnMesh maker(triangulation);
+            maker.Build();
+            if (!maker.IsDone()) throw std::runtime_error("Triangulated mesh shape creation failed.");
+            *result = engine->addShape(maker.Shape(), false, "TriangulatedMesh");
+            if (*result <= 0) throw std::runtime_error("Triangulated mesh did not create a viewer object.");
+        });
+        return ok != 0 ? OcctStatus_Ok : engine->currentErrorCode();
+    }
+
     OcctStatus occt_model_mesh(
         OcctModelingSessionHandle handle,
         OcctObjectId shapeId,
@@ -95,33 +144,33 @@ extern "C"
 
             for (int oneBased = 1; oneBased <= count; ++oneBased)
             {
-                OcctModelMeshNode& result = results[oneBased - 1];
+                OcctModelMeshNode& node = results[oneBased - 1];
                 const gp_Pnt point = triangulation->Node(oneBased).Transformed(location.Transformation());
-                result.point = {point.X(), point.Y(), point.Z()};
-                result.hasUv = hasUv ? 1 : 0;
-                result.hasNormal = hasNormal ? 1 : 0;
+                node.point = {point.X(), point.Y(), point.Z()};
+                node.hasUv = hasUv ? 1 : 0;
+                node.hasNormal = hasNormal ? 1 : 0;
 
                 if (hasUv)
                 {
                     const gp_Pnt2d uv = triangulation->UVNode(oneBased);
-                    result.u = uv.X();
-                    result.v = uv.Y();
+                    node.u = uv.X();
+                    node.v = uv.Y();
                 }
                 else
                 {
-                    result.u = 0.0;
-                    result.v = 0.0;
+                    node.u = 0.0;
+                    node.v = 0.0;
                 }
 
                 if (hasNormal)
                 {
                     gp_Dir normal = triangulation->Normal(oneBased);
                     normal.Transform(location.Transformation());
-                    result.normal = {normal.X(), normal.Y(), normal.Z()};
+                    node.normal = {normal.X(), normal.Y(), normal.Z()};
                 }
                 else
                 {
-                    result.normal = {0.0, 0.0, 0.0};
+                    node.normal = {0.0, 0.0, 0.0};
                 }
             }
         });
@@ -164,10 +213,10 @@ extern "C"
                 triangulation->Triangle(oneBased).Get(node1, node2, node3);
                 if (face.Orientation() == TopAbs_REVERSED) std::swap(node2, node3);
 
-                OcctModelMeshTriangle& result = results[oneBased - 1];
-                result.node1 = node1 - 1;
-                result.node2 = node2 - 1;
-                result.node3 = node3 - 1;
+                OcctModelMeshTriangle& triangle = results[oneBased - 1];
+                triangle.node1 = node1 - 1;
+                triangle.node2 = node2 - 1;
+                triangle.node3 = node3 - 1;
             }
         });
     }
