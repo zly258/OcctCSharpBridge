@@ -19,6 +19,26 @@ public sealed partial class OcctEngine
         return ReadStepDocument(fullPath, primaryShape);
     }
 
+    /// <summary>
+    /// Asynchronously schedules a STEP/XDE document import on the native surface thread.
+    /// The retained XDE document belongs to this viewer engine, so this operation intentionally
+    /// does not use a headless modeling session. Cancellation is observed before dispatch and
+    /// before execution; an in-progress native STEP/XDE import cannot be interrupted safely.
+    /// </summary>
+    public Task<OcctAssemblyDocument> ImportStepDocumentAsync(
+        string filePath,
+        CancellationToken cancellationToken = default)
+    {
+        ValidatePath(filePath);
+        if (!IsInitialized)
+            throw new InvalidOperationException("Initialize the OCCT engine before importing a STEP/XDE document.");
+        cancellationToken.ThrowIfCancellationRequested();
+        var fullPath = Path.GetFullPath(filePath);
+        return RunOnSurfaceThreadAsync(
+            () => ImportStepDocument(fullPath),
+            cancellationToken);
+    }
+
     /// <summary>Reads a fresh managed snapshot of the retained STEP/XDE document.</summary>
     public OcctAssemblyDocument RefreshStepDocument(OcctAssemblyDocument document)
     {
@@ -26,6 +46,21 @@ public sealed partial class OcctEngine
         EnsureShape(document.PrimaryShape);
         EnsureInitialized();
         return ReadStepDocument(document.SourcePath, document.PrimaryShape);
+    }
+
+    /// <summary>
+    /// Asynchronously refreshes a managed snapshot of the retained STEP/XDE document on the
+    /// native surface thread.
+    /// </summary>
+    public Task<OcctAssemblyDocument> RefreshStepDocumentAsync(
+        OcctAssemblyDocument document,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        cancellationToken.ThrowIfCancellationRequested();
+        return RunOnSurfaceThreadAsync(
+            () => RefreshStepDocument(document),
+            cancellationToken);
     }
 
     private OcctAssemblyDocument ReadStepDocument(string sourcePath, OcctShape primaryShape)
@@ -82,7 +117,6 @@ public sealed partial class OcctEngine
         }
 
         return new OcctAssemblyDocument(sourcePath, primaryShape, nodes, roots);
-
     }
 
     private string GetLastStepDocumentJson()
