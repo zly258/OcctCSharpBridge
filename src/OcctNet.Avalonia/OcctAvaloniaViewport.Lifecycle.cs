@@ -10,9 +10,18 @@ public sealed partial class OcctAvaloniaViewport
     public void RefreshNativeView()
     {
         if (_engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero) return;
-        SynchronizeDpi();
-        TryInvoke(_engine.ResizeSurface);
-        TryInvoke(_engine.Redraw);
+
+        try
+        {
+            SynchronizeDpi();
+            _engine.ResizeSurface();
+            _engine.Redraw();
+            CompleteFirstFrameIfNeeded();
+        }
+        catch (Exception exception)
+        {
+            ReportLifecycleError(exception);
+        }
     }
 
     protected override IPlatformHandle CreateNativeControlCore(IPlatformHandle parent)
@@ -22,16 +31,12 @@ public sealed partial class OcctAvaloniaViewport
         var generation = ++_engineGeneration;
         try
         {
-            IPlatformHandle control = OperatingSystem.IsWindows()
+            return OperatingSystem.IsWindows()
                 ? CreateWindowsHost(parent, generation)
                 : OperatingSystem.IsLinux()
                     ? CreateLinuxHost(parent, generation)
                     : throw new PlatformNotSupportedException(
                         "OcctNet.Avalonia currently supports Windows x64 and Linux x64.");
-
-            MarkFirstFrameRendered(generation);
-            SetHostState(OcctViewportHostState.Ready);
-            return control;
         }
         catch (Exception exception)
         {
@@ -60,7 +65,7 @@ public sealed partial class OcctAvaloniaViewport
             0,
             "STATIC",
             "OCCT_Render_Target",
-            WsChild | WsClipSiblings | WsClipChildren | SsNotify,
+            WsChild | WsVisible | WsClipSiblings | WsClipChildren | SsNotify,
             0,
             0,
             100,
@@ -113,6 +118,8 @@ public sealed partial class OcctAvaloniaViewport
             throw new InvalidOperationException("Unable to create the Avalonia OCCT X11 child window.");
         }
 
+        XMapWindow(_x11Display, window);
+        XFlush(_x11Display);
         SetNativeHandle(new IntPtr(unchecked((long)window)), generation);
         _engine = new OcctEngine();
         _engine.InitializeNativeSurface(
@@ -139,6 +146,13 @@ public sealed partial class OcctAvaloniaViewport
         _lastHoverTimestamp = 0;
         _lastWorldPointTimestamp = 0;
         Dispatcher.UIThread.Post(RefreshNativeView, DispatcherPriority.Background);
+    }
+
+    private void CompleteFirstFrameIfNeeded()
+    {
+        if (_renderReady) return;
+        MarkFirstFrameRendered(_engineGeneration);
+        SetHostState(OcctViewportHostState.Ready);
     }
 
     private void OnHostSizeChanged(object? sender, SizeChangedEventArgs e)

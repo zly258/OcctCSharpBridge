@@ -1,13 +1,20 @@
 #include "presentation/OcctPresentation.h"
+#include "presentation/OcctAnnotations.h"
 #include "core/OcctInternal.hxx"
 
+#include <AIS_TextLabel.hxx>
+#include <Aspect_TypeOfDisplayText.hxx>
 #include <Aspect_TypeOfLine.hxx>
+#include <Font_TextFormatter.hxx>
 #include <Graphic3d_ClipPlane.hxx>
+#include <Graphic3d_HorizontalTextAlignment.hxx>
 #include <Graphic3d_SequenceOfHClipPlane.hxx>
+#include <Graphic3d_VerticalTextAlignment.hxx>
 #include <Graphic3d_ZLayerId.hxx>
 #include <Prs3d_Drawer.hxx>
 #include <Prs3d_LineAspect.hxx>
 #include <Prs3d_TypeOfHighlight.hxx>
+#include <gp_Ax2.hxx>
 #include <gp_Pln.hxx>
 
 #include <algorithm>
@@ -32,6 +39,45 @@ namespace
         if (entry == nullptr || entry->presentation.IsNull())
             throw std::invalid_argument("Object ID does not exist.");
         return *entry;
+    }
+
+    Handle(AIS_TextLabel) requiredTextPresentation(Engine* engine, OcctObjectId textId)
+    {
+        ObjectEntry* entry = engine->findObject(textId);
+        if (entry == nullptr || entry->kind != OcctObject_Text)
+            throw std::invalid_argument("Text ID does not exist.");
+        Handle(AIS_TextLabel) label = Handle(AIS_TextLabel)::DownCast(entry->presentation);
+        if (label.IsNull()) throw std::runtime_error("Text presentation type is invalid.");
+        return label;
+    }
+
+    Graphic3d_HorizontalTextAlignment textHorizontalAlignment(int value)
+    {
+        switch (value)
+        {
+            case 0: return Graphic3d_HTA_LEFT;
+            case 1: return Graphic3d_HTA_CENTER;
+            case 2: return Graphic3d_HTA_RIGHT;
+            default: throw std::invalid_argument("Text horizontal alignment is out of range.");
+        }
+    }
+
+    Graphic3d_VerticalTextAlignment textVerticalAlignment(int value)
+    {
+        switch (value)
+        {
+            case 0: return Graphic3d_VTA_BOTTOM;
+            case 1: return Graphic3d_VTA_CENTER;
+            case 2: return Graphic3d_VTA_TOP;
+            case 3: return Graphic3d_VTA_TOPFIRSTLINE;
+            default: throw std::invalid_argument("Text vertical alignment is out of range.");
+        }
+    }
+
+    void redisplayText(Engine* engine, const Handle(AIS_TextLabel)& label)
+    {
+        engine->viewerContext.context->Redisplay(label, Standard_False, Standard_True);
+        engine->requestRedraw();
     }
 
     Graphic3d_ZLayerId zLayer(int value)
@@ -187,6 +233,102 @@ namespace
 
 extern "C"
 {
+    OcctStatus occt_engine_text_set_justification(
+        OcctEngineHandle handle,
+        OcctObjectId textId,
+        int horizontalAlignment,
+        int verticalAlignment)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executePresentationStatus(engine, [&]
+        {
+            Handle(AIS_TextLabel) label = requiredTextPresentation(engine, textId);
+            label->SetHJustification(textHorizontalAlignment(horizontalAlignment));
+            label->SetVJustification(textVerticalAlignment(verticalAlignment));
+            redisplayText(engine, label);
+        });
+    }
+
+    OcctStatus occt_engine_text_set_orientation(
+        OcctEngineHandle handle,
+        OcctObjectId textId,
+        OcctVector3d planeNormal,
+        OcctVector3d xDirection,
+        OcctBool enabled)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executePresentationStatus(engine, [&]
+        {
+            Handle(AIS_TextLabel) label = requiredTextPresentation(engine, textId);
+            if (enabled == 0)
+            {
+                label->UnsetOrientation3D();
+            }
+            else
+            {
+                const gp_Dir normal = direction(planeNormal);
+                const gp_Dir xAxis = direction(xDirection);
+                if (std::abs(normal.Dot(xAxis)) > 1.0e-8)
+                    throw std::invalid_argument("Text X direction must be perpendicular to the plane normal.");
+                label->SetOrientation3D(gp_Ax2(label->Position(), normal, xAxis));
+            }
+            redisplayText(engine, label);
+        });
+    }
+
+    OcctStatus occt_engine_text_set_wrapping(
+        OcctEngineHandle handle,
+        OcctObjectId textId,
+        double width,
+        OcctBool wordWrapping)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executePresentationStatus(engine, [&]
+        {
+            if (!std::isfinite(width) || width < 0.0)
+                throw std::invalid_argument("Text wrapping width must be finite and non-negative.");
+            Handle(AIS_TextLabel) label = requiredTextPresentation(engine, textId);
+            if (width <= 0.0)
+            {
+                Handle(Font_TextFormatter) formatter;
+                label->SetTextFormatter(formatter);
+            }
+            else
+            {
+                Handle(Font_TextFormatter) formatter = new Font_TextFormatter();
+                formatter->SetWrapping(static_cast<float>(width));
+                formatter->SetWordWrapping(wordWrapping != 0);
+                label->SetTextFormatter(formatter);
+            }
+            redisplayText(engine, label);
+        });
+    }
+
+    OcctStatus occt_engine_text_set_background(
+        OcctEngineHandle handle,
+        OcctObjectId textId,
+        OcctBool enabled,
+        double red,
+        double green,
+        double blue)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executePresentationStatus(engine, [&]
+        {
+            Handle(AIS_TextLabel) label = requiredTextPresentation(engine, textId);
+            if (enabled != 0)
+            {
+                label->SetDisplayType(Aspect_TODT_SUBTITLE);
+                label->SetColorSubTitle(color(red, green, blue));
+            }
+            else
+            {
+                label->SetDisplayType(Aspect_TODT_NORMAL);
+            }
+            redisplayText(engine, label);
+        });
+    }
+
     OcctStatus occt_engine_presentation_state_update(
         OcctEngineHandle handle,
         OcctObjectId objectId,
