@@ -18,7 +18,11 @@ $patterns = @(
 $sourceFiles = @(
     Get-ChildItem -LiteralPath (Join-Path $RepositoryRoot "src") -Filter *.cs -File -Recurse
     Get-ChildItem -LiteralPath (Join-Path $RepositoryRoot "tests") -Filter *.cs -File -Recurse
-)
+) | Where-Object {
+    $relativePath = [System.IO.Path]::GetRelativePath($RepositoryRoot, $_.FullName)
+    $segments = $relativePath -split '[\\/]'
+    $segments -notcontains "bin" -and $segments -notcontains "obj"
+}
 $matches = @($sourceFiles | Select-String -Pattern $patterns)
 if ($matches.Count -gt 0) {
     $matches | ForEach-Object { Write-Error "$($_.Path):$($_.LineNumber):$($_.Line.Trim())" }

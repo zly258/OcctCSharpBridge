@@ -22,7 +22,13 @@ for pattern in "${patterns[@]}"; do
     arguments+=(--regexp "${pattern}")
 done
 
-if rg --line-number --glob '*.cs' "${arguments[@]}" "${ROOT_DIR}/src" "${ROOT_DIR}/tests"; then
+if rg --line-number \
+    --glob '*.cs' \
+    --glob '!**/bin/**' \
+    --glob '!**/obj/**' \
+    "${arguments[@]}" \
+    "${ROOT_DIR}/src" \
+    "${ROOT_DIR}/tests"; then
     printf '[no-reflection] ERROR: Reflection or dynamic interface dispatch is forbidden. Use direct, strongly typed API calls.\n' >&2
     exit 1
 fi
