@@ -305,9 +305,9 @@ namespace
 
     TopoDS_Shape readIges(const std::filesystem::path& path)
     {
-        auto stream = inputStream(path);
+        // OCCT's IGES work library does not reliably implement stream input; use the file reader.
         IGESControl_Reader reader;
-        const IFSelect_ReturnStatus status = reader.ReadStream(path.filename().string().c_str(), stream);
+        const IFSelect_ReturnStatus status = reader.ReadFile(path.string().c_str());
         if (status != IFSelect_RetDone) throw std::runtime_error("IGES file could not be read.");
         if (reader.TransferRoots() <= 0) throw std::runtime_error("IGES roots could not be transferred.");
         TopoDS_Shape shape = reader.OneShape();

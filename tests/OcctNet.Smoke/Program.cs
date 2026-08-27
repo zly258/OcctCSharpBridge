@@ -255,6 +255,22 @@ finally
     if (File.Exists(stepPath)) File.Delete(stepPath);
 }
 
+var igesPath = Path.Combine(Path.GetTempPath(), $"occt-model-{Guid.NewGuid():N}.iges");
+try
+{
+    model.ExportIges(cut.Shape, igesPath);
+    if (!File.Exists(igesPath) || new FileInfo(igesPath).Length == 0)
+        throw new InvalidOperationException("IGES export produced no file content.");
+
+    var imported = model.ImportIges(igesPath);
+    if (!model.IsShapeValid(imported))
+        throw new InvalidOperationException("Headless IGES round trip failed.");
+}
+finally
+{
+    if (File.Exists(igesPath)) File.Delete(igesPath);
+}
+
 var healed = model.FixShape(cut.Shape);
 var unified = model.UnifySameDomain(healed.Shape);
 if (!model.IsShapeValid(unified.Shape))
