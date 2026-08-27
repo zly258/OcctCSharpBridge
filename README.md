@@ -15,54 +15,21 @@ The Demo targets .NET 10 to exercise the latest supported consumer runtime. The 
 
 ## SDK synchronization
 
-`sync.ps1` / `sync.sh` are now intentionally **build-free**. They only:
+On Windows, `sync.ps1` is the source-driven Binary SDK entry point:
 
-- validate an existing local Binary/Portable SDK cache; or
-- copy explicitly supplied prebuilt Binary/Portable SDK artifacts.
-
-They never clone/build Bridge and never run Bridge smoke tests.
-
-External dependency layout:
-
-```text
-external/
-├─ .cache/
-│  └─ OcctCSharpBridge-source/   # reserved source cache
-└─ OcctCSharpBridge/
-   ├─ win-x64/
-   ├─ portable/win-x64/
-   ├─ linux-x64/
-   └─ portable/linux-x64/
-```
-
-`sync` automatically migrates the legacy local `dist/` SDK cache into this layout when possible.
-
-If the cache already matches the requested `main` source commit:
+- clones `OcctCSharpBridge` when the source cache is missing;
+- fetches `origin/main` by default, or the branch passed with `-BridgeBranch`;
+- checks out the resolved commit in a clean detached source cache;
+- runs `build.ps1 dist Release` (Native + Managed + Binary SDK packaging only);
+- validates `bridge-contract.json`, `bridge-manifest.json`, hashes, and `sourceCommit`;
+- installs the generated Binary SDK under `external/OcctCSharpBridge/win-x64`.
 
 ```powershell
 .\sync.ps1
+.\sync.ps1 -BridgeBranch main-dev
 ```
 
-```bash
-./sync.sh
-```
-
-If the cache is missing or stale, first build/package Bridge separately, then copy the matching artifacts:
-
-```powershell
-.\sync.ps1 `
-  -SdkRoot <binary-sdk> `
-  -PortableRoot <portable-sdk>
-```
-
-```bash
-./sync.sh \
-  --sdk-root <binary-sdk> \
-  --portable-root <portable-sdk>
-```
-
-Binary and Portable artifacts must come from the same Bridge build. The scripts validate contract metadata, source commit, version and hashes before accepting them.
-
+`sync.ps1` does not run the Bridge `sdk` / `all` QA gate. Demo build/run validation remains consumer-side. Linux keeps its platform-specific `sync.sh` artifact workflow.
 ## Build the Demo
 
 Windows:
@@ -168,6 +135,6 @@ The Demo may use Bridge only through its managed SDK:
 - no duplicate OCCT runtime-closure collector;
 - no full Bridge release gate inside SDK synchronization.
 
-`tests/check-sdk-consumer.ps1` / `.sh` enforce these boundaries and verify that SDK synchronization is build-free and uses the unified `external/` layout.
+`tests/check-sdk-consumer.ps1` enforces the Windows clone/build/consume contract and unified `external/` layout; Linux checks retain their platform-specific synchronization contract.
 
 The Demo is an SDK consumer example, not a third-party application framework. External projects should follow the Bridge SDK consumption guide for their own repository layout, runtime packaging, and version pinning.

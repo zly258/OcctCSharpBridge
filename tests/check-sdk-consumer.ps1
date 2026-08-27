@@ -85,35 +85,41 @@ foreach ($token in @(
     if (-not $buildScript.Contains($token)) { throw "build.ps1 lost the explicit .NET 10 Demo TFM contract: $token" }
 }
 
-# Consumer synchronization only validates/copies prebuilt SDK artifacts.
+# Windows synchronization clones/builds the selected Bridge source branch and consumes only dist/win-x64.
 $syncScriptPath = Join-Path $RepositoryRoot "sync.ps1"
-if (-not (Test-Path -LiteralPath $syncScriptPath -PathType Leaf)) { throw "Windows Demo sync script was not found." }
+$syncBridgePath = Join-Path $RepositoryRoot "tools\sync-bridge.ps1"
+foreach ($path in @($syncScriptPath, $syncBridgePath)) {
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Windows Demo Bridge sync script was not found: $path" }
+}
 $syncScript = Get-Content -LiteralPath $syncScriptPath -Raw -Encoding UTF8
-foreach ($forbidden in @(
-    'Invoke-BridgeConsumerDist',
-    'Get-OrCreateSourceClone',
-    '-Target "dist"',
-    '-Target "sdk"',
-    '-Target "all"',
-    'package-portable-sdk.ps1'
+$syncBridge = Get-Content -LiteralPath $syncBridgePath -Raw -Encoding UTF8
+foreach ($required in @(
+    "`$BridgeBranch = 'main'",
+    'SourceBranch = $BridgeBranch',
+    'ForceRebuild = $true'
 )) {
-    if ($syncScript.Contains($forbidden)) {
-        throw "sync.ps1 must not build/package the Bridge during Demo SDK synchronization: $forbidden"
-    }
+    if (-not $syncScript.Contains($required)) { throw "sync.ps1 lost required branch-driven behavior: $required" }
 }
 foreach ($required in @(
-    "sourceCommit",
-    "Get-FileHash",
-    "package-manifest.json",
-    "-SdkRoot",
-    "-PortableRoot",
-    '$ExternalRoot = Join-Path $RepoRoot "external"',
-    '$ExternalCacheRoot = Join-Path $ExternalRoot ".cache\OcctCSharpBridge-source"',
-    '$BridgeRoot = Join-Path $ExternalRoot "OcctCSharpBridge"'
+    "https://github.com/zly258/OcctCSharpBridge.git",
+    "'clone'",
+    "'fetch'",
+    "'checkout'",
+    "Target = 'dist'",
+    "Configuration = 'Release'",
+    "bridge-manifest.json",
+    "sourceCommit"
 )) {
-    if (-not $syncScript.Contains($required)) { throw "sync.ps1 lost required external SDK integrity/layout behavior: $required" }
+    if (-not $syncBridge.Contains($required)) { throw "tools/sync-bridge.ps1 lost required source-build Binary SDK behavior: $required" }
 }
-
+foreach ($forbidden in @(
+    "Target = 'sdk'",
+    "Target = 'all'",
+    'releases/latest',
+    '*-win-x64-portable.zip'
+)) {
+    if ($syncBridge.Contains($forbidden)) { throw "Bridge sync must build dist Release from the selected branch: $forbidden" }
+}
 $forbiddenSdkRoots = @(
     "src/OcctNative/",
     "src/OcctNet/",
@@ -162,4 +168,4 @@ if ($violations.Count -gt 0) {
     throw "Demo crosses the Bridge 3 consumer boundary or uses retired APIs:`n - $($violations -join "`n - ")"
 }
 
-Write-Host "[consumer] Demo remains a Bridge 3/ABI5 binary consumer; SDK sync is build-free, external dependency paths are untracked, repository hygiene rejects generated/large tracked artifacts, and the Bridge full QA/window-smoke gate is not rerun." -ForegroundColor Green
+Write-Host "[consumer] Demo remains a Bridge 3/ABI5 binary consumer; SDK sync builds dist Release from the selected Bridge branch, external dependency paths are untracked, repository hygiene rejects generated/large tracked artifacts, and the Bridge full QA/window-smoke gate is not rerun." -ForegroundColor Green

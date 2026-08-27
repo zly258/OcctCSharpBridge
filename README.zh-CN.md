@@ -15,54 +15,21 @@ Demo 自身使用 .NET 10，用来覆盖 Bridge 支持的最新 Consumer Runtime
 
 ## SDK 同步
 
-`sync.ps1` / `sync.sh` 现在只负责**校验或复制已有 SDK**：
+Windows 下，`sync.ps1` 采用源码驱动的 Binary SDK 同步流程：
 
-- 校验当前本地 Binary/Portable SDK Cache；
-- 或复制显式指定的预构建 Binary/Portable SDK。
-
-同步阶段不再拉取源码构建 Bridge，也不执行 Bridge Smoke。
-
-外部依赖统一放在：
-
-```text
-external/
-├─ .cache/
-│  └─ OcctCSharpBridge-source/   # 预留的外部源码缓存
-└─ OcctCSharpBridge/
-   ├─ win-x64/
-   ├─ portable/win-x64/
-   ├─ linux-x64/
-   └─ portable/linux-x64/
-```
-
-如果本地仍是旧的 `dist/` SDK Cache，`sync` 会在可迁移时自动移动到新的 `external/` 结构。
-
-如果缓存已经与目标 `main` sourceCommit 一致：
+- Source Cache 不存在时 clone `OcctCSharpBridge`；
+- 默认 fetch `origin/main`，也可用 `-BridgeBranch` 指定 `main-dev` 等分支；
+- 将缓存锁定到解析出的 commit，并执行 clean detached checkout；
+- 执行 `build.ps1 dist Release`，只编译 Native + Managed 并生成 Binary SDK；
+- 校验 `bridge-contract.json`、`bridge-manifest.json`、Hash 和 `sourceCommit`；
+- 将生成的 Binary SDK 安装到 `external/OcctCSharpBridge/win-x64`。
 
 ```powershell
 .\sync.ps1
+.\sync.ps1 -BridgeBranch main-dev
 ```
 
-```bash
-./sync.sh
-```
-
-如果缓存不存在或已过期，需要先单独完成 Bridge Build/Package，再把同一 Build 的制品交给 Demo：
-
-```powershell
-.\sync.ps1 `
-  -SdkRoot <binary-sdk> `
-  -PortableRoot <portable-sdk>
-```
-
-```bash
-./sync.sh \
-  --sdk-root <binary-sdk> \
-  --portable-root <portable-sdk>
-```
-
-Binary 与 Portable 必须来自同一个 Bridge Build；同步脚本会校验 Contract、sourceCommit、版本与 Hash。
-
+`sync.ps1` 不执行 Bridge 的 `sdk` / `all` 完整 QA Gate；Demo 自己的 build/run 继续负责 Consumer 验证。Linux 仍保留平台自己的 `sync.sh` 制品同步流程。
 ## Demo 构建
 
 Windows：
@@ -171,6 +138,6 @@ Demo 只允许通过 Managed SDK 使用 Bridge：
 - 不重新实现 Bridge Runtime Closure 收集器；
 - 不把 SDK 同步变成第二套 Bridge Release Gate。
 
-`tests/check-sdk-consumer.ps1` / `.sh` 会静态守住这些边界，并检查 SDK 同步保持无编译、统一使用 `external/` 目录。
+`tests/check-sdk-consumer.ps1` 会静态守住 Windows clone/build/consume 契约与统一 `external/` 布局；Linux 检查继续维护自己的平台同步契约。
 
 Demo 是 SDK 消费示例，不是第三方应用框架。第三方项目应按 Bridge 的 SDK Consumer 文档组织自己的工程、Runtime 和版本锁定策略。
