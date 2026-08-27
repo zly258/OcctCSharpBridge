@@ -112,15 +112,15 @@ public sealed partial class MainWindow
         var statusGrid = new Grid
         {
             ColumnDefinitions = new ColumnDefinitions("Auto,Auto,*"),
-            Background = new SolidColorBrush(AvaloniaColor.Parse("#2F3B46")),
+            Background = new SolidColorBrush(AvaloniaColor.Parse("#F3F5F7")),
             Margin = new Thickness(0),
             MinHeight = 26
         };
-        _commandStatus.Foreground = AvaloniaBrushes.White;
+        _commandStatus.Foreground = new SolidColorBrush(AvaloniaColor.Parse("#3B4650"));
         _commandStatus.Margin = new Thickness(8, 3);
-        _selectionStatus.Foreground = AvaloniaBrushes.White;
+        _selectionStatus.Foreground = new SolidColorBrush(AvaloniaColor.Parse("#3B4650"));
         _selectionStatus.Margin = new Thickness(8, 3);
-        _coordinateStatus.Foreground = AvaloniaBrushes.White;
+        _coordinateStatus.Foreground = new SolidColorBrush(AvaloniaColor.Parse("#3B4650"));
         _coordinateStatus.Margin = new Thickness(8, 3);
         Grid.SetColumn(_commandStatus, 0);
         Grid.SetColumn(_selectionStatus, 1);

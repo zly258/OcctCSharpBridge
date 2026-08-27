@@ -46,8 +46,8 @@
             <Setter Property="VirtualizingStackPanel.VirtualizationMode" Value="Recycling"/>
         </Style>
         <Style TargetType="StatusBar">
-            <Setter Property="Background" Value="#2F3B46"/>
-            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="#F3F5F7"/>
+            <Setter Property="Foreground" Value="#3B4650"/>
             <Setter Property="Padding" Value="4,1"/>
         </Style>
     </Window.Resources>

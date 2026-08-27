@@ -128,6 +128,9 @@ partial class MainForm
         //
         _statusBar.Dock = DockStyle.Fill;
         _statusBar.ImageScalingSize = new Size(20, 20);
+        _statusBar.BackColor = Color.FromArgb(243, 245, 247);
+        _statusBar.ForeColor = Color.FromArgb(59, 70, 80);
+        _statusBar.RenderMode = ToolStripRenderMode.Professional;
         _statusBar.Items.AddRange(new ToolStripItem[]
         {
             _commandStatus,
@@ -144,6 +147,7 @@ partial class MainForm
         //
         // _commandStatus
         //
+        _commandStatus.ForeColor = Color.FromArgb(59, 70, 80);
         _commandStatus.Name = "_commandStatus";
         _commandStatus.Size = new Size(1128, 18);
         _commandStatus.Spring = true;
@@ -153,6 +157,7 @@ partial class MainForm
         // _selectionStatus
         //
         _selectionStatus.BorderSides = ToolStripStatusLabelBorderSides.Left;
+        _selectionStatus.ForeColor = Color.FromArgb(59, 70, 80);
         _selectionStatus.Name = "_selectionStatus";
         _selectionStatus.Padding = new Padding(8, 0, 8, 0);
         _selectionStatus.Size = new Size(126, 18);
@@ -161,6 +166,7 @@ partial class MainForm
         // _coordinateStatus
         //
         _coordinateStatus.BorderSides = ToolStripStatusLabelBorderSides.Left;
+        _coordinateStatus.ForeColor = Color.FromArgb(59, 70, 80);
         _coordinateStatus.Name = "_coordinateStatus";
         _coordinateStatus.Padding = new Padding(8, 0, 0, 0);
         _coordinateStatus.Size = new Size(169, 18);
