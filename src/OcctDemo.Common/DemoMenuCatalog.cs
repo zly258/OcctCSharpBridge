@@ -124,22 +124,20 @@ public static class DemoMenuCatalog
             Action("Menu.ShowAll", DemoMenuAction.ShowAll),
             Action("Menu.HideAll", DemoMenuAction.HideAll)),
 
-        Menu("Menu.Curves",
+        Menu("Menu.Draw",
             Command(DemoCommandId.Point),
             Command(DemoCommandId.Line),
             Command(DemoCommandId.Polyline),
-            Separator(),
             Command(DemoCommandId.Circle),
             Command(DemoCommandId.ArcThreePoints),
             Command(DemoCommandId.ArcCenter),
             Command(DemoCommandId.Ellipse),
-            Separator(),
             Command(DemoCommandId.Rectangle),
             Command(DemoCommandId.Polygon),
             Command(DemoCommandId.Bezier),
             Command(DemoCommandId.BSpline)),
 
-        Menu("Menu.Primitives",
+        Menu("Menu.Solid",
             Command(DemoCommandId.Box),
             Command(DemoCommandId.Cylinder),
             Command(DemoCommandId.Frustum),
@@ -159,9 +157,8 @@ public static class DemoMenuCatalog
             Command(DemoCommandId.Chamfer),
             Command(DemoCommandId.Offset),
             Command(DemoCommandId.Shell),
-            Command(DemoCommandId.Drill)),
-
-        Menu("Menu.Boolean",
+            Command(DemoCommandId.Drill),
+            Separator(),
             Command(DemoCommandId.Fuse),
             Command(DemoCommandId.Cut),
             Command(DemoCommandId.Common),
@@ -169,7 +166,6 @@ public static class DemoMenuCatalog
 
         Menu("Menu.Annotate",
             Command(DemoCommandId.Text),
-            Separator(),
             Command(DemoCommandId.LengthDimension),
             Command(DemoCommandId.AngleDimension),
             Command(DemoCommandId.RadiusDimension),
@@ -230,12 +226,12 @@ public static class DemoMenuCatalog
             Action("Menu.TestEdgeIntersection", DemoMenuAction.TestEdgeIntersection),
             Action("Menu.TestObjGltfExchange", DemoMenuAction.TestObjGltfExchange)),
 
-        Menu("Menu.Settings",
+        Menu("Menu.Tools",
             Action("Menu.English", DemoMenuAction.LanguageEnglish, checkGroup: DemoMenuCheckGroup.Language),
-            Action("Menu.Chinese", DemoMenuAction.LanguageChinese, checkGroup: DemoMenuCheckGroup.Language)),
-
-        Menu("Menu.Help",
+            Action("Menu.Chinese", DemoMenuAction.LanguageChinese, checkGroup: DemoMenuCheckGroup.Language),
+            Separator(),
             Action("Menu.MouseHelp", DemoMenuAction.MouseHelp),
             Action("Menu.About", DemoMenuAction.About))
     ];
+
 }
