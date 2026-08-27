@@ -52,7 +52,7 @@ public partial class MainWindow
     private OcctCornerPosition _triedronPosition = OcctCornerPosition.LeftLower;
     private OcctCornerPosition _viewCubePosition = OcctCornerPosition.RightUpper;
     private bool _viewCubeVisible = true;
-    private bool _viewCubeAxesVisible = true;
+    private bool _viewCubeAxesVisible = false;
     private int _viewCubeSize = 72;
     private int _viewCubeOffsetX = 82;
     private int _viewCubeOffsetY = 82;

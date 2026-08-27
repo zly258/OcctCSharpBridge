@@ -88,10 +88,6 @@ public sealed partial class MainForm
             case DemoMenuAction.SaveDocumentAs: SaveDocument(true); break;
             case DemoMenuAction.ImportDocument: ImportDocument(); break;
             case DemoMenuAction.ExportSelected: ExportSelected(); break;
-            case DemoMenuAction.ExportViewImage: ExportViewImage(); break;
-            case DemoMenuAction.ExportObj: ExportSelectedAs("obj"); break;
-            case DemoMenuAction.ExportGltf: ExportSelectedAs("gltf"); break;
-            case DemoMenuAction.ExportStl: ExportSelectedAs("stl"); break;
             case DemoMenuAction.Exit: Close(); break;
             case DemoMenuAction.Undo: Undo(); break;
             case DemoMenuAction.Redo: Redo(); break;
@@ -123,7 +119,6 @@ public sealed partial class MainForm
             case DemoMenuAction.TestCurveFit: RunModelingTest(Session.RunCurveFitTest); break;
             case DemoMenuAction.TestPipeShell: RunModelingTest(Session.RunPipeShellTest); break;
             case DemoMenuAction.TestEdgeIntersection: RunModelingTest(Session.RunEdgeIntersectionTest); break;
-            case DemoMenuAction.TestObjGltfExchange: RunModelingTest(Session.RunObjGltfExchangeTest); break;
             case DemoMenuAction.LanguageEnglish: SetLanguage(DemoLanguage.English); break;
             case DemoMenuAction.LanguageChinese: SetLanguage(DemoLanguage.ChineseSimplified); break;
             case DemoMenuAction.MouseHelp: ShowMouseHelp(); break;
