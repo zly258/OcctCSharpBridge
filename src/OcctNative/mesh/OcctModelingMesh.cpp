@@ -1,4 +1,4 @@
-﻿#include "mesh/OcctModelingMesh.h"
+#include "mesh/OcctModelingMesh.h"
 #include "mesh/OcctModelingMeshInternal.hxx"
 #include "modeling/OcctModelingShapeInternal.hxx"
 
@@ -6,6 +6,7 @@
 #include <BRepMesh_IncrementalMesh.hxx>
 #include <BRepTools.hxx>
 #include <IMeshTools_Parameters.hxx>
+#include <Poly_Triangulation.hxx>
 #include <gp_Pnt2d.hxx>
 
 #include <algorithm>
@@ -95,33 +96,33 @@ extern "C"
 
             for (int oneBased = 1; oneBased <= count; ++oneBased)
             {
-                OcctModelMeshNode& result = results[oneBased - 1];
+                OcctModelMeshNode& node = results[oneBased - 1];
                 const gp_Pnt point = triangulation->Node(oneBased).Transformed(location.Transformation());
-                result.point = {point.X(), point.Y(), point.Z()};
-                result.hasUv = hasUv ? 1 : 0;
-                result.hasNormal = hasNormal ? 1 : 0;
+                node.point = {point.X(), point.Y(), point.Z()};
+                node.hasUv = hasUv ? 1 : 0;
+                node.hasNormal = hasNormal ? 1 : 0;
 
                 if (hasUv)
                 {
                     const gp_Pnt2d uv = triangulation->UVNode(oneBased);
-                    result.u = uv.X();
-                    result.v = uv.Y();
+                    node.u = uv.X();
+                    node.v = uv.Y();
                 }
                 else
                 {
-                    result.u = 0.0;
-                    result.v = 0.0;
+                    node.u = 0.0;
+                    node.v = 0.0;
                 }
 
                 if (hasNormal)
                 {
                     gp_Dir normal = triangulation->Normal(oneBased);
                     normal.Transform(location.Transformation());
-                    result.normal = {normal.X(), normal.Y(), normal.Z()};
+                    node.normal = {normal.X(), normal.Y(), normal.Z()};
                 }
                 else
                 {
-                    result.normal = {0.0, 0.0, 0.0};
+                    node.normal = {0.0, 0.0, 0.0};
                 }
             }
         });
@@ -164,10 +165,10 @@ extern "C"
                 triangulation->Triangle(oneBased).Get(node1, node2, node3);
                 if (face.Orientation() == TopAbs_REVERSED) std::swap(node2, node3);
 
-                OcctModelMeshTriangle& result = results[oneBased - 1];
-                result.node1 = node1 - 1;
-                result.node2 = node2 - 1;
-                result.node3 = node3 - 1;
+                OcctModelMeshTriangle& triangle = results[oneBased - 1];
+                triangle.node1 = node1 - 1;
+                triangle.node2 = node2 - 1;
+                triangle.node3 = node3 - 1;
             }
         });
     }

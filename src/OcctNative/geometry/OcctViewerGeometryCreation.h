@@ -7,6 +7,7 @@ extern "C"
     OCCTBRIDGE_API OcctStatus occt_engine_shape_vertex_create(OcctEngineHandle handle, OcctPoint3d point, OcctObjectId* result);
     OCCTBRIDGE_API OcctStatus occt_engine_shape_line_create(OcctEngineHandle handle, OcctPoint3d start, OcctPoint3d end, OcctObjectId* result);
     OCCTBRIDGE_API OcctStatus occt_engine_shape_polyline_create(OcctEngineHandle handle, const OcctPoint3d* points, int count, OcctBool closed, OcctObjectId* result);
+    OCCTBRIDGE_API OcctStatus occt_engine_shape_triangulated_mesh_create(OcctEngineHandle handle, const OcctPoint3d* vertices, int vertexCount, const int* triangleIndices, int triangleIndexCount, OcctObjectId* result);
     OCCTBRIDGE_API OcctStatus occt_engine_shape_circle_create(OcctEngineHandle handle, OcctPoint3d center, OcctVector3d normal, double radius, OcctObjectId* result);
     OCCTBRIDGE_API OcctStatus occt_engine_shape_arc_three_points_create(OcctEngineHandle handle, OcctPoint3d start, OcctPoint3d middle, OcctPoint3d end, OcctObjectId* result);
     OCCTBRIDGE_API OcctStatus occt_engine_shape_arc_center_create(OcctEngineHandle handle, OcctPoint3d center, OcctVector3d normal, OcctVector3d xDirection, double radius, double startAngleDegrees, double endAngleDegrees, OcctObjectId* result);

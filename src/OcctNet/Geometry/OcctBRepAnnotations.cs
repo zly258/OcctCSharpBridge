@@ -13,7 +13,8 @@ public enum OcctTextVerticalAlignment
 {
     Bottom = 0,
     Center = 1,
-    Top = 2
+    Top = 2,
+    TopFirstLine = 3
 }
 
 public readonly record struct OcctBRepTextOptions(

@@ -3,9 +3,12 @@
 
 #include <BRepAdaptor_Curve.hxx>
 #include <BRepAdaptor_Surface.hxx>
+#include <BRepBuilderAPI_MakeShapeOnMesh.hxx>
 #include <BRepGProp.hxx>
 #include <BRep_Tool.hxx>
 #include <GProp_GProps.hxx>
+#include <Poly_Triangulation.hxx>
+#include <Poly_Triangle.hxx>
 #include <Precision.hxx>
 #include <TopAbs_Orientation.hxx>
 #include <TopExp.hxx>
@@ -122,6 +125,48 @@ namespace
 
 extern "C"
 {
+    OcctStatus occt_engine_shape_triangulated_mesh_create(
+        OcctEngineHandle handle,
+        const OcctPoint3d* vertices,
+        int vertexCount,
+        const int* triangleIndices,
+        int triangleIndexCount,
+        OcctObjectId* result)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (vertices == nullptr || vertexCount < 3 || triangleIndices == nullptr ||
+            triangleIndexCount < 3 || triangleIndexCount % 3 != 0 || result == nullptr)
+            return OcctStatus_ErrorInvalidArgument;
+
+        *result = 0;
+        return executeGeometryStatus(engine, [&]
+        {
+            const int triangleCount = triangleIndexCount / 3;
+            Handle(Poly_Triangulation) triangulation = new Poly_Triangulation(vertexCount, triangleCount, false);
+            for (int index = 0; index < vertexCount; ++index)
+                triangulation->SetNode(index + 1, point(vertices[index]));
+
+            for (int triangle = 0; triangle < triangleCount; ++triangle)
+            {
+                const int offset = triangle * 3;
+                const int a = triangleIndices[offset];
+                const int b = triangleIndices[offset + 1];
+                const int c = triangleIndices[offset + 2];
+                if (a < 0 || a >= vertexCount || b < 0 || b >= vertexCount || c < 0 || c >= vertexCount)
+                    throw std::invalid_argument("Triangle index is outside the vertex buffer.");
+                if (a == b || b == c || a == c)
+                    throw std::invalid_argument("Triangle indices must reference three distinct vertices.");
+                triangulation->SetTriangle(triangle + 1, Poly_Triangle(a + 1, b + 1, c + 1));
+            }
+
+            BRepBuilderAPI_MakeShapeOnMesh maker(triangulation);
+            maker.Build();
+            if (!maker.IsDone()) throw std::runtime_error("Triangulated mesh shape creation failed.");
+            *result = engine->addShape(maker.Shape(), false, "TriangulatedMesh");
+            if (*result <= 0) throw std::runtime_error("Triangulated mesh did not create a viewer object.");
+        });
+    }
+
     OcctStatus occt_engine_indexed_vertex_get(
         OcctEngineHandle handle,
         OcctObjectId ownerId,

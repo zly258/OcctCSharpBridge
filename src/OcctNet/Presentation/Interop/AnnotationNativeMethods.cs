@@ -82,6 +82,41 @@ internal static partial class AnnotationNativeMethods
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_text_set_justification(
+        OcctEngineSafeHandle engine,
+        long textId,
+        int horizontalAlignment,
+        int verticalAlignment);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_text_set_orientation(
+        OcctEngineSafeHandle engine,
+        long textId,
+        OcctVector3d planeNormal,
+        OcctVector3d xDirection,
+        int enabled);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_text_set_wrapping(
+        OcctEngineSafeHandle engine,
+        long textId,
+        double width,
+        int wordWrapping);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_text_set_background(
+        OcctEngineSafeHandle engine,
+        long textId,
+        int enabled,
+        double red,
+        double green,
+        double blue);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvCdecl)])]
     internal static partial OcctStatus occt_engine_dimension_create(
         OcctEngineSafeHandle engine,
         NativeViewerDimensionKind kind,

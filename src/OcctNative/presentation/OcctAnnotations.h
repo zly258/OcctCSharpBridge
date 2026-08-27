@@ -72,6 +72,35 @@ extern "C"
         const char* fontName,
         const OcctViewerTextOptions* options);
 
+    // Additive ABI5 text presentation controls. These stay outside OcctViewerTextOptions so
+    // callers compiled against the original struct remain binary compatible.
+    OCCTBRIDGE_API OcctStatus occt_engine_text_set_justification(
+        OcctEngineHandle engine,
+        OcctObjectId textId,
+        int horizontalAlignment,
+        int verticalAlignment);
+
+    OCCTBRIDGE_API OcctStatus occt_engine_text_set_orientation(
+        OcctEngineHandle engine,
+        OcctObjectId textId,
+        OcctVector3d planeNormal,
+        OcctVector3d xDirection,
+        OcctBool enabled);
+
+    OCCTBRIDGE_API OcctStatus occt_engine_text_set_wrapping(
+        OcctEngineHandle engine,
+        OcctObjectId textId,
+        double width,
+        OcctBool wordWrapping);
+
+    OCCTBRIDGE_API OcctStatus occt_engine_text_set_background(
+        OcctEngineHandle engine,
+        OcctObjectId textId,
+        OcctBool enabled,
+        double red,
+        double green,
+        double blue);
+
     OCCTBRIDGE_API OcctStatus occt_engine_dimension_create(
         OcctEngineHandle engine,
         int kind,

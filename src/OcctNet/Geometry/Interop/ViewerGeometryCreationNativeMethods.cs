@@ -19,6 +19,10 @@ internal static partial class ViewerGeometryCreationNativeMethods
 
     [LibraryImport(NativeMethods.LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_shape_triangulated_mesh_create(OcctEngineSafeHandle handle, IntPtr vertices, int vertexCount, IntPtr triangleIndices, int triangleIndexCount, out long result);
+
+    [LibraryImport(NativeMethods.LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_engine_shape_circle_create(OcctEngineSafeHandle handle, OcctPoint3d center, OcctVector3d normal, double radius, out long result);
 
     [LibraryImport(NativeMethods.LibraryName)]

@@ -83,6 +83,80 @@ public sealed partial class OcctEngine
             _handle, textObject.Id, string.Empty, string.Empty, in options));
     }
 
+    /// <summary>Sets the anchor alignment used by the native text formatter.</summary>
+    public void SetTextJustification(
+        OcctText textObject,
+        OcctTextHorizontalAlignment horizontal,
+        OcctTextVerticalAlignment vertical)
+    {
+        EnsureText(textObject);
+        if (!Enum.IsDefined(horizontal)) throw new ArgumentOutOfRangeException(nameof(horizontal));
+        if (!Enum.IsDefined(vertical)) throw new ArgumentOutOfRangeException(nameof(vertical));
+        CheckAnnotationStatus(AnnotationNativeMethods.occt_engine_text_set_justification(
+            _handle,
+            textObject.Id,
+            (int)horizontal,
+            (int)vertical));
+    }
+
+    /// <summary>Places text in a model-space plane instead of screen-facing rotate persistence.</summary>
+    public void SetTextOrientation(
+        OcctText textObject,
+        OcctVector3d planeNormal,
+        OcctVector3d xDirection)
+    {
+        EnsureText(textObject);
+        OcctGuard.NonZero(planeNormal, nameof(planeNormal));
+        OcctGuard.NonZero(xDirection, nameof(xDirection));
+        CheckAnnotationStatus(AnnotationNativeMethods.occt_engine_text_set_orientation(
+            _handle,
+            textObject.Id,
+            planeNormal.Normalized(),
+            xDirection.Normalized(),
+            1));
+    }
+
+    public void ClearTextOrientation(OcctText textObject)
+    {
+        EnsureText(textObject);
+        CheckAnnotationStatus(AnnotationNativeMethods.occt_engine_text_set_orientation(
+            _handle,
+            textObject.Id,
+            OcctVector3d.UnitZ,
+            OcctVector3d.UnitX,
+            0));
+    }
+
+    /// <summary>Sets formatter wrapping width in native text units. Zero disables wrapping.</summary>
+    public void SetTextWrapping(OcctText textObject, double width, bool wordWrapping = true)
+    {
+        EnsureText(textObject);
+        if (!double.IsFinite(width) || width < 0)
+            throw new ArgumentOutOfRangeException(nameof(width));
+        CheckAnnotationStatus(AnnotationNativeMethods.occt_engine_text_set_wrapping(
+            _handle,
+            textObject.Id,
+            width,
+            wordWrapping ? 1 : 0));
+    }
+
+    /// <summary>Enables or disables the OCCT subtitle background behind a text label.</summary>
+    public void SetTextBackground(
+        OcctText textObject,
+        bool enabled,
+        System.Drawing.Color? color = null)
+    {
+        EnsureText(textObject);
+        var actualColor = color ?? System.Drawing.Color.White;
+        CheckAnnotationStatus(AnnotationNativeMethods.occt_engine_text_set_background(
+            _handle,
+            textObject.Id,
+            enabled ? 1 : 0,
+            actualColor.R / 255.0,
+            actualColor.G / 255.0,
+            actualColor.B / 255.0));
+    }
+
     public void SetDimensionFlyout(OcctDimension dimension, double flyout)
     {
         EnsureDimension(dimension);
