@@ -202,6 +202,8 @@ public sealed partial class MainWindow
             AddPropertyRow(property.Key, property.Value, isGeometry ? OnGeometryDetailsClick : null);
         }
 
+        AddPropertyRow(Local("Color", "颜色"), Local("Click to change", "点击修改"), () => _ = ChangePropertyColorAsync(value));
+
         if (value is OcctShape)
         {
             AddPropertyRow(DemoLocalization.CommandText(DemoCommandId.AnalyzeBounds), Local("Click to run", "点击执行"), () => RunPropertyInspection(DemoCommandId.AnalyzeBounds));
@@ -209,6 +211,12 @@ public sealed partial class MainWindow
             AddPropertyRow(DemoLocalization.CommandText(DemoCommandId.AnalyzeTopology), Local("Click to run", "点击执行"), () => RunPropertyInspection(DemoCommandId.AnalyzeTopology));
             AddPropertyRow(DemoLocalization.CommandText(DemoCommandId.ValidateShape), Local("Click to run", "点击执行"), () => RunPropertyInspection(DemoCommandId.ValidateShape));
         }
+    }
+
+    private async Task ChangePropertyColorAsync(IOcctObject value)
+    {
+        await SetObjectColorAsync(value);
+        if (_propertyTarget is not null) ShowObjectProperties(_propertyTarget);
     }
 
     private void RunPropertyInspection(DemoCommandId commandId)

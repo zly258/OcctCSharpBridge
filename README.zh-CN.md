@@ -13,87 +13,36 @@ OcctDemo.Common
 
 Demo 自身使用 .NET 10，用来覆盖 Bridge 支持的最新 Consumer Runtime；Bridge Managed Binary SDK 仍以 .NET 8 为最低 TFM，并面向 .NET 8/9/10 Consumer。
 
-## SDK 同步：现在是 Consumer 快路径
+## SDK 同步
 
-`dist/` 是本地可删除缓存并由 Git 忽略。同步得到两组来自**同一个 Bridge sourceCommit** 的产物：
+`sync.ps1` / `sync.sh` 现在只负责**校验或复制已有 SDK**：
+
+- 校验当前本地 Binary/Portable SDK Cache；
+- 或复制显式指定的预构建 Binary/Portable SDK。
+
+同步阶段不再拉取源码构建 Bridge，也不执行 Bridge Smoke。
+
+本地缓存：
 
 ```text
-dist/win-x64/                   # 最小 Binary SDK，供编译引用
-dist/portable/win-x64/          # Portable Runtime，供发布
+dist/win-x64/
+dist/portable/win-x64/
 
-# Linux
 dist/linux-x64/
 dist/portable/linux-x64/
 ```
 
-### 缓存命中
-
-如果本地 Binary SDK 的 `manifest.sourceCommit` 与远端目标分支一致，并且 Binary/Portable Manifest 的所有 Hash 均通过，`sync` 直接返回：
-
-```text
-0 次 Bridge 编译
-0 次 Bridge 测试
-0 个窗口 Smoke
-```
-
-### 缓存失效
-
-以前 Windows `sync.ps1` 会执行 Bridge `sdk` 完整 Gate，Linux `sync.sh` 会执行 `all -> dist`。这会重复触发 ManagedTests、Core Smoke，以及 Windows 的 WinForms/WPF/Avalonia 窗口 Smoke。
-
-现在统一改为：
-
-```text
-Bridge build dist Release
-        ↓
-Native + Managed + Binary SDK
-        ↓
-Bridge Portable Packager
-        ↓
-Contract / sourceCommit / SHA-256 校验
-        ↓
-Demo 本地 dist Cache
-```
-
-同步阶段明确**不运行**：
-
-- Bridge Consumer Matrix；
-- Bridge ManagedTests；
-- Bridge Core Native Smoke；
-- WinForms/WPF/Avalonia Viewport Smoke；
-- Linux Avalonia 图形 Smoke。
-
-完整 QA 属于 Bridge `main/main` 自己的 `sdk` / `publish` 流程，不属于 Consumer 刷新 SDK 的职责。
-
-Windows：
+如果缓存已经与目标 `main` sourceCommit 一致：
 
 ```powershell
 .\sync.ps1
 ```
 
-强制重新生成 Consumer SDK：
-
-```powershell
-.\sync.ps1 -ForceRebuild
-```
-
-显式来源：
-
-```powershell
-.\sync.ps1 -SourceBranch main -ForceRebuild
-```
-
-Linux：
-
 ```bash
 ./sync.sh
-./sync.sh --force-rebuild
 ```
 
-## 已有 Bridge 制品时不要重新编译
-
-如果 Bridge 已经发布/生成匹配的 Binary SDK 与 Portable SDK，Demo 可以直接校验并复制，Bridge 编译次数为 0。
-
-Windows：
+如果缓存不存在或已过期，需要先单独完成 Bridge Build/Package，再把同一 Build 的制品交给 Demo：
 
 ```powershell
 .\sync.ps1 `
@@ -101,15 +50,13 @@ Windows：
   -PortableRoot <portable-sdk>
 ```
 
-Linux：
-
 ```bash
 ./sync.sh \
   --sdk-root <binary-sdk> \
   --portable-root <portable-sdk>
 ```
 
-两者必须属于同一个 Bridge Build；`sourceCommit`、Bridge Version 和 Package Hash 必须完全匹配。
+Binary 与 Portable 必须来自同一个 Bridge Build；同步脚本会校验 Contract、sourceCommit、版本与 Hash。
 
 ## Demo 构建
 

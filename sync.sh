@@ -17,11 +17,11 @@ Options:
   --source <branch>            Bridge SDK source branch (default: main)
   --sdk-root <directory>       Use an already generated linux-x64 Binary SDK
   --portable-root <directory>  Matching Portable SDK (required with --sdk-root)
-  --force-rebuild              Ignore the local sourceCommit cache and rebuild dist
+  --force-rebuild              Unsupported compatibility option; sync never builds Bridge
   -h, --help                   Show this help
 
-A source rebuild uses Bridge `build.sh dist Release` only. It does not run Bridge
-ManagedTests, Core smoke, consumer matrices, or graphical Avalonia smoke tests.
+sync.sh only validates or copies already-built Binary/Portable SDK artifacts.
+It never builds Bridge and never runs Bridge smoke tests.
 EOF
 }
 
@@ -45,11 +45,6 @@ json_number() { sed -nE "s/^[[:space:]]*\"$2\"[[:space:]]*:[[:space:]]*([0-9]+).
 
 DESTINATION="${ROOT_DIR}/dist/linux-x64"
 PORTABLE_DESTINATION="${ROOT_DIR}/dist/portable/linux-x64"
-WORKSPACE_ROOT="$(cd "${ROOT_DIR}/.." && pwd)"
-WORKTREE_ROOT="${WORKSPACE_ROOT}/.OcctCSharpBridge-main-sdk-$$-${RANDOM}"
-WORKTREE_ADDED=false
-OCCT_ROOT="${OCCT_ROOT:-/usr/local}"
-OCCT_LIB_DIR="${OCCT_LIB_DIR:-${OCCT_ROOT}/lib}"
 
 validate_sdk() {
     local root="$1"
@@ -143,15 +138,6 @@ copy_portable() {
     log "Portable Bridge runtime synchronized: ${PORTABLE_DESTINATION}"
 }
 
-cleanup() {
-    if [[ "${WORKTREE_ADDED}" == true ]]; then
-        git -C "${ROOT_DIR}" worktree remove --force "${WORKTREE_ROOT}" >/dev/null 2>&1 || true
-    else
-        rm -rf "${WORKTREE_ROOT}" >/dev/null 2>&1 || true
-    fi
-}
-trap cleanup EXIT
-
 require_command git
 require_command sha256sum
 require_command python3
@@ -170,51 +156,30 @@ if [[ -n "${SDK_ROOT}" ]]; then
 fi
 [[ -z "${PORTABLE_ROOT}" ]] || fail "--portable-root is only valid together with --sdk-root."
 
-log "Fetching ${REMOTE}/${SOURCE_BRANCH}..."
-git -C "${ROOT_DIR}" fetch --quiet "${REMOTE}" "${SOURCE_BRANCH}" || fail "Unable to fetch ${REMOTE}/${SOURCE_BRANCH}."
-SOURCE_COMMIT="$(git -C "${ROOT_DIR}" rev-parse "${REMOTE}/${SOURCE_BRANCH}")"
-[[ -n "${SOURCE_COMMIT}" ]] || fail "Unable to resolve ${REMOTE}/${SOURCE_BRANCH}."
-
-if [[ "${FORCE_REBUILD}" == false && -d "${DESTINATION}" && -d "${PORTABLE_DESTINATION}" ]] && validate_sdk "${DESTINATION}"; then
-    EXISTING_COMMIT="$(json_string "${DESTINATION}/bridge-manifest.json" sourceCommit)"
-    BRIDGE_VERSION="$(json_string "${DESTINATION}/bridge-contract.json" bridgeVersion)"
-    if [[ "${EXISTING_COMMIT}" == "${SOURCE_COMMIT}" ]] && validate_portable "${PORTABLE_DESTINATION}" "${SOURCE_COMMIT}" "${BRIDGE_VERSION}"; then
-        log "Binary SDK and Portable SDK already match ${REMOTE}/${SOURCE_BRANCH} @ ${SOURCE_COMMIT:0:7}; rebuild skipped."
-        exit 0
-    fi
+if [[ "${FORCE_REBUILD}" == true ]]; then
+    fail "--force-rebuild is no longer supported. Demo sync never builds Bridge; provide prebuilt artifacts with --sdk-root and --portable-root."
 fi
 
-[[ "${FORCE_REBUILD}" == false ]] || log "Forced consumer SDK rebuild requested."
-git -C "${ROOT_DIR}" worktree prune
-git -C "${ROOT_DIR}" worktree add --detach "${WORKTREE_ROOT}" "${REMOTE}/${SOURCE_BRANCH}" >/dev/null || fail "Unable to create Bridge source worktree."
-WORKTREE_ADDED=true
+if [[ "${REMOTE}" == "." || "${REMOTE}" == "local" ]]; then
+    SOURCE_COMMIT="$(git -C "${ROOT_DIR}" rev-parse "${SOURCE_BRANCH}")"
+else
+    log "Fetching ${REMOTE}/${SOURCE_BRANCH} metadata..."
+    git -C "${ROOT_DIR}" fetch --quiet "${REMOTE}" "${SOURCE_BRANCH}" || fail "Unable to fetch ${REMOTE}/${SOURCE_BRANCH}."
+    SOURCE_COMMIT="$(git -C "${ROOT_DIR}" rev-parse "${REMOTE}/${SOURCE_BRANCH}")"
+fi
+[[ -n "${SOURCE_COMMIT}" ]] || fail "Unable to resolve ${REMOTE}/${SOURCE_BRANCH}."
 
-[[ -f "${WORKTREE_ROOT}/build.sh" ]] || fail "${REMOTE}/${SOURCE_BRANCH} does not contain build.sh."
-[[ -f "${WORKTREE_ROOT}/tools/package-portable-sdk.sh" ]] || fail "${REMOTE}/${SOURCE_BRANCH} does not contain tools/package-portable-sdk.sh."
+[[ -d "${DESTINATION}" && -d "${PORTABLE_DESTINATION}" ]] ||
+    fail "Demo SDK cache is missing. sync.sh no longer builds Bridge. Build/package Bridge separately, then pass --sdk-root and --portable-root."
 
-log "Building Bridge consumer Binary SDK with the dist Release fast path..."
-log "Bridge tests, Core smoke and graphical Avalonia smoke are intentionally not run during consumer synchronization."
-(
-    cd "${WORKTREE_ROOT}"
-    bash ./build.sh dist Release
-) || fail "Bridge dist Release failed on ${REMOTE}/${SOURCE_BRANCH}."
+validate_sdk "${DESTINATION}" || fail "Existing Binary SDK cache is incomplete or invalid."
+EXISTING_COMMIT="$(json_string "${DESTINATION}/bridge-manifest.json" sourceCommit)"
+BRIDGE_VERSION="$(json_string "${DESTINATION}/bridge-contract.json" bridgeVersion)"
+[[ "${EXISTING_COMMIT}" == "${SOURCE_COMMIT}" ]] ||
+    fail "Demo SDK cache is stale. Expected ${REMOTE}/${SOURCE_BRANCH} @ ${SOURCE_COMMIT}, found ${EXISTING_COMMIT}. Provide matching prebuilt artifacts."
 
-BUILT_SDK="${WORKTREE_ROOT}/dist/linux-x64"
-validate_sdk "${BUILT_SDK}" || fail "Generated linux-x64 Binary SDK failed validation."
-BUILT_COMMIT="$(json_string "${BUILT_SDK}/bridge-manifest.json" sourceCommit)"
-BRIDGE_VERSION="$(json_string "${BUILT_SDK}/bridge-contract.json" bridgeVersion)"
-[[ "${BUILT_COMMIT}" == "${SOURCE_COMMIT}" ]] || fail "Generated Binary SDK sourceCommit does not match ${REMOTE}/${SOURCE_BRANCH}."
+validate_portable "${PORTABLE_DESTINATION}" "${SOURCE_COMMIT}" "${BRIDGE_VERSION}" ||
+    fail "Existing Portable SDK cache is incomplete, invalid, or does not match the Binary SDK."
 
-require_command ldd
-require_command realpath
-require_command patchelf
-PORTABLE_OUTPUT="${WORKTREE_ROOT}/artifacts/demo-sync-portable"
-rm -rf "${PORTABLE_OUTPUT}"
-log "Building the matching Bridge Portable SDK from the same Binary SDK..."
-bash "${WORKTREE_ROOT}/tools/package-portable-sdk.sh" "${BUILT_SDK}" "${OCCT_ROOT}" "${OCCT_LIB_DIR}" "${PORTABLE_OUTPUT}" false || fail "Bridge Portable SDK packaging failed."
-BUILT_PORTABLE="${PORTABLE_OUTPUT}/OcctCSharpBridge-${BRIDGE_VERSION}-linux-x64-portable"
-validate_portable "${BUILT_PORTABLE}" "${SOURCE_COMMIT}" "${BRIDGE_VERSION}" || fail "Generated Portable SDK failed validation."
-
-copy_sdk "${BUILT_SDK}"
-copy_portable "${BUILT_PORTABLE}" "${SOURCE_COMMIT}" "${BRIDGE_VERSION}"
-log "Consumer SDK synchronization completed without running the Bridge full QA gate."
+log "Binary SDK and Portable SDK match ${REMOTE}/${SOURCE_BRANCH} @ ${SOURCE_COMMIT:0:7}."
+log "Validation completed; no Bridge build or smoke test was executed."

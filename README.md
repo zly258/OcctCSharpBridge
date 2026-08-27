@@ -13,76 +13,36 @@ OcctDemo.Common
 
 The Demo targets .NET 10 to exercise the latest supported consumer runtime. The Bridge managed Binary SDK still targets the .NET 8 minimum baseline and supports .NET 8/9/10 consumers.
 
-## SDK synchronization is now a consumer fast path
+## SDK synchronization
 
-`dist/` is disposable local cache state and is ignored by Git. Synchronization maintains two artifacts from the **same Bridge sourceCommit**:
+`sync.ps1` / `sync.sh` are now intentionally **build-free**. They only:
+
+- validate an existing local Binary/Portable SDK cache; or
+- copy explicitly supplied prebuilt Binary/Portable SDK artifacts.
+
+They never clone/build Bridge and never run Bridge smoke tests.
+
+Local cache layout:
 
 ```text
-dist/win-x64/                   # minimal Binary SDK for compilation
-dist/portable/win-x64/          # Portable Runtime for publication
+dist/win-x64/
+dist/portable/win-x64/
 
 dist/linux-x64/
 dist/portable/linux-x64/
 ```
 
-### Cache hit
-
-When the local Binary SDK `manifest.sourceCommit` matches the requested Bridge branch and all Binary/Portable hashes validate, synchronization returns immediately:
-
-```text
-0 Bridge builds
-0 Bridge tests
-0 viewport/window smokes
-```
-
-### Cache miss
-
-Previously, Windows `sync.ps1` ran the complete Bridge `sdk` gate and Linux `sync.sh` ran `all -> dist`, which repeated Bridge ManagedTests/Core Smoke and, on Windows, WinForms/WPF/Avalonia viewport windows.
-
-The synchronization flow is now:
-
-```text
-Bridge build dist Release
-        ↓
-Native + Managed + Binary SDK
-        ↓
-Bridge-owned Portable packager
-        ↓
-contract / sourceCommit / SHA-256 validation
-        ↓
-Demo local dist cache
-```
-
-Synchronization intentionally does **not** run:
-
-- Bridge consumer matrix;
-- Bridge ManagedTests;
-- Bridge Core Native Smoke;
-- WinForms/WPF/Avalonia viewport smoke;
-- Linux graphical Avalonia smoke.
-
-Full QA belongs to Bridge `main/main` `sdk` / `publish` workflows, not to downstream SDK refreshes.
-
-Windows:
+If the cache already matches the requested `main` source commit:
 
 ```powershell
 .\sync.ps1
-.\sync.ps1 -ForceRebuild
-.\sync.ps1 -SourceBranch main -ForceRebuild
 ```
-
-Linux:
 
 ```bash
 ./sync.sh
-./sync.sh --force-rebuild
 ```
 
-## Reuse prebuilt Bridge artifacts instead of recompiling
-
-When matching Binary and Portable SDKs already exist, Demo can validate/copy them directly with zero Bridge compilation.
-
-Windows:
+If the cache is missing or stale, first build/package Bridge separately, then copy the matching artifacts:
 
 ```powershell
 .\sync.ps1 `
@@ -90,15 +50,13 @@ Windows:
   -PortableRoot <portable-sdk>
 ```
 
-Linux:
-
 ```bash
 ./sync.sh \
   --sdk-root <binary-sdk> \
   --portable-root <portable-sdk>
 ```
 
-Both artifacts must belong to the same Bridge build; sourceCommit, Bridge version, and package hashes must match.
+Binary and Portable artifacts must come from the same Bridge build. The scripts validate contract metadata, source commit, version and hashes before accepting them.
 
 ## Build the Demo
 

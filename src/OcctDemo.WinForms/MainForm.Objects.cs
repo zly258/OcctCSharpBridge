@@ -137,6 +137,7 @@ public sealed partial class MainForm
         if (_session is null || value is null) return;
         foreach (var property in Session.DescribeObjectLightweight(value))
             _propertyGrid.Rows.Add(property.Key, property.Value);
+        _propertyGrid.Rows.Add("▶ " + Local("Color", "颜色"), Local("Click to change", "点击修改"));
         if (value is OcctShape)
         {
             _propertyGrid.Rows.Add("▶ " + DemoLocalization.CommandText(DemoCommandId.AnalyzeBounds), Local("Click to run", "点击执行"));
@@ -157,6 +158,17 @@ public sealed partial class MainForm
     {
         if (e.RowIndex < 0 || _session is null || _propertyTarget is null) return;
         var key = _propertyGrid.Rows[e.RowIndex].Cells[0].Value?.ToString() ?? "";
+
+        if (key == "▶ " + Local("Color", "颜色"))
+        {
+            if (_propertyTarget is not null)
+            {
+                Session.ActiveObject = _propertyTarget;
+                SetActiveColor();
+                ShowObjectProperties(_propertyTarget);
+            }
+            return;
+        }
         if (key.StartsWith("▶ ", StringComparison.Ordinal))
         {
             var label = key[2..];

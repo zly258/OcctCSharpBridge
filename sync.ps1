@@ -1,7 +1,6 @@
 param(
     [string]$Remote = "origin",
     [string]$SourceBranch = "main",
-    [string]$OcctRoot = $env:OCCT_ROOT,
     [string]$SdkRoot = "",
     [string]$PortableRoot = "",
     [switch]$ForceRebuild
@@ -13,11 +12,6 @@ Set-StrictMode -Version Latest
 $RepoRoot = Split-Path -Parent $PSCommandPath
 $Destination = Join-Path $RepoRoot "dist\win-x64"
 $PortableDestination = Join-Path $RepoRoot "dist\portable\win-x64"
-$SourceRepoRoot = Join-Path $RepoRoot ".cache\main-sdk-source"
-$DefaultOcctRoot = "D:\tools\occt-vc144-64"
-if ([string]::IsNullOrWhiteSpace($OcctRoot)) { $OcctRoot = $DefaultOcctRoot }
-$OcctRoot = [System.IO.Path]::GetFullPath($OcctRoot)
-
 $DemoCoreTargetFramework = "net10.0"
 $DemoDesktopTargetFramework = "net10.0-windows"
 $SdkFileNames = @(
@@ -210,56 +204,6 @@ function Copy-Portable {
     Write-Host "Path:   $PortableDestination" -ForegroundColor DarkGray
 }
 
-function Get-OrCreateSourceClone {
-    param(
-        [Parameter(Mandatory = $true)][string]$RemoteName,
-        [Parameter(Mandatory = $true)][string]$Branch,
-        [Parameter(Mandatory = $true)][string]$ExpectedCommit
-    )
-
-    $remoteUrl = if ($RemoteName -eq "." -or $RemoteName -eq "local") {
-        $RepoRoot
-    }
-    else {
-        $resolved = ([string](& git -C $RepoRoot remote get-url $RemoteName)).Trim()
-        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($resolved)) {
-            throw "Unable to resolve URL for Git remote '$RemoteName'."
-        }
-        $resolved
-    }
-
-    if (-not (Test-Path -LiteralPath (Join-Path $SourceRepoRoot ".git") -PathType Container)) {
-        Remove-Item -LiteralPath $SourceRepoRoot -Recurse -Force -ErrorAction SilentlyContinue
-        New-Item -ItemType Directory -Path (Split-Path -Parent $SourceRepoRoot) -Force | Out-Null
-        Write-Host "[sync] Creating reusable Bridge source clone..." -ForegroundColor DarkGray
-        & git clone --no-checkout --no-tags $remoteUrl $SourceRepoRoot
-        if ($LASTEXITCODE -ne 0) { throw "Unable to create reusable Bridge source clone." }
-    }
-    else {
-        Invoke-GitChecked $SourceRepoRoot @("remote", "set-url", "origin", $remoteUrl) "Unable to update cached Bridge remote URL."
-    }
-
-    Invoke-GitChecked $SourceRepoRoot @("fetch", "--quiet", "--prune", "origin", $Branch) "Unable to fetch origin/$Branch in cached Bridge clone."
-    $fetchedCommit = ([string](& git -C $SourceRepoRoot rev-parse "FETCH_HEAD")).Trim()
-    if ($LASTEXITCODE -ne 0 -or $fetchedCommit -ne $ExpectedCommit) {
-        throw "Cached Bridge source does not match $RemoteName/$Branch @ $ExpectedCommit."
-    }
-
-    Invoke-GitChecked $SourceRepoRoot @("reset", "--hard") "Unable to reset cached Bridge source clone."
-    Invoke-GitChecked $SourceRepoRoot @("clean", "-fd") "Unable to clean untracked cached Bridge source files."
-    Invoke-GitChecked $SourceRepoRoot @("checkout", "--detach", "--force", $ExpectedCommit) "Unable to checkout cached Bridge source commit."
-    return $SourceRepoRoot
-}
-
-function Invoke-BridgeConsumerDist {
-    param([Parameter(Mandatory = $true)][string]$BuildScript)
-
-    Write-Host "[sync] Building Bridge consumer Binary SDK (dist Release)." -ForegroundColor Cyan
-    Write-Host "[sync] Bridge tests, consumer matrix, Core smoke and viewport/window smokes are intentionally skipped." -ForegroundColor DarkGray
-    & $BuildScript -Target "dist" -Configuration "Release" -OcctRoot $OcctRoot
-    if (-not $?) { throw "Bridge dist Release failed on $Remote/$SourceBranch." }
-}
-
 if (-not [string]::IsNullOrWhiteSpace($SdkRoot)) {
     if ($ForceRebuild) { throw "-ForceRebuild cannot be combined with -SdkRoot." }
     if ([string]::IsNullOrWhiteSpace($PortableRoot)) {
@@ -274,13 +218,17 @@ if (-not [string]::IsNullOrWhiteSpace($PortableRoot)) {
     throw "-PortableRoot is only valid together with -SdkRoot."
 }
 
+if ($ForceRebuild) {
+    throw "-ForceRebuild is no longer supported. Demo sync never builds the Bridge SDK; build/package Bridge separately, then pass -SdkRoot and -PortableRoot."
+}
+
 if ($null -eq (Get-Command git -ErrorAction SilentlyContinue)) { throw "git was not found in PATH." }
 
 if ($Remote -eq "." -or $Remote -eq "local") {
     $sourceCommit = ([string](& git -C $RepoRoot rev-parse $SourceBranch)).Trim()
 }
 else {
-    Write-Host "[sync] Fetching $Remote/$SourceBranch..." -ForegroundColor Cyan
+    Write-Host "[sync] Fetching $Remote/$SourceBranch metadata..." -ForegroundColor Cyan
     & git -C $RepoRoot fetch --quiet $Remote $SourceBranch
     if ($LASTEXITCODE -ne 0) { throw "Unable to fetch $Remote/$SourceBranch." }
     $sourceCommit = ([string](& git -C $RepoRoot rev-parse "$Remote/$SourceBranch")).Trim()
@@ -289,49 +237,16 @@ if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($sourceCommit)) {
     throw "Unable to resolve $Remote/$SourceBranch."
 }
 
-if (-not $ForceRebuild -and
-    (Test-Path -LiteralPath $Destination -PathType Container) -and
-    (Test-Path -LiteralPath $PortableDestination -PathType Container)) {
-    try {
-        $cachedSdk = Read-ValidatedSdk $Destination
-        if ([string]$cachedSdk.Manifest.sourceCommit -eq $sourceCommit) {
-            [void](Read-ValidatedPortable $PortableDestination $sourceCommit ([string]$cachedSdk.Contract.bridgeVersion))
-            Write-Host "Binary SDK and Portable SDK already match $Remote/$SourceBranch @ $($sourceCommit.Substring(0, 7)); rebuild skipped." -ForegroundColor Green
-            exit 0
-        }
-    }
-    catch {
-        Write-Host "[sync] Existing SDK cache is incomplete or invalid; rebuilding." -ForegroundColor DarkGray
-    }
-}
-elseif ($ForceRebuild) {
-    Write-Host "[sync] Forced consumer SDK rebuild requested." -ForegroundColor DarkGray
+if (-not (Test-Path -LiteralPath $Destination -PathType Container) -or
+    -not (Test-Path -LiteralPath $PortableDestination -PathType Container)) {
+    throw "Demo SDK cache is missing. sync.ps1 no longer compiles Bridge. Build/package Bridge separately and run .\sync.ps1 -SdkRoot <binary-sdk> -PortableRoot <portable-sdk>."
 }
 
-$sourceRoot = Get-OrCreateSourceClone $Remote $SourceBranch $sourceCommit
-$buildScript = Join-Path $sourceRoot "build.ps1"
-$portableScript = Join-Path $sourceRoot "tools\package-portable-sdk.ps1"
-Assert-File $buildScript
-Assert-File $portableScript
-
-Invoke-BridgeConsumerDist $buildScript
-
-$builtSdkRoot = Join-Path $sourceRoot "dist\win-x64"
-$builtSdk = Read-ValidatedSdk $builtSdkRoot
-if ([string]$builtSdk.Manifest.sourceCommit -ne $sourceCommit) {
-    throw "Generated Binary SDK sourceCommit does not match $Remote/$SourceBranch."
+$sdk = Read-ValidatedSdk $Destination
+if ([string]$sdk.Manifest.sourceCommit -ne $sourceCommit) {
+    throw "Demo SDK cache is stale. Expected $Remote/$SourceBranch @ $sourceCommit, found $($sdk.Manifest.sourceCommit). Provide matching prebuilt artifacts with -SdkRoot and -PortableRoot."
 }
+[void](Read-ValidatedPortable $PortableDestination $sourceCommit ([string]$sdk.Contract.bridgeVersion))
 
-$portableOutput = Join-Path $sourceRoot "artifacts\demo-sync-portable"
-Remove-Item -LiteralPath $portableOutput -Recurse -Force -ErrorAction SilentlyContinue
-Write-Host "[sync] Building matching Bridge Portable SDK from the same Binary SDK..." -ForegroundColor Cyan
-& $portableScript -SdkRoot $builtSdkRoot -OcctRoot $OcctRoot -OutputDirectory $portableOutput
-if (-not $?) { throw "Bridge Portable SDK packaging failed on $Remote/$SourceBranch." }
-
-$builtPortableRoot = Join-Path $portableOutput "OcctCSharpBridge-$($builtSdk.Contract.bridgeVersion)-win-x64-portable"
-[void](Read-ValidatedPortable $builtPortableRoot $sourceCommit ([string]$builtSdk.Contract.bridgeVersion))
-
-$sdk = Copy-Sdk $builtSdkRoot
-Copy-Portable $builtPortableRoot ([string]$sdk.Manifest.sourceCommit) ([string]$sdk.Contract.bridgeVersion)
-
-Write-Host "[sync] Consumer SDK synchronization completed without running the Bridge full QA gate." -ForegroundColor Green
+Write-Host "Binary SDK and Portable SDK already match $Remote/$SourceBranch @ $($sourceCommit.Substring(0, 7))." -ForegroundColor Green
+Write-Host "[sync] Validation completed; no Bridge build or smoke test was executed." -ForegroundColor Green

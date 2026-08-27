@@ -179,6 +179,7 @@ public partial class MainWindow
         else
         {
             var rows = Session.DescribeObjectLightweight(value).ToList();
+            rows.Add(new("▶ " + Local("Color", "颜色"), Local("Click to change", "点击修改")));
             if (value is OcctShape)
             {
                 rows.Add(new("▶ " + DemoLocalization.CommandText(DemoCommandId.AnalyzeBounds), Local("Click to run", "点击执行")));
@@ -201,6 +202,15 @@ public partial class MainWindow
         if (!key.StartsWith("▶ ", StringComparison.Ordinal)) return;
 
         var label = key[2..];
+        if (label == Local("Color", "颜色"))
+        {
+            if (_propertyTarget is not null)
+            {
+                SetObjectColor(_propertyTarget);
+                ShowObjectProperties(_propertyTarget);
+            }
+            return;
+        }
         var commandId =
             label == DemoLocalization.CommandText(DemoCommandId.AnalyzeBounds) ? DemoCommandId.AnalyzeBounds :
             label == DemoLocalization.CommandText(DemoCommandId.AnalyzeMass) ? DemoCommandId.AnalyzeMass :
