@@ -44,8 +44,8 @@ require_command realpath
 require_command tar
 require_command python3
 
-DIST_ROOT="${ROOT_DIR}/dist/linux-x64"
-PORTABLE_ROOT="${ROOT_DIR}/dist/portable/linux-x64"
+DIST_ROOT="${ROOT_DIR}/external/OcctCSharpBridge/linux-x64"
+PORTABLE_ROOT="${ROOT_DIR}/external/OcctCSharpBridge/portable/linux-x64"
 PROJECT="${ROOT_DIR}/src/OcctDemo.Avalonia/OcctDemo.Avalonia.csproj"
 CONTRACT="${DIST_ROOT}/bridge-contract.json"
 MANIFEST="${DIST_ROOT}/bridge-manifest.json"

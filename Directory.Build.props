@@ -12,6 +12,6 @@
     <Description>Unified WinForms, WPF and Avalonia consumers for the OcctCSharpBridge Binary SDK.</Description>
     <OcctBridgeRuntimeIdentifier Condition="$([MSBuild]::IsOSPlatform('Windows'))">win-x64</OcctBridgeRuntimeIdentifier>
     <OcctBridgeRuntimeIdentifier Condition="$([MSBuild]::IsOSPlatform('Linux'))">linux-x64</OcctBridgeRuntimeIdentifier>
-    <OcctBridgeDistRoot>$(MSBuildThisFileDirectory)dist/$(OcctBridgeRuntimeIdentifier)</OcctBridgeDistRoot>
+    <OcctBridgeDistRoot>$(MSBuildThisFileDirectory)external/OcctCSharpBridge/$(OcctBridgeRuntimeIdentifier)</OcctBridgeDistRoot>
   </PropertyGroup>
 </Project>

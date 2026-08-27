@@ -10,8 +10,14 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $RepoRoot = Split-Path -Parent $PSCommandPath
-$Destination = Join-Path $RepoRoot "dist\win-x64"
-$PortableDestination = Join-Path $RepoRoot "dist\portable\win-x64"
+$ExternalRoot = Join-Path $RepoRoot "external"
+$ExternalCacheRoot = Join-Path $ExternalRoot ".cache\OcctCSharpBridge-source"
+$BridgeRoot = Join-Path $ExternalRoot "OcctCSharpBridge"
+$Destination = Join-Path $BridgeRoot "win-x64"
+$PortableDestination = Join-Path $BridgeRoot "portable\win-x64"
+$LegacyDestination = Join-Path $RepoRoot "dist\win-x64"
+$LegacyPortableDestination = Join-Path $RepoRoot "dist\portable\win-x64"
+New-Item -ItemType Directory -Path $ExternalCacheRoot -Force | Out-Null
 $DemoCoreTargetFramework = "net10.0"
 $DemoDesktopTargetFramework = "net10.0-windows"
 $SdkFileNames = @(
@@ -218,6 +224,19 @@ if (-not [string]::IsNullOrWhiteSpace($PortableRoot)) {
     throw "-PortableRoot is only valid together with -SdkRoot."
 }
 
+if (-not (Test-Path -LiteralPath $Destination -PathType Container) -and
+    (Test-Path -LiteralPath $LegacyDestination -PathType Container)) {
+    New-Item -ItemType Directory -Path $BridgeRoot -Force | Out-Null
+    Move-Item -LiteralPath $LegacyDestination -Destination $Destination
+    Write-Host "[sync] Migrated legacy dist/win-x64 to external/OcctCSharpBridge/win-x64." -ForegroundColor DarkGray
+}
+if (-not (Test-Path -LiteralPath $PortableDestination -PathType Container) -and
+    (Test-Path -LiteralPath $LegacyPortableDestination -PathType Container)) {
+    New-Item -ItemType Directory -Path (Split-Path -Parent $PortableDestination) -Force | Out-Null
+    Move-Item -LiteralPath $LegacyPortableDestination -Destination $PortableDestination
+    Write-Host "[sync] Migrated legacy dist/portable/win-x64 to external/OcctCSharpBridge/portable/win-x64." -ForegroundColor DarkGray
+}
+
 if ($ForceRebuild) {
     throw "-ForceRebuild is no longer supported. Demo sync never builds the Bridge SDK; build/package Bridge separately, then pass -SdkRoot and -PortableRoot."
 }
@@ -239,7 +258,7 @@ if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($sourceCommit)) {
 
 if (-not (Test-Path -LiteralPath $Destination -PathType Container) -or
     -not (Test-Path -LiteralPath $PortableDestination -PathType Container)) {
-    throw "Demo SDK cache is missing. sync.ps1 no longer compiles Bridge. Build/package Bridge separately and run .\sync.ps1 -SdkRoot <binary-sdk> -PortableRoot <portable-sdk>."
+    throw "Demo SDK cache is missing under external/OcctCSharpBridge. sync.ps1 no longer compiles Bridge. Build/package Bridge separately and run .\sync.ps1 -SdkRoot <binary-sdk> -PortableRoot <portable-sdk>."
 }
 
 $sdk = Read-ValidatedSdk $Destination

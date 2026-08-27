@@ -43,8 +43,14 @@ require_command() { command -v "$1" >/dev/null 2>&1 || fail "Required command wa
 json_string() { sed -nE "s/^[[:space:]]*\"$2\"[[:space:]]*:[[:space:]]*\"([^\"]+)\".*/\\1/p" "$1" | head -n 1; }
 json_number() { sed -nE "s/^[[:space:]]*\"$2\"[[:space:]]*:[[:space:]]*([0-9]+).*/\\1/p" "$1" | head -n 1; }
 
-DESTINATION="${ROOT_DIR}/dist/linux-x64"
-PORTABLE_DESTINATION="${ROOT_DIR}/dist/portable/linux-x64"
+EXTERNAL_ROOT="${ROOT_DIR}/external"
+EXTERNAL_CACHE_ROOT="${EXTERNAL_ROOT}/.cache/OcctCSharpBridge-source"
+BRIDGE_ROOT="${EXTERNAL_ROOT}/OcctCSharpBridge"
+DESTINATION="${BRIDGE_ROOT}/linux-x64"
+PORTABLE_DESTINATION="${BRIDGE_ROOT}/portable/linux-x64"
+LEGACY_DESTINATION="${ROOT_DIR}/dist/linux-x64"
+LEGACY_PORTABLE_DESTINATION="${ROOT_DIR}/dist/portable/linux-x64"
+mkdir -p "${EXTERNAL_CACHE_ROOT}"
 
 validate_sdk() {
     local root="$1"
@@ -156,6 +162,17 @@ if [[ -n "${SDK_ROOT}" ]]; then
 fi
 [[ -z "${PORTABLE_ROOT}" ]] || fail "--portable-root is only valid together with --sdk-root."
 
+if [[ ! -d "${DESTINATION}" && -d "${LEGACY_DESTINATION}" ]]; then
+    mkdir -p "${BRIDGE_ROOT}"
+    mv "${LEGACY_DESTINATION}" "${DESTINATION}"
+    log "Migrated legacy dist/linux-x64 to external/OcctCSharpBridge/linux-x64."
+fi
+if [[ ! -d "${PORTABLE_DESTINATION}" && -d "${LEGACY_PORTABLE_DESTINATION}" ]]; then
+    mkdir -p "$(dirname "${PORTABLE_DESTINATION}")"
+    mv "${LEGACY_PORTABLE_DESTINATION}" "${PORTABLE_DESTINATION}"
+    log "Migrated legacy dist/portable/linux-x64 to external/OcctCSharpBridge/portable/linux-x64."
+fi
+
 if [[ "${FORCE_REBUILD}" == true ]]; then
     fail "--force-rebuild is no longer supported. Demo sync never builds Bridge; provide prebuilt artifacts with --sdk-root and --portable-root."
 fi
@@ -170,7 +187,7 @@ fi
 [[ -n "${SOURCE_COMMIT}" ]] || fail "Unable to resolve ${REMOTE}/${SOURCE_BRANCH}."
 
 [[ -d "${DESTINATION}" && -d "${PORTABLE_DESTINATION}" ]] ||
-    fail "Demo SDK cache is missing. sync.sh no longer builds Bridge. Build/package Bridge separately, then pass --sdk-root and --portable-root."
+    fail "Demo SDK cache is missing under external/OcctCSharpBridge. sync.sh no longer builds Bridge. Build/package Bridge separately, then pass --sdk-root and --portable-root."
 
 validate_sdk "${DESTINATION}" || fail "Existing Binary SDK cache is incomplete or invalid."
 EXISTING_COMMIT="$(json_string "${DESTINATION}/bridge-manifest.json" sourceCommit)"

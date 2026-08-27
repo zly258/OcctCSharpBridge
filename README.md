@@ -22,15 +22,20 @@ The Demo targets .NET 10 to exercise the latest supported consumer runtime. The 
 
 They never clone/build Bridge and never run Bridge smoke tests.
 
-Local cache layout:
+External dependency layout:
 
 ```text
-dist/win-x64/
-dist/portable/win-x64/
-
-dist/linux-x64/
-dist/portable/linux-x64/
+external/
+├─ .cache/
+│  └─ OcctCSharpBridge-source/   # reserved source cache
+└─ OcctCSharpBridge/
+   ├─ win-x64/
+   ├─ portable/win-x64/
+   ├─ linux-x64/
+   └─ portable/linux-x64/
 ```
+
+`sync` automatically migrates the legacy local `dist/` SDK cache into this layout when possible.
 
 If the cache already matches the requested `main` source commit:
 
@@ -163,6 +168,6 @@ The Demo may use Bridge only through its managed SDK:
 - no duplicate OCCT runtime-closure collector;
 - no full Bridge release gate inside SDK synchronization.
 
-`tests/check-sdk-consumer.ps1` / `.sh` enforce these boundaries and verify that source synchronization uses the `dist` consumer fast path.
+`tests/check-sdk-consumer.ps1` / `.sh` enforce these boundaries and verify that SDK synchronization is build-free and uses the unified `external/` layout.
 
 The Demo is an SDK consumer example, not a third-party application framework. External projects should follow the Bridge SDK consumption guide for their own repository layout, runtime packaging, and version pinning.

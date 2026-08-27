@@ -22,15 +22,20 @@ Demo 自身使用 .NET 10，用来覆盖 Bridge 支持的最新 Consumer Runtime
 
 同步阶段不再拉取源码构建 Bridge，也不执行 Bridge Smoke。
 
-本地缓存：
+外部依赖统一放在：
 
 ```text
-dist/win-x64/
-dist/portable/win-x64/
-
-dist/linux-x64/
-dist/portable/linux-x64/
+external/
+├─ .cache/
+│  └─ OcctCSharpBridge-source/   # 预留的外部源码缓存
+└─ OcctCSharpBridge/
+   ├─ win-x64/
+   ├─ portable/win-x64/
+   ├─ linux-x64/
+   └─ portable/linux-x64/
 ```
+
+如果本地仍是旧的 `dist/` SDK Cache，`sync` 会在可迁移时自动移动到新的 `external/` 结构。
 
 如果缓存已经与目标 `main` sourceCommit 一致：
 
@@ -166,6 +171,6 @@ Demo 只允许通过 Managed SDK 使用 Bridge：
 - 不重新实现 Bridge Runtime Closure 收集器；
 - 不把 SDK 同步变成第二套 Bridge Release Gate。
 
-`tests/check-sdk-consumer.ps1` / `.sh` 会静态守住这些边界，并检查同步脚本只能使用 `dist` Consumer 快路径。
+`tests/check-sdk-consumer.ps1` / `.sh` 会静态守住这些边界，并检查 SDK 同步保持无编译、统一使用 `external/` 目录。
 
 Demo 是 SDK 消费示例，不是第三方应用框架。第三方项目应按 Bridge 的 SDK Consumer 文档组织自己的工程、Runtime 和版本锁定策略。

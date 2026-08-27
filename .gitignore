@@ -12,7 +12,8 @@ coverage/
 coverage*.xml
 coverage*.json
 
-# Local reusable source/build cache
+# External dependencies and local caches
+/external/
 .cache/
 
 # Generated packages / archives
@@ -74,7 +75,7 @@ Makefile
 *.so
 *.dylib
 
-# Local Bridge Binary SDK / generated distribution
+# Legacy local Bridge SDK location
 /dist/
 
 # CAD test and generated files

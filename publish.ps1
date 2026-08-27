@@ -39,8 +39,8 @@ if (-not $RunningOnWindows) { throw "publish.ps1 supports Windows x64 only. Use 
 $RepoRoot = Split-Path -Parent $PSCommandPath
 $GlobalJsonPath = Join-Path $RepoRoot "global.json"
 $BuildScript = Join-Path $RepoRoot "build.ps1"
-$DistRoot = Join-Path $RepoRoot "dist\win-x64"
-$PortableRoot = Join-Path $RepoRoot "dist\portable\win-x64"
+$DistRoot = Join-Path $RepoRoot "external\OcctCSharpBridge\win-x64"
+$PortableRoot = Join-Path $RepoRoot "external\OcctCSharpBridge\portable\win-x64"
 $ContractPath = Join-Path $DistRoot "bridge-contract.json"
 $ManifestPath = Join-Path $DistRoot "bridge-manifest.json"
 $PortableManifestPath = Join-Path $PortableRoot "package-manifest.json"
@@ -342,7 +342,7 @@ function Test-PortableRuntime {
         -not [bool]$package.portableRuntime -or
         [string]$package.bridgeSourceCommit -ne [string]$script:Manifest.sourceCommit -or
         [string]$package.bridgeVersion -ne [string]$script:Contract.bridgeVersion) {
-        throw "Synchronized Bridge portable runtime does not match dist/win-x64. Run .\sync.ps1 first."
+        throw "Synchronized Bridge portable runtime does not match external/OcctCSharpBridge/win-x64. Run .\sync.ps1 first."
     }
 
     foreach ($entry in @($package.files)) {

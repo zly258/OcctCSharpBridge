@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET="${1:-all}"
 CONFIGURATION="${2:-Release}"
-DIST_ROOT="${ROOT_DIR}/dist/linux-x64"
+DIST_ROOT="${ROOT_DIR}/external/OcctCSharpBridge/linux-x64"
 CONTRACT="${DIST_ROOT}/bridge-contract.json"
 MANIFEST="${DIST_ROOT}/bridge-manifest.json"
 GLOBAL_JSON="${ROOT_DIR}/global.json"

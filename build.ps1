@@ -23,7 +23,7 @@ if (-not $RunningOnWindows) { throw "build.ps1 supports Windows x64 only. Use ./
 
 $Target = $Target.ToLowerInvariant()
 $RepoRoot = Split-Path -Parent $PSCommandPath
-$DistRoot = Join-Path $RepoRoot "dist\win-x64"
+$DistRoot = Join-Path $RepoRoot "external\OcctCSharpBridge\win-x64"
 $ContractPath = Join-Path $DistRoot "bridge-contract.json"
 $ManifestPath = Join-Path $DistRoot "bridge-manifest.json"
 $GlobalJsonPath = Join-Path $RepoRoot "global.json"
@@ -164,7 +164,7 @@ function Test-BinarySdk {
         Get-ChildItem -LiteralPath $DistRoot -Force | Where-Object { $_.Name -notin $SdkFileNames }
     )
     if ($unexpectedEntries.Count -gt 0) {
-        throw "Demo dist/win-x64 contains files or directories outside the validated Binary SDK payload: $((@($unexpectedEntries.Name | Sort-Object)) -join ', '). Run .\sync.ps1 to refresh it."
+        throw "Demo external/OcctCSharpBridge/win-x64 contains files or directories outside the validated Binary SDK payload: $((@($unexpectedEntries.Name | Sort-Object)) -join ', '). Run .\sync.ps1 to refresh it."
     }
 
     $contract = Get-Content -LiteralPath $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
