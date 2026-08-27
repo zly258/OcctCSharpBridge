@@ -20,8 +20,7 @@ public static class DemoLocalization
             ["Menu.File"] = "&File",
             ["Menu.Edit"] = "&Edit",
             ["Menu.Create"] = "&Create",
-            ["Menu.Inspect"] = "&Inspect",
-            ["Menu.Validation"] = "&Validation",
+            ["Menu.Validation"] = "&Tests",
             ["Menu.Settings"] = "Se&ttings",
             ["Menu.Draw"] = "&2D",
             ["Menu.Solid"] = "&3D",
@@ -29,7 +28,7 @@ public static class DemoLocalization
             ["Menu.View"] = "&View",
             ["Menu.Tools"] = "Se&ttings",
             ["Menu.Exchange"] = "E&xchange",
-            ["Menu.Samples"] = "&Samples",
+            ["Menu.Samples"] = "&Examples",
             ["Menu.Tests"] = "T&ests",
             ["Menu.Help"] = "&Help",
             ["Menu.Language"] = "&Language",
@@ -43,9 +42,9 @@ public static class DemoLocalization
             ["Menu.ViewSettings"] = "View Settings...",
             ["Menu.TestBSplineSurface"] = "B-Spline Surface Test",
             ["Menu.TestMeshGeneration"] = "Mesh Generation Test",
-            ["Menu.TestCurveFit"] = "B-Spline Curve Fit Test",
             ["Menu.TestPipeShell"] = "PipeShell Sweep Test",
-            ["Menu.TestEdgeIntersection"] = "Edge Intersection Test",
+            ["Menu.TestTransformCopy"] = "Copy / Transform Test",
+            ["Menu.TestShapeValidity"] = "BRep Validity Test",
             ["Menu.New"] = "New",
             ["Menu.Open"] = "Open...",
             ["Menu.Save"] = "Save",
@@ -201,15 +200,15 @@ public static class DemoLocalization
             ["AppTitle.WinForms"] = "OCCT CAD - WinForms",
             ["AppTitle.Wpf"] = "OCCT CAD - WPF",
             ["Menu.File"] = "文件(&F)", ["Menu.Edit"] = "编辑(&E)", ["Menu.Draw"] = "二维(&2)", ["Menu.Solid"] = "三维(&3)",
-            ["Menu.Create"] = "创建(&C)", ["Menu.Inspect"] = "检查(&I)", ["Menu.Validation"] = "验证(&V)", ["Menu.Settings"] = "设置(&S)",
+            ["Menu.Create"] = "创建(&C)", ["Menu.Validation"] = "测试(&T)", ["Menu.Settings"] = "设置(&S)",
             ["Menu.Annotate"] = "注释(&A)", ["Menu.View"] = "视图(&V)", ["Menu.Tools"] = "设置(&S)", ["Menu.Exchange"] = "交换(&X)",
-            ["Menu.Samples"] = "示例(&M)", ["Menu.Tests"] = "测试(&E)",
+            ["Menu.Samples"] = "案例(&A)", ["Menu.Tests"] = "测试(&E)",
             ["Menu.Help"] = "帮助(&H)", ["Menu.Language"] = "语言(&L)", ["Menu.New"] = "新建", ["Menu.Open"] = "打开...", ["Menu.Save"] = "保存",
             ["Menu.SaveAs"] = "另存为...", ["Menu.Import"] = "导入...", ["Menu.ExportSelected"] = "导出...",
             ["Menu.Curves"] = "曲线与平面几何", ["Menu.Transform"] = "变换", ["Menu.Visibility"] = "可见性", ["Menu.Export"] = "导出",
             ["Menu.AdvancedSamples"] = "高级示例", ["Menu.MechanicalSamples"] = "机械示例", ["Menu.BasicSamples"] = "基础示例",
             ["Menu.ViewSettings"] = "视图设置...", ["Menu.TestBSplineSurface"] = "B 样条曲面测试", ["Menu.TestMeshGeneration"] = "网格生成测试",
-            ["Menu.TestCurveFit"] = "B 样条曲线拟合测试", ["Menu.TestPipeShell"] = "PipeShell 高级扫掠测试", ["Menu.TestEdgeIntersection"] = "几何边求交测试",
+            ["Menu.TestPipeShell"] = "PipeShell 高级扫掠测试", ["Menu.TestTransformCopy"] = "复制 / 变换测试", ["Menu.TestShapeValidity"] = "BRep 有效性测试",
             ["Menu.Exit"] = "退出", ["Menu.Undo"] = "撤销", ["Menu.Redo"] = "重做", ["Menu.ClearSelection"] = "取消全部选择", ["Menu.ShowAll"] = "全部显示",
             ["Menu.HideAll"] = "全部隐藏", ["Menu.Primitives"] = "三维基本体", ["Menu.Features"] = "特征(&F)", ["Menu.Boolean"] = "布尔运算",
             ["Menu.Details"] = "边处理与薄壁", ["Menu.Display"] = "样式(&Y)", ["Menu.StandardViews"] = "标准视图", ["Menu.Projection"] = "投影方式",
@@ -311,7 +310,10 @@ public static class DemoLocalization
             [DemoCommandId.DemoGear] = ("Complex Gear", "Creates a complete gear with teeth, a bore, and relief holes."),
             [DemoCommandId.DemoManifold] = ("Multi-Port Manifold", "Creates a complex body with multi-directional ports and internal channels."),
             [DemoCommandId.DemoTwistedDuct] = ("Twisted Duct", "Creates a hollow multi-section twisted transition duct."),
-            [DemoCommandId.DemoAnnotations] = ("Vector Annotations", "Creates BRep text and linear, angular, radius, and diameter annotations.")
+            [DemoCommandId.DemoAnnotations] = ("Vector Annotations", "Creates BRep text and linear, angular, radius, and diameter annotations."),
+            [DemoCommandId.DemoLinearCopies] = ("Linear Copies", "Creates a linear array using Copy and Translate."),
+            [DemoCommandId.DemoRadialCopies] = ("Radial Copies", "Creates a radial array using Copy and Rotate."),
+            [DemoCommandId.DemoMirrorCopies] = ("Mirror Copies", "Creates mirrored copies using Copy and Mirror.")
         });
 
     private static readonly IReadOnlyDictionary<string, string> EnglishParameterLabels = new ReadOnlyDictionary<string, string>(
@@ -428,6 +430,7 @@ public static class DemoLocalization
         "注释" => "Annotate",
         "工具" => "Tools",
         "示例" => "Samples",
+        "案例" => "Samples",
         _ => category
     };
 }

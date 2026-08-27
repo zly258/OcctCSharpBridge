@@ -137,6 +137,13 @@ public sealed partial class MainForm
         if (_session is null || value is null) return;
         foreach (var property in Session.DescribeObjectLightweight(value))
             _propertyGrid.Rows.Add(property.Key, property.Value);
+        if (value is OcctShape)
+        {
+            _propertyGrid.Rows.Add("▶ " + DemoLocalization.CommandText(DemoCommandId.AnalyzeBounds), Local("Click to run", "点击执行"));
+            _propertyGrid.Rows.Add("▶ " + DemoLocalization.CommandText(DemoCommandId.AnalyzeMass), Local("Click to run", "点击执行"));
+            _propertyGrid.Rows.Add("▶ " + DemoLocalization.CommandText(DemoCommandId.AnalyzeTopology), Local("Click to run", "点击执行"));
+            _propertyGrid.Rows.Add("▶ " + DemoLocalization.CommandText(DemoCommandId.ValidateShape), Local("Click to run", "点击执行"));
+        }
         EnsurePropertyGridClickHandler();
     }
 
@@ -150,6 +157,44 @@ public sealed partial class MainForm
     {
         if (e.RowIndex < 0 || _session is null || _propertyTarget is null) return;
         var key = _propertyGrid.Rows[e.RowIndex].Cells[0].Value?.ToString() ?? "";
+        if (key.StartsWith("▶ ", StringComparison.Ordinal))
+        {
+            var label = key[2..];
+            var commandId =
+                label == DemoLocalization.CommandText(DemoCommandId.AnalyzeBounds) ? DemoCommandId.AnalyzeBounds :
+                label == DemoLocalization.CommandText(DemoCommandId.AnalyzeMass) ? DemoCommandId.AnalyzeMass :
+                label == DemoLocalization.CommandText(DemoCommandId.AnalyzeTopology) ? DemoCommandId.AnalyzeTopology :
+                label == DemoLocalization.CommandText(DemoCommandId.ValidateShape) ? DemoCommandId.ValidateShape :
+                label == DemoLocalization.CommandText(DemoCommandId.AnalyzeDistance) ? DemoCommandId.AnalyzeDistance :
+                (DemoCommandId?)null;
+            if (commandId is null) return;
+
+            ExecuteSafe(() =>
+            {
+                if (commandId.Value != DemoCommandId.AnalyzeDistance && _propertyTarget is not null)
+            {
+                Session.Engine.ClearSelection();
+                Session.Engine.SelectObject(_propertyTarget, false);
+            }
+            var result = Session.Execute(commandId.Value);
+                _commandStatus.Text = result.Message;
+                Log(result.Message);
+                if (!string.IsNullOrWhiteSpace(result.AnalysisText)) Log(result.AnalysisText);
+
+                if (commandId.Value != DemoCommandId.AnalyzeDistance && _propertyTarget is not null)
+                    ShowObjectProperties(_propertyTarget);
+                else
+                    _propertyGrid.Rows.Clear();
+                _propertyGrid.Rows.Add(Local("Inspection Result", "检查结果"), result.Message);
+                if (!string.IsNullOrWhiteSpace(result.AnalysisText))
+                {
+                    foreach (var line in result.AnalysisText.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries))
+                        _propertyGrid.Rows.Add("  ", line);
+                }
+            });
+            return;
+        }
+
         var isGeometry =
             key.Contains("Geometry Details", StringComparison.OrdinalIgnoreCase) ||
             key.Contains("几何详情", StringComparison.Ordinal);

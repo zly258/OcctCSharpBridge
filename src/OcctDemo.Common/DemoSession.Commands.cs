@@ -90,6 +90,9 @@ public sealed partial class DemoSession
             DemoCommandId.DemoManifold => DemoManifold(),
             DemoCommandId.DemoTwistedDuct => DemoTwistedDuct(),
             DemoCommandId.DemoAnnotations => DemoAnnotations(),
+            DemoCommandId.DemoLinearCopies => DemoLinearCopies(),
+            DemoCommandId.DemoRadialCopies => DemoRadialCopies(),
+            DemoCommandId.DemoMirrorCopies => DemoMirrorCopies(),
             _ => throw new NotSupportedException(Local($"Command is not implemented: {commandId}", $"未实现命令：{commandId}"))
             };
 

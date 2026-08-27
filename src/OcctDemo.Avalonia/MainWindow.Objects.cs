@@ -180,6 +180,8 @@ public sealed partial class MainWindow
         AddPropertyRow(
             Local("Selection", "选择"),
             Local($"{selectedObjects.Count} objects selected", $"已选择 {selectedObjects.Count} 个对象"));
+        if (selectedObjects.OfType<OcctShape>().Count() >= 2)
+            AddPropertyRow(DemoLocalization.CommandText(DemoCommandId.AnalyzeDistance), Local("Click to run", "点击执行"), () => RunPropertyInspection(DemoCommandId.AnalyzeDistance));
     }
 
     private IOcctObject? _propertyTarget;
@@ -199,6 +201,50 @@ public sealed partial class MainWindow
                              property.Key.Contains("几何详情", StringComparison.Ordinal);
             AddPropertyRow(property.Key, property.Value, isGeometry ? OnGeometryDetailsClick : null);
         }
+
+        if (value is OcctShape)
+        {
+            AddPropertyRow(DemoLocalization.CommandText(DemoCommandId.AnalyzeBounds), Local("Click to run", "点击执行"), () => RunPropertyInspection(DemoCommandId.AnalyzeBounds));
+            AddPropertyRow(DemoLocalization.CommandText(DemoCommandId.AnalyzeMass), Local("Click to run", "点击执行"), () => RunPropertyInspection(DemoCommandId.AnalyzeMass));
+            AddPropertyRow(DemoLocalization.CommandText(DemoCommandId.AnalyzeTopology), Local("Click to run", "点击执行"), () => RunPropertyInspection(DemoCommandId.AnalyzeTopology));
+            AddPropertyRow(DemoLocalization.CommandText(DemoCommandId.ValidateShape), Local("Click to run", "点击执行"), () => RunPropertyInspection(DemoCommandId.ValidateShape));
+        }
+    }
+
+    private void RunPropertyInspection(DemoCommandId commandId)
+    {
+        if (_session is null) return;
+        ExecuteSafe(() =>
+        {
+            if (commandId != DemoCommandId.AnalyzeDistance && _propertyTarget is not null)
+            {
+                Session.Engine.ClearSelection();
+                Session.Engine.SelectObject(_propertyTarget, false);
+            }
+            var result = Session.Execute(commandId);
+            _commandStatus.Text = result.Message;
+            Log(result.Message);
+            if (!string.IsNullOrWhiteSpace(result.AnalysisText))
+            {
+                foreach (var line in result.AnalysisText.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries))
+                    Log(line);
+            }
+
+            if (commandId != DemoCommandId.AnalyzeDistance && _propertyTarget is not null)
+                ShowObjectProperties(_propertyTarget);
+            else
+            {
+                _propertyPanel.Children.Clear();
+                AddPropertyHeader();
+            }
+
+            AddPropertyRow(Local("Inspection Result", "检查结果"), result.Message);
+            if (!string.IsNullOrWhiteSpace(result.AnalysisText))
+            {
+                foreach (var line in result.AnalysisText.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries))
+                    AddPropertyRow("  ", line);
+            }
+        });
     }
 
     private void OnGeometryDetailsClick()

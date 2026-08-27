@@ -4,8 +4,7 @@ public enum DemoMenuItemKind
 {
     Action,
     Command,
-    Separator,
-    Submenu
+    Separator
 }
 
 public enum DemoMenuCheckGroup
@@ -48,9 +47,9 @@ public enum DemoMenuAction
     ViewSettings,
     TestBSplineSurface,
     TestMeshGeneration,
-    TestCurveFit,
     TestPipeShell,
-    TestEdgeIntersection,
+    TestTransformCopy,
+    TestShapeValidity,
     LanguageEnglish,
     LanguageChinese,
     MouseHelp,
@@ -62,7 +61,6 @@ public sealed record DemoMenuItemDefinition(
     string? TextKey = null,
     DemoMenuAction? Action = null,
     DemoCommandId? Command = null,
-    IReadOnlyList<DemoMenuItemDefinition>? Children = null,
     string? Shortcut = null,
     DemoMenuCheckGroup CheckGroup = DemoMenuCheckGroup.None);
 
@@ -162,13 +160,6 @@ public static class DemoMenuCatalog
             Command(DemoCommandId.RadiusDimension),
             Command(DemoCommandId.DiameterDimension)),
 
-        Menu("Menu.Inspect",
-            Command(DemoCommandId.AnalyzeBounds),
-            Command(DemoCommandId.AnalyzeMass),
-            Command(DemoCommandId.AnalyzeTopology),
-            Command(DemoCommandId.AnalyzeDistance),
-            Command(DemoCommandId.ValidateShape)),
-
         Menu("Menu.View",
             Action("Menu.Front", DemoMenuAction.ViewFront, "1"),
             Action("Menu.Back", DemoMenuAction.ViewBack),
@@ -204,17 +195,21 @@ public static class DemoMenuCatalog
             Command(DemoCommandId.DemoFlange),
             Command(DemoCommandId.DemoAnnotations),
             Separator(),
+            Command(DemoCommandId.DemoLinearCopies),
+            Command(DemoCommandId.DemoRadialCopies),
+            Command(DemoCommandId.DemoMirrorCopies),
+            Separator(),
             Command(DemoCommandId.DemoElements),
             Command(DemoCommandId.DemoGear),
             Command(DemoCommandId.DemoManifold),
             Command(DemoCommandId.DemoTwistedDuct)),
 
         Menu("Menu.Validation",
-            Action("Menu.TestBSplineSurface", DemoMenuAction.TestBSplineSurface),
             Action("Menu.TestMeshGeneration", DemoMenuAction.TestMeshGeneration),
-            Action("Menu.TestCurveFit", DemoMenuAction.TestCurveFit),
+            Action("Menu.TestBSplineSurface", DemoMenuAction.TestBSplineSurface),
             Action("Menu.TestPipeShell", DemoMenuAction.TestPipeShell),
-            Action("Menu.TestEdgeIntersection", DemoMenuAction.TestEdgeIntersection)),
+            Action("Menu.TestTransformCopy", DemoMenuAction.TestTransformCopy),
+            Action("Menu.TestShapeValidity", DemoMenuAction.TestShapeValidity)),
 
         Menu("Menu.Tools",
             Action("Menu.English", DemoMenuAction.LanguageEnglish, checkGroup: DemoMenuCheckGroup.Language),

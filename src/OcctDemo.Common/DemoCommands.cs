@@ -11,7 +11,8 @@ public enum DemoCommandId
     Text, LengthDimension, AngleDimension, RadiusDimension, DiameterDimension,
     AnalyzeBounds, AnalyzeMass, AnalyzeTopology, AnalyzeDistance, ValidateShape,
     DemoPrimitives, DemoBracket, DemoFlange, DemoPipe, DemoTee, DemoReducer, DemoLoft, DemoBoolean,
-    DemoElements, DemoGear, DemoManifold, DemoTwistedDuct, DemoAnnotations
+    DemoElements, DemoGear, DemoManifold, DemoTwistedDuct, DemoAnnotations,
+    DemoLinearCopies, DemoRadialCopies, DemoMirrorCopies
 }
 
 public enum DemoParameterKind { Number, Integer, Text, Boolean, Choice }
@@ -115,7 +116,11 @@ public static class DemoCommandCatalog
         new(DemoCommandId.DemoGear, "示例", "复杂齿轮", "生成带轮齿、中心孔和减重孔的完整齿轮。", Array.Empty<DemoParameterDefinition>()),
         new(DemoCommandId.DemoManifold, "示例", "多通道阀体", "生成带多方向接口和内部孔道的复杂阀体。", Array.Empty<DemoParameterDefinition>()),
         new(DemoCommandId.DemoTwistedDuct, "示例", "扭转风管", "生成多截面扭转过渡的中空风管。", Array.Empty<DemoParameterDefinition>()),
-        new(DemoCommandId.DemoAnnotations, "示例", "矢量注释标注", "通过 Headless Modeling 生成 BRep 文字、线性、角度、半径和直径标注。", Array.Empty<DemoParameterDefinition>())
+        new(DemoCommandId.DemoAnnotations, "示例", "矢量注释标注", "通过 Headless Modeling 生成 BRep 文字、线性、角度、半径和直径标注。", Array.Empty<DemoParameterDefinition>()),
+
+        new(DemoCommandId.DemoLinearCopies, "案例", "线性复制", "生成一个基础外形并沿 X/Y 方向复制排列。", Array.Empty<DemoParameterDefinition>()),
+        new(DemoCommandId.DemoRadialCopies, "案例", "环形复制", "生成一个基础外形并绕 Z 轴等角度复制排列。", Array.Empty<DemoParameterDefinition>()),
+        new(DemoCommandId.DemoMirrorCopies, "案例", "镜像复制", "生成基础外形并演示复制、移动和镜像组合。", Array.Empty<DemoParameterDefinition>()),
     };
 
     public static DemoCommandDefinition Get(DemoCommandId id) => All.First(command => command.Id == id);

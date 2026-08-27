@@ -38,6 +38,8 @@ public sealed partial class MainForm
         _propertyGrid.Rows.Add(
             Local("Selection", "选择"),
             Local($"{selectedObjects.Count} objects selected", $"已选择 {selectedObjects.Count} 个对象"));
+        if (selectedObjects.OfType<OcctShape>().Count() >= 2)
+            _propertyGrid.Rows.Add("▶ " + DemoLocalization.CommandText(DemoCommandId.AnalyzeDistance), Local("Click to run", "点击执行"));
     }
 
     private void RunModelingTest(Func<DemoCommandResult> test)

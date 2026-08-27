@@ -38,13 +38,6 @@ public sealed partial class MainWindow
                 return item;
             }
 
-            case DemoMenuItemKind.Submenu:
-                return Menu(
-                    MenuHeader(RequiredTextKey(definition)),
-                    (definition.Children ?? Array.Empty<DemoMenuItemDefinition>())
-                    .Select(BuildUnifiedMenuItem)
-                    .ToArray());
-
             case DemoMenuItemKind.Action:
             {
                 var action = definition.Action
@@ -115,9 +108,9 @@ public sealed partial class MainWindow
             case DemoMenuAction.ViewSettings: ShowAdvancedViewSettingsWindow(); break;
             case DemoMenuAction.TestBSplineSurface: RunModelingTest(Session.RunBSplineSurfaceTest); break;
             case DemoMenuAction.TestMeshGeneration: RunModelingTest(Session.RunMeshGenerationTest); break;
-            case DemoMenuAction.TestCurveFit: RunModelingTest(Session.RunCurveFitTest); break;
             case DemoMenuAction.TestPipeShell: RunModelingTest(Session.RunPipeShellTest); break;
-            case DemoMenuAction.TestEdgeIntersection: RunModelingTest(Session.RunEdgeIntersectionTest); break;
+            case DemoMenuAction.TestTransformCopy: RunModelingTest(Session.RunTransformCopyTest); break;
+            case DemoMenuAction.TestShapeValidity: RunModelingTest(Session.RunShapeValidityTest); break;
             case DemoMenuAction.LanguageEnglish: SetLanguage(DemoLanguage.English); break;
             case DemoMenuAction.LanguageChinese: SetLanguage(DemoLanguage.ChineseSimplified); break;
             case DemoMenuAction.MouseHelp: await ShowMouseHelpAsync(); break;

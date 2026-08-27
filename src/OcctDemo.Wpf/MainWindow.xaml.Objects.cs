@@ -155,12 +155,14 @@ public partial class MainWindow
             return;
         }
 
-        PropertyGrid.ItemsSource = new[]
+        var rows = new List<KeyValuePair<string, string>>
         {
-            new KeyValuePair<string, string>(
-                Local("Selection", "选择"),
+            new(Local("Selection", "选择"),
                 Local($"{selectedObjects.Count} objects selected", $"已选择 {selectedObjects.Count} 个对象"))
         };
+        if (selectedObjects.OfType<OcctShape>().Count() >= 2)
+            rows.Add(new("▶ " + DemoLocalization.CommandText(DemoCommandId.AnalyzeDistance), Local("Click to run", "点击执行")));
+        PropertyGrid.ItemsSource = rows;
     }
 
     private IOcctObject? _propertyTarget;
@@ -170,11 +172,67 @@ public partial class MainWindow
     {
         _propertyTarget = value;
         _geometryDetailsExpanded = false;
-        PropertyGrid.ItemsSource = value is null || _session is null
-            ? null
-            : Session.DescribeObjectLightweight(value);
+        if (value is null || _session is null)
+        {
+            PropertyGrid.ItemsSource = null;
+        }
+        else
+        {
+            var rows = Session.DescribeObjectLightweight(value).ToList();
+            if (value is OcctShape)
+            {
+                rows.Add(new("▶ " + DemoLocalization.CommandText(DemoCommandId.AnalyzeBounds), Local("Click to run", "点击执行")));
+                rows.Add(new("▶ " + DemoLocalization.CommandText(DemoCommandId.AnalyzeMass), Local("Click to run", "点击执行")));
+                rows.Add(new("▶ " + DemoLocalization.CommandText(DemoCommandId.AnalyzeTopology), Local("Click to run", "点击执行")));
+                rows.Add(new("▶ " + DemoLocalization.CommandText(DemoCommandId.ValidateShape), Local("Click to run", "点击执行")));
+            }
+            PropertyGrid.ItemsSource = rows;
+        }
         PropertyGrid.MouseDoubleClick -= PropertyGridOnDoubleClick;
         PropertyGrid.MouseDoubleClick += PropertyGridOnDoubleClick;
+        PropertyGrid.MouseLeftButtonUp -= PropertyGridOnMouseLeftButtonUp;
+        PropertyGrid.MouseLeftButtonUp += PropertyGridOnMouseLeftButtonUp;
+    }
+
+    private void PropertyGridOnMouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (_session is null || PropertyGrid.SelectedItem is not KeyValuePair<string, string> row) return;
+        var key = row.Key ?? string.Empty;
+        if (!key.StartsWith("▶ ", StringComparison.Ordinal)) return;
+
+        var label = key[2..];
+        var commandId =
+            label == DemoLocalization.CommandText(DemoCommandId.AnalyzeBounds) ? DemoCommandId.AnalyzeBounds :
+            label == DemoLocalization.CommandText(DemoCommandId.AnalyzeMass) ? DemoCommandId.AnalyzeMass :
+            label == DemoLocalization.CommandText(DemoCommandId.AnalyzeTopology) ? DemoCommandId.AnalyzeTopology :
+            label == DemoLocalization.CommandText(DemoCommandId.ValidateShape) ? DemoCommandId.ValidateShape :
+            label == DemoLocalization.CommandText(DemoCommandId.AnalyzeDistance) ? DemoCommandId.AnalyzeDistance :
+            (DemoCommandId?)null;
+        if (commandId is null) return;
+
+        ExecuteSafe(() =>
+        {
+            if (commandId.Value != DemoCommandId.AnalyzeDistance && _propertyTarget is not null)
+            {
+                Session.Engine.ClearSelection();
+                Session.Engine.SelectObject(_propertyTarget, false);
+            }
+            var result = Session.Execute(commandId.Value);
+            CommandStatus.Text = result.Message;
+            Log(result.Message);
+            if (!string.IsNullOrWhiteSpace(result.AnalysisText)) Log(result.AnalysisText);
+
+            var rows = commandId.Value == DemoCommandId.AnalyzeDistance || _propertyTarget is null
+                ? new List<KeyValuePair<string, string>>()
+                : Session.DescribeObjectLightweight(_propertyTarget).ToList();
+            rows.Add(new(Local("Inspection Result", "检查结果"), result.Message));
+            if (!string.IsNullOrWhiteSpace(result.AnalysisText))
+            {
+                foreach (var line in result.AnalysisText.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries))
+                    rows.Add(new("  ", line));
+            }
+            PropertyGrid.ItemsSource = rows;
+        });
     }
 
     private void PropertyGridOnDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)

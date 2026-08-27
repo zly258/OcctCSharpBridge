@@ -332,6 +332,70 @@ public sealed partial class DemoSession
         return DemoCommandResult.Created(Local("Twisted transition duct result created.", "已生成扭转过渡风管结果。"), duct);
     }
 
+    private DemoCommandResult DemoLinearCopies()
+    {
+        var results = new List<IOcctObject>();
+        var source = Engine.MakeBox(36, 24, 18, -18, -12, 0);
+        results.Add(Name(source, Local("Linear Copy Source", "线性复制源")));
+
+        for (var row = -2; row <= 2; row++)
+        {
+            for (var column = -3; column <= 3; column++)
+            {
+                if (row == 0 && column == 0) continue;
+                var copy = Engine.Copy(source, false);
+                copy = Engine.Translate(copy, new OcctVector3d(column * 55, row * 45, 0), true);
+                results.Add(Name(copy, Local("Linear Copy", "线性副本")));
+            }
+        }
+
+        Engine.FitAll();
+        return new(Local("Linear copy array created.", "已生成线性复制阵列。"), results);
+    }
+
+    private DemoCommandResult DemoRadialCopies()
+    {
+        var results = new List<IOcctObject>();
+        var source = Engine.MakeBox(28, 18, 26, 72, -9, 0);
+        results.Add(Name(source, Local("Radial Copy Source", "环形复制源")));
+
+        const int count = 12;
+        for (var index = 1; index < count; index++)
+        {
+            var copy = Engine.Copy(source, false);
+            copy = Engine.Rotate(
+                copy,
+                OcctPoint3d.Origin,
+                OcctVector3d.UnitZ,
+                index * 360.0 / count,
+                true);
+            results.Add(Name(copy, Local("Radial Copy", "环形副本")));
+        }
+
+        Engine.FitAll();
+        return new(Local("Radial copy array created.", "已生成环形复制阵列。"), results);
+    }
+
+    private DemoCommandResult DemoMirrorCopies()
+    {
+        var results = new List<IOcctObject>();
+        var source = Engine.MakeWedge(70, 45, 40, 28);
+        source = Engine.Translate(source, new OcctVector3d(35, 24, 0), true);
+        results.Add(Name(source, Local("Mirror Copy Source", "镜像复制源")));
+
+        var mirroredX = Engine.MirrorPlane(source, OcctPoint3d.Origin, OcctVector3d.UnitX, false);
+        results.Add(Name(mirroredX, Local("Mirror X", "X 镜像")));
+
+        var mirroredY = Engine.MirrorPlane(source, OcctPoint3d.Origin, OcctVector3d.UnitY, false);
+        results.Add(Name(mirroredY, Local("Mirror Y", "Y 镜像")));
+
+        var opposite = Engine.MirrorPlane(mirroredX, OcctPoint3d.Origin, OcctVector3d.UnitY, false);
+        results.Add(Name(opposite, Local("Mirror XY", "XY 镜像")));
+
+        Engine.FitAll();
+        return new(Local("Mirror copy example created.", "已生成镜像复制示例。"), results);
+    }
+
     private DemoCommandResult DemoAnnotations()
     {
         using var model = new OcctModelingSession();
@@ -439,5 +503,8 @@ public sealed partial class DemoSession
             or DemoCommandId.DemoGear
             or DemoCommandId.DemoManifold
             or DemoCommandId.DemoTwistedDuct
-            or DemoCommandId.DemoAnnotations;
+            or DemoCommandId.DemoAnnotations
+            or DemoCommandId.DemoLinearCopies
+            or DemoCommandId.DemoRadialCopies
+            or DemoCommandId.DemoMirrorCopies;
 }
