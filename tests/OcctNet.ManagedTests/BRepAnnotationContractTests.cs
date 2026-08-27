@@ -43,6 +43,7 @@ public sealed class BRepAnnotationContractTests
         AssertEnumValue(0, OcctTextVerticalAlignment.Bottom);
         AssertEnumValue(1, OcctTextVerticalAlignment.Center);
         AssertEnumValue(2, OcctTextVerticalAlignment.Top);
+        AssertEnumValue(3, OcctTextVerticalAlignment.TopFirstLine);
     }
 
     private static void AssertEnumValue<TEnum>(int expected, TEnum actual)

@@ -2,21 +2,6 @@ using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
-public enum OcctTextHorizontalAlignment
-{
-    Left = 0,
-    Center = 1,
-    Right = 2
-}
-
-public enum OcctTextVerticalAlignment
-{
-    Bottom = 0,
-    Center = 1,
-    Top = 2,
-    TopFirstLine = 3
-}
-
 public sealed partial class OcctEngine
 {
     public OcctText AddText(string text, OcctPoint3d position, double height = 16, System.Drawing.Color? color = null, bool zoomable = true)
