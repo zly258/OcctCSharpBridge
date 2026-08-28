@@ -17,6 +17,7 @@
 #include <XCAFDoc_ShapeTool.hxx>
 #include <XCAFPrs_DocumentExplorer.hxx>
 
+#include <algorithm>
 #include <cstring>
 #include <iomanip>
 #include <limits>
@@ -209,8 +210,14 @@ namespace
         stream << std::setprecision(17);
         stream << "{\"format\":\"" << jsonEscape(model->lastXdeSourceFormat) << "\",\"nodes\":[";
 
+        const Handle(XCAFDoc_ShapeTool) shapeTool =
+            XCAFDoc_DocumentTool::ShapeTool(document->Main());
+        if (shapeTool.IsNull())
+            throw std::logic_error("XDE shape tool is unavailable.");
+
         std::vector<int> nodeAtDepth;
         std::size_t leafIndex = 0;
+        int nextNodeIndex = 0;
         bool firstNode = true;
         XCAFPrs_DocumentExplorer explorer(document, XCAFPrs_DocumentExplorerFlags_None);
         for (; explorer.More(); explorer.Next())
@@ -221,19 +228,12 @@ namespace
             if (nodeAtDepth.size() <= static_cast<std::size_t>(depth))
                 nodeAtDepth.resize(static_cast<std::size_t>(depth) + 1U, -1);
 
-            const int currentIndex = static_cast<int>(firstNode ? 0 : 0); // assigned below
-            static_cast<void>(currentIndex);
-            const int nodeIndex = [&]
-            {
-                int count = 0;
-                for (int value : nodeAtDepth) if (value >= 0) count = std::max(count, value + 1);
-                return count;
-            }();
+            const int parent = depth == 0 ? -1 : nodeAtDepth[static_cast<std::size_t>(depth - 1)];
+            const int nodeIndex = nextNodeIndex++;
             nodeAtDepth[static_cast<std::size_t>(depth)] = nodeIndex;
             for (std::size_t i = static_cast<std::size_t>(depth) + 1U; i < nodeAtDepth.size(); ++i)
                 nodeAtDepth[i] = -1;
 
-            const int parent = depth == 0 ? -1 : nodeAtDepth[static_cast<std::size_t>(depth - 1)];
             const int kind = node.IsAssembly
                 ? 0
                 : (XCAFDoc_ShapeTool::IsComponent(node.Label) ? 1 : 2);
@@ -241,9 +241,13 @@ namespace
             OcctObjectId shapeId = 0;
             if (!node.IsAssembly)
             {
-                if (leafIndex >= model->lastXdeLeafShapeIds.size())
-                    throw std::logic_error("XDE leaf-to-shape mapping is incomplete.");
-                shapeId = model->lastXdeLeafShapeIds[leafIndex++];
+                const TopoDS_Shape shape = nodeShape(shapeTool, node);
+                if (!shape.IsNull())
+                {
+                    if (leafIndex >= model->lastXdeLeafShapeIds.size())
+                        throw std::logic_error("XDE leaf-to-shape mapping is incomplete.");
+                    shapeId = model->lastXdeLeafShapeIds[leafIndex++];
+                }
             }
 
             if (!firstNode) stream << ',';
