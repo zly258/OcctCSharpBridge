@@ -173,31 +173,6 @@ extern "C"
         });
     }
 
-    OcctStatus occt_model_edge_bezier_pole_at(
-        OcctModelingSessionHandle handle,
-        OcctObjectId edgeId,
-        int index,
-        OcctPoint3d* pole,
-        double* weight)
-    {
-        ModelSession* model = sessionOf(handle);
-        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
-        if (pole == nullptr || weight == nullptr) return OcctStatus_ErrorInvalidArgument;
-        *pole = {};
-        *weight = 0.0;
-
-        return executeStatus(model, [&]
-        {
-            const Handle(Geom_BezierCurve) curve = requireBezierCurve(model, edgeId);
-            if (index < 0 || index >= curve->NbPoles())
-                throw std::out_of_range("Bezier pole index is out of range.");
-            const int oneBased = index + 1;
-            *pole = pointValue(curve->Pole(oneBased));
-            *weight = curve->Weight(oneBased);
-        });
-    }
-
-
     OcctStatus occt_model_edge_bezier_poles_snapshot_get(
         OcctModelingSessionHandle handle,
         OcctObjectId edgeId,
@@ -255,36 +230,6 @@ extern "C"
             result->vRational = surface->IsVRational() ? 1 : 0;
         });
     }
-
-    OcctStatus occt_model_face_bezier_pole_at(
-        OcctModelingSessionHandle handle,
-        OcctObjectId faceId,
-        int uIndex,
-        int vIndex,
-        OcctPoint3d* pole,
-        double* weight)
-    {
-        ModelSession* model = sessionOf(handle);
-        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
-        if (pole == nullptr || weight == nullptr) return OcctStatus_ErrorInvalidArgument;
-        *pole = {};
-        *weight = 0.0;
-
-        return executeStatus(model, [&]
-        {
-            const Handle(Geom_BezierSurface) surface = requireBezierSurface(model, faceId);
-            if (uIndex < 0 || uIndex >= surface->NbUPoles())
-                throw std::out_of_range("Bezier surface U pole index is out of range.");
-            if (vIndex < 0 || vIndex >= surface->NbVPoles())
-                throw std::out_of_range("Bezier surface V pole index is out of range.");
-
-            const int uOneBased = uIndex + 1;
-            const int vOneBased = vIndex + 1;
-            *pole = pointValue(surface->Pole(uOneBased, vOneBased));
-            *weight = surface->Weight(uOneBased, vOneBased);
-        });
-    }
-
 
     OcctStatus occt_model_face_bezier_poles_snapshot_get(
         OcctModelingSessionHandle handle,

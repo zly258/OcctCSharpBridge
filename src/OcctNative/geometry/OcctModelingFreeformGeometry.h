@@ -77,13 +77,6 @@ extern "C"
         OcctObjectId edgeId,
         OcctModelBezierCurveInfo* result);
 
-    OCCTBRIDGE_API OcctStatus occt_model_edge_bezier_pole_at(
-        OcctModelingSessionHandle handle,
-        OcctObjectId edgeId,
-        int index,
-        OcctPoint3d* pole,
-        double* weight);
-
     OCCTBRIDGE_API OcctStatus occt_model_edge_bezier_poles_snapshot_get(
         OcctModelingSessionHandle handle,
         OcctObjectId edgeId,
@@ -96,14 +89,6 @@ extern "C"
         OcctModelingSessionHandle handle,
         OcctObjectId faceId,
         OcctModelBezierSurfaceInfo* result);
-
-    OCCTBRIDGE_API OcctStatus occt_model_face_bezier_pole_at(
-        OcctModelingSessionHandle handle,
-        OcctObjectId faceId,
-        int uIndex,
-        int vIndex,
-        OcctPoint3d* pole,
-        double* weight);
 
     OCCTBRIDGE_API OcctStatus occt_model_face_bezier_poles_snapshot_get(
         OcctModelingSessionHandle handle,

@@ -85,6 +85,8 @@
       "geometry/OcctModelingTransform.h",
       "geometry/OcctModelingGeometryQueries.h",
       "geometry/OcctModelingAnalyticGeometry.h",
+      "geometry/OcctModelingFreeformGeometry.h",
+      "geometry/OcctModelingExtrema.h",
       "geometry/OcctModelingDifferentialGeometry.h",
       "geometry/OcctModelingContinuity.h",
       "modeling/OcctModelingBoolean.h",

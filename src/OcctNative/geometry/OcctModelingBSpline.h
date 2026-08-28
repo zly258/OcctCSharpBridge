@@ -32,20 +32,6 @@ extern "C"
         OcctObjectId edgeId,
         OcctModelBSplineCurveInfo* result);
 
-    OCCTBRIDGE_API OcctStatus occt_model_edge_bspline_pole_at(
-        OcctModelingSessionHandle handle,
-        OcctObjectId edgeId,
-        int index,
-        OcctPoint3d* pole,
-        double* weight);
-
-    OCCTBRIDGE_API OcctStatus occt_model_edge_bspline_knot_at(
-        OcctModelingSessionHandle handle,
-        OcctObjectId edgeId,
-        int index,
-        double* knot,
-        int* multiplicity);
-
     OCCTBRIDGE_API OcctStatus occt_model_edge_bspline_poles_snapshot_get(
         OcctModelingSessionHandle handle,
         OcctObjectId edgeId,
@@ -66,28 +52,6 @@ extern "C"
         OcctModelingSessionHandle handle,
         OcctObjectId faceId,
         OcctModelBSplineSurfaceInfo* result);
-
-    OCCTBRIDGE_API OcctStatus occt_model_face_bspline_pole_at(
-        OcctModelingSessionHandle handle,
-        OcctObjectId faceId,
-        int uIndex,
-        int vIndex,
-        OcctPoint3d* pole,
-        double* weight);
-
-    OCCTBRIDGE_API OcctStatus occt_model_face_bspline_u_knot_at(
-        OcctModelingSessionHandle handle,
-        OcctObjectId faceId,
-        int index,
-        double* knot,
-        int* multiplicity);
-
-    OCCTBRIDGE_API OcctStatus occt_model_face_bspline_v_knot_at(
-        OcctModelingSessionHandle handle,
-        OcctObjectId faceId,
-        int index,
-        double* knot,
-        int* multiplicity);
 
     OCCTBRIDGE_API OcctStatus occt_model_face_bspline_poles_snapshot_get(
         OcctModelingSessionHandle handle,
