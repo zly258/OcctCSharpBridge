@@ -3,6 +3,13 @@
 #include "modeling/OcctModelingShapeInternal.hxx"
 
 #include <BRepAdaptor_Curve.hxx>
+#include <BRepClass_FaceClassifier.hxx>
+#include <BRep_Tool.hxx>
+#include <GeomAPI_IntCS.hxx>
+#include <Geom_Curve.hxx>
+#include <Geom_Surface.hxx>
+#include <Geom_TrimmedCurve.hxx>
+#include <gp_Pnt2d.hxx>
 #include <IntTools_CommonPrt.hxx>
 #include <IntTools_EdgeEdge.hxx>
 #include <IntTools_Range.hxx>
@@ -65,6 +72,81 @@ namespace
             firstEnd,
             secondRange.First(),
             secondRange.Last()};
+    }
+    OcctStatus occt_model_intersect_edge_face_snapshot_get(
+        OcctModelingSessionHandle handle,
+        OcctObjectId edgeId,
+        OcctObjectId faceId,
+        double tolerance,
+        OcctModelEdgeFaceIntersection* results,
+        int capacity,
+        int* required)
+    {
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (capacity < 0 || required == nullptr) return OcctStatus_ErrorInvalidArgument;
+        if (!std::isfinite(tolerance) || tolerance < 0.0) return OcctStatus_ErrorInvalidArgument;
+
+        *required = 0;
+        return executeStatus(model, [&]
+        {
+            const TopoDS_Edge edge = requireEdge(model, edgeId);
+            const TopoDS_Shape& faceShape = model->requireShape(faceId);
+            if (faceShape.ShapeType() != TopAbs_FACE)
+                throw std::invalid_argument("Second input must be a face.");
+            const TopoDS_Face face = TopoDS::Face(faceShape);
+
+            Standard_Real first = 0.0;
+            Standard_Real last = 0.0;
+            Handle(Geom_Curve) curve = BRep_Tool::Curve(edge, first, last);
+            Handle(Geom_Surface) surface = BRep_Tool::Surface(face);
+            if (curve.IsNull()) throw std::runtime_error("Edge has no 3D curve.");
+            if (surface.IsNull()) throw std::runtime_error("Face has no surface.");
+
+            Handle(Geom_TrimmedCurve) trimmedCurve = new Geom_TrimmedCurve(curve, first, last);
+            GeomAPI_IntCS intersector(trimmedCurve, surface);
+            if (!intersector.IsDone())
+                throw std::runtime_error("Edge/face intersection failed.");
+
+            std::vector<OcctModelEdgeFaceIntersection> accepted;
+            accepted.reserve(static_cast<std::size_t>(intersector.NbPoints()));
+            for (int index = 1; index <= intersector.NbPoints(); ++index)
+            {
+                Standard_Real u = 0.0;
+                Standard_Real v = 0.0;
+                Standard_Real parameter = 0.0;
+                intersector.Parameters(index, u, v, parameter);
+
+                BRepClass_FaceClassifier classifier(face, gp_Pnt2d(u, v), tolerance);
+                const TopAbs_State state = classifier.State();
+                if (state != TopAbs_IN && state != TopAbs_ON)
+                    continue;
+
+                const gp_Pnt point = intersector.Point(index);
+                accepted.push_back({
+                    toNativePoint(point),
+                    parameter,
+                    u,
+                    v});
+            }
+
+            if (accepted.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+                throw std::length_error("Edge/face intersection result exceeds the ABI buffer size limit.");
+
+            const int count = static_cast<int>(accepted.size());
+            *required = count;
+            if (results == nullptr)
+            {
+                if (capacity != 0)
+                    throw std::invalid_argument("Null edge/face intersection buffer requires zero capacity.");
+                return;
+            }
+            if (capacity < count)
+                throw std::invalid_argument("Edge/face intersection buffer capacity is smaller than the result count.");
+
+            for (int index = 0; index < count; ++index)
+                results[index] = accepted[static_cast<std::size_t>(index)];
+        });
     }
 }
 

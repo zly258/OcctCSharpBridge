@@ -12,6 +12,7 @@
 #include "geometry/OcctModelingAnalyticGeometry.h"
 #include "geometry/OcctModelingFreeformGeometry.h"
 #include "geometry/OcctModelingDifferentialGeometry.h"
+#include "geometry/OcctModelingExtrema.h"
 #include "modeling/OcctModelingBoolean.h"
 #include "modeling/OcctModelingFeatures.h"
 #include "modeling/OcctModelingHealing.h"

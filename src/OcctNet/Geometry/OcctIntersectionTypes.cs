@@ -41,3 +41,23 @@ internal struct NativeModelEdgeIntersection
         SecondParameterStart,
         SecondParameterEnd);
 }
+
+
+/// <summary>A bounded Edge/Face intersection point with native curve and surface parameters.</summary>
+public readonly record struct OcctEdgeFaceIntersection(
+    OcctPoint3d Point,
+    double EdgeParameter,
+    double U,
+    double V);
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeModelEdgeFaceIntersection
+{
+    internal OcctPoint3d Point;
+    internal double EdgeParameter;
+    internal double U;
+    internal double V;
+
+    internal readonly OcctEdgeFaceIntersection ToManaged() =>
+        new(Point, EdgeParameter, U, V);
+}
