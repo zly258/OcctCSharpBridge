@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <filesystem>
 #include <iomanip>
 #include <limits>
 #include <sstream>
@@ -175,8 +176,6 @@ namespace
         TopoDS_Compound compound;
         builder.MakeCompound(compound);
         int leafCount = 0;
-        TopoDS_Shape singleShape;
-
         XCAFPrs_DocumentExplorer explorer(document, XCAFPrs_DocumentExplorerFlags_None);
         for (; explorer.More(); explorer.Next())
         {
@@ -189,7 +188,6 @@ namespace
             const OcctObjectId leafId = model->addShape(shape);
             model->lastXdeLeafShapeIds.push_back(leafId);
             builder.Add(compound, shape);
-            singleShape = shape;
             ++leafCount;
         }
 
