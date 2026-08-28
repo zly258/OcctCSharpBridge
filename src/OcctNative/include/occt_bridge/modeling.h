@@ -34,3 +34,6 @@
 #include "mesh/OcctModelingMesh.h"
 #include "exchange/OcctModelingExchange.h"
 #include "exchange/OcctObjGltfExchange.h"
+#include "exchange/OcctBrepMemory.h"
+#include "modeling/OcctModelingPlaneSplit.h"
+#include "modeling/OcctModelingHlr.h"

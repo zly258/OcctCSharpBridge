@@ -156,6 +156,12 @@ add_library(OcctNative SHARED
     exchange/OcctModelingExchange.cpp
     exchange/OcctObjGltfExchange.cpp
     exchange/OcctObjGltfExchange.h
+    exchange/OcctBrepMemory.cpp
+    exchange/OcctBrepMemory.h
+    modeling/OcctModelingPlaneSplit.cpp
+    modeling/OcctModelingPlaneSplit.h
+    modeling/OcctModelingHlr.cpp
+    modeling/OcctModelingHlr.h
     geometry/OcctModelingAnalyticGeometry.cpp
     geometry/OcctModelingDifferentialGeometry.cpp
     geometry/OcctModelingContinuity.cpp
@@ -259,7 +265,7 @@ target_include_directories(OcctNative PUBLIC
 target_link_directories(OcctNative PRIVATE "${OCCT_LIB_DIR}")
 
 set(occt_required_libraries
-    TKernel TKMath TKG2d TKG3d TKGeomBase TKBRep TKGeomAlgo TKTopAlgo
+    TKernel TKMath TKG2d TKG3d TKGeomBase TKBRep TKGeomAlgo TKTopAlgo TKHLR
     TKLCAF TKCAF TKXCAF
     TKPrim TKBO TKBool TKFillet TKOffset TKMesh TKShHealing
     TKService TKV3d TKOpenGl TKXSBase TKDE TKDESTEP TKDEIGES TKDESTL TKDEOBJ TKDEGLTF TKRWMesh)
