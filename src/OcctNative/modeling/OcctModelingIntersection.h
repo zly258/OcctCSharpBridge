@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "modeling/OcctModeling.h"
 
@@ -23,10 +23,15 @@ extern "C"
 
     struct OcctModelEdgeFaceIntersection
     {
-        OcctPoint3d point;
-        double edgeParameter;
-        double u;
-        double v;
+        int kind;
+        OcctPoint3d startPoint;
+        OcctPoint3d endPoint;
+        double edgeParameterStart;
+        double edgeParameterEnd;
+        double uStart;
+        double vStart;
+        double uEnd;
+        double vEnd;
     };
 
     OCCTBRIDGE_API OcctStatus occt_model_intersect_edges(
@@ -50,4 +55,11 @@ extern "C"
         OcctModelEdgeFaceIntersection* results,
         int capacity,
         int* required);
+
+    OCCTBRIDGE_API OcctStatus occt_model_intersect_surfaces(
+        OcctModelingSessionHandle handle,
+        OcctObjectId firstFaceId,
+        OcctObjectId secondFaceId,
+        double tolerance,
+        OcctObjectId* result);
 }

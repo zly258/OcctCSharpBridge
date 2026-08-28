@@ -1,11 +1,14 @@
-﻿#include "modeling/OcctModelingIntersection.h"
+#include "modeling/OcctModelingIntersection.h"
 #include "modeling/OcctModelingSessionInternal.hxx"
 #include "modeling/OcctModelingShapeInternal.hxx"
 
 #include <BRepAdaptor_Curve.hxx>
+#include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepClass_FaceClassifier.hxx>
+#include <BRep_Builder.hxx>
 #include <BRep_Tool.hxx>
 #include <GeomAPI_IntCS.hxx>
+#include <GeomAPI_IntSS.hxx>
 #include <Geom_Curve.hxx>
 #include <Geom_Surface.hxx>
 #include <Geom_TrimmedCurve.hxx>
@@ -14,6 +17,7 @@
 #include <IntTools_EdgeEdge.hxx>
 #include <IntTools_Range.hxx>
 #include <TopoDS.hxx>
+#include <TopoDS_Compound.hxx>
 #include <TopoDS_Edge.hxx>
 
 #include <algorithm>
@@ -34,9 +38,24 @@ namespace
         return TopoDS::Edge(shape);
     }
 
+    TopoDS_Face requireFace(ModelSession* model, OcctObjectId faceId)
+    {
+        const TopoDS_Shape& shape = model->requireShape(faceId);
+        if (shape.ShapeType() != TopAbs_FACE)
+            throw std::invalid_argument("Input must be a face.");
+        return TopoDS::Face(shape);
+    }
+
     OcctPoint3d toNativePoint(const gp_Pnt& point)
     {
         return {point.X(), point.Y(), point.Z()};
+    }
+
+    bool isOnFace(const TopoDS_Face& face, double u, double v, double tolerance)
+    {
+        BRepClass_FaceClassifier classifier(face, gp_Pnt2d(u, v), tolerance);
+        const TopAbs_State state = classifier.State();
+        return state == TopAbs_IN || state == TopAbs_ON;
     }
 
     OcctModelEdgeIntersection makePoint(
@@ -73,81 +92,6 @@ namespace
             firstEnd,
             secondRange.First(),
             secondRange.Last()};
-    }
-    OcctStatus intersectEdgeFaceSnapshot(
-        OcctModelingSessionHandle handle,
-        OcctObjectId edgeId,
-        OcctObjectId faceId,
-        double tolerance,
-        OcctModelEdgeFaceIntersection* results,
-        int capacity,
-        int* required)
-    {
-        ModelSession* model = sessionOf(handle);
-        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
-        if (capacity < 0 || required == nullptr) return OcctStatus_ErrorInvalidArgument;
-        if (!std::isfinite(tolerance) || tolerance < 0.0) return OcctStatus_ErrorInvalidArgument;
-
-        *required = 0;
-        return executeStatus(model, [&]
-        {
-            const TopoDS_Edge edge = requireEdge(model, edgeId);
-            const TopoDS_Shape& faceShape = model->requireShape(faceId);
-            if (faceShape.ShapeType() != TopAbs_FACE)
-                throw std::invalid_argument("Second input must be a face.");
-            const TopoDS_Face face = TopoDS::Face(faceShape);
-
-            Standard_Real first = 0.0;
-            Standard_Real last = 0.0;
-            Handle(Geom_Curve) curve = BRep_Tool::Curve(edge, first, last);
-            Handle(Geom_Surface) surface = BRep_Tool::Surface(face);
-            if (curve.IsNull()) throw std::runtime_error("Edge has no 3D curve.");
-            if (surface.IsNull()) throw std::runtime_error("Face has no surface.");
-
-            Handle(Geom_TrimmedCurve) trimmedCurve = new Geom_TrimmedCurve(curve, first, last);
-            GeomAPI_IntCS intersector(trimmedCurve, surface);
-            if (!intersector.IsDone())
-                throw std::runtime_error("Edge/face intersection failed.");
-
-            std::vector<OcctModelEdgeFaceIntersection> accepted;
-            accepted.reserve(static_cast<std::size_t>(intersector.NbPoints()));
-            for (int index = 1; index <= intersector.NbPoints(); ++index)
-            {
-                Standard_Real u = 0.0;
-                Standard_Real v = 0.0;
-                Standard_Real parameter = 0.0;
-                intersector.Parameters(index, u, v, parameter);
-
-                BRepClass_FaceClassifier classifier(face, gp_Pnt2d(u, v), tolerance);
-                const TopAbs_State state = classifier.State();
-                if (state != TopAbs_IN && state != TopAbs_ON)
-                    continue;
-
-                const gp_Pnt point = intersector.Point(index);
-                accepted.push_back({
-                    toNativePoint(point),
-                    parameter,
-                    u,
-                    v});
-            }
-
-            if (accepted.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()))
-                throw std::length_error("Edge/face intersection result exceeds the ABI buffer size limit.");
-
-            const int count = static_cast<int>(accepted.size());
-            *required = count;
-            if (results == nullptr)
-            {
-                if (capacity != 0)
-                    throw std::invalid_argument("Null edge/face intersection buffer requires zero capacity.");
-                return;
-            }
-            if (capacity < count)
-                throw std::invalid_argument("Edge/face intersection buffer capacity is smaller than the result count.");
-
-            for (int index = 0; index < count; ++index)
-                results[index] = accepted[static_cast<std::size_t>(index)];
-        });
     }
 }
 
@@ -198,7 +142,8 @@ extern "C"
                 const IntTools_Range& firstRange = commonPart.Range1();
                 const auto& secondRanges = commonPart.Ranges2();
                 for (int rangeIndex = 1; rangeIndex <= secondRanges.Length(); ++rangeIndex)
-                    model->edgeIntersections.push_back(makeOverlap(firstCurve, firstRange, secondRanges.Value(rangeIndex)));
+                    model->edgeIntersections.push_back(
+                        makeOverlap(firstCurve, firstRange, secondRanges.Value(rangeIndex)));
             }
 
             std::sort(
@@ -249,7 +194,9 @@ extern "C"
             for (int index = 0; index < count; ++index)
                 results[index] = model->edgeIntersections[static_cast<std::size_t>(index)];
         });
-    }    OcctStatus occt_model_intersect_edge_face_snapshot_get(
+    }
+
+    OcctStatus occt_model_intersect_edge_face_snapshot_get(
         OcctModelingSessionHandle handle,
         OcctObjectId edgeId,
         OcctObjectId faceId,
@@ -258,15 +205,147 @@ extern "C"
         int capacity,
         int* required)
     {
-        return intersectEdgeFaceSnapshot(
-            handle,
-            edgeId,
-            faceId,
-            tolerance,
-            results,
-            capacity,
-            required);
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (capacity < 0 || required == nullptr) return OcctStatus_ErrorInvalidArgument;
+        if (!std::isfinite(tolerance) || tolerance < 0.0) return OcctStatus_ErrorInvalidArgument;
+
+        *required = 0;
+        return executeStatus(model, [&]
+        {
+            const TopoDS_Edge edge = requireEdge(model, edgeId);
+            const TopoDS_Face face = requireFace(model, faceId);
+
+            Standard_Real first = 0.0;
+            Standard_Real last = 0.0;
+            Handle(Geom_Curve) curve = BRep_Tool::Curve(edge, first, last);
+            Handle(Geom_Surface) surface = BRep_Tool::Surface(face);
+            if (curve.IsNull()) throw std::runtime_error("Edge has no 3D curve.");
+            if (surface.IsNull()) throw std::runtime_error("Face has no surface.");
+
+            Handle(Geom_TrimmedCurve) trimmedCurve = new Geom_TrimmedCurve(curve, first, last);
+            GeomAPI_IntCS intersector(trimmedCurve, surface);
+            if (!intersector.IsDone())
+                throw std::runtime_error("Edge/face intersection failed.");
+
+            std::vector<OcctModelEdgeFaceIntersection> accepted;
+            accepted.reserve(static_cast<std::size_t>(intersector.NbPoints() + intersector.NbSegments()));
+
+            for (int index = 1; index <= intersector.NbPoints(); ++index)
+            {
+                Standard_Real u = 0.0;
+                Standard_Real v = 0.0;
+                Standard_Real parameter = 0.0;
+                intersector.Parameters(index, u, v, parameter);
+                if (!isOnFace(face, u, v, tolerance))
+                    continue;
+
+                const gp_Pnt point = intersector.Point(index);
+                accepted.push_back({
+                    OcctModelIntersection_Point,
+                    toNativePoint(point),
+                    toNativePoint(point),
+                    parameter,
+                    parameter,
+                    u,
+                    v,
+                    u,
+                    v});
+            }
+
+            for (int index = 1; index <= intersector.NbSegments(); ++index)
+            {
+                Handle(Geom_Curve) segment = intersector.Segment(index);
+                if (segment.IsNull())
+                    continue;
+
+                Standard_Real uStart = 0.0;
+                Standard_Real vStart = 0.0;
+                Standard_Real uEnd = 0.0;
+                Standard_Real vEnd = 0.0;
+                intersector.Parameters(index, uStart, vStart, uEnd, vEnd);
+
+                const bool startOnFace = isOnFace(face, uStart, vStart, tolerance);
+                const bool endOnFace = isOnFace(face, uEnd, vEnd, tolerance);
+                if (!startOnFace && !endOnFace)
+                    continue;
+
+                const double parameterStart = segment->FirstParameter();
+                const double parameterEnd = segment->LastParameter();
+                accepted.push_back({
+                    OcctModelIntersection_Overlap,
+                    toNativePoint(segment->Value(parameterStart)),
+                    toNativePoint(segment->Value(parameterEnd)),
+                    parameterStart,
+                    parameterEnd,
+                    uStart,
+                    vStart,
+                    uEnd,
+                    vEnd});
+            }
+
+            if (accepted.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+                throw std::length_error("Edge/face intersection result exceeds the ABI buffer size limit.");
+
+            const int count = static_cast<int>(accepted.size());
+            *required = count;
+            if (results == nullptr)
+            {
+                if (capacity != 0)
+                    throw std::invalid_argument("Null edge/face intersection buffer requires zero capacity.");
+                return;
+            }
+            if (capacity < count)
+                throw std::invalid_argument("Edge/face intersection buffer capacity is smaller than the result count.");
+
+            for (int index = 0; index < count; ++index)
+                results[index] = accepted[static_cast<std::size_t>(index)];
+        });
     }
 
+    OcctStatus occt_model_intersect_surfaces(
+        OcctModelingSessionHandle handle,
+        OcctObjectId firstFaceId,
+        OcctObjectId secondFaceId,
+        double tolerance,
+        OcctObjectId* result)
+    {
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+        if (!std::isfinite(tolerance) || tolerance <= 0.0) return OcctStatus_ErrorInvalidArgument;
 
+        *result = 0;
+        return executeStatus(model, [&]
+        {
+            const TopoDS_Face firstFace = requireFace(model, firstFaceId);
+            const TopoDS_Face secondFace = requireFace(model, secondFaceId);
+            Handle(Geom_Surface) firstSurface = BRep_Tool::Surface(firstFace);
+            Handle(Geom_Surface) secondSurface = BRep_Tool::Surface(secondFace);
+            if (firstSurface.IsNull() || secondSurface.IsNull())
+                throw std::runtime_error("Surface intersection requires two valid surfaces.");
+
+            GeomAPI_IntSS intersector(firstSurface, secondSurface, tolerance);
+            if (!intersector.IsDone())
+                throw std::runtime_error("Surface/surface intersection failed.");
+
+            BRep_Builder builder;
+            TopoDS_Compound compound;
+            builder.MakeCompound(compound);
+
+            for (int index = 1; index <= intersector.NbLines(); ++index)
+            {
+                Handle(Geom_Curve) line = intersector.Line(index);
+                if (line.IsNull())
+                    continue;
+
+                BRepBuilderAPI_MakeEdge edgeMaker(line);
+                if (!edgeMaker.IsDone())
+                    throw std::runtime_error("Unable to build an edge from a surface intersection curve.");
+                builder.Add(compound, edgeMaker.Edge());
+            }
+
+            *result = model->addShape(compound);
+        });
+    }
 }

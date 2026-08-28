@@ -25,10 +25,13 @@ public sealed partial class OcctModelingSession
 
         var poles = new OcctPoint3d[info.PoleCount];
         var weights = new double[info.PoleCount];
-        for (var index = 0; index < info.PoleCount; index++)
+        CheckStatus(ModelNativeMethods.occt_model_edge_bezier_poles_snapshot_get(
+            _handle, edge.Id, poles, weights, poles.Length, out var required));
+        if (required != poles.Length)
+            throw new InvalidOperationException("Native Bezier curve pole count changed during snapshot copy.");
+
+        for (var index = 0; index < poles.Length; ++index)
         {
-            CheckStatus(ModelNativeMethods.occt_model_edge_bezier_pole_at(
-                _handle, edge.Id, index, out poles[index], out weights[index]));
             if (!poles[index].IsFinite || !double.IsFinite(weights[index]) || weights[index] <= 0)
                 throw new InvalidOperationException("Native Bezier curve pole data is invalid.");
         }
@@ -51,16 +54,15 @@ public sealed partial class OcctModelingSession
         var count = checked(info.UPoleCount * info.VPoleCount);
         var poles = new OcctPoint3d[count];
         var weights = new double[count];
-        for (var u = 0; u < info.UPoleCount; u++)
+        CheckStatus(ModelNativeMethods.occt_model_face_bezier_poles_snapshot_get(
+            _handle, face.Id, poles, weights, count, out var required));
+        if (required != count)
+            throw new InvalidOperationException("Native Bezier surface pole count changed during snapshot copy.");
+
+        for (var index = 0; index < count; ++index)
         {
-            for (var v = 0; v < info.VPoleCount; v++)
-            {
-                var index = checked(u * info.VPoleCount + v);
-                CheckStatus(ModelNativeMethods.occt_model_face_bezier_pole_at(
-                    _handle, face.Id, u, v, out poles[index], out weights[index]));
-                if (!poles[index].IsFinite || !double.IsFinite(weights[index]) || weights[index] <= 0)
-                    throw new InvalidOperationException("Native Bezier surface pole data is invalid.");
-            }
+            if (!poles[index].IsFinite || !double.IsFinite(weights[index]) || weights[index] <= 0)
+                throw new InvalidOperationException("Native Bezier surface pole data is invalid.");
         }
 
         return new OcctBezierSurfaceData(

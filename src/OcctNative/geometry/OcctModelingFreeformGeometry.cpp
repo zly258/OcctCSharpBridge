@@ -197,6 +197,43 @@ extern "C"
         });
     }
 
+
+    OcctStatus occt_model_edge_bezier_poles_snapshot_get(
+        OcctModelingSessionHandle handle,
+        OcctObjectId edgeId,
+        OcctPoint3d* poles,
+        double* weights,
+        int capacity,
+        int* required)
+    {
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (capacity < 0 || required == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *required = 0;
+        return executeStatus(model, [&]
+        {
+            const Handle(Geom_BezierCurve) curve = requireBezierCurve(model, edgeId);
+            const int count = curve->NbPoles();
+            *required = count;
+            if (poles == nullptr || weights == nullptr)
+            {
+                if (capacity != 0 || poles != nullptr || weights != nullptr)
+                    throw std::invalid_argument("Bezier pole buffers must both be null for a count query.");
+                return;
+            }
+            if (capacity < count)
+                throw std::invalid_argument("Bezier pole buffer capacity is smaller than the result count.");
+
+            for (int index = 0; index < count; ++index)
+            {
+                const int oneBased = index + 1;
+                poles[index] = pointValue(curve->Pole(oneBased));
+                weights[index] = curve->Weight(oneBased);
+            }
+        });
+    }
+
     OcctStatus occt_model_face_bezier_info(
         OcctModelingSessionHandle handle,
         OcctObjectId faceId,
@@ -245,6 +282,48 @@ extern "C"
             const int vOneBased = vIndex + 1;
             *pole = pointValue(surface->Pole(uOneBased, vOneBased));
             *weight = surface->Weight(uOneBased, vOneBased);
+        });
+    }
+
+
+    OcctStatus occt_model_face_bezier_poles_snapshot_get(
+        OcctModelingSessionHandle handle,
+        OcctObjectId faceId,
+        OcctPoint3d* poles,
+        double* weights,
+        int capacity,
+        int* required)
+    {
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (capacity < 0 || required == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *required = 0;
+        return executeStatus(model, [&]
+        {
+            const Handle(Geom_BezierSurface) surface = requireBezierSurface(model, faceId);
+            const int uCount = surface->NbUPoles();
+            const int vCount = surface->NbVPoles();
+            const int count = uCount * vCount;
+            *required = count;
+            if (poles == nullptr || weights == nullptr)
+            {
+                if (capacity != 0 || poles != nullptr || weights != nullptr)
+                    throw std::invalid_argument("Bezier surface pole buffers must both be null for a count query.");
+                return;
+            }
+            if (capacity < count)
+                throw std::invalid_argument("Bezier surface pole buffer capacity is smaller than the result count.");
+
+            for (int u = 0; u < uCount; ++u)
+            {
+                for (int v = 0; v < vCount; ++v)
+                {
+                    const int index = u * vCount + v;
+                    poles[index] = pointValue(surface->Pole(u + 1, v + 1));
+                    weights[index] = surface->Weight(u + 1, v + 1);
+                }
+            }
         });
     }
 

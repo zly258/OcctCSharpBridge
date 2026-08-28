@@ -46,6 +46,22 @@ extern "C"
         double* knot,
         int* multiplicity);
 
+    OCCTBRIDGE_API OcctStatus occt_model_edge_bspline_poles_snapshot_get(
+        OcctModelingSessionHandle handle,
+        OcctObjectId edgeId,
+        OcctPoint3d* poles,
+        double* weights,
+        int capacity,
+        int* required);
+
+    OCCTBRIDGE_API OcctStatus occt_model_edge_bspline_knots_snapshot_get(
+        OcctModelingSessionHandle handle,
+        OcctObjectId edgeId,
+        double* knots,
+        int* multiplicities,
+        int capacity,
+        int* required);
+
     OCCTBRIDGE_API OcctStatus occt_model_face_bspline_info(
         OcctModelingSessionHandle handle,
         OcctObjectId faceId,
@@ -72,6 +88,30 @@ extern "C"
         int index,
         double* knot,
         int* multiplicity);
+
+    OCCTBRIDGE_API OcctStatus occt_model_face_bspline_poles_snapshot_get(
+        OcctModelingSessionHandle handle,
+        OcctObjectId faceId,
+        OcctPoint3d* poles,
+        double* weights,
+        int capacity,
+        int* required);
+
+    OCCTBRIDGE_API OcctStatus occt_model_face_bspline_u_knots_snapshot_get(
+        OcctModelingSessionHandle handle,
+        OcctObjectId faceId,
+        double* knots,
+        int* multiplicities,
+        int capacity,
+        int* required);
+
+    OCCTBRIDGE_API OcctStatus occt_model_face_bspline_v_knots_snapshot_get(
+        OcctModelingSessionHandle handle,
+        OcctObjectId faceId,
+        double* knots,
+        int* multiplicities,
+        int capacity,
+        int* required);
 
     struct OcctBSplineCurveDefinition {
         uint32_t structSize;

@@ -1,4 +1,4 @@
-﻿namespace OcctNet;
+namespace OcctNet;
 
 public sealed partial class OcctModelingSession
 {
@@ -11,29 +11,22 @@ public sealed partial class OcctModelingSession
 
         var poles = new OcctPoint3d[info.PoleCount];
         var weights = new double[info.PoleCount];
-        for (var index = 0; index < poles.Length; index++)
-        {
-            CheckStatus(ModelNativeMethods.occt_model_edge_bspline_pole_at(
-                _handle,
-                edge.Id,
-                index,
-                out poles[index],
-                out weights[index]));
-            EnsureValidPole(poles[index], weights[index], "curve");
-        }
+        CheckStatus(ModelNativeMethods.occt_model_edge_bspline_poles_snapshot_get(
+            _handle, edge.Id, poles, weights, poles.Length, out var poleCount));
+        if (poleCount != poles.Length)
+            throw new InvalidOperationException("Native B-Spline curve pole count changed during snapshot copy.");
 
         var knots = new double[info.KnotCount];
         var multiplicities = new int[info.KnotCount];
-        for (var index = 0; index < knots.Length; index++)
-        {
-            CheckStatus(ModelNativeMethods.occt_model_edge_bspline_knot_at(
-                _handle,
-                edge.Id,
-                index,
-                out knots[index],
-                out multiplicities[index]));
+        CheckStatus(ModelNativeMethods.occt_model_edge_bspline_knots_snapshot_get(
+            _handle, edge.Id, knots, multiplicities, knots.Length, out var knotCount));
+        if (knotCount != knots.Length)
+            throw new InvalidOperationException("Native B-Spline curve knot count changed during snapshot copy.");
+
+        for (var index = 0; index < poles.Length; ++index)
+            EnsureValidPole(poles[index], weights[index], "curve");
+        for (var index = 0; index < knots.Length; ++index)
             EnsureValidKnot(knots, multiplicities, index, "curve");
-        }
 
         return new OcctBSplineCurveData(
             info.Degree,
@@ -59,47 +52,31 @@ public sealed partial class OcctModelingSession
         var poleCount = checked(info.UPoleCount * info.VPoleCount);
         var poles = new OcctPoint3d[poleCount];
         var weights = new double[poleCount];
-        for (var uIndex = 0; uIndex < info.UPoleCount; uIndex++)
-        {
-            for (var vIndex = 0; vIndex < info.VPoleCount; vIndex++)
-            {
-                var flatIndex = checked(uIndex * info.VPoleCount + vIndex);
-                CheckStatus(ModelNativeMethods.occt_model_face_bspline_pole_at(
-                    _handle,
-                    face.Id,
-                    uIndex,
-                    vIndex,
-                    out poles[flatIndex],
-                    out weights[flatIndex]));
-                EnsureValidPole(poles[flatIndex], weights[flatIndex], "surface");
-            }
-        }
+        CheckStatus(ModelNativeMethods.occt_model_face_bspline_poles_snapshot_get(
+            _handle, face.Id, poles, weights, poleCount, out var copiedPoleCount));
+        if (copiedPoleCount != poleCount)
+            throw new InvalidOperationException("Native B-Spline surface pole count changed during snapshot copy.");
 
         var uKnots = new double[info.UKnotCount];
         var uMultiplicities = new int[info.UKnotCount];
-        for (var index = 0; index < uKnots.Length; index++)
-        {
-            CheckStatus(ModelNativeMethods.occt_model_face_bspline_u_knot_at(
-                _handle,
-                face.Id,
-                index,
-                out uKnots[index],
-                out uMultiplicities[index]));
-            EnsureValidKnot(uKnots, uMultiplicities, index, "surface U");
-        }
+        CheckStatus(ModelNativeMethods.occt_model_face_bspline_u_knots_snapshot_get(
+            _handle, face.Id, uKnots, uMultiplicities, uKnots.Length, out var copiedUKnotCount));
+        if (copiedUKnotCount != uKnots.Length)
+            throw new InvalidOperationException("Native B-Spline surface U-knot count changed during snapshot copy.");
 
         var vKnots = new double[info.VKnotCount];
         var vMultiplicities = new int[info.VKnotCount];
-        for (var index = 0; index < vKnots.Length; index++)
-        {
-            CheckStatus(ModelNativeMethods.occt_model_face_bspline_v_knot_at(
-                _handle,
-                face.Id,
-                index,
-                out vKnots[index],
-                out vMultiplicities[index]));
+        CheckStatus(ModelNativeMethods.occt_model_face_bspline_v_knots_snapshot_get(
+            _handle, face.Id, vKnots, vMultiplicities, vKnots.Length, out var copiedVKnotCount));
+        if (copiedVKnotCount != vKnots.Length)
+            throw new InvalidOperationException("Native B-Spline surface V-knot count changed during snapshot copy.");
+
+        for (var index = 0; index < poleCount; ++index)
+            EnsureValidPole(poles[index], weights[index], "surface");
+        for (var index = 0; index < uKnots.Length; ++index)
+            EnsureValidKnot(uKnots, uMultiplicities, index, "surface U");
+        for (var index = 0; index < vKnots.Length; ++index)
             EnsureValidKnot(vKnots, vMultiplicities, index, "surface V");
-        }
 
         return new OcctBSplineSurfaceData(
             info.UDegree,
