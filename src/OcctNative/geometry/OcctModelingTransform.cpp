@@ -108,6 +108,7 @@ extern "C"
             transform.SetValue(3, 2, transformValue.m21);
             transform.SetValue(3, 3, transformValue.m22);
             transform.SetValue(3, 4, transformValue.m23);
+            transform.SetForm();
 
             BRepBuilderAPI_GTransform algorithm(model->requireShape(shapeId), transform, Standard_True);
             if (!algorithm.IsDone()) throw std::runtime_error("Affine transformation failed.");

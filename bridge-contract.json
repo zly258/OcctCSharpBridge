@@ -7,10 +7,18 @@
   },
   "occtVersion": "7.9.0",
   "platform": "cross-platform-x64",
-  "supportedPlatforms": ["windows-x64", "linux-x64"],
+  "supportedPlatforms": [
+    "windows-x64",
+    "linux-x64"
+  ],
   "distribution": {
-    "officialPrebuiltPlatforms": ["windows-x64"],
-    "sourceBuildPlatforms": ["windows-x64", "linux-x64"],
+    "officialPrebuiltPlatforms": [
+      "windows-x64"
+    ],
+    "sourceBuildPlatforms": [
+      "windows-x64",
+      "linux-x64"
+    ],
     "linuxPrebuiltRelease": false
   },
   "release": {
@@ -28,8 +36,16 @@
     "desktopTargetFramework": "net10.0-windows",
     "defaultRuntimeFramework": "net10.0",
     "defaultDesktopRuntimeFramework": "net10.0-windows",
-    "supportedConsumerFrameworks": ["net8.0", "net9.0", "net10.0"],
-    "supportedDesktopConsumerFrameworks": ["net8.0-windows", "net9.0-windows", "net10.0-windows"],
+    "supportedConsumerFrameworks": [
+      "net8.0",
+      "net9.0",
+      "net10.0"
+    ],
+    "supportedDesktopConsumerFrameworks": [
+      "net8.0-windows",
+      "net9.0-windows",
+      "net10.0-windows"
+    ],
     "sdkVersion": "10.0.100",
     "sdkRollForward": "latestFeature",
     "languageVersion": "14.0"
@@ -106,7 +122,10 @@
       "geometry/OcctModelingCurveFit.h",
       "modeling/OcctModelingPipeShell.h",
       "exchange/OcctObjGltfExchange.h",
-      "exchange/OcctModelingExchange.h"
+      "exchange/OcctModelingExchange.h",
+      "exchange/OcctBrepMemory.h",
+      "modeling/OcctModelingPlaneSplit.h",
+      "modeling/OcctModelingHlr.h"
     ]
   }
 }
