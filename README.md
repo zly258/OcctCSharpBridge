@@ -24,26 +24,24 @@ OcctCSharpBridge 3.0 is a reusable **Open CASCADE Technology 7.9.0 → .NET** br
 Windows:
 
 ```powershell
-.\build.ps1 managed Release
+.\build.ps1 build Release -OcctRoot "D:\tools\occt-vc144-64"
 .\build.ps1 test Release
-.\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
+.\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
 Linux:
 
 ```bash
-./build.sh managed Release
+./build.sh build Release
 ./build.sh test Release
-./build.sh all Release
+./build.sh smoke Release
 ```
 
 Normal validation is intentionally simple:
 
 - compilation validates project/API structure;
 - ManagedTests cover managed behavior and ABI layouts;
-- one modeling smoke covers the Native Bridge + OCCT path;
-- one Avalonia viewer smoke covers the cross-platform viewer lifecycle;
-- WinForms and WPF are compile-validated instead of maintaining duplicate GUI smoke applications.
+- one minimal smoke verifies native loading, ABI/version agreement, runtime initialization, and a real OCCT operation.
 
 ## Distribution
 

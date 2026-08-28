@@ -24,26 +24,24 @@ OcctCSharpBridge 3.0 是面向 CAD/BIM/工程应用的 **Open CASCADE Technology
 Windows：
 
 ```powershell
-.\build.ps1 managed Release
+.\build.ps1 build Release -OcctRoot "D:\tools\occt-vc144-64"
 .\build.ps1 test Release
-.\build.ps1 all Release -OcctRoot "D:\tools\occt-vc144-64"
+.\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
 Linux：
 
 ```bash
-./build.sh managed Release
+./build.sh build Release
 ./build.sh test Release
-./build.sh all Release
+./build.sh smoke Release
 ```
 
 日常验证保持简单：
 
 - 编译负责发现项目/API 结构问题；
 - ManagedTests 验证托管行为和必要 ABI Layout；
-- 一个 Modeling Smoke 验证 Native Bridge + OCCT 主链；
-- 一个 Avalonia Viewer Smoke 验证跨平台 Viewer 生命周期；
-- WinForms/WPF 只做真实项目编译，不再维护重复 GUI Smoke。
+- 一个最小 Smoke 验证 Native 加载、ABI/版本一致、Runtime 初始化和一次真实 OCCT 操作。
 
 ## 分发
 

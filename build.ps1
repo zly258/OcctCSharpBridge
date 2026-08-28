@@ -1,7 +1,7 @@
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("validate", "native", "managed", "test", "smoke", "viewport-smoke", "dist", "sdk", "clean", "all")]
-    [string]$Target = "all",
+    [ValidateSet("build", "test", "smoke", "dist", "sdk", "clean")]
+    [string]$Target = "build",
 
     [Parameter(Position = 1)]
     [ValidateSet("Debug", "Release", "RelWithDebInfo")]
@@ -50,6 +50,14 @@ $DefaultDesktopRuntimeFramework = [string]$Contract.dotnet.defaultDesktopRuntime
 $SdkVersion = [string]$Contract.dotnet.sdkVersion
 $SdkRollForward = [string]$Contract.dotnet.sdkRollForward
 
+if ([string]::IsNullOrWhiteSpace($BridgeVersion) -or
+    [string]::IsNullOrWhiteSpace($RequiredOcctVersion) -or
+    [string]::IsNullOrWhiteSpace($TargetFramework) -or
+    [int]$Contract.nativeAbi.current -ne 5 -or
+    [int]$Contract.nativeAbi.minimumSupported -ne 5) {
+    throw "bridge-contract.json is incomplete or does not describe the supported ABI 5 build."
+}
+
 $Projects = [ordered]@{
     Core = "src\OcctNet\OcctNet.csproj"
     WinForms = "src\OcctNet.WinForms\OcctNet.WinForms.csproj"
@@ -57,10 +65,7 @@ $Projects = [ordered]@{
     Avalonia = "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj"
     ManagedTests = "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj"
     Smoke = "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
-    AvaloniaSmoke = "tests\OcctNet.AvaloniaSmoke\OcctNet.AvaloniaSmoke.csproj"
 }
-
-$VersionCheckPath = Join-Path $RepoRoot "tests\check-version-contract.ps1"
 
 $script:DotNetCommand = $null
 $script:ResolvedSdkVersion = $null
@@ -214,7 +219,7 @@ function Invoke-DotNetChecked {
 function Resolve-OcctConfiguration {
     $script:OcctRoot = [System.IO.Path]::GetFullPath($OcctRoot)
     if (-not (Test-Path $script:OcctRoot -PathType Container)) {
-        throw "OCCT SDK root was not found: $script:OcctRoot. Set OCCT_ROOT, pass -OcctRoot <path>, or install OCCT at $DefaultOcctRoot. validate/managed/test do not require OCCT."
+        throw "OCCT SDK root was not found: $script:OcctRoot. Set OCCT_ROOT, pass -OcctRoot <path>, or install OCCT at $DefaultOcctRoot. test does not require OCCT."
     }
     $script:OcctIncludeDir = Join-Path $script:OcctRoot "inc"
     $script:OcctLibDir = Join-Path $script:OcctRoot "win64\vc14\lib"
@@ -361,34 +366,6 @@ function Run-Smoke {
     }
 }
 
-function Run-ViewportSmokeProject {
-    param(
-        [Parameter(Mandatory = $true)][string]$ProjectKey,
-        [Parameter(Mandatory = $true)][string]$Framework
-    )
-
-    Assert-Path $NativeDll
-    Build-Project $ProjectKey
-    $project = Join-Path $RepoRoot $Projects[$ProjectKey]
-    $output = Prepare-SmokeOutput $ProjectKey $Framework
-
-    Invoke-WithOcctRuntime $output {
-        Write-Host "[$($ProjectKey.ToLowerInvariant())] Running native viewport lifecycle/render smoke..." -ForegroundColor Cyan
-        Invoke-DotNetChecked @(
-            "run",
-            "--project", $project,
-            "-c", $Configuration,
-            "-p:Platform=x64",
-            "-p:Version=$BridgeVersion",
-            "--no-build"
-        ) "$ProjectKey failed."
-    }
-}
-
-function Run-ViewportSmoke {
-    Run-ViewportSmokeProject "AvaloniaSmoke" $DefaultRuntimeFramework
-}
-
 function Clean-Outputs {
     Write-Host "[clean] Removing generated build outputs..." -ForegroundColor Cyan
     Remove-Item (Join-Path $RepoRoot "build") -Recurse -Force -ErrorAction SilentlyContinue
@@ -523,20 +500,17 @@ if ($Target -eq "clean") {
     exit 0
 }
 
-if ($Target -in @("managed", "test", "smoke", "viewport-smoke", "dist", "sdk", "all")) {
+if ($Target -in @("build", "test", "smoke", "dist", "sdk")) {
     Resolve-DotNetSdk
     Write-Host "dotnet:        $script:DotNetCommand" -ForegroundColor DarkGray
     Write-Host "SDK resolved:  $script:ResolvedSdkVersion" -ForegroundColor Green
 }
 
-Assert-Path $VersionCheckPath
-& $VersionCheckPath -RepositoryRoot $RepoRoot
-if (-not $?) { throw "Version/ABI validation failed." }
-
 switch ($Target) {
-    "validate" { }
-    "native" { Build-Native }
-    "managed" { Build-Managed }
+    "build" {
+        Build-Native
+        Build-Managed
+    }
     "test" {
         Build-Project "ManagedTests"
         Run-ManagedTests
@@ -551,26 +525,12 @@ switch ($Target) {
         Build-Project "ManagedTests"
         Run-ManagedTests
         Run-Smoke
-        Run-ViewportSmoke
         Build-BinaryDistribution -SkipBuild -ExpectedSourceCommit $sdkSourceCommit
     }
     "smoke" {
         Build-Native
         Build-Managed
         Run-Smoke
-    }
-    "viewport-smoke" {
-        Build-Native
-        Build-Managed
-        Run-ViewportSmoke
-    }
-    "all" {
-        Build-Native
-        Build-Managed
-        Build-Project "ManagedTests"
-        Run-ManagedTests
-        Run-Smoke
-        Run-ViewportSmoke
     }
 }
 

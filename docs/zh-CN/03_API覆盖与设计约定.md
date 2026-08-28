@@ -26,9 +26,9 @@ OcctNet.Avalonia
 验证以编译和测试为主：
 
 ```powershell
-.\build.ps1 managed Release
+.\build.ps1 build Release
 .\build.ps1 test Release
 .\build.ps1 smoke Release
 ```
 
-`validate` 仅检查版本、ABI 和基础构建配置是否一致，不再承担架构政策扫描。
+不再维护源码扫描型 policy target；编译和正式测试是正确性门槛。

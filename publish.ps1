@@ -12,7 +12,7 @@ $RepoRoot = Split-Path -Parent $PSCommandPath
 $BuildScript = Join-Path $RepoRoot "build.ps1"
 $PortablePackScript = Join-Path $RepoRoot "tools\package-portable-sdk.ps1"
 $ContractPath = Join-Path $RepoRoot "bridge-contract.json"
-$RuntimeSmokeProject = Join-Path $RepoRoot "tests\OcctNet.RuntimeSmoke\OcctNet.RuntimeSmoke.csproj"
+$SmokeProject = Join-Path $RepoRoot "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
 $NativeDll = Join-Path $RepoRoot "build\native\bin\Release\OcctNative.dll"
 $DistRoot = Join-Path $RepoRoot "dist\win-x64"
 $DefaultOcctRoot = "D:\tools\occt-vc144-64"
@@ -261,14 +261,14 @@ function Invoke-IsolatedPortableSmoke {
     Assert-Path $archive
 
     Write-Host "[stable] Building package smoke..." -ForegroundColor Cyan
-    & $DotNet build $RuntimeSmokeProject -c Release -p:Platform=x64 -p:Version=$BridgeVersion --nologo
+    & $DotNet build $SmokeProject -c Release -p:Platform=x64 -p:Version=$BridgeVersion --nologo
     if ($LASTEXITCODE -ne 0) { throw "Package smoke build failed." }
 
-    $sourceOutput = Join-Path (Split-Path -Parent $RuntimeSmokeProject) "bin\x64\Release\net10.0"
+    $sourceOutput = Join-Path (Split-Path -Parent $SmokeProject) "bin\x64\Release\net10.0"
     $testPayload = @(
-        "OcctNet.RuntimeSmoke.dll",
-        "OcctNet.RuntimeSmoke.deps.json",
-        "OcctNet.RuntimeSmoke.runtimeconfig.json"
+        "OcctNet.Smoke.dll",
+        "OcctNet.Smoke.deps.json",
+        "OcctNet.Smoke.runtimeconfig.json"
     )
     foreach ($name in $testPayload) { Assert-Path (Join-Path $sourceOutput $name) }
 
@@ -317,7 +317,7 @@ function Invoke-IsolatedPortableSmoke {
         Write-Host "[stable] Running extracted Portable SDK smoke without development OCCT paths..." -ForegroundColor Cyan
         Push-Location $isolationRoot
         try {
-            & $DotNet (Join-Path $isolationRoot "OcctNet.RuntimeSmoke.dll")
+            & $DotNet (Join-Path $isolationRoot "OcctNet.Smoke.dll")
             if ($LASTEXITCODE -ne 0) { throw "Extracted Portable SDK smoke failed." }
         }
         finally {
@@ -358,7 +358,7 @@ $dotnet = $null
 if ($runStableValidation) {
     Assert-RunningWindowsX64
     Assert-StableContract -Contract $sourceContract
-    Assert-Path $RuntimeSmokeProject
+    Assert-Path $SmokeProject
     Assert-Path $OcctRoot
     $dotnet = Get-CommandPath "dotnet"
 

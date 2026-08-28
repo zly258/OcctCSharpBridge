@@ -26,9 +26,9 @@ Core principles:
 Validation relies primarily on compilation and tests:
 
 ```powershell
-.\build.ps1 managed Release
+.\build.ps1 build Release
 .\build.ps1 test Release
 .\build.ps1 smoke Release
 ```
 
-`validate` only checks version, ABI, and basic build configuration consistency.
+No source-scanning policy target is maintained; compilation and tests are the correctness gates.

@@ -100,12 +100,12 @@ Generate a consumer SDK from an explicitly approved formal `main` commit:
   -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-Use the Windows Portable SDK packager when a runtime closure is also required. `dist` intentionally skips ManagedTests, the Consumer Matrix, Core Smoke, and viewport/window smokes.
+Use the Windows Portable SDK packager when a runtime closure is also required. `dist` intentionally skips tests and smoke; `sdk` and `publish.ps1` run the complete gate.
 
-Bridge maintainers validate a Stable candidate with:
+Bridge maintainers publish and validate a Stable candidate with:
 
 ```powershell
-.\tools\validate-stable-release.ps1 `
+.\publish.ps1 `
   -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
@@ -114,14 +114,9 @@ Bridge maintainers validate a Stable candidate with:
 Linux consumers build from source:
 
 ```bash
-./build.sh validate Release
-./build.sh all Release
-```
-
-With a graphical environment:
-
-```bash
-./build.sh avalonia-smoke Release
+./build.sh build Release
+./build.sh test Release
+./build.sh smoke Release
 ```
 
 Build Linux native binaries against OCCT 7.9.0 and the C/C++ runtime environment appropriate for the target distribution.
