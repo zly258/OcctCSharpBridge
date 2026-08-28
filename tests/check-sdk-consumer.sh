@@ -35,7 +35,7 @@ for forbidden in 'build.sh all' 'build.sh test' 'build.sh smoke' 'publish.sh' 'w
         fail "sync.sh must not run the Bridge full validation/publish workflow: ${forbidden}"
     fi
 done
-for required in 'sourceCommit' 'sha256sum' 'package-manifest.json' '--sdk-root' '--portable-root' './build.sh dist Release' 'package-portable-sdk.sh' 'EXTERNAL_ROOT="${ROOT_DIR}/external"' 'SOURCE_ROOT="${EXTERNAL_ROOT}/.cache/OcctCSharpBridge-source"' 'BRIDGE_ROOT="${EXTERNAL_ROOT}/OcctCSharpBridge"'; do
+for required in 'sourceCommit' 'sha256sum' 'package-manifest.json' '--sdk-root' '--portable-root' 'bash ./build.sh dist Release' 'package-portable-sdk.sh' 'EXTERNAL_ROOT="${ROOT_DIR}/external"' 'SOURCE_ROOT="${EXTERNAL_ROOT}/.cache/OcctCSharpBridge-source"' 'BRIDGE_ROOT="${EXTERNAL_ROOT}/OcctCSharpBridge"'; do
     grep -Fq -- "${required}" "${SYNC_SH}" || fail "sync.sh lost required source-build SDK integrity/layout behavior: ${required}"
 done
 

@@ -194,7 +194,7 @@ build_source_sdk() {
     log "Building Bridge linux-x64 Binary SDK from ${SOURCE_BRANCH} @ ${SOURCE_COMMIT:0:7}..."
     (
         cd "${SOURCE_ROOT}"
-        OCCT_ROOT="${occt_root}" OCCT_LIB_DIR="${occt_lib_dir}" ./build.sh dist Release
+        OCCT_ROOT="${occt_root}" OCCT_LIB_DIR="${occt_lib_dir}" bash ./build.sh dist Release
     ) || fail "Bridge linux-x64 Binary SDK build failed."
 
     validate_sdk "${source_sdk}" || fail "Built Bridge Binary SDK failed validation."
