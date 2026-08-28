@@ -17,11 +17,13 @@ Options:
   --source <branch>            Bridge SDK source branch (default: main)
   --sdk-root <directory>       Use an already generated linux-x64 Binary SDK
   --portable-root <directory>  Matching Portable SDK (required with --sdk-root)
-  --force-rebuild              Unsupported compatibility option; sync never builds Bridge
+  --force-rebuild              Rebuild Bridge even when the synchronized SDK cache matches
   -h, --help                   Show this help
 
-sync.sh only validates or copies already-built Binary/Portable SDK artifacts.
-It never builds Bridge and never runs Bridge smoke tests.
+Without --sdk-root, sync.sh resolves the selected Bridge source branch, builds the
+Release linux-x64 Binary SDK, packages its matching Portable SDK, validates both,
+and installs them under external/OcctCSharpBridge. Bridge tests and smoke tests are
+not run by synchronization.
 EOF
 }
 
@@ -44,13 +46,10 @@ json_string() { sed -nE "s/^[[:space:]]*\"$2\"[[:space:]]*:[[:space:]]*\"([^\"]+
 json_number() { sed -nE "s/^[[:space:]]*\"$2\"[[:space:]]*:[[:space:]]*([0-9]+).*/\\1/p" "$1" | head -n 1; }
 
 EXTERNAL_ROOT="${ROOT_DIR}/external"
-EXTERNAL_CACHE_ROOT="${EXTERNAL_ROOT}/.cache/OcctCSharpBridge-source"
+SOURCE_ROOT="${EXTERNAL_ROOT}/.cache/OcctCSharpBridge-source"
 BRIDGE_ROOT="${EXTERNAL_ROOT}/OcctCSharpBridge"
 DESTINATION="${BRIDGE_ROOT}/linux-x64"
 PORTABLE_DESTINATION="${BRIDGE_ROOT}/portable/linux-x64"
-LEGACY_DESTINATION="${ROOT_DIR}/dist/linux-x64"
-LEGACY_PORTABLE_DESTINATION="${ROOT_DIR}/dist/portable/linux-x64"
-mkdir -p "${EXTERNAL_CACHE_ROOT}"
 
 validate_sdk() {
     local root="$1"
@@ -144,6 +143,82 @@ copy_portable() {
     log "Portable Bridge runtime synchronized: ${PORTABLE_DESTINATION}"
 }
 
+resolve_source_url() {
+    if [[ "${REMOTE}" == "." || "${REMOTE}" == "local" ]]; then
+        printf '%s\n' "${ROOT_DIR}"
+        return
+    fi
+    git -C "${ROOT_DIR}" remote get-url "${REMOTE}" 2>/dev/null ||
+        fail "Unable to resolve Git remote '${REMOTE}'."
+}
+
+prepare_source_cache() {
+    local source_url="$1"
+
+    if [[ ! -d "${SOURCE_ROOT}/.git" ]]; then
+        rm -rf "${SOURCE_ROOT}"
+        mkdir -p "$(dirname "${SOURCE_ROOT}")"
+        log "Bridge source cache is missing; cloning ${source_url}..."
+        git clone --quiet --filter=blob:none "${source_url}" "${SOURCE_ROOT}" ||
+            fail "Unable to clone Bridge source."
+    else
+        git -C "${SOURCE_ROOT}" remote set-url origin "${source_url}" ||
+            fail "Unable to update cached Bridge origin."
+    fi
+
+    log "Fetching Bridge source ${SOURCE_BRANCH}..."
+    git -C "${SOURCE_ROOT}" fetch --quiet --prune origin "${SOURCE_BRANCH}" ||
+        fail "Unable to fetch Bridge source branch '${SOURCE_BRANCH}'."
+    SOURCE_COMMIT="$(git -C "${SOURCE_ROOT}" rev-parse FETCH_HEAD)"
+    [[ -n "${SOURCE_COMMIT}" ]] || fail "Unable to resolve Bridge source commit."
+
+    git -C "${SOURCE_ROOT}" checkout --quiet --detach --force "${SOURCE_COMMIT}" ||
+        fail "Unable to checkout Bridge source commit."
+    git -C "${SOURCE_ROOT}" reset --hard --quiet "${SOURCE_COMMIT}" ||
+        fail "Unable to reset Bridge source cache."
+    git -C "${SOURCE_ROOT}" clean -ffdx --quiet ||
+        fail "Unable to clean Bridge source cache."
+}
+
+build_source_sdk() {
+    local build_script="${SOURCE_ROOT}/build.sh"
+    local portable_script="${SOURCE_ROOT}/tools/package-portable-sdk.sh"
+    local source_sdk="${SOURCE_ROOT}/dist/linux-x64"
+    local portable_output="${SOURCE_ROOT}/artifacts/demo-sync-portable"
+    local occt_root="${OCCT_ROOT:-/usr/local}"
+    local occt_lib_dir="${OCCT_LIB_DIR:-${occt_root}/lib}"
+
+    [[ -f "${build_script}" ]] || fail "Bridge Linux build script was not found."
+    [[ -f "${portable_script}" ]] || fail "Bridge Portable SDK packager was not found."
+
+    log "Building Bridge linux-x64 Binary SDK from ${SOURCE_BRANCH} @ ${SOURCE_COMMIT:0:7}..."
+    (
+        cd "${SOURCE_ROOT}"
+        OCCT_ROOT="${occt_root}" OCCT_LIB_DIR="${occt_lib_dir}" ./build.sh dist Release
+    ) || fail "Bridge linux-x64 Binary SDK build failed."
+
+    validate_sdk "${source_sdk}" || fail "Built Bridge Binary SDK failed validation."
+    local built_commit bridge_version package_name portable_source
+    built_commit="$(json_string "${source_sdk}/bridge-manifest.json" sourceCommit)"
+    bridge_version="$(json_string "${source_sdk}/bridge-contract.json" bridgeVersion)"
+    [[ "${built_commit}" == "${SOURCE_COMMIT}" ]] ||
+        fail "Built Bridge sourceCommit does not match the selected source commit."
+
+    rm -rf "${portable_output}"
+    mkdir -p "${portable_output}"
+    log "Packaging matching Bridge Portable SDK..."
+    bash "${portable_script}" "${source_sdk}" "${occt_root}" "${occt_lib_dir}" "${portable_output}" false ||
+        fail "Bridge Portable SDK packaging failed."
+
+    package_name="OcctCSharpBridge-${bridge_version}-linux-x64-portable"
+    portable_source="${portable_output}/${package_name}"
+    validate_portable "${portable_source}" "${SOURCE_COMMIT}" "${bridge_version}" ||
+        fail "Built Bridge Portable SDK failed validation."
+
+    copy_sdk "${source_sdk}"
+    copy_portable "${portable_source}" "${SOURCE_COMMIT}" "${bridge_version}"
+}
+
 require_command git
 require_command sha256sum
 require_command python3
@@ -162,41 +237,21 @@ if [[ -n "${SDK_ROOT}" ]]; then
 fi
 [[ -z "${PORTABLE_ROOT}" ]] || fail "--portable-root is only valid together with --sdk-root."
 
-if [[ ! -d "${DESTINATION}" && -d "${LEGACY_DESTINATION}" ]]; then
-    mkdir -p "${BRIDGE_ROOT}"
-    mv "${LEGACY_DESTINATION}" "${DESTINATION}"
-    log "Migrated legacy dist/linux-x64 to external/OcctCSharpBridge/linux-x64."
+SOURCE_URL="$(resolve_source_url)"
+prepare_source_cache "${SOURCE_URL}"
+
+if [[ "${FORCE_REBUILD}" == false &&
+      -d "${DESTINATION}" &&
+      -d "${PORTABLE_DESTINATION}" ]] &&
+   validate_sdk "${DESTINATION}"; then
+    EXISTING_COMMIT="$(json_string "${DESTINATION}/bridge-manifest.json" sourceCommit)"
+    BRIDGE_VERSION="$(json_string "${DESTINATION}/bridge-contract.json" bridgeVersion)"
+    if [[ "${EXISTING_COMMIT}" == "${SOURCE_COMMIT}" ]] &&
+       validate_portable "${PORTABLE_DESTINATION}" "${SOURCE_COMMIT}" "${BRIDGE_VERSION}"; then
+        log "Binary SDK and Portable SDK already match ${SOURCE_BRANCH} @ ${SOURCE_COMMIT:0:7}."
+        exit 0
+    fi
 fi
-if [[ ! -d "${PORTABLE_DESTINATION}" && -d "${LEGACY_PORTABLE_DESTINATION}" ]]; then
-    mkdir -p "$(dirname "${PORTABLE_DESTINATION}")"
-    mv "${LEGACY_PORTABLE_DESTINATION}" "${PORTABLE_DESTINATION}"
-    log "Migrated legacy dist/portable/linux-x64 to external/OcctCSharpBridge/portable/linux-x64."
-fi
 
-if [[ "${FORCE_REBUILD}" == true ]]; then
-    fail "--force-rebuild is no longer supported. Demo sync never builds Bridge; provide prebuilt artifacts with --sdk-root and --portable-root."
-fi
-
-if [[ "${REMOTE}" == "." || "${REMOTE}" == "local" ]]; then
-    SOURCE_COMMIT="$(git -C "${ROOT_DIR}" rev-parse "${SOURCE_BRANCH}")"
-else
-    log "Fetching ${REMOTE}/${SOURCE_BRANCH} metadata..."
-    git -C "${ROOT_DIR}" fetch --quiet "${REMOTE}" "${SOURCE_BRANCH}" || fail "Unable to fetch ${REMOTE}/${SOURCE_BRANCH}."
-    SOURCE_COMMIT="$(git -C "${ROOT_DIR}" rev-parse "${REMOTE}/${SOURCE_BRANCH}")"
-fi
-[[ -n "${SOURCE_COMMIT}" ]] || fail "Unable to resolve ${REMOTE}/${SOURCE_BRANCH}."
-
-[[ -d "${DESTINATION}" && -d "${PORTABLE_DESTINATION}" ]] ||
-    fail "Demo SDK cache is missing under external/OcctCSharpBridge. sync.sh no longer builds Bridge. Build/package Bridge separately, then pass --sdk-root and --portable-root."
-
-validate_sdk "${DESTINATION}" || fail "Existing Binary SDK cache is incomplete or invalid."
-EXISTING_COMMIT="$(json_string "${DESTINATION}/bridge-manifest.json" sourceCommit)"
-BRIDGE_VERSION="$(json_string "${DESTINATION}/bridge-contract.json" bridgeVersion)"
-[[ "${EXISTING_COMMIT}" == "${SOURCE_COMMIT}" ]] ||
-    fail "Demo SDK cache is stale. Expected ${REMOTE}/${SOURCE_BRANCH} @ ${SOURCE_COMMIT}, found ${EXISTING_COMMIT}. Provide matching prebuilt artifacts."
-
-validate_portable "${PORTABLE_DESTINATION}" "${SOURCE_COMMIT}" "${BRIDGE_VERSION}" ||
-    fail "Existing Portable SDK cache is incomplete, invalid, or does not match the Binary SDK."
-
-log "Binary SDK and Portable SDK match ${REMOTE}/${SOURCE_BRANCH} @ ${SOURCE_COMMIT:0:7}."
-log "Validation completed; no Bridge build or smoke test was executed."
+build_source_sdk
+log "Synchronization completed for ${SOURCE_BRANCH} @ ${SOURCE_COMMIT:0:7}."

@@ -29,7 +29,15 @@ On Windows, `sync.ps1` is the source-driven Binary SDK entry point:
 .\sync.ps1 -BridgeBranch main-dev
 ```
 
-`sync.ps1` does not run the Bridge `sdk` / `all` QA gate. Demo build/run validation remains consumer-side. Linux keeps its platform-specific `sync.sh` artifact workflow.
+`sync.ps1` does not run the Bridge `sdk` / `all` QA gate. Demo build/run validation remains consumer-side.
+
+On Linux, `./sync.sh` now has the same fresh-clone behavior: it follows `main` by default, keeps a clean Bridge source cache under `external/.cache`, runs only `./build.sh dist Release`, packages the matching Portable SDK with the Bridge-owned packager, validates both artifacts, and installs them under `external/OcctCSharpBridge`. It does not run Bridge tests or smoke tests. Prebuilt artifacts can still be supplied with `--sdk-root` and `--portable-root`.
+
+```bash
+./sync.sh
+./sync.sh --source main-dev
+./sync.sh --force-rebuild
+```
 ## Build the Demo
 
 On a fresh clone, `build.ps1` automatically runs the existing `sync.ps1` workflow when the Binary SDK cache is missing. If `external/OcctCSharpBridge/win-x64` is already complete, the Bridge is not synchronized or rebuilt again. Use `sync.ps1` explicitly when you want to refresh or change the Bridge branch.

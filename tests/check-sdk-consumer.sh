@@ -30,13 +30,13 @@ done
 
 SYNC_SH="${ROOT_DIR}/sync.sh"
 [[ -f "${SYNC_SH}" ]] || fail "Linux Demo sync script was not found."
-for forbidden in 'build.sh dist' 'build.sh all' 'package-portable-sdk.sh' 'worktree add'; do
+for forbidden in 'build.sh all' 'build.sh test' 'build.sh smoke' 'publish.sh' 'worktree add'; do
     if grep -Fq -- "${forbidden}" "${SYNC_SH}"; then
-        fail "sync.sh must not build/package Bridge during Demo SDK synchronization: ${forbidden}"
+        fail "sync.sh must not run the Bridge full validation/publish workflow: ${forbidden}"
     fi
 done
-for required in 'sourceCommit' 'sha256sum' 'package-manifest.json' '--sdk-root' '--portable-root' 'EXTERNAL_ROOT="${ROOT_DIR}/external"' 'EXTERNAL_CACHE_ROOT="${EXTERNAL_ROOT}/.cache/OcctCSharpBridge-source"' 'BRIDGE_ROOT="${EXTERNAL_ROOT}/OcctCSharpBridge"'; do
-    grep -Fq -- "${required}" "${SYNC_SH}" || fail "sync.sh lost required external SDK integrity/layout behavior: ${required}"
+for required in 'sourceCommit' 'sha256sum' 'package-manifest.json' '--sdk-root' '--portable-root' './build.sh dist Release' 'package-portable-sdk.sh' 'EXTERNAL_ROOT="${ROOT_DIR}/external"' 'SOURCE_ROOT="${EXTERNAL_ROOT}/.cache/OcctCSharpBridge-source"' 'BRIDGE_ROOT="${EXTERNAL_ROOT}/OcctCSharpBridge"'; do
+    grep -Fq -- "${required}" "${SYNC_SH}" || fail "sync.sh lost required source-build SDK integrity/layout behavior: ${required}"
 done
 
 patterns=(
@@ -67,4 +67,4 @@ if (( ${#violations[@]} > 0 )); then
     exit 1
 fi
 
-printf '[consumer] Demo remains a Bridge 3/ABI5 binary consumer; Linux SDK sync is build-free, external dependency paths are untracked, repository hygiene rejects generated/large tracked artifacts, and Bridge tests/graphical smoke are not rerun.\n'
+printf '[consumer] Demo remains a Bridge 3/ABI5 binary consumer; Linux SDK sync builds only dist Release plus the matching Portable SDK, external dependency paths are untracked, repository hygiene rejects generated/large tracked artifacts, and Bridge tests/smoke are not rerun.\n'
