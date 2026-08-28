@@ -105,7 +105,7 @@ internal sealed class OcctXdeDocumentSafeHandle : SafeHandleZeroOrMinusOneIsInva
 
     protected override bool ReleaseHandle()
     {
-        try { ModelNativeMethods.occt_xde_document_release(handle); return true; }
+        try { ModelNativeMethods.occt_model_xde_document_release(handle); return true; }
         catch { return false; }
     }
 }

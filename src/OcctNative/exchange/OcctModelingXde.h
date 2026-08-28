@@ -28,7 +28,7 @@ extern "C"
         OcctObjectId* primaryShapeId,
         OcctXdeDocumentHandle* document);
 
-    OCCTBRIDGE_API void occt_xde_document_release(OcctXdeDocumentHandle document);
+    OCCTBRIDGE_API void occt_model_xde_document_release(OcctXdeDocumentHandle document);
 
     OCCTBRIDGE_API OcctStatus occt_model_step_document_export(
         OcctModelingSessionHandle session,

@@ -499,7 +499,7 @@ extern "C"
         });
     }
 
-    void occt_xde_document_release(OcctXdeDocumentHandle document)
+    void occt_model_xde_document_release(OcctXdeDocumentHandle document)
     {
         delete document;
     }
