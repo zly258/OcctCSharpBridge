@@ -37,7 +37,7 @@ internal static partial class ModelNativeMethods
     internal static partial OcctStatus occt_model_transform_affine(
         OcctModelingSafeHandle handle,
         long shapeId,
-        OcctAffineTransform transform,
+        OcctTransform3d transform,
         out long result);
 
     [LibraryImport(LibraryName)]
