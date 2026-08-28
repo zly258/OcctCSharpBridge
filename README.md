@@ -53,6 +53,8 @@ Linux:
 
 These commands validate the **Demo consumer itself** and do not rerun the Bridge full QA gate.
 
+The Validation menu keeps a small set of representative SDK checks. Geometry Inspection covers analytic/free-form reads and the bulk Bezier/B-Spline data path; Geometry Algorithms covers extrema and parameterized intersections. Existing B-Spline Surface and Mesh Generation checks remain the dedicated control-grid and mesh-buffer validations.
+
 ## Windows publication
 
 Default unified package:

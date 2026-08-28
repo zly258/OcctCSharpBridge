@@ -106,6 +106,8 @@ public sealed partial class MainForm
             case DemoMenuAction.ViewHiddenLine: ApplyMenuVisualStyle(DemoVisualStyle.HiddenLine); break;
             case DemoMenuAction.FitAll: Session.Engine.FitAll(); break;
             case DemoMenuAction.ViewSettings: ShowAdvancedViewSettingsWindow(); break;
+            case DemoMenuAction.TestGeometryInspection: RunModelingTest(Session.RunGeometryInspectionTest); break;
+            case DemoMenuAction.TestGeometryAlgorithms: RunModelingTest(Session.RunGeometryAlgorithmsTest); break;
             case DemoMenuAction.TestBSplineSurface: RunModelingTest(Session.RunBSplineSurfaceTest); break;
             case DemoMenuAction.TestMeshGeneration: RunModelingTest(Session.RunMeshGenerationTest); break;
             case DemoMenuAction.TestPipeShell: RunModelingTest(Session.RunPipeShellTest); break;

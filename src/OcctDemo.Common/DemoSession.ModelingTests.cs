@@ -5,11 +5,17 @@ namespace OcctDemo.Common;
 
 public sealed partial class DemoSession
 {
+    private const string GeometryInspectionTestId = "geometry-inspection";
+    private const string GeometryAlgorithmsTestId = "geometry-algorithms";
     private const string BSplineSurfaceTestId = "bspline-surface";
     private const string MeshGenerationTestId = "mesh-generation";
     private const string PipeShellTestId = "pipe-shell";
     private const string TransformCopyTestId = "transform-copy";
     private const string ShapeValidityTestId = "shape-validity";
+
+    public DemoCommandResult RunGeometryInspectionTest() => ExecuteModelingTest(GeometryInspectionTestId);
+
+    public DemoCommandResult RunGeometryAlgorithmsTest() => ExecuteModelingTest(GeometryAlgorithmsTestId);
 
     public DemoCommandResult RunBSplineSurfaceTest() => ExecuteModelingTest(BSplineSurfaceTestId);
 
@@ -30,6 +36,8 @@ public sealed partial class DemoSession
             {
                 result = testId switch
                 {
+                    GeometryInspectionTestId => CreateGeometryInspectionTest(),
+                    GeometryAlgorithmsTestId => CreateGeometryAlgorithmsTest(),
                     BSplineSurfaceTestId => CreateBSplineSurfaceTest(),
                     MeshGenerationTestId => CreateMeshGenerationTest(),
                     PipeShellTestId => CreatePipeShellTest(),
@@ -63,6 +71,117 @@ public sealed partial class DemoSession
         }
 
         return result;
+    }
+
+    private DemoCommandResult CreateGeometryInspectionTest()
+    {
+        using var model = new OcctModelingSession();
+
+        var line = model.MakeLine(new OcctPoint3d(-40, 0, 0), new OcctPoint3d(40, 0, 0));
+        var circle = model.MakeCircle(OcctPoint3d.Origin, OcctVector3d.UnitZ, 25);
+        var ellipse = model.MakeEllipse(new OcctPoint3d(0, 70, 0), OcctVector3d.UnitZ, 35, 18);
+        var bezier = model.MakeBezier(new[]
+        {
+            new OcctPoint3d(-40, -60, 0),
+            new OcctPoint3d(-10, -20, 25),
+            new OcctPoint3d(20, -90, -15),
+            new OcctPoint3d(55, -45, 0)
+        });
+        var bspline = model.MakeInterpolatedBSpline(new[]
+        {
+            new OcctPoint3d(-60, 110, 0),
+            new OcctPoint3d(-20, 135, 15),
+            new OcctPoint3d(20, 95, -10),
+            new OcctPoint3d(60, 125, 0)
+        });
+
+        var cylinder = model.MakeCylinder(new OcctPoint3d(110, 0, 0), OcctVector3d.UnitZ, 25, 60);
+        var sphere = model.MakeSphere(new OcctPoint3d(110, 90, 30), 30);
+
+        _ = model.GetLineGeometry(line);
+        _ = model.GetCircleGeometry(circle);
+        _ = model.GetEllipseGeometry(ellipse);
+
+        var bezierData = model.GetBezierCurveData(bezier);
+        var bsplineData = model.GetBSplineCurveData(bspline);
+        if (bezierData.Poles.Count < 2 || bsplineData.Poles.Count < 2 || bsplineData.Knots.Count < 2)
+            throw new InvalidOperationException(Local(
+                "Free-form curve inspection returned incomplete data.",
+                "自由曲线读取返回的数据不完整。"));
+
+        var cylinderFace = model.GetFaces(cylinder)
+            .First(face => model.GetFaceSurfaceType(face) == OcctSurfaceType.Cylinder);
+        var sphereFace = model.GetFaces(sphere)
+            .First(face => model.GetFaceSurfaceType(face) == OcctSurfaceType.Sphere);
+        _ = model.GetCylinderGeometry(cylinderFace);
+        _ = model.GetSphereGeometry(sphereFace);
+
+        var displayedBezier = DisplayModelShape(model, bezier);
+        var displayedBSpline = DisplayModelShape(model, bspline);
+        var displayedCylinder = DisplayModelShape(model, cylinderFace);
+        var displayedSphere = DisplayModelShape(model, sphereFace);
+        SetGeneratedName(displayedBezier, Local("Bezier Inspection", "Bezier 读取"));
+        SetGeneratedName(displayedBSpline, Local("B-Spline Inspection", "B-Spline 读取"));
+        SetGeneratedName(displayedCylinder, Local("Cylinder Inspection", "圆柱面读取"));
+        SetGeneratedName(displayedSphere, Local("Sphere Inspection", "球面读取"));
+
+        return new DemoCommandResult(
+            Local("Geometry inspection test completed.", "几何读取测试完成。"),
+            new IOcctObject[] { displayedBezier, displayedBSpline, displayedCylinder, displayedSphere },
+            Local(
+                $"Geometry inspection passed: analytic curves, Bezier ({bezierData.Poles.Count} poles), B-Spline ({bsplineData.Poles.Count} poles / {bsplineData.Knots.Count} knots), cylinder and sphere.",
+                $"几何读取测试通过：解析曲线、Bezier（{bezierData.Poles.Count} 个控制点）、B-Spline（{bsplineData.Poles.Count} 个控制点 / {bsplineData.Knots.Count} 个节点）、圆柱面与球面。"));
+    }
+
+    private DemoCommandResult CreateGeometryAlgorithmsTest()
+    {
+        using var model = new OcctModelingSession();
+
+        var firstLine = model.MakeLine(new OcctPoint3d(-60, 0, 0), new OcctPoint3d(60, 0, 0));
+        var secondLine = model.MakeLine(new OcctPoint3d(0, -60, 10), new OcctPoint3d(0, 60, 10));
+        var edgeExtrema = model.GetEdgeExtrema(firstLine, secondLine);
+        if (edgeExtrema.Count == 0)
+            throw new InvalidOperationException(Local(
+                "Curve/curve extrema returned no result.",
+                "Curve/Curve Extrema 未返回结果。"));
+
+        var firstSphere = model.MakeSphere(new OcctPoint3d(0, 0, 0), 50);
+        var secondSphere = model.MakeSphere(new OcctPoint3d(55, 0, 0), 45);
+        var firstFace = model.GetFaces(firstSphere)
+            .First(face => model.GetFaceSurfaceType(face) == OcctSurfaceType.Sphere);
+        var secondFace = model.GetFaces(secondSphere)
+            .First(face => model.GetFaceSurfaceType(face) == OcctSurfaceType.Sphere);
+
+        var lineThroughSphere = model.MakeLine(new OcctPoint3d(-80, 0, 0), new OcctPoint3d(80, 0, 0));
+        var edgeFaceExtrema = model.GetEdgeFaceExtrema(lineThroughSphere, firstFace);
+        var faceExtrema = model.GetFaceExtrema(firstFace, secondFace);
+        var edgeFaceIntersections = model.IntersectEdgeFace(lineThroughSphere, firstFace);
+        var surfaceIntersection = model.IntersectSurfaces(firstFace, secondFace);
+
+        var equator = model.MakeCircle(OcctPoint3d.Origin, OcctVector3d.UnitZ, 50);
+        var tangential = model.IntersectEdgeFace(equator, firstFace);
+        var overlapCount = tangential.Count(item => item.Kind == OcctIntersectionKind.Overlap);
+
+        if (edgeFaceExtrema.Count == 0 ||
+            faceExtrema.Count == 0 ||
+            edgeFaceIntersections.Count < 2 ||
+            !surfaceIntersection.IsValid ||
+            overlapCount == 0)
+        {
+            throw new InvalidOperationException(Local(
+                "Geometry algorithm validation returned incomplete extrema/intersection results.",
+                "Geometry Algorithm 验证返回的 Extrema/Intersection 结果不完整。"));
+        }
+
+        var displayedIntersection = DisplayModelShape(model, surfaceIntersection);
+        SetGeneratedName(displayedIntersection, Local("Surface Intersection", "曲面交线"));
+
+        return new DemoCommandResult(
+            Local("Geometry algorithms test completed.", "几何算法测试完成。"),
+            new IOcctObject[] { displayedIntersection },
+            Local(
+                $"Geometry algorithms passed: curve/curve extrema {edgeExtrema.Count}, curve/surface extrema {edgeFaceExtrema.Count}, surface/surface extrema {faceExtrema.Count}, edge/face points {edgeFaceIntersections.Count}, tangential overlaps {overlapCount}, surface intersection valid.",
+                $"几何算法测试通过：Curve/Curve Extrema {edgeExtrema.Count}，Curve/Surface Extrema {edgeFaceExtrema.Count}，Surface/Surface Extrema {faceExtrema.Count}，Edge/Face 交点 {edgeFaceIntersections.Count}，切向 Overlap {overlapCount}，Surface Intersection 有效。"));
     }
 
     private DemoCommandResult CreateBSplineSurfaceTest()
@@ -405,6 +524,8 @@ public sealed partial class DemoSession
 
     private static string GetModelingTestDescription(string testId) => testId switch
     {
+        GeometryInspectionTestId => Local("Geometry Inspection Test", "几何读取测试"),
+        GeometryAlgorithmsTestId => Local("Geometry Algorithms Test", "几何算法测试"),
         BSplineSurfaceTestId => Local("B-Spline Surface Test", "B 样条曲面测试"),
         MeshGenerationTestId => Local("Mesh Generation Test", "网格生成测试"),
         PipeShellTestId => Local("PipeShell Sweep Test", "PipeShell 高级扫掠测试"),

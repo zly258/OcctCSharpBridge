@@ -45,6 +45,8 @@ public enum DemoMenuAction
     ViewHiddenLine,
     FitAll,
     ViewSettings,
+    TestGeometryInspection,
+    TestGeometryAlgorithms,
     TestBSplineSurface,
     TestMeshGeneration,
     TestPipeShell,
@@ -205,6 +207,9 @@ public static class DemoMenuCatalog
             Command(DemoCommandId.DemoTwistedDuct)),
 
         Menu("Menu.Validation",
+            Action("Menu.TestGeometryInspection", DemoMenuAction.TestGeometryInspection),
+            Action("Menu.TestGeometryAlgorithms", DemoMenuAction.TestGeometryAlgorithms),
+            Separator(),
             Action("Menu.TestMeshGeneration", DemoMenuAction.TestMeshGeneration),
             Action("Menu.TestBSplineSurface", DemoMenuAction.TestBSplineSurface),
             Action("Menu.TestPipeShell", DemoMenuAction.TestPipeShell),

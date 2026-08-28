@@ -53,6 +53,8 @@ Linux：
 
 这里验证的是 **Demo Consumer 自己**，不会重新执行 Bridge 的完整 QA Gate。
 
+Validation 菜单只保留少量代表性 SDK 检查：Geometry Inspection 覆盖解析/自由几何读取及 Bezier/B-Spline Bulk 数据路径，Geometry Algorithms 覆盖 Extrema 与参数化 Intersection；现有 B-Spline Surface 与 Mesh Generation 继续分别验证控制网和 Mesh Buffer，不再为每个 API 增加单独菜单项。
+
 ## Windows 发布
 
 默认统一发布：

@@ -6,14 +6,14 @@
 
 ```text
 Author: zly258
-Demo / Bridge: 2.6.0
-Native ABI: 4
+Demo / Bridge: 3.0.0
+Native ABI: 5
 OCCT: 7.9.0
 .NET SDK: 10.0.302
 Target: net10.0-windows
 C#: 14.0
 Avalonia: 12.1.0
-Platform: Windows x64
+Platform: Windows x64 / Linux x64
 ```
 
 `DemoProductInfo.cs` is the single metadata source used by all three About dialogs. The author is always displayed as **zly258**, including Chinese UI mode.
