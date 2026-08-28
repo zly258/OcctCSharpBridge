@@ -49,6 +49,17 @@ public sealed partial class OcctModelingSession
         return CheckShape(status, result);
     }
 
+    public OcctModelShape MakeEllipsoid(OcctPoint3d center, double xRadius, double yRadius, double zRadius)
+    {
+        OcctGuard.Finite(center, nameof(center));
+        OcctGuard.Positive(xRadius, nameof(xRadius));
+        OcctGuard.Positive(yRadius, nameof(yRadius));
+        OcctGuard.Positive(zRadius, nameof(zRadius));
+
+        var sphere = MakeSphere(center, 1.0);
+        return Scale(sphere, center, xRadius, yRadius, zRadius);
+    }
+
     public OcctModelShape MakeTorus(OcctPoint3d center, OcctVector3d axis, double majorRadius, double minorRadius)
     {
         OcctGuard.Finite(center, nameof(center));
