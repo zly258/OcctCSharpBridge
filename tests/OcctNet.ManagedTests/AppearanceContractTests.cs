@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OcctNet;
 
@@ -68,4 +69,11 @@ public sealed class AppearanceContractTests
             .ToDictionary(
                 field => field.Name,
                 field => Convert.ToInt32(field.GetRawConstantValue(), null));
+
+    private static void RequireEngineMethod(string name, params Type[] parameterTypes)
+    {
+        var method = typeof(OcctEngine).GetMethod(name, parameterTypes);
+        Assert.IsNotNull(method, $"OcctEngine must expose {name}({string.Join(", ", parameterTypes.Select(type => type.Name))}).");
+        Assert.IsTrue(method.IsPublic, $"OcctEngine.{name} must remain public.");
+    }
 }
