@@ -120,9 +120,11 @@ extern "C"
             Handle(XCAFApp_Application) app = XCAFApp_Application::GetApplication();
             app->NewDocument("MDTV-XCAF", doc);
 
+            const auto path = requiredPath(utf8Path);
+            const auto utf8 = OcctBridge::pathToUtf8(path);
             RWObj_CafReader reader;
             reader.SetDocument(doc);
-            if (!reader.Perform(requiredPath(utf8Path).string().c_str(), Message_ProgressRange()))
+            if (!reader.Perform(utf8.c_str(), Message_ProgressRange()))
                 throw std::runtime_error("OBJ file could not be read.");
             return readDocToCompound(doc);
         });
@@ -139,6 +141,7 @@ extern "C"
             const TopoDS_Shape& shape = model->requireShape(shapeId);
             const auto path = requiredPath(utf8Path);
             if (path.has_parent_path()) std::filesystem::create_directories(path.parent_path());
+            const auto utf8 = OcctBridge::pathToUtf8(path);
 
             Handle(TDocStd_Document) doc;
             Handle(XCAFApp_Application) app = XCAFApp_Application::GetApplication();
@@ -146,7 +149,7 @@ extern "C"
             Handle(XCAFDoc_ShapeTool) shapeTool = XCAFDoc_DocumentTool::ShapeTool(doc->Main());
             shapeTool->AddShape(shape);
 
-            RWObj_CafWriter writer(path.string().c_str());
+            RWObj_CafWriter writer(utf8.c_str());
             if (!writer.Perform(doc, TColStd_IndexedDataMapOfStringString(), Message_ProgressRange()))
                 throw std::runtime_error("OBJ file could not be written.");
         });
@@ -164,9 +167,11 @@ extern "C"
             Handle(XCAFApp_Application) app = XCAFApp_Application::GetApplication();
             app->NewDocument("MDTV-XCAF", doc);
 
+            const auto path = requiredPath(utf8Path);
+            const auto utf8 = OcctBridge::pathToUtf8(path);
             RWGltf_CafReader reader;
             reader.SetDocument(doc);
-            if (!reader.Perform(requiredPath(utf8Path).string().c_str(), Message_ProgressRange()))
+            if (!reader.Perform(utf8.c_str(), Message_ProgressRange()))
                 throw std::runtime_error("glTF file could not be read.");
             return readDocToCompound(doc);
         });
@@ -191,6 +196,7 @@ extern "C"
 
             const auto path = requiredPath(utf8Path);
             if (path.has_parent_path()) std::filesystem::create_directories(path.parent_path());
+            const auto utf8 = OcctBridge::pathToUtf8(path);
 
             Handle(TDocStd_Document) doc;
             Handle(XCAFApp_Application) app = XCAFApp_Application::GetApplication();
@@ -199,7 +205,7 @@ extern "C"
             shapeTool->AddShape(shape);
 
             TColStd_IndexedDataMapOfStringString fileInfo;
-            RWGltf_CafWriter writer(path.string().c_str(), options->writeBinary != 0);
+            RWGltf_CafWriter writer(utf8.c_str(), options->writeBinary != 0);
             writer.SetTransformationFormat(RWGltf_WriterTrsfFormat_Compact);
             if (options->transformToGltfCs != 0)
             {
@@ -245,9 +251,10 @@ extern "C"
 
             const auto path = requiredPath(utf8Path);
             if (path.has_parent_path()) std::filesystem::create_directories(path.parent_path());
+            const auto utf8 = OcctBridge::pathToUtf8(path);
             StlAPI_Writer writer;
             writer.ASCIIMode() = options->ascii != 0;
-            if (!writer.Write(compound, path.string().c_str()))
+            if (!writer.Write(compound, utf8.c_str()))
             {
                 throw std::runtime_error(
                     "STL file could not be written.");

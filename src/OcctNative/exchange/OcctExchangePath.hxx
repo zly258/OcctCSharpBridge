@@ -17,6 +17,11 @@ namespace OcctBridge
 #endif
     }
 
+    inline std::string pathToUtf8(const std::filesystem::path& path)
+    {
+        return path.u8string();
+    }
+
     inline std::string lowerExtension(const std::filesystem::path& path)
     {
         std::string value = path.extension().u8string();
