@@ -6,7 +6,10 @@
 
 #include <BRep_Builder.hxx>
 #include <IGESCAFControl_Reader.hxx>
+#include <Message_ProgressRange.hxx>
 #include <Quantity_ColorRGBA.hxx>
+#include <RWGltf_CafReader.hxx>
+#include <RWObj_CafReader.hxx>
 #include <STEPCAFControl_Reader.hxx>
 #include <TCollection_ExtendedString.hxx>
 #include <TDataStd_Name.hxx>
@@ -432,6 +435,56 @@ extern "C"
                 throw std::runtime_error("IGES/XDE document could not be read.");
 
             *primaryShapeId = retainDocument(model, document, "iges");
+        });
+    }
+
+    OcctStatus occt_model_obj_document_import(
+        OcctModelingSessionHandle session,
+        const char* utf8Path,
+        OcctObjectId* primaryShapeId)
+    {
+        ModelSession* model = sessionOf(session);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (primaryShapeId == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *primaryShapeId = 0;
+        return executeStatus(model, [&]
+        {
+            const std::filesystem::path path = requiredPath(utf8Path);
+            Handle(TDocStd_Document) document;
+            XCAFApp_Application::GetApplication()->NewDocument("MDTV-XCAF", document);
+
+            RWObj_CafReader reader;
+            reader.SetDocument(document);
+            if (!reader.Perform(path.string().c_str(), Message_ProgressRange()))
+                throw std::runtime_error("OBJ/XDE document could not be read.");
+
+            *primaryShapeId = retainDocument(model, document, "obj");
+        });
+    }
+
+    OcctStatus occt_model_gltf_document_import(
+        OcctModelingSessionHandle session,
+        const char* utf8Path,
+        OcctObjectId* primaryShapeId)
+    {
+        ModelSession* model = sessionOf(session);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (primaryShapeId == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *primaryShapeId = 0;
+        return executeStatus(model, [&]
+        {
+            const std::filesystem::path path = requiredPath(utf8Path);
+            Handle(TDocStd_Document) document;
+            XCAFApp_Application::GetApplication()->NewDocument("MDTV-XCAF", document);
+
+            RWGltf_CafReader reader;
+            reader.SetDocument(document);
+            if (!reader.Perform(path.string().c_str(), Message_ProgressRange()))
+                throw std::runtime_error("glTF/XDE document could not be read.");
+
+            *primaryShapeId = retainDocument(model, document, "gltf");
         });
     }
 

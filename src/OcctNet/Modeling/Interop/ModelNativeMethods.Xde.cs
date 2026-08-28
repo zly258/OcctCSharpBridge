@@ -19,6 +19,20 @@ internal static partial class ModelNativeMethods
         string path,
         out long primaryShapeId);
 
+    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_obj_document_import(
+        OcctModelingSafeHandle handle,
+        string path,
+        out long primaryShapeId);
+
+    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_gltf_document_import(
+        OcctModelingSafeHandle handle,
+        string path,
+        out long primaryShapeId);
+
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_model_xde_document_json_get(

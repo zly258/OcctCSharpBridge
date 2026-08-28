@@ -12,6 +12,12 @@ public sealed partial class OcctModelingSession
     public OcctExchangeDocument ImportIgesDocument(string filePath) =>
         ImportXdeDocument(filePath, ModelNativeMethods.occt_model_iges_document_import, nameof(ImportIgesDocument));
 
+    public OcctExchangeDocument ImportObjDocument(string filePath) =>
+        ImportXdeDocument(filePath, ModelNativeMethods.occt_model_obj_document_import, nameof(ImportObjDocument));
+
+    public OcctExchangeDocument ImportGltfDocument(string filePath) =>
+        ImportXdeDocument(filePath, ModelNativeMethods.occt_model_gltf_document_import, nameof(ImportGltfDocument));
+
     private delegate OcctStatus XdeImportCall(
         OcctModelingSafeHandle handle,
         string path,

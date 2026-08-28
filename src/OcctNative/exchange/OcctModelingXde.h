@@ -14,6 +14,16 @@ extern "C"
         const char* utf8Path,
         OcctObjectId* primaryShapeId);
 
+    OCCTBRIDGE_API OcctStatus occt_model_obj_document_import(
+        OcctModelingSessionHandle session,
+        const char* utf8Path,
+        OcctObjectId* primaryShapeId);
+
+    OCCTBRIDGE_API OcctStatus occt_model_gltf_document_import(
+        OcctModelingSessionHandle session,
+        const char* utf8Path,
+        OcctObjectId* primaryShapeId);
+
     OCCTBRIDGE_API OcctStatus occt_model_xde_document_json_get(
         OcctModelingSessionHandle session,
         char* utf8Buffer,
