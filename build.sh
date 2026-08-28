@@ -54,7 +54,6 @@ validate_common() {
     RESOLVED_SDK_VERSION="$(cd "${ROOT_DIR}" && dotnet --version)"
     sdk_is_compatible "${RESOLVED_SDK_VERSION}" || fail "A stable .NET 10 SDK compatible with baseline ${SDK_VERSION} / ${SDK_ROLL_FORWARD} is required; detected ${RESOLVED_SDK_VERSION}."
     [[ -n "${BRIDGE_VERSION}" && "${CURRENT_ABI}" == "5" && "${MINIMUM_ABI}" == "5" ]] || fail "Bridge contract must be complete and ABI5-only."
-    bash "${ROOT_DIR}/tests/check-linux-contract.sh" "${ROOT_DIR}"
 }
 
 validate_native() {

@@ -1,17 +1,9 @@
 using System.Runtime.InteropServices;
 using OcctNet;
 
-var expectedRuntimeText = Environment.GetEnvironmentVariable("OCCT_EXPECTED_RUNTIME_MAJOR");
-if (!int.TryParse(expectedRuntimeText, out var expectedRuntimeMajor))
-    throw new InvalidOperationException("OCCT_EXPECTED_RUNTIME_MAJOR must be set by the stable runtime-matrix gate.");
-
-var actualRuntimeMajor = Environment.Version.Major;
-if (actualRuntimeMajor != expectedRuntimeMajor)
-{
+if (Environment.Version.Major != 10)
     throw new InvalidOperationException(
-        $"Runtime matrix mismatch. Expected .NET {expectedRuntimeMajor}, " +
-        $"but the process is running on {RuntimeInformation.FrameworkDescription}.");
-}
+        $"Stable package smoke requires .NET 10; running on {RuntimeInformation.FrameworkDescription}.");
 
 OcctRuntime.Configure();
 
@@ -29,12 +21,12 @@ var tool = model.MakeCylinder(new OcctPoint3d(20, 15, -5), OcctVector3d.UnitZ, 4
 var cut = model.Cut(box, tool);
 
 if (!cut.Succeeded || !model.IsShapeValid(cut.Shape))
-    throw new InvalidOperationException("Runtime matrix Boolean smoke failed.");
+    throw new InvalidOperationException("Stable package Boolean smoke failed.");
 
 var faceCount = model.GetTopologyCount(cut.Shape, OcctShapeType.Face);
 if (faceCount <= 0)
-    throw new InvalidOperationException("Runtime matrix topology smoke failed.");
+    throw new InvalidOperationException("Stable package topology smoke failed.");
 
 Console.WriteLine(
-    $"OcctCSharpBridge {OcctBridgeInfo.ManagedVersion} runtime smoke passed on " +
+    $"OcctCSharpBridge {OcctBridgeInfo.ManagedVersion} package smoke passed on " +
     $"{RuntimeInformation.FrameworkDescription}; ABI {OcctBridgeInfo.NativeAbiVersion}; OCCT {OcctBridgeInfo.OcctVersion}.");

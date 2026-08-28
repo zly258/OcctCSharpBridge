@@ -22,11 +22,7 @@
     "linuxPrebuiltRelease": false
   },
   "release": {
-    "channel": "stable",
-    "compatibilityLine": "3.x",
-    "nativeAbiPolicy": "abi5-stable",
-    "managedCompatibilityPolicy": "no-breaking-changes-within-3.x",
-    "apiBaselineCommit": "aad8d4e82c3b97920fb4d8abcc7c2816f419881b"
+    "channel": "stable"
   },
   "cmakeMinimumVersion": "3.21",
   "author": "zly258",
@@ -52,15 +48,6 @@
   },
   "api": {
     "policy": "abi5-only",
-    "capabilities": [
-      "viewer.dimension.explicit-plane",
-      "viewer.dimension.text-height",
-      "viewer.selection.rectangle-query",
-      "viewer.highlight.selection-mode",
-      "viewer.highlight.hover-mode",
-      "viewer.triedron.position-scale-color",
-      "viewer.viewcube.position-size-offset"
-    ],
     "nativeHeaders": [
       "OcctNative.h",
       "exchange/OcctStepDocument.h",

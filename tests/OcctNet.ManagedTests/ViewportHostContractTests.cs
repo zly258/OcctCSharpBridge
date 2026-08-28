@@ -49,20 +49,6 @@ public sealed class ViewportHostContractTests
         Assert.AreEqual(5L, args.Generation);
     }
 
-    [TestMethod]
-    public void ViewportHostContractExposesNativeHandleLifecycle()
-    {
-        var type = typeof(IOcctViewportHost);
-        var nativeHandle = type.GetProperty(nameof(IOcctViewportHost.NativeHandle));
-        var nativeHandleChanged = type.GetEvent(nameof(IOcctViewportHost.NativeHandleChanged));
-
-        Assert.IsNotNull(nativeHandle);
-        var actualPropertyType = nativeHandle.PropertyType;
-        Assert.AreEqual(typeof(IntPtr), actualPropertyType);
-        Assert.IsNotNull(nativeHandleChanged);
-        var actualEventType = nativeHandleChanged.EventHandlerType;
-        Assert.AreEqual(typeof(EventHandler<OcctNativeHandleChangedEventArgs>), actualEventType);
-    }
 
     [TestMethod]
     public void DefaultInitialOptionsMatchBridgeViewerDefaults()

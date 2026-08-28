@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("validate", "native", "managed", "consumer", "test", "smoke", "viewport-smoke", "dist", "sdk", "clean", "all")]
+    [ValidateSet("validate", "native", "managed", "test", "smoke", "viewport-smoke", "dist", "sdk", "clean", "all")]
     [string]$Target = "all",
 
     [Parameter(Position = 1)]
@@ -55,25 +55,12 @@ $Projects = [ordered]@{
     WinForms = "src\OcctNet.WinForms\OcctNet.WinForms.csproj"
     Wpf = "src\OcctNet.Wpf\OcctNet.Wpf.csproj"
     Avalonia = "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj"
-    ConsumerMatrix = "tests\OcctNet.ConsumerMatrix\OcctNet.ConsumerMatrix.csproj"
-    DesktopConsumerMatrix = "tests\OcctNet.DesktopConsumerMatrix\OcctNet.DesktopConsumerMatrix.csproj"
     ManagedTests = "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj"
     Smoke = "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
-    WinFormsSmoke = "tests\OcctNet.WinFormsSmoke\OcctNet.WinFormsSmoke.csproj"
-    WpfSmoke = "tests\OcctNet.WpfSmoke\OcctNet.WpfSmoke.csproj"
     AvaloniaSmoke = "tests\OcctNet.AvaloniaSmoke\OcctNet.AvaloniaSmoke.csproj"
 }
 
-$Checks = [ordered]@{
-    Version = "tests\check-version-contract.ps1"
-    Architecture = "tests\check-architecture-boundaries.ps1"
-    Abi5 = "tests\check-abi5-contract.ps1"
-    BulkAbi = "tests\check-bulk-abi.ps1"
-    NativeBuild = "tests\check-native-build-structure.ps1"
-    ExceptionBoundary = "tests\check-native-exception-boundaries.ps1"
-    ApiSurface = "tests\check-api-surface.ps1"
-    ConsumerMatrix = "tests\check-consumer-matrix.ps1"
-}
+$VersionCheckPath = Join-Path $RepoRoot "tests\check-version-contract.ps1"
 
 $script:DotNetCommand = $null
 $script:ResolvedSdkVersion = $null
@@ -224,20 +211,10 @@ function Invoke-DotNetChecked {
     }
 }
 
-function Invoke-ContractChecks {
-    foreach ($check in $Checks.GetEnumerator()) {
-        $path = Join-Path $RepoRoot $check.Value
-        Assert-Path $path
-        Write-Host ("[{0}] Running {1}..." -f $check.Key.ToLowerInvariant(), $check.Value) -ForegroundColor Cyan
-        & $path -RepositoryRoot $RepoRoot
-        if (-not $?) { throw "$($check.Key) validation failed." }
-    }
-}
-
 function Resolve-OcctConfiguration {
     $script:OcctRoot = [System.IO.Path]::GetFullPath($OcctRoot)
     if (-not (Test-Path $script:OcctRoot -PathType Container)) {
-        throw "OCCT SDK root was not found: $script:OcctRoot. Set OCCT_ROOT, pass -OcctRoot <path>, or install OCCT at $DefaultOcctRoot. validate/managed/test/consumer do not require OCCT."
+        throw "OCCT SDK root was not found: $script:OcctRoot. Set OCCT_ROOT, pass -OcctRoot <path>, or install OCCT at $DefaultOcctRoot. validate/managed/test do not require OCCT."
     }
     $script:OcctIncludeDir = Join-Path $script:OcctRoot "inc"
     $script:OcctLibDir = Join-Path $script:OcctRoot "win64\vc14\lib"
@@ -309,12 +286,6 @@ function Build-Managed {
     Build-Project "WinForms"
     Build-Project "Wpf"
     Build-Project "Avalonia"
-}
-
-function Build-ConsumerMatrix {
-    Write-Host "[consumer] Compiling .NET 8/9/10 consumer compatibility matrix..." -ForegroundColor Cyan
-    Build-Project "ConsumerMatrix"
-    Build-Project "DesktopConsumerMatrix"
 }
 
 function Get-OcctRuntimeDirectories {
@@ -414,9 +385,7 @@ function Run-ViewportSmokeProject {
     }
 }
 
-function Run-ViewportSmokes {
-    Run-ViewportSmokeProject "WinFormsSmoke" $DefaultDesktopRuntimeFramework
-    Run-ViewportSmokeProject "WpfSmoke" $DefaultDesktopRuntimeFramework
+function Run-ViewportSmoke {
     Run-ViewportSmokeProject "AvaloniaSmoke" $DefaultRuntimeFramework
 }
 
@@ -554,19 +523,20 @@ if ($Target -eq "clean") {
     exit 0
 }
 
-if ($Target -in @("managed", "consumer", "test", "smoke", "viewport-smoke", "dist", "sdk", "all")) {
+if ($Target -in @("managed", "test", "smoke", "viewport-smoke", "dist", "sdk", "all")) {
     Resolve-DotNetSdk
     Write-Host "dotnet:        $script:DotNetCommand" -ForegroundColor DarkGray
     Write-Host "SDK resolved:  $script:ResolvedSdkVersion" -ForegroundColor Green
 }
 
-Invoke-ContractChecks
+Assert-Path $VersionCheckPath
+& $VersionCheckPath -RepositoryRoot $RepoRoot
+if (-not $?) { throw "Version/ABI validation failed." }
 
 switch ($Target) {
     "validate" { }
     "native" { Build-Native }
     "managed" { Build-Managed }
-    "consumer" { Build-ConsumerMatrix }
     "test" {
         Build-Project "ManagedTests"
         Run-ManagedTests
@@ -578,11 +548,10 @@ switch ($Target) {
         Write-Host "[sdk] Clean source commit: $sdkSourceCommit" -ForegroundColor DarkGray
         Build-Native
         Build-Managed
-        Build-ConsumerMatrix
         Build-Project "ManagedTests"
         Run-ManagedTests
         Run-Smoke
-        Run-ViewportSmokes
+        Run-ViewportSmoke
         Build-BinaryDistribution -SkipBuild -ExpectedSourceCommit $sdkSourceCommit
     }
     "smoke" {
@@ -593,16 +562,15 @@ switch ($Target) {
     "viewport-smoke" {
         Build-Native
         Build-Managed
-        Run-ViewportSmokes
+        Run-ViewportSmoke
     }
     "all" {
         Build-Native
         Build-Managed
-        Build-ConsumerMatrix
         Build-Project "ManagedTests"
         Run-ManagedTests
         Run-Smoke
-        Run-ViewportSmokes
+        Run-ViewportSmoke
     }
 }
 

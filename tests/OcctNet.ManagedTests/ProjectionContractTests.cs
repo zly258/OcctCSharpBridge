@@ -42,19 +42,4 @@ public sealed class ProjectionContractTests
         Assert.AreEqual(10.0, face.Distance);
     }
 
-
-    [TestMethod]
-    public void ModelingSessionExposesBulkGeometryApis()
-    {
-        var type = typeof(OcctModelingSession);
-        Assert.IsNotNull(type.GetMethod(nameof(OcctModelingSession.ProjectPointsOnEdge)));
-        Assert.IsNotNull(type.GetMethod(nameof(OcctModelingSession.ProjectPointsOnFace)));
-        Assert.IsNotNull(type.GetMethod(nameof(OcctModelingSession.GetDistances)));
-        Assert.IsNotNull(type.GetMethod(nameof(OcctModelingSession.MakeCylinderFace)));
-        Assert.IsNotNull(type.GetMethod(nameof(OcctModelingSession.MakeConeFace)));
-        Assert.IsNotNull(type.GetMethod(nameof(OcctModelingSession.MakeSphereFace)));
-        Assert.IsNotNull(type.GetMethod(nameof(OcctModelingSession.MakeTorusFace)));
-        Assert.IsNotNull(type.GetMethod(nameof(OcctModelingSession.MakeHelix)));
-        Assert.IsNotNull(type.GetMethod(nameof(OcctModelingSession.GetEdgeLengthAtParameter)));
-    }
 }

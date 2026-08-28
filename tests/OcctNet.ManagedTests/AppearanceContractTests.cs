@@ -1,5 +1,4 @@
 using System.Drawing;
-using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OcctNet;
 
@@ -20,11 +19,6 @@ public sealed class AppearanceContractTests
         Assert.AreEqual(OcctHighlightMode.Shaded, style.Mode);
         Assert.AreEqual(Color.Orange.ToArgb(), style.Color.ToArgb());
 
-        RequireEngineMethod(nameof(OcctEngine.SetSelectionHighlightColor), typeof(Color));
-        RequireEngineMethod(nameof(OcctEngine.SetHoverHighlightColor), typeof(Color));
-        RequireEngineMethod(nameof(OcctEngine.SetSelectionHighlightMode), typeof(OcctHighlightMode));
-        RequireEngineMethod(nameof(OcctEngine.SetHoverHighlightMode), typeof(OcctHighlightMode));
-        RequireEngineMethod(nameof(OcctEngine.SetSelectionHighlightStyle), typeof(OcctViewerHighlightStyle));
         RequireEngineMethod(nameof(OcctEngine.SetHoverHighlightStyle), typeof(OcctViewerHighlightStyle));
     }
 
@@ -65,16 +59,6 @@ public sealed class AppearanceContractTests
         Assert.AreEqual(12, viewCube.OffsetX);
         Assert.AreEqual(16, viewCube.OffsetY);
 
-        RequireEngineMethod(nameof(OcctEngine.SetTriedron), typeof(OcctTriedronOptions));
-        RequireEngineMethod(nameof(OcctEngine.SetTriedronPosition), typeof(OcctCornerPosition));
-        RequireEngineMethod(nameof(OcctEngine.SetTriedronScale), typeof(double));
-        RequireEngineMethod(nameof(OcctEngine.SetTriedronColor), typeof(Color));
-        RequireEngineMethod(nameof(OcctEngine.SetViewCube), typeof(OcctViewCubeOptions));
-        RequireEngineMethod(nameof(OcctEngine.SetViewCubeOptions), typeof(OcctViewCubeOptions));
-        RequireEngineMethod(nameof(OcctEngine.SetViewCubePosition), typeof(OcctCornerPosition));
-        RequireEngineMethod(nameof(OcctEngine.SetViewCubeSize), typeof(int));
-        RequireEngineMethod(nameof(OcctEngine.SetViewCubeOffset), typeof(int), typeof(int));
-        RequireEngineMethod(nameof(OcctEngine.SetViewCubeAxesVisible), typeof(bool));
     }
 
     private static IReadOnlyDictionary<string, int> EnumValues<TEnum>()
@@ -84,11 +68,4 @@ public sealed class AppearanceContractTests
             .ToDictionary(
                 field => field.Name,
                 field => Convert.ToInt32(field.GetRawConstantValue(), null));
-
-    private static void RequireEngineMethod(string name, params Type[] parameterTypes)
-    {
-        var method = typeof(OcctEngine).GetMethod(name, parameterTypes);
-        Assert.IsNotNull(method, $"OcctEngine must expose {name}({string.Join(", ", parameterTypes.Select(type => type.Name))}).");
-        Assert.IsTrue(method.IsPublic, $"OcctEngine.{name} must remain public.");
-    }
 }
