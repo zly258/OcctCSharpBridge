@@ -56,24 +56,31 @@ public sealed class OcctExchangeNode
 }
 
 /// <summary>
-/// Headless XDE document snapshot imported through STEPCAFControl or IGESCAFControl.
-/// Geometry is owned by the originating <see cref="OcctModelingSession"/>.
+/// Owns one headless XDE document resource and its managed occurrence-tree snapshot.
+/// Geometry remains owned by the originating <see cref="OcctModelingSession"/>.
 /// </summary>
-public sealed class OcctExchangeDocument
+public sealed class OcctExchangeDocument : IDisposable
 {
     internal OcctExchangeDocument(
         string sourcePath,
         string format,
         OcctModelShape primaryShape,
         IReadOnlyList<OcctExchangeNode> nodes,
-        IReadOnlyList<OcctExchangeNode> roots)
+        IReadOnlyList<OcctExchangeNode> roots,
+        OcctXdeDocumentSafeHandle resource,
+        long ownerId)
     {
         SourcePath = sourcePath;
         Format = format;
         PrimaryShape = primaryShape;
         Nodes = nodes;
         Roots = roots;
+        Resource = resource;
+        OwnerId = ownerId;
     }
+
+    internal OcctXdeDocumentSafeHandle Resource { get; }
+    internal long OwnerId { get; }
 
     public string SourcePath { get; }
     public string Format { get; }
@@ -83,4 +90,7 @@ public sealed class OcctExchangeDocument
     public IEnumerable<OcctExchangeNode> Assemblies => Nodes.Where(node => node.Kind == OcctAssemblyNodeKind.Assembly);
     public IEnumerable<OcctExchangeNode> Instances => Nodes.Where(node => node.Kind == OcctAssemblyNodeKind.Instance);
     public IEnumerable<OcctExchangeNode> Parts => Nodes.Where(node => node.Kind != OcctAssemblyNodeKind.Assembly);
+    public bool IsDisposed => Resource.IsClosed || Resource.IsInvalid;
+
+    public void Dispose() => Resource.Dispose();
 }

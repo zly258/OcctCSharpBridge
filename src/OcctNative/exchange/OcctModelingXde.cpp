@@ -6,11 +6,13 @@
 
 #include <BRep_Builder.hxx>
 #include <IGESCAFControl_Reader.hxx>
+#include <IGESCAFControl_Writer.hxx>
 #include <Message_ProgressRange.hxx>
 #include <Quantity_ColorRGBA.hxx>
 #include <RWGltf_CafReader.hxx>
 #include <RWObj_CafReader.hxx>
 #include <STEPCAFControl_Reader.hxx>
+#include <STEPCAFControl_Writer.hxx>
 #include <TCollection_ExtendedString.hxx>
 #include <TDataStd_Name.hxx>
 #include <TDF_LabelSequence.hxx>
@@ -30,12 +32,21 @@
 #include <filesystem>
 #include <iomanip>
 #include <limits>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace OcctModelingInternal;
+
+struct OcctXdeDocumentHandle_t
+{
+    Handle(TDocStd_Document) document;
+    std::vector<OcctObjectId> leafShapeIds;
+    std::string sourceFormat;
+};
 
 namespace
 {
@@ -44,6 +55,13 @@ namespace
         const auto path = OcctBridge::pathFromUtf8(utf8Path);
         if (path.empty()) throw std::invalid_argument("Path is empty.");
         return path;
+    }
+
+    OcctXdeDocumentHandle_t& requireDocument(OcctXdeDocumentHandle handle)
+    {
+        if (handle == nullptr || handle->document.IsNull())
+            throw std::invalid_argument("XDE document handle is invalid.");
+        return *handle;
     }
 
     std::string extendedStringToUtf8(const TCollection_ExtendedString& value)
@@ -236,20 +254,22 @@ namespace
         return shape;
     }
 
-    OcctObjectId retainDocument(
+    std::unique_ptr<OcctXdeDocumentHandle_t> retainDocument(
         ModelSession* model,
         const Handle(TDocStd_Document)& document,
-        const std::string& sourceFormat)
+        const std::string& sourceFormat,
+        OcctObjectId* primaryShapeId)
     {
         if (document.IsNull()) throw std::runtime_error("XDE document is null.");
+        if (primaryShapeId == nullptr) throw std::invalid_argument("Primary shape output is null.");
 
         const Handle(XCAFDoc_ShapeTool) shapeTool =
             XCAFDoc_DocumentTool::ShapeTool(document->Main());
         if (shapeTool.IsNull()) throw std::runtime_error("XDE shape tool is unavailable.");
 
-        model->lastXdeDocument = document;
-        model->lastXdeLeafShapeIds.clear();
-        model->lastXdeSourceFormat = sourceFormat;
+        auto resource = std::make_unique<OcctXdeDocumentHandle_t>();
+        resource->document = document;
+        resource->sourceFormat = sourceFormat;
 
         BRep_Builder builder;
         TopoDS_Compound compound;
@@ -265,27 +285,26 @@ namespace
             if (shape.IsNull()) continue;
 
             const OcctObjectId leafId = model->addShape(shape);
-            model->lastXdeLeafShapeIds.push_back(leafId);
+            resource->leafShapeIds.push_back(leafId);
             builder.Add(compound, shape);
             ++leafCount;
         }
 
         if (leafCount <= 0)
             throw std::runtime_error("XDE document contains no transferable leaf shapes.");
-        if (leafCount == 1)
-            return model->lastXdeLeafShapeIds.front();
-        return model->addShape(compound);
+
+        *primaryShapeId = leafCount == 1
+            ? resource->leafShapeIds.front()
+            : model->addShape(compound);
+        return resource;
     }
 
-    std::string buildDocumentJson(ModelSession* model)
+    std::string buildDocumentJson(const OcctXdeDocumentHandle_t& resource)
     {
-        if (model->lastXdeDocument.IsNull())
-            throw std::logic_error("No headless XDE document is available.");
-
-        const Handle(TDocStd_Document)& document = model->lastXdeDocument;
+        const Handle(TDocStd_Document)& document = resource.document;
         std::ostringstream stream;
         stream << std::setprecision(17);
-        stream << "{\"format\":\"" << jsonEscape(model->lastXdeSourceFormat) << "\",\"nodes\":[";
+        stream << "{\"format\":\"" << jsonEscape(resource.sourceFormat) << "\",\"nodes\":[";
 
         const Handle(XCAFDoc_ShapeTool) shapeTool =
             XCAFDoc_DocumentTool::ShapeTool(document->Main());
@@ -321,9 +340,9 @@ namespace
                 const TopoDS_Shape shape = nodeShape(shapeTool, node);
                 if (!shape.IsNull())
                 {
-                    if (leafIndex >= model->lastXdeLeafShapeIds.size())
+                    if (leafIndex >= resource.leafShapeIds.size())
                         throw std::logic_error("XDE leaf-to-shape mapping is incomplete.");
-                    shapeId = model->lastXdeLeafShapeIds[leafIndex++];
+                    shapeId = resource.leafShapeIds[leafIndex++];
                 }
             }
 
@@ -352,7 +371,7 @@ namespace
             stream << '}';
         }
 
-        if (leafIndex != model->lastXdeLeafShapeIds.size())
+        if (leafIndex != resource.leafShapeIds.size())
             throw std::logic_error("XDE leaf-to-shape mapping contains stale shapes.");
 
         stream << "]}";
@@ -377,6 +396,30 @@ namespace
         std::memcpy(buffer, value.c_str(), static_cast<std::size_t>(size));
         return OcctStatus_Ok;
     }
+
+    template<typename ReaderAction>
+    OcctStatus importDocument(
+        ModelSession* model,
+        OcctObjectId* primaryShapeId,
+        OcctXdeDocumentHandle* documentHandle,
+        const std::string& sourceFormat,
+        ReaderAction&& action)
+    {
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (primaryShapeId == nullptr || documentHandle == nullptr)
+            return OcctStatus_ErrorInvalidArgument;
+
+        *primaryShapeId = 0;
+        *documentHandle = nullptr;
+        return executeStatus(model, [&]
+        {
+            Handle(TDocStd_Document) document;
+            XCAFApp_Application::GetApplication()->NewDocument("MDTV-XCAF", document);
+            action(document);
+            auto resource = retainDocument(model, document, sourceFormat, primaryShapeId);
+            *documentHandle = resource.release();
+        });
+    }
 }
 
 extern "C"
@@ -384,19 +427,13 @@ extern "C"
     OcctStatus occt_model_step_document_import(
         OcctModelingSessionHandle session,
         const char* utf8Path,
-        OcctObjectId* primaryShapeId)
+        OcctObjectId* primaryShapeId,
+        OcctXdeDocumentHandle* document)
     {
         ModelSession* model = sessionOf(session);
-        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
-        if (primaryShapeId == nullptr) return OcctStatus_ErrorInvalidArgument;
-
-        *primaryShapeId = 0;
-        return executeStatus(model, [&]
+        const std::filesystem::path path = requiredPath(utf8Path);
+        return importDocument(model, primaryShapeId, document, "step", [&](const Handle(TDocStd_Document)& xde)
         {
-            const std::filesystem::path path = requiredPath(utf8Path);
-            Handle(TDocStd_Document) document;
-            XCAFApp_Application::GetApplication()->NewDocument("MDTV-XCAF", document);
-
             STEPCAFControl_Reader reader;
             reader.SetColorMode(Standard_True);
             reader.SetNameMode(Standard_True);
@@ -404,92 +441,117 @@ extern "C"
             auto stream = modelInputStream(path);
             if (reader.ReadStream(path.filename().string().c_str(), stream) != IFSelect_RetDone)
                 throw std::runtime_error("STEP/XDE file could not be read.");
-            if (!reader.Transfer(document))
+            if (!reader.Transfer(xde))
                 throw std::runtime_error("STEP/XDE document could not be transferred.");
-
-            *primaryShapeId = retainDocument(model, document, "step");
         });
     }
 
     OcctStatus occt_model_iges_document_import(
         OcctModelingSessionHandle session,
         const char* utf8Path,
-        OcctObjectId* primaryShapeId)
+        OcctObjectId* primaryShapeId,
+        OcctXdeDocumentHandle* document)
     {
         ModelSession* model = sessionOf(session);
-        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
-        if (primaryShapeId == nullptr) return OcctStatus_ErrorInvalidArgument;
-
-        *primaryShapeId = 0;
-        return executeStatus(model, [&]
+        const std::filesystem::path path = requiredPath(utf8Path);
+        return importDocument(model, primaryShapeId, document, "iges", [&](const Handle(TDocStd_Document)& xde)
         {
-            const std::filesystem::path path = requiredPath(utf8Path);
-            Handle(TDocStd_Document) document;
-            XCAFApp_Application::GetApplication()->NewDocument("MDTV-XCAF", document);
-
             IGESCAFControl_Reader reader;
             reader.SetColorMode(Standard_True);
             reader.SetNameMode(Standard_True);
             reader.SetLayerMode(Standard_True);
-            if (!reader.Perform(path.string().c_str(), document))
+            if (!reader.Perform(path.string().c_str(), xde))
                 throw std::runtime_error("IGES/XDE document could not be read.");
-
-            *primaryShapeId = retainDocument(model, document, "iges");
         });
     }
 
     OcctStatus occt_model_obj_document_import(
         OcctModelingSessionHandle session,
         const char* utf8Path,
-        OcctObjectId* primaryShapeId)
+        OcctObjectId* primaryShapeId,
+        OcctXdeDocumentHandle* document)
     {
         ModelSession* model = sessionOf(session);
-        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
-        if (primaryShapeId == nullptr) return OcctStatus_ErrorInvalidArgument;
-
-        *primaryShapeId = 0;
-        return executeStatus(model, [&]
+        const std::filesystem::path path = requiredPath(utf8Path);
+        return importDocument(model, primaryShapeId, document, "obj", [&](const Handle(TDocStd_Document)& xde)
         {
-            const std::filesystem::path path = requiredPath(utf8Path);
-            Handle(TDocStd_Document) document;
-            XCAFApp_Application::GetApplication()->NewDocument("MDTV-XCAF", document);
-
             RWObj_CafReader reader;
-            reader.SetDocument(document);
+            reader.SetDocument(xde);
             if (!reader.Perform(path.string().c_str(), Message_ProgressRange()))
                 throw std::runtime_error("OBJ/XDE document could not be read.");
-
-            *primaryShapeId = retainDocument(model, document, "obj");
         });
     }
 
     OcctStatus occt_model_gltf_document_import(
         OcctModelingSessionHandle session,
         const char* utf8Path,
-        OcctObjectId* primaryShapeId)
+        OcctObjectId* primaryShapeId,
+        OcctXdeDocumentHandle* document)
     {
         ModelSession* model = sessionOf(session);
-        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
-        if (primaryShapeId == nullptr) return OcctStatus_ErrorInvalidArgument;
-
-        *primaryShapeId = 0;
-        return executeStatus(model, [&]
+        const std::filesystem::path path = requiredPath(utf8Path);
+        return importDocument(model, primaryShapeId, document, "gltf", [&](const Handle(TDocStd_Document)& xde)
         {
-            const std::filesystem::path path = requiredPath(utf8Path);
-            Handle(TDocStd_Document) document;
-            XCAFApp_Application::GetApplication()->NewDocument("MDTV-XCAF", document);
-
             RWGltf_CafReader reader;
-            reader.SetDocument(document);
+            reader.SetDocument(xde);
             if (!reader.Perform(path.string().c_str(), Message_ProgressRange()))
                 throw std::runtime_error("glTF/XDE document could not be read.");
+        });
+    }
 
-            *primaryShapeId = retainDocument(model, document, "gltf");
+    void occt_xde_document_release(OcctXdeDocumentHandle document)
+    {
+        delete document;
+    }
+
+    OcctStatus occt_model_step_document_export(
+        OcctModelingSessionHandle session,
+        OcctXdeDocumentHandle document,
+        const char* utf8Path)
+    {
+        ModelSession* model = sessionOf(session);
+        return executeStatus(model, [&]
+        {
+            OcctXdeDocumentHandle_t& resource = requireDocument(document);
+            STEPCAFControl_Writer writer;
+            writer.SetColorMode(Standard_True);
+            writer.SetNameMode(Standard_True);
+            writer.SetLayerMode(Standard_True);
+            if (!writer.Transfer(resource.document, STEPControl_AsIs))
+                throw std::runtime_error("XDE document could not be transferred to STEP.");
+            auto stream = modelOutputStream(requiredPath(utf8Path));
+            if (writer.WriteStream(stream) != IFSelect_RetDone)
+                throw std::runtime_error("STEP/XDE document could not be written.");
+        });
+    }
+
+    OcctStatus occt_model_iges_document_export(
+        OcctModelingSessionHandle session,
+        OcctXdeDocumentHandle document,
+        const char* utf8Path)
+    {
+        ModelSession* model = sessionOf(session);
+        return executeStatus(model, [&]
+        {
+            OcctXdeDocumentHandle_t& resource = requireDocument(document);
+            const std::filesystem::path path = requiredPath(utf8Path);
+            if (path.has_parent_path()) std::filesystem::create_directories(path.parent_path());
+
+            IGESCAFControl_Writer writer;
+            writer.SetColorMode(Standard_True);
+            writer.SetNameMode(Standard_True);
+            writer.SetLayerMode(Standard_True);
+            if (!writer.Transfer(resource.document))
+                throw std::runtime_error("XDE document could not be transferred to IGES.");
+            writer.ComputeModel();
+            if (!writer.Write(path.string().c_str()))
+                throw std::runtime_error("IGES/XDE document could not be written.");
         });
     }
 
     OcctStatus occt_model_xde_document_json_get(
         OcctModelingSessionHandle session,
+        OcctXdeDocumentHandle document,
         char* utf8Buffer,
         int capacity,
         int* requiredBytes)
@@ -500,7 +562,7 @@ extern "C"
         std::string json;
         const OcctStatus status = executeStatus(model, [&]
         {
-            json = buildDocumentJson(model);
+            json = buildDocumentJson(requireDocument(document));
         });
         if (status != OcctStatus_Ok) return status;
         return copyUtf8(json, utf8Buffer, capacity, requiredBytes);

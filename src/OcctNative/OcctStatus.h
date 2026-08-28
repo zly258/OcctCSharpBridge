@@ -9,12 +9,14 @@ extern "C"
     struct OcctShapeHandle_t;
     struct OcctMeshHandle_t;
     struct OcctAlgorithmHandle_t;
+    struct OcctXdeDocumentHandle_t;
 
     using OcctEngineHandle = OcctEngineHandle_t*;
     using OcctModelingSessionHandle = OcctModelingSessionHandle_t*;
     using OcctShapeHandle = OcctShapeHandle_t*;
     using OcctMeshHandle = OcctMeshHandle_t*;
     using OcctAlgorithmHandle = OcctAlgorithmHandle_t*;
+    using OcctXdeDocumentHandle = OcctXdeDocumentHandle_t*;
     using OcctBool = std::int32_t;
 
     enum OcctStatus : std::int32_t

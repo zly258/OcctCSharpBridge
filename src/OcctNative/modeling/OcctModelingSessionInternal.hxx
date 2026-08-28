@@ -6,7 +6,6 @@
 
 #include <BRepTools_History.hxx>
 #include <Standard_Failure.hxx>
-#include <TDocStd_Document.hxx>
 #include <TopoDS_Shape.hxx>
 
 #include <mutex>
@@ -61,9 +60,6 @@ namespace OcctModelingInternal
         std::unordered_map<OcctOperationId, OperationRecord> operations;
         std::vector<OcctModelRayHit> rayHits;
         std::vector<OcctModelEdgeIntersection> edgeIntersections;
-        Handle(TDocStd_Document) lastXdeDocument;
-        std::vector<OcctObjectId> lastXdeLeafShapeIds;
-        std::string lastXdeSourceFormat;
         OcctObjectId nextShapeId = 1;
         OcctOperationId nextOperationId = 1;
 

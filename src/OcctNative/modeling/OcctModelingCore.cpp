@@ -153,9 +153,6 @@ extern "C"
             model->operations.clear();
             model->rayHits.clear();
             model->edgeIntersections.clear();
-            model->lastXdeDocument.Nullify();
-            model->lastXdeLeafShapeIds.clear();
-            model->lastXdeSourceFormat.clear();
         });
     }
 

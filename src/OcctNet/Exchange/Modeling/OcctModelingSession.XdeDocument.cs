@@ -18,19 +18,21 @@ public sealed partial class OcctModelingSession
     public OcctExchangeDocument ImportGltfDocument(string filePath) =>
         ImportXdeDocument(filePath, ModelNativeMethods.occt_model_gltf_document_import, nameof(ImportGltfDocument));
 
-    public void ExportCurrentStepDocument(string filePath) =>
-        ExportCurrentXdeDocument(filePath, ModelNativeMethods.occt_model_step_document_export, nameof(ExportCurrentStepDocument));
+    public void ExportStepDocument(OcctExchangeDocument document, string filePath) =>
+        ExportXdeDocument(document, filePath, ModelNativeMethods.occt_model_step_document_export, nameof(ExportStepDocument));
 
-    public void ExportCurrentIgesDocument(string filePath) =>
-        ExportCurrentXdeDocument(filePath, ModelNativeMethods.occt_model_iges_document_export, nameof(ExportCurrentIgesDocument));
+    public void ExportIgesDocument(OcctExchangeDocument document, string filePath) =>
+        ExportXdeDocument(document, filePath, ModelNativeMethods.occt_model_iges_document_export, nameof(ExportIgesDocument));
 
     private delegate OcctStatus XdeImportCall(
         OcctModelingSafeHandle handle,
         string path,
-        out long primaryShapeId);
+        out long primaryShapeId,
+        out IntPtr document);
 
     private delegate OcctStatus XdeExportCall(
         OcctModelingSafeHandle handle,
+        OcctXdeDocumentSafeHandle document,
         string path);
 
     private OcctExchangeDocument ImportXdeDocument(
@@ -41,27 +43,46 @@ public sealed partial class OcctModelingSession
         ValidateExchangePath(filePath);
         EnsureNotDisposed();
         var fullPath = Path.GetFullPath(filePath);
-        var status = import(_handle, fullPath, out var primaryShapeId);
-        var primaryShape = CheckExchangeShape(status, primaryShapeId, operation);
-        return ReadXdeDocument(fullPath, primaryShape, operation);
+        var status = import(_handle, fullPath, out var primaryShapeId, out var nativeDocument);
+        CheckExchangeStatus(status, operation);
+        if (nativeDocument == IntPtr.Zero)
+            throw new OcctException("The native XDE document handle is invalid.", operation);
+
+        var resource = OcctXdeDocumentSafeHandle.AdoptOwned(nativeDocument);
+        try
+        {
+            var primaryShape = CheckExchangeShape(OcctStatus.Ok, primaryShapeId, operation);
+            return ReadXdeDocument(fullPath, primaryShape, resource, operation);
+        }
+        catch
+        {
+            resource.Dispose();
+            throw;
+        }
     }
 
-    private void ExportCurrentXdeDocument(
+    private void ExportXdeDocument(
+        OcctExchangeDocument document,
         string filePath,
         XdeExportCall export,
         string operation)
     {
+        ArgumentNullException.ThrowIfNull(document);
         ValidateExchangePath(filePath);
         EnsureNotDisposed();
-        CheckExchangeStatus(export(_handle, Path.GetFullPath(filePath)), operation);
+        if (document.OwnerId != _ownerId)
+            throw new ArgumentException("The XDE document belongs to a different modeling session.", nameof(document));
+        ObjectDisposedException.ThrowIf(document.IsDisposed, document);
+        CheckExchangeStatus(export(_handle, document.Resource, Path.GetFullPath(filePath)), operation);
     }
 
     private OcctExchangeDocument ReadXdeDocument(
         string sourcePath,
         OcctModelShape primaryShape,
+        OcctXdeDocumentSafeHandle resource,
         string operation)
     {
-        var json = GetLastXdeDocumentJson(operation);
+        var json = GetXdeDocumentJson(resource, operation);
         XdeDocumentDto? document;
         try
         {
@@ -117,20 +138,22 @@ public sealed partial class OcctModelingSession
             document.Format ?? string.Empty,
             primaryShape,
             nodes,
-            roots);
+            roots,
+            resource,
+            _ownerId);
     }
 
-    private string GetLastXdeDocumentJson(string operation)
+    private string GetXdeDocumentJson(OcctXdeDocumentSafeHandle document, string operation)
     {
         var status = ModelNativeMethods.occt_model_xde_document_json_get(
-            _handle, null, 0, out var requiredBytes);
+            _handle, document, null, 0, out var requiredBytes);
         CheckStatus(status, operation);
         if (requiredBytes <= 1)
             throw new OcctException("The native headless XDE snapshot is empty.", operation);
 
         var buffer = new byte[requiredBytes];
         status = ModelNativeMethods.occt_model_xde_document_json_get(
-            _handle, buffer, buffer.Length, out var writtenBytes);
+            _handle, document, buffer, buffer.Length, out var writtenBytes);
         CheckStatus(status, operation);
         if (writtenBytes <= 1 || writtenBytes > buffer.Length)
             throw new OcctException("The native headless XDE snapshot size is invalid.", operation);
