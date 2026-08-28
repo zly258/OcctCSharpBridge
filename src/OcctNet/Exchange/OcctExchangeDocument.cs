@@ -16,6 +16,7 @@ public sealed class OcctExchangeNode
         OcctAssemblyStyle style,
         OcctAssemblyTransform3d localTransform,
         OcctAssemblyTransform3d globalTransform,
+        IReadOnlyList<OcctAssemblySubshapeStyle> subshapeStyles,
         IReadOnlyList<string> layers)
     {
         Id = id;
@@ -28,6 +29,7 @@ public sealed class OcctExchangeNode
         Style = style;
         LocalTransform = localTransform;
         GlobalTransform = globalTransform;
+        SubshapeStyles = subshapeStyles;
         Layers = layers;
     }
 
@@ -41,6 +43,7 @@ public sealed class OcctExchangeNode
     public OcctAssemblyStyle Style { get; }
     public OcctAssemblyTransform3d LocalTransform { get; }
     public OcctAssemblyTransform3d GlobalTransform { get; }
+    public IReadOnlyList<OcctAssemblySubshapeStyle> SubshapeStyles { get; }
     public IReadOnlyList<string> Layers { get; }
     public OcctExchangeNode? Parent { get; internal set; }
     public IReadOnlyList<OcctExchangeNode> Children => _children;

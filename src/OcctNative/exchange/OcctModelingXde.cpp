@@ -10,12 +10,16 @@
 #include <TCollection_ExtendedString.hxx>
 #include <TDataStd_Name.hxx>
 #include <TDF_LabelSequence.hxx>
+#include <TopExp.hxx>
 #include <TopoDS_Compound.hxx>
+#include <TopTools_IndexedMapOfShape.hxx>
 #include <XCAFApp_Application.hxx>
 #include <XCAFDoc_DocumentTool.hxx>
 #include <XCAFDoc_LayerTool.hxx>
 #include <XCAFDoc_ShapeTool.hxx>
+#include <XCAFPrs.hxx>
 #include <XCAFPrs_DocumentExplorer.hxx>
+#include <XCAFPrs_IndexedDataMapOfShapeStyle.hxx>
 
 #include <algorithm>
 #include <cstring>
@@ -117,6 +121,77 @@ namespace
                << color.GetRGB().Green() << ','
                << color.GetRGB().Blue() << ','
                << color.Alpha() << ']';
+    }
+
+    void appendStyleJson(std::ostringstream& stream, const XCAFPrs_Style& style)
+    {
+        stream << "\"visible\":" << (style.IsVisible() ? "true" : "false")
+               << ",\"surfaceColor\":";
+        if (style.IsSetColorSurf())
+            appendColor(stream, style.GetColorSurfRGBA());
+        else
+            stream << "null";
+
+        stream << ",\"curveColor\":";
+        if (style.IsSetColorCurv())
+        {
+            const Quantity_Color& color = style.GetColorCurv();
+            stream << '[' << color.Red() << ',' << color.Green() << ',' << color.Blue() << ",1]";
+        }
+        else
+        {
+            stream << "null";
+        }
+    }
+
+    void appendSubshapeStyles(
+        std::ostringstream& stream,
+        const XCAFPrs_DocumentNode& node)
+    {
+        const TDF_Label sourceLabel = node.Label.IsNull() ? node.RefLabel : node.Label;
+        if (sourceLabel.IsNull())
+        {
+            stream << "[]";
+            return;
+        }
+
+        const TopoDS_Shape rootShape = XCAFDoc_ShapeTool::GetShape(sourceLabel);
+        if (rootShape.IsNull())
+        {
+            stream << "[]";
+            return;
+        }
+
+        XCAFPrs_IndexedDataMapOfShapeStyle settings;
+        XCAFPrs::CollectStyleSettings(sourceLabel, TopLoc_Location(), settings);
+        if (settings.IsEmpty())
+        {
+            stream << "[]";
+            return;
+        }
+
+        TopTools_IndexedMapOfShape subShapes;
+        TopExp::MapShapes(rootShape, subShapes);
+
+        stream << '[';
+        bool firstStyle = true;
+        for (XCAFPrs_DataMapIteratorOfIndexedDataMapOfShapeStyle iterator(settings);
+             iterator.More();
+             iterator.Next())
+        {
+            const TopoDS_Shape& styledShape = iterator.Key();
+            if (styledShape.IsNull() || styledShape.IsSame(rootShape)) continue;
+            const Standard_Integer mappedIndex = subShapes.FindIndex(styledShape);
+            if (mappedIndex <= 0) continue;
+
+            if (!firstStyle) stream << ',';
+            firstStyle = false;
+            stream << "{\"shapeType\":" << shapeTypeValue(styledShape)
+                   << ",\"subshapeIndex\":" << (mappedIndex - 1) << ',';
+            appendStyleJson(stream, iterator.Value());
+            stream << '}';
+        }
+        stream << ']';
     }
 
     std::vector<std::string> nodeLayers(
@@ -255,24 +330,10 @@ namespace
                    << ",\"kind\":" << kind
                    << ",\"name\":\"" << jsonEscape(nodeName(node)) << "\""
                    << ",\"referenceName\":\"" << jsonEscape(labelName(node.RefLabel)) << "\""
-                   << ",\"shapeId\":" << shapeId
-                   << ",\"visible\":" << (node.Style.IsVisible() ? "true" : "false")
-                   << ",\"surfaceColor\":";
-
-            if (node.Style.IsSetColorSurf())
-                appendColor(stream, node.Style.GetColorSurfRGBA());
-            else
-                stream << "null";
-
-            stream << ",\"curveColor\":";
-            if (node.Style.IsSetColorCurv())
-            {
-                const Quantity_Color& color = node.Style.GetColorCurv();
-                stream << '[' << color.Red() << ',' << color.Green() << ',' << color.Blue() << ",1]";
-            }
-            else
-                stream << "null";
-
+                   << ",\"shapeId\":" << shapeId << ',';
+            appendStyleJson(stream, node.Style);
+            stream << ",\"subshapeStyles\":";
+            appendSubshapeStyles(stream, node);
             stream << ",\"layers\":[";
             const std::vector<std::string> layers = nodeLayers(document, node);
             for (std::size_t index = 0; index < layers.size(); ++index)

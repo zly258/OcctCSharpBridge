@@ -73,6 +73,7 @@ public sealed partial class OcctModelingSession
                 ToXdeStyle(value.Visible, value.SurfaceColor, value.CurveColor),
                 OcctAssemblyTransform3d.FromArray(value.LocalTransform),
                 OcctAssemblyTransform3d.FromArray(value.GlobalTransform),
+                ToXdeSubshapeStyles(value.SubshapeStyles),
                 value.Layers ?? Array.Empty<string>()));
         }
 
@@ -116,6 +117,26 @@ public sealed partial class OcctModelingSession
         double[]? surfaceColor,
         double[]? curveColor) =>
         new(visible, ToXdeColor(surfaceColor), ToXdeColor(curveColor));
+
+    private static IReadOnlyList<OcctAssemblySubshapeStyle> ToXdeSubshapeStyles(
+        List<XdeSubshapeStyleDto>? values)
+    {
+        if (values is null || values.Count == 0)
+            return Array.Empty<OcctAssemblySubshapeStyle>();
+
+        var result = new List<OcctAssemblySubshapeStyle>(values.Count);
+        foreach (var value in values)
+        {
+            var shapeType = Enum.IsDefined(typeof(OcctShapeType), value.ShapeType)
+                ? (OcctShapeType)value.ShapeType
+                : OcctShapeType.Shape;
+            result.Add(new OcctAssemblySubshapeStyle(
+                shapeType,
+                value.SubshapeIndex,
+                ToXdeStyle(value.Visible, value.SurfaceColor, value.CurveColor)));
+        }
+        return result;
+    }
 
     private static OcctAssemblyColor? ToXdeColor(double[]? values)
     {
@@ -165,6 +186,9 @@ public sealed partial class OcctModelingSession
         [JsonPropertyName("curveColor")]
         public double[]? CurveColor { get; set; }
 
+        [JsonPropertyName("subshapeStyles")]
+        public List<XdeSubshapeStyleDto>? SubshapeStyles { get; set; }
+
         [JsonPropertyName("layers")]
         public string[]? Layers { get; set; }
 
@@ -173,5 +197,23 @@ public sealed partial class OcctModelingSession
 
         [JsonPropertyName("globalTransform")]
         public double[]? GlobalTransform { get; set; }
+    }
+
+    private sealed class XdeSubshapeStyleDto
+    {
+        [JsonPropertyName("shapeType")]
+        public int ShapeType { get; set; }
+
+        [JsonPropertyName("subshapeIndex")]
+        public int SubshapeIndex { get; set; }
+
+        [JsonPropertyName("visible")]
+        public bool Visible { get; set; } = true;
+
+        [JsonPropertyName("surfaceColor")]
+        public double[]? SurfaceColor { get; set; }
+
+        [JsonPropertyName("curveColor")]
+        public double[]? CurveColor { get; set; }
     }
 }
