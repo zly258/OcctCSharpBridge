@@ -1,9 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
-using Avalonia.Media;
 using OcctDemo.Common;
-using AvaloniaFontFamily = Avalonia.Media.FontFamily;
 using AvaloniaHorizontalAlignment = Avalonia.Layout.HorizontalAlignment;
 using AvaloniaOrientation = Avalonia.Layout.Orientation;
 using Button = Avalonia.Controls.Button;
@@ -27,7 +25,6 @@ internal sealed class ParameterDialog : Window
         CanResize = false;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         ShowInTaskbar = false;
-        FontFamily = new AvaloniaFontFamily("Inter");
 
         var root = new DockPanel { Margin = new Thickness(16) };
         var buttons = new StackPanel
@@ -40,17 +37,11 @@ internal sealed class ParameterDialog : Window
         var ok = new Button
         {
             Content = DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified ? "确定" : "OK",
-            Width = 96,
-            HorizontalContentAlignment = AvaloniaHorizontalAlignment.Center,
-            VerticalContentAlignment = VerticalAlignment.Center,
             IsDefault = true
         };
         var cancel = new Button
         {
             Content = DemoLocalization.CurrentLanguage == DemoLanguage.ChineseSimplified ? "取消" : "Cancel",
-            Width = 96,
-            HorizontalContentAlignment = AvaloniaHorizontalAlignment.Center,
-            VerticalContentAlignment = VerticalAlignment.Center,
             IsCancel = true
         };
         buttons.Children.Add(cancel);
@@ -122,8 +113,6 @@ internal sealed class ParameterDialog : Window
             var combo = new ComboBox
             {
                 ItemsSource = options,
-                MinWidth = 240,
-                MinHeight = 30,
                 HorizontalAlignment = AvaloniaHorizontalAlignment.Stretch
             };
             var selected = options

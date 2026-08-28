@@ -186,6 +186,11 @@ public static class DemoMenuCatalog
             Action("Menu.Hlr", DemoMenuAction.ViewHiddenLine, checkGroup: DemoMenuCheckGroup.VisualStyle)),
 
         Menu("Menu.Samples",
+            Command(DemoCommandId.DemoSectionAnalysis),
+            Command(DemoCommandId.DemoDrawingProjection),
+            Command(DemoCommandId.DemoDistanceExtrema),
+            Command(DemoCommandId.DemoModelRepair),
+            Separator(),
             Command(DemoCommandId.DemoPrimitives),
             Command(DemoCommandId.DemoPipe),
             Command(DemoCommandId.DemoTee),

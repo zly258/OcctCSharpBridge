@@ -7,9 +7,6 @@ using Avalonia.Threading;
 using OcctDemo.Common;
 using OcctNet;
 using DrawingColor = System.Drawing.Color;
-using AvaloniaBrushes = Avalonia.Media.Brushes;
-using AvaloniaColor = Avalonia.Media.Color;
-using AvaloniaFontFamily = Avalonia.Media.FontFamily;
 using AvaloniaHorizontalAlignment = Avalonia.Layout.HorizontalAlignment;
 using AvaloniaOrientation = Avalonia.Layout.Orientation;
 using AvaloniaToolTip = Avalonia.Controls.ToolTip;
@@ -28,8 +25,6 @@ namespace OcctDemo.Avalonia;
 
 public sealed partial class MainWindow : Window
 {
-    private static readonly AvaloniaFontFamily UiFontFamily = new("Inter");
-
     private readonly Dictionary<long, TreeViewItem> _objectNodes = new();
     private readonly OcctAvaloniaViewport _viewport;
     private readonly Menu _mainMenu;
@@ -67,15 +62,11 @@ public sealed partial class MainWindow : Window
         MinHeight = 720;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         WindowState = WindowState.Maximized;
-        Background = new SolidColorBrush(AvaloniaColor.Parse("#EEF1F4"));
-        FontFamily = UiFontFamily;
 
         _mainMenu = new Menu();
         _toolbar = new StackPanel
         {
-            Orientation = AvaloniaOrientation.Horizontal,
-            Spacing = 4,
-            Margin = new Thickness(6, 4)
+            Orientation = AvaloniaOrientation.Horizontal
         };
         _viewport = new OcctAvaloniaViewport
         {
@@ -93,24 +84,18 @@ public sealed partial class MainWindow : Window
             SynchronizeRenderDpi = true
         };
         _objectTree = new TreeView();
-        _propertyPanel = new StackPanel { Spacing = 1, Margin = new Thickness(2) };
+        _propertyPanel = new StackPanel();
         _logBox = new TextBox
         {
             IsReadOnly = true,
             AcceptsReturn = true,
-            TextWrapping = TextWrapping.NoWrap,
-            FontFamily = UiFontFamily,
-            FontSize = 12,
-            Background = AvaloniaBrushes.White,
-            Foreground = new SolidColorBrush(AvaloniaColor.Parse("#20262C")),
-            BorderBrush = new SolidColorBrush(AvaloniaColor.Parse("#CBD1D6"))
+            TextWrapping = TextWrapping.NoWrap
         };
         _commandStatus = new TextBlock { MinWidth = 320, VerticalAlignment = VerticalAlignment.Center };
         _selectionStatus = new TextBlock { MinWidth = 170, VerticalAlignment = VerticalAlignment.Center };
         _coordinateStatus = new TextBlock
         {
             Text = "X 0.000  Y 0.000  Z 0.000",
-            FontFamily = UiFontFamily,
             HorizontalAlignment = AvaloniaHorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center
         };
@@ -280,12 +265,7 @@ public sealed partial class MainWindow : Window
 
     private static Button CreateToolbarButton(string text) => new()
     {
-        Content = text,
-        MinWidth = 72,
-        Padding = new Thickness(10, 4),
-        Margin = new Thickness(1),
-        HorizontalContentAlignment = HorizontalAlignment.Center,
-        VerticalContentAlignment = VerticalAlignment.Center
+        Content = text
     };
 
     private Button ToolButton(string text, Action action)
@@ -314,13 +294,7 @@ public sealed partial class MainWindow : Window
         return button;
     }
 
-    private static Border ToolSeparator() => new()
-    {
-        Width = 1,
-        Height = 24,
-        Margin = new Thickness(4, 2),
-        Background = new SolidColorBrush(AvaloniaColor.Parse("#B8C0C8"))
-    };
+    private static Separator ToolSeparator() => new();
 
     private static TreeViewItem TreeRoot(string header, IReadOnlyList<object> items) => new()
     {

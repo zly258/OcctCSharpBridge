@@ -281,7 +281,6 @@ public sealed partial class MainWindow
         var header = new Grid
         {
             ColumnDefinitions = new ColumnDefinitions("2*,3*"),
-            Background = new SolidColorBrush(AvaloniaColor.Parse("#E7EAED")),
             Margin = new Thickness(0, 0, 0, 2)
         };
         var nameHeader = new TextBlock { Text = DemoLocalization.Text("Property.Name"), FontWeight = FontWeight.SemiBold, Margin = new Thickness(6, 4) };
@@ -297,7 +296,6 @@ public sealed partial class MainWindow
         var row = new Grid
         {
             ColumnDefinitions = new ColumnDefinitions("2*,3*"),
-            Background = AvaloniaBrushes.White,
             Margin = new Thickness(0, 0, 0, 1)
         };
         var name = new TextBlock { Text = nameText, Margin = new Thickness(6, 4), TextWrapping = TextWrapping.Wrap };

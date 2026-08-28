@@ -121,7 +121,6 @@ internal sealed class ClassicColorDialog : Window
             Content = Local("Add to Custom Colors", "添加到自定义颜色"),
             HorizontalAlignment = HorizontalAlignment.Left,
             MinWidth = 176,
-            Padding = new Thickness(12, 6)
         };
         addCustom.Click += (_, _) => AddCurrentToCustomColors();
 
@@ -199,7 +198,6 @@ internal sealed class ClassicColorDialog : Window
                     Text = Local("Choose a swatch or enter exact RGB / Hex values.", "可直接选择色块，也可输入精确的 RGB / Hex 数值。"),
                     TextWrapping = TextWrapping.Wrap,
                     Opacity = 0.68,
-                    FontSize = 12,
                     Margin = new Thickness(0, 4, 0, 0)
                 }
             }
@@ -275,7 +273,7 @@ internal sealed class ClassicColorDialog : Window
         Spacing = 5,
         Children =
         {
-            new TextBlock { Text = label, FontSize = 12, Opacity = 0.78 },
+            new TextBlock { Text = label, Opacity = 0.78 },
             preview
         }
     };
@@ -285,7 +283,7 @@ internal sealed class ClassicColorDialog : Window
         Spacing = 4,
         Children =
         {
-            new TextBlock { Text = label, FontSize = 12 },
+            new TextBlock { Text = label },
             editor
         }
     };
@@ -316,7 +314,6 @@ internal sealed class ClassicColorDialog : Window
     {
         Content = text,
         MinWidth = 96,
-        Padding = new Thickness(12, 6),
         HorizontalContentAlignment = HorizontalAlignment.Center,
         VerticalContentAlignment = VerticalAlignment.Center
     };

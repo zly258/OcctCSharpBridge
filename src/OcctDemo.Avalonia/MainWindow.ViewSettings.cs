@@ -160,21 +160,21 @@ public sealed partial class MainWindow
 
     private static Button ViewSettingsButton(string text, Action action)
     {
-        var b = new Button { Content = text, Height = 28, HorizontalAlignment = HorizontalAlignment.Stretch };
+        var b = new Button { Content = text, HorizontalAlignment = HorizontalAlignment.Stretch };
         b.Click += (_, _) => action();
         return b;
     }
 
     private static Button AsyncViewSettingsButton(string text, Func<Task> action)
     {
-        var b = new Button { Content = text, Height = 28, HorizontalAlignment = HorizontalAlignment.Stretch };
+        var b = new Button { Content = text, HorizontalAlignment = HorizontalAlignment.Stretch };
         b.Click += async (_, _) => await action();
         return b;
     }
 
     private static CheckBox ViewSettingsCheckBox(string text, bool initial, Action<bool> action)
     {
-        var cb = new CheckBox { Content = text, IsChecked = initial, Height = 28 };
+        var cb = new CheckBox { Content = text, IsChecked = initial };
         cb.IsCheckedChanged += (_, _) => action(cb.IsChecked == true);
         return cb;
     }
@@ -219,7 +219,6 @@ public sealed partial class MainWindow
             Increment           = 1,
             FormatString        = "0",
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            Height              = 28
         };
         nud.ValueChanged += (_, _) =>
         {

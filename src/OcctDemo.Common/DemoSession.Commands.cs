@@ -77,6 +77,10 @@ public sealed partial class DemoSession
             DemoCommandId.AnalyzeDistance => AnalyzeDistance(),
             DemoCommandId.ValidateShape => ValidateShape(),
 
+            DemoCommandId.DemoSectionAnalysis => DemoSectionAnalysis(values),
+            DemoCommandId.DemoDrawingProjection => DemoDrawingProjection(),
+            DemoCommandId.DemoDistanceExtrema => DemoDistanceExtrema(),
+            DemoCommandId.DemoModelRepair => DemoModelRepair(values),
             DemoCommandId.DemoPrimitives => DemoPrimitives(),
             DemoCommandId.DemoBracket => DemoBracket(),
             DemoCommandId.DemoFlange => DemoFlange(),

@@ -14,7 +14,6 @@ public sealed partial class MainWindow
 
     private void ApplyLanguage()
     {
-        FontFamily = UiFontFamily;
         Title = "OCCT CAD - Avalonia";
         _modelExplorerGroup.Header = DemoLocalization.Text("Panel.ModelExplorer");
         _propertiesGroup.Header = DemoLocalization.Text("Panel.Properties");

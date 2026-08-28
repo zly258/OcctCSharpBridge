@@ -491,7 +491,11 @@ public sealed partial class DemoSession
     }
 
     private static bool IsDemoCommand(DemoCommandId commandId) =>
-        commandId is DemoCommandId.DemoPrimitives
+        commandId is DemoCommandId.DemoSectionAnalysis
+            or DemoCommandId.DemoDrawingProjection
+            or DemoCommandId.DemoDistanceExtrema
+            or DemoCommandId.DemoModelRepair
+            or DemoCommandId.DemoPrimitives
             or DemoCommandId.DemoBracket
             or DemoCommandId.DemoFlange
             or DemoCommandId.DemoPipe

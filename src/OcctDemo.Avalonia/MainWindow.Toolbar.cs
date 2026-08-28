@@ -33,9 +33,6 @@ public sealed partial class MainWindow
         });
         _selectionCombo = new ComboBox
         {
-            Width = 190,
-            MinHeight = 30,
-            Margin = new Thickness(2),
             ItemsSource = Enum.GetValues<OcctSelectionMode>().Select(SelectionModeName).ToArray()
         };
         _selectionCombo.SelectedIndex = Math.Clamp(selectedIndex, 0, Enum.GetValues<OcctSelectionMode>().Length - 1);

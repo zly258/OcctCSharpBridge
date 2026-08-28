@@ -12,6 +12,7 @@ public enum DemoCommandId
     AnalyzeBounds, AnalyzeMass, AnalyzeTopology, AnalyzeDistance, ValidateShape,
     DemoPrimitives, DemoBracket, DemoFlange, DemoPipe, DemoTee, DemoReducer, DemoLoft, DemoBoolean,
     DemoElements, DemoGear, DemoManifold, DemoTwistedDuct, DemoAnnotations,
+    DemoSectionAnalysis, DemoDrawingProjection, DemoDistanceExtrema, DemoModelRepair,
     DemoLinearCopies, DemoRadialCopies, DemoMirrorCopies
 }
 
@@ -103,6 +104,11 @@ public static class DemoCommandCatalog
         new(DemoCommandId.AnalyzeTopology, "工具", "拓扑统计", "统计顶点、边、线框、面、壳和实体。", Array.Empty<DemoParameterDefinition>()),
         new(DemoCommandId.AnalyzeDistance, "工具", "最短距离", "计算前两个选中形体的最短距离。", Array.Empty<DemoParameterDefinition>()),
         new(DemoCommandId.ValidateShape, "工具", "形体检查", "检查当前形体是否有效。", Array.Empty<DemoParameterDefinition>()),
+
+        new(DemoCommandId.DemoSectionAnalysis, "案例", "截面分析", "使用平面拆分实体，同时显示正侧、负侧和截交结果。", new[] { N("offset","截面 Z",30) }),
+        new(DemoCommandId.DemoDrawingProjection, "案例", "工程投影", "生成 Front、Top、Right 和 Isometric HLR 工程投影并区分可见线、隐藏线和轮廓线。", Array.Empty<DemoParameterDefinition>()),
+        new(DemoCommandId.DemoDistanceExtrema, "案例", "距离与极值", "计算两条三维边之间的全部极值并显示最近点连接线。", Array.Empty<DemoParameterDefinition>()),
+        new(DemoCommandId.DemoModelRepair, "案例", "模型修复", "执行 FixShape，并对修复前后形体进行结构化检查和对比。", new[] { N("precision","精度",0.0000001,null), N("maxTolerance","最大容差",1.0,null) }),
 
         new(DemoCommandId.DemoPrimitives, "示例", "基本体陈列", "生成二维和三维基本体陈列。", Array.Empty<DemoParameterDefinition>()),
         new(DemoCommandId.DemoBracket, "示例", "机械支架", "生成带孔、圆角的机械支架。", Array.Empty<DemoParameterDefinition>()),

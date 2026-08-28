@@ -92,11 +92,7 @@ internal static class DialogService
 
     private static Button CreateButton(string text) => new()
     {
-        Content = text,
-        MinWidth = 96,
-        Padding = new Thickness(12, 6),
-        HorizontalContentAlignment = HorizontalAlignment.Center,
-        VerticalContentAlignment = VerticalAlignment.Center
+        Content = text
     };
 
     private static string Local(string english, string chinese) =>

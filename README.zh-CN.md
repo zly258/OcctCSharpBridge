@@ -65,6 +65,17 @@ Linux：
 
 Validation 菜单只保留少量代表性 SDK 检查：Geometry Inspection 覆盖解析/自由几何读取及 Bezier/B-Spline Bulk 数据路径，Geometry Algorithms 覆盖 Extrema 与参数化 Intersection；现有 B-Spline Surface 与 Mesh Generation 继续分别验证控制网和 Mesh Buffer，不再为每个 API 增加单独菜单项。
 
+## 综合能力案例
+
+Samples 菜单只保留正常 CAD 操作无法直接替代的综合案例，WinForms、WPF、Avalonia 共用 `OcctDemo.Common` 中同一套实现：
+
+1. **Section Analysis**：按平面拆分并同时显示正侧、负侧与截交结果。
+2. **Drawing Projection**：生成 Front、Top、Right、Isometric 四个 HLR 工程投影。
+3. **Distance & Extrema**：计算 Curve/Curve 极值并显示最近点连接线。
+4. **Model Repair**：执行 FixShape，并对比修复前后的结构化检查结果。
+
+STEP/IGES 等文件继续通过 File → Open/Import 直接打开；BRep 查询继续使用现有包围盒、几何属性、拓扑统计和形体检查；自由几何读取与 Intersection/Extrema API 覆盖继续放在精简后的 Validation 检查中，不再为相同能力增加重复 Samples。
+
 ## Windows 发布
 
 默认统一发布：
