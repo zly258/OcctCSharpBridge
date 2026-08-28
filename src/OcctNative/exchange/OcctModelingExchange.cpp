@@ -1,10 +1,14 @@
 #include "exchange/OcctModelingExchange.h"
+#include "exchange/OcctModelingXde.h"
 #include "exchange/OcctModelingExchangeInternal.hxx"
 #include "exchange/OcctExchangePath.hxx"
 #include "modeling/OcctModelingSessionInternal.hxx"
 
 #include <BRepMesh_IncrementalMesh.hxx>
 #include <BRepTools.hxx>
+#include <IGESCAFControl_Writer.hxx>
+#include <STEPCAFControl_Writer.hxx>
+#include <STEPControl_StepModelType.hxx>
 #include <StlAPI_Writer.hxx>
 
 #include <cmath>
@@ -51,6 +55,46 @@ namespace
     OcctStatus exportShape(ModelSession* model, Action&& action)
     {
         return executeStatus(model, std::forward<Action>(action));
+    }
+
+    const Handle(TDocStd_Document)& requireCurrentXdeDocument(ModelSession* model)
+    {
+        if (model->lastXdeDocument.IsNull())
+            throw std::logic_error("No headless XDE document is available.");
+        return model->lastXdeDocument;
+    }
+
+    void writeCurrentXdeStep(ModelSession* model, const std::filesystem::path& path)
+    {
+        STEPCAFControl_Writer writer;
+        writer.SetColorMode(Standard_True);
+        writer.SetNameMode(Standard_True);
+        writer.SetLayerMode(Standard_True);
+        if (!writer.Transfer(requireCurrentXdeDocument(model), STEPControl_AsIs))
+            throw std::runtime_error("XDE document could not be transferred to STEP.");
+
+        auto stream = modelOutputStream(path);
+        if (writer.WriteStream(stream) != IFSelect_RetDone)
+            throw std::runtime_error("STEP/XDE document could not be written.");
+    }
+
+    void writeCurrentXdeIges(ModelSession* model, const std::filesystem::path& path)
+    {
+        if (path.has_parent_path()) std::filesystem::create_directories(path.parent_path());
+
+        IGESCAFControl_Writer writer;
+        writer.SetColorMode(Standard_True);
+        writer.SetNameMode(Standard_True);
+        writer.SetLayerMode(Standard_True);
+        if (!writer.Transfer(requireCurrentXdeDocument(model)))
+            throw std::runtime_error("XDE document could not be transferred to IGES.");
+
+        writer.ComputeModel();
+        if (!writer.Write(path.string().c_str()))
+        {
+            throw std::runtime_error(
+                "IGES/XDE document could not be written. Use an ASCII-only file path if the OCCT package lacks wide-path support.");
+        }
     }
 
     void validateStlOptions(const OcctStlExportOptions* options)
@@ -178,6 +222,28 @@ extern "C"
         return exportShape(model, [&]
         {
             writeModelIges(model->requireShape(shapeId), requiredPath(utf8Path));
+        });
+    }
+
+    OcctStatus occt_model_step_document_export(
+        OcctModelingSessionHandle session,
+        const char* utf8Path)
+    {
+        ModelSession* model = sessionOf(session);
+        return exportShape(model, [&]
+        {
+            writeCurrentXdeStep(model, requiredPath(utf8Path));
+        });
+    }
+
+    OcctStatus occt_model_iges_document_export(
+        OcctModelingSessionHandle session,
+        const char* utf8Path)
+    {
+        ModelSession* model = sessionOf(session);
+        return exportShape(model, [&]
+        {
+            writeCurrentXdeIges(model, requiredPath(utf8Path));
         });
     }
 

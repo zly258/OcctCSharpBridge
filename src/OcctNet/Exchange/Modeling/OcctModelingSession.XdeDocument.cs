@@ -18,10 +18,20 @@ public sealed partial class OcctModelingSession
     public OcctExchangeDocument ImportGltfDocument(string filePath) =>
         ImportXdeDocument(filePath, ModelNativeMethods.occt_model_gltf_document_import, nameof(ImportGltfDocument));
 
+    public void ExportCurrentStepDocument(string filePath) =>
+        ExportCurrentXdeDocument(filePath, ModelNativeMethods.occt_model_step_document_export, nameof(ExportCurrentStepDocument));
+
+    public void ExportCurrentIgesDocument(string filePath) =>
+        ExportCurrentXdeDocument(filePath, ModelNativeMethods.occt_model_iges_document_export, nameof(ExportCurrentIgesDocument));
+
     private delegate OcctStatus XdeImportCall(
         OcctModelingSafeHandle handle,
         string path,
         out long primaryShapeId);
+
+    private delegate OcctStatus XdeExportCall(
+        OcctModelingSafeHandle handle,
+        string path);
 
     private OcctExchangeDocument ImportXdeDocument(
         string filePath,
@@ -34,6 +44,16 @@ public sealed partial class OcctModelingSession
         var status = import(_handle, fullPath, out var primaryShapeId);
         var primaryShape = CheckExchangeShape(status, primaryShapeId, operation);
         return ReadXdeDocument(fullPath, primaryShape, operation);
+    }
+
+    private void ExportCurrentXdeDocument(
+        string filePath,
+        XdeExportCall export,
+        string operation)
+    {
+        ValidateExchangePath(filePath);
+        EnsureNotDisposed();
+        CheckExchangeStatus(export(_handle, Path.GetFullPath(filePath)), operation);
     }
 
     private OcctExchangeDocument ReadXdeDocument(
