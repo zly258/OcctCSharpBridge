@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace OcctNet;
 
-/// <summary>Advanced pipe shell sweep operations.</summary>
+/// <summary>Pipe shell sweep operations.</summary>
 public sealed partial class OcctModelingSession
 {
     /// <summary>

@@ -60,6 +60,13 @@ extern "C"
         OcctObjectId secondId,
         OcctDistanceResult* result);
 
+    OCCTBRIDGE_API OcctStatus occt_model_shape_distances(
+        OcctModelingSessionHandle handle,
+        const OcctObjectId* firstIds,
+        const OcctObjectId* secondIds,
+        int count,
+        OcctDistanceResult* results);
+
     OCCTBRIDGE_API OcctStatus occt_model_shape_check_report_get(
         OcctModelingSessionHandle handle,
         OcctObjectId shapeId,

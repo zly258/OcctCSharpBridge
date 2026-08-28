@@ -16,6 +16,29 @@ public sealed partial class OcctModelingSession
         return result;
     }
 
+
+    public IReadOnlyList<OcctModelProjectionResult> ProjectPointsOnEdge(OcctModelShape edge, IEnumerable<OcctPoint3d> points)
+    {
+        EnsureShape(edge);
+        var input = RequiredArray(points, nameof(points));
+        if (input.Length == 0) return Array.Empty<OcctModelProjectionResult>();
+        foreach (var point in input) OcctGuard.Finite(point, nameof(points));
+        var results = new OcctModelProjectionResult[input.Length];
+        CheckStatus(ModelNativeMethods.occt_model_project_points_on_edge(_handle, edge.Id, input, input.Length, results));
+        return results;
+    }
+
+    public IReadOnlyList<OcctModelProjectionResult> ProjectPointsOnFace(OcctModelShape face, IEnumerable<OcctPoint3d> points)
+    {
+        EnsureShape(face);
+        var input = RequiredArray(points, nameof(points));
+        if (input.Length == 0) return Array.Empty<OcctModelProjectionResult>();
+        foreach (var point in input) OcctGuard.Finite(point, nameof(points));
+        var results = new OcctModelProjectionResult[input.Length];
+        CheckStatus(ModelNativeMethods.occt_model_project_points_on_face(_handle, face.Id, input, input.Length, results));
+        return results;
+    }
+
     public IReadOnlyList<OcctModelRayHit> IntersectRay(
         OcctModelShape shape,
         OcctPoint3d origin,
@@ -66,6 +89,29 @@ public sealed partial class OcctModelingSession
         CheckStatus(ModelNativeMethods.occt_model_shape_distance(
             _handle, first.Id, second.Id, out var result));
         return result;
+    }
+
+
+    public IReadOnlyList<OcctDistanceResult> GetDistances(IReadOnlyList<OcctModelShape> first, IReadOnlyList<OcctModelShape> second)
+    {
+        ArgumentNullException.ThrowIfNull(first);
+        ArgumentNullException.ThrowIfNull(second);
+        if (first.Count != second.Count) throw new ArgumentException("Shape collections must have the same count.");
+        if (first.Count == 0) return Array.Empty<OcctDistanceResult>();
+
+        var firstIds = new long[first.Count];
+        var secondIds = new long[second.Count];
+        for (var index = 0; index < first.Count; index++)
+        {
+            EnsureShape(first[index]);
+            EnsureShape(second[index]);
+            firstIds[index] = first[index].Id;
+            secondIds[index] = second[index].Id;
+        }
+
+        var results = new OcctDistanceResult[first.Count];
+        CheckStatus(ModelNativeMethods.occt_model_shape_distances(_handle, firstIds, secondIds, results.Length, results));
+        return results;
     }
 
     public OcctModelState ClassifyPoint(OcctModelShape solid, OcctPoint3d point, double tolerance = 1e-7)

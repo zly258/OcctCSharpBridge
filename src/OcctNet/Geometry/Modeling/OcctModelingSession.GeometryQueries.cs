@@ -31,6 +31,15 @@ public sealed partial class OcctModelingSession
         return result;
     }
 
+
+    public double GetEdgeLengthAtParameter(OcctModelShape edge, double parameter)
+    {
+        EnsureShape(edge);
+        OcctGuard.Finite(parameter, nameof(parameter));
+        CheckStatus(ModelNativeMethods.occt_model_edge_length_at_parameter(_handle, edge.Id, parameter, out var result));
+        return result;
+    }
+
     public double GetEdgeParameterAtLength(OcctModelShape edge, double length)
     {
         EnsureShape(edge);

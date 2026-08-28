@@ -25,6 +25,83 @@ namespace
         if (!std::isfinite(tolerance) || tolerance < 0.0)
             throw std::invalid_argument("Tolerance must be finite and non-negative.");
     }
+
+    struct EdgeProjectionContext
+    {
+        Handle(Geom_Curve) curve;
+        Standard_Real first = 0.0;
+        Standard_Real last = 0.0;
+    };
+
+    struct FaceProjectionContext
+    {
+        Handle(Geom_Surface) surface;
+        Standard_Real uMin = 0.0;
+        Standard_Real uMax = 0.0;
+        Standard_Real vMin = 0.0;
+        Standard_Real vMax = 0.0;
+    };
+
+    EdgeProjectionContext edgeProjectionContext(ModelSession* model, OcctObjectId edgeId)
+    {
+        const TopoDS_Shape& shape = model->requireShape(edgeId);
+        if (shape.ShapeType() != TopAbs_EDGE) throw std::invalid_argument("Input must be an edge.");
+
+        EdgeProjectionContext context;
+        context.curve = BRep_Tool::Curve(TopoDS::Edge(shape), context.first, context.last);
+        if (context.curve.IsNull()) throw std::runtime_error("Edge has no 3D curve.");
+        return context;
+    }
+
+    FaceProjectionContext faceProjectionContext(ModelSession* model, OcctObjectId faceId)
+    {
+        const TopoDS_Shape& shape = model->requireShape(faceId);
+        if (shape.ShapeType() != TopAbs_FACE) throw std::invalid_argument("Input must be a face.");
+
+        const TopoDS_Face face = TopoDS::Face(shape);
+        FaceProjectionContext context;
+        context.surface = BRep_Tool::Surface(face);
+        if (context.surface.IsNull()) throw std::runtime_error("Face has no surface.");
+        BRepTools::UVBounds(face, context.uMin, context.uMax, context.vMin, context.vMax);
+        return context;
+    }
+
+    OcctModelProjectionResult projectPointOnEdge(const EdgeProjectionContext& context, OcctPoint3d pointValue)
+    {
+        GeomAPI_ProjectPointOnCurve projection(
+            toPoint(pointValue),
+            context.curve,
+            context.first,
+            context.last);
+        if (projection.NbPoints() < 1) throw std::runtime_error("Point projection on edge failed.");
+
+        const gp_Pnt projected = projection.NearestPoint();
+        OcctModelProjectionResult result{};
+        result.point = {projected.X(), projected.Y(), projected.Z()};
+        result.distance = projection.LowerDistance();
+        result.parameter = projection.LowerDistanceParameter();
+        return result;
+    }
+
+    OcctModelProjectionResult projectPointOnFace(const FaceProjectionContext& context, OcctPoint3d pointValue)
+    {
+        GeomAPI_ProjectPointOnSurf projection;
+        projection.Init(
+            toPoint(pointValue),
+            context.surface,
+            context.uMin,
+            context.uMax,
+            context.vMin,
+            context.vMax);
+        if (projection.NbPoints() < 1) throw std::runtime_error("Point projection on face failed.");
+
+        const gp_Pnt projected = projection.NearestPoint();
+        OcctModelProjectionResult result{};
+        result.point = {projected.X(), projected.Y(), projected.Z()};
+        result.distance = projection.LowerDistance();
+        projection.LowerDistanceParameters(result.u, result.v);
+        return result;
+    }
 }
 
 extern "C"
@@ -42,26 +119,8 @@ extern "C"
         *result = {};
         return executeStatus(model, [&]
         {
-            const TopoDS_Shape& shape = model->requireShape(edgeId);
-            if (shape.ShapeType() != TopAbs_EDGE)
-                throw std::invalid_argument("Input must be an edge.");
-
-            Standard_Real first = 0.0;
-            Standard_Real last = 0.0;
-            Handle(Geom_Curve) curve = BRep_Tool::Curve(TopoDS::Edge(shape), first, last);
-            if (curve.IsNull())
-                throw std::runtime_error("Edge has no 3D curve.");
-
-            GeomAPI_ProjectPointOnCurve projection(toPoint(pointValue), curve, first, last);
-            if (projection.NbPoints() < 1)
-                throw std::runtime_error("Point projection on edge failed.");
-
-            const gp_Pnt projected = projection.NearestPoint();
-            result->point = {projected.X(), projected.Y(), projected.Z()};
-            result->distance = projection.LowerDistance();
-            result->parameter = projection.LowerDistanceParameter();
-            result->u = 0.0;
-            result->v = 0.0;
+            const EdgeProjectionContext context = edgeProjectionContext(model, edgeId);
+            *result = projectPointOnEdge(context, pointValue);
         });
     }
 
@@ -78,35 +137,47 @@ extern "C"
         *result = {};
         return executeStatus(model, [&]
         {
-            const TopoDS_Shape& shape = model->requireShape(faceId);
-            if (shape.ShapeType() != TopAbs_FACE)
-                throw std::invalid_argument("Input must be a face.");
+            const FaceProjectionContext context = faceProjectionContext(model, faceId);
+            *result = projectPointOnFace(context, pointValue);
+        });
+    }
 
-            const TopoDS_Face face = TopoDS::Face(shape);
-            Handle(Geom_Surface) surface = BRep_Tool::Surface(face);
-            if (surface.IsNull())
-                throw std::runtime_error("Face has no surface.");
 
-            Standard_Real uMin = 0.0;
-            Standard_Real uMax = 0.0;
-            Standard_Real vMin = 0.0;
-            Standard_Real vMax = 0.0;
-            BRepTools::UVBounds(face, uMin, uMax, vMin, vMax);
+    OcctStatus occt_model_project_points_on_edge(
+        OcctModelingSessionHandle handle,
+        OcctObjectId edgeId,
+        const OcctPoint3d* points,
+        int count,
+        OcctModelProjectionResult* results)
+    {
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (count < 0 || (count > 0 && (points == nullptr || results == nullptr)))
+            return OcctStatus_ErrorInvalidArgument;
+        return executeStatus(model, [&]
+        {
+            const EdgeProjectionContext context = edgeProjectionContext(model, edgeId);
+            for (int index = 0; index < count; ++index)
+                results[index] = projectPointOnEdge(context, points[index]);
+        });
+    }
 
-            GeomAPI_ProjectPointOnSurf projection;
-            projection.Init(toPoint(pointValue), surface, uMin, uMax, vMin, vMax);
-            if (projection.NbPoints() < 1)
-                throw std::runtime_error("Point projection on face failed.");
-
-            const gp_Pnt projected = projection.NearestPoint();
-            Standard_Real u = 0.0;
-            Standard_Real v = 0.0;
-            projection.LowerDistanceParameters(u, v);
-            result->point = {projected.X(), projected.Y(), projected.Z()};
-            result->distance = projection.LowerDistance();
-            result->parameter = 0.0;
-            result->u = u;
-            result->v = v;
+    OcctStatus occt_model_project_points_on_face(
+        OcctModelingSessionHandle handle,
+        OcctObjectId faceId,
+        const OcctPoint3d* points,
+        int count,
+        OcctModelProjectionResult* results)
+    {
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (count < 0 || (count > 0 && (points == nullptr || results == nullptr)))
+            return OcctStatus_ErrorInvalidArgument;
+        return executeStatus(model, [&]
+        {
+            const FaceProjectionContext context = faceProjectionContext(model, faceId);
+            for (int index = 0; index < count; ++index)
+                results[index] = projectPointOnFace(context, points[index]);
         });
     }
 

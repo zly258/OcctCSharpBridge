@@ -86,6 +86,15 @@ internal static partial class ModelNativeMethods
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_shape_distances(
+        OcctModelingSafeHandle handle,
+        [In, MarshalUsing(CountElementName = nameof(count))] long[] firstIds,
+        [In, MarshalUsing(CountElementName = nameof(count))] long[] secondIds,
+        int count,
+        [Out, MarshalUsing(CountElementName = nameof(count))] OcctDistanceResult[] results);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_model_shape_check_report_get(
         OcctModelingSafeHandle handle,
         long shapeId,

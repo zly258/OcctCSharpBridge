@@ -3,6 +3,7 @@
 
 #include <BRepAdaptor_Curve.hxx>
 #include <BRepAdaptor_Surface.hxx>
+#include <BRepBuilderAPI_MakeFace.hxx>
 #include <gp_Circ.hxx>
 #include <gp_Cone.hxx>
 #include <gp_Cylinder.hxx>
@@ -10,6 +11,9 @@
 #include <gp_Pln.hxx>
 #include <gp_Sphere.hxx>
 #include <gp_Torus.hxx>
+
+#include <cmath>
+#include <string>
 
 using namespace OcctModelingInternal;
 
@@ -40,10 +44,87 @@ namespace
     {
         return {direction.X(), direction.Y(), direction.Z()};
     }
+
+    void requireBounds(double minimum, double maximum, const char* name)
+    {
+        if (!std::isfinite(minimum) || !std::isfinite(maximum) || maximum <= minimum)
+            throw std::invalid_argument(std::string(name) + " bounds must be finite and increasing.");
+    }
+
+    gp_Ax3 surfaceAxis(OcctPoint3d origin, OcctVector3d axis, OcctVector3d xDirection)
+    {
+        return gp_Ax3(toPoint(origin), toDirection(axis), toDirection(xDirection));
+    }
 }
 
 extern "C"
 {
+
+    OcctStatus occt_model_surface_plane_face_create(OcctModelingSessionHandle handle, OcctPoint3d origin, OcctVector3d normal, OcctVector3d xDirection, double uMin, double uMax, double vMin, double vMax, OcctObjectId* result)
+    {
+        ModelSession* model = sessionOf(handle);
+        return executeShapeStatus(model, result, [&]
+        {
+            requireBounds(uMin, uMax, "U"); requireBounds(vMin, vMax, "V");
+            BRepBuilderAPI_MakeFace maker(gp_Pln(surfaceAxis(origin, normal, xDirection)), uMin, uMax, vMin, vMax);
+            if (!maker.IsDone()) throw std::runtime_error("Plane face creation failed.");
+            return maker.Shape();
+        });
+    }
+
+    OcctStatus occt_model_surface_cylinder_face_create(OcctModelingSessionHandle handle, OcctPoint3d origin, OcctVector3d axis, OcctVector3d xDirection, double radius, double uMin, double uMax, double vMin, double vMax, OcctObjectId* result)
+    {
+        ModelSession* model = sessionOf(handle);
+        return executeShapeStatus(model, result, [&]
+        {
+            requirePositive(radius, "Radius"); requireBounds(uMin, uMax, "U"); requireBounds(vMin, vMax, "V");
+            BRepBuilderAPI_MakeFace maker(gp_Cylinder(surfaceAxis(origin, axis, xDirection), radius), uMin, uMax, vMin, vMax);
+            if (!maker.IsDone()) throw std::runtime_error("Cylindrical face creation failed.");
+            return maker.Shape();
+        });
+    }
+
+    OcctStatus occt_model_surface_cone_face_create(OcctModelingSessionHandle handle, OcctPoint3d referenceOrigin, OcctVector3d axis, OcctVector3d xDirection, double referenceRadius, double semiAngleRadians, double uMin, double uMax, double vMin, double vMax, OcctObjectId* result)
+    {
+        ModelSession* model = sessionOf(handle);
+        return executeShapeStatus(model, result, [&]
+        {
+            requirePositive(referenceRadius, "Reference radius");
+            if (!std::isfinite(semiAngleRadians) || std::abs(semiAngleRadians) <= Precision::Angular() || std::abs(semiAngleRadians) >= 1.57079632679489661923)
+                throw std::invalid_argument("Cone semi-angle must be finite, non-zero and smaller than pi/2.");
+            requireBounds(uMin, uMax, "U"); requireBounds(vMin, vMax, "V");
+            BRepBuilderAPI_MakeFace maker(gp_Cone(surfaceAxis(referenceOrigin, axis, xDirection), semiAngleRadians, referenceRadius), uMin, uMax, vMin, vMax);
+            if (!maker.IsDone()) throw std::runtime_error("Conical face creation failed.");
+            return maker.Shape();
+        });
+    }
+
+    OcctStatus occt_model_surface_sphere_face_create(OcctModelingSessionHandle handle, OcctPoint3d center, OcctVector3d axis, OcctVector3d xDirection, double radius, double uMin, double uMax, double vMin, double vMax, OcctObjectId* result)
+    {
+        ModelSession* model = sessionOf(handle);
+        return executeShapeStatus(model, result, [&]
+        {
+            requirePositive(radius, "Radius"); requireBounds(uMin, uMax, "U"); requireBounds(vMin, vMax, "V");
+            BRepBuilderAPI_MakeFace maker(gp_Sphere(surfaceAxis(center, axis, xDirection), radius), uMin, uMax, vMin, vMax);
+            if (!maker.IsDone()) throw std::runtime_error("Spherical face creation failed.");
+            return maker.Shape();
+        });
+    }
+
+    OcctStatus occt_model_surface_torus_face_create(OcctModelingSessionHandle handle, OcctPoint3d center, OcctVector3d axis, OcctVector3d xDirection, double majorRadius, double minorRadius, double uMin, double uMax, double vMin, double vMax, OcctObjectId* result)
+    {
+        ModelSession* model = sessionOf(handle);
+        return executeShapeStatus(model, result, [&]
+        {
+            requirePositive(majorRadius, "Major radius"); requirePositive(minorRadius, "Minor radius");
+            if (minorRadius >= majorRadius) throw std::invalid_argument("Minor radius must be smaller than major radius.");
+            requireBounds(uMin, uMax, "U"); requireBounds(vMin, vMax, "V");
+            BRepBuilderAPI_MakeFace maker(gp_Torus(surfaceAxis(center, axis, xDirection), majorRadius, minorRadius), uMin, uMax, vMin, vMax);
+            if (!maker.IsDone()) throw std::runtime_error("Toroidal face creation failed.");
+            return maker.Shape();
+        });
+    }
+
     OcctStatus occt_model_edge_line_geometry(OcctModelingSessionHandle handle, OcctObjectId edgeId, OcctModelLineGeometry* result)
     {
         ModelSession* model = sessionOf(handle);

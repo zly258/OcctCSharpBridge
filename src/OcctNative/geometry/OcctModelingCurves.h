@@ -4,6 +4,16 @@
 
 extern "C"
 {
+    OCCTBRIDGE_API OcctStatus occt_model_curve_helix_create(
+        OcctModelingSessionHandle handle,
+        OcctPoint3d origin,
+        OcctVector3d axis,
+        OcctVector3d xDirection,
+        double radius,
+        double pitch,
+        double turns,
+        OcctObjectId* result);
+
     OCCTBRIDGE_API OcctStatus occt_model_curve_vertex_create(
         OcctModelingSessionHandle handle,
         OcctPoint3d point,

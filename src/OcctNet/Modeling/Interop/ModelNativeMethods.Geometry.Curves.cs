@@ -7,6 +7,10 @@ internal static partial class ModelNativeMethods
 {
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_curve_helix_create(OcctModelingSafeHandle handle, OcctPoint3d origin, OcctVector3d axis, OcctVector3d xDirection, double radius, double pitch, double turns, out long result);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_model_curve_vertex_create(
         OcctModelingSafeHandle handle,
         OcctPoint3d point,

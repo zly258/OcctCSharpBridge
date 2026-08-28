@@ -431,9 +431,9 @@ extern "C"
         OcctXdeDocumentHandle* document)
     {
         ModelSession* model = sessionOf(session);
-        const std::filesystem::path path = requiredPath(utf8Path);
         return importDocument(model, primaryShapeId, document, "step", [&](const Handle(TDocStd_Document)& xde)
         {
+            const std::filesystem::path path = requiredPath(utf8Path);
             STEPCAFControl_Reader reader;
             reader.SetColorMode(Standard_True);
             reader.SetNameMode(Standard_True);
@@ -453,9 +453,9 @@ extern "C"
         OcctXdeDocumentHandle* document)
     {
         ModelSession* model = sessionOf(session);
-        const std::filesystem::path path = requiredPath(utf8Path);
         return importDocument(model, primaryShapeId, document, "iges", [&](const Handle(TDocStd_Document)& xde)
         {
+            const std::filesystem::path path = requiredPath(utf8Path);
             IGESCAFControl_Reader reader;
             reader.SetColorMode(Standard_True);
             reader.SetNameMode(Standard_True);
@@ -472,9 +472,9 @@ extern "C"
         OcctXdeDocumentHandle* document)
     {
         ModelSession* model = sessionOf(session);
-        const std::filesystem::path path = requiredPath(utf8Path);
         return importDocument(model, primaryShapeId, document, "obj", [&](const Handle(TDocStd_Document)& xde)
         {
+            const std::filesystem::path path = requiredPath(utf8Path);
             RWObj_CafReader reader;
             reader.SetDocument(xde);
             if (!reader.Perform(path.string().c_str(), Message_ProgressRange()))
@@ -489,9 +489,9 @@ extern "C"
         OcctXdeDocumentHandle* document)
     {
         ModelSession* model = sessionOf(session);
-        const std::filesystem::path path = requiredPath(utf8Path);
         return importDocument(model, primaryShapeId, document, "gltf", [&](const Handle(TDocStd_Document)& xde)
         {
+            const std::filesystem::path path = requiredPath(utf8Path);
             RWGltf_CafReader reader;
             reader.SetDocument(xde);
             if (!reader.Perform(path.string().c_str(), Message_ProgressRange()))

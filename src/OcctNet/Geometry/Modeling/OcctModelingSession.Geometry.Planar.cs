@@ -2,6 +2,83 @@ namespace OcctNet;
 
 public sealed partial class OcctModelingSession
 {
+
+    public OcctModelShape MakePlaneFace(OcctPoint3d origin, OcctVector3d normal, OcctVector3d xDirection, double uMin, double uMax, double vMin, double vMax)
+    {
+        ValidateSurfaceBounds(uMin, uMax, vMin, vMax);
+        OcctGuard.Finite(origin, nameof(origin));
+        OcctGuard.NonZero(normal, nameof(normal));
+        OcctGuard.NonZero(xDirection, nameof(xDirection));
+        var status = ModelNativeMethods.occt_model_surface_plane_face_create(NativeHandle, origin, normal, xDirection, uMin, uMax, vMin, vMax, out var result);
+        return CheckShape(status, result);
+    }
+
+    public OcctModelShape MakeCylinderFace(double radius, double uMin, double uMax, double vMin, double vMax, OcctPoint3d? origin = null, OcctVector3d? axis = null, OcctVector3d? xDirection = null)
+    {
+        OcctGuard.Positive(radius, nameof(radius));
+        ValidateSurfaceBounds(uMin, uMax, vMin, vMax);
+        var actualOrigin = origin ?? OcctPoint3d.Origin;
+        var actualAxis = axis ?? OcctVector3d.UnitZ;
+        var actualXDirection = xDirection ?? OcctVector3d.UnitX;
+        OcctGuard.Finite(actualOrigin, nameof(origin));
+        OcctGuard.NonZero(actualAxis, nameof(axis));
+        OcctGuard.NonZero(actualXDirection, nameof(xDirection));
+        var status = ModelNativeMethods.occt_model_surface_cylinder_face_create(NativeHandle, actualOrigin, actualAxis, actualXDirection, radius, uMin, uMax, vMin, vMax, out var result);
+        return CheckShape(status, result);
+    }
+
+    public OcctModelShape MakeConeFace(double referenceRadius, double semiAngleRadians, double uMin, double uMax, double vMin, double vMax, OcctPoint3d? referenceOrigin = null, OcctVector3d? axis = null, OcctVector3d? xDirection = null)
+    {
+        OcctGuard.Positive(referenceRadius, nameof(referenceRadius));
+        OcctGuard.Finite(semiAngleRadians, nameof(semiAngleRadians));
+        if (Math.Abs(semiAngleRadians) <= 1e-12 || Math.Abs(semiAngleRadians) >= Math.PI / 2.0) throw new ArgumentOutOfRangeException(nameof(semiAngleRadians));
+        ValidateSurfaceBounds(uMin, uMax, vMin, vMax);
+        var actualOrigin = referenceOrigin ?? OcctPoint3d.Origin;
+        var actualAxis = axis ?? OcctVector3d.UnitZ;
+        var actualXDirection = xDirection ?? OcctVector3d.UnitX;
+        OcctGuard.Finite(actualOrigin, nameof(referenceOrigin));
+        OcctGuard.NonZero(actualAxis, nameof(axis));
+        OcctGuard.NonZero(actualXDirection, nameof(xDirection));
+        var status = ModelNativeMethods.occt_model_surface_cone_face_create(NativeHandle, actualOrigin, actualAxis, actualXDirection, referenceRadius, semiAngleRadians, uMin, uMax, vMin, vMax, out var result);
+        return CheckShape(status, result);
+    }
+
+    public OcctModelShape MakeSphereFace(double radius, double uMin, double uMax, double vMin, double vMax, OcctPoint3d? center = null, OcctVector3d? axis = null, OcctVector3d? xDirection = null)
+    {
+        OcctGuard.Positive(radius, nameof(radius));
+        ValidateSurfaceBounds(uMin, uMax, vMin, vMax);
+        var actualCenter = center ?? OcctPoint3d.Origin;
+        var actualAxis = axis ?? OcctVector3d.UnitZ;
+        var actualXDirection = xDirection ?? OcctVector3d.UnitX;
+        OcctGuard.Finite(actualCenter, nameof(center));
+        OcctGuard.NonZero(actualAxis, nameof(axis));
+        OcctGuard.NonZero(actualXDirection, nameof(xDirection));
+        var status = ModelNativeMethods.occt_model_surface_sphere_face_create(NativeHandle, actualCenter, actualAxis, actualXDirection, radius, uMin, uMax, vMin, vMax, out var result);
+        return CheckShape(status, result);
+    }
+
+    public OcctModelShape MakeTorusFace(double majorRadius, double minorRadius, double uMin, double uMax, double vMin, double vMax, OcctPoint3d? center = null, OcctVector3d? axis = null, OcctVector3d? xDirection = null)
+    {
+        OcctGuard.Positive(majorRadius, nameof(majorRadius));
+        OcctGuard.Positive(minorRadius, nameof(minorRadius));
+        if (minorRadius >= majorRadius) throw new ArgumentOutOfRangeException(nameof(minorRadius));
+        ValidateSurfaceBounds(uMin, uMax, vMin, vMax);
+        var actualCenter = center ?? OcctPoint3d.Origin;
+        var actualAxis = axis ?? OcctVector3d.UnitZ;
+        var actualXDirection = xDirection ?? OcctVector3d.UnitX;
+        OcctGuard.Finite(actualCenter, nameof(center));
+        OcctGuard.NonZero(actualAxis, nameof(axis));
+        OcctGuard.NonZero(actualXDirection, nameof(xDirection));
+        var status = ModelNativeMethods.occt_model_surface_torus_face_create(NativeHandle, actualCenter, actualAxis, actualXDirection, majorRadius, minorRadius, uMin, uMax, vMin, vMax, out var result);
+        return CheckShape(status, result);
+    }
+
+    private static void ValidateSurfaceBounds(double uMin, double uMax, double vMin, double vMax)
+    {
+        if (!double.IsFinite(uMin) || !double.IsFinite(uMax) || uMax <= uMin) throw new ArgumentOutOfRangeException(nameof(uMax));
+        if (!double.IsFinite(vMin) || !double.IsFinite(vMax) || vMax <= vMin) throw new ArgumentOutOfRangeException(nameof(vMax));
+    }
+
     public OcctModelShape MakeRegularPolygon(
         double radius,
         int sideCount,

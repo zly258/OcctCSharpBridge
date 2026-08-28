@@ -3,20 +3,48 @@
 
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakePolygon.hxx>
+#include <BRepLib.hxx>
 #include <BRepBuilderAPI_MakeVertex.hxx>
 #include <GC_MakeArcOfCircle.hxx>
 #include <GeomAPI_Interpolate.hxx>
+#include <Geom2d_Line.hxx>
 #include <Geom_BezierCurve.hxx>
 #include <Geom_Circle.hxx>
 #include <Geom_Ellipse.hxx>
+#include <Geom_CylindricalSurface.hxx>
 #include <Geom_TrimmedCurve.hxx>
 #include <TColgp_Array1OfPnt.hxx>
 #include <TColgp_HArray1OfPnt.hxx>
+
+#include <cmath>
 
 using namespace OcctModelingInternal;
 
 extern "C"
 {
+
+    OcctStatus occt_model_curve_helix_create(OcctModelingSessionHandle handle, OcctPoint3d origin, OcctVector3d axis, OcctVector3d xDirection, double radius, double pitch, double turns, OcctObjectId* result)
+    {
+        ModelSession* model = sessionOf(handle);
+        return executeShapeStatus(model, result, [&]
+        {
+            requirePositive(radius, "Radius"); requirePositive(turns, "Turns");
+            if (!std::isfinite(pitch) || std::abs(pitch) <= Precision::Confusion())
+                throw std::invalid_argument("Pitch must be finite and non-zero.");
+            const gp_Ax3 placement(toPoint(origin), toDirection(axis), toDirection(xDirection));
+            Handle(Geom_CylindricalSurface) surface = new Geom_CylindricalSurface(placement, radius);
+            const double angle = 2.0 * 3.14159265358979323846 * turns;
+            const double height = pitch * turns;
+            const double length2d = std::hypot(angle, height);
+            Handle(Geom2d_Line) pcurve = new Geom2d_Line(gp_Pnt2d(0.0, 0.0), gp_Dir2d(angle / length2d, height / length2d));
+            BRepBuilderAPI_MakeEdge maker(pcurve, surface, 0.0, length2d);
+            if (!maker.IsDone()) throw std::runtime_error("Helix edge creation failed.");
+            TopoDS_Edge edge = maker.Edge();
+            if (!BRepLib::BuildCurve3d(edge)) throw std::runtime_error("Helix 3D curve construction failed.");
+            return TopoDS_Shape(edge);
+        });
+    }
+
     OcctStatus occt_model_curve_vertex_create(OcctModelingSessionHandle handle, OcctPoint3d pointValue, OcctObjectId* result)
     {
         ModelSession* model = sessionOf(handle);

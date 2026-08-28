@@ -29,9 +29,6 @@ public sealed partial class OcctModelingSession
     public IReadOnlyList<OcctModelShape> GetEdgeVertices(OcctModelShape edge) =>
         GetSubshapes(edge, OcctShapeType.Vertex);
 
-    public IReadOnlyList<OcctModelShape> GetWireEdges(OcctModelShape wire) =>
-        GetSubshapes(wire, OcctShapeType.Edge);
-
     public IReadOnlyList<OcctModelShape> GetFaceEdges(OcctModelShape face) =>
         GetSubshapes(face, OcctShapeType.Edge);
 

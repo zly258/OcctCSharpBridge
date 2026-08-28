@@ -27,6 +27,12 @@ extern "C"
         OcctObjectId edgeId,
         double* result);
 
+    OCCTBRIDGE_API OcctStatus occt_model_edge_length_at_parameter(
+        OcctModelingSessionHandle handle,
+        OcctObjectId edgeId,
+        double parameter,
+        double* result);
+
     OCCTBRIDGE_API OcctStatus occt_model_edge_point_at_length(
         OcctModelingSessionHandle handle,
         OcctObjectId edgeId,

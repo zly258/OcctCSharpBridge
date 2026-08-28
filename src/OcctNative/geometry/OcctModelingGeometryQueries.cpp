@@ -7,6 +7,7 @@
 #include <GCPnts_AbscissaPoint.hxx>
 #include <TopAbs_Orientation.hxx>
 
+#include <algorithm>
 #include <cmath>
 
 using namespace OcctModelingInternal;
@@ -64,9 +65,12 @@ extern "C"
         {
             const TopoDS_Shape& shape = model->requireShape(edgeId);
             if (shape.ShapeType() != TopAbs_EDGE) throw std::invalid_argument("Input must be an edge.");
-            BRepAdaptor_Curve curve(TopoDS::Edge(shape));
-            const gp_Pnt first = curve.Value(curve.FirstParameter());
-            const gp_Pnt last = curve.Value(curve.LastParameter());
+            const TopoDS_Edge edge = TopoDS::Edge(shape);
+            BRepAdaptor_Curve curve(edge);
+            gp_Pnt first = curve.Value(curve.FirstParameter());
+            gp_Pnt last = curve.Value(curve.LastParameter());
+            if (edge.Orientation() == TopAbs_REVERSED)
+                std::swap(first, last);
             *start = {first.X(), first.Y(), first.Z()};
             *end = {last.X(), last.Y(), last.Z()};
         });
@@ -109,6 +113,29 @@ extern "C"
             if (shape.ShapeType() != TopAbs_EDGE) throw std::invalid_argument("Input must be an edge.");
             BRepAdaptor_Curve curve(TopoDS::Edge(shape));
             *result = edgeLength(curve);
+        });
+    }
+
+
+    OcctStatus occt_model_edge_length_at_parameter(OcctModelingSessionHandle handle, OcctObjectId edgeId, double parameter, double* result)
+    {
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+        *result = 0.0;
+        return executeStatus(model, [&]
+        {
+            if (!std::isfinite(parameter)) throw std::invalid_argument("Curve parameter must be finite.");
+            const TopoDS_Shape& shape = model->requireShape(edgeId);
+            if (shape.ShapeType() != TopAbs_EDGE) throw std::invalid_argument("Input must be an edge.");
+            BRepAdaptor_Curve curve(TopoDS::Edge(shape));
+            const double first = curve.FirstParameter();
+            const double last = curve.LastParameter();
+            const double tolerance = Precision::PConfusion();
+            if (parameter < first - tolerance || parameter > last + tolerance)
+                throw std::invalid_argument("Curve parameter is outside the edge range.");
+            const double clamped = std::max(first, std::min(last, parameter));
+            *result = GCPnts_AbscissaPoint::Length(curve, first, clamped);
         });
     }
 
