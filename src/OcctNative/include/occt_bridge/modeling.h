@@ -10,6 +10,7 @@
 #include "geometry/OcctModelingTransform.h"
 #include "geometry/OcctModelingGeometryQueries.h"
 #include "geometry/OcctModelingAnalyticGeometry.h"
+#include "geometry/OcctModelingFreeformGeometry.h"
 #include "geometry/OcctModelingDifferentialGeometry.h"
 #include "modeling/OcctModelingBoolean.h"
 #include "modeling/OcctModelingFeatures.h"
