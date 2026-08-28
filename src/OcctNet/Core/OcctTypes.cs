@@ -160,6 +160,21 @@ public struct OcctProjectionRay
 }
 
 [StructLayout(LayoutKind.Sequential)]
+public struct OcctAffineTransform
+{
+    public double M00; public double M01; public double M02; public double M03;
+    public double M10; public double M11; public double M12; public double M13;
+    public double M20; public double M21; public double M22; public double M23;
+
+    public static OcctAffineTransform Identity => new()
+    {
+        M00 = 1.0,
+        M11 = 1.0,
+        M22 = 1.0
+    };
+}
+
+[StructLayout(LayoutKind.Sequential)]
 public struct OcctCameraState
 {
     public OcctPoint3d Eye;

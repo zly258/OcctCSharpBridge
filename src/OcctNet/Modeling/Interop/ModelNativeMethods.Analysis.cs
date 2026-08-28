@@ -44,6 +44,14 @@ internal static partial class ModelNativeMethods
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_shape_distance(
+        OcctModelingSafeHandle handle,
+        long firstShapeId,
+        long secondShapeId,
+        out OcctDistanceResult result);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_model_classify_point(
         OcctModelingSafeHandle handle,
         long solidId,

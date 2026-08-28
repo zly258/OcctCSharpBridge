@@ -7,6 +7,8 @@
 #include <GCPnts_AbscissaPoint.hxx>
 #include <TopAbs_Orientation.hxx>
 
+#include <cmath>
+
 using namespace OcctModelingInternal;
 
 extern "C"

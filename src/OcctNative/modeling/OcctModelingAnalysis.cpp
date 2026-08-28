@@ -3,6 +3,7 @@
 #include "modeling/OcctModelingShapeInternal.hxx"
 
 #include <BRepClass3d_SolidClassifier.hxx>
+#include <BRepExtrema_DistShapeShape.hxx>
 #include <BRepTools.hxx>
 #include <GeomAPI_ProjectPointOnCurve.hxx>
 #include <GeomAPI_ProjectPointOnSurf.hxx>
@@ -193,6 +194,34 @@ extern "C"
 
             for (int index = 0; index < count; ++index)
                 results[index] = model->rayHits[static_cast<std::size_t>(index)];
+        });
+    }
+
+    OcctStatus occt_model_shape_distance(
+        OcctModelingSessionHandle handle,
+        OcctObjectId firstShapeId,
+        OcctObjectId secondShapeId,
+        OcctDistanceResult* result)
+    {
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = {};
+        return executeStatus(model, [&]
+        {
+            BRepExtrema_DistShapeShape distance(
+                model->requireShape(firstShapeId),
+                model->requireShape(secondShapeId));
+            distance.Perform();
+            if (!distance.IsDone() || distance.NbSolution() < 1)
+                throw std::runtime_error("Shape distance calculation failed.");
+
+            const gp_Pnt firstPoint = distance.PointOnShape1(1);
+            const gp_Pnt secondPoint = distance.PointOnShape2(1);
+            result->distance = distance.Value();
+            result->pointOnFirst = {firstPoint.X(), firstPoint.Y(), firstPoint.Z()};
+            result->pointOnSecond = {secondPoint.X(), secondPoint.Y(), secondPoint.Z()};
         });
     }
 

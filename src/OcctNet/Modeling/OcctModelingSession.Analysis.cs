@@ -59,6 +59,15 @@ public sealed partial class OcctModelingSession
         return result;
     }
 
+    public OcctDistanceResult GetDistance(OcctModelShape first, OcctModelShape second)
+    {
+        EnsureShape(first);
+        EnsureShape(second);
+        CheckStatus(ModelNativeMethods.occt_model_shape_distance(
+            _handle, first.Id, second.Id, out var result));
+        return result;
+    }
+
     public OcctModelState ClassifyPoint(OcctModelShape solid, OcctPoint3d point, double tolerance = 1e-7)
     {
         EnsureShape(solid);
