@@ -32,6 +32,8 @@ On Windows, `sync.ps1` is the source-driven Binary SDK entry point:
 `sync.ps1` does not run the Bridge `sdk` / `all` QA gate. Demo build/run validation remains consumer-side. Linux keeps its platform-specific `sync.sh` artifact workflow.
 ## Build the Demo
 
+On a fresh clone, `build.ps1` automatically runs the existing `sync.ps1` workflow when the Binary SDK cache is missing. If `external/OcctCSharpBridge/win-x64` is already complete, the Bridge is not synchronized or rebuilt again. Use `sync.ps1` explicitly when you want to refresh or change the Bridge branch.
+
 Windows:
 
 ```powershell

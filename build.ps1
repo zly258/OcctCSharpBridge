@@ -29,6 +29,7 @@ $ManifestPath = Join-Path $DistRoot "bridge-manifest.json"
 $GlobalJsonPath = Join-Path $RepoRoot "global.json"
 $ConsumerCheckPath = Join-Path $RepoRoot "tests\check-sdk-consumer.ps1"
 $NoReflectionCheckPath = Join-Path $RepoRoot "tests\check-no-reflection-dispatch.ps1"
+$SyncScriptPath = Join-Path $RepoRoot "sync.ps1"
 $SdkFileNames = @(
     "OcctNative.dll",
     "OcctNet.dll",
@@ -155,6 +156,21 @@ function Invoke-DotNetChecked {
         if ($LASTEXITCODE -ne 0) { throw $ErrorMessage }
     }
     finally { Pop-Location }
+}
+
+function Ensure-BinarySdk {
+    $missing = @($SdkFileNames | Where-Object { -not (Test-Path -LiteralPath (Join-Path $DistRoot $_) -PathType Leaf) })
+    if ($missing.Count -eq 0) { return }
+
+    Assert-Path $SyncScriptPath
+    Write-Host "[bridge] Binary SDK is missing; synchronizing Bridge main..." -ForegroundColor Cyan
+    & $SyncScriptPath -BridgeBranch "main"
+    if (-not $?) { throw "Bridge Binary SDK synchronization failed." }
+
+    $stillMissing = @($SdkFileNames | Where-Object { -not (Test-Path -LiteralPath (Join-Path $DistRoot $_) -PathType Leaf) })
+    if ($stillMissing.Count -gt 0) {
+        throw "Bridge Binary SDK synchronization completed without required files: $($stillMissing -join ', ')."
+    }
 }
 
 function Test-BinarySdk {
@@ -289,6 +305,7 @@ Assert-Path $ConsumerCheckPath
 Write-Host "[consumer] Running SDK consumer boundary check..." -ForegroundColor Cyan
 & $ConsumerCheckPath -RepositoryRoot $RepoRoot
 if (-not $?) { throw "SDK consumer boundary validation failed." }
+Ensure-BinarySdk
 $contract = Test-BinarySdk
 Write-Host "Bridge:        $($contract.bridgeVersion), ABI 5 only, OCCT $($contract.occtVersion), target $script:BridgeCoreTargetFramework" -ForegroundColor Green
 

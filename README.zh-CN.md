@@ -32,6 +32,8 @@ Windows 下，`sync.ps1` 采用源码驱动的 Binary SDK 同步流程：
 `sync.ps1` 不执行 Bridge 的 `sdk` / `all` 完整 QA Gate；Demo 自己的 build/run 继续负责 Consumer 验证。Linux 仍保留平台自己的 `sync.sh` 制品同步流程。
 ## Demo 构建
 
+fresh clone 下，如果 Binary SDK 缓存不存在，`build.ps1` 会自动调用现有 `sync.ps1` 准备 SDK；如果 `external/OcctCSharpBridge/win-x64` 已完整存在，则不会再次同步或编译 Bridge。需要主动刷新或切换 Bridge 分支时，再显式执行 `sync.ps1`。
+
 Windows：
 
 ```powershell
