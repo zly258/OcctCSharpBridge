@@ -112,6 +112,12 @@ extern "C"
         int y,
         OcctPoint3d* result);
 
+    OCCTBRIDGE_API OcctStatus occt_engine_view_projection_ray(
+        OcctEngineHandle handle,
+        int x,
+        int y,
+        OcctProjectionRay* result);
+
     OCCTBRIDGE_API OcctStatus occt_engine_view_world_to_screen(
         OcctEngineHandle handle,
         OcctPoint3d point,

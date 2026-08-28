@@ -146,6 +146,14 @@ internal static partial class ViewNativeMethods
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_view_projection_ray(
+        OcctEngineSafeHandle handle,
+        int x,
+        int y,
+        out OcctProjectionRay result);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_engine_view_world_to_screen(
         OcctEngineSafeHandle handle,
         OcctPoint3d point,

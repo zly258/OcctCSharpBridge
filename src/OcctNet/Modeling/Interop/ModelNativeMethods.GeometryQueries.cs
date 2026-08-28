@@ -31,6 +31,23 @@ internal static partial class ModelNativeMethods
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_edge_length(
+        OcctModelingSafeHandle handle,
+        long edgeId,
+        out double result);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_edge_point_at_length(
+        OcctModelingSafeHandle handle,
+        long edgeId,
+        double length,
+        out double curveParameter,
+        out OcctPoint3d resultPoint,
+        out OcctVector3d resultTangent);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_model_edge_curve_type(
         OcctModelingSafeHandle handle,
         long edgeId,

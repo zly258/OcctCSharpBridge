@@ -153,6 +153,13 @@ public struct OcctDistanceResult
 }
 
 [StructLayout(LayoutKind.Sequential)]
+public struct OcctProjectionRay
+{
+    public OcctPoint3d Origin;
+    public OcctVector3d Direction;
+}
+
+[StructLayout(LayoutKind.Sequential)]
 public struct OcctCameraState
 {
     public OcctPoint3d Eye;

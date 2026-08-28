@@ -35,6 +35,40 @@ public sealed partial class OcctModelingSession
         return new OcctEdgeEvaluation(point, tangent);
     }
 
+    public double GetEdgeLength(OcctModelShape edge)
+    {
+        EnsureShape(edge);
+        CheckStatus(ModelNativeMethods.occt_model_edge_length(_handle, edge.Id, out var result));
+        return result;
+    }
+
+    public double GetEdgeParameterAtLength(OcctModelShape edge, double length)
+    {
+        EnsureShape(edge);
+        if (!double.IsFinite(length) || length < 0.0)
+            throw new ArgumentOutOfRangeException(nameof(length));
+        CheckStatus(ModelNativeMethods.occt_model_edge_point_at_length(
+            _handle, edge.Id, length, out var parameter, out _, out _));
+        return parameter;
+    }
+
+    public OcctEdgeEvaluation EvaluateEdgeAtLength(OcctModelShape edge, double length)
+    {
+        EnsureShape(edge);
+        if (!double.IsFinite(length) || length < 0.0)
+            throw new ArgumentOutOfRangeException(nameof(length));
+        CheckStatus(ModelNativeMethods.occt_model_edge_point_at_length(
+            _handle, edge.Id, length, out _, out var point, out var tangent));
+        return new OcctEdgeEvaluation(point, tangent);
+    }
+
+    public OcctEdgeEvaluation EvaluateEdgeAtLengthRatio(OcctModelShape edge, double ratio)
+    {
+        EnsureShape(edge);
+        OcctGuard.UnitInterval(ratio, nameof(ratio));
+        return EvaluateEdgeAtLength(edge, GetEdgeLength(edge) * ratio);
+    }
+
     public OcctCurveType GetEdgeCurveType(OcctModelShape edge)
     {
         EnsureShape(edge);

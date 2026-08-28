@@ -399,6 +399,40 @@ extern "C"
         });
     }
 
+    OcctStatus occt_engine_view_projection_ray(
+        OcctEngineHandle handle,
+        int x,
+        int y,
+        OcctProjectionRay* result)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (result == nullptr)
+        {
+            if (engine != nullptr)
+                engine->setError(OcctStatus_ErrorInvalidArgument, "Projection ray output is null.");
+            return engine == nullptr ? OcctStatus_ErrorInvalidHandle : OcctStatus_ErrorInvalidArgument;
+        }
+
+        *result = {};
+        return executeViewStatus(engine, [&]
+        {
+            Standard_Real originX = 0.0;
+            Standard_Real originY = 0.0;
+            Standard_Real originZ = 0.0;
+            Standard_Real directionX = 0.0;
+            Standard_Real directionY = 0.0;
+            Standard_Real directionZ = 0.0;
+            engine->viewerContext.view->ConvertWithProj(
+                x, y,
+                originX, originY, originZ,
+                directionX, directionY, directionZ);
+
+            const gp_Dir rayDirection(directionX, directionY, directionZ);
+            result->origin = {originX, originY, originZ};
+            result->direction = {rayDirection.X(), rayDirection.Y(), rayDirection.Z()};
+        });
+    }
+
     OcctStatus occt_engine_view_world_to_screen(
         OcctEngineHandle handle,
         OcctPoint3d worldPoint,

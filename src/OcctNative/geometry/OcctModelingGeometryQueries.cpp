@@ -4,6 +4,7 @@
 #include <BRepAdaptor_Curve.hxx>
 #include <BRepAdaptor_Surface.hxx>
 #include <BRepTools.hxx>
+#include <GCPnts_AbscissaPoint.hxx>
 #include <TopAbs_Orientation.hxx>
 
 using namespace OcctModelingInternal;
@@ -85,6 +86,89 @@ extern "C"
             if (tangent.SquareMagnitude() <= Precision::SquareConfusion())
                 throw std::runtime_error("Edge tangent is undefined at this parameter.");
             tangent.Normalize();
+            *resultPoint = {point.X(), point.Y(), point.Z()};
+            *resultTangent = {tangent.X(), tangent.Y(), tangent.Z()};
+        });
+    }
+
+    OcctStatus occt_model_edge_length(
+        OcctModelingSessionHandle handle,
+        OcctObjectId edgeId,
+        double* result)
+    {
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *result = 0.0;
+        return executeStatus(model, [&]
+        {
+            const TopoDS_Shape& shape = model->requireShape(edgeId);
+            if (shape.ShapeType() != TopAbs_EDGE)
+                throw std::invalid_argument("Input must be an edge.");
+
+            BRepAdaptor_Curve curve(TopoDS::Edge(shape));
+            *result = GCPnts_AbscissaPoint::Length(
+                curve,
+                curve.FirstParameter(),
+                curve.LastParameter());
+        });
+    }
+
+    OcctStatus occt_model_edge_point_at_length(
+        OcctModelingSessionHandle handle,
+        OcctObjectId edgeId,
+        double length,
+        double* curveParameter,
+        OcctPoint3d* resultPoint,
+        OcctVector3d* resultTangent)
+    {
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (curveParameter == nullptr || resultPoint == nullptr || resultTangent == nullptr)
+            return OcctStatus_ErrorInvalidArgument;
+
+        *curveParameter = 0.0;
+        *resultPoint = {};
+        *resultTangent = {};
+        return executeStatus(model, [&]
+        {
+            if (!std::isfinite(length) || length < 0.0)
+                throw std::invalid_argument("Arc length must be finite and non-negative.");
+
+            const TopoDS_Shape& shape = model->requireShape(edgeId);
+            if (shape.ShapeType() != TopAbs_EDGE)
+                throw std::invalid_argument("Input must be an edge.");
+
+            BRepAdaptor_Curve curve(TopoDS::Edge(shape));
+            const double totalLength = GCPnts_AbscissaPoint::Length(
+                curve,
+                curve.FirstParameter(),
+                curve.LastParameter());
+            if (length > totalLength + Precision::Confusion())
+                throw std::out_of_range("Arc length exceeds the edge length.");
+
+            double parameter = curve.FirstParameter();
+            if (length >= totalLength - Precision::Confusion())
+            {
+                parameter = curve.LastParameter();
+            }
+            else if (length > Precision::Confusion())
+            {
+                GCPnts_AbscissaPoint abscissa(curve, length, curve.FirstParameter());
+                if (!abscissa.IsDone())
+                    throw std::runtime_error("Unable to resolve edge parameter from arc length.");
+                parameter = abscissa.Parameter();
+            }
+
+            gp_Pnt point;
+            gp_Vec tangent;
+            curve.D1(parameter, point, tangent);
+            if (tangent.SquareMagnitude() <= Precision::SquareConfusion())
+                throw std::runtime_error("Edge tangent is undefined at the requested arc length.");
+            tangent.Normalize();
+
+            *curveParameter = parameter;
             *resultPoint = {point.X(), point.Y(), point.Z()};
             *resultTangent = {tangent.X(), tangent.Y(), tangent.Z()};
         });

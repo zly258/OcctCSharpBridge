@@ -181,6 +181,13 @@ public sealed partial class OcctEngine
         return point;
     }
 
+    public OcctProjectionRay GetViewRay(int x, int y)
+    {
+        EnsureInitialized();
+        CheckViewStatus(ViewNativeMethods.occt_engine_view_projection_ray(_handle, x, y, out var result));
+        return result;
+    }
+
     public Point WorldToScreen(OcctPoint3d point)
     {
         OcctGuard.Finite(point, nameof(point));
