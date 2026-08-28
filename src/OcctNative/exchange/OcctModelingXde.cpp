@@ -2,6 +2,7 @@
 #include "exchange/OcctExchangePath.hxx"
 #include "exchange/OcctModelingExchangeInternal.hxx"
 #include "modeling/OcctModelingSessionInternal.hxx"
+#include "modeling/OcctModelingShapeInternal.hxx"
 
 #include <BRep_Builder.hxx>
 #include <IGESCAFControl_Reader.hxx>
@@ -186,7 +187,7 @@ namespace
 
             if (!firstStyle) stream << ',';
             firstStyle = false;
-            stream << "{\"shapeType\":" << shapeTypeValue(styledShape)
+            stream << "{\"shapeType\":" << toOcctShapeType(styledShape.ShapeType())
                    << ",\"subshapeIndex\":" << (mappedIndex - 1) << ',';
             appendStyleJson(stream, iterator.Value());
             stream << '}';
