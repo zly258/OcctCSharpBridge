@@ -35,6 +35,14 @@ extern "C"
         OcctPoint3d* resultPoint,
         OcctVector3d* resultTangent);
 
+    OCCTBRIDGE_API OcctStatus occt_model_edge_sample_points_snapshot_get(
+        OcctModelingSessionHandle handle,
+        OcctObjectId edgeId,
+        int sampleCount,
+        OcctPoint3d* results,
+        int capacity,
+        int* required);
+
     OCCTBRIDGE_API OcctStatus occt_model_edge_curve_type(
         OcctModelingSessionHandle handle,
         OcctObjectId edgeId,

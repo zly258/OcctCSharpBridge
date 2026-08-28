@@ -1,7 +1,8 @@
-﻿#include "topology/OcctModelingTopology.h"
+#include "topology/OcctModelingTopology.h"
 #include "modeling/OcctModelingShapeInternal.hxx"
 
 #include <BRepTools.hxx>
+#include <BRepTools_WireExplorer.hxx>
 #include <TopTools_IndexedDataMapOfShapeListOfShape.hxx>
 #include <TopTools_ListIteratorOfListOfShape.hxx>
 
@@ -122,6 +123,31 @@ extern "C"
         });
     }
 
+    OcctStatus occt_model_wire_edges_snapshot_get(
+        OcctModelingSessionHandle handle,
+        OcctObjectId wireId,
+        OcctObjectId* results,
+        int capacity,
+        int* required)
+    {
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (capacity < 0 || required == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *required = 0;
+        return executeStatus(model, [&]
+        {
+            const TopoDS_Shape& shape = model->requireShape(wireId);
+            if (shape.ShapeType() != TopAbs_WIRE)
+                throw std::invalid_argument("Input must be a wire.");
+
+            TopTools_ListOfShape edges;
+            for (BRepTools_WireExplorer explorer(TopoDS::Wire(shape)); explorer.More(); explorer.Next())
+                edges.Append(explorer.Current());
+            copyShapeList(model, edges, results, capacity, required);
+        });
+    }
+
     OcctStatus occt_model_ancestors_snapshot_get(
         OcctModelingSessionHandle handle,
         OcctObjectId rootId,
@@ -142,9 +168,7 @@ extern "C"
             const TopoDS_Shape& child = model->requireShape(childId);
             TopTools_IndexedDataMapOfShapeListOfShape map;
             TopExp::MapShapesAndAncestors(root, child.ShapeType(), toShapeEnum(ancestorType), map);
-            if (!map.Contains(child))
-                return;
-
+            if (!map.Contains(child)) return;
             copyShapeList(model, map.FindFromKey(child), results, capacity, required);
         });
     }
