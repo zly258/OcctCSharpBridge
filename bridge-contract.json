@@ -125,7 +125,8 @@
       "exchange/OcctModelingExchange.h",
       "exchange/OcctBrepMemory.h",
       "modeling/OcctModelingPlaneSplit.h",
-      "modeling/OcctModelingHlr.h"
+      "modeling/OcctModelingHlr.h",
+      "exchange/OcctModelingXde.h"
     ]
   }
 }

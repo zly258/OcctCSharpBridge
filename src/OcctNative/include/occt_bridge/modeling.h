@@ -35,5 +35,6 @@
 #include "exchange/OcctModelingExchange.h"
 #include "exchange/OcctObjGltfExchange.h"
 #include "exchange/OcctBrepMemory.h"
+#include "exchange/OcctModelingXde.h"
 #include "modeling/OcctModelingPlaneSplit.h"
 #include "modeling/OcctModelingHlr.h"

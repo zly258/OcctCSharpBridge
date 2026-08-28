@@ -158,6 +158,8 @@ add_library(OcctNative SHARED
     exchange/OcctObjGltfExchange.h
     exchange/OcctBrepMemory.cpp
     exchange/OcctBrepMemory.h
+    exchange/OcctModelingXde.cpp
+    exchange/OcctModelingXde.h
     modeling/OcctModelingPlaneSplit.cpp
     modeling/OcctModelingPlaneSplit.h
     modeling/OcctModelingHlr.cpp
