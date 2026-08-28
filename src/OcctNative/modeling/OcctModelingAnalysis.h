@@ -32,12 +32,6 @@ extern "C"
         int capacity,
         int* required);
 
-    OCCTBRIDGE_API OcctStatus occt_model_shape_distance(
-        OcctModelingSessionHandle handle,
-        OcctObjectId firstShapeId,
-        OcctObjectId secondShapeId,
-        OcctDistanceResult* result);
-
     OCCTBRIDGE_API OcctStatus occt_model_classify_point(
         OcctModelingSessionHandle handle,
         OcctObjectId solidId,
