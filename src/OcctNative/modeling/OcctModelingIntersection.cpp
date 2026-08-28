@@ -20,6 +20,7 @@
 #include <cmath>
 #include <limits>
 #include <stdexcept>
+#include <vector>
 
 using namespace OcctModelingInternal;
 
@@ -73,7 +74,7 @@ namespace
             secondRange.First(),
             secondRange.Last()};
     }
-    OcctStatus occt_model_intersect_edge_face_snapshot_get(
+    OcctStatus intersectEdgeFaceSnapshot(
         OcctModelingSessionHandle handle,
         OcctObjectId edgeId,
         OcctObjectId faceId,
@@ -248,5 +249,24 @@ extern "C"
             for (int index = 0; index < count; ++index)
                 results[index] = model->edgeIntersections[static_cast<std::size_t>(index)];
         });
+    }    OcctStatus occt_model_intersect_edge_face_snapshot_get(
+        OcctModelingSessionHandle handle,
+        OcctObjectId edgeId,
+        OcctObjectId faceId,
+        double tolerance,
+        OcctModelEdgeFaceIntersection* results,
+        int capacity,
+        int* required)
+    {
+        return intersectEdgeFaceSnapshot(
+            handle,
+            edgeId,
+            faceId,
+            tolerance,
+            results,
+            capacity,
+            required);
     }
+
+
 }
