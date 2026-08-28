@@ -53,6 +53,7 @@ namespace
         return executeStatus(model, std::forward<Action>(action));
     }
 
+
     void validateStlOptions(const OcctStlExportOptions* options)
     {
         if (options == nullptr) throw std::invalid_argument("STL export options are null.");
@@ -180,6 +181,7 @@ extern "C"
             writeModelIges(model->requireShape(shapeId), requiredPath(utf8Path));
         });
     }
+
 
     OcctStatus occt_model_brep_export(
         OcctModelingSessionHandle session,

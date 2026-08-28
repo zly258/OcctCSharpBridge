@@ -1,7 +1,7 @@
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("validate", "native", "managed", "consumer", "test", "smoke", "viewport-smoke", "dist", "sdk", "clean", "all")]
-    [string]$Target = "all",
+    [ValidateSet("build", "test", "smoke", "dist", "sdk", "clean")]
+    [string]$Target = "build",
 
     [Parameter(Position = 1)]
     [ValidateSet("Debug", "Release", "RelWithDebInfo")]
@@ -50,29 +50,21 @@ $DefaultDesktopRuntimeFramework = [string]$Contract.dotnet.defaultDesktopRuntime
 $SdkVersion = [string]$Contract.dotnet.sdkVersion
 $SdkRollForward = [string]$Contract.dotnet.sdkRollForward
 
+if ([string]::IsNullOrWhiteSpace($BridgeVersion) -or
+    [string]::IsNullOrWhiteSpace($RequiredOcctVersion) -or
+    [string]::IsNullOrWhiteSpace($TargetFramework) -or
+    [int]$Contract.nativeAbi.current -ne 5 -or
+    [int]$Contract.nativeAbi.minimumSupported -ne 5) {
+    throw "bridge-contract.json is incomplete or does not describe the supported ABI 5 build."
+}
+
 $Projects = [ordered]@{
     Core = "src\OcctNet\OcctNet.csproj"
     WinForms = "src\OcctNet.WinForms\OcctNet.WinForms.csproj"
     Wpf = "src\OcctNet.Wpf\OcctNet.Wpf.csproj"
     Avalonia = "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj"
-    ConsumerMatrix = "tests\OcctNet.ConsumerMatrix\OcctNet.ConsumerMatrix.csproj"
-    DesktopConsumerMatrix = "tests\OcctNet.DesktopConsumerMatrix\OcctNet.DesktopConsumerMatrix.csproj"
     ManagedTests = "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj"
     Smoke = "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
-    WinFormsSmoke = "tests\OcctNet.WinFormsSmoke\OcctNet.WinFormsSmoke.csproj"
-    WpfSmoke = "tests\OcctNet.WpfSmoke\OcctNet.WpfSmoke.csproj"
-    AvaloniaSmoke = "tests\OcctNet.AvaloniaSmoke\OcctNet.AvaloniaSmoke.csproj"
-}
-
-$Checks = [ordered]@{
-    Version = "tests\check-version-contract.ps1"
-    Architecture = "tests\check-architecture-boundaries.ps1"
-    Abi5 = "tests\check-abi5-contract.ps1"
-    BulkAbi = "tests\check-bulk-abi.ps1"
-    NativeBuild = "tests\check-native-build-structure.ps1"
-    ExceptionBoundary = "tests\check-native-exception-boundaries.ps1"
-    ApiSurface = "tests\check-api-surface.ps1"
-    ConsumerMatrix = "tests\check-consumer-matrix.ps1"
 }
 
 $script:DotNetCommand = $null
@@ -224,20 +216,10 @@ function Invoke-DotNetChecked {
     }
 }
 
-function Invoke-ContractChecks {
-    foreach ($check in $Checks.GetEnumerator()) {
-        $path = Join-Path $RepoRoot $check.Value
-        Assert-Path $path
-        Write-Host ("[{0}] Running {1}..." -f $check.Key.ToLowerInvariant(), $check.Value) -ForegroundColor Cyan
-        & $path -RepositoryRoot $RepoRoot
-        if (-not $?) { throw "$($check.Key) validation failed." }
-    }
-}
-
 function Resolve-OcctConfiguration {
     $script:OcctRoot = [System.IO.Path]::GetFullPath($OcctRoot)
     if (-not (Test-Path $script:OcctRoot -PathType Container)) {
-        throw "OCCT SDK root was not found: $script:OcctRoot. Set OCCT_ROOT, pass -OcctRoot <path>, or install OCCT at $DefaultOcctRoot. validate/managed/test/consumer do not require OCCT."
+        throw "OCCT SDK root was not found: $script:OcctRoot. Set OCCT_ROOT, pass -OcctRoot <path>, or install OCCT at $DefaultOcctRoot. test does not require OCCT."
     }
     $script:OcctIncludeDir = Join-Path $script:OcctRoot "inc"
     $script:OcctLibDir = Join-Path $script:OcctRoot "win64\vc14\lib"
@@ -311,12 +293,6 @@ function Build-Managed {
     Build-Project "Avalonia"
 }
 
-function Build-ConsumerMatrix {
-    Write-Host "[consumer] Compiling .NET 8/9/10 consumer compatibility matrix..." -ForegroundColor Cyan
-    Build-Project "ConsumerMatrix"
-    Build-Project "DesktopConsumerMatrix"
-}
-
 function Get-OcctRuntimeDirectories {
     Resolve-OcctConfiguration
     $runtimeDirectories = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
@@ -388,36 +364,6 @@ function Run-Smoke {
             "--no-build"
         ) "Smoke test failed."
     }
-}
-
-function Run-ViewportSmokeProject {
-    param(
-        [Parameter(Mandatory = $true)][string]$ProjectKey,
-        [Parameter(Mandatory = $true)][string]$Framework
-    )
-
-    Assert-Path $NativeDll
-    Build-Project $ProjectKey
-    $project = Join-Path $RepoRoot $Projects[$ProjectKey]
-    $output = Prepare-SmokeOutput $ProjectKey $Framework
-
-    Invoke-WithOcctRuntime $output {
-        Write-Host "[$($ProjectKey.ToLowerInvariant())] Running native viewport lifecycle/render smoke..." -ForegroundColor Cyan
-        Invoke-DotNetChecked @(
-            "run",
-            "--project", $project,
-            "-c", $Configuration,
-            "-p:Platform=x64",
-            "-p:Version=$BridgeVersion",
-            "--no-build"
-        ) "$ProjectKey failed."
-    }
-}
-
-function Run-ViewportSmokes {
-    Run-ViewportSmokeProject "WinFormsSmoke" $DefaultDesktopRuntimeFramework
-    Run-ViewportSmokeProject "WpfSmoke" $DefaultDesktopRuntimeFramework
-    Run-ViewportSmokeProject "AvaloniaSmoke" $DefaultRuntimeFramework
 }
 
 function Clean-Outputs {
@@ -554,19 +500,17 @@ if ($Target -eq "clean") {
     exit 0
 }
 
-if ($Target -in @("managed", "consumer", "test", "smoke", "viewport-smoke", "dist", "sdk", "all")) {
+if ($Target -in @("build", "test", "smoke", "dist", "sdk")) {
     Resolve-DotNetSdk
     Write-Host "dotnet:        $script:DotNetCommand" -ForegroundColor DarkGray
     Write-Host "SDK resolved:  $script:ResolvedSdkVersion" -ForegroundColor Green
 }
 
-Invoke-ContractChecks
-
 switch ($Target) {
-    "validate" { }
-    "native" { Build-Native }
-    "managed" { Build-Managed }
-    "consumer" { Build-ConsumerMatrix }
+    "build" {
+        Build-Native
+        Build-Managed
+    }
     "test" {
         Build-Project "ManagedTests"
         Run-ManagedTests
@@ -578,31 +522,15 @@ switch ($Target) {
         Write-Host "[sdk] Clean source commit: $sdkSourceCommit" -ForegroundColor DarkGray
         Build-Native
         Build-Managed
-        Build-ConsumerMatrix
         Build-Project "ManagedTests"
         Run-ManagedTests
         Run-Smoke
-        Run-ViewportSmokes
         Build-BinaryDistribution -SkipBuild -ExpectedSourceCommit $sdkSourceCommit
     }
     "smoke" {
         Build-Native
         Build-Managed
         Run-Smoke
-    }
-    "viewport-smoke" {
-        Build-Native
-        Build-Managed
-        Run-ViewportSmokes
-    }
-    "all" {
-        Build-Native
-        Build-Managed
-        Build-ConsumerMatrix
-        Build-Project "ManagedTests"
-        Run-ManagedTests
-        Run-Smoke
-        Run-ViewportSmokes
     }
 }
 

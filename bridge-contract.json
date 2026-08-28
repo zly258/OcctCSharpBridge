@@ -7,18 +7,22 @@
   },
   "occtVersion": "7.9.0",
   "platform": "cross-platform-x64",
-  "supportedPlatforms": ["windows-x64", "linux-x64"],
+  "supportedPlatforms": [
+    "windows-x64",
+    "linux-x64"
+  ],
   "distribution": {
-    "officialPrebuiltPlatforms": ["windows-x64"],
-    "sourceBuildPlatforms": ["windows-x64", "linux-x64"],
+    "officialPrebuiltPlatforms": [
+      "windows-x64"
+    ],
+    "sourceBuildPlatforms": [
+      "windows-x64",
+      "linux-x64"
+    ],
     "linuxPrebuiltRelease": false
   },
   "release": {
-    "channel": "stable",
-    "compatibilityLine": "3.x",
-    "nativeAbiPolicy": "abi5-stable",
-    "managedCompatibilityPolicy": "no-breaking-changes-within-3.x",
-    "apiBaselineCommit": "aad8d4e82c3b97920fb4d8abcc7c2816f419881b"
+    "channel": "stable"
   },
   "cmakeMinimumVersion": "3.21",
   "author": "zly258",
@@ -28,23 +32,22 @@
     "desktopTargetFramework": "net10.0-windows",
     "defaultRuntimeFramework": "net10.0",
     "defaultDesktopRuntimeFramework": "net10.0-windows",
-    "supportedConsumerFrameworks": ["net8.0", "net9.0", "net10.0"],
-    "supportedDesktopConsumerFrameworks": ["net8.0-windows", "net9.0-windows", "net10.0-windows"],
+    "supportedConsumerFrameworks": [
+      "net8.0",
+      "net9.0",
+      "net10.0"
+    ],
+    "supportedDesktopConsumerFrameworks": [
+      "net8.0-windows",
+      "net9.0-windows",
+      "net10.0-windows"
+    ],
     "sdkVersion": "10.0.100",
     "sdkRollForward": "latestFeature",
     "languageVersion": "14.0"
   },
   "api": {
     "policy": "abi5-only",
-    "capabilities": [
-      "viewer.dimension.explicit-plane",
-      "viewer.dimension.text-height",
-      "viewer.selection.rectangle-query",
-      "viewer.highlight.selection-mode",
-      "viewer.highlight.hover-mode",
-      "viewer.triedron.position-scale-color",
-      "viewer.viewcube.position-size-offset"
-    ],
     "nativeHeaders": [
       "OcctNative.h",
       "exchange/OcctStepDocument.h",
@@ -82,6 +85,8 @@
       "geometry/OcctModelingTransform.h",
       "geometry/OcctModelingGeometryQueries.h",
       "geometry/OcctModelingAnalyticGeometry.h",
+      "geometry/OcctModelingFreeformGeometry.h",
+      "geometry/OcctModelingExtrema.h",
       "geometry/OcctModelingDifferentialGeometry.h",
       "geometry/OcctModelingContinuity.h",
       "modeling/OcctModelingBoolean.h",
@@ -106,7 +111,11 @@
       "geometry/OcctModelingCurveFit.h",
       "modeling/OcctModelingPipeShell.h",
       "exchange/OcctObjGltfExchange.h",
-      "exchange/OcctModelingExchange.h"
+      "exchange/OcctModelingExchange.h",
+      "exchange/OcctBrepMemory.h",
+      "modeling/OcctModelingPlaneSplit.h",
+      "modeling/OcctModelingHlr.h",
+      "exchange/OcctModelingXde.h"
     ]
   }
 }

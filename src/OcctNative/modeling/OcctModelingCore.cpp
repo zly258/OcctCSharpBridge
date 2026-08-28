@@ -15,7 +15,7 @@ namespace
         "headless;geometry-query;analytic-geometry;differential-geometry;topology;"
         "topology-reference;history;inertia;intersection;healing;mesh;projection;"
         "ray-intersection;classification;advanced-boolean;splitter;sweep;loft;"
-        "step;iges;brep;stl;viewer-interop";
+        "step;iges;brep;stl;xde-document;viewer-interop";
 
     OcctStatus copyUtf8(
         const std::string& value,

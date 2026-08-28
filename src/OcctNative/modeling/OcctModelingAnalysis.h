@@ -16,6 +16,20 @@ extern "C"
         OcctPoint3d pointValue,
         OcctModelProjectionResult* result);
 
+    OCCTBRIDGE_API OcctStatus occt_model_project_points_on_edge(
+        OcctModelingSessionHandle handle,
+        OcctObjectId edgeId,
+        const OcctPoint3d* points,
+        int count,
+        OcctModelProjectionResult* results);
+
+    OCCTBRIDGE_API OcctStatus occt_model_project_points_on_face(
+        OcctModelingSessionHandle handle,
+        OcctObjectId faceId,
+        const OcctPoint3d* points,
+        int count,
+        OcctModelProjectionResult* results);
+
     OCCTBRIDGE_API OcctStatus occt_model_ray_intersections(
         OcctModelingSessionHandle handle,
         OcctObjectId shapeId,

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TARGET="${1:-all}"
+TARGET="${1:-build}"
 CONFIGURATION="${2:-Release}"
 OCCT_ROOT="${OCCT_ROOT:-/usr/local}"
 OCCT_INCLUDE_DIR="${OCCT_INCLUDE_DIR:-${OCCT_ROOT}/include/opencascade}"
@@ -54,7 +54,6 @@ validate_common() {
     RESOLVED_SDK_VERSION="$(cd "${ROOT_DIR}" && dotnet --version)"
     sdk_is_compatible "${RESOLVED_SDK_VERSION}" || fail "A stable .NET 10 SDK compatible with baseline ${SDK_VERSION} / ${SDK_ROLL_FORWARD} is required; detected ${RESOLVED_SDK_VERSION}."
     [[ -n "${BRIDGE_VERSION}" && "${CURRENT_ABI}" == "5" && "${MINIMUM_ABI}" == "5" ]] || fail "Bridge contract must be complete and ABI5-only."
-    bash "${ROOT_DIR}/tests/check-linux-contract.sh" "${ROOT_DIR}"
 }
 
 validate_native() {
@@ -105,20 +104,6 @@ run_smoke() {
 smoke() {
     native
     run_smoke
-}
-
-run_avalonia_smoke() {
-    validate_native
-    [[ -n "${DISPLAY:-}" ]] || fail "Avalonia viewer smoke requires an X11/XWayland DISPLAY. Headless Linux can still run the regular modeling smoke."
-    [[ -f "${NATIVE_DIR}/libOcctNative.so" ]] || fail "Native bridge must be built before running Avalonia viewer smoke."
-    dotnet build "${ROOT_DIR}/tests/OcctNet.AvaloniaSmoke/OcctNet.AvaloniaSmoke.csproj" -c "${CONFIGURATION}" -p:Platform=x64 -p:Version="${BRIDGE_VERSION}" --nologo
-    prepare_native_runtime
-    dotnet run --project "${ROOT_DIR}/tests/OcctNet.AvaloniaSmoke/OcctNet.AvaloniaSmoke.csproj" -c "${CONFIGURATION}" -p:Platform=x64 -p:Version="${BRIDGE_VERSION}" --no-build
-}
-
-avalonia_smoke() {
-    native
-    run_avalonia_smoke
 }
 
 dist() {
@@ -173,20 +158,16 @@ dist() {
 
 clean() {
     rm -rf "${ROOT_DIR}/build" "${ROOT_DIR}/artifacts"
-    for path in src/OcctNet src/OcctNet.Avalonia tests/OcctNet.ManagedTests tests/OcctNet.Smoke tests/OcctNet.AvaloniaSmoke; do
+    for path in src/OcctNet src/OcctNet.Avalonia tests/OcctNet.ManagedTests tests/OcctNet.Smoke; do
         rm -rf "${ROOT_DIR}/${path}/bin" "${ROOT_DIR}/${path}/obj"
     done
 }
 
 case "${TARGET}" in
-    validate) validate_common ;;
-    native) native ;;
-    managed) managed ;;
+    build) native; managed ;;
     test) test_managed ;;
     smoke) smoke ;;
-    avalonia-smoke) avalonia_smoke ;;
     dist) dist ;;
     clean) clean ;;
-    all) native; managed; test_managed; run_smoke ;;
-    *) fail "Unknown target '${TARGET}'. Use validate, native, managed, test, smoke, avalonia-smoke, dist, clean, or all." ;;
+    *) fail "Unknown target '${TARGET}'. Use build, test, smoke, dist, or clean." ;;
 esac

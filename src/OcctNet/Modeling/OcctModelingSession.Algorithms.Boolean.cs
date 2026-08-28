@@ -56,7 +56,7 @@ public sealed partial class OcctModelingSession
         var shapeIds = ShapeIds(shapes);
         if (shapeIds.Length < 2)
             throw new ArgumentException("General Fuse requires at least two shapes.", nameof(shapes));
-        var actual = AdvancedBooleanOptions(options, nameof(options));
+        var actual = GeneralBooleanOptions(options, nameof(options));
         var nativeOptions = actual.ToNative();
         var status = ModelNativeMethods.occt_model_boolean_general_fuse_execute(
             _handle,
@@ -93,7 +93,7 @@ public sealed partial class OcctModelingSession
         if (avoidIds.Any(id => !argumentSet.Contains(id)))
             throw new ArgumentException("Every avoid shape must also be a CellsBuilder argument.", nameof(avoid));
 
-        var actual = AdvancedBooleanOptions(options, nameof(options));
+        var actual = GeneralBooleanOptions(options, nameof(options));
         var nativeOptions = actual.ToNative();
         var status = ModelNativeMethods.occt_model_boolean_cells_execute(
             _handle,
@@ -144,7 +144,7 @@ public sealed partial class OcctModelingSession
         return result;
     }
 
-    private static OcctModelBooleanOptions AdvancedBooleanOptions(
+    private static OcctModelBooleanOptions GeneralBooleanOptions(
         OcctModelBooleanOptions? options,
         string parameterName)
     {

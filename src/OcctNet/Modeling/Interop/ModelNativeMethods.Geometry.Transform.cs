@@ -34,6 +34,14 @@ internal static partial class ModelNativeMethods
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_transform_affine(
+        OcctModelingSafeHandle handle,
+        long shapeId,
+        OcctTransform3d transform,
+        out long result);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_model_transform_mirror_plane(
         OcctModelingSafeHandle handle,
         long shapeId,

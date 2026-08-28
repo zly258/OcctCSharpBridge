@@ -1,4 +1,4 @@
-﻿namespace OcctNet;
+namespace OcctNet;
 
 public sealed partial class OcctModelingSession
 {
@@ -34,5 +34,47 @@ public sealed partial class OcctModelingSession
         for (var index = 0; index < count; index++)
             result[index] = native[index].ToManaged();
         return result;
+    }
+
+    public IReadOnlyList<OcctEdgeFaceIntersection> IntersectEdgeFace(
+        OcctModelShape edge,
+        OcctModelShape face,
+        double tolerance = 1e-7)
+    {
+        EnsureShape(edge);
+        EnsureShape(face);
+        OcctGuard.NonNegative(tolerance, nameof(tolerance));
+
+        CheckStatus(ModelNativeMethods.occt_model_intersect_edge_face_snapshot_get(
+            _handle, edge.Id, face.Id, tolerance, null, 0, out var count));
+        if (count == 0) return Array.Empty<OcctEdgeFaceIntersection>();
+
+        var native = new NativeModelEdgeFaceIntersection[count];
+        CheckStatus(ModelNativeMethods.occt_model_intersect_edge_face_snapshot_get(
+            _handle, edge.Id, face.Id, tolerance, native, native.Length, out var required));
+        if (required != count)
+            throw new InvalidOperationException("Native edge/face intersection count changed during snapshot copy.");
+
+        var result = new OcctEdgeFaceIntersection[count];
+        for (var index = 0; index < count; ++index)
+            result[index] = native[index].ToManaged();
+        return result;
+    }
+
+    public OcctModelShape IntersectSurfaces(
+        OcctModelShape firstFace,
+        OcctModelShape secondFace,
+        double tolerance = 1e-7)
+    {
+        EnsureShape(firstFace);
+        EnsureShape(secondFace);
+        OcctGuard.Positive(tolerance, nameof(tolerance));
+        CheckStatus(ModelNativeMethods.occt_model_intersect_surfaces(
+            _handle,
+            firstFace.Id,
+            secondFace.Id,
+            tolerance,
+            out var result));
+        return CheckShape(result);
     }
 }

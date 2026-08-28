@@ -2,6 +2,23 @@ namespace OcctNet;
 
 public sealed partial class OcctModelingSession
 {
+
+    public OcctModelShape MakeHelix(double radius, double pitch, double turns, OcctPoint3d? origin = null, OcctVector3d? axis = null, OcctVector3d? xDirection = null)
+    {
+        OcctGuard.Positive(radius, nameof(radius));
+        OcctGuard.Positive(turns, nameof(turns));
+        OcctGuard.Finite(pitch, nameof(pitch));
+        if (Math.Abs(pitch) <= 1e-15) throw new ArgumentOutOfRangeException(nameof(pitch));
+        var actualOrigin = origin ?? OcctPoint3d.Origin;
+        var actualAxis = axis ?? OcctVector3d.UnitZ;
+        var actualXDirection = xDirection ?? OcctVector3d.UnitX;
+        OcctGuard.Finite(actualOrigin, nameof(origin));
+        OcctGuard.NonZero(actualAxis, nameof(axis));
+        OcctGuard.NonZero(actualXDirection, nameof(xDirection));
+        var status = ModelNativeMethods.occt_model_curve_helix_create(NativeHandle, actualOrigin, actualAxis, actualXDirection, radius, pitch, turns, out var result);
+        return CheckShape(status, result);
+    }
+
     public OcctModelShape MakeVertex(OcctPoint3d point)
     {
         OcctGuard.Finite(point, nameof(point));

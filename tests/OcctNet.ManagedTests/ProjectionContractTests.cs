@@ -41,4 +41,5 @@ public sealed class ProjectionContractTests
         Assert.AreEqual(9.0, face.V);
         Assert.AreEqual(10.0, face.Distance);
     }
+
 }

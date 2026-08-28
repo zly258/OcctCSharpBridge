@@ -41,7 +41,7 @@ Prefer:
 OcctCSharpBridge-<version>-win-x64-portable.zip
 ```
 
-A third-party consumer does not rerun Bridge ManagedTests, the consumer matrix, or viewport/window smoke for every SDK refresh. Full Bridge QA belongs to the release-production stage.
+A third-party consumer does not rerun Bridge tests or smoke for every SDK refresh. Full Bridge QA belongs to the release-production stage.
 
 ### 2.2 No formal Release asset
 
@@ -336,9 +336,9 @@ no official prebuilt Binary/Portable Release asset
 Typical validation:
 
 ```bash
-./build.sh validate Release
-./build.sh all Release
-./build.sh avalonia-smoke Release   # requires DISPLAY
+./build.sh build Release
+./build.sh test Release
+./build.sh smoke Release
 ```
 
 Build Linux binaries for the intended distribution, OCCT 7.9.0 installation, and C/C++ runtime baseline.

@@ -1,4 +1,4 @@
-﻿namespace OcctNet;
+namespace OcctNet;
 
 public sealed partial class OcctModelingSession
 {
@@ -46,6 +46,19 @@ public sealed partial class OcctModelingSession
                 ModelNativeMethods.occt_model_inner_wires_snapshot_get(
                     _handle,
                     face.Id,
+                    buffer,
+                    capacity,
+                    out required));
+    }
+
+    public IReadOnlyList<OcctModelShape> GetWireEdges(OcctModelShape wire)
+    {
+        EnsureShape(wire);
+        return ReadShapeCollection(
+            (long[]? buffer, int capacity, out int required) =>
+                ModelNativeMethods.occt_model_wire_edges_snapshot_get(
+                    _handle,
+                    wire.Id,
                     buffer,
                     capacity,
                     out required));

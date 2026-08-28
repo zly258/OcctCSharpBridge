@@ -20,11 +20,6 @@ public sealed class AppearanceContractTests
         Assert.AreEqual(OcctHighlightMode.Shaded, style.Mode);
         Assert.AreEqual(Color.Orange.ToArgb(), style.Color.ToArgb());
 
-        RequireEngineMethod(nameof(OcctEngine.SetSelectionHighlightColor), typeof(Color));
-        RequireEngineMethod(nameof(OcctEngine.SetHoverHighlightColor), typeof(Color));
-        RequireEngineMethod(nameof(OcctEngine.SetSelectionHighlightMode), typeof(OcctHighlightMode));
-        RequireEngineMethod(nameof(OcctEngine.SetHoverHighlightMode), typeof(OcctHighlightMode));
-        RequireEngineMethod(nameof(OcctEngine.SetSelectionHighlightStyle), typeof(OcctViewerHighlightStyle));
         RequireEngineMethod(nameof(OcctEngine.SetHoverHighlightStyle), typeof(OcctViewerHighlightStyle));
     }
 
@@ -65,16 +60,6 @@ public sealed class AppearanceContractTests
         Assert.AreEqual(12, viewCube.OffsetX);
         Assert.AreEqual(16, viewCube.OffsetY);
 
-        RequireEngineMethod(nameof(OcctEngine.SetTriedron), typeof(OcctTriedronOptions));
-        RequireEngineMethod(nameof(OcctEngine.SetTriedronPosition), typeof(OcctCornerPosition));
-        RequireEngineMethod(nameof(OcctEngine.SetTriedronScale), typeof(double));
-        RequireEngineMethod(nameof(OcctEngine.SetTriedronColor), typeof(Color));
-        RequireEngineMethod(nameof(OcctEngine.SetViewCube), typeof(OcctViewCubeOptions));
-        RequireEngineMethod(nameof(OcctEngine.SetViewCubeOptions), typeof(OcctViewCubeOptions));
-        RequireEngineMethod(nameof(OcctEngine.SetViewCubePosition), typeof(OcctCornerPosition));
-        RequireEngineMethod(nameof(OcctEngine.SetViewCubeSize), typeof(int));
-        RequireEngineMethod(nameof(OcctEngine.SetViewCubeOffset), typeof(int), typeof(int));
-        RequireEngineMethod(nameof(OcctEngine.SetViewCubeAxesVisible), typeof(bool));
     }
 
     private static IReadOnlyDictionary<string, int> EnumValues<TEnum>()

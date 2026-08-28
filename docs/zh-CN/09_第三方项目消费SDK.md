@@ -43,7 +43,7 @@ Windows Portable SDK Packager
 OcctCSharpBridge-<version>-win-x64-portable.zip
 ```
 
-第三方不需要重新跑 Bridge 的 ManagedTests、Consumer Matrix 或窗口 Smoke。正式制品的完整 QA 应在 Bridge Release 阶段完成一次，而不是由每个 Consumer 重复执行。
+第三方不需要在每次 SDK 更新时重新运行 Bridge 测试与 Smoke。正式制品的完整 QA 应在 Bridge Release 阶段完成一次，而不是由每个 Consumer 重复执行。
 
 ### 2.2 没有 Release Asset
 
@@ -361,9 +361,9 @@ Avalonia 可以运行
 典型验证：
 
 ```bash
-./build.sh validate Release
-./build.sh all Release
-./build.sh avalonia-smoke Release   # 需要 DISPLAY
+./build.sh build Release
+./build.sh test Release
+./build.sh smoke Release
 ```
 
 Linux 二进制应针对自己的目标发行版、OCCT 7.9.0 和 C/C++ Runtime 基线自行构建。

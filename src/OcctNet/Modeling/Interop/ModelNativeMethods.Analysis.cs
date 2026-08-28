@@ -24,6 +24,24 @@ internal static partial class ModelNativeMethods
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_project_points_on_edge(
+        OcctModelingSafeHandle handle,
+        long edgeId,
+        [In, MarshalUsing(CountElementName = nameof(count))] OcctPoint3d[] points,
+        int count,
+        [Out, MarshalUsing(CountElementName = nameof(count))] OcctModelProjectionResult[] results);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_project_points_on_face(
+        OcctModelingSafeHandle handle,
+        long faceId,
+        [In, MarshalUsing(CountElementName = nameof(count))] OcctPoint3d[] points,
+        int count,
+        [Out, MarshalUsing(CountElementName = nameof(count))] OcctModelProjectionResult[] results);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_model_ray_intersections(
         OcctModelingSafeHandle handle,
         long shapeId,

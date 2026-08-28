@@ -8,6 +8,16 @@ Shape handles remain valid only during the lifetime of their owning modeling ses
 
 High-cardinality results use bulk native APIs where possible to avoid N+1 P/Invoke calls per face or edge.
 
+## Geometry inspection and algorithms
+
+The geometry layer exposes canonical managed entry points for analytic and free-form inspection without introducing a second geometry object hierarchy.
+
+Curve and surface inspection includes line, circle, ellipse, parabola, hyperbola, Bezier, B-Spline, plane, cylinder, cone, sphere, torus, extrusion, revolution, and offset surface data. Bezier and B-Spline control data is transferred through bulk native buffers; the managed `GetBezierCurveData`, `GetBezierSurfaceData`, `GetBSplineCurveData`, and `GetBSplineSurfaceData` APIs do not perform per-pole or per-knot P/Invoke calls.
+
+Geometry algorithms include point projection, shape distance, curve/curve extrema, curve/surface extrema, surface/surface extrema, parameterized edge/edge and edge/face intersection, ray intersection, and underlying surface/surface intersection. `IntersectEdgeFace` reports both point intersections and tangential curve-on-surface overlap segments through `OcctIntersectionKind`. `IntersectSurfaces` returns the OCCT intersection curves as session-owned topology; Boolean `Section` remains the topology-level section operation.
+
+Mesh inspection exposes face nodes, normals, UV coordinates, triangle connectivity, face ranges, and shape-level mesh aggregation through the existing mesh APIs. These capabilities are not duplicated by separate inspection-specific interfaces.
+
 ## Concurrency and asynchronous operations
 
 Native state in `OcctModelingSession` is not thread-safe. Operations submitted through `BooleanAsync`, `FuseAsync`, `CutAsync`, `CommonAsync`, `SectionAsync`, `SplitAsync`, `ImportStepAsync`, or `ExportStepAsync` are executed sequentially for each session, preventing concurrent async mutations of the same native session.

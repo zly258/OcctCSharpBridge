@@ -78,43 +78,6 @@ extern "C"
         });
     }
 
-    OcctStatus occt_model_edge_bspline_pole_at(OcctModelingSessionHandle handle, OcctObjectId edgeId, int index, OcctPoint3d* pole, double* weight)
-    {
-        ModelSession* model = sessionOf(handle);
-        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
-        if (pole == nullptr || weight == nullptr) return OcctStatus_ErrorInvalidArgument;
-        *pole = {};
-        *weight = 0.0;
-        return executeStatus(model, [&]
-        {
-            const Handle(Geom_BSplineCurve) curve = requireBSplineCurve(model, edgeId);
-            if (index < 0 || index >= curve->NbPoles())
-                throw std::out_of_range("B-Spline pole index is out of range.");
-            const int occtIndex = index + 1;
-            const gp_Pnt point = curve->Pole(occtIndex);
-            *pole = {point.X(), point.Y(), point.Z()};
-            *weight = curve->Weight(occtIndex);
-        });
-    }
-
-    OcctStatus occt_model_edge_bspline_knot_at(OcctModelingSessionHandle handle, OcctObjectId edgeId, int index, double* knot, int* multiplicity)
-    {
-        ModelSession* model = sessionOf(handle);
-        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
-        if (knot == nullptr || multiplicity == nullptr) return OcctStatus_ErrorInvalidArgument;
-        *knot = 0.0;
-        *multiplicity = 0;
-        return executeStatus(model, [&]
-        {
-            const Handle(Geom_BSplineCurve) curve = requireBSplineCurve(model, edgeId);
-            if (index < 0 || index >= curve->NbKnots())
-                throw std::out_of_range("B-Spline knot index is out of range.");
-            const int occtIndex = index + 1;
-            *knot = curve->Knot(occtIndex);
-            *multiplicity = curve->Multiplicity(occtIndex);
-        });
-    }
-
     OcctStatus occt_model_face_bspline_info(OcctModelingSessionHandle handle, OcctObjectId faceId, OcctModelBSplineSurfaceInfo* result)
     {
         ModelSession* model = sessionOf(handle);
@@ -137,61 +100,188 @@ extern "C"
         });
     }
 
-    OcctStatus occt_model_face_bspline_pole_at(OcctModelingSessionHandle handle, OcctObjectId faceId, int uIndex, int vIndex, OcctPoint3d* pole, double* weight)
+    OcctStatus occt_model_edge_bspline_poles_snapshot_get(
+        OcctModelingSessionHandle handle,
+        OcctObjectId edgeId,
+        OcctPoint3d* poles,
+        double* weights,
+        int capacity,
+        int* required)
     {
         ModelSession* model = sessionOf(handle);
         if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
-        if (pole == nullptr || weight == nullptr) return OcctStatus_ErrorInvalidArgument;
-        *pole = {};
-        *weight = 0.0;
+        if (capacity < 0 || required == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *required = 0;
         return executeStatus(model, [&]
         {
-            const Handle(Geom_BSplineSurface) surface = requireBSplineSurface(model, faceId);
-            if (uIndex < 0 || uIndex >= surface->NbUPoles())
-                throw std::out_of_range("B-Spline surface U pole index is out of range.");
-            if (vIndex < 0 || vIndex >= surface->NbVPoles())
-                throw std::out_of_range("B-Spline surface V pole index is out of range.");
-            const int occtUIndex = uIndex + 1;
-            const int occtVIndex = vIndex + 1;
-            const gp_Pnt point = surface->Pole(occtUIndex, occtVIndex);
-            *pole = {point.X(), point.Y(), point.Z()};
-            *weight = surface->Weight(occtUIndex, occtVIndex);
+            const Handle(Geom_BSplineCurve) curve = requireBSplineCurve(model, edgeId);
+            const int count = curve->NbPoles();
+            *required = count;
+            if (poles == nullptr || weights == nullptr)
+            {
+                if (capacity != 0 || poles != nullptr || weights != nullptr)
+                    throw std::invalid_argument("B-Spline pole buffers must both be null for a count query.");
+                return;
+            }
+            if (capacity < count)
+                throw std::invalid_argument("B-Spline pole buffer capacity is smaller than the result count.");
+
+            for (int index = 0; index < count; ++index)
+            {
+                const int oneBased = index + 1;
+                const gp_Pnt point = curve->Pole(oneBased);
+                poles[index] = {point.X(), point.Y(), point.Z()};
+                weights[index] = curve->Weight(oneBased);
+            }
         });
     }
 
-    OcctStatus occt_model_face_bspline_u_knot_at(OcctModelingSessionHandle handle, OcctObjectId faceId, int index, double* knot, int* multiplicity)
+    OcctStatus occt_model_edge_bspline_knots_snapshot_get(
+        OcctModelingSessionHandle handle,
+        OcctObjectId edgeId,
+        double* knots,
+        int* multiplicities,
+        int capacity,
+        int* required)
     {
         ModelSession* model = sessionOf(handle);
         if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
-        if (knot == nullptr || multiplicity == nullptr) return OcctStatus_ErrorInvalidArgument;
-        *knot = 0.0;
-        *multiplicity = 0;
+        if (capacity < 0 || required == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *required = 0;
         return executeStatus(model, [&]
         {
-            const Handle(Geom_BSplineSurface) surface = requireBSplineSurface(model, faceId);
-            if (index < 0 || index >= surface->NbUKnots())
-                throw std::out_of_range("B-Spline surface U knot index is out of range.");
-            const int occtIndex = index + 1;
-            *knot = surface->UKnot(occtIndex);
-            *multiplicity = surface->UMultiplicity(occtIndex);
+            const Handle(Geom_BSplineCurve) curve = requireBSplineCurve(model, edgeId);
+            const int count = curve->NbKnots();
+            *required = count;
+            if (knots == nullptr || multiplicities == nullptr)
+            {
+                if (capacity != 0 || knots != nullptr || multiplicities != nullptr)
+                    throw std::invalid_argument("B-Spline knot buffers must both be null for a count query.");
+                return;
+            }
+            if (capacity < count)
+                throw std::invalid_argument("B-Spline knot buffer capacity is smaller than the result count.");
+
+            for (int index = 0; index < count; ++index)
+            {
+                const int oneBased = index + 1;
+                knots[index] = curve->Knot(oneBased);
+                multiplicities[index] = curve->Multiplicity(oneBased);
+            }
         });
     }
 
-    OcctStatus occt_model_face_bspline_v_knot_at(OcctModelingSessionHandle handle, OcctObjectId faceId, int index, double* knot, int* multiplicity)
+    OcctStatus occt_model_face_bspline_poles_snapshot_get(
+        OcctModelingSessionHandle handle,
+        OcctObjectId faceId,
+        OcctPoint3d* poles,
+        double* weights,
+        int capacity,
+        int* required)
     {
         ModelSession* model = sessionOf(handle);
         if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
-        if (knot == nullptr || multiplicity == nullptr) return OcctStatus_ErrorInvalidArgument;
-        *knot = 0.0;
-        *multiplicity = 0;
+        if (capacity < 0 || required == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *required = 0;
         return executeStatus(model, [&]
         {
             const Handle(Geom_BSplineSurface) surface = requireBSplineSurface(model, faceId);
-            if (index < 0 || index >= surface->NbVKnots())
-                throw std::out_of_range("B-Spline surface V knot index is out of range.");
-            const int occtIndex = index + 1;
-            *knot = surface->VKnot(occtIndex);
-            *multiplicity = surface->VMultiplicity(occtIndex);
+            const int uCount = surface->NbUPoles();
+            const int vCount = surface->NbVPoles();
+            const int count = uCount * vCount;
+            *required = count;
+            if (poles == nullptr || weights == nullptr)
+            {
+                if (capacity != 0 || poles != nullptr || weights != nullptr)
+                    throw std::invalid_argument("B-Spline surface pole buffers must both be null for a count query.");
+                return;
+            }
+            if (capacity < count)
+                throw std::invalid_argument("B-Spline surface pole buffer capacity is smaller than the result count.");
+
+            for (int u = 0; u < uCount; ++u)
+            {
+                for (int v = 0; v < vCount; ++v)
+                {
+                    const int index = u * vCount + v;
+                    const gp_Pnt point = surface->Pole(u + 1, v + 1);
+                    poles[index] = {point.X(), point.Y(), point.Z()};
+                    weights[index] = surface->Weight(u + 1, v + 1);
+                }
+            }
+        });
+    }
+
+    OcctStatus occt_model_face_bspline_u_knots_snapshot_get(
+        OcctModelingSessionHandle handle,
+        OcctObjectId faceId,
+        double* knots,
+        int* multiplicities,
+        int capacity,
+        int* required)
+    {
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (capacity < 0 || required == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *required = 0;
+        return executeStatus(model, [&]
+        {
+            const Handle(Geom_BSplineSurface) surface = requireBSplineSurface(model, faceId);
+            const int count = surface->NbUKnots();
+            *required = count;
+            if (knots == nullptr || multiplicities == nullptr)
+            {
+                if (capacity != 0 || knots != nullptr || multiplicities != nullptr)
+                    throw std::invalid_argument("B-Spline U-knot buffers must both be null for a count query.");
+                return;
+            }
+            if (capacity < count)
+                throw std::invalid_argument("B-Spline U-knot buffer capacity is smaller than the result count.");
+
+            for (int index = 0; index < count; ++index)
+            {
+                knots[index] = surface->UKnot(index + 1);
+                multiplicities[index] = surface->UMultiplicity(index + 1);
+            }
+        });
+    }
+
+    OcctStatus occt_model_face_bspline_v_knots_snapshot_get(
+        OcctModelingSessionHandle handle,
+        OcctObjectId faceId,
+        double* knots,
+        int* multiplicities,
+        int capacity,
+        int* required)
+    {
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (capacity < 0 || required == nullptr) return OcctStatus_ErrorInvalidArgument;
+
+        *required = 0;
+        return executeStatus(model, [&]
+        {
+            const Handle(Geom_BSplineSurface) surface = requireBSplineSurface(model, faceId);
+            const int count = surface->NbVKnots();
+            *required = count;
+            if (knots == nullptr || multiplicities == nullptr)
+            {
+                if (capacity != 0 || knots != nullptr || multiplicities != nullptr)
+                    throw std::invalid_argument("B-Spline V-knot buffers must both be null for a count query.");
+                return;
+            }
+            if (capacity < count)
+                throw std::invalid_argument("B-Spline V-knot buffer capacity is smaller than the result count.");
+
+            for (int index = 0; index < count; ++index)
+            {
+                knots[index] = surface->VKnot(index + 1);
+                multiplicities[index] = surface->VMultiplicity(index + 1);
+            }
         });
     }
 

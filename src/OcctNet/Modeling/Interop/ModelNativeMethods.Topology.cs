@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 
@@ -28,6 +28,15 @@ internal static partial class ModelNativeMethods
     internal static partial OcctStatus occt_model_inner_wires_snapshot_get(
         OcctModelingSafeHandle handle,
         long faceId,
+        [Out, MarshalUsing(CountElementName = nameof(capacity))] long[]? results,
+        int capacity,
+        out int required);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_wire_edges_snapshot_get(
+        OcctModelingSafeHandle handle,
+        long wireId,
         [Out, MarshalUsing(CountElementName = nameof(capacity))] long[]? results,
         int capacity,
         out int required);

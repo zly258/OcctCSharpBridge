@@ -6,23 +6,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS OFF)
 
-# Native modules are part of the stable SDK architecture. Generic Extension/Extensions
-# filenames hide ownership and tend to become cross-domain dumping grounds, so require
-# every module to use a semantic domain name instead.
-file(GLOB_RECURSE OCCT_GENERIC_EXTENSION_MODULES
-    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/*Extension.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/*Extension.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/*Extension.hxx"
-    "${CMAKE_CURRENT_SOURCE_DIR}/*Extensions.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/*Extensions.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/*Extensions.hxx")
-if(OCCT_GENERIC_EXTENSION_MODULES)
-    list(JOIN OCCT_GENERIC_EXTENSION_MODULES ", " OCCT_GENERIC_EXTENSION_MODULES_TEXT)
-    message(FATAL_ERROR
-        "Native modules must use semantic domain names; generic Extension/Extensions modules are forbidden: ${OCCT_GENERIC_EXTENSION_MODULES_TEXT}")
-endif()
-
 get_filename_component(BRIDGE_REPOSITORY_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 set(BRIDGE_CONTRACT_FILE "${BRIDGE_REPOSITORY_ROOT}/bridge-contract.json")
 if(NOT EXISTS "${BRIDGE_CONTRACT_FILE}")
@@ -156,8 +139,18 @@ add_library(OcctNative SHARED
     exchange/OcctModelingExchange.cpp
     exchange/OcctObjGltfExchange.cpp
     exchange/OcctObjGltfExchange.h
+    exchange/OcctBrepMemory.cpp
+    exchange/OcctBrepMemory.h
+    exchange/OcctModelingXde.cpp
+    exchange/OcctModelingXde.h
+    modeling/OcctModelingPlaneSplit.cpp
+    modeling/OcctModelingPlaneSplit.h
+    modeling/OcctModelingHlr.cpp
+    modeling/OcctModelingHlr.h
     geometry/OcctModelingAnalyticGeometry.cpp
+    geometry/OcctModelingFreeformGeometry.cpp
     geometry/OcctModelingDifferentialGeometry.cpp
+    geometry/OcctModelingExtrema.cpp
     geometry/OcctModelingContinuity.cpp
     topology/OcctModelingShapeProperties.cpp
     geometry/OcctModelingPlanarOperations.cpp
@@ -228,7 +221,9 @@ add_library(OcctNative SHARED
     topology/OcctModelingShapeProperties.h
     geometry/OcctModelingPlanarOperations.h
     geometry/OcctModelingBSpline.h
+    geometry/OcctModelingFreeformGeometry.h
     geometry/OcctModelingContinuity.h
+    geometry/OcctModelingExtrema.h
     topology/OcctModelingTopologyAnalysis.h
     topology/OcctModelingFaceAnalysis.h
     modeling/OcctModelingInertia.h
@@ -259,7 +254,7 @@ target_include_directories(OcctNative PUBLIC
 target_link_directories(OcctNative PRIVATE "${OCCT_LIB_DIR}")
 
 set(occt_required_libraries
-    TKernel TKMath TKG2d TKG3d TKGeomBase TKBRep TKGeomAlgo TKTopAlgo
+    TKernel TKMath TKG2d TKG3d TKGeomBase TKBRep TKGeomAlgo TKTopAlgo TKHLR
     TKLCAF TKCAF TKXCAF
     TKPrim TKBO TKBool TKFillet TKOffset TKMesh TKShHealing
     TKService TKV3d TKOpenGl TKXSBase TKDE TKDESTEP TKDEIGES TKDESTL TKDEOBJ TKDEGLTF TKRWMesh)

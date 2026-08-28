@@ -52,6 +52,21 @@ namespace
         }
     }
 
+    OcctDistanceResult shapeDistance(ModelSession* model, OcctObjectId firstId, OcctObjectId secondId)
+    {
+        BRepExtrema_DistShapeShape distance(model->requireShape(firstId), model->requireShape(secondId));
+        distance.Perform();
+        if (!distance.IsDone() || distance.NbSolution() < 1)
+            throw std::runtime_error("Distance calculation failed.");
+        const gp_Pnt first = distance.PointOnShape1(1);
+        const gp_Pnt second = distance.PointOnShape2(1);
+        OcctDistanceResult result{};
+        result.distance = distance.Value();
+        result.pointOnFirst = {first.X(), first.Y(), first.Z()};
+        result.pointOnSecond = {second.X(), second.Y(), second.Z()};
+        return result;
+    }
+
     OcctStatus copyUtf8(
         const std::string& value,
         char* buffer,
@@ -257,16 +272,26 @@ extern "C"
         *result = {};
         return executeStatus(model, [&]
         {
-            BRepExtrema_DistShapeShape distance(model->requireShape(firstId), model->requireShape(secondId));
-            distance.Perform();
-            if (!distance.IsDone() || distance.NbSolution() < 1)
-                throw std::runtime_error("Distance calculation failed.");
+            *result = shapeDistance(model, firstId, secondId);
+        });
+    }
 
-            const gp_Pnt first = distance.PointOnShape1(1);
-            const gp_Pnt second = distance.PointOnShape2(1);
-            result->distance = distance.Value();
-            result->pointOnFirst = {first.X(), first.Y(), first.Z()};
-            result->pointOnSecond = {second.X(), second.Y(), second.Z()};
+
+    OcctStatus occt_model_shape_distances(
+        OcctModelingSessionHandle handle,
+        const OcctObjectId* firstIds,
+        const OcctObjectId* secondIds,
+        int count,
+        OcctDistanceResult* results)
+    {
+        ModelSession* model = sessionOf(handle);
+        if (model == nullptr) return OcctStatus_ErrorInvalidHandle;
+        if (count < 0 || (count > 0 && (firstIds == nullptr || secondIds == nullptr || results == nullptr)))
+            return OcctStatus_ErrorInvalidArgument;
+        return executeStatus(model, [&]
+        {
+            for (int index = 0; index < count; ++index)
+                results[index] = shapeDistance(model, firstIds[index], secondIds[index]);
         });
     }
 

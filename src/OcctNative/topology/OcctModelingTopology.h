@@ -24,6 +24,13 @@ extern "C"
         int capacity,
         int* required);
 
+    OCCTBRIDGE_API OcctStatus occt_model_wire_edges_snapshot_get(
+        OcctModelingSessionHandle handle,
+        OcctObjectId wireId,
+        OcctObjectId* results,
+        int capacity,
+        int* required);
+
     OCCTBRIDGE_API OcctStatus occt_model_ancestors_snapshot_get(
         OcctModelingSessionHandle handle,
         OcctObjectId rootId,
