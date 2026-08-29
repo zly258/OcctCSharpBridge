@@ -21,7 +21,6 @@ Windows 下，`sync.ps1` 采用源码驱动的 Binary SDK 同步流程：
 - 默认 fetch `origin/main`，也可用 `-BridgeBranch` 指定 `main-dev` 等分支；
 - 将缓存锁定到解析出的 commit，并执行 clean detached checkout；
 - 执行 `build.ps1 dist Release`，只编译 Native + Managed 并生成 Binary SDK；
-- 校验 `bridge-contract.json`、`bridge-manifest.json`、Hash 和 `sourceCommit`；
 - 将生成的 Binary SDK 安装到 `external/OcctCSharpBridge/win-x64`。
 
 ```powershell
@@ -29,9 +28,9 @@ Windows 下，`sync.ps1` 采用源码驱动的 Binary SDK 同步流程：
 .\sync.ps1 -BridgeBranch main-dev
 ```
 
-`sync.ps1` 不执行 Bridge 的 `sdk` / `all` 完整 QA Gate；Demo 自己的 build/run 继续负责 Consumer 验证。
+`sync.ps1` 负责准备 Demo 使用的 Bridge SDK。
 
-Linux 下 `./sync.sh` 现在也支持 fresh clone 默认流程：默认跟随 `main`，在 `external/.cache` 维护干净的 Bridge Source Cache，只执行 `./build.sh dist Release`，再调用 Bridge 自己的 Portable SDK Packager 生成匹配 Runtime，完成校验后安装到 `external/OcctCSharpBridge`。同步过程不运行 Bridge tests/smoke。已有预构建制品仍可通过 `--sdk-root` 与 `--portable-root` 直接使用。
+Linux 下 `./sync.sh` 现在也支持 fresh clone 默认流程：默认跟随 `main`，在 `external/.cache` 维护干净的 Bridge Source Cache，只执行 `./build.sh dist Release`，再调用 Bridge 自己的 Portable SDK Packager 生成匹配 Runtime，完成校验后安装到 `external/OcctCSharpBridge`。已有预构建制品仍可通过 `--sdk-root` 与 `--portable-root` 直接使用。
 
 ```bash
 ./sync.sh
@@ -45,7 +44,6 @@ fresh clone 下，如果 Binary SDK 缓存不存在，`build.ps1` 会自动调�
 Windows：
 
 ```powershell
-.\build.ps1 validate Release
 .\build.ps1 all Release
 
 .\run.ps1 winform Release
@@ -56,14 +54,9 @@ Windows：
 Linux：
 
 ```bash
-./build.sh validate Release
 ./build.sh all Release
 ./run.sh Release
 ```
-
-这里验证的是 **Demo Consumer 自己**，不会重新执行 Bridge 的完整 QA Gate。
-
-Validation 菜单只保留少量代表性 SDK 检查：Geometry Inspection 覆盖解析/自由几何读取及 Bezier/B-Spline Bulk 数据路径，Geometry Algorithms 覆盖 Extrema 与参数化 Intersection；现有 B-Spline Surface 与 Mesh Generation 继续分别验证控制网和 Mesh Buffer，不再为每个 API 增加单独菜单项。
 
 ## 综合能力案例
 
@@ -74,7 +67,7 @@ Samples 菜单只保留正常 CAD 操作无法直接替代的综合案例，WinF
 3. **Distance & Extrema**：计算 Curve/Curve 极值并显示最近点连接线。
 4. **Model Repair**：执行 FixShape，并对比修复前后的结构化检查结果。
 
-STEP/IGES 等文件继续通过 File → Open/Import 直接打开；BRep 查询继续使用现有包围盒、几何属性、拓扑统计和形体检查；自由几何读取与 Intersection/Extrema API 覆盖继续放在精简后的 Validation 检查中，不再为相同能力增加重复 Samples。
+STEP/IGES 等文件继续通过 File → Open/Import 直接打开；BRep 查询继续使用现有包围盒、几何属性、拓扑统计和形体检查；自由几何读取与 Intersection/Extrema 等能力通过正常命令和 Samples 展示，不再维护 Validation 测试菜单。
 
 ## Windows 发布
 
@@ -160,7 +153,5 @@ Demo 只允许通过 Managed SDK 使用 Bridge：
 - 不使用 pre-ABI5 Handle/Metadata；
 - 不重新实现 Bridge Runtime Closure 收集器；
 - 不把 SDK 同步变成第二套 Bridge Release Gate。
-
-`tests/check-sdk-consumer.ps1` 会静态守住 Windows clone/build/consume 契约与统一 `external/` 布局；Linux 检查继续维护自己的平台同步契约。
 
 Demo 是 SDK 消费示例，不是第三方应用框架。第三方项目应按 Bridge 的 SDK Consumer 文档组织自己的工程、Runtime 和版本锁定策略。

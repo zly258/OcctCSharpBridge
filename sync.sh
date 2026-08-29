@@ -21,9 +21,8 @@ Options:
   -h, --help                   Show this help
 
 Without --sdk-root, sync.sh resolves the selected Bridge source branch, builds the
-Release linux-x64 Binary SDK, packages its matching Portable SDK, validates both,
-and installs them under external/OcctCSharpBridge. Bridge tests and smoke tests are
-not run by synchronization.
+Release linux-x64 Binary SDK, packages its matching Portable SDK, and installs both
+under external/OcctCSharpBridge.
 EOF
 }
 

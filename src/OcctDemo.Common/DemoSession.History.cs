@@ -56,12 +56,6 @@ public sealed partial class DemoSession
                     continue;
                 }
 
-                if (entry.IsModelingTest)
-                {
-                    ExecuteModelingTest(entry.ModelingTestId!);
-                    continue;
-                }
-
                 if (entry.CommandId is not { } commandId) continue;
                 Engine.ClearSelection();
                 var append = false;

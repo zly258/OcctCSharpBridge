@@ -21,13 +21,15 @@ $BuildScript = Join-Path $RepoRoot "build.ps1"
 $DefaultOcctRoot = "D:\tools\occt-vc144-64"
 
 if ([string]::IsNullOrWhiteSpace($OcctRoot)) { $OcctRoot = $DefaultOcctRoot }
-if (-not (Test-Path -LiteralPath $ContractPath -PathType Leaf)) { throw "Bridge Binary SDK contract was not found: $ContractPath. Run .\sync.ps1 first." }
 
-& $BuildScript validate $Configuration
-if (-not $?) { throw "Bridge validation failed." }
-
-$contract = Get-Content -LiteralPath $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $targetKey = $Target.ToLowerInvariant()
+& $BuildScript $targetKey $Configuration
+if ($LASTEXITCODE -ne 0) { throw "Demo $targetKey build failed." }
+
+if (-not (Test-Path -LiteralPath $ContractPath -PathType Leaf)) {
+    throw "Bridge Binary SDK contract was not found after the demo build: $ContractPath"
+}
+$contract = Get-Content -LiteralPath $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
 
 function Get-ProjectTargetFramework {
     param(

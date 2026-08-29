@@ -48,44 +48,46 @@ public sealed partial class DemoSession
     private DemoCommandResult DemoDrawingProjection()
     {
         using var model = new OcctModelingSession();
-        var source = model.MakeBox(100, 70, 55, -50, -35, 0);
-        var objects = new List<IOcctObject>();
 
-        AddHlrProjection(model, source, OcctHlrProjection.Front, new OcctVector3d(-140, 90, 0), "Front", objects);
-        AddHlrProjection(model, source, OcctHlrProjection.Top, new OcctVector3d(20, 90, 0), "Top", objects);
-        AddHlrProjection(model, source, OcctHlrProjection.Right, new OcctVector3d(-140, -70, 0), "Right", objects);
-        AddHlrProjection(model, source, OcctHlrProjection.Isometric, new OcctVector3d(20, -70, 0), "Isometric", objects);
+        var plate = model.MakeBox(120, 80, 24, -60, -40, 0);
+        var boss = model.MakeCylinder(new OcctPoint3d(24, 8, 24), OcctVector3d.UnitZ, 18, 28);
+        var body = model.Fuse(plate, boss).Shape;
+
+        var verticalHole = model.MakeCylinder(new OcctPoint3d(24, 8, -4), OcctVector3d.UnitZ, 7, 64);
+        body = model.Cut(body, verticalHole).Shape;
+
+        var crossHole = model.MakeCylinder(new OcctPoint3d(-70, -18, 12), OcctVector3d.UnitX, 6, 140);
+        body = model.Cut(body, crossHole).Shape;
+
+        if (!model.IsShapeValid(body))
+            throw new InvalidOperationException(Local(
+                "The engineering projection source model is invalid.",
+                "工程投影源模型无效。"));
+
+        var objects = new List<IOcctObject>();
+        var front = AddHlrProjection(model, body, OcctHlrProjection.Front, new OcctVector3d(-165, 105, 0), "Front", objects);
+        var top = AddHlrProjection(model, body, OcctHlrProjection.Top, new OcctVector3d(35, 105, 0), "Top", objects);
+        var right = AddHlrProjection(model, body, OcctHlrProjection.Right, new OcctVector3d(-165, -85, 0), "Right", objects);
+        var iso = AddHlrProjection(model, body, OcctHlrProjection.Isometric, new OcctVector3d(35, -85, 0), "Isometric", objects);
 
         Engine.FitAll();
         ActiveObject = objects.LastOrDefault();
+
         return new DemoCommandResult(
             Local("Four HLR engineering projections created.", "已生成四个 HLR 工程投影。"),
             objects,
-            Local("Front / Top / Right / Isometric; visible lines are dark, hidden lines are gray, outlines are emphasized.",
-                  "前视 / 俯视 / 右视 / 轴测；可见线为深色，隐藏线为灰色，轮廓线加粗显示。"));
+            Local(
+                $"Front V/H/O/VS/HS={front.Visible}/{front.Hidden}/{front.Outline}/{front.VisibleSharp}/{front.HiddenSharp}; " +
+                $"Top={top.Visible}/{top.Hidden}/{top.Outline}/{top.VisibleSharp}/{top.HiddenSharp}; " +
+                $"Right={right.Visible}/{right.Hidden}/{right.Outline}/{right.VisibleSharp}/{right.HiddenSharp}; " +
+                $"Isometric={iso.Visible}/{iso.Hidden}/{iso.Outline}/{iso.VisibleSharp}/{iso.HiddenSharp}.",
+                $"前视 V/H/O/VS/HS={front.Visible}/{front.Hidden}/{front.Outline}/{front.VisibleSharp}/{front.HiddenSharp}；" +
+                $"俯视={top.Visible}/{top.Hidden}/{top.Outline}/{top.VisibleSharp}/{top.HiddenSharp}；" +
+                $"右视={right.Visible}/{right.Hidden}/{right.Outline}/{right.VisibleSharp}/{right.HiddenSharp}；" +
+                $"轴测={iso.Visible}/{iso.Hidden}/{iso.Outline}/{iso.VisibleSharp}/{iso.HiddenSharp}。"));
     }
 
-    private DemoCommandResult DemoDrawingProjection()
-    {
-        using var model = new OcctModelingSession();
-        var source = model.MakeBox(100, 70, 55, -50, -35, 0);
-        var objects = new List<IOcctObject>();
-
-        AddHlrProjection(model, source, OcctHlrProjection.Front, new OcctVector3d(-140, 90, 0), "Front", objects);
-        AddHlrProjection(model, source, OcctHlrProjection.Top, new OcctVector3d(20, 90, 0), "Top", objects);
-        AddHlrProjection(model, source, OcctHlrProjection.Right, new OcctVector3d(-140, -70, 0), "Right", objects);
-        AddHlrProjection(model, source, OcctHlrProjection.Isometric, new OcctVector3d(20, -70, 0), "Isometric", objects);
-
-        Engine.FitAll();
-        ActiveObject = objects.LastOrDefault();
-        return new DemoCommandResult(
-            Local("Four HLR engineering projections created.", "已生成四个 HLR 工程投影。"),
-            objects,
-            Local("Front / Top / Right / Isometric; visible lines are dark, hidden lines are gray, outlines are emphasized.",
-                  "前视 / 俯视 / 右视 / 轴测；可见线为深色，隐藏线为灰色，轮廓线加粗显示。"));
-    }
-
-    private void AddHlrProjection(
+    private HlrViewStats AddHlrProjection(
         OcctModelingSession model,
         OcctModelShape source,
         OcctHlrProjection projection,
@@ -94,21 +96,58 @@ public sealed partial class DemoSession
         ICollection<IOcctObject> objects)
     {
         var result = model.ProjectHlr(source, projection);
-        Add(result.VisibleLines, Color.Black, 1.4, "Visible");
-        Add(result.HiddenLines, Color.Gray, 1.0, "Hidden");
-        Add(result.Outlines, Color.DarkBlue, 2.2, "Outline");
+        var stats = new HlrViewStats(
+            EdgeCount(result.VisibleLines),
+            EdgeCount(result.HiddenLines),
+            EdgeCount(result.Outlines),
+            EdgeCount(result.VisibleSharpLines),
+            EdgeCount(result.HiddenSharpLines));
 
-        void Add(OcctModelShape? value, Color color, double width, string suffix)
+        if (stats.Visible + stats.Outline + stats.VisibleSharp == 0)
+            throw new InvalidOperationException(Local(
+                $"HLR projection '{name}' returned no visible linework.",
+                $"HLR 投影“{name}”没有返回任何可见线结果。"));
+
+        Add(result.HiddenLines, stats.Hidden, Color.Gray, 0.9, "Hidden");
+        Add(result.HiddenSharpLines, stats.HiddenSharp, Color.DimGray, 1.1, "Hidden Sharp");
+        Add(result.VisibleLines, stats.Visible, Color.Black, 1.4, "Visible");
+        Add(result.VisibleSharpLines, stats.VisibleSharp, Color.DarkGreen, 1.7, "Visible Sharp");
+        Add(result.Outlines, stats.Outline, Color.DarkBlue, 2.2, "Outline");
+        return stats;
+
+        int EdgeCount(OcctModelShape? shape) =>
+            shape is { } value ? model.GetTopologyCount(value, OcctShapeType.Edge) : 0;
+
+        void Add(OcctModelShape? value, int edgeCount, Color color, double width, string suffix)
         {
-            if (value is not { } shape) return;
-            var moved = model.Translate(shape, offset);
-            var displayed = DisplayModelShape(model, moved);
+            if (value is not { } shape || edgeCount == 0) return;
+            // Keep the HLR TopoDS_Shape unchanged. OCCTBIM-Source displays the
+            // HLR result directly as AIS_Shape; applying a BRep-level transform
+            // before presentation can lose the special projected edge geometry.
+            var displayed = DisplayModelShape(model, shape);
+            Engine.SetLocalTransformation(
+                displayed,
+                OcctTransform3d.Translation(offset.X, offset.Y, offset.Z));
             SetGeneratedName(displayed, $"{name} {suffix}");
+
+            Engine.SetObjectDisplayMode(displayed, OcctDisplayMode.Wireframe);
             Engine.SetObjectColor(displayed, color);
             Engine.SetObjectLineWidth(displayed, width);
+            Engine.SetObjectLineStyle(
+                displayed,
+                suffix.StartsWith("Hidden", StringComparison.Ordinal)
+                    ? OcctLineStyle.Dash
+                    : OcctLineStyle.Solid);
             objects.Add(displayed);
         }
     }
+
+    private readonly record struct HlrViewStats(
+        int Visible,
+        int Hidden,
+        int Outline,
+        int VisibleSharp,
+        int HiddenSharp);
 
     private DemoCommandResult DemoDistanceExtrema()
     {

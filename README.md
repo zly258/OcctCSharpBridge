@@ -21,7 +21,6 @@ On Windows, `sync.ps1` is the source-driven Binary SDK entry point:
 - fetches `origin/main` by default, or the branch passed with `-BridgeBranch`;
 - checks out the resolved commit in a clean detached source cache;
 - runs `build.ps1 dist Release` (Native + Managed + Binary SDK packaging only);
-- validates `bridge-contract.json`, `bridge-manifest.json`, hashes, and `sourceCommit`;
 - installs the generated Binary SDK under `external/OcctCSharpBridge/win-x64`.
 
 ```powershell
@@ -29,9 +28,9 @@ On Windows, `sync.ps1` is the source-driven Binary SDK entry point:
 .\sync.ps1 -BridgeBranch main-dev
 ```
 
-`sync.ps1` does not run the Bridge `sdk` / `all` QA gate. Demo build/run validation remains consumer-side.
+`sync.ps1` prepares the Bridge SDK used by the Demo.
 
-On Linux, `./sync.sh` now has the same fresh-clone behavior: it follows `main` by default, keeps a clean Bridge source cache under `external/.cache`, runs only `./build.sh dist Release`, packages the matching Portable SDK with the Bridge-owned packager, validates both artifacts, and installs them under `external/OcctCSharpBridge`. It does not run Bridge tests or smoke tests. Prebuilt artifacts can still be supplied with `--sdk-root` and `--portable-root`.
+On Linux, `./sync.sh` now has the same fresh-clone behavior: it follows `main` by default, keeps a clean Bridge source cache under `external/.cache`, runs only `./build.sh dist Release`, packages the matching Portable SDK with the Bridge-owned packager, validates both artifacts, and installs them under `external/OcctCSharpBridge`. Prebuilt artifacts can still be supplied with `--sdk-root` and `--portable-root`.
 
 ```bash
 ./sync.sh
@@ -45,7 +44,6 @@ On a fresh clone, `build.ps1` automatically runs the existing `sync.ps1` workflo
 Windows:
 
 ```powershell
-.\build.ps1 validate Release
 .\build.ps1 all Release
 
 .\run.ps1 winform Release
@@ -56,14 +54,9 @@ Windows:
 Linux:
 
 ```bash
-./build.sh validate Release
 ./build.sh all Release
 ./run.sh Release
 ```
-
-These commands validate the **Demo consumer itself** and do not rerun the Bridge full QA gate.
-
-The Validation menu keeps a small set of representative SDK checks. Geometry Inspection covers analytic/free-form reads and the bulk Bezier/B-Spline data path; Geometry Algorithms covers extrema and parameterized intersections. Existing B-Spline Surface and Mesh Generation checks remain the dedicated control-grid and mesh-buffer validations.
 
 ## Windows publication
 
@@ -146,7 +139,5 @@ The Demo may use Bridge only through its managed SDK:
 - no pre-ABI5 handles/metadata;
 - no duplicate OCCT runtime-closure collector;
 - no full Bridge release gate inside SDK synchronization.
-
-`tests/check-sdk-consumer.ps1` enforces the Windows clone/build/consume contract and unified `external/` layout; Linux checks retain their platform-specific synchronization contract.
 
 The Demo is an SDK consumer example, not a third-party application framework. External projects should follow the Bridge SDK consumption guide for their own repository layout, runtime packaging, and version pinning.

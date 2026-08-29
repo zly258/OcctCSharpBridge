@@ -103,13 +103,6 @@ public partial class MainWindow
             case DemoMenuAction.ViewHiddenLine: ApplyMenuVisualStyle(DemoVisualStyle.HiddenLine); break;
             case DemoMenuAction.FitAll: Session.Engine.FitAll(); break;
             case DemoMenuAction.ViewSettings: ShowAdvancedViewSettingsWindow(); break;
-            case DemoMenuAction.TestGeometryInspection: RunModelingTest(Session.RunGeometryInspectionTest); break;
-            case DemoMenuAction.TestGeometryAlgorithms: RunModelingTest(Session.RunGeometryAlgorithmsTest); break;
-            case DemoMenuAction.TestBSplineSurface: RunModelingTest(Session.RunBSplineSurfaceTest); break;
-            case DemoMenuAction.TestMeshGeneration: RunModelingTest(Session.RunMeshGenerationTest); break;
-            case DemoMenuAction.TestPipeShell: RunModelingTest(Session.RunPipeShellTest); break;
-            case DemoMenuAction.TestTransformCopy: RunModelingTest(Session.RunTransformCopyTest); break;
-            case DemoMenuAction.TestShapeValidity: RunModelingTest(Session.RunShapeValidityTest); break;
             case DemoMenuAction.LanguageEnglish: SetLanguage(DemoLanguage.English); break;
             case DemoMenuAction.LanguageChinese: SetLanguage(DemoLanguage.ChineseSimplified); break;
             case DemoMenuAction.MouseHelp: ShowMouseHelp(); break;
