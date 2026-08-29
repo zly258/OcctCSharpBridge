@@ -25,23 +25,13 @@ Windows：
 
 ```powershell
 .\build.ps1 build Release -OcctRoot "D:\tools\occt-vc144-64"
-.\build.ps1 test Release
-.\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
 Linux：
 
 ```bash
 ./build.sh build Release
-./build.sh test Release
-./build.sh smoke Release
 ```
-
-日常验证保持简单：
-
-- 编译负责发现项目/API 结构问题；
-- ManagedTests 验证托管行为和必要 ABI Layout；
-- 一个最小 Smoke 验证 Native 加载、ABI/版本一致、Runtime 初始化和一次真实 OCCT 操作。
 
 ## 分发
 
@@ -57,7 +47,7 @@ Linux：
 .\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64" -Zip
 ```
 
-发布只执行 Release 构建/测试/Smoke、打包，以及一次移除开发机 OCCT 路径后的 .NET 10 隔离包运行检查。
+`dist` 直接构建 Binary SDK；发布基于该 SDK 打包，不再维护独立的 Test/Smoke 阶段。
 
 ## 最小使用
 

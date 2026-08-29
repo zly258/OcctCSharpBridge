@@ -181,16 +181,11 @@ namespace
         if ((options.updateMask & OcctViewerViewStateUpdate_DisplayMode) != 0)
         {
             engine->viewerContext.displayMode = displayMode(options.displayMode);
-            for (auto& pair : engine->scene.objects)
-            {
-                if (pair.second.kind == OcctObject_Shape && !pair.second.presentation.IsNull())
-                {
-                    engine->viewerContext.context->SetDisplayMode(
-                        pair.second.presentation,
-                        engine->viewerContext.displayMode,
-                        Standard_False);
-                }
-            }
+            // Global visual style applies only to presentations without an
+            // explicit object display-mode override.
+            engine->viewerContext.context->SetDisplayMode(
+                engine->viewerContext.displayMode,
+                Standard_False);
         }
         if ((options.updateMask & OcctViewerViewStateUpdate_TriedronVisible) != 0)
         {

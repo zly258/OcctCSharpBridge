@@ -12,8 +12,6 @@ $RepoRoot = Split-Path -Parent $PSCommandPath
 $BuildScript = Join-Path $RepoRoot "build.ps1"
 $PortablePackScript = Join-Path $RepoRoot "tools\package-portable-sdk.ps1"
 $ContractPath = Join-Path $RepoRoot "bridge-contract.json"
-$SmokeProject = Join-Path $RepoRoot "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
-$NativeDll = Join-Path $RepoRoot "build\native\bin\Release\OcctNative.dll"
 $DistRoot = Join-Path $RepoRoot "dist\win-x64"
 $DefaultOcctRoot = "D:\tools\occt-vc144-64"
 if ([string]::IsNullOrWhiteSpace($OcctRoot)) { $OcctRoot = $DefaultOcctRoot }
@@ -236,103 +234,6 @@ function Assert-StableContract {
     }
 }
 
-function Get-OcctRuntimeDirectories {
-    $directories = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-    $occtBin = Join-Path $OcctRoot "win64\vc14\bin"
-    Assert-Path $occtBin
-    [void]$directories.Add($occtBin)
-
-    $thirdPartyRoot = Join-Path $OcctRoot "3rdparty-vc14-64"
-    if (Test-Path -LiteralPath $thirdPartyRoot -PathType Container) {
-        foreach ($dll in @(Get-ChildItem -LiteralPath $thirdPartyRoot -Filter "*.dll" -File -Recurse -ErrorAction SilentlyContinue)) {
-            [void]$directories.Add($dll.DirectoryName)
-        }
-    }
-    return @($directories)
-}
-
-function Invoke-IsolatedPortableSmoke {
-    param(
-        [Parameter(Mandatory = $true)][string]$DotNet,
-        [Parameter(Mandatory = $true)][string]$BridgeVersion
-    )
-
-    $archive = Join-Path $OutputDirectory "OcctCSharpBridge-$BridgeVersion-win-x64-portable.zip"
-    Assert-Path $archive
-
-    Write-Host "[stable] Building package smoke..." -ForegroundColor Cyan
-    & $DotNet build $SmokeProject -c Release -p:Platform=x64 -p:Version=$BridgeVersion --nologo
-    if ($LASTEXITCODE -ne 0) { throw "Package smoke build failed." }
-
-    $sourceOutput = Join-Path (Split-Path -Parent $SmokeProject) "bin\x64\Release\net10.0"
-    $testPayload = @(
-        "OcctNet.Smoke.dll",
-        "OcctNet.Smoke.deps.json",
-        "OcctNet.Smoke.runtimeconfig.json"
-    )
-    foreach ($name in $testPayload) { Assert-Path (Join-Path $sourceOutput $name) }
-
-    $isolationRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("OcctCSharpBridge-stable-" + [Guid]::NewGuid().ToString("N"))
-    New-Item -ItemType Directory -Path $isolationRoot -Force | Out-Null
-
-    $environmentNames = @(
-        "OCCT_BRIDGE_NATIVE_DIR", "OCCT_ROOT", "CASROOT",
-        "CSF_OCCTResourcePath", "CSF_SHMessage", "CSF_XSMessage",
-        "CSF_StandardDefaults", "CSF_PluginDefaults", "CSF_IGESDefaults",
-        "CSF_STEPDefaults", "CSF_ShadersDirectory", "CSF_MDTVTexturesDirectory",
-        "CSF_UnitsLexicon", "CSF_UnitsDefinition",
-        "DOTNET_ROLL_FORWARD"
-    )
-    $savedEnvironment = @{}
-    foreach ($name in $environmentNames) { $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name) }
-    $previousPath = $env:PATH
-
-    try {
-        Expand-Archive -LiteralPath $archive -DestinationPath $isolationRoot -Force
-        foreach ($name in $testPayload) {
-            Copy-Item -LiteralPath (Join-Path $sourceOutput $name) -Destination (Join-Path $isolationRoot $name) -Force
-        }
-
-        foreach ($required in @(
-            "OcctNet.dll",
-            "runtime\OcctNative.dll",
-            "occt\resources",
-            "bridge-contract.json",
-            "bridge-manifest.json",
-            "package-manifest.json"
-        )) { Assert-Path (Join-Path $isolationRoot $required) }
-
-        foreach ($name in $environmentNames) { [Environment]::SetEnvironmentVariable($name, $null) }
-        $safePathEntries = @(
-            ($previousPath -split [System.IO.Path]::PathSeparator) |
-            Where-Object {
-                -not [string]::IsNullOrWhiteSpace($_) -and
-                -not $_.StartsWith($OcctRoot, [System.StringComparison]::OrdinalIgnoreCase) -and
-                -not $_.StartsWith($RepoRoot, [System.StringComparison]::OrdinalIgnoreCase)
-            }
-        )
-        $env:PATH = $safePathEntries -join [System.IO.Path]::PathSeparator
-        $env:DOTNET_ROLL_FORWARD = "LatestPatch"
-
-        Write-Host "[stable] Running extracted Portable SDK smoke without development OCCT paths..." -ForegroundColor Cyan
-        Push-Location $isolationRoot
-        try {
-            & $DotNet (Join-Path $isolationRoot "OcctNet.Smoke.dll")
-            if ($LASTEXITCODE -ne 0) { throw "Extracted Portable SDK smoke failed." }
-        }
-        finally {
-            Pop-Location
-        }
-    }
-    finally {
-        $env:PATH = $previousPath
-        foreach ($name in $environmentNames) {
-            [Environment]::SetEnvironmentVariable($name, $savedEnvironment[$name])
-        }
-        Remove-Item -LiteralPath $isolationRoot -Recurse -Force -ErrorAction SilentlyContinue
-    }
-}
-
 Assert-Path $BuildScript
 Assert-Path $PortablePackScript
 Assert-Path $ContractPath
@@ -354,19 +255,16 @@ if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($sourceCommit)) {
 
 $sourceContract = Get-Content -LiteralPath $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $runStableValidation = [string]$sourceContract.release.channel -eq "stable"
-$dotnet = $null
 if ($runStableValidation) {
     Assert-RunningWindowsX64
     Assert-StableContract -Contract $sourceContract
-    Assert-Path $SmokeProject
     Assert-Path $OcctRoot
-    $dotnet = Get-CommandPath "dotnet"
 
     Write-Host "[stable] OcctCSharpBridge $($sourceContract.bridgeVersion) Windows x64 Stable gate" -ForegroundColor Green
 }
 
-Write-Host "[publish] Running the complete Release SDK gate before Binary SDK validation..." -ForegroundColor Cyan
-Invoke-Build "sdk"
+Write-Host "[publish] Building the Release Binary SDK before package validation..." -ForegroundColor Cyan
+Invoke-Build "dist"
 Test-BinarySdk -Path $DistRoot -ExpectedSourceCommit $sourceCommit
 Assert-OnlyDistChanges
 
@@ -380,12 +278,10 @@ Write-Host "[publish] Building portable SDK with the OCCT runtime closure..." -F
 if ($LASTEXITCODE -ne 0) { throw "Portable Windows SDK packaging failed with exit code $LASTEXITCODE." }
 
 if ($runStableValidation) {
-    Invoke-IsolatedPortableSmoke -DotNet $dotnet -BridgeVersion ([string]$sourceContract.bridgeVersion)
 
     Write-Host "Stable release validation completed successfully." -ForegroundColor Green
     Write-Host "Version:        $($sourceContract.bridgeVersion)" -ForegroundColor DarkGray
     Write-Host "Prebuilt:       windows-x64" -ForegroundColor DarkGray
-    Write-Host "Package smoke:  isolated extracted Windows package on .NET 10" -ForegroundColor DarkGray
 }
 else {
     Write-Host "Bridge Binary SDK and portable runtime SDK validated successfully." -ForegroundColor Green

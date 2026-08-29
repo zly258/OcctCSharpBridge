@@ -100,7 +100,7 @@ Generate a consumer SDK from an explicitly approved formal `main` commit:
   -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-Use the Windows Portable SDK packager when a runtime closure is also required. `dist` intentionally skips tests and smoke; `sdk` and `publish.ps1` run the complete gate.
+Use the Windows Portable SDK packager when a runtime closure is also required. `dist` builds Native + Managed directly; `publish.ps1` packages the resulting SDK.
 
 Bridge maintainers publish and validate a Stable candidate with:
 
@@ -115,8 +115,6 @@ Linux consumers build from source:
 
 ```bash
 ./build.sh build Release
-./build.sh test Release
-./build.sh smoke Release
 ```
 
 Build Linux native binaries against OCCT 7.9.0 and the C/C++ runtime environment appropriate for the target distribution.

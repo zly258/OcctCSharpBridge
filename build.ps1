@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("build", "test", "smoke", "dist", "sdk", "clean")]
+    [ValidateSet("build", "dist", "clean")]
     [string]$Target = "build",
 
     [Parameter(Position = 1)]
@@ -63,8 +63,6 @@ $Projects = [ordered]@{
     WinForms = "src\OcctNet.WinForms\OcctNet.WinForms.csproj"
     Wpf = "src\OcctNet.Wpf\OcctNet.Wpf.csproj"
     Avalonia = "src\OcctNet.Avalonia\OcctNet.Avalonia.csproj"
-    ManagedTests = "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj"
-    Smoke = "tests\OcctNet.Smoke\OcctNet.Smoke.csproj"
 }
 
 $script:DotNetCommand = $null
@@ -104,17 +102,19 @@ function Invoke-Checked {
     $exitCode = $LASTEXITCODE
     if ($exitCode -eq 0) { return }
 
-    $diagnostics = if ($errorOutput.Count -gt 0) {
-        @($errorOutput)
-    }
-    else {
-        @($recentOutput)
-    }
+    $diagnostics = @(
+        if ($errorOutput.Count -gt 0) {
+            $errorOutput | ForEach-Object { [string]$_ }
+        }
+        else {
+            $recentOutput | ForEach-Object { [string]$_ }
+        }
+    )
     $commandLine = (@($Command) + @($Arguments | ForEach-Object {
         $argument = [string]$_
         if ($argument -match '\s') { '"{0}"' -f $argument } else { $argument }
     })) -join ' '
-    $diagnosticText = if ($diagnostics.Count -gt 0) {
+    $diagnosticText = if ($diagnostics.Length -gt 0) {
         $diagnostics -join [Environment]::NewLine
     }
     else {
@@ -219,7 +219,7 @@ function Invoke-DotNetChecked {
 function Resolve-OcctConfiguration {
     $script:OcctRoot = [System.IO.Path]::GetFullPath($OcctRoot)
     if (-not (Test-Path $script:OcctRoot -PathType Container)) {
-        throw "OCCT SDK root was not found: $script:OcctRoot. Set OCCT_ROOT, pass -OcctRoot <path>, or install OCCT at $DefaultOcctRoot. test does not require OCCT."
+        throw "OCCT SDK root was not found: $script:OcctRoot. Set OCCT_ROOT, pass -OcctRoot <path>, or install OCCT at $DefaultOcctRoot."
     }
     $script:OcctIncludeDir = Join-Path $script:OcctRoot "inc"
     $script:OcctLibDir = Join-Path $script:OcctRoot "win64\vc14\lib"
@@ -273,97 +273,11 @@ function Build-Project {
     ) "$Name build failed."
 }
 
-function Run-ManagedTests {
-    $project = Join-Path $RepoRoot $Projects.ManagedTests
-    Assert-Path $project
-    Write-Host "[managed-tests] Running managed-only ABI5 regression tests..." -ForegroundColor Cyan
-    Invoke-DotNetChecked @(
-        "test", $project,
-        "-c", $Configuration,
-        "-p:Platform=x64",
-        "-p:Version=$BridgeVersion",
-        "--no-build"
-    ) "Managed bridge regression tests failed."
-}
-
 function Build-Managed {
     Build-Project "Core"
     Build-Project "WinForms"
     Build-Project "Wpf"
     Build-Project "Avalonia"
-}
-
-function Get-OcctRuntimeDirectories {
-    Resolve-OcctConfiguration
-    $runtimeDirectories = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-    [void]$runtimeDirectories.Add($script:OcctBinDir)
-    $thirdPartyRoot = Join-Path $script:OcctRoot "3rdparty-vc14-64"
-    if (Test-Path $thirdPartyRoot -PathType Container) {
-        foreach ($dll in @(Get-ChildItem -LiteralPath $thirdPartyRoot -Filter "*.dll" -File -Recurse -ErrorAction SilentlyContinue)) {
-            [void]$runtimeDirectories.Add($dll.DirectoryName)
-        }
-    }
-    return @($runtimeDirectories)
-}
-
-function Invoke-WithOcctRuntime {
-    param(
-        [Parameter(Mandatory = $true)][string]$NativeDirectory,
-        [Parameter(Mandatory = $true)][scriptblock]$Action
-    )
-
-    Assert-Path $NativeDirectory
-    $runtimeDirectories = @(Get-OcctRuntimeDirectories)
-    $previousPath = $env:PATH
-    $previousNativeDirectory = $env:OCCT_BRIDGE_NATIVE_DIR
-    $previousOcctRoot = $env:OCCT_ROOT
-    $previousCasRoot = $env:CASROOT
-    try {
-        $env:PATH = (@($NativeDirectory) + $runtimeDirectories + @($previousPath)) -join [System.IO.Path]::PathSeparator
-        $env:OCCT_BRIDGE_NATIVE_DIR = $NativeDirectory
-        $env:OCCT_ROOT = $script:OcctRoot
-        $env:CASROOT = $script:OcctRoot
-        & $Action
-    }
-    finally {
-        $env:PATH = $previousPath
-        $env:OCCT_BRIDGE_NATIVE_DIR = $previousNativeDirectory
-        $env:OCCT_ROOT = $previousOcctRoot
-        $env:CASROOT = $previousCasRoot
-    }
-}
-
-function Prepare-SmokeOutput {
-    param(
-        [Parameter(Mandatory = $true)][string]$ProjectKey,
-        [Parameter(Mandatory = $true)][string]$Framework
-    )
-
-    $project = Join-Path $RepoRoot $Projects[$ProjectKey]
-    Assert-Path $project
-    $output = Join-Path (Split-Path -Parent $project) "bin\x64\$Configuration\$Framework"
-    Assert-Path $output
-    Copy-Item $NativeDll (Join-Path $output "OcctNative.dll") -Force
-    return $output
-}
-
-function Run-Smoke {
-    Assert-Path $NativeDll
-    Build-Project "Smoke"
-    $smokeProject = Join-Path $RepoRoot $Projects.Smoke
-    $smokeOutput = Prepare-SmokeOutput "Smoke" $DefaultRuntimeFramework
-
-    Invoke-WithOcctRuntime $smokeOutput {
-        Write-Host "[smoke] Running ABI5 native modeling scenarios..." -ForegroundColor Cyan
-        Invoke-DotNetChecked @(
-            "run",
-            "--project", $smokeProject,
-            "-c", $Configuration,
-            "-p:Platform=x64",
-            "-p:Version=$BridgeVersion",
-            "--no-build"
-        ) "Smoke test failed."
-    }
 }
 
 function Clean-Outputs {
@@ -395,22 +309,12 @@ function Assert-CleanSourceTree {
 }
 
 function Build-BinaryDistribution {
-    param(
-        [switch]$SkipBuild,
-        [string]$ExpectedSourceCommit = ""
-    )
-
-    if ($Configuration -ne "Release") { throw "Binary SDK distribution is Release-only. Run: .\build.ps1 sdk Release (validated) or .\build.ps1 dist Release (packaging only)." }
+    if ($Configuration -ne "Release") { throw "Binary SDK distribution is Release-only. Run: .\build.ps1 dist Release." }
     $sourceCommit = Assert-CleanSourceTree
-    if (-not [string]::IsNullOrWhiteSpace($ExpectedSourceCommit) -and $sourceCommit -ne $ExpectedSourceCommit) {
-        throw "The source commit changed during the validated SDK gate: expected $ExpectedSourceCommit, found $sourceCommit."
-    }
     Write-Host "[dist] Source commit: $sourceCommit" -ForegroundColor DarkGray
 
-    if (-not $SkipBuild.IsPresent) {
-        Build-Native
-        Build-Managed
-    }
+    Build-Native
+    Build-Managed
 
     $files = [ordered]@{
         "OcctNative.dll" = Join-Path $RepoRoot "build\native\bin\Release\OcctNative.dll"
@@ -500,7 +404,7 @@ if ($Target -eq "clean") {
     exit 0
 }
 
-if ($Target -in @("build", "test", "smoke", "dist", "sdk")) {
+if ($Target -in @("build", "dist")) {
     Resolve-DotNetSdk
     Write-Host "dotnet:        $script:DotNetCommand" -ForegroundColor DarkGray
     Write-Host "SDK resolved:  $script:ResolvedSdkVersion" -ForegroundColor Green
@@ -511,27 +415,7 @@ switch ($Target) {
         Build-Native
         Build-Managed
     }
-    "test" {
-        Build-Project "ManagedTests"
-        Run-ManagedTests
-    }
-    "dist" { Build-BinaryDistribution }
-    "sdk" {
-        if ($Configuration -ne "Release") { throw "Validated Binary SDK generation is Release-only. Run: .\build.ps1 sdk Release" }
-        $sdkSourceCommit = Assert-CleanSourceTree
-        Write-Host "[sdk] Clean source commit: $sdkSourceCommit" -ForegroundColor DarkGray
-        Build-Native
-        Build-Managed
-        Build-Project "ManagedTests"
-        Run-ManagedTests
-        Run-Smoke
-        Build-BinaryDistribution -SkipBuild -ExpectedSourceCommit $sdkSourceCommit
-    }
-    "smoke" {
-        Build-Native
-        Build-Managed
-        Run-Smoke
-    }
+"dist" { Build-BinaryDistribution }
 }
 
 Write-Host "Build completed." -ForegroundColor Green

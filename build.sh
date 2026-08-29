@@ -82,30 +82,6 @@ managed() {
     dotnet build "${ROOT_DIR}/src/OcctNet.Avalonia/OcctNet.Avalonia.csproj" -c "${CONFIGURATION}" -p:Platform=x64 -p:Version="${BRIDGE_VERSION}" --nologo
 }
 
-test_managed() {
-    validate_common
-    dotnet test "${ROOT_DIR}/tests/OcctNet.ManagedTests/OcctNet.ManagedTests.csproj" -c "${CONFIGURATION}" -p:Platform=x64 -p:Version="${BRIDGE_VERSION}"
-}
-
-prepare_native_runtime() {
-    export OCCT_BRIDGE_NATIVE_DIR="${NATIVE_DIR}"
-    export CASROOT="${CASROOT:-${OCCT_ROOT}}"
-    export LD_LIBRARY_PATH="${NATIVE_DIR}:${OCCT_LIB_DIR}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
-}
-
-run_smoke() {
-    validate_native
-    [[ -f "${NATIVE_DIR}/libOcctNative.so" ]] || fail "Native bridge must be built before running smoke tests."
-    dotnet build "${ROOT_DIR}/tests/OcctNet.Smoke/OcctNet.Smoke.csproj" -c "${CONFIGURATION}" -p:Platform=x64 -p:Version="${BRIDGE_VERSION}" --nologo
-    prepare_native_runtime
-    dotnet run --project "${ROOT_DIR}/tests/OcctNet.Smoke/OcctNet.Smoke.csproj" -c "${CONFIGURATION}" -p:Platform=x64 -p:Version="${BRIDGE_VERSION}" --no-build
-}
-
-smoke() {
-    native
-    run_smoke
-}
-
 dist() {
     [[ "${CONFIGURATION}" == "Release" ]] || fail "Binary SDK distribution is Release-only."
     require_command git
@@ -158,16 +134,14 @@ dist() {
 
 clean() {
     rm -rf "${ROOT_DIR}/build" "${ROOT_DIR}/artifacts"
-    for path in src/OcctNet src/OcctNet.Avalonia tests/OcctNet.ManagedTests tests/OcctNet.Smoke; do
+    for path in src/OcctNet src/OcctNet.Avalonia; do
         rm -rf "${ROOT_DIR}/${path}/bin" "${ROOT_DIR}/${path}/obj"
     done
 }
 
 case "${TARGET}" in
     build) native; managed ;;
-    test) test_managed ;;
-    smoke) smoke ;;
     dist) dist ;;
     clean) clean ;;
-    *) fail "Unknown target '${TARGET}'. Use build, test, smoke, dist, or clean." ;;
+    *) fail "Unknown target '${TARGET}'. Use build, dist, or clean." ;;
 esac

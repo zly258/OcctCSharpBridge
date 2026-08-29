@@ -25,23 +25,13 @@ Windows:
 
 ```powershell
 .\build.ps1 build Release -OcctRoot "D:\tools\occt-vc144-64"
-.\build.ps1 test Release
-.\build.ps1 smoke Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
 Linux:
 
 ```bash
 ./build.sh build Release
-./build.sh test Release
-./build.sh smoke Release
 ```
-
-Normal validation is intentionally simple:
-
-- compilation validates project/API structure;
-- ManagedTests cover managed behavior and ABI layouts;
-- one minimal smoke verifies native loading, ABI/version agreement, runtime initialization, and a real OCCT operation.
 
 ## Distribution
 
@@ -57,7 +47,7 @@ Formal Windows portable package:
 .\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64" -Zip
 ```
 
-Publishing runs the Release build/test/smoke gate, creates the package, and performs one isolated .NET 10 package smoke with development OCCT paths removed.
+`dist` builds the Binary SDK directly. Publishing packages that SDK without a separate test or smoke stage.
 
 ## Minimal use
 

@@ -43,7 +43,7 @@ Windows Portable SDK Packager
 OcctCSharpBridge-<version>-win-x64-portable.zip
 ```
 
-第三方不需要在每次 SDK 更新时重新运行 Bridge 测试与 Smoke。正式制品的完整 QA 应在 Bridge Release 阶段完成一次，而不是由每个 Consumer 重复执行。
+第三方直接消费已构建的 Bridge SDK，不在 Consumer 仓库维护第二套 QA 流程。
 
 ### 2.2 没有 Release Asset
 
@@ -63,7 +63,7 @@ git reset --hard <approved-main-commit>
   -Zip
 ```
 
-`dist` 是 Consumer Artifact 快路径：构建 Native + Managed、写 Contract/Manifest/Hash，但不重新执行 Bridge 完整 Regression/Smoke Gate。
+`dist` 构建 Native + Managed，并写入 Consumer 所需的 Contract/Manifest/Hash。
 
 这种本地生成物应记录精确 `sourceCommit`。如果无法确认该 Source Commit 是否已经经过 Bridge Release QA，它只能视为本地 Consumer Build，而不是官方 Release Asset。
 
@@ -362,8 +362,6 @@ Avalonia 可以运行
 
 ```bash
 ./build.sh build Release
-./build.sh test Release
-./build.sh smoke Release
 ```
 
 Linux 二进制应针对自己的目标发行版、OCCT 7.9.0 和 C/C++ Runtime 基线自行构建。

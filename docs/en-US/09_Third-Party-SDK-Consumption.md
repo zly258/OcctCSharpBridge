@@ -41,7 +41,7 @@ Prefer:
 OcctCSharpBridge-<version>-win-x64-portable.zip
 ```
 
-A third-party consumer does not rerun Bridge tests or smoke for every SDK refresh. Full Bridge QA belongs to the release-production stage.
+A third-party consumer consumes the built Bridge SDK instead of maintaining a second QA pipeline.
 
 ### 2.2 No formal Release asset
 
@@ -61,7 +61,7 @@ git reset --hard <approved-main-commit>
   -Zip
 ```
 
-`dist` is the Consumer Artifact fast path: it builds Native + Managed and writes the contract/manifest/hashes without rerunning the complete regression/smoke gate.
+`dist` builds Native + Managed and writes the contract/manifest/hashes for consumers.
 
 Record the exact `sourceCommit`. If the commit has not been confirmed through the Bridge release QA process, the output is a local consumer build rather than an official Release artifact.
 
@@ -337,8 +337,6 @@ Typical validation:
 
 ```bash
 ./build.sh build Release
-./build.sh test Release
-./build.sh smoke Release
 ```
 
 Build Linux binaries for the intended distribution, OCCT 7.9.0 installation, and C/C++ runtime baseline.
