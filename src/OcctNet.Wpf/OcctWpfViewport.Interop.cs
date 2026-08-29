@@ -24,6 +24,7 @@ public sealed partial class OcctWpfViewport
     private const int WmMouseMove = 0x0200;
     private const int WmLButtonDown = 0x0201;
     private const int WmLButtonUp = 0x0202;
+    private const int WmLButtonDblClk = 0x0203;
     private const int WmRButtonDown = 0x0204;
     private const int WmRButtonUp = 0x0205;
     private const int WmMButtonDown = 0x0207;

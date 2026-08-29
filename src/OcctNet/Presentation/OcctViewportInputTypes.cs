@@ -15,7 +15,8 @@ public enum OcctPointerInputKind
     Pressed = 0,
     Moved = 1,
     Released = 2,
-    Wheel = 3
+    Wheel = 3,
+    DoubleClicked = 4
 }
 
 public enum OcctPointerButton

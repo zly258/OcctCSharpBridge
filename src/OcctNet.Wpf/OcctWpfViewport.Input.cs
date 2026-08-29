@@ -36,6 +36,9 @@ public sealed partial class OcctWpfViewport
                 case WmLButtonUp:
                     HandlePointerReleased(wParam, lParam, OcctPointerButton.Left);
                     break;
+                case WmLButtonDblClk:
+                    HandlePointerDoubleClicked(hwnd, wParam, lParam, OcctPointerButton.Left);
+                    break;
                 case WmRButtonDown:
                     HandlePointerPressed(hwnd, wParam, lParam, OcctPointerButton.Right);
                     break;
@@ -92,6 +95,21 @@ public sealed partial class OcctWpfViewport
         PreviewPointerInput?.Invoke(this, input);
         if (!input.Handled)
             ProcessDefaultPointerPressed(hwnd, button, x, y);
+        PointerInput?.Invoke(this, input);
+    }
+
+    private void HandlePointerDoubleClicked(IntPtr hwnd, IntPtr wParam, IntPtr lParam, OcctPointerButton button)
+    {
+        SetFocus(hwnd);
+        Focus();
+        var (x, y) = GetPoint(lParam);
+        _lastMouseX = x;
+        _lastMouseY = y;
+
+        var input = CreatePointerInput(OcctPointerInputKind.DoubleClicked, button, wParam, x, y, 0);
+        PreviewPointerInput?.Invoke(this, input);
+        if (input.Handled)
+            CancelHandledRelease(button);
         PointerInput?.Invoke(this, input);
     }
 

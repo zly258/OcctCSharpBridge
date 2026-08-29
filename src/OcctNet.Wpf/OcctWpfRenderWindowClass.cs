@@ -6,6 +6,7 @@ internal static class OcctWpfRenderWindowClass
 {
     internal const string Name = "OcctNet.Wpf.RenderHost";
 
+    private const uint CsDblClks = 0x0008;
     private const uint CsOwnDc = 0x0020;
     private const uint WmSetCursor = 0x0020;
     private const uint WmEraseBkgnd = 0x0014;
@@ -42,7 +43,7 @@ internal static class OcctWpfRenderWindowClass
             var windowClass = new WndClassEx
             {
                 Size = (uint)Marshal.SizeOf<WndClassEx>(),
-                Style = CsOwnDc,
+                Style = CsOwnDc | CsDblClks,
                 WindowProcedure = Marshal.GetFunctionPointerForDelegate(WindowProc),
                 ClassExtraBytes = 0,
                 WindowExtraBytes = 0,
