@@ -137,8 +137,9 @@ namespace OcctBridge
         if (!isInitialized()) throw std::runtime_error("The OCCT viewer has not been initialized.");
 
         const OcctObjectId id = scene.allocateId();
-        const Handle(AIS_Shape) aisShape = Handle(AIS_Shape)::DownCast(presentation);
-        if (!aisShape.IsNull()) aisShape->SetDisplayMode(viewerContext.displayMode);
+        // Keep the viewer display mode global. Per-object display mode is an
+        // explicit presentation override and must not be assigned implicitly
+        // when a shape enters the scene.
         viewerContext.context->Display(presentation, Standard_False);
         scene.objects.emplace(id, ObjectEntry{OcctObject_Shape, shape, presentation, name});
         applySelectionMode(presentation);

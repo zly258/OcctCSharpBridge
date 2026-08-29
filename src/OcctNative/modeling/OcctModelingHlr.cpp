@@ -43,6 +43,8 @@ extern "C"
                 throw std::invalid_argument("HLR view and up directions must not be parallel.");
             rightVector.Normalize();
 
+            // Keep this construction aligned with OCCTBIM-Source HLRUtil:
+            // gp_Ax3 -> gp_Trsf -> HLRAlgo_Projector.
             const gp_Ax3 projectionAxes(
                 gp_Pnt(0.0, 0.0, 0.0),
                 viewDir,
@@ -52,7 +54,10 @@ extern "C"
 
             Handle(HLRBRep_Algo) algorithm = new HLRBRep_Algo();
             algorithm->Add(source);
-            algorithm->Projector(HLRAlgo_Projector(projectionTransform, Standard_False, 0.0));
+            algorithm->Projector(HLRAlgo_Projector(
+                projectionTransform,
+                Standard_False,
+                0.0));
             algorithm->Update();
             algorithm->Hide();
 
