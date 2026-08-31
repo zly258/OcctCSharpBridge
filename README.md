@@ -67,7 +67,17 @@ The Bridge remains a low-level geometry/modeling/viewer wrapper. Documents, feat
 
 ## Projects using OcctCSharpBridge
 
-- [ModelScript](https://github.com/zly258/ModelScript) — a Windows x64 parametric CAD editor built with WPF, typed parameters and expressions, JSON-based model documents, and an OcctCSharpBridge-backed preview/export pipeline.
+### ModelScript
+
+[ModelScript](https://github.com/zly258/ModelScript) is a Windows x64 parametric CAD editor built on OcctCSharpBridge and OCCT. It uses typed parameters and expressions, JSON model documents, parametric commands and transforms, interactive 3D preview, and STEP/IGES export.
+
+- **WPF:** the primary implementation on [main](https://github.com/zly258/ModelScript/tree/main), with ongoing WPF development on [dev](https://github.com/zly258/ModelScript/tree/dev).
+- **Avalonia:** the parallel Avalonia implementation on the [avalonia](https://github.com/zly258/ModelScript/tree/avalonia) branch.
+- Both frontends consume the OcctCSharpBridge Binary SDK rather than duplicating Bridge source.
+
+| WPF | Avalonia |
+| --- | --- |
+| [![ModelScript WPF preview](https://raw.githubusercontent.com/zly258/ModelScript/dev/docs/screenshots/wpf-en-US.png)](https://github.com/zly258/ModelScript/tree/dev) | [![ModelScript Avalonia preview](https://raw.githubusercontent.com/zly258/ModelScript/avalonia/docs/screenshots/avalonia-en-US.png)](https://github.com/zly258/ModelScript/tree/avalonia) |
 
 ## Demo previews
 
