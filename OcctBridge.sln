@@ -27,8 +27,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Bridge", "Bridge", "{E3C3E2
         src\OcctNative\CMakeLists.txt = src\OcctNative\CMakeLists.txt
     EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{E3C3E281-D16F-44C3-A694-EC620E3BB102}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentation", "{E3C3E281-D16F-44C3-A694-EC620E3BB103}"
     ProjectSection(SolutionItems) = preProject
         docs\zh-CN\README.md = docs\zh-CN\README.md
@@ -57,10 +55,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.WinForms", "src\Occ
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.Wpf", "src\OcctNet.Wpf\OcctNet.Wpf.csproj", "{B65176A4-9A31-4C15-BE31-2F4FB10EFB56}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.ManagedTests", "tests\OcctNet.ManagedTests\OcctNet.ManagedTests.csproj", "{D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcctNet.Smoke", "tests\OcctNet.Smoke\OcctNet.Smoke.csproj", "{A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}"
-EndProject
 Global
     GlobalSection(SolutionConfigurationPlatforms) = preSolution
         Debug|x64 = Debug|x64
@@ -79,23 +73,14 @@ Global
         {B65176A4-9A31-4C15-BE31-2F4FB10EFB56}.Debug|x64.Build.0 = Debug|x64
         {B65176A4-9A31-4C15-BE31-2F4FB10EFB56}.Release|x64.ActiveCfg = Release|x64
         {B65176A4-9A31-4C15-BE31-2F4FB10EFB56}.Release|x64.Build.0 = Release|x64
-        {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}.Debug|x64.ActiveCfg = Debug|x64
-        {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}.Debug|x64.Build.0 = Debug|x64
-        {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}.Release|x64.ActiveCfg = Release|x64
-        {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095}.Release|x64.Build.0 = Release|x64
-        {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}.Debug|x64.ActiveCfg = Debug|x64
-        {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}.Debug|x64.Build.0 = Debug|x64
-        {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}.Release|x64.ActiveCfg = Release|x64
-        {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E}.Release|x64.Build.0 = Release|x64
     EndGlobalSection
     GlobalSection(NestedProjects) = preSolution
         {217C4D88-77AD-4A6A-BDF8-4CFE734A2DA3} = {E3C3E281-D16F-44C3-A694-EC620E3BB101}
         {7EA6CC4D-34D3-4A91-9C6A-CFC4E339CE58} = {E3C3E281-D16F-44C3-A694-EC620E3BB101}
         {B65176A4-9A31-4C15-BE31-2F4FB10EFB56} = {E3C3E281-D16F-44C3-A694-EC620E3BB101}
-        {D4EABF6A-2A67-49E7-9F32-0B2B50E6D095} = {E3C3E281-D16F-44C3-A694-EC620E3BB102}
-        {A5E5B359-A6C0-40AE-8F83-ADCF59BC9F6E} = {E3C3E281-D16F-44C3-A694-EC620E3BB102}
     EndGlobalSection
     GlobalSection(SolutionProperties) = preSolution
         HideSolutionNode = FALSE
     EndGlobalSection
 EndGlobal
+

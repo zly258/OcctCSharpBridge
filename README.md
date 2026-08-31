@@ -65,6 +65,10 @@ model.ExportStep(cut.Shape, "plate.step");
 
 The Bridge remains a low-level geometry/modeling/viewer wrapper. Documents, feature trees, commands, undo/redo, snapping, grips, catalog/business semantics, and project persistence belong to applications built on top of it.
 
+## Projects using OcctCSharpBridge
+
+- [ModelScript](https://github.com/zly258/ModelScript) — a Windows x64 parametric CAD editor built with WPF, typed parameters and expressions, JSON-based model documents, and an OcctCSharpBridge-backed preview/export pipeline.
+
 ## Demo previews
 
 The [demo](https://github.com/zly258/OcctCSharpBridge/tree/demo) branch contains reference WinForms, WPF, and Avalonia hosts.

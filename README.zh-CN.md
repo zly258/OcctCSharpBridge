@@ -65,6 +65,10 @@ model.ExportStep(cut.Shape, "plate.step");
 
 Bridge 保持低层几何/建模/Viewer 封装。Document、Feature Tree、Command、Undo/Redo、捕捉、夹点、Catalog/业务语义和项目持久化属于上层应用。
 
+## 使用 OcctCSharpBridge 的项目
+
+- [ModelScript](https://github.com/zly258/ModelScript) — Windows x64 参数化 CAD 编辑器，采用 WPF、类型化参数与表达式、JSON 模型文档，并通过 OcctCSharpBridge 提供三维预览与 STEP/IGES 导出能力。
+
 ## Demo
 
 [demo](https://github.com/zly258/OcctCSharpBridge/tree/demo) 分支提供 WinForms、WPF、Avalonia 参考宿主。
