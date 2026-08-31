@@ -15,8 +15,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <map>
+#include <memory>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <vector>
 
 namespace
@@ -56,29 +59,29 @@ namespace
     {
         switch (ch)
         {
-        case 0xFF08: return '(';  // Full-width （ -> (
-        case 0xFF09: return ')';  // Full-width ） -> )
-        case 0xFF1A: return ':';  // Full-width ： -> :
-        case 0xFF0C: return ',';  // Full-width ， -> ,
-        case 0xFF1B: return ';';  // Full-width ； -> ;
-        case 0xFF01: return '!';  // Full-width ！ -> !
-        case 0xFF1F: return '?';  // Full-width ？ -> ?
-        case 0x3010: return '[';  // 【 -> [
-        case 0x3011: return ']';  // 】 -> ]
-        case 0xFF3B: return '[';  // ［ -> [
-        case 0xFF3D: return ']';  // ］ -> ]
-        case 0x3008: return '<';  // 〈 -> <
-        case 0x3009: return '>';  // 〉 -> >
-        case 0x300A: return '<';  // 《 -> <
-        case 0x300B: return '>';  // 》 -> >
-        case 0x201C: case 0x201D: return '"';  // “ ” -> "
-        case 0x2018: case 0x2019: return '\''; // ‘ ’ -> '
-        case 0x3001: return ',';  // 、 -> ,
-        case 0x3002: return '.';  // 。 -> .
-        case 0x2014: return '-';  // — -> -
-        case 0x2026: return '.';  // … -> .
-        case 0x00B7: return '.';  // · -> .
-        case 0xFFE5: return '$';  // ￥ -> $
+        case 0xFF08: return '(';
+        case 0xFF09: return ')';
+        case 0xFF1A: return ':';
+        case 0xFF0C: return ',';
+        case 0xFF1B: return ';';
+        case 0xFF01: return '!';
+        case 0xFF1F: return '?';
+        case 0x3010: return '[';
+        case 0x3011: return ']';
+        case 0xFF3B: return '[';
+        case 0xFF3D: return ']';
+        case 0x3008: return '<';
+        case 0x3009: return '>';
+        case 0x300A: return '<';
+        case 0x300B: return '>';
+        case 0x201C: case 0x201D: return '"';
+        case 0x2018: case 0x2019: return '\'';
+        case 0x3001: return ',';
+        case 0x3002: return '.';
+        case 0x2014: return '-';
+        case 0x2026: return '.';
+        case 0x00B7: return '.';
+        case 0xFFE5: return '$';
         default: return 0;
         }
     }
@@ -128,9 +131,7 @@ namespace
             if (candidate.find('/') != std::string::npos || candidate.find('\\') != std::string::npos)
             {
                 if (font.Init(NCollection_String(candidate.c_str()), height, 0))
-                {
                     return true;
-                }
             }
 
             if (font.FindAndInit(
@@ -143,6 +144,32 @@ namespace
             }
         }
         return false;
+    }
+
+    StdPrs_BRepFont& cachedFont(
+        const char* fontName,
+        Font_FontAspect aspect,
+        double height)
+    {
+        using FontKey = std::tuple<std::string, int, double>;
+        static thread_local std::map<FontKey, std::shared_ptr<StdPrs_BRepFont>> cache;
+        constexpr std::size_t maxCachedFonts = 64;
+
+        const std::string requested = fontName == nullptr ? std::string() : std::string(fontName);
+        const FontKey key(requested, static_cast<int>(aspect), height);
+        const auto existing = cache.find(key);
+        if (existing != cache.end())
+            return *existing->second;
+
+        if (cache.size() >= maxCachedFonts)
+            cache.clear();
+
+        auto font = std::make_shared<StdPrs_BRepFont>();
+        if (!initializeFont(*font, fontName, aspect, height))
+            throw std::runtime_error("No usable system font was found for BRep text generation.");
+
+        const auto inserted = cache.emplace(key, std::move(font));
+        return *inserted.first->second;
     }
 }
 
@@ -167,17 +194,16 @@ namespace OcctModelingInternal
         if (!std::isfinite(extrusionDepth) || extrusionDepth < 0.0)
             throw std::invalid_argument("Text extrusion depth must be non-negative.");
 
-        StdPrs_BRepFont font;
-        if (!initializeFont(font, fontName, fontAspect(bold, italic), height))
-            throw std::runtime_error("No usable system font was found for BRep text generation.");
+        StdPrs_BRepFont& font = cachedFont(
+            fontName,
+            fontAspect(bold, italic),
+            height);
 
         const gp_Dir normalDirection = direction(normal);
         const gp_Dir xAxisDirection = direction(xDirection);
         if (std::abs(normalDirection.Dot(xAxisDirection)) > 1.0 - Precision::Angular())
             throw std::invalid_argument("Text x-direction must not be parallel to the text normal.");
 
-        // Normalize text: if the current font is missing CJK punctuation such as full-width
-        // parentheses '（' (U+FF08) / '）' (U+FF09), fallback to standard punctuation so it never disappears.
         std::vector<Standard_Utf32Char> u32chars;
         NCollection_UtfIterator<Standard_Utf8Char> iter(reinterpret_cast<const Standard_Utf8Char*>(utf8Text));
         while (*iter != 0)
