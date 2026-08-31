@@ -1,5 +1,6 @@
 #include "geometry/OcctViewerGeometry.h"
 #include "core/OcctInternal.hxx"
+#include "geometry/OcctBRepTextBuilder.hxx"
 
 #include <BRepAdaptor_Curve.hxx>
 #include <BRepAdaptor_Surface.hxx>
@@ -7,6 +8,8 @@
 #include <BRepGProp.hxx>
 #include <BRep_Tool.hxx>
 #include <GProp_GProps.hxx>
+#include <Graphic3d_HorizontalTextAlignment.hxx>
+#include <Graphic3d_VerticalTextAlignment.hxx>
 #include <Poly_Triangulation.hxx>
 #include <Poly_Triangle.hxx>
 #include <Precision.hxx>
@@ -121,10 +124,72 @@ namespace
             throw std::invalid_argument("Face parameters must be finite.");
         }
     }
+
+    Graphic3d_HorizontalTextAlignment viewerHorizontalTextAlignment(int value)
+    {
+        switch (value)
+        {
+        case 0: return Graphic3d_HTA_LEFT;
+        case 1: return Graphic3d_HTA_CENTER;
+        case 2: return Graphic3d_HTA_RIGHT;
+        default: throw std::invalid_argument("Unsupported horizontal text alignment.");
+        }
+    }
+
+    Graphic3d_VerticalTextAlignment viewerVerticalTextAlignment(int value)
+    {
+        switch (value)
+        {
+        case 0: return Graphic3d_VTA_BOTTOM;
+        case 1: return Graphic3d_VTA_CENTER;
+        case 2:
+        case 3: return Graphic3d_VTA_TOP;
+        default: throw std::invalid_argument("Unsupported vertical text alignment.");
+        }
+    }
+
 }
 
 extern "C"
 {
+    OcctStatus occt_engine_brep_text_create(
+        OcctEngineHandle handle,
+        const char* utf8Text,
+        const char* fontName,
+        OcctPoint3d position,
+        OcctVector3d normal,
+        OcctVector3d xDirection,
+        double height,
+        double extrusionDepth,
+        OcctBool bold,
+        OcctBool italic,
+        int horizontalAlignment,
+        int verticalAlignment,
+        OcctObjectId* result)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (result == nullptr) return OcctStatus_ErrorInvalidArgument;
+        *result = 0;
+        return executeGeometryStatus(engine, [&]
+        {
+            const TopoDS_Shape textShape = OcctModelingInternal::buildBRepText(
+                utf8Text,
+                fontName,
+                position,
+                normal,
+                xDirection,
+                height,
+                extrusionDepth,
+                bold != 0,
+                italic != 0,
+                viewerHorizontalTextAlignment(horizontalAlignment),
+                viewerVerticalTextAlignment(verticalAlignment));
+            *result = engine->addShape(textShape, false, "BRepText");
+            if (*result <= 0)
+                throw std::runtime_error("BRep text did not create a viewer object.");
+        });
+    }
+
     OcctStatus occt_engine_shape_triangulated_mesh_create(
         OcctEngineHandle handle,
         const OcctPoint3d* vertices,

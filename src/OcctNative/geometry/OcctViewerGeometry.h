@@ -54,6 +54,21 @@ extern "C"
         OcctPoint3d center;
     };
 
+    OCCTBRIDGE_API OcctStatus occt_engine_brep_text_create(
+        OcctEngineHandle handle,
+        const char* utf8Text,
+        const char* fontName,
+        OcctPoint3d position,
+        OcctVector3d normal,
+        OcctVector3d xDirection,
+        double height,
+        double extrusionDepth,
+        OcctBool bold,
+        OcctBool italic,
+        int horizontalAlignment,
+        int verticalAlignment,
+        OcctObjectId* result);
+
     OCCTBRIDGE_API OcctStatus occt_engine_indexed_vertex_get(
         OcctEngineHandle handle,
         OcctObjectId ownerId,

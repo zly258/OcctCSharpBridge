@@ -5,6 +5,23 @@ namespace OcctNet;
 
 internal static partial class ViewerShapeNativeMethods
 {
+    [LibraryImport(NativeMethods.LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_brep_text_create(
+        OcctEngineSafeHandle handle,
+        string utf8Text,
+        string fontName,
+        OcctPoint3d position,
+        OcctVector3d normal,
+        OcctVector3d xDirection,
+        double height,
+        double extrusionDepth,
+        int bold,
+        int italic,
+        int horizontalAlignment,
+        int verticalAlignment,
+        out long result);
+
     [LibraryImport(NativeMethods.LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_engine_shape_type_get(OcctEngineSafeHandle handle, long shapeId, out int result);
