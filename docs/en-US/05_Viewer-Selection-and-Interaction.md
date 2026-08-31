@@ -44,7 +44,35 @@ viewport.InitialOptions = new OcctViewportInitializationOptions
 };
 ```
 
-The adapters create the native surface without an immediate redraw, apply the initial options inside one `BeginDisplayBatch()` scope, resize the surface, and submit the first frame once. Native window mapping is deferred until that first real redraw, so the first visible HWND/XID frame already contains the configured background, view, projection and decorations instead of exposing an empty/default native window first.
+The adapters initialize the native surface with `redrawAfterInitialize: false`, apply initial options and the initial resize inside one `BeginDisplayBatch()` scope, then coalesce the first real `ResizeSurface() + Redraw()` into the UI dispatcher's Render phase. A native handle being created, the engine being initialized, and the first OCCT frame being submitted are three different states. Applications must not treat `NativeHandle != 0` or `IsEngineInitialized` as first-frame completion; use `RenderReady` / `FirstFrameRendered`.
+
+## Blank first frame or “appears after moving the mouse”
+
+This is one of the most common lifecycle failures when hosting a native OCCT viewport in WPF or Avalonia. Pointer input is not the renderer.
+
+Both WPF `HwndHost` and Avalonia `NativeControlHost` place OCCT in a separate native child window/surface. When the native handle is created, the outer UI framework may still be finishing measure/arrange, DPI synchronization, visibility changes, or the final native bounds update. OCCT, however, needs the viewport size synchronized after host-size changes and a real redraw after the view becomes visible. OCCT's `V3d_View::MustBeResized()` handles window-size changes and `Redraw()` performs an explicit redraw; creating a handle or invalidating content alone does not submit the first frame.
+
+A typical failing sequence is:
+
+1. create the native handle;
+2. initialize the OCCT surface;
+3. resize/redraw before the final arranged size is known, or omit the redraw after final layout;
+4. WPF/Avalonia finishes layout but the native OCCT surface receives no effective refresh;
+5. the viewport remains blank until a later input, resize, DPI, or visibility event happens to request another redraw.
+
+“Moving the mouse makes it appear” is a strong diagnostic signature. The default hover path calls `OcctEngine.MoveTo(...)`, and the Bridge native selection path then calls `requestRedraw()`. Pointer movement therefore happens to submit the missing frame; it is not a valid initialization strategy.
+
+Follow these rules:
+
+- do not treat native-handle creation or engine initialization inside a Window/UserControl constructor as a visible viewport;
+- use `InitialOptions` for static first-frame configuration and `EngineRecreated` for engine-bound services;
+- use `RenderReady` / `FirstFrameRendered` as the first-visible-frame contract;
+- custom hosts must apply the final layout size through `ResizeSurface()` and then perform a real `Redraw()`;
+- size, DPI, visibility, tab/docking, minimize/restore, and native-host reattachment changes should use the coalesced `RefreshNativeView()` path rather than pointer events, timers, or redraw loops;
+- `Invalidate` only marks content dirty and does not replace the first real `Redraw`;
+- 125%/150% DPI scaling is usually not the root cause, but it increases layout, DPI, and native-bounds transitions and therefore exposes timing defects more often.
+
+For diagnosis, if the viewport is blank on startup but becomes correct after mouse movement, temporarily call `RefreshNativeView()` after final layout. If that immediately fixes the frame, the root cause is almost certainly native-host layout / first-frame Resize+Redraw timing. The permanent fix belongs in the host lifecycle, not in the temporary call.
 
 After the viewport is ready, use normal `OcctEngine` APIs to change background, view, projection, triedron, or view cube state.
 

@@ -44,7 +44,35 @@ viewport.InitialOptions = new OcctViewportInitializationOptions
 };
 ```
 
-Adapter 创建 Native Surface 时不会立即 Redraw，而是在一个 `BeginDisplayBatch()` 中完成 InitialOptions、Resize 等首帧配置，最后只提交一次首帧。Native Window 的 Map 也延迟到第一次真实 Redraw，因此 HWND/XID 真正可见时已经包含最终背景、视图、Projection 和装饰，不会先暴露空白或默认 Native Window。
+Adapter 创建 Native Surface 时使用 `redrawAfterInitialize: false` 初始化，在一个 `BeginDisplayBatch()` 中完成 InitialOptions 和初始 Resize，然后把首次真实的 `ResizeSurface() + Redraw()` 合并到 UI 调度器的 Render 阶段。Native Handle 已创建、Engine 已初始化和“首个 OCCT 帧已经提交”是三个不同状态；应用层不要把 `NativeHandle != 0` 或 `IsEngineInitialized` 当成首帧完成，应以 `RenderReady` / `FirstFrameRendered` 为准。
+
+## 首次空白或“移动鼠标后才显示”
+
+这是 WPF/Avalonia 托管原生 OCCT Viewport 时最常见的生命周期问题之一，并不是鼠标本身负责绘制。
+
+WPF 的 `HwndHost` 和 Avalonia 的 `NativeControlHost` 都把 OCCT 放在独立的 Native Child Window/Surface 中。Native Handle 创建完成时，外层 UI 往往还没有结束 Measure/Arrange、DPI 同步、可见性切换或最终 Native Bounds 更新。OCCT 侧则要求在宿主尺寸变化后同步 Viewport 尺寸，并在 View 真正显示后执行一次真实 Redraw。OCCT 的 `V3d_View::MustBeResized()` 用于窗口尺寸变化，`Redraw()` 用于显式重绘；仅仅 Invalidate/创建 Handle 并不等价于提交首帧。
+
+典型错误时序是：
+
+1. Native Handle 创建；
+2. OCCT Surface 初始化；
+3. 在最终布局尺寸到达之前执行了一次 Resize/Redraw，或者根本没有在最终布局后 Redraw；
+4. WPF/Avalonia 随后完成最终布局，但 Native OCCT Surface 没有再收到有效刷新；
+5. Viewport 保持空白，直到后续输入、Resize、DPI 或可见性事件偶然触发下一次 Redraw。
+
+“鼠标移动后突然显示”是这个问题非常典型的诊断特征。默认 Hover 路径会调用 `OcctEngine.MoveTo(...)`，Bridge Native Selection 随后执行 `requestRedraw()`；因此鼠标移动只是偶然补上了缺失的首帧刷新，并不是正确的初始化方式。
+
+SDK/应用层应遵守以下规则：
+
+- 不要在 Window/UserControl 构造函数里把 Native Handle 创建或 Engine 初始化完成当成 Viewport 已经可见；
+- 首帧静态配置使用 `InitialOptions`，需要绑定 Engine 生命周期的服务使用 `EngineRecreated`；
+- 首个可见帧以 `RenderReady` / `FirstFrameRendered` 为准；
+- 自定义 Host 必须保证最终布局尺寸确定后执行 `ResizeSurface()`，然后执行真实 `Redraw()`；
+- Size、DPI、Visible、Tab/Docking、最小化恢复、重新挂载 Native Host 等变化应走合并后的 `RefreshNativeView()` 路径，不要依赖鼠标事件、Timer 或反复调用 Redraw；
+- `Invalidate` 只表示内容失效，不能替代首帧 `Redraw`；
+- 125%/150% DPI 缩放通常不是根因，但会增加 Measure/Arrange、DPI 和 Native Bounds 变化次数，因此更容易暴露这个时序问题。
+
+如果出现“启动空白，移动鼠标后正常”，可在最终布局完成后临时调用一次 `RefreshNativeView()` 诊断：如果立即恢复，基本可以确认是 Native Host 布局/首帧 Resize+Redraw 时序问题。正式修复应放在 Host 生命周期中，而不是保留这个临时调用。
 
 Viewport 进入 Ready 后，背景、View、Projection、Triedron、ViewCube 的运行时修改继续使用普通 `OcctEngine` API。
 
