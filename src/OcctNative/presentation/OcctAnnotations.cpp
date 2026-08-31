@@ -2,8 +2,13 @@
 #include "core/OcctInternal.hxx"
 
 #include <AIS_TextLabel.hxx>
+#include <Aspect_TypeOfDisplayText.hxx>
 #include <BRepAdaptor_Curve.hxx>
+#include <Font_TextFormatter.hxx>
+#include <Graphic3d_HorizontalTextAlignment.hxx>
+#include <Graphic3d_VerticalTextAlignment.hxx>
 #include <Prs3d_DimensionAspect.hxx>
+#include <Prs3d_Drawer.hxx>
 #include <Prs3d_TextAspect.hxx>
 #include <Precision.hxx>
 #include <PrsDim_AngleDimension.hxx>
@@ -15,11 +20,15 @@
 #include <TopAbs_ShapeEnum.hxx>
 #include <TopoDS.hxx>
 #include <TopoDS_Edge.hxx>
+#include <gp_Ax2.hxx>
+#include <gp_Dir.hxx>
 #include <gp_Pln.hxx>
+#include <gp_Vec.hxx>
 
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 using namespace OcctBridge;
@@ -127,6 +136,57 @@ namespace
         Handle(AIS_TextLabel) label = Handle(AIS_TextLabel)::DownCast(entry->presentation);
         if (label.IsNull()) throw std::runtime_error("Text presentation type is invalid.");
         return label;
+    }
+
+    Graphic3d_HorizontalTextAlignment horizontalTextAlignment(int value)
+    {
+        switch (value)
+        {
+            case 0: return Graphic3d_HTA_LEFT;
+            case 1: return Graphic3d_HTA_CENTER;
+            case 2: return Graphic3d_HTA_RIGHT;
+            default: throw std::invalid_argument("Horizontal text alignment is out of range.");
+        }
+    }
+
+    Graphic3d_VerticalTextAlignment verticalTextAlignment(int value)
+    {
+        switch (value)
+        {
+            case 0: return Graphic3d_VTA_BOTTOM;
+            case 1: return Graphic3d_VTA_CENTER;
+            case 2: return Graphic3d_VTA_TOP;
+            case 3: return Graphic3d_VTA_TOPFIRSTLINE;
+            default: throw std::invalid_argument("Vertical text alignment is out of range.");
+        }
+    }
+
+    gp_Dir textDirection(const OcctVector3d& value, const char* name)
+    {
+        if (!std::isfinite(value.x) ||
+            !std::isfinite(value.y) ||
+            !std::isfinite(value.z))
+        {
+            throw std::invalid_argument(std::string(name) + " must be finite.");
+        }
+
+        const gp_Vec vector(value.x, value.y, value.z);
+        if (vector.SquareMagnitude() <= 1.0e-30)
+            throw std::invalid_argument(std::string(name) + " must be non-zero.");
+        return gp_Dir(vector);
+    }
+
+    Handle(Font_TextFormatter) textFormatter(const Handle(AIS_TextLabel)& label)
+    {
+        Handle(Font_TextFormatter) formatter = label->TextFormatter();
+        if (formatter.IsNull())
+            formatter = new Font_TextFormatter();
+
+        const Handle(Prs3d_TextAspect)& aspect = label->Attributes()->TextAspect();
+        formatter->SetupAlignment(
+            aspect->HorizontalJustification(),
+            aspect->VerticalJustification());
+        return formatter;
     }
 
     Handle(PrsDim_Dimension) requiredDimension(Engine* engine, OcctObjectId dimensionId)
@@ -360,6 +420,107 @@ extern "C"
                 label->SetZoomable(options->zoomable != 0);
             if ((mask & OcctViewerTextUpdate_Color) != 0)
                 label->SetColor(color(options->red, options->green, options->blue));
+            engine->viewerContext.context->Redisplay(label, Standard_True);
+        });
+    }
+
+    OcctStatus occt_engine_text_set_justification(
+        OcctEngineHandle handle,
+        OcctObjectId textId,
+        int horizontalAlignment,
+        int verticalAlignment)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeStatus(engine, [&]
+        {
+            Handle(AIS_TextLabel) label = requiredText(engine, textId);
+            const Graphic3d_HorizontalTextAlignment horizontal =
+                horizontalTextAlignment(horizontalAlignment);
+            const Graphic3d_VerticalTextAlignment vertical =
+                verticalTextAlignment(verticalAlignment);
+            label->SetHJustification(horizontal);
+            label->SetVJustification(vertical);
+
+            Handle(Font_TextFormatter) formatter = label->TextFormatter();
+            if (!formatter.IsNull())
+                formatter->SetupAlignment(horizontal, vertical);
+
+            engine->viewerContext.context->Redisplay(label, Standard_True);
+        });
+    }
+
+    OcctStatus occt_engine_text_set_orientation(
+        OcctEngineHandle handle,
+        OcctObjectId textId,
+        OcctVector3d planeNormal,
+        OcctVector3d xDirection,
+        OcctBool enabled)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeStatus(engine, [&]
+        {
+            Handle(AIS_TextLabel) label = requiredText(engine, textId);
+            if (enabled == 0)
+            {
+                label->UnsetOrientation3D();
+            }
+            else
+            {
+                const gp_Dir normal = textDirection(planeNormal, "Text plane normal");
+                const gp_Dir xAxis = textDirection(xDirection, "Text X direction");
+                if (std::abs(normal.Dot(xAxis)) >= 1.0 - 1.0e-12)
+                    throw std::invalid_argument("Text X direction must not be parallel to the plane normal.");
+
+                label->SetOrientation3D(gp_Ax2(label->Position(), normal, xAxis));
+            }
+
+            engine->viewerContext.context->Redisplay(label, Standard_True);
+        });
+    }
+
+    OcctStatus occt_engine_text_set_wrapping(
+        OcctEngineHandle handle,
+        OcctObjectId textId,
+        double width,
+        OcctBool wordWrapping)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeStatus(engine, [&]
+        {
+            if (!std::isfinite(width) || width < 0.0)
+                throw std::invalid_argument("Text wrapping width must be finite and non-negative.");
+
+            Handle(AIS_TextLabel) label = requiredText(engine, textId);
+            Handle(Font_TextFormatter) formatter = textFormatter(label);
+            formatter->SetWrapping(static_cast<float>(width));
+            formatter->SetWordWrapping(wordWrapping != 0);
+            label->SetTextFormatter(formatter);
+            engine->viewerContext.context->Redisplay(label, Standard_True);
+        });
+    }
+
+    OcctStatus occt_engine_text_set_background(
+        OcctEngineHandle handle,
+        OcctObjectId textId,
+        OcctBool enabled,
+        double red,
+        double green,
+        double blue)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeStatus(engine, [&]
+        {
+            Handle(AIS_TextLabel) label = requiredText(engine, textId);
+            if (enabled != 0)
+            {
+                label->SetColorSubTitle(color(red, green, blue));
+                label->SetDisplayType(Aspect_TODT_DEKALE);
+            }
+            else
+            {
+                label->SetDisplayType(Aspect_TODT_NORMAL);
+            }
+
             engine->viewerContext.context->Redisplay(label, Standard_True);
         });
     }
