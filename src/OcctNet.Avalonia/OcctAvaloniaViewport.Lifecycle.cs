@@ -65,8 +65,8 @@ public sealed partial class OcctAvaloniaViewport
         var handle = CreateWindowExW(
             0,
             "STATIC",
-            "OCCT_Render_Target",
-            WsChild | WsVisible | WsClipSiblings | WsClipChildren | SsNotify,
+            string.Empty,
+            WsChild | WsVisible | WsClipSiblings | WsClipChildren | SsOwnerDraw | SsNotify,
             0,
             0,
             100,

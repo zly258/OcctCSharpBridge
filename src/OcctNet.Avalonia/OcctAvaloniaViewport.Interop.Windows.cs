@@ -10,6 +10,7 @@ public sealed partial class OcctAvaloniaViewport
     private const int WsClipSiblings = 0x04000000;
     private const int WsClipChildren = 0x02000000;
     private const int SsNotify = 0x00000100;
+    private const int SsOwnerDraw = 0x0000000D;
     private const int HtClient = 1;
 
     private const uint WmSize = 0x0005;
