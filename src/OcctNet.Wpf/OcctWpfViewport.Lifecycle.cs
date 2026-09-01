@@ -16,9 +16,16 @@ public sealed partial class OcctWpfViewport
     /// </summary>
     public void RefreshNativeView()
     {
-        if (_engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero) return;
-        TryInvoke(_engine.ResizeSurface);
-        ScheduleRender();
+        if (_engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero || !HasUsableRenderSize()) return;
+
+        SynchronizeDpi();
+        TryInvoke(() =>
+        {
+            if (_engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero || !HasUsableRenderSize()) return;
+            _engine.ResizeSurface();
+            _engine.Redraw();
+            CompleteFirstFrameIfNeeded();
+        });
     }
 
     protected override HandleRef BuildWindowCore(HandleRef hwndParent)
@@ -72,8 +79,6 @@ public sealed partial class OcctWpfViewport
             }
             _lastHoverTimestamp = 0;
             _lastWorldPointTimestamp = 0;
-            MarkFirstFrameRendered(generation);
-            SetHostState(OcctViewportHostState.Ready);
 
             AttachHostWindow();
 
@@ -157,16 +162,16 @@ public sealed partial class OcctWpfViewport
         return Mouse.SetCursor(cursor);
     }
 
-    private void ScheduleRender()
+    private bool HasUsableRenderSize() =>
+        IsVisible &&
+        ActualWidth > 0.5 &&
+        ActualHeight > 0.5;
+
+    private void CompleteFirstFrameIfNeeded()
     {
-        if (_nativeRenderScheduled || _engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero || !IsVisible) return;
-        _nativeRenderScheduled = true;
-        Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(() =>
-        {
-            _nativeRenderScheduled = false;
-            if (_engine?.IsInitialized == true && _nativeHandle != IntPtr.Zero && IsVisible)
-                TryInvoke(_engine.Redraw);
-        }));
+        if (_renderReady) return;
+        MarkFirstFrameRendered(_engineGeneration);
+        SetHostState(OcctViewportHostState.Ready);
     }
 
     private void ScheduleNativeViewRefresh()
@@ -176,10 +181,7 @@ public sealed partial class OcctWpfViewport
         Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(() =>
         {
             _nativeRefreshScheduled = false;
-            SynchronizeDpi();
-            if (_engine?.IsInitialized == true && _nativeHandle != IntPtr.Zero)
-                TryInvoke(_engine.ResizeSurface);
-            ScheduleRender();
+            RefreshNativeView();
         }));
     }
 
@@ -209,7 +211,6 @@ public sealed partial class OcctWpfViewport
         OcctWpfRenderWindowClass.UnregisterCursorHandler(handle);
         SetNativeHandle(IntPtr.Zero, _engineGeneration);
         _nativeRefreshScheduled = false;
-        _nativeRenderScheduled = false;
         _lastRenderDpi = 0;
         if (handle != IntPtr.Zero) DestroyWindow(handle);
         if (transitionToDisposed) SetHostState(OcctViewportHostState.Disposed);

@@ -9,11 +9,12 @@ public sealed partial class OcctAvaloniaViewport
 {
     public void RefreshNativeView()
     {
-        if (_engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero) return;
+        if (_engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero || !HasUsableRenderSize()) return;
 
         try
         {
             SynchronizeDpi();
+            if (_engine?.IsInitialized != true || _nativeHandle == IntPtr.Zero || !HasUsableRenderSize()) return;
             _engine.ResizeSurface();
             _engine.Redraw();
             CompleteFirstFrameIfNeeded();
@@ -147,6 +148,11 @@ public sealed partial class OcctAvaloniaViewport
         _lastWorldPointTimestamp = 0;
         Dispatcher.UIThread.Post(RefreshNativeView, DispatcherPriority.Render);
     }
+
+    private bool HasUsableRenderSize() =>
+        IsVisible &&
+        Bounds.Width > 0.5 &&
+        Bounds.Height > 0.5;
 
     private void CompleteFirstFrameIfNeeded()
     {

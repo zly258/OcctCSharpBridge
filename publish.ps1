@@ -2,6 +2,7 @@ param(
     [string]$OcctRoot = $env:OCCT_ROOT,
     [string]$Remote = "origin",
     [string]$OutputDirectory = "",
+    [string]$InstallRoot = $env:OCCTCSHARPBRIDGE_SDK,
     [switch]$Zip
 )
 
@@ -193,6 +194,44 @@ function Assert-OnlyDistChanges {
     }
 }
 
+function Install-BinarySdk {
+    param(
+        [Parameter(Mandatory = $true)][string]$Source,
+        [Parameter(Mandatory = $true)][string]$Destination,
+        [Parameter(Mandatory = $true)][string]$ExpectedSourceCommit
+    )
+
+    Test-BinarySdk -Path $Source -ExpectedSourceCommit $ExpectedSourceCommit
+    $parent = Split-Path -Parent $Destination
+    New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    $name = Split-Path -Leaf $Destination
+    $staging = Join-Path $parent ".$name-staging-$([Guid]::NewGuid().ToString('N'))"
+    $backup = Join-Path $parent ".$name-backup-$([Guid]::NewGuid().ToString('N'))"
+
+    try {
+        Copy-Item -LiteralPath $Source -Destination $staging -Recurse -Force
+        Test-BinarySdk -Path $staging -ExpectedSourceCommit $ExpectedSourceCommit
+        $hadPrevious = Test-Path -LiteralPath $Destination -PathType Container
+        if ($hadPrevious) { Move-Item -LiteralPath $Destination -Destination $backup }
+        try { Move-Item -LiteralPath $staging -Destination $Destination }
+        catch {
+            if ($hadPrevious -and (Test-Path -LiteralPath $backup -PathType Container)) {
+                Move-Item -LiteralPath $backup -Destination $Destination
+            }
+            throw
+        }
+        Remove-Item -LiteralPath $backup -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    finally {
+        Remove-Item -LiteralPath $staging -Recurse -Force -ErrorAction SilentlyContinue
+        if (-not (Test-Path -LiteralPath $Destination -PathType Container) -and
+            (Test-Path -LiteralPath $backup -PathType Container)) {
+            Move-Item -LiteralPath $backup -Destination $Destination
+        }
+    }
+    Write-Host "[install] System Binary SDK updated: $Destination" -ForegroundColor Green
+}
+
 function Assert-RunningWindowsX64 {
     $runningOnWindows = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform(
         [System.Runtime.InteropServices.OSPlatform]::Windows)
@@ -254,6 +293,13 @@ if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($sourceCommit)) {
 }
 
 $sourceContract = Get-Content -LiteralPath $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$bridgeVersion = [version][string]$sourceContract.bridgeVersion
+$bridgeLine = "$($bridgeVersion.Major).$($bridgeVersion.Minor)"
+if ([string]::IsNullOrWhiteSpace($InstallRoot)) {
+    if ([string]::IsNullOrWhiteSpace($env:ProgramFiles)) { throw "ProgramFiles is not available; pass -InstallRoot explicitly." }
+    $InstallRoot = Join-Path $env:ProgramFiles "OcctCSharpBridge\SDK\$bridgeLine\win-x64"
+}
+$InstallRoot = [System.IO.Path]::GetFullPath($InstallRoot)
 $runStableValidation = [string]$sourceContract.release.channel -eq "stable"
 if ($runStableValidation) {
     Assert-RunningWindowsX64
@@ -267,6 +313,9 @@ Write-Host "[publish] Building the Release Binary SDK before package validation.
 Invoke-Build "dist"
 Test-BinarySdk -Path $DistRoot -ExpectedSourceCommit $sourceCommit
 Assert-OnlyDistChanges
+
+Write-Host "[publish] Installing the validated Binary SDK..." -ForegroundColor Cyan
+Install-BinarySdk -Source $DistRoot -Destination $InstallRoot -ExpectedSourceCommit $sourceCommit
 
 $effectiveZip = $Zip.IsPresent -or $runStableValidation
 Write-Host "[publish] Building portable SDK with the OCCT runtime closure..." -ForegroundColor Cyan
@@ -290,6 +339,6 @@ else {
 Write-Host "Mode:       $publishMode" -ForegroundColor DarkGray
 Write-Host "Branch:     $currentBranch" -ForegroundColor DarkGray
 Write-Host "Source:     $sourceCommit" -ForegroundColor DarkGray
-Write-Host "Binary SDK: $DistRoot" -ForegroundColor DarkGray
+Write-Host "Binary SDK: $InstallRoot" -ForegroundColor DarkGray
 Write-Host "Portable:   $OutputDirectory" -ForegroundColor DarkGray
 Write-Host "No Git commit or push was performed. Publish the portable package through the normal reviewed artifact workflow." -ForegroundColor Cyan

@@ -68,7 +68,6 @@ public sealed partial class OcctWpfViewport : HwndHost, IOcctViewportHost, IOcct
     private long _lastHoverTimestamp;
     private long _lastWorldPointTimestamp;
     private bool _nativeRefreshScheduled;
-    private bool _nativeRenderScheduled;
     private uint _lastRenderDpi;
     private OcctViewportHostState _hostState = OcctViewportHostState.Detached;
     private long _engineGeneration;
@@ -140,6 +139,8 @@ public sealed partial class OcctWpfViewport : HwndHost, IOcctViewportHost, IOcct
     {
         Focusable = true;
         IsVisibleChanged += (_, _) => ScheduleNativeViewRefresh();
+        Loaded += (_, _) => ScheduleNativeViewRefresh();
+        SizeChanged += (_, _) => ScheduleNativeViewRefresh();
     }
 
     public OcctEngine Engine => _engine ?? throw new InvalidOperationException("The WPF OCCT viewport has not been created yet.");
