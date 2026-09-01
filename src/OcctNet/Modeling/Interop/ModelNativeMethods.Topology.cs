@@ -8,6 +8,14 @@ internal static partial class ModelNativeMethods
 {
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_model_wire_create(
+        OcctModelingSafeHandle handle,
+        [MarshalUsing(CountElementName = nameof(edgeCount))] long[] edgeIds,
+        int edgeCount,
+        out long result);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_model_subshapes_snapshot_get(
         OcctModelingSafeHandle handle,
         long shapeId,

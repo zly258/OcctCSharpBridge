@@ -2,6 +2,25 @@ namespace OcctNet;
 
 public sealed partial class OcctModelingSession
 {
+    public OcctModelShape MakeWire(IEnumerable<OcctModelShape> edges)
+    {
+        ArgumentNullException.ThrowIfNull(edges);
+        var values = edges.ToArray();
+        if (values.Length == 0)
+            throw new ArgumentException("Wire requires at least one edge.", nameof(edges));
+
+        foreach (var edge in values)
+            EnsureShape(edge);
+
+        var ids = values.Select(static edge => edge.Id).ToArray();
+        var status = ModelNativeMethods.occt_model_wire_create(
+            _handle,
+            ids,
+            ids.Length,
+            out var result);
+        return CheckShape(status, result);
+    }
+
     public int GetTopologyCount(OcctModelShape shape, OcctShapeType type)
     {
         EnsureShape(shape);

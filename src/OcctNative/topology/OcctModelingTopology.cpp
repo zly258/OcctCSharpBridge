@@ -3,6 +3,7 @@
 
 #include <BRepTools.hxx>
 #include <BRepTools_WireExplorer.hxx>
+#include <BRepBuilderAPI_MakeWire.hxx>
 #include <TopTools_IndexedDataMapOfShapeListOfShape.hxx>
 #include <TopTools_ListIteratorOfListOfShape.hxx>
 
@@ -57,6 +58,38 @@ namespace
 
 extern "C"
 {
+    OcctStatus occt_model_wire_create(
+        OcctModelingSessionHandle handle,
+        const OcctObjectId* edgeIds,
+        int edgeCount,
+        OcctObjectId* result)
+    {
+        ModelSession* model = sessionOf(handle);
+        return executeShapeStatus(model, result, [&]
+        {
+            if (edgeIds == nullptr)
+                throw std::invalid_argument("Edge ID array is null.");
+            if (edgeCount < 1)
+                throw std::invalid_argument("Wire requires at least one edge.");
+
+            BRepBuilderAPI_MakeWire maker;
+            for (int index = 0; index < edgeCount; ++index)
+            {
+                const TopoDS_Shape& shape = model->requireShape(edgeIds[index]);
+                if (shape.ShapeType() != TopAbs_EDGE)
+                    throw std::invalid_argument("Wire input must contain only edges.");
+                maker.Add(TopoDS::Edge(shape));
+                if (!maker.IsDone())
+                    throw std::runtime_error("Wire construction failed.");
+            }
+
+            const TopoDS_Wire wire = maker.Wire();
+            if (wire.IsNull())
+                throw std::runtime_error("Wire construction produced a null wire.");
+            return TopoDS_Shape(wire);
+        });
+    }
+
     OcctStatus occt_model_subshapes_snapshot_get(
         OcctModelingSessionHandle handle,
         OcctObjectId shapeId,

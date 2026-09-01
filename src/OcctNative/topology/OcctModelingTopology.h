@@ -4,6 +4,12 @@
 
 extern "C"
 {
+    OCCTBRIDGE_API OcctStatus occt_model_wire_create(
+        OcctModelingSessionHandle handle,
+        const OcctObjectId* edgeIds,
+        int edgeCount,
+        OcctObjectId* result);
+
     OCCTBRIDGE_API OcctStatus occt_model_subshapes_snapshot_get(
         OcctModelingSessionHandle handle,
         OcctObjectId shapeId,
