@@ -10,14 +10,6 @@ public sealed partial class OcctModelingSession
         return CheckShape(status, result);
     }
 
-    public OcctModelShape MakeWire(IEnumerable<OcctModelShape> edges)
-    {
-        var ids = ShapeIds(edges);
-        var status = ModelNativeMethods.occt_model_assembly_wire_create(
-            NativeHandle, ids, ids.Length, out var result);
-        return CheckShape(status, result);
-    }
-
     public OcctModelShape Sew(IEnumerable<OcctModelShape> shapes, double tolerance = 1e-6)
     {
         var ids = ShapeIds(shapes);
