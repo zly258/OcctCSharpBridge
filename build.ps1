@@ -23,9 +23,9 @@ if (-not $RunningOnWindows) { throw "build.ps1 supports Windows x64 only. Use ./
 
 $Target = $Target.ToLowerInvariant()
 $RepoRoot = Split-Path -Parent $PSCommandPath
-$DistRoot = Join-Path $RepoRoot "external\OcctCSharpBridge\win-x64"
+$DefaultBridgeSdk = Join-Path $env:ProgramFiles "OcctCSharpBridge\SDK\3.0\win-x64"
+$DistRoot = if ([string]::IsNullOrWhiteSpace($env:OCCTCSHARPBRIDGE_SDK)) { $DefaultBridgeSdk } else { [System.IO.Path]::GetFullPath($env:OCCTCSHARPBRIDGE_SDK) }
 $ContractPath = Join-Path $DistRoot "bridge-contract.json"
-$SyncScriptPath = Join-Path $RepoRoot "sync.ps1"
 $DemoCoreTargetFramework = "net10.0"
 $DemoDesktopTargetFramework = "net10.0-windows"
 $RequiredSdkFiles = @(
@@ -34,7 +34,8 @@ $RequiredSdkFiles = @(
     "OcctNet.WinForms.dll",
     "OcctNet.Wpf.dll",
     "OcctNet.Avalonia.dll",
-    "bridge-contract.json"
+    "bridge-contract.json",
+    "bridge-manifest.json"
 )
 
 $Projects = [ordered]@{
@@ -49,17 +50,11 @@ function Assert-Path {
     if (-not (Test-Path -LiteralPath $Path)) { throw "Required path was not found: $Path" }
 }
 
-function Ensure-BinarySdk {
+function Assert-BinarySdk {
     $missing = @($RequiredSdkFiles | Where-Object { -not (Test-Path -LiteralPath (Join-Path $DistRoot $_) -PathType Leaf) })
-    if ($missing.Count -eq 0) { return }
-
-    Assert-Path $SyncScriptPath
-    Write-Host "[bridge] Binary SDK is missing; synchronizing Bridge main..." -ForegroundColor Cyan
-    & $SyncScriptPath -BridgeBranch "main"
-    if ($LASTEXITCODE -ne 0) { throw "Bridge Binary SDK synchronization failed." }
-
-    $missing = @($RequiredSdkFiles | Where-Object { -not (Test-Path -LiteralPath (Join-Path $DistRoot $_) -PathType Leaf) })
-    if ($missing.Count -gt 0) { throw "Bridge Binary SDK is incomplete: $($missing -join ', ')." }
+    if ($missing.Count -gt 0) {
+        throw "Shared OcctCSharpBridge SDK is missing or incomplete at '$DistRoot': $($missing -join ', '). Run main .\publish.ps1 from an elevated PowerShell session, or set OCCTCSHARPBRIDGE_SDK."
+    }
 }
 
 function Build-Project {
@@ -104,7 +99,7 @@ if ($Target -eq "clean") {
 }
 
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) { throw "dotnet was not found in PATH." }
-Ensure-BinarySdk
+Assert-BinarySdk
 $contract = Get-Content -LiteralPath $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $bridgeVersion = [string]$contract.bridgeVersion
 if ([string]::IsNullOrWhiteSpace($bridgeVersion)) { throw "Bridge version is missing from bridge-contract.json." }

@@ -39,7 +39,8 @@ if (-not $RunningOnWindows) { throw "publish.ps1 supports Windows x64 only. Use 
 $RepoRoot = Split-Path -Parent $PSCommandPath
 $GlobalJsonPath = Join-Path $RepoRoot "global.json"
 $BuildScript = Join-Path $RepoRoot "build.ps1"
-$DistRoot = Join-Path $RepoRoot "external\OcctCSharpBridge\win-x64"
+$DefaultBridgeSdk = Join-Path $env:ProgramFiles "OcctCSharpBridge\SDK\3.0\win-x64"
+$DistRoot = if ([string]::IsNullOrWhiteSpace($env:OCCTCSHARPBRIDGE_SDK)) { $DefaultBridgeSdk } else { [System.IO.Path]::GetFullPath($env:OCCTCSHARPBRIDGE_SDK) }
 $PortableRoot = Join-Path $RepoRoot "external\OcctCSharpBridge\portable\win-x64"
 $ContractPath = Join-Path $DistRoot "bridge-contract.json"
 $ManifestPath = Join-Path $DistRoot "bridge-manifest.json"

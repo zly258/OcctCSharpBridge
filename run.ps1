@@ -15,7 +15,8 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $RepoRoot = Split-Path -Parent $PSCommandPath
-$DistRoot = Join-Path $RepoRoot "external\OcctCSharpBridge\win-x64"
+$DefaultBridgeSdk = Join-Path $env:ProgramFiles "OcctCSharpBridge\SDK\3.0\win-x64"
+$DistRoot = if ([string]::IsNullOrWhiteSpace($env:OCCTCSHARPBRIDGE_SDK)) { $DefaultBridgeSdk } else { [System.IO.Path]::GetFullPath($env:OCCTCSHARPBRIDGE_SDK) }
 $ContractPath = Join-Path $DistRoot "bridge-contract.json"
 $BuildScript = Join-Path $RepoRoot "build.ps1"
 $DefaultOcctRoot = "D:\tools\occt-vc144-64"

@@ -9,13 +9,13 @@
           BeforeTargets="ResolveReferences"
           Condition="'$(OcctBridgeIsDemoProject)' == 'true'">
     <Error Condition="'$(OcctBridgeRuntimeIdentifier)' == ''" Text="OcctCSharpBridge Demo supports Windows x64 and Linux x64 only." />
-    <Error Condition="!Exists('$(OcctBridgeDistRoot)/$(OcctBridgeNativeLibrary)')" Text="The $(OcctBridgeRuntimeIdentifier) native Bridge is missing. Run the platform sync script first." />
-    <Error Condition="!Exists('$(OcctBridgeDistRoot)/OcctNet.dll')" Text="OcctNet.dll is missing from the synchronized Binary SDK." />
-    <Error Condition="'$(MSBuildProjectName)' == 'OcctDemo.WinForms' and !Exists('$(OcctBridgeDistRoot)/OcctNet.WinForms.dll')" Text="OcctNet.WinForms.dll is missing from the synchronized Binary SDK." />
-    <Error Condition="'$(MSBuildProjectName)' == 'OcctDemo.Wpf' and !Exists('$(OcctBridgeDistRoot)/OcctNet.Wpf.dll')" Text="OcctNet.Wpf.dll is missing from the synchronized Binary SDK." />
-    <Error Condition="'$(MSBuildProjectName)' == 'OcctDemo.Avalonia' and !Exists('$(OcctBridgeDistRoot)/OcctNet.Avalonia.dll')" Text="OcctNet.Avalonia.dll is missing from the synchronized Binary SDK." />
-    <Error Condition="!Exists('$(OcctBridgeDistRoot)/bridge-contract.json')" Text="bridge-contract.json is missing from the synchronized Binary SDK." />
-    <Error Condition="!Exists('$(OcctBridgeDistRoot)/bridge-manifest.json')" Text="bridge-manifest.json is missing from the synchronized Binary SDK." />
+    <Error Condition="!Exists('$(OcctBridgeDistRoot)/$(OcctBridgeNativeLibrary)')" Text="The $(OcctBridgeRuntimeIdentifier) native Bridge is missing. Install/publish the shared Bridge SDK first." />
+    <Error Condition="!Exists('$(OcctBridgeDistRoot)/OcctNet.dll')" Text="OcctNet.dll is missing from the installed Binary SDK." />
+    <Error Condition="'$(MSBuildProjectName)' == 'OcctDemo.WinForms' and !Exists('$(OcctBridgeDistRoot)/OcctNet.WinForms.dll')" Text="OcctNet.WinForms.dll is missing from the installed Binary SDK." />
+    <Error Condition="'$(MSBuildProjectName)' == 'OcctDemo.Wpf' and !Exists('$(OcctBridgeDistRoot)/OcctNet.Wpf.dll')" Text="OcctNet.Wpf.dll is missing from the installed Binary SDK." />
+    <Error Condition="'$(MSBuildProjectName)' == 'OcctDemo.Avalonia' and !Exists('$(OcctBridgeDistRoot)/OcctNet.Avalonia.dll')" Text="OcctNet.Avalonia.dll is missing from the installed Binary SDK." />
+    <Error Condition="!Exists('$(OcctBridgeDistRoot)/bridge-contract.json')" Text="bridge-contract.json is missing from the installed Binary SDK." />
+    <Error Condition="!Exists('$(OcctBridgeDistRoot)/bridge-manifest.json')" Text="bridge-manifest.json is missing from the installed Binary SDK." />
   </Target>
 
   <Target Name="CopyOcctNativeBridge"
