@@ -151,7 +151,6 @@ public sealed partial class MainWindow : Window
         _objectTree.SelectionChanged += ObjectTreeSelectionChanged;
         Closing += MainWindowClosing;
         KeyDown += MainWindowKeyDown;
-        Opened += (_, _) => Dispatcher.UIThread.Post(_viewport.RefreshNativeView, DispatcherPriority.Background);
     }
 
     private void InitializeSession(OcctEngine engine, long generation)
