@@ -146,7 +146,7 @@ public sealed partial class OcctAvaloniaViewport
         }
         _lastHoverTimestamp = 0;
         _lastWorldPointTimestamp = 0;
-        Dispatcher.UIThread.Post(RefreshNativeView, DispatcherPriority.Render);
+        Dispatcher.UIThread.Post(RefreshNativeView, DispatcherPriority.AfterRender);
     }
 
     private bool HasUsableRenderSize() =>
@@ -175,7 +175,7 @@ public sealed partial class OcctAvaloniaViewport
         {
             _nativeRefreshScheduled = false;
             RefreshNativeView();
-        }, DispatcherPriority.Render);
+        }, DispatcherPriority.AfterRender);
     }
 
     private void SynchronizeDpi()
