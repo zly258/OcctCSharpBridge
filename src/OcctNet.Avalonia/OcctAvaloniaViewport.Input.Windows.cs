@@ -24,6 +24,11 @@ public sealed partial class OcctAvaloniaViewport
                 case WmNcHitTest:
                     return new IntPtr(HtClient);
                 case WmSize:
+                    if (!_renderReady && _engine?.IsInitialized == true && _nativeHandle != IntPtr.Zero)
+                        RefreshNativeView();
+                    else
+                        ScheduleNativeViewRefresh();
+                    break;
                 case WmWindowPosChanged:
                 case WmDpiChanged:
                     ScheduleNativeViewRefresh();

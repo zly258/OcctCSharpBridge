@@ -76,6 +76,15 @@ public sealed partial class OcctAvaloniaViewport
             : DefWindowProcW(hwnd, message, wParam, lParam);
 
     [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
     private struct NativePoint
     {
         public NativePoint(int x, int y)
@@ -134,6 +143,10 @@ public sealed partial class OcctAvaloniaViewport
 
     [DllImport("user32.dll")]
     private static extern uint GetDpiForWindow(IntPtr hwnd);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetClientRect(IntPtr hwnd, out NativeRect rect);
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]

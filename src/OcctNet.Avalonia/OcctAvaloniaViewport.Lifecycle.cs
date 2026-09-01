@@ -149,10 +149,19 @@ public sealed partial class OcctAvaloniaViewport
         Dispatcher.UIThread.Post(RefreshNativeView, DispatcherPriority.Loaded);
     }
 
-    private bool HasUsableRenderSize() =>
-        IsVisible &&
-        Bounds.Width > 0.5 &&
-        Bounds.Height > 0.5;
+    private bool HasUsableRenderSize()
+    {
+        if (!IsVisible) return false;
+
+        if (OperatingSystem.IsWindows() && _nativeHandle != IntPtr.Zero)
+        {
+            return GetClientRect(_nativeHandle, out var rect)
+                && rect.Right > rect.Left
+                && rect.Bottom > rect.Top;
+        }
+
+        return Bounds.Width > 0.5 && Bounds.Height > 0.5;
+    }
 
     private void CompleteFirstFrameIfNeeded()
     {
