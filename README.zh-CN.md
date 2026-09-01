@@ -13,33 +13,25 @@ OcctDemo.Common
 
 Demo 自身使用 .NET 10，用来覆盖 Bridge 支持的最新 Consumer Runtime；Bridge Managed Binary SDK 仍以 .NET 8 为最低 TFM，并面向 .NET 8/9/10 Consumer。
 
-## SDK 同步
+## 共享 Bridge SDK
 
-Windows 下，`sync.ps1` 采用源码驱动的 Binary SDK 同步流程：
+Windows 下 Demo 直接消费机器级 Bridge SDK：
 
-- Source Cache 不存在时 clone `OcctCSharpBridge`；
-- 默认 fetch `origin/main`，也可用 `-BridgeBranch` 指定 `main-dev` 等分支；
-- 将缓存锁定到解析出的 commit，并执行 clean detached checkout；
-- 执行 `build.ps1 dist Release`，只编译 Native + Managed 并生成 Binary SDK；
-- 将生成的 Binary SDK 安装到 `external/OcctCSharpBridge/win-x64`。
+```text
+C:\Program Files\OcctCSharpBridge\SDK\3.0\win-x64
+```
+
+在 Bridge `main` 中使用管理员 PowerShell 安装/更新：
 
 ```powershell
-.\sync.ps1
-.\sync.ps1 -BridgeBranch main-dev
+.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-`sync.ps1` 负责准备 Demo 使用的 Bridge SDK。
+可通过 `OCCTCSHARPBRIDGE_SDK` 覆盖 SDK Root。Demo 不再 clone Bridge，也不再在 `external/` 下维护 Windows Binary SDK 同步副本。系统 SDK 缺失或不完整时，构建会直接给出安装路径并失败。
 
-Linux 下 `./sync.sh` 现在也支持 fresh clone 默认流程：默认跟随 `main`，在 `external/.cache` 维护干净的 Bridge Source Cache，只执行 `./build.sh dist Release`，再调用 Bridge 自己的 Portable SDK Packager 生成匹配 Runtime，完成校验后安装到 `external/OcctCSharpBridge`。已有预构建制品仍可通过 `--sdk-root` 与 `--portable-root` 直接使用。
+Linux 仍保留源码构建方式，可使用 Linux 对应的 external SDK 路径。
 
-```bash
-./sync.sh
-./sync.sh --source main-dev
-./sync.sh --force-rebuild
-```
 ## Demo 构建
-
-fresh clone 下，如果 Binary SDK 缓存不存在，`build.ps1` 会自动调用现有 `sync.ps1` 准备 SDK；如果 `external/OcctCSharpBridge/win-x64` 已完整存在，则不会再次同步或编译 Bridge。需要主动刷新或切换 Bridge 分支时，再显式执行 `sync.ps1`。
 
 Windows：
 

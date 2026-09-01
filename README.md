@@ -13,33 +13,25 @@ OcctDemo.Common
 
 The Demo targets .NET 10 to exercise the latest supported consumer runtime. The Bridge managed Binary SDK still targets the .NET 8 minimum baseline and supports .NET 8/9/10 consumers.
 
-## SDK synchronization
+## Shared Bridge SDK
 
-On Windows, `sync.ps1` is the source-driven Binary SDK entry point:
+On Windows the Demo consumes the machine-wide Bridge SDK directly:
 
-- clones `OcctCSharpBridge` when the source cache is missing;
-- fetches `origin/main` by default, or the branch passed with `-BridgeBranch`;
-- checks out the resolved commit in a clean detached source cache;
-- runs `build.ps1 dist Release` (Native + Managed + Binary SDK packaging only);
-- installs the generated Binary SDK under `external/OcctCSharpBridge/win-x64`.
+```text
+C:\Program Files\OcctCSharpBridge\SDK\3.0\win-x64
+```
+
+Install/update it from Bridge `main` in an elevated PowerShell session:
 
 ```powershell
-.\sync.ps1
-.\sync.ps1 -BridgeBranch main-dev
+.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-`sync.ps1` prepares the Bridge SDK used by the Demo.
+Set `OCCTCSHARPBRIDGE_SDK` to override the SDK root. The Demo no longer clones Bridge or keeps a synchronized Windows Binary SDK under `external/`. If the shared SDK is missing or incomplete, the build fails with the expected install path.
 
-On Linux, `./sync.sh` now has the same fresh-clone behavior: it follows `main` by default, keeps a clean Bridge source cache under `external/.cache`, runs only `./build.sh dist Release`, packages the matching Portable SDK with the Bridge-owned packager, validates both artifacts, and installs them under `external/OcctCSharpBridge`. Prebuilt artifacts can still be supplied with `--sdk-root` and `--portable-root`.
+Linux remains a source-build workflow and may use the Linux-specific external SDK path.
 
-```bash
-./sync.sh
-./sync.sh --source main-dev
-./sync.sh --force-rebuild
-```
 ## Build the Demo
-
-On a fresh clone, `build.ps1` automatically runs the existing `sync.ps1` workflow when the Binary SDK cache is missing. If `external/OcctCSharpBridge/win-x64` is already complete, the Bridge is not synchronized or rebuilt again. Use `sync.ps1` explicitly when you want to refresh or change the Bridge branch.
 
 Windows:
 
