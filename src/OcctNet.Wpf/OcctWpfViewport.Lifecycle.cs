@@ -44,7 +44,7 @@ public sealed partial class OcctWpfViewport
                 0,
                 OcctWpfRenderWindowClass.Name,
                 string.Empty,
-                WsChild | WsClipSiblings | WsClipChildren,
+                WsChild | WsVisible | WsClipSiblings | WsClipChildren,
                 0,
                 0,
                 100,
@@ -104,6 +104,12 @@ public sealed partial class OcctWpfViewport
     protected override void DestroyWindowCore(HandleRef hwnd)
     {
         DisposeNativeHost(hwnd.Handle, transitionToDisposed: true);
+    }
+
+    protected override void OnWindowPositionChanged(Rect rcBoundingBox)
+    {
+        base.OnWindowPositionChanged(rcBoundingBox);
+        ScheduleNativeViewRefresh();
     }
 
     protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
