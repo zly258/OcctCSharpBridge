@@ -21,134 +21,36 @@ Core principle:
 
 Windows is the official prebuilt distribution platform. Linux does not receive an official 3.x Binary/Portable Release asset; Linux consumers build in an environment compatible with the target distribution.
 
-## 2. Preferred Windows acquisition order
+## 2. Installed Windows SDK
+
+Use one machine-wide Binary SDK:
 
 ```text
-Windows Release asset produced from formal main
-        ↓ if unavailable
-an explicitly approved main source commit
-        ↓
-build.ps1 dist Release
-        ↓
-Windows Portable SDK packager
+C:\Program Files\OcctCSharpBridge\SDK\3.0\win-x64
 ```
 
-### 2.1 Formal Release asset available
-
-Prefer:
-
-```text
-OcctCSharpBridge-<version>-win-x64-portable.zip
-```
-
-A third-party consumer consumes the built Bridge SDK instead of maintaining a second QA pipeline.
-
-### 2.2 No formal Release asset
-
-For a controlled build from an approved formal `main` commit:
-
-```powershell
-git switch main
-git reset --hard <approved-main-commit>
-
-.\build.ps1 dist Release `
-  -OcctRoot "D:\tools\occt-vc144-64"
-
-.\tools\package-portable-sdk.ps1 `
-  -SdkRoot .\dist\win-x64 `
-  -OcctRoot "D:\tools\occt-vc144-64" `
-  -OutputDirectory .\artifacts\consumer-sdk `
-  -Zip
-```
-
-`dist` builds Native + Managed and writes the contract/manifest/hashes for consumers.
-
-Record the exact `sourceCommit`. If the commit has not been confirmed through the Bridge release QA process, the output is a local consumer build rather than an official Release artifact.
-
-## 3. Binary versus Portable SDK
-
-### Binary SDK
-
-```text
-dist/win-x64/
-  OcctNative.dll
-  OcctNet.dll
-  OcctNet.WinForms.dll
-  OcctNet.Wpf.dll
-  OcctNet.Avalonia.dll
-  bridge-contract.json
-  bridge-manifest.json
-```
-
-Use it for:
-
-- compile-time `<Reference>` values;
-- CI contract/manifest/hash validation;
-- Demo/internal consumer synchronization;
-- builds from a known Bridge source revision.
-
-The root `OcctNative.dll` by itself is **not a complete deployment runtime closure**.
-
-### Portable SDK
-
-Formal Windows deployment uses:
-
-```text
-OcctCSharpBridge-<version>-win-x64-portable/
-  OcctNet.dll
-  OcctNet.WinForms.dll
-  OcctNet.Wpf.dll
-  OcctNet.Avalonia.dll
-  bridge-contract.json
-  bridge-manifest.json
-  package-manifest.json
-  runtime/
-    OcctNative.dll
-    OCCT runtime closure
-    required redistributable native dependencies
-  occt/
-    resources/
-  LICENSE / NOTICE ...
-```
-
-Recommended model:
-
-> Binary SDK for compilation and identity validation; Portable SDK for Windows deployment.
-
-Both must come from one Bridge build/source commit.
-
-## 4. Consumer repository layout
-
-Do not scatter SDK files through business source folders. Prefer an explicit SDK root:
-
-```text
-MyCadApp/
-  src/
-    MyCadApp/
-      MyCadApp.csproj
-  external/
-    OcctCSharpBridge/
-      win-x64/
-        OcctNet.dll
-        OcctNet.Wpf.dll
-        ...
-        bridge-contract.json
-        bridge-manifest.json
-  artifacts/
-  build/
-```
-
-An enterprise artifact cache is also appropriate; the SDK does not need to be committed into the business Git repository.
-
-A shared MSBuild property can define the SDK root:
+A machine may override this with `OCCTCSHARPBRIDGE_SDK`. Consumers do not clone Bridge, run sync scripts, or keep a second Binary SDK under the application repository.
 
 ```xml
-<Project>
-  <PropertyGroup>
-    <OcctBridgeSdkRoot>$(MSBuildThisFileDirectory)external/OcctCSharpBridge/win-x64</OcctBridgeSdkRoot>
-  </PropertyGroup>
-</Project>
+<PropertyGroup>
+  <OcctBridgeSdkRoot Condition="'$(OCCTCSHARPBRIDGE_SDK)' != ''">$(OCCTCSHARPBRIDGE_SDK)</OcctBridgeSdkRoot>
+  <OcctBridgeSdkRoot Condition="'$(OcctBridgeSdkRoot)' == ''">$(ProgramFiles)\OcctCSharpBridge\SDK\3.0\win-x64</OcctBridgeSdkRoot>
+</PropertyGroup>
 ```
+
+If the SDK is missing, fail the build instead of silently falling back to a repository cache.
+
+Bridge maintainers update the installed SDK with `.\publish.ps1`. Compatible 3.0.x updates keep the stable `SDK\3.0\win-x64` path; the exact patch version and source commit remain in the contract and manifest.
+
+## 3. SDK identity
+
+The installed managed assemblies, `OcctNative.dll`, contract, and manifest are one atomic payload. `Private=true` may copy assemblies into application output, which is normal build output rather than another source SDK.
+
+## 4. Native viewport lifecycle
+
+WPF and Avalonia applications create the viewport normally in the visual tree. When an operation depends on a presented first native frame, wait for `HostState == Ready`.
+
+The Bridge reaches `Ready` only after a usable arranged size and at least one `ResizeSurface + Redraw`. Do not add mouse-motion, fixed-delay, duplicate-`FitAll`, or startup redraw workarounds.
 
 ## 5. Core reference
 

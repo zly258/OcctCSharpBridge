@@ -35,19 +35,21 @@ Linux:
 
 ## Distribution
 
-Fast Binary SDK:
+Build only:
 
 ```powershell
-.\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
+.\build.ps1 build Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-Formal Windows portable package:
+Install/update the shared Windows x64 SDK:
 
 ```powershell
-.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64" -Zip
+.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-`dist` builds the Binary SDK directly. Publishing packages that SDK without a separate test or smoke stage.
+Default SDK root: `C:\Program Files\OcctCSharpBridge\SDK\3.0\win-x64`. Override with `OCCTCSHARPBRIDGE_SDK` or `-InstallRoot`. Windows consumers reference this installed SDK directly; no repository sync copy is required.
+
+WPF/Avalonia `HostState == Ready` now represents a usable native size that has completed `ResizeSurface + Redraw`. Applications should not add startup mouse/dispatcher-delay redraw workarounds.
 
 ## Minimal use
 

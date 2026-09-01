@@ -21,138 +21,36 @@
 
 Windows 是官方预编译分发平台。Linux 不提供官方 3.x Binary/Portable Release Asset，使用者应在目标发行版兼容环境中自行构建。
 
-## 2. Windows 第三方项目优先获取方式
+## 2. Windows 系统级 SDK
 
-优先级：
-
-```text
-正式 main 对应的 Windows Release Asset
-        ↓ 没有
-指定正式 main Source Commit
-        ↓
-build.ps1 dist Release
-        ↓
-Windows Portable SDK Packager
-```
-
-### 2.1 有正式 Release Asset
-
-优先使用：
+Windows 只维护一套机器级 Binary SDK：
 
 ```text
-OcctCSharpBridge-<version>-win-x64-portable.zip
+C:\Program Files\OcctCSharpBridge\SDK\3.0\win-x64
 ```
 
-第三方直接消费已构建的 Bridge SDK，不在 Consumer 仓库维护第二套 QA 流程。
-
-### 2.2 没有 Release Asset
-
-如果必须从正式 `main` 的一个明确提交生成：
-
-```powershell
-git switch main
-git reset --hard <approved-main-commit>
-
-.\build.ps1 dist Release `
-  -OcctRoot "D:\tools\occt-vc144-64"
-
-.\tools\package-portable-sdk.ps1 `
-  -SdkRoot .\dist\win-x64 `
-  -OcctRoot "D:\tools\occt-vc144-64" `
-  -OutputDirectory .\artifacts\consumer-sdk `
-  -Zip
-```
-
-`dist` 构建 Native + Managed，并写入 Consumer 所需的 Contract/Manifest/Hash。
-
-这种本地生成物应记录精确 `sourceCommit`。如果无法确认该 Source Commit 是否已经经过 Bridge Release QA，它只能视为本地 Consumer Build，而不是官方 Release Asset。
-
-## 3. Binary SDK 与 Portable SDK
-
-### Binary SDK
-
-Windows：
-
-```text
-dist/win-x64/
-  OcctNative.dll
-  OcctNet.dll
-  OcctNet.WinForms.dll
-  OcctNet.Wpf.dll
-  OcctNet.Avalonia.dll
-  bridge-contract.json
-  bridge-manifest.json
-```
-
-它主要用于：
-
-- 编译期 `<Reference>`；
-- CI Contract/Manifest/Hash 校验；
-- Demo/内部 Consumer 同步；
-- 从明确 Source Commit 构建。
-
-根目录 `OcctNative.dll` **不代表完整部署 Runtime Closure**。
-
-### Portable SDK
-
-正式 Windows 部署应使用：
-
-```text
-OcctCSharpBridge-<version>-win-x64-portable/
-  OcctNet.dll
-  OcctNet.WinForms.dll
-  OcctNet.Wpf.dll
-  OcctNet.Avalonia.dll
-  bridge-contract.json
-  bridge-manifest.json
-  package-manifest.json
-  runtime/
-    OcctNative.dll
-    OCCT runtime closure
-    required redistributable native dependencies
-  occt/
-    resources/
-  LICENSE / NOTICE ...
-```
-
-推荐模型：
-
-> Binary SDK 负责“编译和身份校验”；Portable SDK 负责“Windows 部署”。
-
-二者必须来自同一个 Bridge Build / Source Commit。
-
-## 4. 第三方仓库结构
-
-不建议把 SDK 文件散落在业务源码目录。推荐：
-
-```text
-MyCadApp/
-  src/
-    MyCadApp/
-      MyCadApp.csproj
-  external/
-    OcctCSharpBridge/
-      win-x64/
-        OcctNet.dll
-        OcctNet.Wpf.dll
-        ...
-        bridge-contract.json
-        bridge-manifest.json
-  artifacts/
-  build/
-```
-
-企业项目也可以把 SDK 放到受控制品缓存，不必提交到业务 Git 仓库。
-
-统一定义 SDK Root：
+开发机或构建机可用 `OCCTCSHARPBRIDGE_SDK` 覆盖。Consumer 不再克隆 Bridge、不运行 sync 脚本，也不在业务仓库保存第二套 Binary SDK。
 
 ```xml
-<Project>
-  <PropertyGroup>
-    <OcctBridgeSdkRoot>$(MSBuildThisFileDirectory)external/OcctCSharpBridge/win-x64</OcctBridgeSdkRoot>
-  </PropertyGroup>
-</Project>
+<PropertyGroup>
+  <OcctBridgeSdkRoot Condition="'$(OCCTCSHARPBRIDGE_SDK)' != ''">$(OCCTCSHARPBRIDGE_SDK)</OcctBridgeSdkRoot>
+  <OcctBridgeSdkRoot Condition="'$(OcctBridgeSdkRoot)' == ''">$(ProgramFiles)\OcctCSharpBridge\SDK\3.0\win-x64</OcctBridgeSdkRoot>
+</PropertyGroup>
 ```
+
+SDK 不存在时应直接构建失败，不要静默回退到仓库缓存。
+
+Bridge 维护者通过 `.\publish.ps1` 更新系统 SDK。兼容的 3.0.x 更新保持 `SDK\3.0\win-x64` 路径稳定，精确 Patch Version 与 Source Commit 由 Contract/Manifest 记录。
+
+## 3. SDK 身份
+
+安装目录中的 Managed DLL、`OcctNative.dll`、Contract、Manifest 必须视为一个原子整体。`Private=true` 复制到应用输出目录属于正常构建输出，不代表维护了另一套源 SDK。
+
+## 4. Native Viewport 生命周期
+
+WPF/Avalonia 正常把 Viewport 加入 Visual Tree。依赖首帧已经实际呈现的操作等待 `HostState == Ready`。
+
+Bridge 只会在获得有效布局尺寸并至少完成一次 `ResizeSurface + Redraw` 后进入 `Ready`。不要使用鼠标移动、固定延时、重复 `FitAll` 或额外启动 `Redraw` 规避首帧问题。
 
 ## 5. Core 引用
 

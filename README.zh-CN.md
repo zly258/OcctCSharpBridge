@@ -33,21 +33,23 @@ Linux：
 ./build.sh build Release
 ```
 
-## 分发
+## 发布与安装
 
-快速 Binary SDK：
-
-```powershell
-.\build.ps1 dist Release -OcctRoot "D:\tools\occt-vc144-64"
-```
-
-正式 Windows Portable SDK：
+仅编译：
 
 ```powershell
-.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64" -Zip
+.\build.ps1 build Release -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-`dist` 直接构建 Binary SDK；发布基于该 SDK 打包，不再维护独立的 Test/Smoke 阶段。
+安装/更新共享 Windows x64 SDK：
+
+```powershell
+.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
+```
+
+默认 SDK Root：`C:\Program Files\OcctCSharpBridge\SDK\3.0\win-x64`。可通过 `OCCTCSHARPBRIDGE_SDK` 或 `-InstallRoot` 覆盖。Windows Consumer 直接引用系统安装 SDK，不再需要仓库同步副本。
+
+WPF/Avalonia 的 `HostState == Ready` 现在表示 Native Viewport 已获得有效尺寸并完成至少一次 `ResizeSurface + Redraw`。应用层不应再用鼠标移动或 Dispatcher 固定延时补首帧。
 
 ## 最小使用
 
