@@ -31,4 +31,3 @@ This documentation describes the supported Bridge 3 ABI5-only architecture, SDK 
 9. [Third-party SDK Consumption](09_Third-Party-SDK-Consumption.md) — external Core, WinForms, WPF and Avalonia integration, deployment, and upgrades.
 10. [Stable Support and Compatibility](10_Stable-Support-and-Compatibility.md) — platform, .NET, ABI, threading, lifetime, unit, tolerance, and version compatibility boundaries.
 11. [Demo previews](../../README.md#demo-previews) — canonical screenshots of the unified demo branch.
-12. [ModelScript showcase](../../README.md#modelscript) — a real OcctCSharpBridge consumer with WPF and Avalonia frontends and UI previews.

@@ -31,4 +31,3 @@
 9. [第三方项目消费 SDK](09_第三方项目消费SDK.md) — Core、WinForms、WPF、Avalonia 的第三方接入、部署和升级。
 10. [Stable 支持与兼容策略](10_稳定版支持与兼容策略.md) — 平台、.NET、ABI、线程、生命周期、单位、容差与版本兼容边界。
 11. [Demo 预览](../../README.md#demo-previews) — 统一 demo 分支的规范截图。
-12. [ModelScript 案例](../../README.zh-CN.md#modelscript) — 基于 OcctCSharpBridge 的实际项目，包含 WPF、Avalonia 两套前端及界面预览。

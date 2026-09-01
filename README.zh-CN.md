@@ -67,20 +67,6 @@ model.ExportStep(cut.Shape, "plate.step");
 
 Bridge 保持低层几何/建模/Viewer 封装。Document、Feature Tree、Command、Undo/Redo、捕捉、夹点、Catalog/业务语义和项目持久化属于上层应用。
 
-## 使用 OcctCSharpBridge 的项目
-
-### ModelScript
-
-[ModelScript](https://github.com/zly258/ModelScript) 是基于 OcctCSharpBridge 与 OCCT 构建的 Windows x64 参数化 CAD 编辑器，支持类型化参数与表达式、JSON 模型文档、参数化命令与变换、交互式三维预览以及 STEP/IGES 导出。
-
-- **WPF：**正式实现位于 [main](https://github.com/zly258/ModelScript/tree/main)，WPF 持续开发位于 [dev](https://github.com/zly258/ModelScript/tree/dev)。
-- **Avalonia：**独立实现位于 [avalonia](https://github.com/zly258/ModelScript/tree/avalonia) 分支。
-- 两套前端都消费 OcctCSharpBridge Binary SDK，不复制 Bridge 源码。
-
-| WPF | Avalonia |
-| --- | --- |
-| [![ModelScript WPF 预览](https://raw.githubusercontent.com/zly258/ModelScript/dev/docs/screenshots/wpf-zh-CN.png)](https://github.com/zly258/ModelScript/tree/dev) | [![ModelScript Avalonia 预览](https://raw.githubusercontent.com/zly258/ModelScript/avalonia/docs/screenshots/avalonia-zh-CN.png)](https://github.com/zly258/ModelScript/tree/avalonia) |
-
 ## Demo
 
 [demo](https://github.com/zly258/OcctCSharpBridge/tree/demo) 分支提供 WinForms、WPF、Avalonia 参考宿主。
