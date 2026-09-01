@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform;
+using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
 using Application = Avalonia.Application;
 
@@ -11,6 +12,7 @@ public sealed class App : Application
     public override void Initialize()
     {
         Program.Trace("App.Initialize entered.");
+        RequestedThemeVariant = ThemeVariant.Light;
         Styles.Add(new FluentTheme());
         Program.Trace("App.Initialize completed.");
     }
