@@ -129,6 +129,18 @@ extern "C"
         int capacity,
         int* required);
 
+    OCCTBRIDGE_API OcctStatus occt_engine_shape_edge_tangent_points_snapshot_get(
+        OcctEngineHandle handle,
+        OcctObjectId edgeId,
+        OcctPoint3d planeOrigin,
+        OcctVector3d planeNormal,
+        OcctPoint3d sourcePoint,
+        double linearTolerance,
+        double angularTolerance,
+        OcctEdgeTangentPoint* results,
+        int capacity,
+        int* required);
+
     OCCTBRIDGE_API OcctStatus occt_engine_shape_edge_curve_type_get(
         OcctEngineHandle handle,
         OcctObjectId edgeId,

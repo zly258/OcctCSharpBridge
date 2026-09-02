@@ -112,6 +112,20 @@ internal static partial class ViewerShapeNativeMethods
 
     [LibraryImport(NativeMethods.LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_shape_edge_tangent_points_snapshot_get(
+        OcctEngineSafeHandle handle,
+        long edgeId,
+        OcctPoint3d planeOrigin,
+        OcctVector3d planeNormal,
+        OcctPoint3d sourcePoint,
+        double linearTolerance,
+        double angularTolerance,
+        [Out, MarshalUsing(CountElementName = nameof(capacity))] NativeEdgeTangentPoint[]? results,
+        int capacity,
+        out int required);
+
+    [LibraryImport(NativeMethods.LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_engine_shape_edge_curve_type_get(OcctEngineSafeHandle handle, long edgeId, out int result);
 
     [LibraryImport(NativeMethods.LibraryName)]

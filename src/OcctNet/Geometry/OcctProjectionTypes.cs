@@ -20,3 +20,17 @@ public struct OcctFaceProjectionResult
     public double V;
     public double Distance;
 }
+
+public readonly record struct OcctEdgeTangentPoint(
+    OcctPoint3d Point,
+    double NormalizedParameter);
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeEdgeTangentPoint
+{
+    internal OcctPoint3d Point;
+    internal double NormalizedParameter;
+
+    internal readonly OcctEdgeTangentPoint ToManaged() =>
+        new(Point, NormalizedParameter);
+}

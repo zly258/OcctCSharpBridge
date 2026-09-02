@@ -3,16 +3,24 @@
 
 #include <BRepAdaptor_Curve.hxx>
 #include <BRepAdaptor_Surface.hxx>
+#include <BRep_Tool.hxx>
 #include <BRepBuilderAPI_MakeVertex.hxx>
 #include <BRepExtrema_DistShapeShape.hxx>
 #include <BRepExtrema_SupportType.hxx>
 #include <GeomAdaptor.hxx>
+#include <GeomAPI.hxx>
 #include <GeomAPI_ProjectPointOnSurf.hxx>
+#include <Geom2dAdaptor_Curve.hxx>
+#include <Geom2dGcc_Lin2d2Tan.hxx>
+#include <Geom2dGcc_QualifiedCurve.hxx>
+#include <Geom_BezierCurve.hxx>
+#include <Geom_BSplineCurve.hxx>
 #include <Precision.hxx>
 #include <TopoDS.hxx>
 #include <IntTools_CommonPrt.hxx>
 #include <IntTools_EdgeEdge.hxx>
 #include <IntTools_Range.hxx>
+#include <gp_Pln.hxx>
 
 #include <algorithm>
 #include <cmath>
@@ -177,6 +185,176 @@ namespace
             secondRange.Last()};
     }
 
+    bool pointOnPlane(
+        const gp_Pnt& value,
+        const gp_Pln& plane,
+        double tolerance)
+    {
+        return plane.Distance(value) <= tolerance;
+    }
+
+    bool axisParallelToPlaneNormal(
+        const gp_Dir& axis,
+        const gp_Dir& planeNormal,
+        double angularTolerance)
+    {
+        const double minimumDot =
+            std::cos(std::min(angularTolerance, 1.57079632679489661923));
+        return std::abs(axis.Dot(planeNormal)) >= minimumDot;
+    }
+
+    bool directionInPlane(
+        const gp_Dir& direction,
+        const gp_Dir& planeNormal,
+        double angularTolerance)
+    {
+        const double maximumDot =
+            std::sin(std::min(angularTolerance, 1.57079632679489661923));
+        return std::abs(direction.Dot(planeNormal)) <= maximumDot;
+    }
+
+    bool edgeIsPlanarIn(
+        const BRepAdaptor_Curve& curve,
+        const gp_Pln& plane,
+        double linearTolerance,
+        double angularTolerance)
+    {
+        const gp_Dir planeNormal = plane.Axis().Direction();
+        switch (curve.GetType())
+        {
+            case GeomAbs_Line:
+            {
+                const gp_Lin line = curve.Line();
+                return pointOnPlane(
+                           line.Location(),
+                           plane,
+                           linearTolerance) &&
+                       directionInPlane(
+                           line.Direction(),
+                           planeNormal,
+                           angularTolerance);
+            }
+
+            case GeomAbs_Circle:
+            {
+                const gp_Circ circle = curve.Circle();
+                return pointOnPlane(
+                           circle.Location(),
+                           plane,
+                           linearTolerance) &&
+                       axisParallelToPlaneNormal(
+                           circle.Axis().Direction(),
+                           planeNormal,
+                           angularTolerance);
+            }
+
+            case GeomAbs_Ellipse:
+            {
+                const gp_Elips ellipse = curve.Ellipse();
+                return pointOnPlane(
+                           ellipse.Location(),
+                           plane,
+                           linearTolerance) &&
+                       axisParallelToPlaneNormal(
+                           ellipse.Axis().Direction(),
+                           planeNormal,
+                           angularTolerance);
+            }
+
+            case GeomAbs_Hyperbola:
+            {
+                const gp_Hypr hyperbola = curve.Hyperbola();
+                return pointOnPlane(
+                           hyperbola.Location(),
+                           plane,
+                           linearTolerance) &&
+                       axisParallelToPlaneNormal(
+                           hyperbola.Axis().Direction(),
+                           planeNormal,
+                           angularTolerance);
+            }
+
+            case GeomAbs_Parabola:
+            {
+                const gp_Parab parabola = curve.Parabola();
+                return pointOnPlane(
+                           parabola.Location(),
+                           plane,
+                           linearTolerance) &&
+                       axisParallelToPlaneNormal(
+                           parabola.Axis().Direction(),
+                           planeNormal,
+                           angularTolerance);
+            }
+
+            case GeomAbs_BezierCurve:
+            {
+                const Handle(Geom_BezierCurve) bezier = curve.Bezier();
+                if (bezier.IsNull())
+                    return false;
+
+                const gp_Trsf& transformation = curve.Trsf();
+                for (int index = 1; index <= bezier->NbPoles(); ++index)
+                {
+                    gp_Pnt pole = bezier->Pole(index);
+                    pole.Transform(transformation);
+                    if (!pointOnPlane(
+                            pole,
+                            plane,
+                            linearTolerance))
+                        return false;
+                }
+                return true;
+            }
+
+            case GeomAbs_BSplineCurve:
+            {
+                const Handle(Geom_BSplineCurve) spline = curve.BSpline();
+                if (spline.IsNull())
+                    return false;
+
+                const gp_Trsf& transformation = curve.Trsf();
+                for (int index = 1; index <= spline->NbPoles(); ++index)
+                {
+                    gp_Pnt pole = spline->Pole(index);
+                    pole.Transform(transformation);
+                    if (!pointOnPlane(
+                            pole,
+                            plane,
+                            linearTolerance))
+                        return false;
+                }
+                return true;
+            }
+
+            default:
+                return false;
+        }
+    }
+
+    gp_Pnt2d pointInPlane(
+        const gp_Pln& plane,
+        const gp_Pnt& value)
+    {
+        const gp_Ax3 axes = plane.Position();
+        const gp_Vec delta(axes.Location(), value);
+        return {
+            delta.Dot(gp_Vec(axes.XDirection())),
+            delta.Dot(gp_Vec(axes.YDirection()))};
+    }
+
+    gp_Pnt pointFromPlane(
+        const gp_Pln& plane,
+        const gp_Pnt2d& value)
+    {
+        const gp_Ax3 axes = plane.Position();
+        gp_Pnt result = axes.Location();
+        result.Translate(
+            gp_Vec(axes.XDirection()) * value.X() +
+            gp_Vec(axes.YDirection()) * value.Y());
+        return result;
+    }
+
     gp_Vec faceNormal(const TopoDS_Face& face, double u, double v)
     {
         BRepAdaptor_Surface surface(face, Standard_True);
@@ -339,6 +517,254 @@ extern "C"
 
             for (int index = 0; index < count; ++index)
                 results[index] = intersections[static_cast<std::size_t>(index)];
+        });
+    }
+
+    OcctStatus occt_engine_shape_edge_tangent_points_snapshot_get(
+        OcctEngineHandle handle,
+        OcctObjectId edgeId,
+        OcctPoint3d planeOrigin,
+        OcctVector3d planeNormal,
+        OcctPoint3d sourcePoint,
+        double linearTolerance,
+        double angularTolerance,
+        OcctEdgeTangentPoint* results,
+        int capacity,
+        int* required)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeShapeStatus(engine, [&]
+        {
+            if (capacity < 0 || required == nullptr)
+                throw std::invalid_argument(
+                    "Edge tangent output buffer is invalid.");
+            requireFinitePoint(planeOrigin);
+            requireFinitePoint(sourcePoint);
+            if (!std::isfinite(planeNormal.x) ||
+                !std::isfinite(planeNormal.y) ||
+                !std::isfinite(planeNormal.z))
+            {
+                throw std::invalid_argument(
+                    "Tangent plane normal must be finite.");
+            }
+            if (!std::isfinite(linearTolerance) ||
+                linearTolerance < 0.0)
+            {
+                throw std::invalid_argument(
+                    "Tangent linear tolerance must be finite and non-negative.");
+            }
+            if (!std::isfinite(angularTolerance) ||
+                angularTolerance <= 0.0 ||
+                angularTolerance > 1.57079632679489661923)
+            {
+                throw std::invalid_argument(
+                    "Tangent angular tolerance must be in (0, pi/2].");
+            }
+
+            const gp_Vec normalVector(
+                planeNormal.x,
+                planeNormal.y,
+                planeNormal.z);
+            if (normalVector.SquareMagnitude() <=
+                Precision::SquareConfusion())
+            {
+                throw std::invalid_argument(
+                    "Tangent plane normal must be non-zero.");
+            }
+
+            const gp_Pln plane(
+                point(planeOrigin),
+                gp_Dir(normalVector));
+            const double planeTolerance =
+                std::max(
+                    linearTolerance,
+                    Precision::Confusion());
+            const gp_Pnt source = point(sourcePoint);
+
+            std::vector<OcctEdgeTangentPoint> tangentPoints;
+
+            const TopoDS_Shape transformed =
+                shapeWithPresentationTransformation(
+                    requiredShape(engine, edgeId));
+            if (transformed.ShapeType() != TopAbs_EDGE)
+                throw std::invalid_argument(
+                    "Input must be an edge.");
+
+            const TopoDS_Edge edge = TopoDS::Edge(transformed);
+            const BRepAdaptor_Curve adaptor(edge);
+            if (!pointOnPlane(
+                    source,
+                    plane,
+                    planeTolerance) ||
+                !edgeIsPlanarIn(
+                    adaptor,
+                    plane,
+                    planeTolerance,
+                    angularTolerance))
+            {
+                *required = 0;
+                if (results == nullptr)
+                {
+                    if (capacity != 0)
+                        throw std::invalid_argument(
+                            "Null tangent buffer requires zero capacity.");
+                    return;
+                }
+                return;
+            }
+
+            double first = 0.0;
+            double last = 0.0;
+            Handle(Geom_Curve) curve3d =
+                BRep_Tool::Curve(
+                    edge,
+                    first,
+                    last);
+            if (curve3d.IsNull() ||
+                !std::isfinite(first) ||
+                !std::isfinite(last) ||
+                first >= last)
+            {
+                throw std::runtime_error(
+                    "Edge has no valid 3D curve.");
+            }
+
+            if (curve3d.IsNull() ||
+                !std::isfinite(first) ||
+                !std::isfinite(last) ||
+                first >= last)
+            {
+                throw std::runtime_error(
+                    "Unable to access the transformed edge curve.");
+            }
+
+            Handle(Geom2d_Curve) curve2d =
+                GeomAPI::To2d(
+                    curve3d,
+                    plane);
+            if (!curve2d.IsNull())
+            {
+                Geom2dAdaptor_Curve adaptor2d(
+                    curve2d,
+                    first,
+                    last);
+                Geom2dGcc_QualifiedCurve qualified(
+                    adaptor2d,
+                    GccEnt_unqualified);
+                Geom2dGcc_Lin2d2Tan solver(
+                    qualified,
+                    pointInPlane(
+                        plane,
+                        source),
+                    angularTolerance);
+
+                if (solver.IsDone())
+                {
+                    const int solutionCount =
+                        solver.NbSolutions();
+                    for (int index = 1;
+                         index <= solutionCount;
+                         ++index)
+                    {
+                        double solutionParameter = 0.0;
+                        double curveParameter = 0.0;
+                        gp_Pnt2d tangentPoint2d;
+                        solver.Tangency1(
+                            index,
+                            solutionParameter,
+                            curveParameter,
+                            tangentPoint2d);
+
+                        if (!std::isfinite(curveParameter) ||
+                            curveParameter <
+                                first - Precision::PConfusion() ||
+                            curveParameter >
+                                last + Precision::PConfusion())
+                        {
+                            continue;
+                        }
+
+                        const double normalized =
+                            std::clamp(
+                                (curveParameter - first) /
+                                    (last - first),
+                                0.0,
+                                1.0);
+                        const gp_Pnt tangentPoint =
+                            pointFromPlane(
+                                plane,
+                                tangentPoint2d);
+
+                        const auto duplicate =
+                            std::find_if(
+                                tangentPoints.begin(),
+                                tangentPoints.end(),
+                                [&](const OcctEdgeTangentPoint& existing)
+                                {
+                                    const gp_Pnt value(
+                                        existing.point.x,
+                                        existing.point.y,
+                                        existing.point.z);
+                                    return value.SquareDistance(
+                                               tangentPoint) <=
+                                           planeTolerance *
+                                               planeTolerance;
+                                });
+                        if (duplicate != tangentPoints.end())
+                            continue;
+
+                        tangentPoints.push_back(
+                            {
+                                {
+                                    tangentPoint.X(),
+                                    tangentPoint.Y(),
+                                    tangentPoint.Z()
+                                },
+                                normalized
+                            });
+                    }
+                }
+            }
+
+            std::sort(
+                tangentPoints.begin(),
+                tangentPoints.end(),
+                [](const OcctEdgeTangentPoint& left,
+                   const OcctEdgeTangentPoint& right)
+                {
+                    return left.normalizedParameter <
+                           right.normalizedParameter;
+                });
+
+            if (tangentPoints.size() >
+                static_cast<std::size_t>(
+                    std::numeric_limits<int>::max()))
+            {
+                throw std::length_error(
+                    "Edge tangent result exceeds the ABI buffer size limit.");
+            }
+
+            const int count =
+                static_cast<int>(
+                    tangentPoints.size());
+            *required = count;
+
+            if (results == nullptr)
+            {
+                if (capacity != 0)
+                    throw std::invalid_argument(
+                        "Null tangent buffer requires zero capacity.");
+                return;
+            }
+
+            if (capacity < count)
+                throw std::invalid_argument(
+                    "Tangent buffer capacity is smaller than the result count.");
+
+            for (int index = 0; index < count; ++index)
+                results[index] =
+                    tangentPoints[
+                        static_cast<std::size_t>(index)];
         });
     }
 

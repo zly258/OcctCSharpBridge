@@ -21,6 +21,7 @@ extern "C"
     struct OcctMassProperties { double mass; double centerX; double centerY; double centerZ; };
     struct OcctDistanceResult { double distance; OcctPoint3d pointOnFirst; OcctPoint3d pointOnSecond; };
     struct OcctEdgeProjectionResult { OcctPoint3d point; OcctVector3d tangent; double normalizedParameter; double distance; };
+    struct OcctEdgeTangentPoint { OcctPoint3d point; double normalizedParameter; };
     enum OcctIntersectionKind
     {
         OcctIntersection_Point = 0,
