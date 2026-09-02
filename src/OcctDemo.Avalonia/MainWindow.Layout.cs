@@ -23,7 +23,7 @@ public sealed partial class MainWindow
         {
             HorizontalScrollBarVisibility = global::Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
             VerticalScrollBarVisibility = global::Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
-            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E7EAED")),
+            Background = new global::Avalonia.Media.SolidColorBrush(global::Avalonia.Media.Color.Parse("#E7EAED")),
             Content = _toolbar
         };
         Grid.SetRow(toolbarScroll, 1);
@@ -46,7 +46,7 @@ public sealed partial class MainWindow
         {
             Width = 5,
             HorizontalAlignment = AvaloniaHorizontalAlignment.Stretch,
-            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#C7CDD3"))
+            Background = new global::Avalonia.Media.SolidColorBrush(global::Avalonia.Media.Color.Parse("#C7CDD3"))
         };
         Grid.SetColumn(leftSplitter, 1);
         workspace.Children.Add(leftSplitter);
@@ -54,9 +54,9 @@ public sealed partial class MainWindow
         var viewportBorder = new Border
         {
             Margin = new Thickness(4),
-            BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#AEB6BE")),
+            BorderBrush = new global::Avalonia.Media.SolidColorBrush(global::Avalonia.Media.Color.Parse("#AEB6BE")),
             BorderThickness = new Thickness(1),
-            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E8EDF2")),
+            Background = new global::Avalonia.Media.SolidColorBrush(global::Avalonia.Media.Color.Parse("#E8EDF2")),
             Child = _viewport
         };
         Grid.SetColumn(viewportBorder, 2);
@@ -66,7 +66,7 @@ public sealed partial class MainWindow
         {
             Width = 5,
             HorizontalAlignment = AvaloniaHorizontalAlignment.Stretch,
-            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#C7CDD3"))
+            Background = new global::Avalonia.Media.SolidColorBrush(global::Avalonia.Media.Color.Parse("#C7CDD3"))
         };
         Grid.SetColumn(rightSplitter, 3);
         workspace.Children.Add(rightSplitter);
@@ -86,7 +86,7 @@ public sealed partial class MainWindow
         {
             Height = 5,
             HorizontalAlignment = AvaloniaHorizontalAlignment.Stretch,
-            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#C7CDD3"))
+            Background = new global::Avalonia.Media.SolidColorBrush(global::Avalonia.Media.Color.Parse("#C7CDD3"))
         };
         Grid.SetRow(logSplitter, 3);
         root.Children.Add(logSplitter);
@@ -98,10 +98,12 @@ public sealed partial class MainWindow
         var statusGrid = new Grid
         {
             ColumnDefinitions = new ColumnDefinitions("Auto,Auto,*"),
-            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#F3F5F7")),
-            Margin = new Thickness(0),
-            Padding = new Thickness(6, 3)
+            Background = new global::Avalonia.Media.SolidColorBrush(global::Avalonia.Media.Color.Parse("#F3F5F7")),
+            Margin = new Thickness(0, 0, 0, 0)
         };
+        _commandStatus.Margin = new Thickness(6, 3, 8, 3);
+        _selectionStatus.Margin = new Thickness(0, 3, 8, 3);
+        _coordinateStatus.Margin = new Thickness(0, 3, 6, 3);
         Grid.SetColumn(_commandStatus, 0);
         Grid.SetColumn(_selectionStatus, 1);
         Grid.SetColumn(_coordinateStatus, 2);
