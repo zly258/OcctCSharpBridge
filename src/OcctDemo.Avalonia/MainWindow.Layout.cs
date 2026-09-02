@@ -23,6 +23,7 @@ public sealed partial class MainWindow
         {
             HorizontalScrollBarVisibility = global::Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
             VerticalScrollBarVisibility = global::Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E7EAED")),
             Content = _toolbar
         };
         Grid.SetRow(toolbarScroll, 1);
@@ -30,7 +31,8 @@ public sealed partial class MainWindow
 
         var workspace = new Grid
         {
-            ColumnDefinitions = new ColumnDefinitions("260,5,*,5,330")
+            ColumnDefinitions = new ColumnDefinitions("260,5,*,5,330"),
+            Margin = new Thickness(2)
         };
         workspace.ColumnDefinitions[0].MinWidth = 220;
         workspace.ColumnDefinitions[2].MinWidth = 520;
@@ -43,18 +45,28 @@ public sealed partial class MainWindow
         var leftSplitter = new GridSplitter
         {
             Width = 5,
-            HorizontalAlignment = AvaloniaHorizontalAlignment.Stretch
+            HorizontalAlignment = AvaloniaHorizontalAlignment.Stretch,
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#C7CDD3"))
         };
         Grid.SetColumn(leftSplitter, 1);
         workspace.Children.Add(leftSplitter);
 
-        Grid.SetColumn(_viewport, 2);
-        workspace.Children.Add(_viewport);
+        var viewportBorder = new Border
+        {
+            Margin = new Thickness(4),
+            BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#AEB6BE")),
+            BorderThickness = new Thickness(1),
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E8EDF2")),
+            Child = _viewport
+        };
+        Grid.SetColumn(viewportBorder, 2);
+        workspace.Children.Add(viewportBorder);
 
         var rightSplitter = new GridSplitter
         {
             Width = 5,
-            HorizontalAlignment = AvaloniaHorizontalAlignment.Stretch
+            HorizontalAlignment = AvaloniaHorizontalAlignment.Stretch,
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#C7CDD3"))
         };
         Grid.SetColumn(rightSplitter, 3);
         workspace.Children.Add(rightSplitter);
@@ -73,7 +85,8 @@ public sealed partial class MainWindow
         var logSplitter = new GridSplitter
         {
             Height = 5,
-            HorizontalAlignment = AvaloniaHorizontalAlignment.Stretch
+            HorizontalAlignment = AvaloniaHorizontalAlignment.Stretch,
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#C7CDD3"))
         };
         Grid.SetRow(logSplitter, 3);
         root.Children.Add(logSplitter);
@@ -84,7 +97,10 @@ public sealed partial class MainWindow
 
         var statusGrid = new Grid
         {
-            ColumnDefinitions = new ColumnDefinitions("Auto,Auto,*")
+            ColumnDefinitions = new ColumnDefinitions("Auto,Auto,*"),
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#F3F5F7")),
+            Margin = new Thickness(0),
+            Padding = new Thickness(6, 3)
         };
         Grid.SetColumn(_commandStatus, 0);
         Grid.SetColumn(_selectionStatus, 1);

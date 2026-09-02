@@ -55,18 +55,28 @@ public sealed partial class MainWindow : Window
 
     public MainWindow()
     {
-        Title = "OCCT CAD - Avalonia";
+        Title = "OCCT CAD Avalonia";
         Width = 1450;
         Height = 850;
         MinWidth = 1180;
         MinHeight = 720;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         WindowState = WindowState.Maximized;
+        Background = new SolidColorBrush(Color.Parse("#EEF1F4"));
+        FontFamily = new FontFamily("Segoe UI");
+        FontSize = 13;
 
-        _mainMenu = new Menu();
+        _mainMenu = new Menu
+        {
+            Background = new SolidColorBrush(Color.Parse("#F5F6F7")),
+            BorderBrush = new SolidColorBrush(Color.Parse("#C7CDD3")),
+            BorderThickness = new Thickness(0, 0, 0, 1)
+        };
         _toolbar = new StackPanel
         {
-            Orientation = AvaloniaOrientation.Horizontal
+            Orientation = AvaloniaOrientation.Horizontal,
+            Spacing = 4,
+            Margin = new Thickness(6, 3)
         };
         _viewport = new OcctAvaloniaViewport
         {
@@ -83,13 +93,27 @@ public sealed partial class MainWindow : Window
             RectangleSelectionBehavior = OcctRectangleSelectionBehavior.Directional,
             SynchronizeRenderDpi = true
         };
-        _objectTree = new TreeView();
-        _propertyPanel = new StackPanel();
+        _objectTree = new TreeView
+        {
+            Background = Brushes.White,
+            BorderBrush = new SolidColorBrush(Color.Parse("#CBD1D6")),
+            BorderThickness = new Thickness(1)
+        };
+        _propertyPanel = new StackPanel
+        {
+            Spacing = 4,
+            Margin = new Thickness(4)
+        };
         _logBox = new TextBox
         {
             IsReadOnly = true,
             AcceptsReturn = true,
-            TextWrapping = TextWrapping.NoWrap
+            TextWrapping = TextWrapping.NoWrap,
+            FontFamily = new FontFamily("Consolas"),
+            FontSize = 12,
+            Background = Brushes.White,
+            Foreground = new SolidColorBrush(Color.Parse("#20262C")),
+            BorderBrush = new SolidColorBrush(Color.Parse("#CBD1D6"))
         };
         _commandStatus = new TextBlock { MinWidth = 320, VerticalAlignment = VerticalAlignment.Center };
         _selectionStatus = new TextBlock { MinWidth = 170, VerticalAlignment = VerticalAlignment.Center };
@@ -99,9 +123,9 @@ public sealed partial class MainWindow : Window
             HorizontalAlignment = AvaloniaHorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center
         };
-        _modelExplorerGroup = new GroupBox();
-        _propertiesGroup = new GroupBox();
-        _commandLineGroup = new GroupBox();
+        _modelExplorerGroup = CreatePanelGroup();
+        _propertiesGroup = CreatePanelGroup();
+        _commandLineGroup = CreatePanelGroup();
 
         Content = BuildLayout();
         BuildMenus();
@@ -109,6 +133,14 @@ public sealed partial class MainWindow : Window
         WireEvents();
         ApplyLanguage();
     }
+
+    private static GroupBox CreatePanelGroup() => new()
+    {
+        Margin = new Thickness(4),
+        Padding = new Thickness(6),
+        BorderBrush = new SolidColorBrush(Color.Parse("#B8C0C8")),
+        Background = new SolidColorBrush(Color.Parse("#F8F9FA"))
+    };
 
     private DemoSession Session => _session ?? throw new InvalidOperationException(
         Local("The OCCT viewport has not been initialized.", "OCCT 视口尚未初始化。"));
@@ -264,7 +296,10 @@ public sealed partial class MainWindow : Window
 
     private static Button CreateToolbarButton(string text) => new()
     {
-        Content = text
+        Content = text,
+        MinHeight = 28,
+        Padding = new Thickness(10, 4),
+        Margin = new Thickness(0)
     };
 
     private Button ToolButton(string text, Action action)

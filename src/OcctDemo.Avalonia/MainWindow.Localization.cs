@@ -14,7 +14,7 @@ public sealed partial class MainWindow
 
     private void ApplyLanguage()
     {
-        Title = "OCCT CAD - Avalonia";
+        Title = "OCCT CAD Avalonia";
         _modelExplorerGroup.Header = DemoLocalization.Text("Panel.ModelExplorer");
         _propertiesGroup.Header = DemoLocalization.Text("Panel.Properties");
         _commandLineGroup.Header = DemoLocalization.Text("Panel.CommandLine");
