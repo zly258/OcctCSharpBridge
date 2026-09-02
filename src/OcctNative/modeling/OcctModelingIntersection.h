@@ -2,23 +2,14 @@
 
 #include "modeling/OcctModeling.h"
 
+using OcctModelEdgeIntersection = OcctEdgeIntersection;
+
 extern "C"
 {
     enum OcctModelIntersectionKind
     {
-        OcctModelIntersection_Point = 0,
-        OcctModelIntersection_Overlap = 1
-    };
-
-    struct OcctModelEdgeIntersection
-    {
-        int kind;
-        OcctPoint3d startPoint;
-        OcctPoint3d endPoint;
-        double firstParameterStart;
-        double firstParameterEnd;
-        double secondParameterStart;
-        double secondParameterEnd;
+        OcctModelIntersection_Point = OcctIntersection_Point,
+        OcctModelIntersection_Overlap = OcctIntersection_Overlap
     };
 
     struct OcctModelEdgeFaceIntersection

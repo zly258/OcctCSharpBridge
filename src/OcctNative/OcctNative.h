@@ -21,6 +21,21 @@ extern "C"
     struct OcctMassProperties { double mass; double centerX; double centerY; double centerZ; };
     struct OcctDistanceResult { double distance; OcctPoint3d pointOnFirst; OcctPoint3d pointOnSecond; };
     struct OcctEdgeProjectionResult { OcctPoint3d point; OcctVector3d tangent; double normalizedParameter; double distance; };
+    enum OcctIntersectionKind
+    {
+        OcctIntersection_Point = 0,
+        OcctIntersection_Overlap = 1
+    };
+    struct OcctEdgeIntersection
+    {
+        int kind;
+        OcctPoint3d startPoint;
+        OcctPoint3d endPoint;
+        double firstParameterStart;
+        double firstParameterEnd;
+        double secondParameterStart;
+        double secondParameterEnd;
+    };
     struct OcctFaceProjectionResult { OcctPoint3d point; OcctVector3d normal; double u; double v; double distance; };
     struct OcctCameraState { OcctPoint3d eye; OcctPoint3d center; OcctVector3d up; OcctVector3d direction; double scale; };
     struct OcctProjectionRay { OcctPoint3d origin; OcctVector3d direction; };

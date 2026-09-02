@@ -10,11 +10,16 @@
 #include <GeomAPI_ProjectPointOnSurf.hxx>
 #include <Precision.hxx>
 #include <TopoDS.hxx>
+#include <IntTools_CommonPrt.hxx>
+#include <IntTools_EdgeEdge.hxx>
+#include <IntTools_Range.hxx>
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 using namespace OcctBridge;
 
@@ -136,6 +141,42 @@ namespace
             throw std::runtime_error("Face projection returned non-finite parameters.");
     }
 
+    OcctEdgeIntersection makeEdgeIntersectionPoint(
+        const BRepAdaptor_Curve& firstCurve,
+        const IntTools_CommonPrt& commonPart)
+    {
+        const double firstParameter = commonPart.VertexParameter1();
+        const double secondParameter = commonPart.VertexParameter2();
+        const gp_Pnt pointValue = firstCurve.Value(firstParameter);
+        return {
+            OcctIntersection_Point,
+            {pointValue.X(), pointValue.Y(), pointValue.Z()},
+            {pointValue.X(), pointValue.Y(), pointValue.Z()},
+            firstParameter,
+            firstParameter,
+            secondParameter,
+            secondParameter};
+    }
+
+    OcctEdgeIntersection makeEdgeIntersectionOverlap(
+        const BRepAdaptor_Curve& firstCurve,
+        const IntTools_Range& firstRange,
+        const IntTools_Range& secondRange)
+    {
+        const double firstStart = firstRange.First();
+        const double firstEnd = firstRange.Last();
+        const gp_Pnt startPoint = firstCurve.Value(firstStart);
+        const gp_Pnt endPoint = firstCurve.Value(firstEnd);
+        return {
+            OcctIntersection_Overlap,
+            {startPoint.X(), startPoint.Y(), startPoint.Z()},
+            {endPoint.X(), endPoint.Y(), endPoint.Z()},
+            firstStart,
+            firstEnd,
+            secondRange.First(),
+            secondRange.Last()};
+    }
+
     gp_Vec faceNormal(const TopoDS_Face& face, double u, double v)
     {
         BRepAdaptor_Surface surface(face, Standard_True);
@@ -190,6 +231,114 @@ extern "C"
             result->tangent = {tangent.X(), tangent.Y(), tangent.Z()};
             result->normalizedParameter = normalizedParameter;
             result->distance = value;
+        });
+    }
+
+    OcctStatus occt_engine_shape_intersect_edges_snapshot_get(
+        OcctEngineHandle handle,
+        OcctObjectId firstEdgeId,
+        OcctObjectId secondEdgeId,
+        double tolerance,
+        OcctEdgeIntersection* results,
+        int capacity,
+        int* required)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeShapeStatus(engine, [&]
+        {
+            if (capacity < 0 || required == nullptr)
+                throw std::invalid_argument("Edge intersection output buffer is invalid.");
+            if (!std::isfinite(tolerance) || tolerance < 0.0)
+                throw std::invalid_argument(
+                    "Intersection tolerance must be finite and non-negative.");
+
+            const TopoDS_Shape firstShape =
+                shapeWithPresentationTransformation(requiredShape(engine, firstEdgeId));
+            const TopoDS_Shape secondShape =
+                shapeWithPresentationTransformation(requiredShape(engine, secondEdgeId));
+            if (firstShape.ShapeType() != TopAbs_EDGE ||
+                secondShape.ShapeType() != TopAbs_EDGE)
+            {
+                throw std::invalid_argument("Both inputs must be edges.");
+            }
+
+            const TopoDS_Edge firstEdge = TopoDS::Edge(firstShape);
+            const TopoDS_Edge secondEdge = TopoDS::Edge(secondShape);
+            const BRepAdaptor_Curve firstCurve(firstEdge);
+            std::vector<OcctEdgeIntersection> intersections;
+
+            IntTools_EdgeEdge intersector(firstEdge, secondEdge);
+            intersector.SetFuzzyValue(tolerance);
+            intersector.Perform();
+            if (intersector.IsDone())
+            {
+                const auto& commonParts = intersector.CommonParts();
+                for (int partIndex = 1; partIndex <= commonParts.Length(); ++partIndex)
+                {
+                    const IntTools_CommonPrt& commonPart =
+                        commonParts.Value(partIndex);
+                    if (commonPart.Type() == TopAbs_VERTEX)
+                    {
+                        intersections.push_back(
+                            makeEdgeIntersectionPoint(firstCurve, commonPart));
+                        continue;
+                    }
+
+                    if (commonPart.Type() != TopAbs_EDGE)
+                        continue;
+
+                    const IntTools_Range& firstRange = commonPart.Range1();
+                    const auto& secondRanges = commonPart.Ranges2();
+                    for (int rangeIndex = 1;
+                         rangeIndex <= secondRanges.Length();
+                         ++rangeIndex)
+                    {
+                        intersections.push_back(
+                            makeEdgeIntersectionOverlap(
+                                firstCurve,
+                                firstRange,
+                                secondRanges.Value(rangeIndex)));
+                    }
+                }
+            }
+
+            std::sort(
+                intersections.begin(),
+                intersections.end(),
+                [](const OcctEdgeIntersection& left,
+                   const OcctEdgeIntersection& right)
+                {
+                    if (left.firstParameterStart != right.firstParameterStart)
+                        return left.firstParameterStart < right.firstParameterStart;
+                    if (left.firstParameterEnd != right.firstParameterEnd)
+                        return left.firstParameterEnd < right.firstParameterEnd;
+                    return left.secondParameterStart < right.secondParameterStart;
+                });
+
+            if (intersections.size() >
+                static_cast<std::size_t>(std::numeric_limits<int>::max()))
+            {
+                throw std::length_error(
+                    "Edge-intersection result exceeds the ABI buffer size limit.");
+            }
+
+            const int count = static_cast<int>(intersections.size());
+            *required = count;
+
+            if (results == nullptr)
+            {
+                if (capacity != 0)
+                    throw std::invalid_argument(
+                        "Null intersection buffer requires zero capacity.");
+                return;
+            }
+
+            if (capacity < count)
+                throw std::invalid_argument(
+                    "Intersection buffer capacity is smaller than the result count.");
+
+            for (int index = 0; index < count; ++index)
+                results[index] = intersections[static_cast<std::size_t>(index)];
         });
     }
 

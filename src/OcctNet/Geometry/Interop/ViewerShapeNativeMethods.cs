@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace OcctNet;
 
@@ -97,6 +98,17 @@ internal static partial class ViewerShapeNativeMethods
     [LibraryImport(NativeMethods.LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_engine_shape_edge_project_point(OcctEngineSafeHandle handle, long edgeId, OcctPoint3d sourcePoint, out OcctEdgeProjectionResult result);
+
+    [LibraryImport(NativeMethods.LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_shape_intersect_edges_snapshot_get(
+        OcctEngineSafeHandle handle,
+        long firstEdgeId,
+        long secondEdgeId,
+        double tolerance,
+        [Out, MarshalUsing(CountElementName = nameof(capacity))] NativeModelEdgeIntersection[]? results,
+        int capacity,
+        out int required);
 
     [LibraryImport(NativeMethods.LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]

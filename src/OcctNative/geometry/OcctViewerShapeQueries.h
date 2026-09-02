@@ -120,6 +120,15 @@ extern "C"
         OcctPoint3d sourcePoint,
         OcctEdgeProjectionResult* result);
 
+    OCCTBRIDGE_API OcctStatus occt_engine_shape_intersect_edges_snapshot_get(
+        OcctEngineHandle handle,
+        OcctObjectId firstEdgeId,
+        OcctObjectId secondEdgeId,
+        double tolerance,
+        OcctEdgeIntersection* results,
+        int capacity,
+        int* required);
+
     OCCTBRIDGE_API OcctStatus occt_engine_shape_edge_curve_type_get(
         OcctEngineHandle handle,
         OcctObjectId edgeId,
