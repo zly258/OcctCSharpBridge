@@ -23,6 +23,11 @@ public sealed partial class MainWindow
             return;
         }
 
+        var viewportState = Session.Engine.GetViewportState();
+        _projectionType = viewportState.ProjectionType;
+        _autoZFitEnabled = Session.Engine.GetAutoZFitSettings().Enabled;
+        var antialiasingEnabled = viewportState.AntialiasingEnabled;
+
         var root = new StackPanel { Margin = new Thickness(12), Spacing = 4 };
 
         void AddSection(string title, params Control[] rows)
@@ -40,7 +45,7 @@ public sealed partial class MainWindow
         AddSection(Local("Display", "显示"),
             Row(EnumCombo(Local("Display Style", "显示样式"), _visualStyle, ApplyVisualStyle,
                 DemoVisualStyle.Wireframe, DemoVisualStyle.Shaded, DemoVisualStyle.ShadedEdges, DemoVisualStyle.HiddenLine)),
-            Row(ViewSettingsCheckBox(DemoLocalization.Text("Menu.Antialiasing"), true, v => Session.Engine.SetAntialiasing(v))),
+            Row(ViewSettingsCheckBox(DemoLocalization.Text("Menu.Antialiasing"), antialiasingEnabled, v => Session.Engine.SetAntialiasing(v))),
             Row(AsyncViewSettingsButton(DemoLocalization.Text("Menu.DisplayPrecision"), SetDisplayPrecisionAsync),
                 AsyncViewSettingsButton(DemoLocalization.Text("Menu.Background"), SetBackgroundColorAsync)),
             Row(AsyncViewSettingsButton(Local("Gradient First Color...", "渐变颜色一..."), () => PickGradientColorAsync(true)),
@@ -104,9 +109,7 @@ public sealed partial class MainWindow
                         _autoZFitEnabled = v;
                         Session.Engine.SetAutoZFitMode(_autoZFitEnabled, 1.0);
                     })),
-                ViewSettingsButton(DemoLocalization.Text("Menu.AutoZFitNow"), () => ExecuteSafe(Session.Engine.AutoZFit))),
-            Row(EnumCombo(Local("Depth Bias", "深度偏移"), DemoDepthBiasPreset.Default,
-                    p => ExecuteSafe(() => ApplyDepthBias(p)))));
+                ViewSettingsButton(DemoLocalization.Text("Menu.AutoZFitNow"), () => ExecuteSafe(Session.Engine.AutoZFit))));
 
         var window = new Window
         {

@@ -52,11 +52,11 @@ public sealed partial class MainForm
     {
         var mainApplied = TrySetSplitterDistance(
             _mainSplitContainer,
-            270,
+            240,
             keepSecondPanel: false);
         var centerRightApplied = TrySetSplitterDistance(
             _centerRightSplitContainer,
-            330,
+            300,
             keepSecondPanel: true);
 
         return mainApplied && centerRightApplied;

@@ -115,6 +115,7 @@ public partial class MainWindow
     {
         ApplyVisualStyle(style);
         BuildMenus();
+        BuildToolbar();
     }
 
     private bool IsMenuActionChecked(DemoMenuAction action) => action switch

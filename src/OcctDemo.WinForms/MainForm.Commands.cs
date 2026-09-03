@@ -6,19 +6,6 @@ namespace OcctDemo.WinForms;
 
 public sealed partial class MainForm
 {
-    private void ApplyDepthBias(DemoDepthBiasPreset preset)
-    {
-        ExecuteSafe(() =>
-        {
-            var count = Session.ApplyDepthBiasToSelection(preset);
-            var message = count == 0
-                ? DemoLocalization.Text("Status.DepthBiasNoShape")
-                : DemoLocalization.Text("Status.DepthBiasApplied", count);
-            _commandStatus.Text = message;
-            Log(message);
-        });
-    }
-
     private void ReportCommandPrecondition(string message)
     {
         _commandStatus.Text = message;
@@ -251,7 +238,7 @@ public sealed partial class MainForm
     {
         if (Session.ActiveObject is not { } active) return;
         using var dialog = new ColorDialog { Color = Color.SteelBlue, FullOpen = true };
-        if (dialog.ShowDialog(this) == DialogResult.OK) ExecuteSafe(() => Session.Engine.SetObjectColor(active, dialog.Color));
+        if (dialog.ShowDialog(this) == DialogResult.OK) ExecuteSafe(() => Session.SetObjectColor(active, dialog.Color));
     }
 
     private void SetActiveMaterial()

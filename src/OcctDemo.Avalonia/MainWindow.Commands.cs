@@ -346,19 +346,6 @@ public sealed partial class MainWindow
         });
     }
 
-    private void ApplyDepthBias(DemoDepthBiasPreset preset)
-    {
-        ExecuteSafe(() =>
-        {
-            var count = Session.ApplyDepthBiasToSelection(preset);
-            var message = count == 0
-                ? DemoLocalization.Text("Status.DepthBiasNoShape")
-                : DemoLocalization.Text("Status.DepthBiasApplied", count);
-            _commandStatus.Text = message;
-            Log(message);
-        });
-    }
-
     private async Task SetSelectionHighlightColorAsync()
     {
         var color = await DialogService.PickColorAsync(this, Local("Selected highlight color", "选中高亮颜色"), _selectionHighlightColor);
@@ -415,7 +402,7 @@ public sealed partial class MainWindow
     {
         var color = await DialogService.PickColorAsync(this, Local("Object color", "对象颜色"), DrawingColor.SteelBlue);
         if (color is not null)
-            ExecuteSafe(() => Session.Engine.SetObjectColor(value, color.Value));
+            ExecuteSafe(() => Session.SetObjectColor(value, color.Value));
     }
 
     private async Task SetObjectMaterialAsync(IOcctObject value)

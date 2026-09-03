@@ -19,9 +19,12 @@ public partial class MainWindow
         MainToolBar.Items.Add(_undoButton);
         MainToolBar.Items.Add(_redoButton);
         MainToolBar.Items.Add(new Controls.Separator());
-        MainToolBar.Items.Add(ToolButton(DemoLocalization.Text("Toolbar.Shaded"), (_, _) => ApplyMenuVisualStyle(DemoVisualStyle.Shaded)));
-        MainToolBar.Items.Add(ToolButton(DemoLocalization.Text("Toolbar.Wireframe"), (_, _) => ApplyMenuVisualStyle(DemoVisualStyle.Wireframe)));
-        MainToolBar.Items.Add(ToolButton(DemoLocalization.Text("Toolbar.Extents"), (_, _) => Session.Engine.FitAll()));
+        MainToolBar.Items.Add(VisualStyleButton(DemoLocalization.Text("Toolbar.ShadedEdges"), DemoVisualStyle.ShadedEdges));
+        MainToolBar.Items.Add(VisualStyleButton(DemoLocalization.Text("Toolbar.Shaded"), DemoVisualStyle.Shaded));
+        MainToolBar.Items.Add(VisualStyleButton(DemoLocalization.Text("Toolbar.Wireframe"), DemoVisualStyle.Wireframe));
+        MainToolBar.Items.Add(VisualStyleButton(DemoLocalization.Text("Toolbar.Hlr"), DemoVisualStyle.HiddenLine));
+        MainToolBar.Items.Add(new Controls.Separator());
+        MainToolBar.Items.Add(ToolButton(DemoLocalization.Text("Toolbar.FitAll"), (_, _) => Session.Engine.FitAll()));
         MainToolBar.Items.Add(ToolButton(DemoLocalization.Text("Toolbar.Isometric"), (_, _) => Session.Engine.SetView(OcctViewOrientation.Isometric)));
         MainToolBar.Items.Add(new Controls.Separator());
         MainToolBar.Items.Add(new Controls.TextBlock
@@ -39,5 +42,19 @@ public partial class MainWindow
         };
         MainToolBar.Items.Add(_selectionCombo);
         UpdateHistoryUi();
+    }
+
+    private Controls.Button VisualStyleButton(string text, DemoVisualStyle style)
+    {
+        var button = ToolButton(text, (_, _) => ApplyMenuVisualStyle(style));
+        if (_visualStyle == style)
+        {
+            button.FontWeight = System.Windows.FontWeights.SemiBold;
+            button.Background = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(214, 231, 247));
+            button.BorderBrush = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(120, 164, 202));
+        }
+        return button;
     }
 }

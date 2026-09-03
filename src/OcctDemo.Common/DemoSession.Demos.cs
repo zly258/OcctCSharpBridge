@@ -189,7 +189,7 @@ public sealed partial class DemoSession
                     Bold = true
                 });
             var vectorText = DisplayModelShape(model, modelText);
-            Engine.SetObjectColor(vectorText, Color.DarkSlateBlue);
+            SetObjectColor(vectorText, Color.DarkSlateBlue);
             results.Add(Name(vectorText, Local("BRep Vector Text", "BRep 矢量文字")));
         }
 
@@ -468,11 +468,11 @@ public sealed partial class DemoSession
         Name(radius, Local("Vector Radius Dimension", "矢量半径尺寸"));
         Name(diameter, Local("Vector Diameter Dimension", "矢量直径尺寸"));
         Name(text, Local("BRep Note Text", "BRep 说明文字"));
-        Engine.SetObjectColor(length, Color.DarkBlue);
-        Engine.SetObjectColor(angle, Color.DarkGreen);
-        Engine.SetObjectColor(radius, Color.DarkRed);
-        Engine.SetObjectColor(diameter, Color.Purple);
-        Engine.SetObjectColor(text, Color.Black);
+        SetObjectColor(length, Color.DarkBlue);
+        SetObjectColor(angle, Color.DarkGreen);
+        SetObjectColor(radius, Color.DarkRed);
+        SetObjectColor(diameter, Color.Purple);
+        SetObjectColor(text, Color.Black);
         Engine.FitAll();
         return new(
             Local("Vector annotation results created.", "已生成矢量注释标注结果。"),

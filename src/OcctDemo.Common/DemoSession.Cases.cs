@@ -17,21 +17,21 @@ public sealed partial class DemoSession
         {
             var shape = DisplayModelShape(model, positive);
             SetGeneratedName(shape, Local("Section Positive", "截面正侧"));
-            Engine.SetObjectColor(shape, Color.SteelBlue);
+            SetObjectColor(shape, Color.SteelBlue);
             objects.Add(shape);
         }
         if (split.Negative is { } negative)
         {
             var shape = DisplayModelShape(model, negative);
             SetGeneratedName(shape, Local("Section Negative", "截面负侧"));
-            Engine.SetObjectColor(shape, Color.SandyBrown);
+            SetObjectColor(shape, Color.SandyBrown);
             objects.Add(shape);
         }
         if (split.Section is { } section)
         {
             var shape = DisplayModelShape(model, section);
             SetGeneratedName(shape, Local("Section Curve", "截交线"));
-            Engine.SetObjectColor(shape, Color.DarkRed);
+            SetObjectColor(shape, Color.DarkRed);
             Engine.SetObjectLineWidth(shape, 3.0);
             objects.Add(shape);
         }
@@ -131,7 +131,7 @@ public sealed partial class DemoSession
             SetGeneratedName(displayed, $"{name} {suffix}");
 
             Engine.SetObjectDisplayMode(displayed, OcctDisplayMode.Wireframe);
-            Engine.SetObjectColor(displayed, color);
+            SetObjectColor(displayed, color);
             Engine.SetObjectLineWidth(displayed, width);
             Engine.SetObjectLineStyle(
                 displayed,
@@ -160,8 +160,8 @@ public sealed partial class DemoSession
         var secondView = DisplayModelShape(model, second);
         SetGeneratedName(firstView, Local("Extrema Edge A", "极值边 A"));
         SetGeneratedName(secondView, Local("Extrema Edge B", "极值边 B"));
-        Engine.SetObjectColor(firstView, Color.DarkBlue);
-        Engine.SetObjectColor(secondView, Color.DarkGreen);
+        SetObjectColor(firstView, Color.DarkBlue);
+        SetObjectColor(secondView, Color.DarkGreen);
 
         var objects = new List<IOcctObject> { firstView, secondView };
         foreach (var item in extrema.Take(8))
@@ -169,7 +169,7 @@ public sealed partial class DemoSession
             if ((item.PointOnSecond - item.PointOnFirst).LengthSquared <= 1e-18) continue;
             var connector = Engine.MakeLine(item.PointOnFirst, item.PointOnSecond);
             SetGeneratedName(connector, Local("Extremum Distance", "极值距离"));
-            Engine.SetObjectColor(connector, Color.DarkRed);
+            SetObjectColor(connector, Color.DarkRed);
             objects.Add(connector);
         }
 
@@ -201,8 +201,8 @@ public sealed partial class DemoSession
         var afterView = DisplayModelShape(model, model.Translate(repaired.Shape, new OcctVector3d(80, 0, 0)));
         SetGeneratedName(beforeView, Local("Before Repair", "修复前"));
         SetGeneratedName(afterView, Local("After Repair", "修复后"));
-        Engine.SetObjectColor(beforeView, Color.IndianRed);
-        Engine.SetObjectColor(afterView, Color.SeaGreen);
+        SetObjectColor(beforeView, Color.IndianRed);
+        SetObjectColor(afterView, Color.SeaGreen);
 
         Engine.FitAll();
         ActiveObject = afterView;

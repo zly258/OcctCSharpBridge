@@ -81,11 +81,11 @@
 
             <Grid Grid.Row="0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="260" MinWidth="220"/>
+                    <ColumnDefinition Width="240" MinWidth="200"/>
                     <ColumnDefinition Width="5"/>
                     <ColumnDefinition Width="*" MinWidth="520"/>
                     <ColumnDefinition Width="5"/>
-                    <ColumnDefinition Width="330" MinWidth="280"/>
+                    <ColumnDefinition Width="300" MinWidth="260"/>
                 </Grid.ColumnDefinitions>
 
                 <GroupBox x:Name="ModelExplorerGroup" Grid.Column="0" Header="Model Explorer">

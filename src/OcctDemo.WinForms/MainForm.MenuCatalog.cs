@@ -118,6 +118,7 @@ public sealed partial class MainForm
     {
         ApplyVisualStyle(style);
         BuildMenus();
+        BuildToolBar();
     }
 
     private bool IsMenuActionChecked(DemoMenuAction action) => action switch

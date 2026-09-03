@@ -106,7 +106,6 @@ public sealed partial class MainForm : Form
 
     private void InitializeSession(OcctEngine engine, long generation)
     {
-        _depthDefaultsApplied = false;
         _session = new DemoSession(engine);
         _session.ModelChanged += (_, _) => BeginInvoke(new Action(RefreshObjectTree));
         _session.HistoryChanged += (_, _) => BeginInvoke(new Action(UpdateHistoryUi));
@@ -118,7 +117,7 @@ public sealed partial class MainForm : Form
 
         using (engine.BeginDisplayBatch())
         {
-            engine.SetGradientBackground(Color.White, Color.FromArgb(202, 221, 238));
+            engine.SetGradientBackground(Color.White, Color.FromArgb(232, 239, 245));
             engine.SetTriedronVisible(true);
             engine.SetTriedronPosition(OcctCornerPosition.LeftLower);
             _triedronPosition = OcctCornerPosition.LeftLower;
@@ -127,13 +126,12 @@ public sealed partial class MainForm : Form
             ApplyViewCubeOptions(refresh: false);
             ApplyViewCubeLanguage();
             engine.SetAntialiasing(true);
-            engine.SetAutoZFitMode(true, 1.0);
             engine.SetSelectionTolerance(4);
             engine.SetDefaultMaterial(OcctMaterial.Plastified);
+            ApplyVisualStyle(_visualStyle);
             engine.SetSelectionHighlightColor(_selectionHighlightColor);
             engine.SetHoverHighlightColor(_hoverHighlightColor);
             engine.SetSceneLighting(_lightingSettings);
-            ApplyDepthDisplayDefaults();
         }
 
         _commandStatus.Text = DemoLocalization.Text("Status.Ready", OcctEngine.OcctVersion);

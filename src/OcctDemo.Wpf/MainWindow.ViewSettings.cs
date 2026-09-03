@@ -22,6 +22,11 @@ public partial class MainWindow
             return;
         }
 
+        var viewportState = Session.Engine.GetViewportState();
+        _projectionType = viewportState.ProjectionType;
+        _autoZFitEnabled = Session.Engine.GetAutoZFitSettings().Enabled;
+        var antialiasingEnabled = viewportState.AntialiasingEnabled;
+
         var root = new Controls.StackPanel { Margin = new System.Windows.Thickness(12) };
 
         void AddSection(string title, params Controls.Grid[] rows)
@@ -39,7 +44,7 @@ public partial class MainWindow
         AddSection(Local("Display", "显示"),
             Row(EnumCombo(Local("Display Style", "显示样式"), _visualStyle, ApplyVisualStyle,
                 DemoVisualStyle.Wireframe, DemoVisualStyle.Shaded, DemoVisualStyle.ShadedEdges, DemoVisualStyle.HiddenLine)),
-            Row(ViewSettingsCheckBox(DemoLocalization.Text("Menu.Antialiasing"), true, v => Session.Engine.SetAntialiasing(v))),
+            Row(ViewSettingsCheckBox(DemoLocalization.Text("Menu.Antialiasing"), antialiasingEnabled, v => Session.Engine.SetAntialiasing(v))),
             Row(ViewSettingsButton(DemoLocalization.Text("Menu.DisplayPrecision"), SetDisplayPrecision),
                 ViewSettingsButton(DemoLocalization.Text("Menu.Background"), SetBackgroundColor)),
             Row(ViewSettingsButton(Local("Gradient First Color...", "渐变颜色一..."), () => PickGradientColor(true)),
@@ -110,9 +115,7 @@ public partial class MainWindow
                         CommandStatus.Text = msg;
                         Log(msg);
                     })),
-                ViewSettingsButton(DemoLocalization.Text("Menu.AutoZFitNow"), () => ExecuteSafe(Session.Engine.AutoZFit))),
-            Row(EnumCombo(Local("Depth Bias", "深度偏移"), DemoDepthBiasPreset.Default,
-                    p => ExecuteSafe(() => ApplyDepthBias(p)))));
+                ViewSettingsButton(DemoLocalization.Text("Menu.AutoZFitNow"), () => ExecuteSafe(Session.Engine.AutoZFit))));
 
         var window = new Window
         {

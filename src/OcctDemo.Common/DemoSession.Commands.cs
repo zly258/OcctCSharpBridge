@@ -194,7 +194,7 @@ public sealed partial class DemoSession
                 Italic = values.Boolean("italic")
             });
         var text = DisplayModelShape(model, modelText);
-        Engine.SetObjectColor(text, Color.DarkSlateGray);
+        SetObjectColor(text, Color.DarkSlateGray);
         SetGeneratedName(text, DemoLocalization.CommandText(DemoCommandId.Text));
         ActiveObject = text;
         return DemoCommandResult.Created(DemoLocalization.Text("Session.Created", DemoLocalization.CommandText(DemoCommandId.Text)), text);

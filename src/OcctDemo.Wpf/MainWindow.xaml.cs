@@ -98,7 +98,7 @@ public partial class MainWindow : System.Windows.Window
 
         using (engine.BeginDisplayBatch())
         {
-            engine.SetGradientBackground(DrawingColor.White, DrawingColor.FromArgb(202, 221, 238));
+            engine.SetGradientBackground(DrawingColor.White, DrawingColor.FromArgb(232, 239, 245));
             engine.SetTriedronVisible(true);
             engine.SetTriedronPosition(OcctCornerPosition.LeftLower);
             // Apply the full ViewCube options so the scene starts in sync with the
@@ -106,10 +106,9 @@ public partial class MainWindow : System.Windows.Window
             ApplyViewCubeOptions(refresh: false);
             ApplyViewCubeLanguage();
             engine.SetAntialiasing(true);
-            engine.SetFaceBoundariesVisible(true, applyExisting: true);
-            engine.SetAutoZFitMode(true, 1.0);
             engine.SetSelectionTolerance(4);
             engine.SetDefaultMaterial(OcctMaterial.Plastified);
+            ApplyVisualStyle(_visualStyle);
             engine.SetSelectionHighlightColor(_selectionHighlightColor);
             engine.SetHoverHighlightColor(_hoverHighlightColor);
             engine.SetSceneLighting(_lightingSettings);

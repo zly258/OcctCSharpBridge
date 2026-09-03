@@ -9,19 +9,6 @@ namespace OcctDemo.Wpf;
 
 public partial class MainWindow
 {
-    private void ApplyDepthBias(DemoDepthBiasPreset preset)
-    {
-        ExecuteSafe(() =>
-        {
-            var count = Session.ApplyDepthBiasToSelection(preset);
-            var message = count == 0
-                ? DemoLocalization.Text("Status.DepthBiasNoShape")
-                : DemoLocalization.Text("Status.DepthBiasApplied", count);
-            CommandStatus.Text = message;
-            Log(message);
-        });
-    }
-
     private void ReportCommandPrecondition(string message)
     {
         CommandStatus.Text = message;
@@ -302,7 +289,7 @@ public partial class MainWindow
     private void SetObjectColor(IOcctObject value)
     {
         if (!WpfColorDialog.TryPick(this, Local("Object Color", "对象颜色"), DrawingColor.SteelBlue, out var color)) return;
-        ExecuteSafe(() => Session.Engine.SetObjectColor(value, color));
+        ExecuteSafe(() => Session.SetObjectColor(value, color));
     }
 
     private void SetObjectMaterial(IOcctObject value)

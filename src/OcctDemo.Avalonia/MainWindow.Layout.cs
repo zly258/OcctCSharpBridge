@@ -31,12 +31,12 @@ public sealed partial class MainWindow
 
         var workspace = new Grid
         {
-            ColumnDefinitions = new ColumnDefinitions("260,5,*,5,330"),
+            ColumnDefinitions = new ColumnDefinitions("240,5,*,5,300"),
             Margin = new Thickness(2)
         };
-        workspace.ColumnDefinitions[0].MinWidth = 220;
+        workspace.ColumnDefinitions[0].MinWidth = 200;
         workspace.ColumnDefinitions[2].MinWidth = 520;
-        workspace.ColumnDefinitions[4].MinWidth = 280;
+        workspace.ColumnDefinitions[4].MinWidth = 260;
 
         _modelExplorerGroup.Content = _objectTree;
         Grid.SetColumn(_modelExplorerGroup, 0);

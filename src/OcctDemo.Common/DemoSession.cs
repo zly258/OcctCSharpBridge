@@ -71,11 +71,23 @@ public sealed class DemoValues
 }
 
 public enum DemoIsoView { NorthEast, NorthWest, SouthEast, SouthWest }
-public enum DemoDepthBiasPreset { Forward, Backward, Default }
 
 public sealed partial class DemoSession
 {
+    private static readonly Color[] CreatedShapePalette =
+    [
+        Color.FromArgb(186, 208, 228),
+        Color.FromArgb(193, 218, 230),
+        Color.FromArgb(192, 223, 218),
+        Color.FromArgb(211, 220, 230),
+        Color.FromArgb(208, 216, 235),
+        Color.FromArgb(204, 225, 220),
+        Color.FromArgb(220, 224, 228),
+        Color.FromArgb(213, 226, 239)
+    ];
+
     private int _nameSequence = 1;
+    private int _shapeColorSequence;
     private readonly List<DemoHistoryEntry> _history = new();
     private int _historyPosition;
     private bool _restoringHistory;
@@ -101,44 +113,6 @@ public sealed partial class DemoSession
     public event EventHandler? HistoryChanged;
     public event EventHandler<string>? StatusChanged;
 
-    public int ApplyDepthBiasToSelection(DemoDepthBiasPreset preset)
-    {
-        var targets = Engine.SelectedObjects
-            .Where(value => value.Kind == OcctObjectKind.Shape)
-            .DistinctBy(value => value.Id)
-            .ToList();
-
-        if (targets.Count == 0
-            && ActiveObject is { Kind: OcctObjectKind.Shape } active
-            && Engine.ContainsObject(active.Id))
-        {
-            targets.Add(active);
-        }
-
-        if (targets.Count == 0) return 0;
-
-        using (Engine.BeginDisplayBatch())
-        {
-            foreach (var target in targets)
-            {
-                switch (preset)
-                {
-                    case DemoDepthBiasPreset.Forward:
-                        Engine.SetPolygonOffsets(target, OcctPolygonOffsetMode.Fill, factor: -1.0, units: -1.0);
-                        break;
-                    case DemoDepthBiasPreset.Backward:
-                        Engine.SetPolygonOffsets(target, OcctPolygonOffsetMode.Fill, factor: 3.0, units: 3.0);
-                        break;
-                    default:
-                        Engine.ResetPolygonOffsets(target);
-                        break;
-                }
-            }
-        }
-
-        return targets.Count;
-    }
-
     public void NewDocument()
     {
         Engine.Clear();
@@ -148,6 +122,7 @@ public sealed partial class DemoSession
         _historyAvailable = true;
         IsModified = false;
         _nameSequence = 1;
+        _shapeColorSequence = 0;
         ClearHistory();
         ModelChanged?.Invoke(this, EventArgs.Empty);
         StatusChanged?.Invoke(this, DemoLocalization.Text("Session.New"));
@@ -158,6 +133,7 @@ public sealed partial class DemoSession
         Engine.Clear();
         ActiveObject = null;
         _nameSequence = 1;
+        _shapeColorSequence = 0;
         CurrentFilePath = Path.GetFullPath(filePath);
         _historyBaselineFile = CurrentFilePath;
         _historyAvailable = true;
@@ -258,6 +234,12 @@ public sealed partial class DemoSession
         Engine.FitAll();
     }
 
+    public void SetObjectColor(IOcctObject value, Color color)
+    {
+        Engine.SetObjectColor(value, color);
+        IsModified = true;
+    }
+
     public IReadOnlyList<KeyValuePair<string, string>> DescribeObject(IOcctObject value) =>
         DescribeObjectLightweight(value);
 
@@ -273,6 +255,7 @@ public sealed partial class DemoSession
     private DemoCommandResult CreateShape(string baseName, OcctShape shape)
     {
         SetGeneratedName(shape, baseName);
+        SetObjectColor(shape, CreatedShapePalette[_shapeColorSequence++ % CreatedShapePalette.Length]);
         ActiveObject = shape;
         return DemoCommandResult.Created(DemoLocalization.Text("Session.Created", baseName), shape);
     }
