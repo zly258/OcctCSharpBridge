@@ -3,6 +3,8 @@
 #include <BRepBuilderAPI_Transform.hxx>
 #include <Graphic3d_NameOfMaterial.hxx>
 #include <Precision.hxx>
+#include <Prs3d_Drawer.hxx>
+#include <Prs3d_LineAspect.hxx>
 #include <Standard_Version.hxx>
 #include <TopAbs_ShapeEnum.hxx>
 
@@ -137,10 +139,36 @@ namespace OcctBridge
         if (!isInitialized()) throw std::runtime_error("The OCCT viewer has not been initialized.");
 
         const OcctObjectId id = scene.allocateId();
-        // Keep the viewer display mode global. Per-object display mode is an
-        // explicit presentation override and must not be assigned implicitly
-        // when a shape enters the scene.
-        viewerContext.context->Display(presentation, Standard_False);
+
+        // Match the reference OCCT viewers: a shape owns a stable presentation
+        // aspect before its first Display(), seeded from the current viewer
+        // defaults. This keeps material, transparency and face-boundary defaults
+        // configurable without hard-coding application appearance.
+        const Handle(AIS_Shape) aisShape = Handle(AIS_Shape)::DownCast(presentation);
+        if (!aisShape.IsNull())
+        {
+            const Handle(Prs3d_Drawer)& defaults = viewerContext.context->DefaultDrawer();
+            const Handle(Prs3d_Drawer)& drawer = aisShape->Attributes();
+            if (!defaults.IsNull() && !drawer.IsNull())
+            {
+                drawer->SetupOwnShadingAspect(defaults);
+                drawer->SetupOwnFaceBoundaryAspect(defaults);
+                drawer->SetFaceBoundaryDraw(defaults->FaceBoundaryDraw());
+                if (!defaults->ShadingAspect().IsNull())
+                {
+                    aisShape->SetMaterial(defaults->ShadingAspect()->Material());
+                    aisShape->SetTransparency(defaults->ShadingAspect()->Transparency());
+                }
+            }
+        }
+
+        // Use the viewer mode explicitly for first presentation computation,
+        // without creating a per-object display-mode override.
+        viewerContext.context->Display(
+            presentation,
+            viewerContext.displayMode,
+            0,
+            Standard_False);
         scene.objects.emplace(id, ObjectEntry{OcctObject_Shape, shape, presentation, name});
         applySelectionMode(presentation);
         requestRedraw();
@@ -309,6 +337,49 @@ namespace OcctBridge
         result->centerX = center.X();
         result->centerY = center.Y();
         result->centerZ = center.Z();
+    }
+
+    void setObjectColorPreservingFaceBoundary(
+        Engine* engine,
+        ObjectEntry& entry,
+        const Quantity_Color& value)
+    {
+        Quantity_Color boundaryColor = Quantity_NOC_BLACK;
+        Aspect_TypeOfLine boundaryType = Aspect_TOL_SOLID;
+        double boundaryWidth = 1.0;
+        bool preserveBoundary = false;
+
+        if (entry.kind == OcctObject_Shape && !entry.presentation.IsNull())
+        {
+            const Handle(Prs3d_Drawer)& drawer = entry.presentation->Attributes();
+            if (!drawer.IsNull() && !drawer->FaceBoundaryAspect().IsNull())
+            {
+                const Handle(Graphic3d_AspectLine3d)& aspect =
+                    drawer->FaceBoundaryAspect()->Aspect();
+                if (!aspect.IsNull())
+                {
+                    boundaryColor = aspect->Color();
+                    boundaryType = aspect->Type();
+                    boundaryWidth = aspect->Width();
+                    preserveBoundary = true;
+                }
+            }
+        }
+
+        engine->viewerContext.context->SetColor(entry.presentation, value, Standard_False);
+
+        // AIS_Shape::SetColor() also recolors FaceBoundaryAspect. Restore the
+        // independent edge style so "shaded with edges" remains visually true.
+        if (preserveBoundary)
+        {
+            const Handle(Prs3d_Drawer)& drawer = entry.presentation->Attributes();
+            if (!drawer.IsNull() && !drawer->FaceBoundaryAspect().IsNull())
+            {
+                drawer->FaceBoundaryAspect()->SetColor(boundaryColor);
+                drawer->FaceBoundaryAspect()->SetTypeOfLine(boundaryType);
+                drawer->FaceBoundaryAspect()->SetWidth(boundaryWidth);
+            }
+        }
     }
 
     Graphic3d_NameOfMaterial materialName(int value)

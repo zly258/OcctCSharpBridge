@@ -109,7 +109,7 @@ namespace
             entry.storedColorB = value.Blue();
             if (entry.kind == OcctObject_Shape && !syncStepObjectColor(engine, entry))
                 engine->invalidatePristineStepDocument();
-            engine->viewerContext.context->SetColor(entry.presentation, value, Standard_False);
+            setObjectColorPreservingFaceBoundary(engine, entry, value);
         }
         if ((options.updateMask & OcctViewerObjectUpdate_Transparency) != 0)
         {

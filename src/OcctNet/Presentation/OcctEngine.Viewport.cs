@@ -175,6 +175,23 @@ public sealed partial class OcctEngine
     public void SetFrustumCulling(bool enabled) =>
         UpdateRendering(RenderingOptions(NativeViewportRenderingUpdateMask.FrustumCulling, frustumCullingEnabled: enabled ? 1 : 0));
 
+    public void SetDepthPrepassEnabled(bool enabled)
+    {
+        EnsureInitialized();
+        CheckViewportStatus(ViewportNativeMethods.occt_engine_viewport_depth_prepass_set(
+            _handle,
+            enabled ? 1 : 0));
+    }
+
+    public bool GetDepthPrepassEnabled()
+    {
+        EnsureInitialized();
+        CheckViewportStatus(ViewportNativeMethods.occt_engine_viewport_depth_prepass_get(
+            _handle,
+            out var enabled));
+        return enabled != 0;
+    }
+
     public void SetFaceBoundariesVisible(bool visible, bool applyExisting = true) =>
         UpdateRendering(RenderingOptions(
             NativeViewportRenderingUpdateMask.FaceBoundaries,

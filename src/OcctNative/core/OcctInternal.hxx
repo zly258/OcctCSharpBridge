@@ -110,6 +110,10 @@ namespace OcctBridge
     TopoDS_Shape shapeWithPresentationTransformation(const ObjectEntry& entry);
     void fillMassProperties(const GProp_GProps& properties, OcctMassProperties* result);
     Graphic3d_NameOfMaterial materialName(int value);
+    void setObjectColorPreservingFaceBoundary(
+        Engine* engine,
+        ObjectEntry& entry,
+        const Quantity_Color& value);
 
     bool syncStepObjectName(Engine* engine, ObjectEntry& entry);
     bool syncStepObjectColor(Engine* engine, ObjectEntry& entry);

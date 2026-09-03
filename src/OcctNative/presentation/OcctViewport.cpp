@@ -249,4 +249,33 @@ extern "C"
             applyRenderingOptions(engine, *options);
         });
     }
+
+    OcctStatus occt_engine_viewport_depth_prepass_set(
+        OcctEngineHandle handle,
+        int enabled)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        return executeViewportStatus(engine, [&]
+        {
+            engine->viewerContext.view->ChangeRenderingParams().ToEnableDepthPrepass = enabled != 0;
+            engine->requestRedraw();
+        });
+    }
+
+    OcctStatus occt_engine_viewport_depth_prepass_get(
+        OcctEngineHandle handle,
+        int* enabled)
+    {
+        Engine* engine = reinterpret_cast<Engine*>(handle);
+        if (enabled == nullptr)
+        {
+            if (engine != nullptr)
+                engine->setError(OcctStatus_ErrorInvalidArgument, "Depth pre-pass output is null.");
+            return engine == nullptr ? OcctStatus_ErrorInvalidHandle : OcctStatus_ErrorInvalidArgument;
+        }
+        return executeViewportStatus(engine, [&]
+        {
+            *enabled = engine->viewerContext.view->RenderingParams().ToEnableDepthPrepass ? 1 : 0;
+        });
+    }
 }

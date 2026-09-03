@@ -100,6 +100,14 @@ extern "C"
         OcctEngineHandle handle,
         const OcctViewportRenderingOptions* options);
 
+    OCCTBRIDGE_API OcctStatus occt_engine_viewport_depth_prepass_set(
+        OcctEngineHandle handle,
+        int enabled);
+
+    OCCTBRIDGE_API OcctStatus occt_engine_viewport_depth_prepass_get(
+        OcctEngineHandle handle,
+        int* enabled);
+
     OCCTBRIDGE_API OcctStatus occt_engine_viewport_clip_planes_set(
         OcctEngineHandle handle,
         const OcctViewClipPlane* planes,

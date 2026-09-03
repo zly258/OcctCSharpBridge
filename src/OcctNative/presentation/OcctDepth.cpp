@@ -146,7 +146,6 @@ extern "C"
                     static_cast<Standard_ShortReal>(options->polygonOffsetUnits);
                 const Handle(Prs3d_Drawer)& drawer = engine->viewerContext.context->DefaultDrawer();
                 drawer->SetupOwnShadingAspect();
-                drawer->SetFaceBoundaryDraw(Standard_True);
                 drawer->ShadingAspect()->Aspect()->SetPolygonOffsets(
                     options->polygonOffsetMode,
                     nativeFactor,

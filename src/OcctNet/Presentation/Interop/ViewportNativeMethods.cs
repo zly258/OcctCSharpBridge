@@ -76,6 +76,18 @@ internal static partial class ViewportNativeMethods
 
     [LibraryImport(LibraryName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_viewport_depth_prepass_set(
+        OcctEngineSafeHandle handle,
+        int enabled);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial OcctStatus occt_engine_viewport_depth_prepass_get(
+        OcctEngineSafeHandle handle,
+        out int enabled);
+
+    [LibraryImport(LibraryName)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial OcctStatus occt_engine_viewport_clip_planes_set(
         OcctEngineSafeHandle handle,
         IntPtr planes,

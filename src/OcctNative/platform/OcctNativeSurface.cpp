@@ -2,13 +2,12 @@
 #include "OcctNativeSurface.h"
 #include "OcctPlatformWindow.hxx"
 
-#include <Aspect_PolygonOffsetMode.hxx>
+#include <AIS_DisplayMode.hxx>
 #include <Aspect_TypeOfTriedronPosition.hxx>
-#include <Graphic3d_AspectFillArea3d.hxx>
+#include <Prs3d_LineAspect.hxx>
 #include <Graphic3d_TransformPers.hxx>
 #include <Graphic3d_Vec2.hxx>
 #include <Prs3d_Drawer.hxx>
-#include <Prs3d_ShadingAspect.hxx>
 #include <V3d_TypeOfOrientation.hxx>
 
 namespace OcctBridge
@@ -25,14 +24,18 @@ namespace OcctBridge
         engine->viewerContext.viewer->SetLightOn();
         engine->viewerContext.viewer->SetDefaultTypeOfView(V3d_ORTHOGRAPHIC);
         engine->viewerContext.context = new AIS_InteractiveContext(engine->viewerContext.viewer);
+        engine->viewerContext.context->SetDisplayMode(AIS_Shaded, Standard_False);
+        engine->viewerContext.displayMode = AIS_Shaded;
         engine->viewerContext.view = engine->viewerContext.viewer->CreateView();
-        engine->viewerContext.view->SetAutoZFitMode(Standard_True, 1.0);
-        engine->viewerContext.view->ChangeRenderingParams().ToEnableDepthPrepass = Standard_True;
-        engine->viewerContext.view->ChangeRenderingParams().ToEnableAlphaToCoverage = Standard_True;
 
+        // Keep OCCT rendering defaults (including depth pre-pass disabled) and
+        // make the CAD default explicitly "shaded with face boundaries".
         const Handle(Prs3d_Drawer)& defaultDrawer = engine->viewerContext.context->DefaultDrawer();
-        defaultDrawer->SetupOwnShadingAspect();
-        defaultDrawer->ShadingAspect()->Aspect()->SetPolygonOffsets(Aspect_POM_Fill | Aspect_POM_Line, 1.0f, 1.0f);
+        defaultDrawer->SetFaceBoundaryDraw(Standard_True);
+        defaultDrawer->SetFaceBoundaryAspect(new Prs3d_LineAspect(
+            Quantity_NOC_BLACK,
+            Aspect_TOL_SOLID,
+            1.0));
 
         engine->viewerContext.window = createPlatformWindow(
             engine->viewerContext.displayConnection,
