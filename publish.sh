@@ -13,7 +13,7 @@ Usage: ./publish.sh [remote] [options]
 
 Options:
   --output <directory>        Portable SDK output root (default: artifacts/publish)
-  --install-root <directory>  System Binary SDK install root (default: /usr/local/lib/OcctCSharpBridge/SDK/<major.minor>/linux-x64)
+  --install-root <directory>  Binary SDK install root (default: $HOME/.local/share/OcctCSharpBridge/SDK/<major.minor>/linux-x64)
   --no-archive                Do not create the .tar.gz archive
   -h, --help                  Show this help
 EOF
@@ -146,10 +146,10 @@ install_binary_sdk() {
     staging="${parent}/.${name}-staging-$$"
     backup="${parent}/.${name}-backup-$$"
 
-    mkdir -p "${parent}" || fail "Unable to create SDK install parent '${parent}'. Run with sufficient permissions or set OCCTCSHARPBRIDGE_SDK/--install-root."
+    mkdir -p "${parent}" || fail "Unable to create SDK install parent '${parent}'. Check directory permissions or set OCCTCSHARPBRIDGE_SDK/--install-root."
     rm -rf "${staging}" "${backup}"
     mkdir -p "${staging}" || fail "Unable to create SDK staging directory: ${staging}"
-    cp -a "${source}/." "${staging}/" || fail "Unable to stage Binary SDK for system installation."
+    cp -a "${source}/." "${staging}/" || fail "Unable to stage Binary SDK for installation."
     assert_binary_sdk "${staging}" "${expected_source_commit}"
 
     if [[ -e "${destination}" ]]; then
@@ -166,7 +166,7 @@ install_binary_sdk() {
 
     rm -rf "${backup}"
     assert_binary_sdk "${destination}" "${expected_source_commit}"
-    log "System Binary SDK updated: ${destination}"
+    log "Installed Binary SDK updated: ${destination}"
 }
 
 assert_only_dist_changes() {
@@ -207,7 +207,8 @@ IFS='.' read -r bridge_major bridge_minor _ <<<"${bridge_version}"
 [[ "${bridge_major}" =~ ^[0-9]+$ && "${bridge_minor}" =~ ^[0-9]+$ ]] || fail "Invalid Bridge version in bridge-contract.json: ${bridge_version}"
 bridge_line="${bridge_major}.${bridge_minor}"
 if [[ -z "${INSTALL_ROOT}" ]]; then
-    INSTALL_ROOT="/usr/local/lib/OcctCSharpBridge/SDK/${bridge_line}/linux-x64"
+    [[ -n "${HOME:-}" ]] || fail "HOME is not set. Set OCCTCSHARPBRIDGE_SDK or use --install-root."
+    INSTALL_ROOT="${HOME}/.local/share/OcctCSharpBridge/SDK/${bridge_line}/linux-x64"
 fi
 
 log "Building and validating the Release ABI5 Binary SDK..."
@@ -215,17 +216,17 @@ log "Building and validating the Release ABI5 Binary SDK..."
 assert_binary_sdk "${DIST_ROOT}" "${source_commit}"
 assert_only_dist_changes
 
-log "Installing the validated Binary SDK..."
+log "Installing the validated Binary SDK to ${INSTALL_ROOT}..."
 install_binary_sdk "${DIST_ROOT}" "${INSTALL_ROOT}" "${source_commit}"
 
 log "Building portable SDK with the OCCT runtime closure..."
 bash "${PORTABLE_PACK_SCRIPT}" "${DIST_ROOT}" "${OCCT_ROOT}" "${OCCT_LIB_DIR}" "${OUTPUT_ROOT}" "${CREATE_ARCHIVE}"
 
 log "Bridge Binary SDK and portable runtime SDK validated successfully."
-log "Mode:       ${publish_mode}"
-log "Branch:     ${branch}"
-log "Source:     ${source_commit}"
-log "Binary SDK: ${DIST_ROOT}"
-log "System SDK: ${INSTALL_ROOT}"
-log "Portable:   ${OUTPUT_ROOT}"
+log "Mode:          ${publish_mode}"
+log "Branch:        ${branch}"
+log "Source:        ${source_commit}"
+log "Binary SDK:    ${DIST_ROOT}"
+log "Installed SDK: ${INSTALL_ROOT}"
+log "Portable:      ${OUTPUT_ROOT}"
 log "No Git push was performed. Publish the portable package through the normal reviewed artifact workflow."
