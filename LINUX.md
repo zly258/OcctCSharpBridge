@@ -1,19 +1,36 @@
 # Linux Avalonia Demo
 
-Linux x64 builds and publishes only `OcctDemo.Common` and `OcctDemo.Avalonia`. WinForms and WPF remain Windows-only.
+Linux x64 builds and publishes `OcctDemo.Common` and `OcctDemo.Avalonia`. WinForms and WPF remain Windows-only.
 
-## Shared Bridge SDK
+## Installed Bridge SDK
 
-Linux consumes the installed Bridge Binary SDK directly. The default SDK root is user-local and does not require root privileges:
+The Demo consumes the SDK installed by Bridge `main`; it does not clone, synchronize, or rebuild Bridge.
+
+Default Linux SDK root:
 
 ```text
 $HOME/.local/share/OcctCSharpBridge/SDK/3.0/linux-x64
 ```
 
-Install/update it from Bridge `main` as the current user:
+Install or update it from Bridge `main` as the current user:
 
 ```bash
 ./publish.sh
+```
+
+The installed SDK is complete:
+
+```text
+linux-x64/
+├─ libOcctNative.so
+├─ OcctNet.dll
+├─ OcctNet.Avalonia.dll
+├─ bridge-contract.json
+├─ bridge-manifest.json
+└─ portable/
+   ├─ package-manifest.json
+   ├─ runtime/
+   └─ occt/resources/
 ```
 
 Override the SDK root when needed:
@@ -22,17 +39,7 @@ Override the SDK root when needed:
 OCCTCSHARPBRIDGE_SDK=/custom/path ./build.sh all Release
 ```
 
-`build.sh`, `run.sh`, `publish.sh`, `sync.sh`, and direct MSBuild consumption all resolve the same default SDK root. The Demo does not silently rebuild Bridge when the installed Binary SDK is missing.
-
-## Portable runtime synchronization
-
-Demo publication additionally needs the matching Bridge Portable SDK payload under:
-
-```text
-external/OcctCSharpBridge/portable/linux-x64
-```
-
-`sync.sh` remains available for preparing that matching Portable SDK payload when publishing the Demo. It validates Bridge version, source commit and hashes so the portable runtime cannot be mixed with a different installed Binary SDK.
+`build.sh`, `run.sh`, `publish.sh`, and direct MSBuild consumption resolve the same installed SDK root. There is no `sync.sh` workflow and no Demo-local Bridge SDK cache.
 
 ## Build
 
@@ -41,8 +48,6 @@ external/OcctCSharpBridge/portable/linux-x64
 ./build.sh avalonia Release
 ./build.sh all Release
 ```
-
-`all` builds the Demo Common layer and Avalonia host. The Demo does not contain or build Bridge implementation source directly.
 
 ## Run
 
@@ -58,17 +63,13 @@ The Avalonia viewer backend requires an X11/XWayland display.
 ./publish.sh Release
 ```
 
-The default output is:
+Demo publication reads both the Binary SDK and the matching runtime closure directly from the installed SDK. The default output is:
 
 ```text
 artifacts/publish/CAD-Avalonia-linux-x64/
 artifacts/publish/CAD-Avalonia-linux-x64.tar.gz
 ```
 
-The Demo publish step consumes the installed Binary SDK and reuses the matching Bridge Portable SDK native closure and OCCT resources instead of maintaining another runtime dependency collector.
-
 ## Linux ABI compatibility
 
-The package does not make native ABI requirements independent of the build distribution. OCCT and `libOcctNative.so` still depend on the glibc/libstdc++ ABI baseline used to compile them. A package built on a newer Linux may fail on an older Kylin/Debian/Ubuntu system with `GLIBC_*`, `GLIBCXX_*`, or `CXXABI_* not found` even when all files are present.
-
-For broad distro support, rebuild OCCT and Bridge native code on the oldest supported Linux ABI baseline and validate the resulting package on the target matrix. AppImage packaging alone does not lower an already-linked glibc requirement.
+OCCT and `libOcctNative.so` remain constrained by the glibc/libstdc++ ABI baseline used to build them. Packaging does not make a newer native build compatible with older distributions. For broad distro support, build OCCT and Bridge on the oldest supported Linux ABI baseline and validate on the target matrix.

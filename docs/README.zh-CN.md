@@ -1,6 +1,6 @@
 # Demo 分支说明
 
-`demo` / `demo` 是 OcctCSharpBridge Binary/Portable SDK 的参考 Consumer，不包含 Bridge 实现源码。
+`demo` 是已安装 OcctCSharpBridge SDK 的参考 Consumer，不包含 Bridge 实现源码，也不负责同步或重新编译 Bridge。
 
 ## 项目
 
@@ -11,37 +11,23 @@ OcctDemo.Common
 └─ OcctDemo.Avalonia  → Windows x64 / Linux x64
 ```
 
-## SDK 同步
+## SDK 使用方式
 
-`dist/` 是可删除的本地缓存。缓存命中时只校验 `sourceCommit` 和 Package Hash，不进行 Bridge 编译。
+Bridge `main` 负责 SDK 的构建、校验和安装；Demo 只直接消费已安装 SDK。
 
-缓存失效时只使用 **Bridge `dist Release` Consumer 快路径**：
+Windows 默认路径：
 
 ```text
-Bridge dist Release
-→ 最小 Binary SDK
-→ Bridge Portable SDK Packager
-→ Contract/sourceCommit/Hash 校验
-→ Demo dist Cache
+C:\Program Files\OcctCSharpBridge\SDK\3.0\win-x64
 ```
 
-Demo 同步不得运行 Bridge `sdk`、`all`、ManagedTests、Core Smoke 或 Viewport/窗口 Smoke；这些属于 Bridge Release Validation 职责。
+Linux 默认路径：
 
-Windows：
-
-```powershell
-.\sync.ps1
-.\sync.ps1 -ForceRebuild
+```text
+$HOME/.local/share/OcctCSharpBridge/SDK/3.0/linux-x64
 ```
 
-Linux：
-
-```bash
-./sync.sh
-./sync.sh --force-rebuild
-```
-
-如果已有匹配的 Binary + Portable SDK，可以直接传入，Bridge 编译次数为 0。
+已安装 SDK 同时包含 Binary SDK 和与其完全匹配的 `portable/` Runtime Closure。Demo 仓库不再保存第二套 Bridge SDK，也没有 sync 步骤。
 
 ## Consumer 边界
 
@@ -49,14 +35,12 @@ Linux：
 - 不直接导入 `occt_*` ABI；
 - 不使用 pre-ABI5 兼容 API；
 - 不维护第二套 OCCT Dependency Collector；
-- 不在 Consumer Sync 中隐藏 Bridge 完整 Release Gate。
-
-Consumer Contract Check 会守住这些边界。
+- 不在 Demo 内 clone、sync 或重新构建 Bridge。
 
 ## 发布
 
-Windows `publish.ps1 all Release` 默认生成统一包：`apps/` 下放三个应用，`dotnet/` 放一份共享私有 .NET 10 Desktop Runtime，`runtime/` 只放一份 Bridge/OCCT Closure，并共享 OCCT Resources。显式 `-SelfContained` 才生成三个应用各自的 Runtime Closure；显式 `-FrameworkDependent` 才要求目标机安装 .NET Runtime。
+Windows 使用 `publish.ps1 all Release` 生成 WinForms/WPF/Avalonia 统一包；Linux 使用 `publish.sh Release` 发布 Avalonia。两端都直接消费已安装的 Bridge SDK 和其中匹配的 Portable Runtime。
 
-Linux 发布 Avalonia，并合并匹配的 Bridge Portable Runtime/Resources。Linux Native 兼容范围仍由 OCCT 与 `libOcctNative.so` 的 glibc/libstdc++ ABI 构建基线决定。
+Linux Native 兼容范围仍由 OCCT 与 `libOcctNative.so` 的 glibc/libstdc++ ABI 构建基线决定。
 
-第三方项目的工程结构、引用、部署与版本锁定应以正式 Bridge `main` / `main` 文档中的 `09_第三方项目消费SDK.md` 为准。
+第三方项目的工程结构、引用、部署与版本锁定应以 Bridge `main` 下的正式 SDK Consumer 文档为准。

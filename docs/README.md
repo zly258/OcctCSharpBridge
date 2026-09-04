@@ -1,6 +1,6 @@
 # Unified Demo Branch Notes
 
-`demo` / `demo` are reference consumers of the OcctCSharpBridge Binary/Portable SDK. They do not contain Bridge implementation source.
+`demo` is a reference consumer of the installed OcctCSharpBridge SDK. It does not contain Bridge implementation source and does not synchronize or rebuild Bridge.
 
 ## Projects
 
@@ -13,35 +13,21 @@ OcctDemo.Common
 
 ## SDK workflow
 
-`dist/` is disposable local cache state. A synchronization cache hit validates `sourceCommit` and package hashes and performs no Bridge build.
+Bridge `main` owns SDK production and installation. Demo consumes that installed SDK directly.
 
-A cache miss uses the **Bridge `dist Release` consumer fast path** only:
+Windows default:
 
 ```text
-Bridge dist Release
-→ minimal Binary SDK
-→ Bridge-owned Portable SDK packager
-→ contract/sourceCommit/hash validation
-→ Demo dist cache
+C:\Program Files\OcctCSharpBridge\SDK\3.0\win-x64
 ```
 
-Demo synchronization must not run Bridge `sdk`, `all`, ManagedTests, Core Smoke, or viewport/window smokes. Those are Bridge release-validation responsibilities.
+Linux default:
 
-Windows:
-
-```powershell
-.\sync.ps1
-.\sync.ps1 -ForceRebuild
+```text
+$HOME/.local/share/OcctCSharpBridge/SDK/3.0/linux-x64
 ```
 
-Linux:
-
-```bash
-./sync.sh
-./sync.sh --force-rebuild
-```
-
-Prebuilt matching Binary + Portable SDKs can be supplied directly, avoiding Bridge compilation entirely.
+The installed SDK contains the Binary SDK plus its matching Portable Runtime under `portable/`. Demo does not keep a second Bridge SDK under the repository and has no sync step.
 
 ## Consumer boundary
 
@@ -49,14 +35,12 @@ Prebuilt matching Binary + Portable SDKs can be supplied directly, avoiding Brid
 - no direct `occt_*` ABI imports;
 - no pre-ABI5 compatibility APIs;
 - no duplicate OCCT dependency collector;
-- no Bridge full release gate hidden inside consumer synchronization.
-
-The consumer checks enforce these boundaries.
+- no Bridge clone/sync/rebuild workflow inside the Demo.
 
 ## Publication
 
-Windows `publish.ps1 all Release` defaults to a unified package with nested `apps/`, one shared private .NET 10 Desktop Runtime under `dotnet/`, one Bridge/OCCT `runtime/`, and shared OCCT resources. `-SelfContained` explicitly requests separate per-app runtime closures; `-FrameworkDependent` explicitly requires a machine runtime.
+Windows `publish.ps1 all Release` produces the unified WinForms/WPF/Avalonia package. Linux `publish.sh Release` publishes Avalonia. Both consume the installed Bridge SDK and its matching Portable Runtime.
 
-Linux publishes Avalonia and merges the matching Bridge Portable Runtime/resources. Linux native compatibility still depends on the glibc/libstdc++ ABI baseline used to build OCCT and `libOcctNative.so`.
+Linux native compatibility still depends on the glibc/libstdc++ ABI baseline used to build OCCT and `libOcctNative.so`.
 
-For third-party project architecture and deployment guidance, use the formal Bridge documentation under `main` / `main`, especially `docs/*/09_Third-Party-SDK-Consumption`.
+For third-party project architecture and deployment guidance, use the formal Bridge documentation under `main`, especially `docs/*/09_Third-Party-SDK-Consumption`.
