@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="color-scheme" content="light dark" />
+<title>OcctCSharpBridge · Industrial SDK</title>
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/theme-init.js"></script>
+</head>
+<body>
+<header class="top">
+  <div class="shell top-in">
+    <div>
+      <div class="brand-main">OcctCSharpBridge</div>
+      <div class="brand-sub">OCCT 7.9.0 → .NET bridge</div>
+    </div>
+    <nav class="nav">
+      <a href="#capabilities"><span data-i18n="navCapabilities">Capabilities</span></a>
+      <a href="#platforms"><span data-i18n="navPlatforms">Platforms</span></a>
+      <a href="#sdk"><span data-i18n="navSdk">SDK</span></a>
+      <a href="#demo"><span data-i18n="navDemo">Demo</span></a>
+      <a href="#license"><span data-i18n="navLicense">License</span></a>
+      <button id="langToggle" class="theme-toggle" type="button">EN</button>
+      <button id="themeToggle" class="theme-toggle" type="button">DARK</button>
+      <a class="gh" href="https://github.com/zly258/OcctCSharpBridge" target="_blank" rel="noreferrer">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<main class="shell">
+  <section class="hero">
+    <div>
+      <div class="eyebrow" data-i18n="eyebrow">Native CAD geometry infrastructure</div>
+      <h1 data-i18n="heroTitle">Industrial geometry SDK for .NET CAD/BIM software.</h1>
+      <p class="hero-lead" data-i18n="heroLead">OcctCSharpBridge exposes Open CASCADE Technology 7.9.0 through a stable native ABI and typed .NET APIs for geometry, BRep modeling, exchange and hardware-accelerated desktop viewports.</p>
+      <div class="hero-actions">
+        <a class="action primary" href="#sdk"><span data-i18n="quickStart">Quick start</span></a>
+        <a class="action" href="#demo"><span data-i18n="viewHosts">View reference hosts</span></a>
+        <a class="action" href="https://github.com/zly258/OcctCSharpBridge/tree/main" target="_blank" rel="noreferrer"><span data-i18n="source">Source ↗</span></a>
+      </div>
+    </div>
+    <aside class="spec">
+      <div class="spec-title" data-i18n="baseline">Current baseline</div>
+      <div class="spec-row"><span>Bridge</span><strong>3.0.0</strong></div>
+      <div class="spec-row"><span>Native ABI</span><strong>5 only</strong></div>
+      <div class="spec-row"><span>OCCT</span><strong>7.9.0</strong></div>
+      <div class="spec-row"><span>Managed targets</span><strong>.NET 8 / 9 / 10</strong></div>
+      <div class="spec-row"><span>Windows UI</span><strong>WinForms / WPF / Avalonia</strong></div>
+      <div class="spec-row"><span>Linux UI</span><strong>Avalonia</strong></div>
+    </aside>
+  </section>
+
+  <section id="capabilities" class="section">
+    <div class="section-grid">
+      <div class="side-label" data-i18n="sideCapabilities">01 / Capabilities</div>
+      <div>
+        <h2 data-i18n="capTitle">Low-level by design.</h2>
+        <p class="section-intro" data-i18n="capIntro">核心页面按 SDK 技术产品来表达：几何内核、数据交换、视口和运行时契约，而不是营销式功能堆砌。</p>
+        <div class="rows">
+          <div class="row"><div class="row-id">01</div><h3>Geometry & BRep</h3><p>Primitives, booleans, topology traversal, fillets, chamfers, meshing and physical properties.</p></div>
+          <div class="row"><div class="row-id">02</div><h3>STEP exchange</h3><p>Assembly-aware STEP AP214/AP242 import and export with hierarchy, names, colors and metadata.</p></div>
+          <div class="row"><div class="row-id">03</div><h3>Viewer & AIS</h3><p>Hardware-accelerated OCCT visualization with picking, highlighting, camera control and native desktop hosting.</p></div>
+          <div class="row"><div class="row-id">04</div><h3>Runtime contract</h3><p>Stable ABI 5 boundary, typed managed API and explicit runtime validation for predictable SDK consumption.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="platforms" class="section">
+    <div class="section-grid">
+      <div class="side-label" data-i18n="sidePlatforms">02 / Platforms</div>
+      <div>
+        <h2 data-i18n="platformTitle">Platform boundaries are explicit.</h2>
+        <p class="section-intro" data-i18n="platformIntro">Headless modeling 与 UI hosting 分开表达，不把跨平台能力模糊成一句“支持 Windows / Linux”。</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Module</th><th>Windows x64</th><th>Linux x64</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Native Core + OcctNet</strong><br>Headless BRep modeling</td><td class="ok">YES</td><td class="ok">YES</td></tr>
+              <tr><td><strong>OcctNet.WinForms</strong><br>Win32 / WNT host</td><td class="ok">YES</td><td class="na">N/A</td></tr>
+              <tr><td><strong>OcctNet.Wpf</strong><br>Win32 / WNT host</td><td class="ok">YES</td><td class="na">N/A</td></tr>
+              <tr><td><strong>OcctNet.Avalonia</strong><br>NativeControlHost</td><td class="ok">YES</td><td class="ok">YES · X11 / XWayland</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="sdk" class="section">
+    <div class="section-grid">
+      <div class="side-label" data-i18n="sideSdk">03 / Developer SDK</div>
+      <div>
+        <h2 data-i18n="sdkTitle">Build once. Consume as an SDK.</h2>
+        <p class="section-intro" data-i18n="sdkIntro">安装、引用和职责边界都按开发者文档方式表达。</p>
+        <div class="sdk-grid">
+          <div class="codebox"><div class="code-head"><span>Windows · install/update SDK</span><button class="copy" data-copy="win">COPY</button></div><pre id="win">.\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"</pre></div>
+          <div class="codebox"><div class="code-head"><span>Linux · build</span><button class="copy" data-copy="linux">COPY</button></div><pre id="linux">./build.sh build Release</pre></div>
+        </div>
+        <div class="boundary"><strong>Application boundary.</strong> The Bridge remains a low-level geometry / modeling / viewer wrapper. Documents, feature trees, commands, undo/redo, snapping, grips, catalogs and project semantics belong to applications built on top of it.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="demo" class="section">
+    <div class="section-grid">
+      <div class="side-label" data-i18n="sideHosts">04 / Reference hosts</div>
+      <div>
+        <h2 data-i18n="hostsTitle">Real application surfaces.</h2>
+        <p class="section-intro" data-i18n="hostsIntro">真实界面直接大图展示，不做轮播；点击截图可放大查看原图。</p>
+        <div class="demo-list">
+          <figure class="demo-item"><div class="demo-head"><div class="demo-title">WinForms reference host</div><div class="demo-meta">WINDOWS X64 · WNT</div></div><div class="demo-frame"><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/winform-demo-en.png" alt="WinForms reference host"></div><figcaption class="demo-note">Click image to inspect full resolution.</figcaption></figure>
+          <figure class="demo-item"><div class="demo-head"><div class="demo-title">WPF reference host</div><div class="demo-meta">WINDOWS X64 · HWND HOST</div></div><div class="demo-frame"><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/wpf-demo-en.png" alt="WPF reference host"></div><figcaption class="demo-note">Click image to inspect full resolution.</figcaption></figure>
+          <figure class="demo-item"><div class="demo-head"><div class="demo-title">Avalonia reference host</div><div class="demo-meta">WINDOWS / LINUX</div></div><div class="demo-frame"><img src="https://raw.githubusercontent.com/zly258/OcctCSharpBridge/demo/assets/previews/avalonia-win-demo-en.png" alt="Avalonia reference host"></div><figcaption class="demo-note">Click image to inspect full resolution.</figcaption></figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="license" class="section">
+    <div class="section-grid">
+      <div class="side-label" data-i18n="sideLicense">05 / License</div>
+      <div>
+        <h2 data-i18n="licenseTitle">Open-source licensing.</h2>
+        <p class="section-intro" data-i18n="licenseIntro">底部把许可证单独列出来，不藏在页脚小字里，方便 SDK 使用者快速确认分发和链接条款。</p>
+        <div class="license-grid">
+          <article class="license-card">
+            <h3>GNU LGPL 2.1</h3>
+            <p>Project source code is distributed under the GNU Lesser General Public License 2.1.</p>
+            <a href="https://github.com/zly258/OcctCSharpBridge/blob/main/LICENSE_LGPL_21.txt" target="_blank" rel="noreferrer">READ LICENSE ↗</a>
+          </article>
+          <article class="license-card">
+            <h3>OcctCSharpBridge Linking Exception</h3>
+            <p>Additional linking terms are provided for standard .NET and native interop consumption of the Bridge.</p>
+            <a href="https://github.com/zly258/OcctCSharpBridge/blob/main/OcctCSharpBridge_LGPL_EXCEPTION.txt" target="_blank" rel="noreferrer">READ EXCEPTION ↗</a>
+          </article>
+        </div>
+        <p class="license-note">Refer to the repository license files for the authoritative terms.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="shell foot">
+    <div data-i18n="footerLeft">OcctCSharpBridge · Industrial geometry infrastructure for .NET</div>
+    <div class="foot-right" data-i18n="footerRight">LGPL 2.1 + Linking Exception</div>
+  </div>
+</footer>
+
+<dialog id="lightbox"><button class="close" type="button">CLOSE</button><img alt="Full size preview"></dialog>
+
+<script src="assets/site.js"></script>
+</body>
+</html>
