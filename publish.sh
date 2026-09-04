@@ -122,7 +122,7 @@ assert_binary_sdk() {
     [[ "$(json_string "${manifest}" sourceCommit)" == "${expected_source_commit}" ]] || fail "Linux Binary SDK sourceCommit does not match the publishing source commit."
 
     local manifest_entry_count
-    manifest_entry_count="$(grep -c '^[[:space:]]*{ \"name\": ' "${manifest}" || true)"
+    manifest_entry_count="$(grep -c '^[[:space:]]*{ "name": ' "${manifest}" || true)"
     [[ "${manifest_entry_count}" == "${#hashed_files[@]}" ]] || fail "Binary SDK manifest contains an unexpected number of hashed files."
 
     for name in "${hashed_files[@]}"; do
