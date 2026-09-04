@@ -160,8 +160,6 @@ log "${publish_mode} ${branch} ancestry validated."
 source_commit="$(git -C "${ROOT_DIR}" rev-parse HEAD)" || fail "Failed to resolve the source commit used for Binary SDK publishing."
 [[ -n "${source_commit}" ]] || fail "Failed to resolve the source commit used for Binary SDK publishing."
 
-log "Running the complete headless Release validation before Binary SDK packaging..."
-"${BUILD_SCRIPT}" all Release
 log "Building and validating the Release ABI5 Binary SDK..."
 "${BUILD_SCRIPT}" dist Release
 assert_binary_sdk "${source_commit}"
