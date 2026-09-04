@@ -12,8 +12,8 @@ usage() {
 Usage: ./publish.sh [remote] [options]
 
 Options:
-  --output <directory>        Portable SDK output root (default: artifacts/publish)
-  --install-root <directory>  Binary SDK install root (default: $HOME/.local/share/OcctCSharpBridge/SDK/<major.minor>/linux-x64)
+  --output <directory>        Portable SDK artifact root (default: artifacts/publish)
+  --install-root <directory>  Complete SDK install root (default: $HOME/.local/share/OcctCSharpBridge/SDK/<major.minor>/linux-x64)
   --no-archive                Do not create the .tar.gz archive
   -h, --help                  Show this help
 EOF
@@ -122,7 +122,7 @@ assert_binary_sdk() {
     [[ "$(json_string "${manifest}" sourceCommit)" == "${expected_source_commit}" ]] || fail "Linux Binary SDK sourceCommit does not match the publishing source commit."
 
     local manifest_entry_count
-    manifest_entry_count="$(grep -c '^[[:space:]]*{ "name": ' "${manifest}" || true)"
+    manifest_entry_count="$(grep -c '^[[:space:]]*{ \"name\": ' "${manifest}" || true)"
     [[ "${manifest_entry_count}" == "${#hashed_files[@]}" ]] || fail "Binary SDK manifest contains an unexpected number of hashed files."
 
     for name in "${hashed_files[@]}"; do
@@ -133,13 +133,62 @@ assert_binary_sdk() {
     done
 }
 
-install_binary_sdk() {
-    local source="$1"
-    local destination="$2"
-    local expected_source_commit="$3"
+assert_portable_sdk() {
+    local root="$1"
+    local expected_source_commit="$2"
+    local expected_version="$3"
+
+    [[ -f "${root}/package-manifest.json" ]] || fail "Portable SDK manifest is missing: ${root}/package-manifest.json"
+    [[ -f "${root}/runtime/libOcctNative.so" ]] || fail "Portable SDK native bridge is missing: ${root}/runtime/libOcctNative.so"
+    [[ -d "${root}/occt/resources" ]] || fail "Portable SDK OCCT resources are missing: ${root}/occt/resources"
+
+    python3 - "${root}" "${expected_source_commit}" "${expected_version}" <<'PY' || fail "Portable SDK validation failed: ${root}"
+import hashlib
+import json
+import os
+import sys
+
+root, expected_commit, expected_version = sys.argv[1:]
+manifest_path = os.path.join(root, 'package-manifest.json')
+with open(manifest_path, encoding='utf-8') as f:
+    manifest = json.load(f)
+
+if manifest.get('product') != 'OcctCSharpBridge Portable SDK':
+    raise SystemExit('unexpected portable product')
+if manifest.get('platform') != 'linux-x64' or not manifest.get('portableRuntime'):
+    raise SystemExit('unexpected portable platform/runtime mode')
+if manifest.get('bridgeSourceCommit') != expected_commit:
+    raise SystemExit('portable sourceCommit does not match Binary SDK')
+if manifest.get('bridgeVersion') != expected_version:
+    raise SystemExit('portable Bridge version does not match Binary SDK')
+
+for entry in manifest.get('files', []):
+    rel = entry.get('name')
+    expected_hash = str(entry.get('sha256', '')).lower()
+    if not rel or not expected_hash:
+        raise SystemExit('invalid portable manifest entry')
+    path = os.path.join(root, *rel.split('/'))
+    if not os.path.isfile(path):
+        raise SystemExit(f'portable file missing: {rel}')
+    h = hashlib.sha256()
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b''):
+            h.update(chunk)
+    if h.hexdigest().lower() != expected_hash:
+        raise SystemExit(f'portable hash mismatch: {rel}')
+PY
+}
+
+install_complete_sdk() {
+    local binary_source="$1"
+    local portable_source="$2"
+    local destination="$3"
+    local expected_source_commit="$4"
+    local expected_version="$5"
     local parent name staging backup had_previous=false
 
-    assert_binary_sdk "${source}" "${expected_source_commit}"
+    assert_binary_sdk "${binary_source}" "${expected_source_commit}"
+    assert_portable_sdk "${portable_source}" "${expected_source_commit}" "${expected_version}"
 
     parent="$(dirname "${destination}")"
     name="$(basename "${destination}")"
@@ -148,9 +197,12 @@ install_binary_sdk() {
 
     mkdir -p "${parent}" || fail "Unable to create SDK install parent '${parent}'. Check directory permissions or set OCCTCSHARPBRIDGE_SDK/--install-root."
     rm -rf "${staging}" "${backup}"
-    mkdir -p "${staging}" || fail "Unable to create SDK staging directory: ${staging}"
-    cp -a "${source}/." "${staging}/" || fail "Unable to stage Binary SDK for installation."
+    mkdir -p "${staging}/portable" || fail "Unable to create SDK staging directory: ${staging}"
+    cp -a "${binary_source}/." "${staging}/" || fail "Unable to stage Binary SDK for installation."
+    cp -a "${portable_source}/." "${staging}/portable/" || fail "Unable to stage Portable SDK for installation."
+
     assert_binary_sdk "${staging}" "${expected_source_commit}"
+    assert_portable_sdk "${staging}/portable" "${expected_source_commit}" "${expected_version}"
 
     if [[ -e "${destination}" ]]; then
         mv "${destination}" "${backup}" || fail "Unable to back up existing SDK installation: ${destination}"
@@ -161,12 +213,13 @@ install_binary_sdk() {
         if [[ "${had_previous}" == true && -e "${backup}" ]]; then
             mv "${backup}" "${destination}" || true
         fi
-        fail "Unable to install Binary SDK to ${destination}."
+        fail "Unable to install complete SDK to ${destination}."
     fi
 
     rm -rf "${backup}"
     assert_binary_sdk "${destination}" "${expected_source_commit}"
-    log "Installed Binary SDK updated: ${destination}"
+    assert_portable_sdk "${destination}/portable" "${expected_source_commit}" "${expected_version}"
+    log "Installed complete SDK updated: ${destination}"
 }
 
 assert_only_dist_changes() {
@@ -183,6 +236,7 @@ assert_only_dist_changes() {
 
 require_command git
 require_command sha256sum
+require_command python3
 [[ "$(uname -s)" == "Linux" ]] || fail "publish.sh supports Linux only; use publish.ps1 on Windows."
 case "$(uname -m)" in x86_64|amd64) ;; *) fail "Linux x64 is required; detected $(uname -m)." ;; esac
 [[ -x "${BUILD_SCRIPT}" || -f "${BUILD_SCRIPT}" ]] || fail "build.sh was not found."
@@ -199,8 +253,8 @@ assert_clean_worktree "before publishing"
 assert_remote_branch_ancestor "${branch}"
 log "${publish_mode} ${branch} ancestry validated."
 
-source_commit="$(git -C "${ROOT_DIR}" rev-parse HEAD)" || fail "Failed to resolve the source commit used for Binary SDK publishing."
-[[ -n "${source_commit}" ]] || fail "Failed to resolve the source commit used for Binary SDK publishing."
+source_commit="$(git -C "${ROOT_DIR}" rev-parse HEAD)" || fail "Failed to resolve the source commit used for SDK publishing."
+[[ -n "${source_commit}" ]] || fail "Failed to resolve the source commit used for SDK publishing."
 
 bridge_version="$(json_string "${SOURCE_CONTRACT}" bridgeVersion)"
 IFS='.' read -r bridge_major bridge_minor _ <<<"${bridge_version}"
@@ -216,11 +270,13 @@ log "Building and validating the Release ABI5 Binary SDK..."
 assert_binary_sdk "${DIST_ROOT}" "${source_commit}"
 assert_only_dist_changes
 
-log "Installing the validated Binary SDK to ${INSTALL_ROOT}..."
-install_binary_sdk "${DIST_ROOT}" "${INSTALL_ROOT}" "${source_commit}"
-
 log "Building portable SDK with the OCCT runtime closure..."
 bash "${PORTABLE_PACK_SCRIPT}" "${DIST_ROOT}" "${OCCT_ROOT}" "${OCCT_LIB_DIR}" "${OUTPUT_ROOT}" "${CREATE_ARCHIVE}"
+portable_package="${OUTPUT_ROOT}/OcctCSharpBridge-${bridge_version}-linux-x64-portable"
+assert_portable_sdk "${portable_package}" "${source_commit}" "${bridge_version}"
+
+log "Installing the complete SDK to ${INSTALL_ROOT}..."
+install_complete_sdk "${DIST_ROOT}" "${portable_package}" "${INSTALL_ROOT}" "${source_commit}" "${bridge_version}"
 
 log "Bridge Binary SDK and portable runtime SDK validated successfully."
 log "Mode:          ${publish_mode}"
@@ -228,5 +284,6 @@ log "Branch:        ${branch}"
 log "Source:        ${source_commit}"
 log "Binary SDK:    ${DIST_ROOT}"
 log "Installed SDK: ${INSTALL_ROOT}"
-log "Portable:      ${OUTPUT_ROOT}"
+log "Runtime SDK:   ${INSTALL_ROOT}/portable"
+log "Artifacts:     ${OUTPUT_ROOT}"
 log "No Git push was performed. Publish the portable package through the normal reviewed artifact workflow."
