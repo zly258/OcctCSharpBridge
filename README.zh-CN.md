@@ -15,21 +15,31 @@ Demo 自身使用 .NET 10，用来覆盖 Bridge 支持的最新 Consumer Runtime
 
 ## 共享 Bridge SDK
 
-Windows 下 Demo 直接消费机器级 Bridge SDK：
+Demo 在 Windows 和 Linux 下都直接消费机器级 Bridge Binary SDK。
+
+Windows 默认路径：
 
 ```text
 C:\Program Files\OcctCSharpBridge\SDK\3.0\win-x64
 ```
 
-在 Bridge `main` 中使用管理员 PowerShell 安装/更新：
+Linux 默认路径：
+
+```text
+/usr/local/lib/OcctCSharpBridge/SDK/3.0/linux-x64
+```
+
+在 Bridge `main` 中安装/更新：
 
 ```powershell
 .\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-可通过 `OCCTCSHARPBRIDGE_SDK` 覆盖 SDK Root。Demo 不再 clone Bridge，也不再在 `external/` 下维护 Windows Binary SDK 同步副本。系统 SDK 缺失或不完整时，构建会直接给出安装路径并失败。
+```bash
+./publish.sh
+```
 
-Linux 仍保留源码构建方式，可使用 Linux 对应的 external SDK 路径。
+可通过 `OCCTCSHARPBRIDGE_SDK` 覆盖 SDK Root。Demo 不再 clone Bridge，也不再在 `external/` 下维护 Binary SDK 同步副本。系统 SDK 缺失或不完整时，构建会直接给出安装路径并失败。Demo 发布阶段仍可使用 `external/OcctCSharpBridge/portable/...` 保存与系统 Binary SDK 匹配的 Portable Runtime Closure。
 
 ## Demo 构建
 
@@ -118,7 +128,7 @@ artifacts/publish/CAD-Demo-win-x64/
 ./publish.sh Release
 ```
 
-Linux 当前发布 Avalonia self-contained 应用，并合并匹配的 Bridge Portable Runtime 与 OCCT Resources：
+Linux 使用已安装的 Binary SDK 发布 Avalonia self-contained 应用，并合并匹配的 Bridge Portable Runtime 与 OCCT Resources：
 
 ```text
 CAD-Avalonia-linux-x64/

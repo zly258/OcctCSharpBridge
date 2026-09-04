@@ -3,6 +3,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIGURATION="${1:-Release}"
+DEFAULT_SDK_ROOT="/usr/local/lib/OcctCSharpBridge/SDK/3.0/linux-x64"
+export OCCTCSHARPBRIDGE_SDK="${OCCTCSHARPBRIDGE_SDK:-${DEFAULT_SDK_ROOT}}"
+
 case "${CONFIGURATION}" in Debug|Release|RelWithDebInfo) ;; *) printf '[run-linux] ERROR: Unknown configuration: %s\n' "${CONFIGURATION}" >&2; exit 2 ;; esac
 
 fail() { printf '[run-linux] ERROR: %s\n' "$*" >&2; exit 1; }
@@ -31,6 +34,7 @@ export OCCT_BRIDGE_NATIVE_DIR="${APP_DIR}"
 export LD_LIBRARY_PATH="${APP_DIR}:${OCCT_LIB_DIR}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 
 log "Application: ${APP_DLL}"
+log "Bridge SDK:  ${OCCTCSHARPBRIDGE_SDK}"
 log "OCCT root:   ${OCCT_ROOT}"
 log "DISPLAY:     ${DISPLAY}"
 cd "${APP_DIR}"

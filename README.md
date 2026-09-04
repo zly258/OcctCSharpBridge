@@ -15,21 +15,31 @@ The Demo targets .NET 10 to exercise the latest supported consumer runtime. The 
 
 ## Shared Bridge SDK
 
-On Windows the Demo consumes the machine-wide Bridge SDK directly:
+The Demo consumes the machine-wide Bridge Binary SDK directly.
+
+Windows default:
 
 ```text
 C:\Program Files\OcctCSharpBridge\SDK\3.0\win-x64
 ```
 
-Install/update it from Bridge `main` in an elevated PowerShell session:
+Linux default:
+
+```text
+/usr/local/lib/OcctCSharpBridge/SDK/3.0/linux-x64
+```
+
+Install/update it from Bridge `main`:
 
 ```powershell
 .\publish.ps1 -OcctRoot "D:\tools\occt-vc144-64"
 ```
 
-Set `OCCTCSHARPBRIDGE_SDK` to override the SDK root. The Demo no longer clones Bridge or keeps a synchronized Windows Binary SDK under `external/`. If the shared SDK is missing or incomplete, the build fails with the expected install path.
+```bash
+./publish.sh
+```
 
-Linux remains a source-build workflow and may use the Linux-specific external SDK path.
+Set `OCCTCSHARPBRIDGE_SDK` to override the SDK root. The Demo no longer clones Bridge or keeps a synchronized Binary SDK under `external/`. If the shared SDK is missing or incomplete, the build fails with the expected install path. Demo publication may still use `external/OcctCSharpBridge/portable/...` for the matching Portable SDK runtime closure.
 
 ## Build the Demo
 
@@ -104,7 +114,7 @@ Publication removes any flat `OcctNative.dll` copied from the minimal Binary SDK
 ./publish.sh Release
 ```
 
-Linux currently publishes the Avalonia self-contained application and merges the matching Bridge Portable Runtime/resources:
+Linux publishes the Avalonia self-contained application from the installed Binary SDK and merges the matching Bridge Portable Runtime/resources:
 
 ```text
 CAD-Avalonia-linux-x64/

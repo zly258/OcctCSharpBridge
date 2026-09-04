@@ -6,6 +6,11 @@ CONFIGURATION="Release"
 OUTPUT_ROOT="${ROOT_DIR}/artifacts/publish"
 SELF_CONTAINED=true
 CREATE_ARCHIVE=true
+DEFAULT_SDK_ROOT="/usr/local/lib/OcctCSharpBridge/SDK/3.0/linux-x64"
+DIST_ROOT="${OCCTCSHARPBRIDGE_SDK:-${DEFAULT_SDK_ROOT}}"
+PORTABLE_ROOT="${ROOT_DIR}/external/OcctCSharpBridge/portable/linux-x64"
+
+export OCCTCSHARPBRIDGE_SDK="${DIST_ROOT}"
 
 usage() {
     cat <<'EOF'
@@ -44,8 +49,6 @@ require_command realpath
 require_command tar
 require_command python3
 
-DIST_ROOT="${ROOT_DIR}/external/OcctCSharpBridge/linux-x64"
-PORTABLE_ROOT="${ROOT_DIR}/external/OcctCSharpBridge/portable/linux-x64"
 PROJECT="${ROOT_DIR}/src/OcctDemo.Avalonia/OcctDemo.Avalonia.csproj"
 CONTRACT="${DIST_ROOT}/bridge-contract.json"
 MANIFEST="${DIST_ROOT}/bridge-manifest.json"
@@ -57,8 +60,8 @@ STAGING_DIR="$(realpath -m "${OUTPUT_ROOT}/.${PACKAGE_NAME}-staging-$$")"
 ARCHIVE_PATH="$(realpath -m "${OUTPUT_ROOT}/${PACKAGE_NAME}.tar.gz")"
 
 [[ -f "${PROJECT}" ]] || fail "Avalonia Demo project was not found."
-[[ -f "${CONTRACT}" && -f "${MANIFEST}" ]] || fail "linux-x64 Binary SDK is missing. Run ./sync.sh first."
-[[ -f "${PORTABLE_MANIFEST}" && -f "${PORTABLE_ROOT}/runtime/libOcctNative.so" && -d "${PORTABLE_ROOT}/occt/resources" ]] || fail "Matching Bridge portable runtime is missing. Run ./sync.sh first."
+[[ -f "${CONTRACT}" && -f "${MANIFEST}" ]] || fail "Installed linux-x64 Binary SDK is missing at '${DIST_ROOT}'. Run Bridge main ./publish.sh with sufficient permissions, or set OCCTCSHARPBRIDGE_SDK."
+[[ -f "${PORTABLE_MANIFEST}" && -f "${PORTABLE_ROOT}/runtime/libOcctNative.so" && -d "${PORTABLE_ROOT}/occt/resources" ]] || fail "Matching Bridge portable runtime is missing under '${PORTABLE_ROOT}'. Run ./sync.sh to prepare the matching Portable SDK payload."
 
 BRIDGE_COMMIT="$(json_string "${MANIFEST}" sourceCommit)"
 BRIDGE_VERSION="$(json_string "${CONTRACT}" bridgeVersion)"
@@ -72,7 +75,7 @@ with open(os.path.join(root, 'package-manifest.json'), encoding='utf-8') as f:
 if m.get('product') != 'OcctCSharpBridge Portable SDK': raise SystemExit('unexpected Bridge portable product')
 if m.get('platform') != 'linux-x64' or not m.get('portableRuntime'): raise SystemExit('unexpected Bridge portable platform/runtime mode')
 if m.get('bridgeSourceCommit') != expected_commit or m.get('bridgeVersion') != expected_version:
-    raise SystemExit('Bridge portable runtime does not match synchronized Binary SDK')
+    raise SystemExit('Bridge portable runtime does not match installed Binary SDK')
 for entry in m.get('files', []):
     path = os.path.join(root, *entry['name'].split('/'))
     if not os.path.isfile(path): raise SystemExit(f"portable file missing: {entry['name']}")
@@ -83,7 +86,6 @@ for entry in m.get('files', []):
         raise SystemExit(f"portable hash mismatch: {entry['name']}")
 PY
 
-"${ROOT_DIR}/build.sh" validate "${CONFIGURATION}"
 "${ROOT_DIR}/build.sh" avalonia "${CONFIGURATION}"
 
 rm -rf "${PACKAGE_DIR}" "${STAGING_DIR}"
@@ -195,6 +197,7 @@ if [[ "${CREATE_ARCHIVE}" == true ]]; then
     log "Archive: ${ARCHIVE_PATH}"
 fi
 
-log "Bridge portable payload reused: ${BRIDGE_COMMIT}"
-log "Package: ${PACKAGE_DIR}"
-log "Run:     ${PACKAGE_DIR}/run.sh"
+log "Bridge SDK:              ${DIST_ROOT}"
+log "Bridge portable payload: ${BRIDGE_COMMIT}"
+log "Package:                 ${PACKAGE_DIR}"
+log "Run:                     ${PACKAGE_DIR}/run.sh"

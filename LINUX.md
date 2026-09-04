@@ -2,56 +2,47 @@
 
 Linux x64 builds and publishes only `OcctDemo.Common` and `OcctDemo.Avalonia`. WinForms and WPF remain Windows-only.
 
-## SDK synchronization
+## Shared Bridge SDK
 
-Development `demo` follows `main` by default:
-
-```bash
-./sync.sh
-```
-
-A valid local Binary + Portable SDK cache is reused when its `sourceCommit`, Bridge version and hashes match the selected source branch.
-
-When regeneration is required:
-
-```bash
-./sync.sh --force-rebuild
-```
-
-The regeneration path runs only:
+Linux uses the same machine-wide SDK model as Windows. The default Binary SDK root is:
 
 ```text
-Bridge build.sh dist Release
-→ Bridge package-portable-sdk.sh
-→ manifest/sourceCommit/hash validation
+/usr/local/lib/OcctCSharpBridge/SDK/3.0/linux-x64
 ```
 
-It does not run Bridge ManagedTests, Core Smoke or graphical Avalonia smoke. Those belong to Bridge release validation.
-
-A formal Demo should consume formal `main` artifacts; while working on `demo`, this can be tested explicitly with:
+Install/update it from Bridge `main`:
 
 ```bash
-./sync.sh --source main --force-rebuild
+./publish.sh
 ```
 
-If matching prebuilt Bridge artifacts already exist, avoid recompiling Bridge:
+Writing under `/usr/local/lib` requires sufficient permissions. Override the machine SDK root when needed:
 
 ```bash
-./sync.sh \
-  --sdk-root <binary-sdk> \
-  --portable-root <portable-sdk>
+OCCTCSHARPBRIDGE_SDK=/custom/path ./build.sh all Release
 ```
+
+`build.sh`, `run.sh`, `publish.sh`, and direct MSBuild consumption all resolve the same default SDK root. The Demo does not silently rebuild Bridge when the shared Binary SDK is missing.
+
+## Portable runtime synchronization
+
+Demo publication additionally needs the matching Bridge Portable SDK payload under:
+
+```text
+external/OcctCSharpBridge/portable/linux-x64
+```
+
+`sync.sh` remains available for preparing that matching Portable SDK payload when publishing the Demo. It validates Bridge version, source commit and hashes so the portable runtime cannot be mixed with a different installed Binary SDK.
 
 ## Build
 
 ```bash
-./build.sh validate Release
 ./build.sh common Release
 ./build.sh avalonia Release
 ./build.sh all Release
 ```
 
-`all` validates/builds the Demo Common layer and Avalonia host. The Demo does not contain or build Bridge implementation source directly.
+`all` builds the Demo Common layer and Avalonia host. The Demo does not contain or build Bridge implementation source directly.
 
 ## Run
 
@@ -74,7 +65,7 @@ artifacts/publish/CAD-Avalonia-linux-x64/
 artifacts/publish/CAD-Avalonia-linux-x64.tar.gz
 ```
 
-The Demo publish step reuses the matching Bridge Portable SDK native closure and OCCT resources instead of maintaining a second `ldd`/OCCT dependency collector.
+The Demo publish step consumes the installed Binary SDK and reuses the matching Bridge Portable SDK native closure and OCCT resources instead of maintaining another runtime dependency collector.
 
 ## Linux ABI compatibility
 
