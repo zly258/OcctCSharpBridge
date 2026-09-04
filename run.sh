@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIGURATION="${1:-Release}"
-DEFAULT_SDK_ROOT="/usr/local/lib/OcctCSharpBridge/SDK/3.0/linux-x64"
+DEFAULT_SDK_ROOT="${HOME:-}/.local/share/OcctCSharpBridge/SDK/3.0/linux-x64"
 export OCCTCSHARPBRIDGE_SDK="${OCCTCSHARPBRIDGE_SDK:-${DEFAULT_SDK_ROOT}}"
 
 case "${CONFIGURATION}" in Debug|Release|RelWithDebInfo) ;; *) printf '[run-linux] ERROR: Unknown configuration: %s\n' "${CONFIGURATION}" >&2; exit 2 ;; esac
@@ -13,6 +13,7 @@ log() { printf '[run-linux] %s\n' "$*"; }
 
 [[ "$(uname -s)" == "Linux" ]] || fail "run.sh supports Linux only; use run.ps1 on Windows."
 case "$(uname -m)" in x86_64|amd64) ;; *) fail "Linux x64 is required; detected $(uname -m)." ;; esac
+[[ -n "${OCCTCSHARPBRIDGE_SDK:-}" ]] || fail "HOME is not set. Set OCCTCSHARPBRIDGE_SDK explicitly."
 command -v dotnet >/dev/null 2>&1 || fail "dotnet was not found in PATH."
 [[ -n "${DISPLAY:-}" ]] || fail "DISPLAY is not set. CAD-Avalonia currently requires X11/XWayland."
 

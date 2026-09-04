@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REMOTE="origin"
 SOURCE_BRANCH="main"
-DEFAULT_SDK_ROOT="/usr/local/lib/OcctCSharpBridge/SDK/3.0/linux-x64"
+DEFAULT_SDK_ROOT="${HOME:-}/.local/share/OcctCSharpBridge/SDK/3.0/linux-x64"
 SDK_ROOT="${OCCTCSHARPBRIDGE_SDK:-${DEFAULT_SDK_ROOT}}"
 PORTABLE_ROOT=""
 FORCE_REPACKAGE=false
@@ -16,7 +16,7 @@ Usage: ./sync.sh [options]
 Options:
   --remote <name>              Git remote used to obtain the matching packager (default: origin)
   --source <branch>            Bridge source branch containing the installed SDK commit (default: main)
-  --sdk-root <directory>       Installed linux-x64 Binary SDK (default: OCCTCSHARPBRIDGE_SDK or /usr/local/lib/OcctCSharpBridge/SDK/3.0/linux-x64)
+  --sdk-root <directory>       Installed linux-x64 Binary SDK (default: OCCTCSHARPBRIDGE_SDK or $HOME/.local/share/OcctCSharpBridge/SDK/3.0/linux-x64)
   --portable-root <directory>  Copy an already generated matching Portable SDK instead of packaging one
   --force                      Regenerate the Portable SDK even when the local cache already matches
   --force-rebuild              Legacy alias for --force; the Binary SDK is not rebuilt
@@ -186,8 +186,11 @@ require_command python3
 
 [[ "$(uname -s)" == "Linux" ]] || fail "sync.sh supports Linux only."
 case "$(uname -m)" in x86_64|amd64) ;; *) fail "Linux x64 is required; detected $(uname -m)." ;; esac
+if [[ -z "${OCCTCSHARPBRIDGE_SDK:-}" && -z "${HOME:-}" ]]; then
+    fail "HOME is not set. Set OCCTCSHARPBRIDGE_SDK or use --sdk-root."
+fi
 
-SDK_ROOT="$(cd "${SDK_ROOT}" 2>/dev/null && pwd)" || fail "Installed Binary SDK root was not found: ${SDK_ROOT}. Run Bridge main ./publish.sh or set OCCTCSHARPBRIDGE_SDK."
+SDK_ROOT="$(cd "${SDK_ROOT}" 2>/dev/null && pwd)" || fail "Installed Binary SDK root was not found: ${SDK_ROOT}. Run Bridge main ./publish.sh as the current user or set OCCTCSHARPBRIDGE_SDK."
 export OCCTCSHARPBRIDGE_SDK="${SDK_ROOT}"
 validate_sdk "${SDK_ROOT}" || fail "Installed Binary SDK is invalid or incomplete: ${SDK_ROOT}"
 SOURCE_COMMIT="$(json_string "${SDK_ROOT}/bridge-manifest.json" sourceCommit)"

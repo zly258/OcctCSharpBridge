@@ -15,7 +15,7 @@ Demo 自身使用 .NET 10，用来覆盖 Bridge 支持的最新 Consumer Runtime
 
 ## 共享 Bridge SDK
 
-Demo 在 Windows 和 Linux 下都直接消费机器级 Bridge Binary SDK。
+Demo 在 Windows 和 Linux 下都直接消费已安装的 Bridge Binary SDK。
 
 Windows 默认路径：
 
@@ -23,10 +23,10 @@ Windows 默认路径：
 C:\Program Files\OcctCSharpBridge\SDK\3.0\win-x64
 ```
 
-Linux 默认路径：
+Linux 默认路径（当前用户目录，不需要 root）：
 
 ```text
-/usr/local/lib/OcctCSharpBridge/SDK/3.0/linux-x64
+$HOME/.local/share/OcctCSharpBridge/SDK/3.0/linux-x64
 ```
 
 在 Bridge `main` 中安装/更新：
@@ -39,7 +39,7 @@ Linux 默认路径：
 ./publish.sh
 ```
 
-可通过 `OCCTCSHARPBRIDGE_SDK` 覆盖 SDK Root。Demo 不再 clone Bridge，也不再在 `external/` 下维护 Binary SDK 同步副本。系统 SDK 缺失或不完整时，构建会直接给出安装路径并失败。Demo 发布阶段仍可使用 `external/OcctCSharpBridge/portable/...` 保存与系统 Binary SDK 匹配的 Portable Runtime Closure。
+可通过 `OCCTCSHARPBRIDGE_SDK` 覆盖 SDK Root。Demo 不再 clone Bridge，也不再在 `external/` 下维护 Binary SDK 同步副本。已安装 SDK 缺失或不完整时，构建会直接给出安装路径并失败。Demo 发布阶段仍可使用 `external/OcctCSharpBridge/portable/...` 保存与 Binary SDK 匹配的 Portable Runtime Closure。
 
 ## Demo 构建
 

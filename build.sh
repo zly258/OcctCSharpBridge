@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET="${1:-all}"
 CONFIGURATION="${2:-Release}"
-DEFAULT_SDK_ROOT="/usr/local/lib/OcctCSharpBridge/SDK/3.0/linux-x64"
+DEFAULT_SDK_ROOT="${HOME:-}/.local/share/OcctCSharpBridge/SDK/3.0/linux-x64"
 DIST_ROOT="${OCCTCSHARPBRIDGE_SDK:-${DEFAULT_SDK_ROOT}}"
 CONTRACT="${DIST_ROOT}/bridge-contract.json"
 COMMON_PROJECT="${ROOT_DIR}/src/OcctDemo.Common/OcctDemo.Common.csproj"
@@ -22,6 +22,9 @@ prepare() {
     case "$(uname -m)" in x86_64|amd64) ;; *) fail "Linux x64 is required; detected $(uname -m)." ;; esac
     case "${CONFIGURATION}" in Debug|Release|RelWithDebInfo) ;; *) fail "Unknown configuration: ${CONFIGURATION}" ;; esac
     require_command dotnet
+    if [[ -z "${OCCTCSHARPBRIDGE_SDK:-}" && -z "${HOME:-}" ]]; then
+        fail "HOME is not set. Set OCCTCSHARPBRIDGE_SDK explicitly."
+    fi
 
     local missing=()
     local name
@@ -29,7 +32,7 @@ prepare() {
         [[ -f "${DIST_ROOT}/${name}" ]] || missing+=("${name}")
     done
     if [[ ${#missing[@]} -ne 0 ]]; then
-        fail "Shared OcctCSharpBridge SDK is missing or incomplete at '${DIST_ROOT}': ${missing[*]}. Run main ./publish.sh with sufficient permissions, or set OCCTCSHARPBRIDGE_SDK."
+        fail "Shared OcctCSharpBridge SDK is missing or incomplete at '${DIST_ROOT}': ${missing[*]}. Run Bridge main ./publish.sh as the current user, or set OCCTCSHARPBRIDGE_SDK."
     fi
 }
 

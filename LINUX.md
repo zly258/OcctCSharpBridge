@@ -4,25 +4,25 @@ Linux x64 builds and publishes only `OcctDemo.Common` and `OcctDemo.Avalonia`. W
 
 ## Shared Bridge SDK
 
-Linux uses the same machine-wide SDK model as Windows. The default Binary SDK root is:
+Linux consumes the installed Bridge Binary SDK directly. The default SDK root is user-local and does not require root privileges:
 
 ```text
-/usr/local/lib/OcctCSharpBridge/SDK/3.0/linux-x64
+$HOME/.local/share/OcctCSharpBridge/SDK/3.0/linux-x64
 ```
 
-Install/update it from Bridge `main`:
+Install/update it from Bridge `main` as the current user:
 
 ```bash
 ./publish.sh
 ```
 
-Writing under `/usr/local/lib` requires sufficient permissions. Override the machine SDK root when needed:
+Override the SDK root when needed:
 
 ```bash
 OCCTCSHARPBRIDGE_SDK=/custom/path ./build.sh all Release
 ```
 
-`build.sh`, `run.sh`, `publish.sh`, and direct MSBuild consumption all resolve the same default SDK root. The Demo does not silently rebuild Bridge when the shared Binary SDK is missing.
+`build.sh`, `run.sh`, `publish.sh`, `sync.sh`, and direct MSBuild consumption all resolve the same default SDK root. The Demo does not silently rebuild Bridge when the installed Binary SDK is missing.
 
 ## Portable runtime synchronization
 

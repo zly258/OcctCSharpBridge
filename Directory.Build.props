@@ -14,6 +14,6 @@
     <OcctBridgeRuntimeIdentifier Condition="$([MSBuild]::IsOSPlatform('Linux'))">linux-x64</OcctBridgeRuntimeIdentifier>
     <OcctBridgeDistRoot Condition="'$(OCCTCSHARPBRIDGE_SDK)' != ''">$(OCCTCSHARPBRIDGE_SDK)</OcctBridgeDistRoot>
     <OcctBridgeDistRoot Condition="'$(OcctBridgeDistRoot)' == '' and $([MSBuild]::IsOSPlatform('Windows'))">$(ProgramFiles)\OcctCSharpBridge\SDK\3.0\win-x64</OcctBridgeDistRoot>
-    <OcctBridgeDistRoot Condition="'$(OcctBridgeDistRoot)' == '' and $([MSBuild]::IsOSPlatform('Linux'))">/usr/local/lib/OcctCSharpBridge/SDK/3.0/linux-x64</OcctBridgeDistRoot>
+    <OcctBridgeDistRoot Condition="'$(OcctBridgeDistRoot)' == '' and $([MSBuild]::IsOSPlatform('Linux'))">$(HOME)/.local/share/OcctCSharpBridge/SDK/3.0/linux-x64</OcctBridgeDistRoot>
   </PropertyGroup>
 </Project>

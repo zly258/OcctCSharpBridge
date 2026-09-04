@@ -6,7 +6,7 @@ CONFIGURATION="Release"
 OUTPUT_ROOT="${ROOT_DIR}/artifacts/publish"
 SELF_CONTAINED=true
 CREATE_ARCHIVE=true
-DEFAULT_SDK_ROOT="/usr/local/lib/OcctCSharpBridge/SDK/3.0/linux-x64"
+DEFAULT_SDK_ROOT="${HOME:-}/.local/share/OcctCSharpBridge/SDK/3.0/linux-x64"
 DIST_ROOT="${OCCTCSHARPBRIDGE_SDK:-${DEFAULT_SDK_ROOT}}"
 PORTABLE_ROOT="${ROOT_DIR}/external/OcctCSharpBridge/portable/linux-x64"
 
@@ -44,6 +44,7 @@ json_string() { sed -nE "s/^[[:space:]]*\"$2\"[[:space:]]*:[[:space:]]*\"([^\"]+
 
 [[ "$(uname -s)" == "Linux" ]] || fail "publish.sh supports Linux only; use publish.ps1 on Windows."
 case "$(uname -m)" in x86_64|amd64) ;; *) fail "Linux x64 is required; detected $(uname -m)." ;; esac
+[[ -n "${OCCTCSHARPBRIDGE_SDK:-}" ]] || fail "HOME is not set. Set OCCTCSHARPBRIDGE_SDK explicitly."
 require_command dotnet
 require_command realpath
 require_command tar
@@ -60,7 +61,7 @@ STAGING_DIR="$(realpath -m "${OUTPUT_ROOT}/.${PACKAGE_NAME}-staging-$$")"
 ARCHIVE_PATH="$(realpath -m "${OUTPUT_ROOT}/${PACKAGE_NAME}.tar.gz")"
 
 [[ -f "${PROJECT}" ]] || fail "Avalonia Demo project was not found."
-[[ -f "${CONTRACT}" && -f "${MANIFEST}" ]] || fail "Installed linux-x64 Binary SDK is missing at '${DIST_ROOT}'. Run Bridge main ./publish.sh with sufficient permissions, or set OCCTCSHARPBRIDGE_SDK."
+[[ -f "${CONTRACT}" && -f "${MANIFEST}" ]] || fail "Installed linux-x64 Binary SDK is missing at '${DIST_ROOT}'. Run Bridge main ./publish.sh as the current user, or set OCCTCSHARPBRIDGE_SDK."
 [[ -f "${PORTABLE_MANIFEST}" && -f "${PORTABLE_ROOT}/runtime/libOcctNative.so" && -d "${PORTABLE_ROOT}/occt/resources" ]] || fail "Matching Bridge portable runtime is missing under '${PORTABLE_ROOT}'. Run ./sync.sh to prepare the matching Portable SDK payload."
 
 BRIDGE_COMMIT="$(json_string "${MANIFEST}" sourceCommit)"

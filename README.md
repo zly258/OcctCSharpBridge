@@ -15,7 +15,7 @@ The Demo targets .NET 10 to exercise the latest supported consumer runtime. The 
 
 ## Shared Bridge SDK
 
-The Demo consumes the machine-wide Bridge Binary SDK directly.
+The Demo consumes an installed Bridge Binary SDK directly.
 
 Windows default:
 
@@ -23,10 +23,10 @@ Windows default:
 C:\Program Files\OcctCSharpBridge\SDK\3.0\win-x64
 ```
 
-Linux default:
+Linux default (user-local, no root required):
 
 ```text
-/usr/local/lib/OcctCSharpBridge/SDK/3.0/linux-x64
+$HOME/.local/share/OcctCSharpBridge/SDK/3.0/linux-x64
 ```
 
 Install/update it from Bridge `main`:
