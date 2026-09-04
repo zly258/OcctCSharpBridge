@@ -8,7 +8,7 @@ SELF_CONTAINED=true
 CREATE_ARCHIVE=true
 DEFAULT_SDK_ROOT="${HOME:-}/.local/share/OcctCSharpBridge/SDK/3.0/linux-x64"
 DIST_ROOT="${OCCTCSHARPBRIDGE_SDK:-${DEFAULT_SDK_ROOT}}"
-PORTABLE_ROOT="${ROOT_DIR}/external/OcctCSharpBridge/portable/linux-x64"
+PORTABLE_ROOT="${DIST_ROOT}/portable"
 
 export OCCTCSHARPBRIDGE_SDK="${DIST_ROOT}"
 
@@ -61,12 +61,12 @@ STAGING_DIR="$(realpath -m "${OUTPUT_ROOT}/.${PACKAGE_NAME}-staging-$$")"
 ARCHIVE_PATH="$(realpath -m "${OUTPUT_ROOT}/${PACKAGE_NAME}.tar.gz")"
 
 [[ -f "${PROJECT}" ]] || fail "Avalonia Demo project was not found."
-[[ -f "${CONTRACT}" && -f "${MANIFEST}" ]] || fail "Installed linux-x64 Binary SDK is missing at '${DIST_ROOT}'. Run Bridge main ./publish.sh as the current user, or set OCCTCSHARPBRIDGE_SDK."
-[[ -f "${PORTABLE_MANIFEST}" && -f "${PORTABLE_ROOT}/runtime/libOcctNative.so" && -d "${PORTABLE_ROOT}/occt/resources" ]] || fail "Matching Bridge portable runtime is missing under '${PORTABLE_ROOT}'. Run ./sync.sh to prepare the matching Portable SDK payload."
+[[ -f "${CONTRACT}" && -f "${MANIFEST}" ]] || fail "Installed linux-x64 SDK is missing at '${DIST_ROOT}'. Run Bridge main ./publish.sh as the current user, or set OCCTCSHARPBRIDGE_SDK."
+[[ -f "${PORTABLE_MANIFEST}" && -f "${PORTABLE_ROOT}/runtime/libOcctNative.so" && -d "${PORTABLE_ROOT}/occt/resources" ]] || fail "Installed Linux SDK is incomplete: portable runtime is missing under '${PORTABLE_ROOT}'. Re-run Bridge main ./publish.sh."
 
 BRIDGE_COMMIT="$(json_string "${MANIFEST}" sourceCommit)"
 BRIDGE_VERSION="$(json_string "${CONTRACT}" bridgeVersion)"
-[[ -n "${BRIDGE_COMMIT}" && -n "${BRIDGE_VERSION}" ]] || fail "Bridge Binary SDK metadata is incomplete."
+[[ -n "${BRIDGE_COMMIT}" && -n "${BRIDGE_VERSION}" ]] || fail "Bridge SDK metadata is incomplete."
 
 python3 - "${PORTABLE_ROOT}" "${BRIDGE_COMMIT}" "${BRIDGE_VERSION}" <<'PY' || exit $?
 import hashlib, json, os, sys
@@ -76,7 +76,7 @@ with open(os.path.join(root, 'package-manifest.json'), encoding='utf-8') as f:
 if m.get('product') != 'OcctCSharpBridge Portable SDK': raise SystemExit('unexpected Bridge portable product')
 if m.get('platform') != 'linux-x64' or not m.get('portableRuntime'): raise SystemExit('unexpected Bridge portable platform/runtime mode')
 if m.get('bridgeSourceCommit') != expected_commit or m.get('bridgeVersion') != expected_version:
-    raise SystemExit('Bridge portable runtime does not match installed Binary SDK')
+    raise SystemExit('Installed Bridge portable runtime does not match the Binary SDK')
 for entry in m.get('files', []):
     path = os.path.join(root, *entry['name'].split('/'))
     if not os.path.isfile(path): raise SystemExit(f"portable file missing: {entry['name']}")
@@ -106,7 +106,7 @@ dotnet "${publish_args[@]}"
 cp -a "${STAGING_DIR}/." "${PACKAGE_DIR}/"
 rm -f "${PACKAGE_DIR}/libOcctNative.so"
 
-# Merge the complete validated Bridge Portable SDK payload. Existing app-publish files must be byte-identical.
+# Merge the complete validated Bridge Portable SDK payload installed by Bridge main.
 python3 - "${PORTABLE_ROOT}" "${PACKAGE_DIR}" <<'PY'
 import hashlib, os, shutil, sys
 src, dst = sys.argv[1:]
@@ -126,7 +126,7 @@ for base, _, names in os.walk(src):
         os.makedirs(os.path.dirname(target) or dst, exist_ok=True)
         if os.path.isfile(target):
             if digest(source) != digest(target):
-                raise SystemExit(f"Demo publish conflicts with validated Bridge portable payload: {target_rel}")
+                raise SystemExit(f"Demo publish conflicts with installed Bridge portable payload: {target_rel}")
             continue
         shutil.copy2(source, target)
 PY
@@ -198,7 +198,8 @@ if [[ "${CREATE_ARCHIVE}" == true ]]; then
     log "Archive: ${ARCHIVE_PATH}"
 fi
 
-log "Bridge SDK:              ${DIST_ROOT}"
-log "Bridge portable payload: ${BRIDGE_COMMIT}"
-log "Package:                 ${PACKAGE_DIR}"
-log "Run:                     ${PACKAGE_DIR}/run.sh"
+log "Bridge SDK:     ${DIST_ROOT}"
+log "Runtime SDK:    ${PORTABLE_ROOT}"
+log "Bridge source:  ${BRIDGE_COMMIT}"
+log "Package:        ${PACKAGE_DIR}"
+log "Run:            ${PACKAGE_DIR}/run.sh"
