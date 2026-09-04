@@ -242,7 +242,6 @@ function Build-Native {
     Invoke-Checked "cmake" @(
         "-S", $NativeSource,
         "-B", $NativeBuild,
-        "-G", "Visual Studio 17 2022",
         "-A", "x64",
         "-DOCCT_ROOT=$script:OcctRoot",
         "-DOCCT_INCLUDE_DIR=$script:OcctIncludeDir",

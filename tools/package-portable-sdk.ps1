@@ -22,19 +22,71 @@ function Assert-Path {
     if (-not (Test-Path -LiteralPath $Path)) { throw "Required path was not found: $Path" }
 }
 
+function Get-MsvcInstallations {
+    $result = [System.Collections.Generic.List[string]]::new()
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+
+    if (-not [string]::IsNullOrWhiteSpace($env:VSINSTALLDIR) -and
+        (Test-Path -LiteralPath $env:VSINSTALLDIR -PathType Container)) {
+        $path = [System.IO.Path]::GetFullPath($env:VSINSTALLDIR)
+        if ($seen.Add($path)) { $result.Add($path) }
+    }
+
+    $vswhereCandidates = [System.Collections.Generic.List[string]]::new()
+    $vswhereCommand = Get-Command vswhere.exe -ErrorAction SilentlyContinue
+    if ($null -ne $vswhereCommand -and -not [string]::IsNullOrWhiteSpace([string]$vswhereCommand.Source)) {
+        $vswhereCandidates.Add([string]$vswhereCommand.Source)
+    }
+    if (-not [string]::IsNullOrWhiteSpace(${env:ProgramFiles(x86)})) {
+        $defaultVswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+        if (Test-Path -LiteralPath $defaultVswhere -PathType Leaf) { $vswhereCandidates.Add($defaultVswhere) }
+    }
+
+    $seenVswhere = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($vswhere in $vswhereCandidates) {
+        if (-not $seenVswhere.Add($vswhere)) { continue }
+        foreach ($line in @(& $vswhere -all -products "*" -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath 2>$null)) {
+            $path = ([string]$line).Trim()
+            if ([string]::IsNullOrWhiteSpace($path) -or -not (Test-Path -LiteralPath $path -PathType Container)) { continue }
+            $path = [System.IO.Path]::GetFullPath($path)
+            if ($seen.Add($path)) { $result.Add($path) }
+        }
+    }
+
+    foreach ($root in @($env:ProgramFiles, ${env:ProgramFiles(x86)}) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) {
+        $vsRoot = Join-Path $root "Microsoft Visual Studio"
+        if (-not (Test-Path -LiteralPath $vsRoot -PathType Container)) { continue }
+        foreach ($yearDirectory in @(Get-ChildItem -LiteralPath $vsRoot -Directory -ErrorAction SilentlyContinue | Sort-Object Name -Descending)) {
+            foreach ($installation in @(Get-ChildItem -LiteralPath $yearDirectory.FullName -Directory -ErrorAction SilentlyContinue | Sort-Object Name)) {
+                $path = $installation.FullName
+                if (-not (Test-Path -LiteralPath (Join-Path $path "VC\Tools\MSVC") -PathType Container)) { continue }
+                if ($seen.Add($path)) { $result.Add($path) }
+            }
+        }
+    }
+
+    return @($result)
+}
+
 function Resolve-Dumpbin {
     $command = Get-Command dumpbin.exe -ErrorAction SilentlyContinue
     if ($null -ne $command) { return $command.Source }
+
     if (-not [string]::IsNullOrWhiteSpace($env:VCToolsInstallDir)) {
         $candidate = Join-Path $env:VCToolsInstallDir "bin\Hostx64\x64\dumpbin.exe"
         if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
     }
-    foreach ($root in @($env:ProgramFiles, ${env:ProgramFiles(x86)}) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) {
-        $pattern = Join-Path $root "Microsoft Visual Studio\2022\*\VC\Tools\MSVC\*\bin\Hostx64\x64\dumpbin.exe"
-        $match = Get-Item -Path $pattern -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1
-        if ($null -ne $match) { return $match.FullName }
+
+    foreach ($installation in @(Get-MsvcInstallations)) {
+        $toolsRoot = Join-Path $installation "VC\Tools\MSVC"
+        if (-not (Test-Path -LiteralPath $toolsRoot -PathType Container)) { continue }
+        foreach ($toolset in @(Get-ChildItem -LiteralPath $toolsRoot -Directory -ErrorAction SilentlyContinue | Sort-Object Name -Descending)) {
+            $candidate = Join-Path $toolset.FullName "bin\Hostx64\x64\dumpbin.exe"
+            if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+        }
     }
-    throw "dumpbin.exe was not found. Install Visual Studio 2022 C++ build tools or use a Developer PowerShell."
+
+    throw "dumpbin.exe was not found. Install the Visual Studio C++ Build Tools (MSVC x64 tools) or use a Developer PowerShell."
 }
 
 function Get-ImportedDllNames {
@@ -46,17 +98,26 @@ function Get-ImportedDllNames {
 
 function Get-VcRuntimeDirectories {
     $result = [System.Collections.Generic.List[string]]::new()
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+
     if (-not [string]::IsNullOrWhiteSpace($env:VCToolsRedistDir)) {
         Get-Item -Path (Join-Path $env:VCToolsRedistDir "x64\Microsoft.VC14*.CRT") -ErrorAction SilentlyContinue |
-            Where-Object PSIsContainer | ForEach-Object { $result.Add($_.FullName) }
-    }
-    foreach ($root in @($env:ProgramFiles, ${env:ProgramFiles(x86)}) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) {
-        $pattern = Join-Path $root "Microsoft Visual Studio\2022\*\VC\Redist\MSVC\*\x64\Microsoft.VC14*.CRT"
-        Get-Item -Path $pattern -ErrorAction SilentlyContinue | Sort-Object FullName -Descending |
             Where-Object PSIsContainer | ForEach-Object {
-                if (-not $result.Contains($_.FullName)) { $result.Add($_.FullName) }
+                if ($seen.Add($_.FullName)) { $result.Add($_.FullName) }
             }
     }
+
+    foreach ($installation in @(Get-MsvcInstallations)) {
+        $redistRoot = Join-Path $installation "VC\Redist\MSVC"
+        if (-not (Test-Path -LiteralPath $redistRoot -PathType Container)) { continue }
+        foreach ($redistVersion in @(Get-ChildItem -LiteralPath $redistRoot -Directory -ErrorAction SilentlyContinue | Sort-Object Name -Descending)) {
+            Get-Item -Path (Join-Path $redistVersion.FullName "x64\Microsoft.VC14*.CRT") -ErrorAction SilentlyContinue |
+                Where-Object PSIsContainer | ForEach-Object {
+                    if ($seen.Add($_.FullName)) { $result.Add($_.FullName) }
+                }
+        }
+    }
+
     return @($result)
 }
 
