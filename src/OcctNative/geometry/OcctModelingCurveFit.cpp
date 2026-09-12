@@ -13,10 +13,6 @@
 using namespace OcctModelingInternal;
 
 namespace {
-    Approx_ParametrizationType defaultParametrization() {
-        return Approx_ChordLength;
-    }
-
     GeomAbs_Shape continuityValue(int v) {
         switch (v) {
             case 0: return GeomAbs_C0;

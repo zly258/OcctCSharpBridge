@@ -18,6 +18,7 @@ namespace
     template<typename Function>
     OcctStatus executeSelectionStatus(Engine* engine, Function&& function)
     {
+        if (engine == nullptr) return OcctStatus_ErrorInvalidHandle;
         const OcctStatus initialized = requireInitializedEngine(engine);
         if (initialized != OcctStatus_Ok) return initialized;
         return execute(engine, std::forward<Function>(function)) != 0

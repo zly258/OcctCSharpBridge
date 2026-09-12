@@ -60,14 +60,6 @@ namespace
         return *entry;
     }
 
-    const ObjectEntry& requiredObject(const Engine* engine, OcctObjectId objectId)
-    {
-        const ObjectEntry* entry = engine->findObject(objectId);
-        if (entry == nullptr)
-            throw std::invalid_argument("Object ID does not exist.");
-        return *entry;
-    }
-
     void stopAndDetachManipulator(const Handle(AIS_Manipulator)& manipulator)
     {
         if (manipulator.IsNull()) return;
