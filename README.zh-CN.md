@@ -29,7 +29,7 @@ Linux 默认路径：
 $HOME/.local/share/OcctCSharpBridge/SDK/3.0/linux-x64
 ```
 
-已安装 SDK 根目录保存 Binary SDK，`portable/` 保存与之完全匹配的 Runtime Closure。两端均可用 `OCCTCSHARPBRIDGE_SDK` 覆盖 SDK Root。
+Windows 的已安装路径本身就是 Binary SDK Root，不在 `win-x64` 下再创建 `portable` 子目录。Portable SDK 是 Bridge `main` 单独生成的发布制品；`OCCTCSHARPBRIDGE_SDK` 仅覆盖 Binary SDK Root。
 
 **Demo 不再有 SDK sync 流程。**
 
@@ -66,7 +66,7 @@ Linux：
 .\publish.ps1 all Release -Zip
 ```
 
-统一包只保留一份 Bridge/OCCT Runtime Closure；默认 `all` 还使用一份共享私有 .NET 10 Desktop Runtime。`-SelfContained` 和 `-FrameworkDependent` 仍作为显式替代模式保留。
+统一包使用已安装 Binary SDK，并合并 Bridge `main` 生成的匹配 Portable SDK 制品。默认从 `artifacts/publish/OcctCSharpBridge-<version>-win-x64-portable` 读取，也可通过 `-BridgePortableRoot` 显式指定。默认 `all` 还使用一份共享私有 .NET 10 Desktop Runtime；`-SelfContained` 和 `-FrameworkDependent` 仍作为显式替代模式保留。
 
 ## Linux 发布
 
