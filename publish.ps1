@@ -8,6 +8,7 @@ param(
     [string]$Configuration = "Release",
 
     [string]$OutputDirectory = "",
+    [string]$BridgePortableRoot = "",
     [switch]$SelfContained,
     [switch]$FrameworkDependent,
     [switch]$Zip,
@@ -41,10 +42,8 @@ $GlobalJsonPath = Join-Path $RepoRoot "global.json"
 $BuildScript = Join-Path $RepoRoot "build.ps1"
 $DefaultBridgeSdk = Join-Path $env:ProgramFiles "OcctCSharpBridge\SDK\3.0\win-x64"
 $DistRoot = if ([string]::IsNullOrWhiteSpace($env:OCCTCSHARPBRIDGE_SDK)) { $DefaultBridgeSdk } else { [System.IO.Path]::GetFullPath($env:OCCTCSHARPBRIDGE_SDK) }
-$PortableRoot = Join-Path $DistRoot "portable"
 $ContractPath = Join-Path $DistRoot "bridge-contract.json"
 $ManifestPath = Join-Path $DistRoot "bridge-manifest.json"
-$PortableManifestPath = Join-Path $PortableRoot "package-manifest.json"
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) { $OutputDirectory = Join-Path $RepoRoot "artifacts\publish" }
 $OutputDirectory = [System.IO.Path]::GetFullPath($OutputDirectory)
 $UnifiedPackage = "CAD-Demo-win-x64"
@@ -343,7 +342,7 @@ function Test-PortableRuntime {
         -not [bool]$package.portableRuntime -or
         [string]$package.bridgeSourceCommit -ne [string]$script:Manifest.sourceCommit -or
         [string]$package.bridgeVersion -ne [string]$script:Contract.bridgeVersion) {
-        throw "Installed Bridge portable runtime does not match the Binary SDK. Re-run Bridge main .\publish.ps1 or verify OCCTCSHARPBRIDGE_SDK."
+        throw "Bridge portable artifact does not match the installed Binary SDK. Re-run Bridge main .\publish.ps1, or pass -BridgePortableRoot explicitly."
     }
 
     foreach ($entry in @($package.files)) {
@@ -655,10 +654,17 @@ function Publish-Unified {
 Assert-Path $BuildScript
 Assert-Path $ContractPath
 Assert-Path $ManifestPath
-Assert-Path $PortableRoot
 $script:DotNet = Resolve-DotNet
 $script:Contract = Get-Content -LiteralPath $ContractPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $script:Manifest = Get-Content -LiteralPath $ManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+
+if ([string]::IsNullOrWhiteSpace($BridgePortableRoot)) {
+    $BridgePortableRoot = Join-Path $RepoRoot ("artifacts\publish\OcctCSharpBridge-{0}-win-x64-portable" -f [string]$script:Contract.bridgeVersion)
+}
+$PortableRoot = [System.IO.Path]::GetFullPath($BridgePortableRoot)
+$PortableManifestPath = Join-Path $PortableRoot "package-manifest.json"
+
+Assert-Path $PortableRoot
 $script:PrivateDotNetInfo = $null
 Test-PortableRuntime
 
@@ -666,6 +672,8 @@ $validationTarget = if ($Target -eq "all") { "all" } else { $Target }
 & $BuildScript $validationTarget $Configuration
 if (-not $?) { throw "Demo validation/build failed before publish." }
 
+Write-Host "[publish] Binary SDK: $DistRoot" -ForegroundColor DarkGray
+Write-Host "[publish] Portable artifact: $PortableRoot" -ForegroundColor DarkGray
 Write-Host "[publish] Reusing exact Bridge portable payload from source $($script:Manifest.sourceCommit)." -ForegroundColor DarkGray
 if ($UseSharedDotNet) {
     Write-Host "[publish] Unified default: one shared private .NET runtime + neutral resources only." -ForegroundColor DarkGray
