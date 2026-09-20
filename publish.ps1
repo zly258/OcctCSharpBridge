@@ -41,7 +41,7 @@ $GlobalJsonPath = Join-Path $RepoRoot "global.json"
 $BuildScript = Join-Path $RepoRoot "build.ps1"
 $DefaultBridgeSdk = Join-Path $env:ProgramFiles "OcctCSharpBridge\SDK\3.0\win-x64"
 $DistRoot = if ([string]::IsNullOrWhiteSpace($env:OCCTCSHARPBRIDGE_SDK)) { $DefaultBridgeSdk } else { [System.IO.Path]::GetFullPath($env:OCCTCSHARPBRIDGE_SDK) }
-$PortableRoot = Join-Path $RepoRoot "external\OcctCSharpBridge\portable\win-x64"
+$PortableRoot = Join-Path $DistRoot "portable"
 $ContractPath = Join-Path $DistRoot "bridge-contract.json"
 $ManifestPath = Join-Path $DistRoot "bridge-manifest.json"
 $PortableManifestPath = Join-Path $PortableRoot "package-manifest.json"
@@ -343,7 +343,7 @@ function Test-PortableRuntime {
         -not [bool]$package.portableRuntime -or
         [string]$package.bridgeSourceCommit -ne [string]$script:Manifest.sourceCommit -or
         [string]$package.bridgeVersion -ne [string]$script:Contract.bridgeVersion) {
-        throw "Synchronized Bridge portable runtime does not match external/OcctCSharpBridge/win-x64. Run .\sync.ps1 first."
+        throw "Installed Bridge portable runtime does not match the Binary SDK. Re-run Bridge main .\publish.ps1 or verify OCCTCSHARPBRIDGE_SDK."
     }
 
     foreach ($entry in @($package.files)) {
