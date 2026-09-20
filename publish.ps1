@@ -232,82 +232,6 @@ function Install-BinarySdk {
     Write-Host "[install] System Binary SDK updated: $Destination" -ForegroundColor Green
 }
 
-function Test-PortableSdk {
-    param(
-        [Parameter(Mandatory = $true)][string]$Path,
-        [Parameter(Mandatory = $true)][string]$ExpectedSourceCommit,
-        [Parameter(Mandatory = $true)][string]$ExpectedBridgeVersion
-    )
-
-    $manifestPath = Join-Path $Path "package-manifest.json"
-    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
-        throw "Portable SDK manifest is missing: $manifestPath"
-    }
-
-    $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    if ([string]$manifest.product -ne "OcctCSharpBridge Portable SDK" -or
-        [string]$manifest.platform -ne "win-x64" -or
-        -not [bool]$manifest.portableRuntime -or
-        [string]$manifest.bridgeSourceCommit -ne $ExpectedSourceCommit -or
-        [string]$manifest.bridgeVersion -ne $ExpectedBridgeVersion) {
-        throw "Portable SDK metadata does not match the Binary SDK being published."
-    }
-
-    foreach ($entry in @($manifest.files)) {
-        $relative = ([string]$entry.name).Replace('/', [System.IO.Path]::DirectorySeparatorChar)
-        $file = Join-Path $Path $relative
-        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
-            throw "Portable SDK file is missing: $($entry.name)"
-        }
-        $actualHash = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
-        if ($actualHash -ne ([string]$entry.sha256).ToLowerInvariant()) {
-            throw "Portable SDK hash mismatch: $($entry.name)"
-        }
-    }
-}
-
-function Install-PortableSdk {
-    param(
-        [Parameter(Mandatory = $true)][string]$Source,
-        [Parameter(Mandatory = $true)][string]$Destination,
-        [Parameter(Mandatory = $true)][string]$ExpectedSourceCommit,
-        [Parameter(Mandatory = $true)][string]$ExpectedBridgeVersion
-    )
-
-    Test-PortableSdk -Path $Source -ExpectedSourceCommit $ExpectedSourceCommit -ExpectedBridgeVersion $ExpectedBridgeVersion
-
-    $parent = Split-Path -Parent $Destination
-    New-Item -ItemType Directory -Path $parent -Force | Out-Null
-    $name = Split-Path -Leaf $Destination
-    $staging = Join-Path $parent ".$name-staging-$([Guid]::NewGuid().ToString('N'))"
-    $backup = Join-Path $parent ".$name-backup-$([Guid]::NewGuid().ToString('N'))"
-
-    try {
-        Copy-Item -LiteralPath $Source -Destination $staging -Recurse -Force
-        Test-PortableSdk -Path $staging -ExpectedSourceCommit $ExpectedSourceCommit -ExpectedBridgeVersion $ExpectedBridgeVersion
-
-        $hadPrevious = Test-Path -LiteralPath $Destination -PathType Container
-        if ($hadPrevious) { Move-Item -LiteralPath $Destination -Destination $backup }
-        try { Move-Item -LiteralPath $staging -Destination $Destination }
-        catch {
-            if ($hadPrevious -and (Test-Path -LiteralPath $backup -PathType Container)) {
-                Move-Item -LiteralPath $backup -Destination $Destination
-            }
-            throw
-        }
-        Remove-Item -LiteralPath $backup -Recurse -Force -ErrorAction SilentlyContinue
-    }
-    finally {
-        Remove-Item -LiteralPath $staging -Recurse -Force -ErrorAction SilentlyContinue
-        if (-not (Test-Path -LiteralPath $Destination -PathType Container) -and
-            (Test-Path -LiteralPath $backup -PathType Container)) {
-            Move-Item -LiteralPath $backup -Destination $Destination
-        }
-    }
-
-    Write-Host "[install] Portable SDK updated: $Destination" -ForegroundColor Green
-}
-
 function Assert-RunningWindowsX64 {
     $runningOnWindows = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform(
         [System.Runtime.InteropServices.OSPlatform]::Windows)
@@ -402,15 +326,6 @@ Write-Host "[publish] Building portable SDK with the OCCT runtime closure..." -F
     -Zip:$effectiveZip
 if ($LASTEXITCODE -ne 0) { throw "Portable Windows SDK packaging failed with exit code $LASTEXITCODE." }
 
-$portablePackageRoot = Join-Path $OutputDirectory "OcctCSharpBridge-$($sourceContract.bridgeVersion)-win-x64-portable"
-$portableInstallRoot = Join-Path $InstallRoot "portable"
-Write-Host "[publish] Installing the validated Portable SDK..." -ForegroundColor Cyan
-Install-PortableSdk `
-    -Source $portablePackageRoot `
-    -Destination $portableInstallRoot `
-    -ExpectedSourceCommit $sourceCommit `
-    -ExpectedBridgeVersion ([string]$sourceContract.bridgeVersion)
-
 if ($runStableValidation) {
 
     Write-Host "Stable release validation completed successfully." -ForegroundColor Green
@@ -425,5 +340,5 @@ Write-Host "Mode:       $publishMode" -ForegroundColor DarkGray
 Write-Host "Branch:     $currentBranch" -ForegroundColor DarkGray
 Write-Host "Source:     $sourceCommit" -ForegroundColor DarkGray
 Write-Host "Binary SDK: $InstallRoot" -ForegroundColor DarkGray
-Write-Host "Portable:   $portableInstallRoot" -ForegroundColor DarkGray
+Write-Host "Portable:   $OutputDirectory" -ForegroundColor DarkGray
 Write-Host "No Git commit or push was performed. Publish the portable package through the normal reviewed artifact workflow." -ForegroundColor Cyan
